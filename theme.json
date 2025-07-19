@@ -1,0 +1,194 @@
+{
+    "fonts": [
+        {
+            "name": "arial",
+            "point_size": 16,
+            "antialiased": "1"
+        },
+        {
+            "name": "arial",
+            "point_size": 16,
+            "style": "bold",
+            "antialiased": "1"
+        },
+        {
+            "name": "arial",
+            "point_size": 14,
+            "antialiased": "1"
+        },
+        {
+            "name": "arial",
+            "point_size": 14,
+            "style": "bold",
+            "antialiased": "1"
+        },
+        {
+            "name": "arial",
+            "point_size": 14,
+            "style": "italic",
+            "antialiased": "1"
+        },
+        {
+            "name": "arial",
+            "point_size": 12,
+            "antialiased": "1"
+        }
+    ],
+    "defaults": {
+        "colours": {
+            "normal_text": "#FFFFFF"
+        }
+    },
+    "#side_bar_info_panel": {
+        "colours": {
+            "dark_bg": "#202030"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#808090"
+        }
+    },
+    "#main_menu_panel": {
+        "colours": {
+            "dark_bg": "#202030"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#808090"
+        }
+    },
+    "#about_panel": {
+        "colours": {
+            "dark_bg": "#202030"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#808090"
+        }
+    },
+    "#left_top_bar": {
+        "colours": {
+            "dark_bg": "#252535"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "1",
+            "border_colour": "#808090"
+        }
+    },
+    "#right_top_bar": {
+        "colours": {
+            "dark_bg": "#252535"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "1",
+            "border_colour": "#808090"
+        }
+    },
+    "#sidebar_title_label": {
+        "font": {
+            "name": "arial",
+            "size": "16",
+            "bold": "1"
+        },
+        "colours": {
+            "normal_text": "#E0E0FF"
+        }
+    },
+    "#sidebar_section_header_label": {
+        "font": {
+            "name": "arial",
+            "size": "16",
+            "bold": "1"
+        },
+        "colours": {
+            "normal_text": "#C0C0E0"
+        }
+    },
+    "#sidebar_info_label": {
+        "font": {
+            "name": "arial",
+            "size": "14"
+        },
+        "colours": {
+            "normal_text": "#A0A0B0"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#player_player_1_label": { 
+        "colours": { "normal_text": "#0000FF"},
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#player_player_2_label": { 
+        "colours": { "normal_text": "#FF0000"},
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#player_player_3_label": { 
+        "colours": { "normal_text": "#FFFF00"},
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_hit_points_ok_label": {
+        "colours": { "normal_text": "#00FF00"},
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_hit_points_light_damage_label": { 
+        "colours": { "normal_text": "#FFFF00"},
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_hit_points_heavy_damage_label": { 
+        "colours": { "normal_text": "#FFA500"},
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_hit_points_critical_damage_label": { 
+        "colours": { "normal_text": "#FF4040"},
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_expand_button": {
+        "font": {
+            "name": "arial",
+            "size": "14"
+        },
+        "colours": {
+            "normal_text": "#B0B0D0",
+            "hovered_text": "#FFFFFF",
+            "normal_border": "#505060"
+        },
+        "misc": {
+            "border_width": "1"
+        }
+    },
+    "#order_text_box": {
+        "font": {
+            "name": "arial",
+            "size": "12"
+        },
+        "colours": {
+            "normal_text": "#B0B0C0" 
+        },
+        "misc": {
+            "text_horiz_alignment": "default",
+            "padding": "4",
+            "line_spacing": "1.12"
+        }
+    }
+}
