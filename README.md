@@ -1,6 +1,6 @@
 # Wormhole Control
 
-**Wormhole Control** is a 2D turn-based 4X space strategy game prototype written in Python using Pygame and pygame_gui. The game features a large-scale universe where players manage space ships across a galaxy of star systems connected by wormholes. Each star system contains a hexagonal grid of sectors.
+**Wormhole Control** is a 2D turn-based 4X space strategy game prototype written in Python using ‘pygame - Community Edition’ (‘pygame-ce’) and ‘pygame_gui’. The game features a large-scale universe where players manage space ships across a galaxy of star systems connected by wormholes. Each star system contains a hexagonal grid of sectors.
 
 ## Features
 
@@ -39,12 +39,12 @@
 
 ### Dependencies
 - **Python 3.7+**
-- **pygame**: Core game engine
+- **pygame-ce**: Core game engine
 - **pygame_gui**: User interface framework
 
 #### Install dependencies:
 ```bash
-pip install pygame pygame_gui
+pip install pygame-ce pygame_gui
 ```
 
 ## Game Controls & Interface
