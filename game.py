@@ -75,6 +75,8 @@ class Game:
         # Initialize the main menu UI
         self.gui.show_main_menu()
         self.sidebar_needs_update: bool = True
+        self.pending_ai_turn_end_time: int = 0
+
 
 
     def start_new_game(self):
@@ -107,6 +109,8 @@ class Game:
             Player("Player 2", RED, is_human=True),
             Player("Player 3", YELLOW, is_human=True)
         ]
+
+
         self.current_player_index = 0
 
         # Grant starting resources
@@ -385,6 +389,13 @@ class Game:
         # Update turn display
         if self.game_started and self.players:
             self.update_player_turn_display()
+
+        # Handle pending non-blocking AI turn progression
+        if self.game_started and self.pending_ai_turn_end_time > 0:
+            if pygame.time.get_ticks() >= self.pending_ai_turn_end_time:
+                self.pending_ai_turn_end_time = 0
+                self.end_turn()
+
 
     def end_turn(self):
         """Delegates end_turn processing to the TurnProcessor instance."""

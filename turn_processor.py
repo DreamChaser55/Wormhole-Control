@@ -28,8 +28,8 @@ class TurnProcessor:
 
         if not self.game.players[self.game.current_player_index].is_human:
              print(f"AI Turn for {current_player_name} (Not Implemented) - Ending Turn Automatically")
-             pygame.time.wait(500) # Pause briefly for effect
-             self.end_turn()
+             self.game.pending_ai_turn_end_time = pygame.time.get_ticks() + 500
+
 
     def process_turn(self):
         """Processes actions that occur at the end of a turn (movement, jumps) and calls update() for all units in the current player's turn."""

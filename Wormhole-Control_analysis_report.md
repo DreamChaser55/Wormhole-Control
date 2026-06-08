@@ -9,13 +9,10 @@ Overall, the codebase is well-structured and conceptually ambitious. However, as
 
 ## 1. Bugs and Potential Issues
 
-### Infinite Recursion Risk in `turn_processor.py`
-In `TurnProcessor.end_turn()`, if the next player is an AI, the game currently pauses for 500ms and recursively calls `self.end_turn()`. If multiple AI players act consecutively, this creates deep recursion, which is generally bad practice and could theoretically exceed recursion limits.
-**Recommendation:** Refactor the turn logic to use a queue or state machine in the main game loop, rather than recursively calling `end_turn()` from within itself.
-
 ### `Optional` Type Safety
 In `entities.py`, the `Unit` class has an `in_galaxy` attribute typed as `Optional['Galaxy']`. In the `destroy()` method, it calls `self.in_galaxy.remove_unit(self)` without first checking if `self.in_galaxy` is `None`. This could result in an `AttributeError`.
 **Recommendation:** Add a null check: `if self.in_galaxy:` before attempting to remove the unit.
+
 
 ---
 
