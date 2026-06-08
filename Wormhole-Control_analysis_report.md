@@ -96,3 +96,6 @@ The `find_intersystem_path` runs Dijkstra's algorithm from scratch every time an
 ### 4. Logging Module Replacement
 The codebase relies heavily on standard `print()` statements for warnings, errors, and debug traces.
 *Idea:* Replace `print()` with Python's built-in `logging` module. This allows separating different severity levels (`DEBUG`, `INFO`, `WARNING`, `ERROR`) and writing logs to a file instead of flooding the console.
+
+### 5. Add comprehensive testing
+The codebase would benefit from having a more comprehensive test suite to catch bugs and regressions early on. Add Unit tests for the core logic and integration tests for the game flow.
