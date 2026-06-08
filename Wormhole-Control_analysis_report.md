@@ -9,10 +9,6 @@ Overall, the codebase is well-structured and conceptually ambitious. However, as
 
 ## 1. Bugs and Potential Issues
 
-### KeyError Risks in `unit_orders.py`
-In several methods of the `Order` class (e.g., `plan_route`, `_execute_reach_waypoint`), parameters are accessed using direct bracket notation: `self.parameters["destination_system_name"]`. If these keys are missing from the `parameters` dictionary when the order is created, this will raise a `KeyError` and crash the game.
-**Recommendation:** Always use `.get()` with a fallback or strictly validate order parameters during `Order` instantiation.
-
 ### Infinite Recursion Risk in `turn_processor.py`
 In `TurnProcessor.end_turn()`, if the next player is an AI, the game currently pauses for 500ms and recursively calls `self.end_turn()`. If multiple AI players act consecutively, this creates deep recursion, which is generally bad practice and could theoretically exceed recursion limits.
 **Recommendation:** Refactor the turn logic to use a queue or state machine in the main game loop, rather than recursively calling `end_turn()` from within itself.
