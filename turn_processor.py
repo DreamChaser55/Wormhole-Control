@@ -1,8 +1,7 @@
 import pygame
 import typing
 
-from constants import PROFILE
-from utils import HexCoord, Timer
+from utils import HexCoord, ProfileTimer
 from geometry import Vector, Position, distance, hex_distance, Circle, is_point_in_circle
 from sector_utils import move_towards_position
 from entities import Unit, Wormhole, Planet, Moon, Asteroid
@@ -33,22 +32,33 @@ class TurnProcessor:
 
     def process_turn(self):
         """Processes actions that occur at the end of a turn (movement, jumps) and calls update() for all units in the current player's turn."""
-        if PROFILE:
-            total_timer = Timer()
-            total_timer.start()
+        with ProfileTimer("Total turn processing"):
+            current_player = self.game.players[self.game.current_player_index]
+            print(f"Processing turn for {current_player.name}...")
+            
+            if not self.game.galaxy or not self.game.galaxy.systems:
+                print("Warning: Galaxy or systems not initialized in process_turn.")
+                return
 
-        current_player = self.game.players[self.game.current_player_index]
-        print(f"Processing turn for {current_player.name}...")
-        
-        if not self.game.galaxy or not self.game.galaxy.systems:
-            print("Warning: Galaxy or systems not initialized in process_turn.")
-            return
+            # --- 1. Movement Planning & Execution ---
+            with ProfileTimer("Movement processing"):
+                self._process_movement(current_player)
 
-        # --- 1. Movement Planning & Execution ---
-        if PROFILE:
-            movement_timer = Timer()
-            movement_timer.start()
+            # --- 2. Population Growth ---
+            with ProfileTimer("Population growth"):
+                self._process_population_growth()
 
+            # --- 3. Resource Generation ---
+            with ProfileTimer("Resource generation"):
+                self._process_resource_generation(current_player)
+
+            # --- 4. Unit Updates ---
+            with ProfileTimer("Unit updates"):
+                self._process_unit_updates(current_player)
+
+            print(f"Finished turn processing for {current_player.name}.")
+
+    def _process_movement(self, current_player):
         for system_name, system in self.game.galaxy.systems.items():
             units_to_move: typing.List[typing.Tuple['Unit', typing.Tuple[str, typing.Union['HexCoord', str, typing.Tuple['HexCoord', 'Position']]]]] = []
 
@@ -255,30 +265,14 @@ class TurnProcessor:
                         hd_comp.jump_status = JumpStatus.ERROR
                         if hd_comp.hex_jump_target: # Ensure target is cleared on failure
                              hd_comp.hex_jump_target = None
-        
-        if PROFILE:
-            movement_timer.stop()
-            print(f"  [Profile] Movement processing took: {movement_timer}")
 
-        # --- 2. Population Growth ---
-        if PROFILE:
-            population_timer = Timer()
-            population_timer.start()
-
+    def _process_population_growth(self):
         for system in self.game.galaxy.systems.values():
             for hexcoord, body in system.get_all_celestial_bodies():
                 if isinstance(body, (Planet, Moon, Asteroid)):
                     body.update_population()
 
-        if PROFILE:
-            population_timer.stop()
-            print(f"  [Profile] Population growth took: {population_timer}")
-
-        # --- 3. Resource Generation ---
-        if PROFILE:
-            resource_timer = Timer()
-            resource_timer.start()
-
+    def _process_resource_generation(self, current_player):
         total_credits_generated = 0
         for system in self.game.galaxy.systems.values():
             for hexcoord, body in system.get_all_celestial_bodies():
@@ -290,28 +284,11 @@ class TurnProcessor:
         if total_credits_generated > 0:
             print(f"  {current_player.name} generated {total_credits_generated:.2f} credits from taxes.")
 
-        if PROFILE:
-            resource_timer.stop()
-            print(f"  [Profile] Resource generation took: {resource_timer}")
-
-        # --- 4. Unit Updates ---
-        if PROFILE:
-            unit_update_timer = Timer()
-            unit_update_timer.start()
-
+    def _process_unit_updates(self, current_player):
         if current_player:
             for system_name, system_obj in self.game.galaxy.systems.items():
                 all_units_in_system_for_final_update = system_obj.get_all_units()[:]
                 for unit, _ in all_units_in_system_for_final_update:
                     if unit.owner == current_player:
                         unit.update()
-        
-        if PROFILE:
-            unit_update_timer.stop()
-            print(f"  [Profile] Unit updates took: {unit_update_timer}")
 
-        if PROFILE:
-            total_timer.stop()
-            print(f"Finished turn processing for {current_player.name}. Total time: {total_timer}")
-        else:
-            print(f"Finished turn processing for {current_player.name}.")

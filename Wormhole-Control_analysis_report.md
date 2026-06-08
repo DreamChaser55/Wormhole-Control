@@ -34,14 +34,6 @@ The `Order.get_info_text()` method returns HTML strings with hardcoded color hex
 
 ## 3. Cruft and Bloat Removal
 
-### Profiling Timers Boilerplate
-`turn_processor.py` contains heavily repeated boilerplate for profiling (e.g., `if PROFILE: timer = Timer(); timer.start() ... timer.stop(); print()`).
-**Recommendation:** Implement a context manager for profiling:
-```python
-with ProfileTimer("Movement processing"):
-    # code here
-```
-
 ### Magic Numbers and Hardcoded Strings
 There are scattered "magic numbers" and hardcoded strings throughout the project. For example, `time_to_build=10` and `cost_credits=500` inside `Constructor.__post_init__`. 
 **Recommendation:** Move these to `constants.py` or, better yet, a data-driven configuration file (like JSON or YAML) for easier tweaking and balancing.

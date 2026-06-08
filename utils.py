@@ -62,3 +62,23 @@ class Timer:
 
     def __str__(self):
         return f"Elapsed Time: {self.get_elapsed_time():.4f} ms"
+
+
+class ProfileTimer:
+    """A context manager for profiling code blocks. It only runs and prints if PROFILE is enabled."""
+    def __init__(self, name: str):
+        self.name = name
+        self.timer = Timer()
+
+    def __enter__(self):
+        from constants import PROFILE
+        if PROFILE:
+            self.timer.start()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        from constants import PROFILE
+        if PROFILE:
+            self.timer.stop()
+            print(f"  [Profile] {self.name} took: {self.timer}")
+
