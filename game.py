@@ -17,7 +17,7 @@ from geometry import (
 from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector, random_point_in_circle
 from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
-from unit_components import Engines, Hyperdrive, HyperdriveType, Drawable, Commander, JumpStatus, Turret, TurretType
+from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType
 from entities import Order, AsteroidField, DebrisField, IceField, Nebula, Storm, Comet, Moon
 from galaxy import Galaxy, StarSystem, Hex
 from gui import GUI_Handler

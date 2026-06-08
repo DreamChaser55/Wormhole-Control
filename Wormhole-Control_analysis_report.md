@@ -37,10 +37,6 @@ The `Order.get_info_text()` method returns HTML strings with hardcoded color hex
 
 ## 3. Cruft and Bloat Removal
 
-### The `Drawable` Component
-In `unit_components.py`, the `Drawable` class contains no fields and adds no functionality beyond what `UnitComponent` provides. A comment even questions its existence: `"Consider removing the Drawable component in the future?"`.
-**Recommendation:** Remove the `Drawable` component entirely to clean up the architecture.
-
 ### Profiling Timers Boilerplate
 `turn_processor.py` contains heavily repeated boilerplate for profiling (e.g., `if PROFILE: timer = Timer(); timer.start() ... timer.stop(); print()`).
 **Recommendation:** Implement a context manager for profiling:

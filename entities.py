@@ -10,7 +10,6 @@ from collections import deque
 from unit_orders import Order, OrderStatus, OrderType
 from unit_components import (
     UnitComponent,
-    Drawable,
     Engines,
     Hyperdrive, HyperdriveType,
     Commander,
@@ -218,8 +217,6 @@ class Unit(GameObject):
         else:
             self.engines_component: typing.Optional[Engines] = None
 
-        self.drawable_component: Drawable = Drawable(unit=self)
-
         if hyperdrive_type is not None:
             self.hyperdrive_component: typing.Optional[Hyperdrive] = Hyperdrive(
                 unit=self,
@@ -292,8 +289,6 @@ class Unit(GameObject):
     def _update_hull_usage(self) -> None:
         """Recalculates and updates the current hull usage based on installed components."""
         usage = 0
-        if self.drawable_component:
-            usage += self.drawable_component.hull_cost
         if self.engines_component:
             usage += self.engines_component.hull_cost
         if self.hyperdrive_component:

@@ -37,12 +37,6 @@ class UnitComponent:
 # --- UnitComponent-derived Classes (Components) ---
 
 @dataclasses.dataclass
-class Drawable(UnitComponent):
-    # No explicit fields needed here anymore beyond what UnitComponent provides. Consider removing the Drawable component in the future?
-    def __init__(self, unit: 'Unit'):
-        super().__init__(unit, hull_cost=0)
-
-@dataclasses.dataclass
 class Engines(UnitComponent):
     """Engines for sublight (non-faster-than-light) travel, within a single sector."""
     speed: float = 0.0
