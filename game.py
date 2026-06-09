@@ -214,7 +214,6 @@ class Game:
                                     name=ship_name,
                                     hull_size=hull_size,
                                     game=self,
-                                    in_galaxy=self.galaxy,
                                     engines_speed=DEFAULT_SUBLIGHT_SHIP_SPEED,
                                     hyperdrive_type=HyperdriveType.ADVANCED,
                                     has_weapons=True)
@@ -262,7 +261,6 @@ class Game:
                                         name=station_name,
                                         hull_size=hull_size,
                                         game=self,
-                                        in_galaxy=self.galaxy,
                                         engines_speed=None, # No engines
                                         hyperdrive_type=None, # No hyperdrive
                                         has_weapons=True,
@@ -304,7 +302,6 @@ class Game:
                         name=colony_ship_name,
                         hull_size=HullSize.MEDIUM,
                         game=self,
-                        in_galaxy=self.galaxy,
                         engines_speed=DEFAULT_SUBLIGHT_SHIP_SPEED,
                         hyperdrive_type=HyperdriveType.ADVANCED,
                         has_colony_component=True

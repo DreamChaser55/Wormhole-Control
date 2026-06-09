@@ -7,16 +7,7 @@ Overall, the codebase is well-structured and conceptually ambitious. However, as
 
 ---
 
-## 1. Bugs and Potential Issues
-
-### `Optional` Type Safety
-In `entities.py`, the `Unit` class has an `in_galaxy` attribute typed as `Optional['Galaxy']`. In the `destroy()` method, it calls `self.in_galaxy.remove_unit(self)` without first checking if `self.in_galaxy` is `None`. This could result in an `AttributeError`.
-**Recommendation:** Add a null check: `if self.in_galaxy:` before attempting to remove the unit.
-
-
----
-
-## 2. Refactoring Opportunities
+## 1. Refactoring Opportunities
 
 ### The Monolithic `Order` Class
 The `unit_orders.py` file is nearly 1000 lines long. The `Order` class acts as a monolith handling the logic for *all* possible order types (`MOVE`, `ATTACK`, `COLONIZE`, etc.) through giant `if/elif` blocks across its `execute`, `update`, `get_info_text`, and `check_completion_conditions` methods.
@@ -32,7 +23,7 @@ The `Order.get_info_text()` method returns HTML strings with hardcoded color hex
 
 ---
 
-## 3. Cruft and Bloat Removal
+## 2. Cruft and Bloat Removal
 
 ### Magic Numbers and Hardcoded Strings
 There are scattered "magic numbers" and hardcoded strings throughout the project. For example, `time_to_build=10` and `cost_credits=500` inside `Constructor.__post_init__`. 
@@ -40,7 +31,7 @@ There are scattered "magic numbers" and hardcoded strings throughout the project
 
 ---
 
-## 4. Code Documentation and Comments
+## 3. Code Documentation and Comments
 
 ### Excessive "Play-by-Play" Comments
 Files like `unit_orders.py` have comments that simply restate the code, creating clutter.
@@ -53,7 +44,7 @@ As per standard requirements, every important function should have a top-level d
 
 ---
 
-## 5. Naming Conventions
+## 4. Naming Conventions
 
 Some variable names are overly abbreviated, reducing clarity:
 - In `unit_orders.py`: `dsys`, `dhex`, `dpos` are used extensively. Rename to `dest_system`, `dest_hex`, `dest_position`.
@@ -62,7 +53,7 @@ Some variable names are overly abbreviated, reducing clarity:
 
 ---
 
-## 6. Brainstorming Ideas for Improvements
+## 5. Brainstorming Ideas for Improvements
 
 ### 1. Data-Driven Design
 Currently, game definitions (unit templates, star names, celestial body spawn rates) are hardcoded in Python. Moving these into JSON/YAML configuration files will make the game much easier to expand, mod, and balance.

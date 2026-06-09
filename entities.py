@@ -181,7 +181,6 @@ class Unit(GameObject):
     def __init__(self, owner: Player, position: Position, in_hex: HexCoord, in_system: str, name: str,
                  hull_size: HullSize,
                  game: "Game",
-                 in_galaxy: Optional['Galaxy'] = None,
                  engines_speed: typing.Optional[float] = None,
                  engines_hull_cost: int = 5,
                  hyperdrive_type: typing.Optional[HyperdriveType] = None,
@@ -199,7 +198,7 @@ class Unit(GameObject):
         self.owner = owner
         self.name: str = name
         self.game = game
-        self.in_galaxy: Optional['Galaxy'] = in_galaxy
+        self.in_galaxy: Optional['Galaxy'] = game.galaxy if game else None
 
         self.hull_size: HullSize = hull_size
         self.hull_capacity: int = HULL_CAPACITIES[self.hull_size] # consumed by components with hull_cost
