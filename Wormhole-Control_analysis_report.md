@@ -40,14 +40,6 @@ As per standard requirements, every important function should have a top-level d
 
 ---
 
-## 4. Naming Conventions
-
-Some variable names are overly abbreviated, reducing clarity:
-- In `unit_orders.py`: `dsys`, `dhex`, `dpos` are used extensively. Rename to `dest_system`, `dest_hex`, `dest_position`.
-- In `unit_orders.py`: `csys`, `chex`, `cpos` should be `current_system`, `current_hex`, `current_position`.
-- In `entities.py`: `Unit.in_galaxy` could simply be named `galaxy` or `galaxy_ref` to align with the parameter naming in order execution.
-
----
 
 ## 5. Brainstorming Ideas for Improvements
 

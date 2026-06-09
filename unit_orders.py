@@ -163,15 +163,15 @@ class Order:
         if self.order_type == OrderType.MOVE:
             # A MOVE order is complete if it was IN_PROGRESS and all its sub-orders are now finished (no REACH_WAYPOINTs remain in the deque). We also check if the unit actually reached the destination.
 
-            csys = self.unit.in_system
-            chex = self.unit.in_hex
-            cpos = self.unit.position
+            current_system = self.unit.in_system
+            current_hex = self.unit.in_hex
+            current_position = self.unit.position
             
-            dsys = self.parameters["destination_system_name"]
-            dhex = self.parameters["destination_hex_coord"]
-            dpos: Position = self.parameters["destination_position"]
+            dest_system = self.parameters["destination_system_name"]
+            dest_hex = self.parameters["destination_hex_coord"]
+            dest_position: Position = self.parameters["destination_position"]
             
-            if not self.sub_orders and csys == dsys and chex == dhex and distance(cpos, dpos) < 0.01:
+            if not self.sub_orders and current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:
                 # Check if the sub-order deque is empty and if the unit is at the destination position
                 self.status = OrderStatus.COMPLETED
                 print(f"[{self.unit.name} (id:{self.unit.id})] Order.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): COMPLETED (all sub-orders finished, unit reached destination).")
@@ -187,15 +187,15 @@ class Order:
 
         elif self.order_type == OrderType.REACH_WAYPOINT:
             # REACH_WAYPOINT sub-order is complete when the unit reaches the destination position.
-            csys = self.unit.in_system
-            chex = self.unit.in_hex
-            cpos = self.unit.position
+            current_system = self.unit.in_system
+            current_hex = self.unit.in_hex
+            current_position = self.unit.position
             
-            dsys = self.parameters["destination_system_name"]
-            dhex = self.parameters["destination_hex_coord"]
-            dpos: Position = self.parameters["destination_position"]
+            dest_system = self.parameters["destination_system_name"]
+            dest_hex = self.parameters["destination_hex_coord"]
+            dest_position: Position = self.parameters["destination_position"]
             
-            if csys == dsys and chex == dhex and distance(cpos, dpos) < 0.01:
+            if current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:
                 # If the unit is at destination position, change REACH_WAYPOINT order status to COMPLETED and clear active engines and hyperdrive movement targets.
                 if self.unit.engines_component:
                     self.unit.engines_component.move_target = None
@@ -203,7 +203,7 @@ class Order:
                     self.unit.hyperdrive_component.hex_jump_target = None
                     self.unit.hyperdrive_component.wormhole_jump_target = None
                 self.status = OrderStatus.COMPLETED
-                print(f"[{self.unit.name} (id:{self.unit.id})] Order.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): COMPLETED (arrived at waypoint: {dpos}:Hex{dhex}:{dsys})")
+                print(f"[{self.unit.name} (id:{self.unit.id})] Order.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): COMPLETED (arrived at waypoint: {dest_position}:Hex{dest_hex}:{dest_system})")
                 return
 
         elif self.order_type == OrderType.PATROL:
@@ -357,41 +357,41 @@ class Order:
             return
 
         # Get current location status
-        csys = self.unit.in_system
-        chex = self.unit.in_hex
-        cpos = self.unit.position
+        current_system = self.unit.in_system
+        current_hex = self.unit.in_hex
+        current_position = self.unit.position
 
         # Get destination parameters
-        dsys = self.parameters["destination_system_name"]
-        dhex = self.parameters["destination_hex_coord"]
-        dpos: Optional[Position] = self.parameters["destination_position"]
+        dest_system = self.parameters["destination_system_name"]
+        dest_hex = self.parameters["destination_hex_coord"]
+        dest_position: Optional[Position] = self.parameters["destination_position"]
 
-        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: From: {csys}:{chex}:{cpos} | To: {dsys}:{dhex}:{dpos}")
+        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: From: {current_system}:{current_hex}:{current_position} | To: {dest_system}:{dest_hex}:{dest_position}")
 
-        if dsys is None or dhex is None or dpos is None:
+        if dest_system is None or dest_hex is None or dest_position is None:
             self.status = OrderStatus.FAILED
             print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (incomplete destination parameters).")
             return
 
         # Check if already at the final destination
-        if csys == dsys and chex == dhex and distance(cpos, dpos) < 0.01:  # Small threshold for floating point precision
+        if current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:  # Small threshold for floating point precision
             self.status = OrderStatus.COMPLETED
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: COMPLETED (already at destination {dsys}:{dhex}:{dpos}).")
+            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: COMPLETED (already at destination {dest_system}:{dest_hex}:{dest_position}).")
             return
 
         # --- Pre-planning checks for hyperspace jumps ---
         # If a jump is required (different system or hex), check if the starting position is inhibited.
-        if csys != dsys or chex != dhex:
-            current_hex_obj = galaxy_ref.systems[csys].hexes.get(chex)
+        if current_system != dest_system or current_hex != dest_hex:
+            current_hex_obj = galaxy_ref.systems[current_system].hexes.get(current_hex)
             if current_hex_obj:
                 for zone in current_hex_obj.get_all_inhibition_zones():
-                    if is_point_in_circle(cpos, zone):
+                    if is_point_in_circle(current_position, zone):
                         # Current position is inhibited. Plan a sub-light move to the edge of the inhibition zone first.
-                        escape_pos = get_closest_point_on_circle_edge(cpos, zone)
-                        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Start position {cpos} is inhibited. Planning escape move to {escape_pos}.")
+                        escape_pos = get_closest_point_on_circle_edge(current_position, zone)
+                        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Start position {current_position} is inhibited. Planning escape move to {escape_pos}.")
                         self.add_sub_order(Order(self.unit, OrderType.REACH_WAYPOINT, {
-                            "destination_system_name": csys,
-                            "destination_hex_coord": chex,
+                            "destination_system_name": current_system,
+                            "destination_hex_coord": current_hex,
                             "destination_position": escape_pos
                         }, parent_order=self))
                         # After planning the escape, the rest of the route planning can proceed.
@@ -400,34 +400,34 @@ class Order:
                         break # Found an inhibition zone, no need to check others.
 
         # 1. Inter-system travel: Destination is in a different system
-        if csys != dsys:
+        if current_system != dest_system:
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
                 print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot jump system, no hyperdrive).")
                 return
 
             # First, check for a direct wormhole
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Checking for direct wormhole from {csys} to {dsys}...")
-            direct_wormhole = self.find_wormhole_to_system(csys, dsys, galaxy_ref)
+            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Checking for direct wormhole from {current_system} to {dest_system}...")
+            direct_wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref)
 
             if direct_wormhole:
                 # Direct jump possible
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct wormhole from {csys} to {dsys} found: {direct_wormhole.name}. Planning a single inter-system jump.")
+                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct wormhole from {current_system} to {dest_system} found: {direct_wormhole.name}. Planning a single inter-system jump.")
                 exit_wh = galaxy_ref.wormholes[direct_wormhole.exit_wormhole_id]
                 if not exit_wh:
                     self.status = OrderStatus.FAILED
-                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (could not find exit for direct wormhole {direct_wormhole.id} in {dsys}).")
+                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (could not find exit for direct wormhole {direct_wormhole.id} in {dest_system}).")
                     return
 
                 # 1.1. Sub-order(s) to reach wormhole
-                if chex != direct_wormhole.in_hex:
+                if current_hex != direct_wormhole.in_hex:
                     # If not in the right hex, plan the sequence of jumps to get there.
                     # This sequence will include the final move to the wormhole's exact position.
-                    self.plan_hex_jump_sequence(chex, direct_wormhole.in_hex, direct_wormhole.position, csys, galaxy_ref)
+                    self.plan_hex_jump_sequence(current_hex, direct_wormhole.in_hex, direct_wormhole.position, current_system, galaxy_ref)
                 else:
                     # If already in the correct hex, just plan a sub-light move to the wormhole's position.
                     self.add_sub_order(Order(self.unit, OrderType.REACH_WAYPOINT, {
-                        "destination_system_name": csys,
+                        "destination_system_name": current_system,
                         "destination_hex_coord": direct_wormhole.in_hex,
                         "destination_position": direct_wormhole.position
                     }, parent_order=self))
@@ -435,15 +435,15 @@ class Order:
 
                 # 1.2. Sub-order to jump through wormhole
                 self.add_sub_order(Order(self.unit, OrderType.REACH_WAYPOINT, {
-                    "destination_system_name": dsys, # Target system for jump
+                    "destination_system_name": dest_system, # Target system for jump
                     "destination_hex_coord": exit_wh.in_hex,    # Arrival hex in target system
                     "destination_position": exit_wh.position  # Arrival position in target system
                 }, parent_order=self))
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Added sub-order to jump through direct wormhole to {dsys}.")
+                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Added sub-order to jump through direct wormhole to {dest_system}.")
 
                 # 1.3. Check if wormhole exit is inhibited and add sub-light move if needed
                 arrival_pos = exit_wh.position
-                arrival_hex_obj = galaxy_ref.systems[dsys].hexes[exit_wh.in_hex]
+                arrival_hex_obj = galaxy_ref.systems[dest_system].hexes[exit_wh.in_hex]
                 if arrival_hex_obj:
                     for zone in arrival_hex_obj.get_all_inhibition_zones():
                         if is_point_in_circle(arrival_pos, zone):
@@ -456,7 +456,7 @@ class Order:
                             safe_pos = Position(safe_pos_x, safe_pos_y)
 
                             self.add_sub_order(Order(self.unit, OrderType.REACH_WAYPOINT, {
-                                "destination_system_name": dsys,
+                                "destination_system_name": dest_system,
                                 "destination_hex_coord": exit_wh.in_hex,
                                 "destination_position": safe_pos
                             }, parent_order=self))
@@ -465,23 +465,23 @@ class Order:
                             break
 
                 # 1.4. Sub-order(s) to move to final destination position
-                if exit_wh.in_hex != dhex:
-                    self.plan_hex_jump_sequence(exit_wh.in_hex, dhex, dpos, dsys, galaxy_ref)
+                if exit_wh.in_hex != dest_hex:
+                    self.plan_hex_jump_sequence(exit_wh.in_hex, dest_hex, dest_position, dest_system, galaxy_ref)
 
             else:
                 # No direct wormhole, try pathfinding
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: No direct wormhole from {csys} to {dsys}. Attempting pathfinding using Dijkstra's algorithm (find_intersystem_path).")
-                path_to_destination = find_intersystem_path(galaxy_ref.system_graph, csys, dsys)
+                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: No direct wormhole from {current_system} to {dest_system}. Attempting pathfinding using Dijkstra's algorithm (find_intersystem_path).")
+                path_to_destination = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system)
 
                 if not path_to_destination or len(path_to_destination) < 2:
                     self.status = OrderStatus.FAILED
-                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (no path found from {csys} to {dsys} via pathfinding with find_intersystem_path).")
+                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (no path found from {current_system} to {dest_system} via pathfinding with find_intersystem_path).")
                     return
 
                 print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Path found via pathfinding with find_intersystem_path: {path_to_destination}")
                 print(f"  [plan_route] Path has {len(path_to_destination) - 1} legs.")
 
-                current_leg_arrival_hex = chex # Unit's current hex at the start of planning
+                current_leg_arrival_hex = current_hex # Unit's current hex at the start of planning
 
                 for i in range(len(path_to_destination) - 1):
                     leg_origin_system = path_to_destination[i]
@@ -542,28 +542,28 @@ class Order:
 
                     current_leg_arrival_hex = exit_wormhole_for_leg.in_hex # Update for next leg
 
-                # After all inter-system jumps, unit is in 'dsys' at 'current_leg_arrival_hex'.
+                # After all inter-system jumps, unit is in 'dest_system' at 'current_leg_arrival_hex'.
                 # Plan final movement within the destination system.
-                print(f"\n  [plan_route] Planning final movement from hex {current_leg_arrival_hex} to {dhex} in system {dsys}.")
-                self.plan_hex_jump_sequence(current_leg_arrival_hex, dhex, dpos, dsys, galaxy_ref)
+                print(f"\n  [plan_route] Planning final movement from hex {current_leg_arrival_hex} to {dest_hex} in system {dest_system}.")
+                self.plan_hex_jump_sequence(current_leg_arrival_hex, dest_hex, dest_position, dest_system, galaxy_ref)
 
         # 2. Intra-system, inter-hex travel: Destination is in the same system but a different hex
-        elif chex != dhex:  # csys == dsys
-            self.plan_hex_jump_sequence(chex, dhex, dpos, csys, galaxy_ref)
+        elif current_hex != dest_hex:  # current_system == dest_system
+            self.plan_hex_jump_sequence(current_hex, dest_hex, dest_position, current_system, galaxy_ref)
         
         # 3. Intra-system, intra-hex travel (sub-light): Destination is in the same system and hex, but at a different position
-        else:  # csys == dsys and chex == dhex
+        else:  # current_system == dest_system and current_hex == dest_hex
             if not self.unit.engines_component:
                 self.status = OrderStatus.FAILED
                 print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, no engines).")
                 return
             
             print(f"  [plan_route] Destination is in the same hex. Planning final sub-light movement.")
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Adding REACH_WAYPOINT sub-order for final sub-light movement leg to {dpos} in {dsys}:{dhex}.")
+            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Adding REACH_WAYPOINT sub-order for final sub-light movement leg to {dest_position} in {dest_system}:{dest_hex}.")
             sub_order_params = {
-                "destination_system_name": dsys,
-                "destination_hex_coord": dhex,
-                "destination_position": dpos
+                "destination_system_name": dest_system,
+                "destination_hex_coord": dest_hex,
+                "destination_position": dest_position
             }
             final_move_sub_order = Order(self.unit, OrderType.REACH_WAYPOINT, sub_order_params, parent_order=self)
             self.add_sub_order(final_move_sub_order)
@@ -572,72 +572,72 @@ class Order:
 
     def _execute_reach_waypoint(self, galaxy_ref: 'Galaxy') -> None:
         """Execute a REACH_WAYPOINT order."""
-        dsys = self.parameters["destination_system_name"]
-        dhex = self.parameters["destination_hex_coord"]
-        dpos: Optional[Position] = self.parameters["destination_position"]
+        dest_system = self.parameters["destination_system_name"]
+        dest_hex = self.parameters["destination_hex_coord"]
+        dest_position: Optional[Position] = self.parameters["destination_position"]
         
         # Get current location
-        csys = self.unit.in_system
-        chex = self.unit.in_hex
+        current_system = self.unit.in_system
+        current_hex = self.unit.in_hex
         
         # Check if destination is valid
-        if dsys is None or dhex is None or dpos is None:
+        if dest_system is None or dest_hex is None or dest_position is None:
             self.status = OrderStatus.FAILED
             print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (incomplete destination parameters).")
             return
             
         # Case 1: Different hex in same system - use hyperdrive to jump
-        if csys == dsys and chex != dhex:
+        if current_system == dest_system and current_hex != dest_hex:
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
                 print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump hex, no hyperdrive).")
                 return
                 
             # Configure hyperdrive for hex jump
-            self.unit.hyperdrive_component.hex_jump_target = (dhex, dpos)
+            self.unit.hyperdrive_component.hex_jump_target = (dest_hex, dest_position)
             self.unit.hyperdrive_component.wormhole_jump_target = None
             # Clear engines move target when jumping
             if self.unit.engines_component:
                 self.unit.engines_component.move_target = None
-            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating HEX JUMP to {dhex}:{dpos} in {dsys}.")
+            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating HEX JUMP to {dest_hex}:{dest_position} in {dest_system}.")
             
         # Case 2: Same hex, different position - use engines for sublight movement
-        elif csys == dsys and chex == dhex:
+        elif current_system == dest_system and current_hex == dest_hex:
             if not self.unit.engines_component:
                 self.status = OrderStatus.FAILED
                 print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot move in sector, no engines).")
                 return
 
             # Check if already at the destination position
-            if distance(self.unit.position, dpos) < 0.01:
+            if distance(self.unit.position, dest_position) < 0.01:
                 self.status = OrderStatus.COMPLETED
                 self.unit.engines_component.move_target = None # Ensure move_target is cleared
                 if self.unit.hyperdrive_component:
                     self.unit.hyperdrive_component.hex_jump_target = None
                     self.unit.hyperdrive_component.wormhole_jump_target = None
-                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): COMPLETED (already at sub-light destination {dpos} in {dsys}:{dhex}).")
+                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): COMPLETED (already at sub-light destination {dest_position} in {dest_system}:{dest_hex}).")
                 return
 
             # Configure engines for movement
-            self.unit.engines_component.move_target = dpos
+            self.unit.engines_component.move_target = dest_position
             # Clear hyperdrive targets
             if self.unit.hyperdrive_component:
                 self.unit.hyperdrive_component.hex_jump_target = None
                 self.unit.hyperdrive_component.wormhole_jump_target = None
-            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating sub-light move to {dpos} in {dsys}:{dhex}.")
+            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating sub-light move to {dest_position} in {dest_system}:{dest_hex}.")
             
         # Case 3: Different system - need to use a wormhole to jump
-        else: # csys != dsys
+        else: # current_system != dest_system
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
                 print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump to different system, no hyperdrive).")
                 return
                 
             # Find a wormhole to the destination system
-            wormhole = self.find_wormhole_to_system(csys, dsys, galaxy_ref)
+            wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref)
             if not wormhole:
                 self.status = OrderStatus.FAILED
-                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {csys} to {dsys}).")
+                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {current_system} to {dest_system}).")
                 return
                 
             # Configure hyperdrive for wormhole jump
@@ -646,7 +646,7 @@ class Order:
             # Clear engines move target when jumping
             if self.unit.engines_component:
                 self.unit.engines_component.move_target = None
-            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating SYSTEM JUMP via wormhole {wormhole.name} to {dsys}.")
+            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating SYSTEM JUMP via wormhole {wormhole.name} to {dest_system}.")
 
 
     # --- PATROL order methods ---
