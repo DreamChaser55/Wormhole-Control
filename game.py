@@ -410,6 +410,105 @@ class Game:
         else:
             self.gui.update_view_mode_label(f"View: {self.view_mode.capitalize()}")
 
+    def _format_order_state_data(self, state_data: dict) -> list:
+        """Formats the raw order state data into a list of HTML-styled strings for display."""
+        order_type = state_data.get("order_type")
+        status = state_data.get("status")
+        parameters = state_data.get("parameters", {})
+
+        # Define colors for styling
+        MOVE_TYPE_COLOR = "#87CEEB"    # Cyan for Move order type
+        WAYPOINT_TYPE_COLOR = "#98FB98" # Green for Waypoint order type
+        ATTACK_TYPE_COLOR = "#FF0000"   # Red for Attack order type
+        TOGGLE_INHIBITOR_TYPE_COLOR = "#A020F0" # Purple for Toggle Inhibitor type
+        TOGGLE_INHIBITOR_ON_COLOR = "#90EE90" # Light Green for Inhibitor Activate
+        TOGGLE_INHIBITOR_OFF_COLOR = "#F08080" # Light Red for Inhibitor Deactivate
+        PATROL_TYPE_COLOR = "#DAA520" # Goldenrod for Patrol (example)
+        COLONIZE_COLOR = "#FFD700" # Gold for Colonize
+        LOAD_COLONISTS_COLOR = "#ADD8E6" # Light Blue for Load Colonists
+        INFO_COLOR = "#D3D3D3"       # Light Gray for general info (destinations, targets, hex/pos)
+
+        if order_type == "MOVE":
+            dsys = parameters.get("destination_system_name", "N/A")
+            dhex = parameters.get("destination_hex_coord", "N/A")
+            dpos_param = parameters.get("destination_position", None)
+            dpos_str = f"({dpos_param.x:.1f}, {dpos_param.y:.1f})" if isinstance(dpos_param, Position) else "N/A"
+
+            move_type_styled = f"<font color='{MOVE_TYPE_COLOR}'><b>Move:</b></font>"
+            dsys_styled = f"<font color='{INFO_COLOR}'><i>{dsys}</i></font>" if dsys != "N/A" else f"<font color='{INFO_COLOR}'>N/A</font>"
+            dhex_styled = f"<font color='{INFO_COLOR}'>{dhex}</font>"
+            dpos_styled = f"<font color='{INFO_COLOR}'>{dpos_str}</font>"
+            return [
+                move_type_styled,
+                f"  Sys: {dsys_styled}",
+                f"  Hex: {dhex_styled}",
+                f"  Pos: {dpos_styled}"
+            ]
+
+        elif order_type == "REACH_WAYPOINT":
+            dsys = parameters.get("destination_system_name", "N/A")
+            dhex = parameters.get("destination_hex_coord", "N/A")
+            dpos_param = parameters.get("destination_position", None)
+            dpos_str = f"({dpos_param.x:.1f}, {dpos_param.y:.1f})" if isinstance(dpos_param, Position) else "N/A"
+
+            waypoint_type_styled = f"<font color='{WAYPOINT_TYPE_COLOR}'><b>Waypoint:</b></font>"
+            dsys_styled = f"<font color='{INFO_COLOR}'><i>{dsys}</i></font>" if dsys != "N/A" else f"<font color='{INFO_COLOR}'>N/A</font>"
+            dhex_styled = f"<font color='{INFO_COLOR}'>{dhex}</font>"
+            dpos_styled = f"<font color='{INFO_COLOR}'>{dpos_str}</font>"
+            return [
+                waypoint_type_styled,
+                f"  Sys: {dsys_styled}",
+                f"  Hex: {dhex_styled}",
+                f"  Pos: {dpos_styled}"
+            ]
+
+        elif order_type == "TOGGLE_INHIBITOR":
+            turn_on = parameters.get("turn_on", False)
+            action = "Activate" if turn_on else "Deactivate"
+            status_color = TOGGLE_INHIBITOR_ON_COLOR if turn_on else TOGGLE_INHIBITOR_OFF_COLOR
+            action_styled = f"<font color='{status_color}'>{action}</font>"
+            toggle_inhibitor_type_styled = f"<font color='{TOGGLE_INHIBITOR_TYPE_COLOR}'><b>Toggle Inhibitor:</b></font>"
+            return [f"{toggle_inhibitor_type_styled} {action_styled}"]
+
+        elif order_type == "PATROL":
+            patrol_type_styled = f"<font color='{PATROL_TYPE_COLOR}'><b>🔄 Patrol:</b></font>"
+            return [f"{patrol_type_styled} <font color='{INFO_COLOR}'><i>(Details TBD)</i></font>"]
+
+        elif order_type == "ATTACK":
+            target_unit_id = state_data.get("target_unit_id")
+            target_name = state_data.get("target_name")
+            lookup_attempted = state_data.get("lookup_attempted", False)
+            lookup_success = state_data.get("lookup_success", False)
+
+            if lookup_success:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
+            elif target_unit_id:
+                if lookup_attempted:
+                    target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id} (Not found)</i></font>"
+                else:
+                    target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
+            else:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Target</i></font>"
+
+            attack_type_styled = f"<font color='{ATTACK_TYPE_COLOR}'><b>Attack:</b></font>"
+            return [f"{attack_type_styled} {target_unit_name_styled}"]
+
+        elif order_type == "COLONIZE":
+            target_name = parameters.get("target_name", "Unknown Target")
+            colonize_type_styled = f"<font color='{COLONIZE_COLOR}'><b>Colonize:</b></font>"
+            target_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
+            return [f"{colonize_type_styled} {target_styled}"]
+
+        elif order_type == "LOAD_COLONISTS":
+            target_name = parameters.get("target_name", "Unknown Target")
+            load_type_styled = f"<font color='{LOAD_COLONISTS_COLOR}'><b>Load Colonists:</b></font>"
+            target_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
+            return [f"{load_type_styled} {target_styled}"]
+
+        else:
+            # Default styling for other order types
+            return [f"<font color='{INFO_COLOR}'>{order_type} ({status})</font>"]
+
     def _generate_order_data_recursive(self, order: Order, current_indent_level: int) -> str:
         """
         Helper to recursively generate an HTML string for an order and its sub-orders.
@@ -418,7 +517,8 @@ class Game:
         indent_html = "&nbsp;" * 4 * current_indent_level
         
         # Get the list of text lines for the current order
-        order_info_lines = order.get_info_text() # Now returns List[str]
+        state_data = order.get_state_data()
+        order_info_lines = self._format_order_state_data(state_data)
         
         sub_order_first_line_prefix_char = "> " 
 

@@ -53,98 +53,32 @@ class Order:
         self.sub_orders: Deque['Order'] = deque()
         self.parent_order = parent_order
 
-    def get_info_text(self) -> List[str]:
-        """Returns a list of formatted HTML text lines for this order for display in UI."""
+    def get_state_data(self) -> Dict[str, Any]:
+        """Returns raw structured state data for this order."""
         order_type_name = self.order_type.name
+        state_data = {
+            "order_type": order_type_name,
+            "status": self.status.name,
+            "parameters": self.parameters,
+        }
 
-        # Define colors for styling
-        MOVE_TYPE_COLOR = "#87CEEB"    # Cyan for Move order type
-        WAYPOINT_TYPE_COLOR = "#98FB98" # Green for Waypoint order type
-        ATTACK_TYPE_COLOR = "#FF0000"   # Red for Attack order type
-        TOGGLE_INHIBITOR_TYPE_COLOR = "#A020F0" # Purple for Toggle Inhibitor type
-        TOGGLE_INHIBITOR_ON_COLOR = "#90EE90" # Light Green for Inhibitor Activate
-        TOGGLE_INHIBITOR_OFF_COLOR = "#F08080" # Light Red for Inhibitor Deactivate
-        PATROL_TYPE_COLOR = "#DAA520" # Goldenrod for Patrol (example)
-        COLONIZE_COLOR = "#FFD700" # Gold for Colonize
-        LOAD_COLONISTS_COLOR = "#ADD8E6" # Light Blue for Load Colonists
-        INFO_COLOR = "#D3D3D3"       # Light Gray for general info (destinations, targets, hex/pos)
-
-        if order_type_name == "MOVE":
-            dsys = self.parameters.get("destination_system_name", "N/A")
-            dhex = self.parameters.get("destination_hex_coord", "N/A")
-            dpos_param = self.parameters.get("destination_position", None)
-            dpos_str = f"({dpos_param.x:.1f}, {dpos_param.y:.1f})" if isinstance(dpos_param, Position) else "N/A"
-
-            move_type_styled = f"<font color='{MOVE_TYPE_COLOR}'><b>Move:</b></font>"
-            dsys_styled = f"<font color='{INFO_COLOR}'><i>{dsys}</i></font>" if dsys != "N/A" else f"<font color='{INFO_COLOR}'>N/A</font>"
-            dhex_styled = f"<font color='{INFO_COLOR}'>{dhex}</font>"
-            dpos_styled = f"<font color='{INFO_COLOR}'>{dpos_str}</font>"
-            return [
-                move_type_styled,
-                f"  Sys: {dsys_styled}",
-                f"  Hex: {dhex_styled}",
-                f"  Pos: {dpos_styled}"
-            ]
-
-        elif order_type_name == "REACH_WAYPOINT":
-            dsys = self.parameters.get("destination_system_name", "N/A")
-            dhex = self.parameters.get("destination_hex_coord", "N/A")
-            dpos_param = self.parameters.get("destination_position", None)
-            dpos_str = f"({dpos_param.x:.1f}, {dpos_param.y:.1f})" if isinstance(dpos_param, Position) else "N/A"
-
-            waypoint_type_styled = f"<font color='{WAYPOINT_TYPE_COLOR}'><b>Waypoint:</b></font>"
-            dsys_styled = f"<font color='{INFO_COLOR}'><i>{dsys}</i></font>" if dsys != "N/A" else f"<font color='{INFO_COLOR}'>N/A</font>"
-            dhex_styled = f"<font color='{INFO_COLOR}'>{dhex}</font>"
-            dpos_styled = f"<font color='{INFO_COLOR}'>{dpos_str}</font>"
-            return [
-                waypoint_type_styled,
-                f"  Sys: {dsys_styled}",
-                f"  Hex: {dhex_styled}",
-                f"  Pos: {dpos_styled}"
-            ]
-
-        elif order_type_name == "TOGGLE_INHIBITOR":
-            turn_on = self.parameters.get("turn_on", False)
-            action = "Activate" if turn_on else "Deactivate"
-            status_color = TOGGLE_INHIBITOR_ON_COLOR if turn_on else TOGGLE_INHIBITOR_OFF_COLOR
-            action_styled = f"<font color='{status_color}'>{action}</font>"
-            toggle_inhibitor_type_styled = f"<font color='{TOGGLE_INHIBITOR_TYPE_COLOR}'><b>Toggle Inhibitor:</b></font>"
-            return [f"{toggle_inhibitor_type_styled} {action_styled}"]
-
-        elif order_type_name == "PATROL":
-            patrol_type_styled = f"<font color='{PATROL_TYPE_COLOR}'><b>🔄 Patrol:</b></font>"
-            return [f"{patrol_type_styled} <font color='{INFO_COLOR}'><i>(Details TBD)</i></font>"]
-
-        elif order_type_name == "ATTACK":
+        if order_type_name == "ATTACK":
             target_unit_id = self.parameters.get("target_unit_id")
-            target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Target</i></font>"
+            target_name = None
+            lookup_attempted = False
+            lookup_success = False
             if target_unit_id and self.unit and self.unit.game:
+                lookup_attempted = True
                 target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
                 if target_unit:
-                    target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>{target_unit.name}</i></font>"
-                else:
-                    target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id} (Not found)</i></font>"
-            elif target_unit_id:
-                 target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
+                    target_name = target_unit.name
+                    lookup_success = True
+            state_data["target_unit_id"] = target_unit_id
+            state_data["target_name"] = target_name
+            state_data["lookup_attempted"] = lookup_attempted
+            state_data["lookup_success"] = lookup_success
 
-            attack_type_styled = f"<font color='{ATTACK_TYPE_COLOR}'><b>Attack:</b></font>"
-            return [f"{attack_type_styled} {target_unit_name_styled}"]
-
-        elif order_type_name == "COLONIZE":
-            target_name = self.parameters.get("target_name", "Unknown Target")
-            colonize_type_styled = f"<font color='{COLONIZE_COLOR}'><b>Colonize:</b></font>"
-            target_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
-            return [f"{colonize_type_styled} {target_styled}"]
-
-        elif order_type_name == "LOAD_COLONISTS":
-            target_name = self.parameters.get("target_name", "Unknown Target")
-            load_type_styled = f"<font color='{LOAD_COLONISTS_COLOR}'><b>Load Colonists:</b></font>"
-            target_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
-            return [f"{load_type_styled} {target_styled}"]
-
-        else:
-            # Default styling for other order types
-            return [f"<font color='{INFO_COLOR}'>{order_type_name} ({self.status.name})</font>"]
+        return state_data
 
     def add_sub_order(self, sub_order: 'Order') -> None:
         """Add a sub-order to this order's queue."""

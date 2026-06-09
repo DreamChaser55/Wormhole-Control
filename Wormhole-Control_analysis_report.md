@@ -17,10 +17,6 @@ The `unit_orders.py` file is nearly 1000 lines long. The `Order` class acts as a
 The `Unit` constructor in `entities.py` takes a massive list of parameters (e.g., `engines_speed`, `hyperdrive_type`, `has_weapons`, `has_colony_component`) and manually initializes components based on boolean flags. This tightly couples the `Unit` class to its components.
 **Recommendation:** Move toward a more robust Entity-Component-System (ECS) architecture. `Unit` should act as an empty container with an `add_component(component)` method. Templates should simply instantiate components and attach them to the entity.
 
-### Separation of Concerns (MVC Violation)
-The `Order.get_info_text()` method returns HTML strings with hardcoded color hex codes (`#87CEEB`, etc.) for UI rendering. 
-**Recommendation:** The game logic/model classes should not know about UI formatting. `Order` should expose structured state data, and a UI rendering layer (e.g., `gui.py`) should handle the HTML styling and colors.
-
 ---
 
 ## 2. Cruft and Bloat Removal
