@@ -19,13 +19,7 @@ The `Unit` constructor in `entities.py` takes a massive list of parameters (e.g.
 
 ---
 
-## 2. Cruft and Bloat Removal
 
-### Magic Numbers and Hardcoded Strings
-There are scattered "magic numbers" and hardcoded strings throughout the project. For example, `time_to_build=10` and `cost_credits=500` inside `Constructor.__post_init__`. 
-**Recommendation:** Move these to `constants.py` or, better yet, a data-driven configuration file (like JSON or YAML) for easier tweaking and balancing.
-
----
 
 ## 3. Code Documentation and Comments
 

@@ -265,7 +265,8 @@ class Game:
                                         hyperdrive_type=None, # No hyperdrive
                                         has_weapons=True,
                                         inhibitor_radius=inhibitor_radius_val,
-                                        has_constructor_component=True if hull_size == HullSize.MEDIUM else False)
+                                        has_constructor_component=True if hull_size == HullSize.MEDIUM else False,
+                                        buildable_unit_names=["STATION_MK1"] if hull_size == HullSize.MEDIUM else None)
 
                     if station_unit.weapons_component:
                         turret = Turret(

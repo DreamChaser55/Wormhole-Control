@@ -15,6 +15,7 @@ UNIT_TEMPLATES = {
         "weapon_bays_hull_cost": 0,
         "has_constructor_component": True,
         "constructor_hull_cost": 15,
+        "buildable_units": ["STATION_MK1"],
     },
     "STATION_MK1": {
         "name": "Station Mk.I",
@@ -30,5 +31,7 @@ UNIT_TEMPLATES = {
         "weapon_bays_hull_cost": 20,
         "has_constructor_component": False,
         "constructor_hull_cost": 0,
+        "build_time": 10,
+        "build_cost": 500,
     },
 }

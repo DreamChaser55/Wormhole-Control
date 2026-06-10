@@ -426,17 +426,21 @@ class Constructor(UnitComponent):
     construction_progress: int = 0
     time_to_build: int = 0
 
-    def __init__(self, unit: 'Unit', hull_cost: int):
+    def __init__(self, unit: 'Unit', hull_cost: int, buildable_unit_names: typing.Optional[list[str]] = None):
         super().__init__(unit, hull_cost)
         self.buildable_units = []
         self.current_construction_target = None
         self.construction_progress = 0
         self.time_to_build = 0
-        self.__post_init__()
-
-    def __post_init__(self):
-        # TODO: This should be loaded from a template or data file
-        self.buildable_units.append(BuildableUnit("STATION_MK1", 10, 500))
+        if buildable_unit_names:
+            for name in buildable_unit_names:
+                template = UNIT_TEMPLATES.get(name)
+                if template:
+                    self.buildable_units.append(BuildableUnit(
+                        unit_template_name=name,
+                        time_to_build=template.get("build_time", 10),
+                        cost_credits=template.get("build_cost", 500)
+                    ))
 
     def can_build(self, unit_template_name: str) -> Optional[BuildableUnit]:
         """Check if this constructor can build a specific unit type."""
@@ -513,7 +517,8 @@ class Constructor(UnitComponent):
             weapons_hull_cost=template["weapon_bays_hull_cost"],
             # Constructor
             has_constructor_component=template["has_constructor_component"],
-            constructor_hull_cost=template["constructor_hull_cost"]
+            constructor_hull_cost=template["constructor_hull_cost"],
+            buildable_unit_names=template.get("buildable_units", None)
         )
 
         system.add_unit(new_unit)

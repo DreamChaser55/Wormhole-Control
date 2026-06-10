@@ -193,6 +193,7 @@ class Unit(GameObject):
                  colony_hull_cost: int = 0,
                  has_constructor_component: bool = False,
                  constructor_hull_cost: int = 0,
+                 buildable_unit_names: typing.Optional[list[str]] = None,
                  ):
         super().__init__(position, in_hex, in_system)
         self.owner = owner
@@ -253,7 +254,8 @@ class Unit(GameObject):
         if has_constructor_component:
             self.constructor_component: typing.Optional[Constructor] = Constructor(
                 unit=self,
-                hull_cost=constructor_hull_cost
+                hull_cost=constructor_hull_cost,
+                buildable_unit_names=buildable_unit_names
             )
         else:
             self.constructor_component: typing.Optional[Constructor] = None
