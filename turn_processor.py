@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import pygame
 import typing
 
@@ -15,18 +19,18 @@ class TurnProcessor:
 
     def end_turn(self):
         """Processes the end of the current player's turn."""
-        print(f"--- End of {self.game.players[self.game.current_player_index].name}'s Turn ---")
+        logger.debug(f"--- End of {self.game.players[self.game.current_player_index].name}'s Turn ---")
         self.process_turn()
 
         self.game.current_player_index = (self.game.current_player_index + 1) % len(self.game.players)
         current_player_name = self.game.players[self.game.current_player_index].name
-        print(f"\n--- Start of {current_player_name}'s Turn ---")
+        logger.debug(f"\n--- Start of {current_player_name}'s Turn ---")
 
         self.game.update_player_turn_display()
         self.game.update_side_bar_content() # Update info box after changing turn
 
         if not self.game.players[self.game.current_player_index].is_human:
-             print(f"AI Turn for {current_player_name} (Not Implemented) - Ending Turn Automatically")
+             logger.debug(f"AI Turn for {current_player_name} (Not Implemented) - Ending Turn Automatically")
              self.game.pending_ai_turn_end_time = pygame.time.get_ticks() + 500
 
 
@@ -34,10 +38,10 @@ class TurnProcessor:
         """Processes actions that occur at the end of a turn (movement, jumps) and calls update() for all units in the current player's turn."""
         with ProfileTimer("Total turn processing"):
             current_player = self.game.players[self.game.current_player_index]
-            print(f"Processing turn for {current_player.name}...")
+            logger.debug(f"Processing turn for {current_player.name}...")
             
             if not self.game.galaxy or not self.game.galaxy.systems:
-                print("Warning: Galaxy or systems not initialized in process_turn.")
+                logger.debug("Warning: Galaxy or systems not initialized in process_turn.")
                 return
 
             # --- 1. Movement Planning & Execution ---
@@ -56,7 +60,7 @@ class TurnProcessor:
             with ProfileTimer("Unit updates"):
                 self._process_unit_updates(current_player)
 
-            print(f"Finished turn processing for {current_player.name}.")
+            logger.debug(f"Finished turn processing for {current_player.name}.")
 
     def _process_movement(self, current_player):
         for system_name, system in self.game.galaxy.systems.items():
@@ -74,7 +78,7 @@ class TurnProcessor:
                     if target_sys_name_for_jump and exit_wh_id_for_jump and target_sys_name_for_jump in self.game.galaxy.systems:
                         units_to_move.append((unit, ("system_jump", target_sys_name_for_jump)))
                     else:
-                        print(f"  Wormhole Jump Failed (Queuing): Invalid target system ({target_sys_name_for_jump}) or incomplete exit wormhole data ({exit_wh_id_for_jump}) for {unit.name}")
+                        logger.debug(f"  Wormhole Jump Failed (Queuing): Invalid target system ({target_sys_name_for_jump}) or incomplete exit wormhole data ({exit_wh_id_for_jump}) for {unit.name}")
 
                 elif unit.hyperdrive_component and unit.hyperdrive_component.hex_jump_target:
                     target_hex_for_jump, target_position_for_jump = unit.hyperdrive_component.hex_jump_target
@@ -84,7 +88,7 @@ class TurnProcessor:
                 elif unit.engines_component and unit.engines_component.move_target:
                     target_pos_in_sector = unit.engines_component.move_target
                     unit.position = move_towards_position(unit.position, target_pos_in_sector, unit.engines_component.speed)
-                    print(f"   {unit.name} moved to {unit.position} (sub-light)")
+                    logger.debug(f"   {unit.name} moved to {unit.position} (sub-light)")
                     
                     # If unit has an active inhibitor, update its position in the hex
                     if unit.inhibitor_component and unit.inhibitor_component.is_active:
@@ -97,7 +101,7 @@ class TurnProcessor:
 
                     dist_after_move = distance(unit.position, target_pos_in_sector)
                     if dist_after_move < 0.01:
-                        print(f"   {unit.name} arrived at destination {target_pos_in_sector}")
+                        logger.debug(f"   {unit.name} arrived at destination {target_pos_in_sector}")
                         unit.position = target_pos_in_sector
                         if unit.engines_component:
                             unit.engines_component.move_target = None
@@ -106,29 +110,29 @@ class TurnProcessor:
                 movement_type, movement_data = movement_details
                 origin_system = self.game.galaxy.systems[unit.in_system]
                 if not origin_system:
-                    print(f"   FATAL Error: Could not find origin system {unit.in_system} for unit {unit.id}. Skipping move.")
+                    logger.debug(f"   FATAL Error: Could not find origin system {unit.in_system} for unit {unit.id}. Skipping move.")
                     continue
 
                 if not unit.hyperdrive_component:
-                    print(f"   LOGIC ERROR: Unit {unit.name} in units_to_move for jump but has no hyperdrive_component. Skipping.")
+                    logger.debug(f"   LOGIC ERROR: Unit {unit.name} in units_to_move for jump but has no hyperdrive_component. Skipping.")
                     continue
                 hd_comp = unit.hyperdrive_component
 
                 if movement_type == "system_jump":
                     if hd_comp.jump_status == JumpStatus.CHARGING:
-                        print(f"   {unit.name} system jump delayed: Hyperdrive charging ({hd_comp.recharge_time_remaining} turns left).")
+                        logger.debug(f"   {unit.name} system jump delayed: Hyperdrive charging ({hd_comp.recharge_time_remaining} turns left).")
                         continue 
                     
                     if hd_comp.jump_status == JumpStatus.JUMPING: 
-                        print(f"   Warning: {unit.name} attempting system jump while already JUMPING. Resetting to READY.")
+                        logger.debug(f"   Warning: {unit.name} attempting system jump while already JUMPING. Resetting to READY.")
                         hd_comp.jump_status = JumpStatus.READY 
                     
                     if hd_comp.jump_status == JumpStatus.ERROR:
-                        print(f"   {unit.name} cannot system jump: Hyperdrive in ERROR state. Order should re-evaluate or clear target.")
+                        logger.debug(f"   {unit.name} cannot system jump: Hyperdrive in ERROR state. Order should re-evaluate or clear target.")
                         continue
 
                     if hd_comp.jump_status != JumpStatus.READY:
-                        print(f"   Error: {unit.name} unexpected jump status {hd_comp.jump_status} for system jump. Skipping.")
+                        logger.debug(f"   Error: {unit.name} unexpected jump status {hd_comp.jump_status} for system jump. Skipping.")
                         continue
                         
                     hd_comp.jump_status = JumpStatus.JUMPING
@@ -141,27 +145,27 @@ class TurnProcessor:
 
                     # Validation starts here, hd_comp.jump_status is JUMPING
                     if not hd_comp.wormhole_jump_target: # Target might have been cleared by another process
-                        print(f"   Error: Unit {unit.name} lost its wormhole_jump_target before system_jump execution. Aborting jump.")
+                        logger.debug(f"   Error: Unit {unit.name} lost its wormhole_jump_target before system_jump execution. Aborting jump.")
                         hd_comp.jump_status = JumpStatus.ERROR 
                     elif not target_system:
-                        print(f"   Error: Wormhole destination system {target_sys_name} not found. Jump aborted for {unit.name}.")
+                        logger.debug(f"   Error: Wormhole destination system {target_sys_name} not found. Jump aborted for {unit.name}.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.wormhole_jump_target = None
                     else:
                         entry_wormhole = hd_comp.wormhole_jump_target
                         exit_wh_id = entry_wormhole.exit_wormhole_id
                         if not exit_wh_id:
-                            print(f"   Error: Entry wormhole {entry_wormhole.id} for unit {unit.name} has no exit_wormhole_id. Aborting jump.")
+                            logger.debug(f"   Error: Entry wormhole {entry_wormhole.id} for unit {unit.name} has no exit_wormhole_id. Aborting jump.")
                             hd_comp.jump_status = JumpStatus.ERROR
                             hd_comp.wormhole_jump_target = None
                         else:
                             exit_wormhole_obj_for_exec = self.game.galaxy.wormholes[exit_wh_id]
                             if not exit_wormhole_obj_for_exec:
-                                print(f"   Error: Exit wormhole object with ID {exit_wh_id} not found in galaxy. Aborting jump for {unit.name}.")
+                                logger.debug(f"   Error: Exit wormhole object with ID {exit_wh_id} not found in galaxy. Aborting jump for {unit.name}.")
                                 hd_comp.jump_status = JumpStatus.ERROR
                                 hd_comp.wormhole_jump_target = None
                             elif exit_wormhole_obj_for_exec.in_system != target_sys_name:
-                                print(f"   Error: Exit wormhole {exit_wormhole_obj_for_exec.id} (in system {exit_wormhole_obj_for_exec.in_system}) does not actually lead to target system {target_sys_name}. Aborting jump for {unit.name}.")
+                                logger.debug(f"   Error: Exit wormhole {exit_wormhole_obj_for_exec.id} (in system {exit_wormhole_obj_for_exec.in_system}) does not actually lead to target system {target_sys_name}. Aborting jump for {unit.name}.")
                                 hd_comp.jump_status = JumpStatus.ERROR
                                 hd_comp.wormhole_jump_target = None
                             else:
@@ -177,10 +181,10 @@ class TurnProcessor:
                             destination_hex=arrival_hex 
                         )
                         if moved:
-                            print(f"   {unit.name} completed wormhole jump from {origin_system.name} to {target_sys_name}, into hex {arrival_hex}")
+                            logger.debug(f"   {unit.name} completed wormhole jump from {origin_system.name} to {target_sys_name}, into hex {arrival_hex}")
                             hd_comp.start_recharge() # Clears targets and sets status to CHARGING
                         else:
-                            print(f"   Error during final wormhole jump execution for {unit.name}. Jump aborted.")
+                            logger.debug(f"   Error during final wormhole jump execution for {unit.name}. Jump aborted.")
                             hd_comp.jump_status = JumpStatus.ERROR
                             if hd_comp.wormhole_jump_target: # Ensure target is cleared on failure
                                  hd_comp.wormhole_jump_target = None
@@ -191,19 +195,19 @@ class TurnProcessor:
                 
                 elif movement_type == "hex_jump":
                     if hd_comp.jump_status == JumpStatus.CHARGING:
-                        print(f"   {unit.name} hex jump delayed: Hyperdrive charging ({hd_comp.recharge_time_remaining} turns left).")
+                        logger.debug(f"   {unit.name} hex jump delayed: Hyperdrive charging ({hd_comp.recharge_time_remaining} turns left).")
                         continue
             
                     if hd_comp.jump_status == JumpStatus.JUMPING:
-                        print(f"   Warning: {unit.name} attempting hex jump while already JUMPING. Resetting to READY.")
+                        logger.debug(f"   Warning: {unit.name} attempting hex jump while already JUMPING. Resetting to READY.")
                         hd_comp.jump_status = JumpStatus.READY
             
                     if hd_comp.jump_status == JumpStatus.ERROR:
-                        print(f"   {unit.name} cannot hex jump: Hyperdrive in ERROR state.")
+                        logger.debug(f"   {unit.name} cannot hex jump: Hyperdrive in ERROR state.")
                         continue
 
                     if hd_comp.jump_status != JumpStatus.READY:
-                        print(f"   Error: {unit.name} unexpected jump status {hd_comp.jump_status} for hex jump. Skipping.")
+                        logger.debug(f"   Error: {unit.name} unexpected jump status {hd_comp.jump_status} for hex jump. Skipping.")
                         continue
                         
                     hd_comp.jump_status = JumpStatus.JUMPING
@@ -212,19 +216,19 @@ class TurnProcessor:
                     
                     # Validation starts here, hd_comp.jump_status is JUMPING
                     if not hd_comp.hex_jump_target: # Target might have been cleared
-                        print(f"   Error: Unit {unit.name} lost its hex_jump_target before hex_jump execution. Aborting jump.")
+                        logger.debug(f"   Error: Unit {unit.name} lost its hex_jump_target before hex_jump execution. Aborting jump.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         continue
 
                     if target_hex not in origin_system.hexes: # Validate target hex
-                        print(f"   Error: Unit {unit.name} hex_jump_target {target_hex} is invalid for system {origin_system.name}. Aborting.")
+                        logger.debug(f"   Error: Unit {unit.name} hex_jump_target {target_hex} is invalid for system {origin_system.name}. Aborting.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.hex_jump_target = None
                         continue
 
                     # Validate jump range
                     if unit.in_hex and hex_distance(unit.in_hex, target_hex) > hd_comp.jump_range:
-                        print(f"   Error: Unit {unit.name} hex_jump to {target_hex} exceeds jump range of {hd_comp.jump_range}. Aborting.")
+                        logger.debug(f"   Error: Unit {unit.name} hex_jump to {target_hex} exceeds jump range of {hd_comp.jump_range}. Aborting.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.hex_jump_target = None
                         continue
@@ -235,7 +239,7 @@ class TurnProcessor:
                     if origin_hex_obj:
                         for zone in origin_hex_obj.get_all_inhibition_zones():
                             if is_point_in_circle(unit.position, zone):
-                                print(f"   Error: Unit {unit.name} cannot jump; origin position is inside an inhibition field.")
+                                logger.debug(f"   Error: Unit {unit.name} cannot jump; origin position is inside an inhibition field.")
                                 jump_inhibited = True
                                 break
                     if jump_inhibited:
@@ -247,7 +251,7 @@ class TurnProcessor:
                     if destination_hex_obj:
                         for zone in destination_hex_obj.get_all_inhibition_zones():
                             if is_point_in_circle(target_pos, zone):
-                                print(f"   Error: Unit {unit.name} cannot jump; destination position is inside an inhibition field.")
+                                logger.debug(f"   Error: Unit {unit.name} cannot jump; destination position is inside an inhibition field.")
                                 jump_inhibited = True
                                 break
                     if jump_inhibited:
@@ -258,10 +262,10 @@ class TurnProcessor:
                     unit.position = target_pos
                     moved = origin_system.move_unit_between_hexes(unit=unit, destination_hex=target_hex)
                     if moved:
-                        print(f"   {unit.name}(id:{unit.id}) completed hex jump to {target_hex}:{target_pos} in {origin_system.name} system.")
+                        logger.debug(f"   {unit.name}(id:{unit.id}) completed hex jump to {target_hex}:{target_pos} in {origin_system.name} system.")
                         hd_comp.start_recharge() # Clears targets and sets status to CHARGING
                     else:
-                        print(f"   Error during hex jump processing for {unit.name} to {target_hex}. Jump aborted.")
+                        logger.debug(f"   Error during hex jump processing for {unit.name} to {target_hex}. Jump aborted.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         if hd_comp.hex_jump_target: # Ensure target is cleared on failure
                              hd_comp.hex_jump_target = None
@@ -282,7 +286,7 @@ class TurnProcessor:
                     total_credits_generated += credits_generated
 
         if total_credits_generated > 0:
-            print(f"  {current_player.name} generated {total_credits_generated:.2f} credits from taxes.")
+            logger.debug(f"  {current_player.name} generated {total_credits_generated:.2f} credits from taxes.")
 
     def _process_unit_updates(self, current_player):
         if current_player:

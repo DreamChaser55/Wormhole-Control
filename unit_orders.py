@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING, Deque, List
 from enum import Enum, auto
@@ -65,7 +69,7 @@ class Order:
         sub_order.parent_order = self
         sub_order.unit = self.unit
         self.sub_orders.append(sub_order)
-        print(f"  Added sub-order {sub_order.order_type.name} (id:{sub_order.order_id}) to order {self.order_type.name} (id:{self.order_id}) for unit {self.unit.name} (id:{self.unit.id}).")
+        logger.debug(f"  Added sub-order {sub_order.order_type.name} (id:{sub_order.order_id}) to order {self.order_type.name} (id:{self.order_id}) for unit {self.unit.name} (id:{self.unit.id}).")
         
     def remove_sub_order(self, order_id: typing.Union[str, int]) -> bool:
         """Remove a sub-order from the queue by its ID.
@@ -138,7 +142,7 @@ class Order:
         if self.status != OrderStatus.PENDING:
             return
         self.status = OrderStatus.IN_PROGRESS
-        print(f"[{self.unit.name} (id:{self.unit.id})] {self.__class__.__name__}.execute: {self.order_type.name} (id:{self.order_id}): Executing order.")
+        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] {self.__class__.__name__}.execute: {self.order_type.name} (id:{self.order_id}): Executing order.")
 
     def find_wormhole_to_system(self, current_system_name: str, target_system_name: str, galaxy_ref: 'Galaxy') -> Optional['Wormhole']:
         if not galaxy_ref: return None
@@ -164,27 +168,27 @@ class ReachWaypointOrder(Order):
         
         if dest_system is None or dest_hex is None or dest_position is None:
             self.status = OrderStatus.FAILED
-            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (incomplete destination parameters).")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (incomplete destination parameters).")
             return
             
         # Case 1: Different hex in same system - use hyperdrive to jump
         if current_system == dest_system and current_hex != dest_hex:
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
-                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump hex, no hyperdrive).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump hex, no hyperdrive).")
                 return
                 
             self.unit.hyperdrive_component.hex_jump_target = (dest_hex, dest_position)
             self.unit.hyperdrive_component.wormhole_jump_target = None
             if self.unit.engines_component:
                 self.unit.engines_component.move_target = None
-            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating HEX JUMP to {dest_hex}:{dest_position} in {dest_system}.")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating HEX JUMP to {dest_hex}:{dest_position} in {dest_system}.")
             
         # Case 2: Same hex, different position - use engines for sublight movement
         elif current_system == dest_system and current_hex == dest_hex:
             if not self.unit.engines_component:
                 self.status = OrderStatus.FAILED
-                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot move in sector, no engines).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot move in sector, no engines).")
                 return
 
             if distance(self.unit.position, dest_position) < 0.01:
@@ -193,33 +197,33 @@ class ReachWaypointOrder(Order):
                 if self.unit.hyperdrive_component:
                     self.unit.hyperdrive_component.hex_jump_target = None
                     self.unit.hyperdrive_component.wormhole_jump_target = None
-                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): COMPLETED (already at sub-light destination {dest_position} in {dest_system}:{dest_hex}).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): COMPLETED (already at sub-light destination {dest_position} in {dest_system}:{dest_hex}).")
                 return
 
             self.unit.engines_component.move_target = dest_position
             if self.unit.hyperdrive_component:
                 self.unit.hyperdrive_component.hex_jump_target = None
                 self.unit.hyperdrive_component.wormhole_jump_target = None
-            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating sub-light move to {dest_position} in {dest_system}:{dest_hex}.")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating sub-light move to {dest_position} in {dest_system}:{dest_hex}.")
             
         # Case 3: Different system - need to use a wormhole to jump
         else: # current_system != dest_system
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
-                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump to different system, no hyperdrive).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump to different system, no hyperdrive).")
                 return
                 
             wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref)
             if not wormhole:
                 self.status = OrderStatus.FAILED
-                print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {current_system} to {dest_system}).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {current_system} to {dest_system}).")
                 return
                 
             self.unit.hyperdrive_component.wormhole_jump_target = wormhole
             self.unit.hyperdrive_component.hex_jump_target = None
             if self.unit.engines_component:
                 self.unit.engines_component.move_target = None
-            print(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating SYSTEM JUMP via wormhole {wormhole.name} to {dest_system}.")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating SYSTEM JUMP via wormhole {wormhole.name} to {dest_system}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -240,7 +244,7 @@ class ReachWaypointOrder(Order):
                 self.unit.hyperdrive_component.hex_jump_target = None
                 self.unit.hyperdrive_component.wormhole_jump_target = None
             self.status = OrderStatus.COMPLETED
-            print(f"[{self.unit.name} (id:{self.unit.id})] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): COMPLETED (arrived at waypoint: {dest_position}:Hex{dest_hex}:{dest_system})")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): COMPLETED (arrived at waypoint: {dest_position}:Hex{dest_hex}:{dest_system})")
 
 class MoveOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
@@ -264,20 +268,20 @@ class MoveOrder(Order):
         
         if not self.sub_orders and current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:
             self.status = OrderStatus.COMPLETED
-            print(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): COMPLETED (all sub-orders finished, unit reached destination).")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): COMPLETED (all sub-orders finished, unit reached destination).")
         else:
-            print(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): IN_PROGRESS (sub-orders not finished and/or unit has not reached destination).")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): IN_PROGRESS (sub-orders not finished and/or unit has not reached destination).")
 
     def handle_inhibited_waypoint(self, target_hex: HexCoord, target_pos: Position, is_final_destination: bool, system_name: str, galaxy_ref: 'Galaxy'):
         destination_hex_obj = galaxy_ref.systems[system_name].hexes.get(target_hex)
         if not destination_hex_obj:
-            print(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.handle_inhibited_waypoint: ERROR: Destination hex {target_hex} not found in system {system_name}.")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.handle_inhibited_waypoint: ERROR: Destination hex {target_hex} not found in system {system_name}.")
             return
 
         for zone in destination_hex_obj.get_all_inhibition_zones():
             if is_point_in_circle(target_pos, zone):
                 adjusted_pos = get_closest_point_on_circle_edge(target_pos, zone)
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Waypoint {target_pos} in {target_hex} is inhibited. Adjusting landing position to {adjusted_pos}.")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Waypoint {target_pos} in {target_hex} is inhibited. Adjusting landing position to {adjusted_pos}.")
                 
                 self.add_sub_order(ReachWaypointOrder(self.unit, {
                     "destination_system_name": system_name,
@@ -286,7 +290,7 @@ class MoveOrder(Order):
                 }, parent_order=self))
 
                 if is_final_destination:
-                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Adding sub-light move from {adjusted_pos} to original target {target_pos}.")
+                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Adding sub-light move from {adjusted_pos} to original target {target_pos}.")
                     self.add_sub_order(ReachWaypointOrder(self.unit, {
                         "destination_system_name": system_name,
                         "destination_hex_coord": target_hex,
@@ -301,35 +305,35 @@ class MoveOrder(Order):
         }, parent_order=self))
 
     def plan_hex_jump_sequence(self, start_hex: HexCoord, end_hex: HexCoord, end_pos: Position, system_name: str, galaxy_ref: 'Galaxy') -> None:
-        print(f"  [plan_route->plan_hex_jump_sequence] Planning hex jump sequence from {start_hex} to {end_hex} in system {system_name}.")
+        logger.debug(f"  [plan_route->plan_hex_jump_sequence] Planning hex jump sequence from {start_hex} to {end_hex} in system {system_name}.")
         if not self.unit.hyperdrive_component:
             self.status = OrderStatus.FAILED
-            print(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.plan_hex_jump_sequence: FAILED (no hyperdrive).")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.plan_hex_jump_sequence: FAILED (no hyperdrive).")
             return
 
         jump_range = self.unit.hyperdrive_component.jump_range
         distance_to_jump = hex_distance(start_hex, end_hex)
 
         if distance_to_jump <= jump_range:
-            print(f"  [plan_route->plan_hex_jump_sequence] Jump is within range ({distance_to_jump} <= {jump_range}). Planning a single jump.")
+            logger.debug(f"  [plan_route->plan_hex_jump_sequence] Jump is within range ({distance_to_jump} <= {jump_range}). Planning a single jump.")
             self.handle_inhibited_waypoint(end_hex, end_pos, is_final_destination=True, system_name=system_name, galaxy_ref=galaxy_ref)
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Added sub-order(s) for single jump to hex {end_hex}.")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Added sub-order(s) for single jump to hex {end_hex}.")
         else:
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Jump to {end_hex} is out of range ({distance_to_jump} > {jump_range}). Planning multi-stage inter-hex jump.")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Jump to {end_hex} is out of range ({distance_to_jump} > {jump_range}). Planning multi-stage inter-hex jump.")
             waypoints = find_hex_jump_path(start_hex, end_hex, jump_range)
-            print(f"  [plan_route->plan_hex_jump_sequence] Multi-stage jump waypoints from find_hex_jump_path: {waypoints}")
+            logger.debug(f"  [plan_route->plan_hex_jump_sequence] Multi-stage jump waypoints from find_hex_jump_path: {waypoints}")
             
             for i, waypoint_hex in enumerate(waypoints):
                 is_final = (i == len(waypoints) - 1)
                 waypoint_pos = end_pos if is_final else hex_to_pixel(waypoint_hex[0], waypoint_hex[1])
                 self.handle_inhibited_waypoint(waypoint_hex, waypoint_pos, is_final_destination=is_final, system_name=system_name, galaxy_ref=galaxy_ref)
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Added waypoint {i+1}/{len(waypoints)} at hex {waypoint_hex}.")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Added waypoint {i+1}/{len(waypoints)} at hex {waypoint_hex}.")
 
     def plan_route(self, galaxy_ref: 'Galaxy') -> None:
-        print(f"\n--- Planning route for {self.unit.name} (id:{self.unit.id}) ---")
+        logger.debug(f"\n--- Planning route for {self.unit.name} (id:{self.unit.id}) ---")
         if not self.unit or not galaxy_ref:
             self.status = OrderStatus.FAILED
-            print(f"[{self.unit.name if self.unit else 'Unknown Unit'}] MOVE(id:{self.order_id}): plan_route: FAILED (no unit or galaxy_ref).")
+            logger.debug(f"[{self.unit.name if self.unit else 'Unknown Unit'}] MOVE(id:{self.order_id}): plan_route: FAILED (no unit or galaxy_ref).")
             return
 
         current_system = self.unit.in_system
@@ -340,16 +344,16 @@ class MoveOrder(Order):
         dest_hex = self.parameters["destination_hex_coord"]
         dest_position: Optional[Position] = self.parameters["destination_position"]
 
-        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: From: {current_system}:{current_hex}:{current_position} | To: {dest_system}:{dest_hex}:{dest_position}")
+        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: From: {current_system}:{current_hex}:{current_position} | To: {dest_system}:{dest_hex}:{dest_position}")
 
         if dest_system is None or dest_hex is None or dest_position is None:
             self.status = OrderStatus.FAILED
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (incomplete destination parameters).")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (incomplete destination parameters).")
             return
 
         if current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:
             self.status = OrderStatus.COMPLETED
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: COMPLETED (already at destination {dest_system}:{dest_hex}:{dest_position}).")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: COMPLETED (already at destination {dest_system}:{dest_hex}:{dest_position}).")
             return
 
         if current_system != dest_system or current_hex != dest_hex:
@@ -358,7 +362,7 @@ class MoveOrder(Order):
                 for zone in current_hex_obj.get_all_inhibition_zones():
                     if is_point_in_circle(current_position, zone):
                         escape_pos = get_closest_point_on_circle_edge(current_position, zone)
-                        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Start position {current_position} is inhibited. Planning escape move to {escape_pos}.")
+                        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Start position {current_position} is inhibited. Planning escape move to {escape_pos}.")
                         self.add_sub_order(ReachWaypointOrder(self.unit, {
                             "destination_system_name": current_system,
                             "destination_hex_coord": current_hex,
@@ -370,18 +374,18 @@ class MoveOrder(Order):
         if current_system != dest_system:
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot jump system, no hyperdrive).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot jump system, no hyperdrive).")
                 return
 
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Checking for direct wormhole from {current_system} to {dest_system}...")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Checking for direct wormhole from {current_system} to {dest_system}...")
             direct_wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref)
 
             if direct_wormhole:
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct wormhole from {current_system} to {dest_system} found: {direct_wormhole.name}. Planning a single inter-system jump.")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct wormhole from {current_system} to {dest_system} found: {direct_wormhole.name}. Planning a single inter-system jump.")
                 exit_wh = galaxy_ref.wormholes[direct_wormhole.exit_wormhole_id]
                 if not exit_wh:
                     self.status = OrderStatus.FAILED
-                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (could not find exit for direct wormhole {direct_wormhole.id} in {dest_system}).")
+                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (could not find exit for direct wormhole {direct_wormhole.id} in {dest_system}).")
                     return
 
                 # 1.1. Sub-order(s) to reach wormhole
@@ -393,7 +397,7 @@ class MoveOrder(Order):
                         "destination_hex_coord": direct_wormhole.in_hex,
                         "destination_position": direct_wormhole.position
                     }, parent_order=self))
-                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Added sub-order to move to direct wormhole position.")
+                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Added sub-order to move to direct wormhole position.")
 
                 # 1.2. Sub-order to jump through wormhole
                 self.add_sub_order(ReachWaypointOrder(self.unit, {
@@ -401,7 +405,7 @@ class MoveOrder(Order):
                     "destination_hex_coord": exit_wh.in_hex,
                     "destination_position": exit_wh.position
                 }, parent_order=self))
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Added sub-order to jump through direct wormhole to {dest_system}.")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Added sub-order to jump through direct wormhole to {dest_system}.")
 
                 # 1.3. Check if wormhole exit is inhibited and add sub-light move if needed
                 arrival_pos = exit_wh.position
@@ -420,7 +424,7 @@ class MoveOrder(Order):
                                 "destination_hex_coord": exit_wh.in_hex,
                                 "destination_position": safe_pos
                             }, parent_order=self))
-                            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Wormhole exit is inhibited. Adding sub-light move to safe position: {safe_pos}.")
+                            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Wormhole exit is inhibited. Adding sub-light move to safe position: {safe_pos}.")
                             arrival_pos = safe_pos
                             break
 
@@ -430,34 +434,34 @@ class MoveOrder(Order):
 
             else:
                 # No direct wormhole, try pathfinding
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: No direct wormhole from {current_system} to {dest_system}. Attempting pathfinding using Dijkstra's algorithm (find_intersystem_path).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: No direct wormhole from {current_system} to {dest_system}. Attempting pathfinding using Dijkstra's algorithm (find_intersystem_path).")
                 path_to_destination = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system)
 
                 if not path_to_destination or len(path_to_destination) < 2:
                     self.status = OrderStatus.FAILED
-                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (no path found from {current_system} to {dest_system} via pathfinding with find_intersystem_path).")
+                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (no path found from {current_system} to {dest_system} via pathfinding with find_intersystem_path).")
                     return
 
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Path found via pathfinding with find_intersystem_path: {path_to_destination}")
-                print(f"  [plan_route] Path has {len(path_to_destination) - 1} legs.")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Path found via pathfinding with find_intersystem_path: {path_to_destination}")
+                logger.debug(f"  [plan_route] Path has {len(path_to_destination) - 1} legs.")
 
                 current_leg_arrival_hex = current_hex
 
                 for i in range(len(path_to_destination) - 1):
                     leg_origin_system = path_to_destination[i]
                     leg_destination_system = path_to_destination[i+1]
-                    print(f"\n  --- Planning Leg {i+1}: {leg_origin_system} -> {leg_destination_system} ---")
+                    logger.debug(f"\n  --- Planning Leg {i+1}: {leg_origin_system} -> {leg_destination_system} ---")
 
                     wormhole_for_leg = self.find_wormhole_to_system(leg_origin_system, leg_destination_system, galaxy_ref)
                     if not wormhole_for_leg:
                         self.status = OrderStatus.FAILED
-                        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no wormhole for leg {leg_origin_system} -> {leg_destination_system}).")
+                        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no wormhole for leg {leg_origin_system} -> {leg_destination_system}).")
                         return
 
                     exit_wormhole_for_leg = galaxy_ref.wormholes[wormhole_for_leg.exit_wormhole_id]
                     if not exit_wormhole_for_leg:
                         self.status = OrderStatus.FAILED
-                        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no exit for wormhole {wormhole_for_leg.id}).")
+                        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no exit for wormhole {wormhole_for_leg.id}).")
                         return
 
                     # Sub-order(s) to reach entry wormhole hex and move to entry wormhole position
@@ -469,7 +473,7 @@ class MoveOrder(Order):
                             "destination_hex_coord": wormhole_for_leg.in_hex,
                             "destination_position": wormhole_for_leg.position
                         }, parent_order=self))
-                        print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Leg {i+1} - Added sub-order to move by sub-light engines to entry Wormhole position in {leg_origin_system}.")
+                        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Leg {i+1} - Added sub-order to move by sub-light engines to entry Wormhole position in {leg_origin_system}.")
 
                     # Sub-order to jump through wormhole
                     self.add_sub_order(ReachWaypointOrder(self.unit, {
@@ -477,7 +481,7 @@ class MoveOrder(Order):
                         "destination_hex_coord": exit_wormhole_for_leg.in_hex,
                         "destination_position": exit_wormhole_for_leg.position
                     }, parent_order=self))
-                    print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Leg {i+1} - Added sub-order to jump {leg_origin_system} -> {leg_destination_system}.")
+                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Leg {i+1} - Added sub-order to jump {leg_origin_system} -> {leg_destination_system}.")
 
                     # Check if the arrival point of this leg is inhibited
                     arrival_pos_leg = exit_wormhole_for_leg.position
@@ -496,13 +500,13 @@ class MoveOrder(Order):
                                     "destination_hex_coord": exit_wormhole_for_leg.in_hex,
                                     "destination_position": safe_pos
                                 }, parent_order=self))
-                                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Leg {i+1} exit is inhibited. Adding sub-light move out of inhibition zone to safe position: {safe_pos}.")
+                                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Leg {i+1} exit is inhibited. Adding sub-light move out of inhibition zone to safe position: {safe_pos}.")
                                 break
 
                     current_leg_arrival_hex = exit_wormhole_for_leg.in_hex
 
                 # After all inter-system jumps, unit is in 'dest_system' at 'current_leg_arrival_hex'.
-                print(f"\n  [plan_route] Planning final movement from hex {current_leg_arrival_hex} to {dest_hex} in system {dest_system}.")
+                logger.debug(f"\n  [plan_route] Planning final movement from hex {current_leg_arrival_hex} to {dest_hex} in system {dest_system}.")
                 self.plan_hex_jump_sequence(current_leg_arrival_hex, dest_hex, dest_position, dest_system, galaxy_ref)
 
         # 2. Intra-system, inter-hex travel: Destination is in the same system but a different hex
@@ -513,11 +517,11 @@ class MoveOrder(Order):
         else:
             if not self.unit.engines_component:
                 self.status = OrderStatus.FAILED
-                print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, no engines).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, no engines).")
                 return
             
-            print(f"  [plan_route] Destination is in the same hex. Planning final sub-light movement.")
-            print(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Adding REACH_WAYPOINT sub-order for final sub-light movement leg to {dest_position} in {dest_system}:{dest_hex}.")
+            logger.debug(f"  [plan_route] Destination is in the same hex. Planning final sub-light movement.")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Adding REACH_WAYPOINT sub-order for final sub-light movement leg to {dest_position} in {dest_system}:{dest_hex}.")
             sub_order_params = {
                 "destination_system_name": dest_system,
                 "destination_hex_coord": dest_hex,
@@ -536,7 +540,7 @@ class ToggleInhibitorOrder(Order):
         turn_on = self.parameters.get("turn_on", False)
         
         if not self.unit.inhibitor_component:
-            print(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (no inhibitor component).")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (no inhibitor component).")
             self.status = OrderStatus.FAILED
             return
 
@@ -548,14 +552,14 @@ class ToggleInhibitorOrder(Order):
 
             # 1. Validate containment
             if not is_circle_contained(proposed_field, current_hex.boundary_circle):
-                print(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (field would cross sector boundary).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (field would cross sector boundary).")
                 self.status = OrderStatus.FAILED
                 return
 
             # 2. Validate intersection
             for existing_zone in current_hex.get_all_inhibition_zones():
                 if do_circles_intersect(proposed_field, existing_zone):
-                    print(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (field would overlap with another).")
+                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (field would overlap with another).")
                     self.status = OrderStatus.FAILED
                     return
             
@@ -650,19 +654,19 @@ class ColonizeOrder(Order):
         target_id = self.parameters.get("target_id")
         if not target_id:
             self.status = OrderStatus.FAILED
-            print(f"COLONIZE order failed: no target_id.")
+            logger.debug(f"COLONIZE order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)
 
         if not target:
             self.status = OrderStatus.FAILED
-            print(f"COLONIZE order failed: Celestial body with ID {target_id} not found.")
+            logger.debug(f"COLONIZE order failed: Celestial body with ID {target_id} not found.")
             return
 
         if not self.unit.colony_component:
             self.status = OrderStatus.FAILED
-            print(f"COLONIZE order failed: Unit {self.unit.name} has no ColonyComponent.")
+            logger.debug(f"COLONIZE order failed: Unit {self.unit.name} has no ColonyComponent.")
             return
 
         at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
@@ -684,17 +688,17 @@ class ColonizeOrder(Order):
         cargo = self.unit.colony_component.population_cargo
         if cargo <= 0:
             self.status = OrderStatus.FAILED
-            print(f"COLONIZE order failed: No population in cargo to unload.")
+            logger.debug(f"COLONIZE order failed: No population in cargo to unload.")
             return
 
         success = self.unit.colony_component.unload_population(target, cargo)
 
         if success:
             self.status = OrderStatus.COMPLETED
-            print(f"COLONIZE order completed: Unit {self.unit.name} successfully colonized {target.name}.")
+            logger.debug(f"COLONIZE order completed: Unit {self.unit.name} successfully colonized {target.name}.")
         else:
             self.status = OrderStatus.FAILED
-            print(f"COLONIZE order failed: Unload population failed for unit {self.unit.name} on {target.name}.")
+            logger.debug(f"COLONIZE order failed: Unload population failed for unit {self.unit.name} on {target.name}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -716,19 +720,19 @@ class LoadColonistsOrder(Order):
 
         if not target_id:
             self.status = OrderStatus.FAILED
-            print(f"LOAD_COLONISTS order failed: no target_id.")
+            logger.debug(f"LOAD_COLONISTS order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)
 
         if not target:
             self.status = OrderStatus.FAILED
-            print(f"LOAD_COLONISTS order failed: Celestial body with ID {target_id} not found.")
+            logger.debug(f"LOAD_COLONISTS order failed: Celestial body with ID {target_id} not found.")
             return
 
         if not self.unit.colony_component:
             self.status = OrderStatus.FAILED
-            print(f"LOAD_COLONISTS order failed: Unit {self.unit.name} has no ColonyComponent.")
+            logger.debug(f"LOAD_COLONISTS order failed: Unit {self.unit.name} has no ColonyComponent.")
             return
 
         at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
@@ -757,7 +761,7 @@ class LoadColonistsOrder(Order):
             self.status = OrderStatus.COMPLETED
         else:
             self.status = OrderStatus.FAILED
-            print(f"LOAD_COLONISTS order failed for unit {self.unit.name}.")
+            logger.debug(f"LOAD_COLONISTS order failed for unit {self.unit.name}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -774,7 +778,7 @@ class ConstructOrder(Order):
 
         if not self.unit.constructor_component:
             self.status = OrderStatus.FAILED
-            print(f"CONSTRUCT order failed: Unit {self.unit.name} has no ConstructorComponent.")
+            logger.debug(f"CONSTRUCT order failed: Unit {self.unit.name} has no ConstructorComponent.")
             return
 
         unit_template_name = self.parameters.get("unit_template_name")
@@ -782,7 +786,7 @@ class ConstructOrder(Order):
 
         if not unit_template_name or not target_pos:
             self.status = OrderStatus.FAILED
-            print(f"CONSTRUCT order failed: Missing parameters.")
+            logger.debug(f"CONSTRUCT order failed: Missing parameters.")
             return
 
         constructor = self.unit.constructor_component
@@ -790,17 +794,17 @@ class ConstructOrder(Order):
 
         if not buildable:
             self.status = OrderStatus.FAILED
-            print(f"CONSTRUCT order failed: {self.unit.name} cannot build {unit_template_name}.")
+            logger.debug(f"CONSTRUCT order failed: {self.unit.name} cannot build {unit_template_name}.")
             return
 
         player = next((p for p in self.unit.game.players if p.id == self.unit.owner.id), None)
         if not player:
             self.status = OrderStatus.FAILED
-            print(f"CONSTRUCT order failed: Could not find player with id {self.unit.owner.id}.")
+            logger.debug(f"CONSTRUCT order failed: Could not find player with id {self.unit.owner.id}.")
             return
         if player.credits < buildable.cost_credits:
             self.status = OrderStatus.FAILED
-            print(f"CONSTRUCT order failed: Not enough credits.")
+            logger.debug(f"CONSTRUCT order failed: Not enough credits.")
             return
 
         player.credits -= buildable.cost_credits

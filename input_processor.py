@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import pygame
 import typing
 from pygame import Color
@@ -205,18 +209,18 @@ class InputProcessor:
                 if is_left_click:
                     self.game.selected_objects = [system_obj]
                     self.game.sidebar_needs_update = True
-                    print(f"Selected object: System {system_obj.name}")
+                    logger.debug(f"Selected object: System {system_obj.name}")
                 elif is_middle_click:
                     self.game.view_mode = 'system'
                     self.game.current_system_name = clicked_system_name
                     self.game.sidebar_needs_update = True
-                    print(f"Entering system view: {system_obj.name}")
+                    logger.debug(f"Entering system view: {system_obj.name}")
                     self.game.update_view_specific_labels()
             else:
                 if is_left_click:
                     self.game.selected_objects.clear()
                     self.game.sidebar_needs_update = True
-                    print("Selection cleared")
+                    logger.debug("Selection cleared")
 
         elif self.game.view_mode == 'system':
             if not self.game.current_system_name: return
@@ -254,23 +258,23 @@ class InputProcessor:
                         hex_obj = system.hexes[clicked_hex]
                         self.game.selected_objects = [hex_obj]
                         self.game.sidebar_needs_update = True
-                        print(f"Selected object: Hex {clicked_hex} in System {system.name}")
+                        logger.debug(f"Selected object: Hex {clicked_hex} in System {system.name}")
                 elif is_middle_click:
                     self.game.view_mode = 'sector'
                     self.game.current_sector_coord = clicked_hex
                     self.game.sidebar_needs_update = True
-                    print(f"Entering sector view: Hex {clicked_hex} in System {self.game.current_system_name}")
+                    logger.debug(f"Entering sector view: Hex {clicked_hex} in System {self.game.current_system_name}")
                     self.game.update_view_specific_labels()
             else:
                 if is_left_click:
                     self.game.selected_objects.clear()
                     self.game.sidebar_needs_update = True
-                    print("Selection cleared")
+                    logger.debug("Selection cleared")
                 elif is_middle_click:
                     self.game.view_mode = 'galaxy'
                     self.game.current_system_name = None
                     self.game.sidebar_needs_update = True
-                    print("Entering galaxy view")
+                    logger.debug("Entering galaxy view")
                     self.game.update_view_specific_labels()
 
         elif self.game.view_mode == 'sector':
@@ -329,22 +333,22 @@ class InputProcessor:
                             if isinstance(clicked_object, Unit):
                                 if clicked_object in self.game.selected_objects:
                                     self.game.selected_objects.remove(clicked_object)
-                                    print(f"Deselected unit: {clicked_object.name}")
+                                    logger.debug(f"Deselected unit: {clicked_object.name}")
                                 else:
                                     self.game.selected_objects.append(clicked_object)
-                                    print(f"Added unit to selection: {clicked_object.name}")
+                                    logger.debug(f"Added unit to selection: {clicked_object.name}")
                                 self.game.sidebar_needs_update = True
                         else:
                             self.game.selected_objects = [clicked_object]
                             obj_type = clicked_object.__class__.__name__
                             obj_name = getattr(clicked_object, 'name', 'Unnamed')
                             self.game.sidebar_needs_update = True
-                            print(f"Selected object: {obj_type} {obj_name}")
+                            logger.debug(f"Selected object: {obj_type} {obj_name}")
                     else:
                         if not shift_pressed:
                             self.game.selected_objects.clear()
                             self.game.sidebar_needs_update = True
-                            print("Selection cleared")
+                            logger.debug("Selection cleared")
 
             elif is_middle_click:
                 self.game.view_mode = 'system'
@@ -352,9 +356,9 @@ class InputProcessor:
                 self.game.selected_objects.clear()
                 self.game.sidebar_needs_update = True
                 if self.game.current_system_name and self.game.galaxy.systems[self.game.current_system_name]:
-                    print(f"Entering system view: {self.game.galaxy.systems[self.game.current_system_name].name}")
+                    logger.debug(f"Entering system view: {self.game.galaxy.systems[self.game.current_system_name].name}")
                 else:
-                    print("Entering system view (current system name unknown or invalid)")
+                    logger.debug("Entering system view (current system name unknown or invalid)")
                 self.game.update_view_specific_labels()
 
     def handle_context_menu_action(self, action_id: str, target: typing.Any):
@@ -364,20 +368,20 @@ class InputProcessor:
 
         selected_units = [obj for obj in self.game.selected_objects if isinstance(obj, Unit) and obj.owner == current_player]
 
-        print(f"Context Action: '{action_id}', Target: {target}, Actors: {[u.name for u in selected_units]}, SHIFT: {shift_pressed}")
+        logger.debug(f"Context Action: '{action_id}', Target: {target}, Actors: {[u.name for u in selected_units]}, SHIFT: {shift_pressed}")
 
-        if action_id == "view_hex": print("  Action: View Hex Details (Not Implemented)")
-        elif action_id == "view_planet": print(f"  Action: View Planet {getattr(target, 'name', target)} Info (Not Implemented)")
-        elif action_id == "view_star": print(f"  Action: View Star {getattr(target, 'name', target)} Info (Not Implemented)")
-        elif action_id == "view_wormhole": print(f"  Action: View Wormhole {getattr(target, 'name', target)} Info (Not Implemented)")
-        elif action_id == "view_unit": print(f"  Action: View Unit {getattr(target, 'name', target)} Info (Not Implemented)")
+        if action_id == "view_hex": logger.debug("  Action: View Hex Details (Not Implemented)")
+        elif action_id == "view_planet": logger.debug(f"  Action: View Planet {getattr(target, 'name', target)} Info (Not Implemented)")
+        elif action_id == "view_star": logger.debug(f"  Action: View Star {getattr(target, 'name', target)} Info (Not Implemented)")
+        elif action_id == "view_wormhole": logger.debug(f"  Action: View Wormhole {getattr(target, 'name', target)} Info (Not Implemented)")
+        elif action_id == "view_unit": logger.debug(f"  Action: View Unit {getattr(target, 'name', target)} Info (Not Implemented)")
         
         elif selected_units:
             for unit in selected_units:
                 if action_id == "cancel_orders":
                     if unit.commander_component:
                         unit.commander_component.clear_orders()
-                        print(f"  Unit {unit.name} orders cancelled.")
+                        logger.debug(f"  Unit {unit.name} orders cancelled.")
                 
                 elif action_id == "issue_move_order":
                     if isinstance(target, Position) and unit.engines_component:
@@ -390,9 +394,9 @@ class InputProcessor:
                         move_order = MoveOrder(unit, move_params)
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
-                            print(f"  Unit {unit.name} orders cancelled.")
+                            logger.debug(f"  Unit {unit.name} orders cancelled.")
                         unit.commander_component.add_order(move_order)
-                        print(f"  Unit {unit.name} ordered to move to {self.game.current_system_name}:{self.game.current_sector_coord}:{target_pos_in_sector}")
+                        logger.debug(f"  Unit {unit.name} ordered to move to {self.game.current_system_name}:{self.game.current_sector_coord}:{target_pos_in_sector}")
 
                 elif action_id == "jump_interhex":
                     if isinstance(target, tuple) and len(target) == 2 and unit.hyperdrive_component:
@@ -406,9 +410,9 @@ class InputProcessor:
                             move_order = MoveOrder(unit, move_params)
                             if not shift_pressed:
                                 unit.commander_component.clear_orders()
-                                print(f"  Unit {unit.name} orders cancelled.")
+                                logger.debug(f"  Unit {unit.name} orders cancelled.")
                             unit.commander_component.add_order(move_order)
-                            print(f"  Unit {unit.name} ordered to move to {self.game.current_system_name}:{target_hex_coord}:{move_params['destination_position']}")
+                            logger.debug(f"  Unit {unit.name} ordered to move to {self.game.current_system_name}:{target_hex_coord}:{move_params['destination_position']}")
 
                 elif action_id == "jump_wormhole":
                     if isinstance(target, Wormhole) and unit.hyperdrive_component:
@@ -431,11 +435,11 @@ class InputProcessor:
                             move_order = MoveOrder(unit, move_params)
                             if not shift_pressed:
                                 unit.commander_component.clear_orders()
-                                print(f"  Unit {unit.name} orders cancelled.")
+                                logger.debug(f"  Unit {unit.name} orders cancelled.")
                             unit.commander_component.add_order(move_order)
-                            print(f"  Unit {unit.name} ordered to move via wormhole {target_wormhole.name} to {exit_system_name}:{exit_wormhole.in_hex}:{exit_wormhole.position}")
+                            logger.debug(f"  Unit {unit.name} ordered to move via wormhole {target_wormhole.name} to {exit_system_name}:{exit_wormhole.in_hex}:{exit_wormhole.position}")
 
-                elif action_id == "scan_hex": print("  Action: Scan Hex Contents (Not Implemented)")
+                elif action_id == "scan_hex": logger.debug("  Action: Scan Hex Contents (Not Implemented)")
                 elif action_id == "attack_unit":
                     if isinstance(target, Unit):
                         attack_params = {"target_unit_id": target.id}
@@ -453,7 +457,7 @@ class InputProcessor:
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
                         unit.commander_component.add_order(colonize_order)
-                        print(f"  Unit {unit.name} ordered to colonize {target.name}")
+                        logger.debug(f"  Unit {unit.name} ordered to colonize {target.name}")
                 elif action_id == "load_colonists":
                     if isinstance(target, (Planet, Moon, Asteroid)):
                         # For now, load a fixed amount. Could be a dialog later.
@@ -467,7 +471,7 @@ class InputProcessor:
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
                         unit.commander_component.add_order(load_order)
-                        print(f"  Unit {unit.name} ordered to load {amount_to_load} colonists from planet {target.name}")
+                        logger.debug(f"  Unit {unit.name} ordered to load {amount_to_load} colonists from planet {target.name}")
 
                 # Fix: robustly extract action_id if it is nested (from context menu with sub-options)
                 while isinstance(action_id, list) and len(action_id) > 0:
@@ -491,11 +495,11 @@ class InputProcessor:
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
                         unit.commander_component.add_order(construct_order)
-                        print(f"  Unit {unit.name} ordered to construct {unit_template_name} at {target}")
+                        logger.debug(f"  Unit {unit.name} ordered to construct {unit_template_name} at {target}")
 
                 else:
-                    print(f"  Unknown context action ID for selected unit: {action_id}")
+                    logger.debug(f"  Unknown context action ID for selected unit: {action_id}")
             
             self.game.sidebar_needs_update = True
         else:
-            print(f"  Unknown context action ID or no valid unit selected: {action_id}")
+            logger.debug(f"  Unknown context action ID or no valid unit selected: {action_id}")

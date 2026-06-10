@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import heapq
 import typing
 import math
@@ -31,7 +35,7 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str) -> typin
         end_node, or None if no path exists.
     """
     if start_node not in graph or end_node not in graph:
-        print(f"Warning: Start node '{start_node}' or end node '{end_node}' not in graph.")
+        logger.debug(f"Warning: Start node '{start_node}' or end node '{end_node}' not in graph.")
         return None
 
     if start_node == end_node:
@@ -87,7 +91,7 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str) -> typin
         else:
             # This case should ideally not happen if the graph is well-formed
             # (i.e., all nodes listed as neighbors also exist as keys in the graph)
-            print(f"Warning: Node '{current_node}' found as neighbor but not as a key in the graph.")
+            logger.debug(f"Warning: Node '{current_node}' found as neighbor but not as a key in the graph.")
 
 
     # If the loop finishes and end_node wasn't reached
@@ -140,19 +144,19 @@ def find_hex_jump_path(start_hex: HexCoord, end_hex: HexCoord, max_range: int) -
     Calculates a list of waypoints for a jump between two hexes,
     ensuring no single jump exceeds the max_range.
     """
-    print(f"  [find_hex_jump_path] Calculating multi-stage jump from {start_hex} to {end_hex} with max jump range {max_range}.")
+    logger.debug(f"  [find_hex_jump_path] Calculating multi-stage jump from {start_hex} to {end_hex} with max jump range {max_range}.")
     path: typing.List[HexCoord] = []
     total_distance = hex_distance(start_hex, end_hex)
 
     if total_distance <= max_range:
-        print(f"  [find_hex_jump_path] Total distance {total_distance} is within max range. No waypoints needed.")
+        logger.debug(f"  [find_hex_jump_path] Total distance {total_distance} is within max range. No waypoints needed.")
         return [end_hex]
 
     start_cube = _axial_to_cube(start_hex)
     end_cube = _axial_to_cube(end_hex)
 
     num_segments = math.ceil(total_distance / max_range)
-    print(f"  [find_hex_jump_path] Calculated {num_segments} segments for the jump.")
+    logger.debug(f"  [find_hex_jump_path] Calculated {num_segments} segments for the jump.")
 
     for i in range(1, int(num_segments) + 1):
         t = i / num_segments
@@ -173,5 +177,5 @@ def find_hex_jump_path(start_hex: HexCoord, end_hex: HexCoord, max_range: int) -
              # For now, we ensure the final destination is always included.
              path.append(end_hex)
 
-    print(f"  [find_hex_jump_path] Final waypoints: {path}")
+    logger.debug(f"  [find_hex_jump_path] Final waypoints: {path}")
     return path

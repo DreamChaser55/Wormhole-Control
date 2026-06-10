@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import typing
 import math
 import random
@@ -149,7 +153,7 @@ class StarSystem:
             self.hexes[body_to_add.in_hex].add_celestial_body(body_to_add)
             self.celestial_bodies_by_id[body_to_add.id] = body_to_add
         else:
-            print(f"Error: Hex {body_to_add.in_hex} not found in system {self.name}")
+            logger.debug(f"Error: Hex {body_to_add.in_hex} not found in system {self.name}")
 
     def remove_celestial_body(self, body_to_remove: CelestialBody):
         """Removes a celestial body from the system."""
@@ -158,7 +162,7 @@ class StarSystem:
             if body_to_remove.id in self.celestial_bodies_by_id:
                 del self.celestial_bodies_by_id[body_to_remove.id]
         else:
-            print(f"Error: Hex {body_to_remove.in_hex} not found in system {self.name}")
+            logger.debug(f"Error: Hex {body_to_remove.in_hex} not found in system {self.name}")
 
     def add_unit(self, unit_to_add: Unit):
         """Adds a unit to the specified system's hex."""
@@ -167,7 +171,7 @@ class StarSystem:
             self.hexes[hex_coord].add_unit(unit_to_add)
             unit_to_add.in_system = self.name
         else:
-             print(f"Warning: Attempted to add unit to invalid hex {hex_coord} in system {self.name}")
+             logger.debug(f"Warning: Attempted to add unit to invalid hex {hex_coord} in system {self.name}")
 
     def remove_unit(self, unit_to_remove: Unit) -> bool:
          """Removes a specific unit object from the system's hex. Returns True if successful."""
@@ -211,20 +215,20 @@ class StarSystem:
         """
         origin_hex = unit.in_hex
         if origin_hex == destination_hex:
-            print(f"Warning: Attempted to move unit {unit.id} ({unit.name}) to its current hex {origin_hex}.")
+            logger.debug(f"Warning: Attempted to move unit {unit.id} ({unit.name}) to its current hex {origin_hex}.")
             return False # Or True, arguably it's 'moved'
 
         if destination_hex not in self.hexes:
-            print(f"Error: Cannot move unit {unit.id} ({unit.name}) to invalid destination hex {destination_hex} in system {self.name}")
+            logger.debug(f"Error: Cannot move unit {unit.id} ({unit.name}) to invalid destination hex {destination_hex} in system {self.name}")
             return False
 
         # 1. Remove from origin
         removed = self.remove_unit(unit)
         if not removed:
-            print(f"Error: Failed to remove unit {unit.id} ({unit.name}) from origin hex {origin_hex} during move.")
+            logger.debug(f"Error: Failed to remove unit {unit.id} ({unit.name}) from origin hex {origin_hex} during move.")
             # Attempt to find where the unit actually is, if anywhere
             actual_hex = unit.in_hex
-            print(f"Unit {unit.id} ({unit.name}) is not in hex {origin_hex} but in {actual_hex}")
+            logger.debug(f"Unit {unit.id} ({unit.name}) is not in hex {origin_hex} but in {actual_hex}")
             return False
 
         # 2. Update unit's internal hex
@@ -232,7 +236,7 @@ class StarSystem:
 
         # 3. Add to destination
         self.add_unit(unit)
-        print(f"System {self.name}: Moved unit {unit.id} ({unit.name}) from {origin_hex} to {destination_hex}")
+        logger.debug(f"System {self.name}: Moved unit {unit.id} ({unit.name}) from {origin_hex} to {destination_hex}")
         return True
 
 # --- Galaxy Class ---
@@ -275,13 +279,13 @@ class Galaxy:
             system = self.systems[unit.in_system]
             system.remove_unit(unit)
         else:
-            print(f"Warning: Could not remove unit {unit.id} - system '{unit.in_system}' not found.")
+            logger.debug(f"Warning: Could not remove unit {unit.id} - system '{unit.in_system}' not found.")
 
     # --- Incremental Galaxy Generation Method  ---
     def generate_galaxy(self, num_systems: int):
         """Generates systems and wormholes incrementally."""
         if num_systems <= 0:
-            print("Cannot generate 0 or negative systems.")
+            logger.debug("Cannot generate 0 or negative systems.")
             return
 
         # --- Generate unique system names ---
@@ -311,7 +315,7 @@ class Galaxy:
         first_y = random.randint(self.generation_y_min, self.generation_y_max)
         radius = random.randint(5, 8)
         self.systems[first_sys_name] = StarSystem(first_sys_name, Vector(first_x, first_y), radius)
-        print(f"Placed first system: {first_sys_name} at {self.systems[first_sys_name].position}")
+        logger.debug(f"Placed first system: {first_sys_name} at {self.systems[first_sys_name].position}")
 
         # --- Place Remaining Systems Incrementally ---
         max_placement_attempts = 100 # Avoid infinite loops
@@ -348,11 +352,11 @@ class Galaxy:
                     radius = random.randint(5, 8)
                     new_system_position = Vector(x,y)
                     self.systems[current_sys_name] = StarSystem(current_sys_name, new_system_position, radius)
-                    print(f"Placed system {current_sys_name} at {new_system_position} near {nearest_sys_name}")
+                    logger.debug(f"Placed system {current_sys_name} at {new_system_position} near {nearest_sys_name}")
 
                     # Connect to closest
                     self.add_wormhole_pair(current_sys_name, nearest_sys_name)
-                    print(f"  Added wormhole: {current_sys_name} <-> {nearest_sys_name}")
+                    logger.debug(f"  Added wormhole: {current_sys_name} <-> {nearest_sys_name}")
 
                     # Connect to second closest (probabilistically)
                     if second_nearest_sys_name and random.random() < SECOND_NEAREST_WORMHOLE_PROB:
@@ -368,18 +372,18 @@ class Galaxy:
 
                         if not already_connected:
                             self.add_wormhole_pair(current_sys_name, second_nearest_sys_name)
-                            print(f"  Added 2nd wormhole: {current_sys_name} <-> {second_nearest_sys_name}")
+                            logger.debug(f"  Added 2nd wormhole: {current_sys_name} <-> {second_nearest_sys_name}")
 
                     found_position = True
                 # else: Coords NOT OK - Loop continues to try new random coords
 
             if not found_position:
-                print(f"Warning: Could not place system {current_sys_name} after {max_placement_attempts} attempts. Constraints might be too tight.")
+                logger.debug(f"Warning: Could not place system {current_sys_name} after {max_placement_attempts} attempts. Constraints might be too tight.")
 
-        print(f"Finished galaxy generation.")
-        print(f"Generated {len(self.systems)} systems.")
+        logger.debug(f"Finished galaxy generation.")
+        logger.debug(f"Generated {len(self.systems)} systems.")
         # The number of wormhole connections is half the number of wormhole objects
-        print(f"Created {len(self.wormholes) // 2} wormhole connections.\n")
+        logger.debug(f"Created {len(self.wormholes) // 2} wormhole connections.\n")
 
         self._build_system_graph()
 
@@ -401,7 +405,7 @@ class Galaxy:
                             if body.exit_system_name not in graph[system_name]:
                                 graph[system_name].append(body.exit_system_name)
                         else:
-                            print(f"Warning: Wormhole in {system_name} points to non-existent system {body.exit_system_name}")
+                            logger.debug(f"Warning: Wormhole in {system_name} points to non-existent system {body.exit_system_name}")
         self.system_graph = graph
 
     # --- Wormhole Helper Methods ---
@@ -417,14 +421,14 @@ class Galaxy:
         system_b = self.systems[sys_name_b]
 
         if not system_a or not system_b:
-            print(f"Error creating wormhole: System not found ({sys_name_a} or {sys_name_b})")
+            logger.debug(f"Error creating wormhole: System not found ({sys_name_a} or {sys_name_b})")
             return
 
         hex_a = self.find_empty_hex(system_a)
         hex_b = self.find_empty_hex(system_b)
 
         if hex_a is None or hex_b is None:
-            print(f"Error creating wormhole: Could not find empty hex in {sys_name_a} or {sys_name_b}")
+            logger.debug(f"Error creating wormhole: Could not find empty hex in {sys_name_a} or {sys_name_b}")
             return
 
         # Create wormholes
@@ -463,21 +467,21 @@ class Galaxy:
         destination_system = self.systems[destination_system_name]
 
         if not origin_system:
-            print(f"Error: Origin system '{origin_system_name}' not found for unit transfer.")
+            logger.debug(f"Error: Origin system '{origin_system_name}' not found for unit transfer.")
             return False
         if not destination_system:
-            print(f"Error: Destination system '{destination_system_name}' not found for unit transfer.")
+            logger.debug(f"Error: Destination system '{destination_system_name}' not found for unit transfer.")
             return False
 
         # Validate destination hex exists in the destination system
         if destination_hex not in destination_system.hexes:
-             print(f"Error: Cannot move unit {unit.id} ({unit.name}) to invalid destination hex {destination_hex} in system {destination_system_name}")
+             logger.debug(f"Error: Cannot move unit {unit.id} ({unit.name}) to invalid destination hex {destination_hex} in system {destination_system_name}")
              return False
 
         # 1. Remove from origin system
         removed = origin_system.remove_unit(unit)
         if not removed:
-            print(f"Error: Failed to remove unit {unit.id} ({unit.name}) from origin system {origin_system_name} during transfer.")
+            logger.debug(f"Error: Failed to remove unit {unit.id} ({unit.name}) from origin system {origin_system_name} during transfer.")
             return False
 
         # 2. Update unit's system ID and hex
@@ -486,7 +490,7 @@ class Galaxy:
 
         # 3. Add to destination system
         destination_system.add_unit(unit)
-        print(f"Galaxy: Transferred unit {unit.id} ({unit.name}) from system {origin_system_name} to system {destination_system_name}, into hex {destination_hex}")
+        logger.debug(f"Galaxy: Transferred unit {unit.id} ({unit.name}) from system {origin_system_name} to system {destination_system_name}, into hex {destination_hex}")
         return True
 
     def get_celestial_body_by_id(self, body_id: int) -> typing.Optional['CelestialBody']:

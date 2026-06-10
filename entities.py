@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 from utils import HexCoord
@@ -248,14 +252,14 @@ class Unit(GameObject):
         self.current_hit_points -= amount
         if self.current_hit_points < 0:
             self.current_hit_points = 0
-        print(f"Unit '{self.name}' takes {amount} damage. Current HP: {self.current_hit_points}/{self.max_hit_points}")
+        logger.debug(f"Unit '{self.name}' takes {amount} damage. Current HP: {self.current_hit_points}/{self.max_hit_points}")
 
         if self.current_hit_points == 0:
             self.destroy()
 
     def destroy(self) -> None:
         """Handles the destruction of the unit."""
-        print(f"Unit '{self.name}' has been destroyed.")
+        logger.debug(f"Unit '{self.name}' has been destroyed.")
         # Here you would add logic to remove the unit from the game,
         # e.g., by notifying the galaxy or a unit manager.
         if self.in_galaxy:
@@ -268,7 +272,7 @@ class Unit(GameObject):
         self.current_hull_usage = usage
         
         if hasattr(self, 'hull_capacity') and self.current_hull_usage > self.hull_capacity:
-            print(f"Warning: Unit '{self.name}' created exceeding hull capacity! "
+            logger.debug(f"Warning: Unit '{self.name}' created exceeding hull capacity! "
                   f"Usage: {self.current_hull_usage}, Capacity: {self.hull_capacity}")
         
     def update(self) -> None:

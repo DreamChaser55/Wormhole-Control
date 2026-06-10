@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import pygame
 import pygame_gui
 import typing
@@ -22,10 +26,10 @@ class GUI_Handler:
             theme_path = resource_path('theme.json')
             self.manager = pygame_gui.UIManager(self.screen_res.to_tuple(), theme_path)
         except FileNotFoundError:
-             print("Warning: theme.json not found. Using default UI theme.")
+             logger.debug("Warning: theme.json not found. Using default UI theme.")
              self.manager = pygame_gui.UIManager(self.screen_res.to_tuple())
         except pygame.error as e:
-             print(f"Pygame error initializing UIManager (maybe font issue?): {e}")
+             logger.debug(f"Pygame error initializing UIManager (maybe font issue?): {e}")
              self.manager = pygame_gui.UIManager(self.screen_res.to_tuple())
 
         # Programmatic preloading for problematic fonts
@@ -552,30 +556,30 @@ class GUI_Handler:
 
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
             if DEBUG:
-                print(f"[GUI_Handler DEBUG] UI_BUTTON_PRESSED: event.ui_element={event.ui_element}")
+                logger.debug(f"[GUI_Handler DEBUG] UI_BUTTON_PRESSED: event.ui_element={event.ui_element}")
             
             # --- Main Menu Buttons ---
             if self.new_game_button and event.ui_element == self.new_game_button:
-                print("New Game button pressed (GUI)")
+                logger.debug("New Game button pressed (GUI)")
                 action_result = {'action': 'new_game'}
             elif self.about_button and event.ui_element == self.about_button:
-                print("About button pressed (GUI)")
+                logger.debug("About button pressed (GUI)")
                 self.show_about_screen()
             elif self.quit_button and event.ui_element == self.quit_button:
-                print("Quit button pressed (GUI)")
+                logger.debug("Quit button pressed (GUI)")
                 action_result = {'action': 'quit'}
 
             # --- About Screen Buttons ---
             elif self.about_screen_back_button and event.ui_element == self.about_screen_back_button:
-                print("About Back button pressed (GUI)")
+                logger.debug("About Back button pressed (GUI)")
                 self.show_main_menu()
             
             # --- In-Game UI Buttons ---
             elif self.end_turn_button and event.ui_element == self.end_turn_button:
-                print("End Turn button pressed (GUI)")
+                logger.debug("End Turn button pressed (GUI)")
                 action_result = {'action': 'end_turn'}
             elif self.back_button and event.ui_element == self.back_button:
-                 print("Back button pressed (GUI)")
+                 logger.debug("Back button pressed (GUI)")
                  action_result = {'action': 'navigate_back'}
 
             elif event.ui_element and event.ui_element.object_ids and event.ui_element.object_ids[-1] == '#toggle_inhibitor_button':
@@ -592,14 +596,14 @@ class GUI_Handler:
                             turn_on = not inhibitor.is_active
                             new_order = ToggleInhibitorOrder(selected_unit, {'turn_on': turn_on})
                             selected_unit.commander_component.add_order(new_order)
-                            print(f"Queued TOGGLE_INHIBITOR order for {selected_unit.name}.")
+                            logger.debug(f"Queued TOGGLE_INHIBITOR order for {selected_unit.name}.")
                         else:
                             # Directly toggle if SHIFT is not pressed
                             success = selected_unit.inhibitor_component.toggle(galaxy_ref=self.game_instance.galaxy)
                             if success:
-                                print(f"Directly toggled inhibitor for {selected_unit.name}.")
+                                logger.debug(f"Directly toggled inhibitor for {selected_unit.name}.")
                             else:
-                                print(f"Direct inhibitor toggle failed for {selected_unit.name}.")
+                                logger.debug(f"Direct inhibitor toggle failed for {selected_unit.name}.")
 
                 self.game_instance.sidebar_needs_update = True
                 action_result = {'action': 'ui_handled'}
@@ -609,7 +613,7 @@ class GUI_Handler:
                 for i, button in enumerate(self.context_menu_buttons):
                     if event.ui_element == button and i < len(self.context_menu_options):
                         action_id = self.context_menu_options[i][1]
-                        print(f"[GUI] Context menu button '{action_id}' pressed")
+                        logger.debug(f"[GUI] Context menu button '{action_id}' pressed")
                         action_result = {
                             'action': 'context_menu_select', 
                             'action_id': action_id, 
@@ -633,20 +637,20 @@ class GUI_Handler:
 
                         # --- In-Game Menu Buttons ---
             elif self.menu_button and event.ui_element == self.menu_button:
-                print("Menu button pressed (GUI)")
+                logger.debug("Menu button pressed (GUI)")
                 action_result = {'action': 'toggle_ingame_menu'}
             elif self.resume_button and event.ui_element == self.resume_button:
-                print("Resume button pressed (GUI)")
+                logger.debug("Resume button pressed (GUI)")
                 action_result = {'action': 'toggle_ingame_menu'}
             elif self.save_game_button and event.ui_element == self.save_game_button:
-                print("Save Game button pressed (GUI)")
+                logger.debug("Save Game button pressed (GUI)")
                 action_result = {'action': 'save_game'}
             elif self.quit_to_menu_button and event.ui_element == self.quit_to_menu_button:
-                print("Quit to Main Menu button pressed (GUI)")
+                logger.debug("Quit to Main Menu button pressed (GUI)")
                 action_result = {'action': 'quit_to_main_menu'}
             else:
                 if DEBUG:
-                    print(f"[GUI_Handler DEBUG] Clicked UI element {event.ui_element} not found in dynamic_button_actions or no action_id.")
+                    logger.debug(f"[GUI_Handler DEBUG] Clicked UI element {event.ui_element} not found in dynamic_button_actions or no action_id.")
 
         if action_result:
             return action_result
@@ -694,7 +698,7 @@ class GUI_Handler:
                 self.player_color_indicator.background_colour = valid_color
                 self.player_color_indicator.rebuild() # Necessary to apply color change
             except (ValueError, TypeError) as e:
-                 print(f"Error setting player indicator color ({color}): {e}")
+                 logger.debug(f"Error setting player indicator color ({color}): {e}")
 
     def update_resource_display(self, player: 'Player'):
         """Updates the resource labels with the current player's values."""
@@ -753,7 +757,7 @@ class GUI_Handler:
             try:
                 word_width = font.get_rect(word).width
             except pygame.error as e:
-                print(f"Warning: Pygame font error sizing word '{word}': {e}. Treating as zero width for layout.")
+                logger.debug(f"Warning: Pygame font error sizing word '{word}': {e}. Treating as zero width for layout.")
                 word_width = 0
 
 

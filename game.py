@@ -1,3 +1,15 @@
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        logging.FileHandler("game.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 import pygame
 import sys
 import random
@@ -81,7 +93,7 @@ class Game:
 
     def start_new_game(self):
         """Initializes a new game when the New Game button is clicked."""
-        print("Starting new game setup...")
+        logger.debug("Starting new game setup...")
 
         # Set up game UI first to ensure galaxy_generation_rect is defined before galaxy generation
         self.gui.show_game_ui()
@@ -89,7 +101,7 @@ class Game:
         # Generate galaxy using the bounds from the GUI
         try:
             if self.gui.galaxy_generation_rect is None:
-                print("Error: galaxy_generation_rect is not set in GUI_Handler before Galaxy creation.")
+                logger.debug("Error: galaxy_generation_rect is not set in GUI_Handler before Galaxy creation.")
                 # Fallback to default Galaxy generation without GUI-specified bounds
                 # This is suboptimal but prevents a complete failure
                 self.galaxy = Galaxy()
@@ -97,10 +109,10 @@ class Game:
                 self.galaxy = Galaxy(generation_bounds=self.gui.galaxy_generation_rect)
             
             if not self.galaxy.systems:
-                print("Warning: Galaxy generated with no systems.")
+                logger.debug("Warning: Galaxy generated with no systems.")
                 return False
         except Exception as e:
-            print(f"Error during Galaxy generation: {e}")
+            logger.debug(f"Error during Galaxy generation: {e}")
             return False
 
         # Add Players
@@ -126,16 +138,16 @@ class Game:
             random.shuffle(sol_planets)
         else:
             sol_planets = []
-            print("Warning: Sol system not found for homeworld assignment.")
+            logger.debug("Warning: Sol system not found for homeworld assignment.")
 
         for player in self.players:
             if sol_planets:
                 homeworld = sol_planets.pop()
                 homeworld.owner = player
                 homeworld.population = 50  # Starting population
-                print(f"Assigned {homeworld.name} in {homeworld.in_system} as homeworld for {player.name}")
+                logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} as homeworld for {player.name}")
             else:
-                print(f"Warning: Not enough planets in Sol to assign a homeworld for {player.name}")
+                logger.debug(f"Warning: Not enough planets in Sol to assign a homeworld for {player.name}")
 
         # Set up starting units
         self.spawn_units()
@@ -145,14 +157,14 @@ class Game:
         self.game_started = True
         self.update_side_bar_content() # Update info box for initial state
         self.update_player_turn_display() # Update turn display for Player 1
-        print("New game setup complete.\n")
+        logger.debug("New game setup complete.\n")
         return True
 
     def spawn_units(self):
         """Sets up the starting units of all players."""
-        print("Spawning units...")
+        logger.debug("Spawning units...")
         if not self.galaxy or not self.galaxy.systems:
-             print("Cannot set up initial state: No galaxy or systems exist.")
+             logger.debug("Cannot set up initial state: No galaxy or systems exist.")
              return
 
         target_system: typing.Optional[StarSystem] = None
@@ -163,9 +175,9 @@ class Game:
             if self.galaxy.systems:
                 target_system = self.galaxy.systems.values()[0]
             else:
-                print("Error: No systems available to place starting units.")
+                logger.debug("Error: No systems available to place starting units.")
                 return
-        print(f"Target system for starting units: {target_system.name}")
+        logger.debug(f"Target system for starting units: {target_system.name}")
 
         if target_system:
             all_hull_sizes = list(HullSize)
@@ -179,12 +191,12 @@ class Game:
                 current_hex_index = 0
 
                 if not available_hexes:
-                    print(f"Warning: Target system {target_system.name} has no grid coordinates for Player {player.name} units!")
+                    logger.debug(f"Warning: Target system {target_system.name} has no grid coordinates for Player {player.name} units!")
                     return
 
                 for hull_size in all_hull_sizes:
                     if current_hex_index >= len(available_hexes):
-                        print(f"Warning: Ran out of hexes in {target_system.name} for Player {player.name}'s {hull_size.name} ship.")
+                        logger.debug(f"Warning: Ran out of hexes in {target_system.name} for Player {player.name}'s {hull_size.name} ship.")
                         break
                     
                     # --- Spawn Ship ---
@@ -201,7 +213,7 @@ class Game:
                             break # Found a valid hex
                     
                     if start_hex_ship is None:
-                        print(f"Warning: Could not find a valid empty hex for Player {player.name}'s {hull_size.name} ship.")
+                        logger.debug(f"Warning: Could not find a valid empty hex for Player {player.name}'s {hull_size.name} ship.")
                         continue # Skip spawning this ship
                     
                     ship_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4) # Closer to center
@@ -227,7 +239,7 @@ class Game:
                     weapons.add_turret(turret)
                     ship_unit.add_component(weapons)
                     target_system.add_unit(ship_unit)
-                    print(f"Added {ship_unit.name} to {target_system.name} at {start_hex_ship} for {player.name}")
+                    logger.debug(f"Added {ship_unit.name} to {target_system.name} at {start_hex_ship} for {player.name}")
 
                     # --- Spawn Station ---
                     # Find a valid hex for the station (not containing a star, planet, or wormhole)
@@ -243,7 +255,7 @@ class Game:
                             break # Found a valid hex
                     
                     if start_hex_station is None:
-                        print(f"Warning: Could not find a valid empty hex for Player {player.name}'s {hull_size.name} station.")
+                        logger.debug(f"Warning: Could not find a valid empty hex for Player {player.name}'s {hull_size.name} station.")
                         continue # Skip spawning this station
 
                     station_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4) # Closer to center
@@ -272,7 +284,7 @@ class Game:
                     station_unit.add_component(weapons)
 
                     target_system.add_unit(station_unit)
-                    print(f"Added {station_unit.name} to {target_system.name} at {start_hex_station} for {player.name}")
+                    logger.debug(f"Added {station_unit.name} to {target_system.name} at {start_hex_station} for {player.name}")
 
                 # --- Spawn Colony Ship ---
                 start_hex_colony_ship = None
@@ -301,9 +313,9 @@ class Game:
                     colony_ship.add_component(Hyperdrive(colony_ship, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
                     colony_ship.add_component(ColonyComponent(colony_ship, hull_cost=0))
                     target_system.add_unit(colony_ship)
-                    print(f"Added {colony_ship.name} to {target_system.name} at {start_hex_colony_ship} for {player.name}")
+                    logger.debug(f"Added {colony_ship.name} to {target_system.name} at {start_hex_colony_ship} for {player.name}")
                 else:
-                    print(f"Warning: Could not find a valid empty hex for Player {player.name}'s Colony Ship.")
+                    logger.debug(f"Warning: Could not find a valid empty hex for Player {player.name}'s Colony Ship.")
 
     def handle_input(self):
         """Delegates input processing to the InputProcessor instance."""
@@ -336,7 +348,7 @@ class Game:
             if action_id and target is not None:
                 self.input_processor.handle_context_menu_action(action_id, target)
             else:
-                print(f"Warning: Context menu action '{action_id}' missing ID or target.")
+                logger.debug(f"Warning: Context menu action '{action_id}' missing ID or target.")
         elif action_type == 'end_turn':
             self.end_turn()
         elif action_type == 'toggle_ingame_menu':
@@ -362,7 +374,7 @@ class Game:
         elif action_type == 'ui_handled':
             pass
         else:
-             print(f"Warning: Unhandled GUI action type: {action_type}")
+             logger.debug(f"Warning: Unhandled GUI action type: {action_type}")
 
     def update(self, time_delta: float):
         """Called every frame. Updates the UI. Game logic updates are done in TurnProcessor.process_turn(), which is called at the end of each turn."""
@@ -851,13 +863,13 @@ class Game:
 
         if PROFILE:
             gui_update_timer.stop()
-            print(f"  [Profile] GUI element recreation took: {gui_update_timer}")
+            logger.debug(f"  [Profile] GUI element recreation took: {gui_update_timer}")
 
         self.sidebar_needs_update = False # Reset the flag
 
         if PROFILE:
             sidebar_timer.stop()
-            print(f"  [Profile] Sidebar update took: {sidebar_timer}")
+            logger.debug(f"  [Profile] Sidebar update took: {sidebar_timer}")
 
     def update_player_turn_display(self):
         """Updates the turn label and player color indicator."""
@@ -880,7 +892,7 @@ class Game:
     def run(self):
         """Main game loop."""
         if not self.is_running: # Check if init failed
-             print("Game initialization failed. Exiting.")
+             logger.debug("Game initialization failed. Exiting.")
              pygame.quit()
              sys.exit()
 
@@ -895,10 +907,10 @@ class Game:
         sys.exit()
 
     def save_game(self):
-        print("Save game action triggered (not implemented yet).")
+        logger.debug("Save game action triggered (not implemented yet).")
 
     def quit_to_main_menu(self):
-        print("Quitting to main menu...")
+        logger.debug("Quitting to main menu...")
         self.game_started = False
         self.view_mode = 'main_menu'
         self.gui.clear_and_reset()
@@ -906,7 +918,7 @@ class Game:
 
 # Application entry point
 if __name__ == '__main__':
-    print("Initializing Game...")
+    logger.debug("Initializing Game...")
     game = Game()
-    print("Starting Game Loop...")
+    logger.debug("Starting Game Loop...")
     game.run()

@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import typing
 import os
 import sys
@@ -23,7 +27,7 @@ def timeit(func):
         start_time = time.perf_counter()
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
-        print(f"Function {func.__name__} took {end_time - start_time:.6f} seconds to execute.")
+        logger.debug(f"Function {func.__name__} took {end_time - start_time:.6f} seconds to execute.")
         return result
     return wrapper
 
@@ -80,5 +84,5 @@ class ProfileTimer:
         from constants import PROFILE
         if PROFILE:
             self.timer.stop()
-            print(f"  [Profile] {self.name} took: {self.timer}")
+            logger.debug(f"  [Profile] {self.name} took: {self.timer}")
 

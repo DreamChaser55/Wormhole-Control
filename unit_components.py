@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import typing
 from typing import Optional, Tuple, TYPE_CHECKING, Deque
 import dataclasses
@@ -74,7 +78,7 @@ class Hyperdrive(UnitComponent):
         self.recharge_time_remaining = self.RECHARGE_DURATION
         self.hex_jump_target = None
         self.wormhole_jump_target = None
-        print(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive starting recharge for {self.RECHARGE_DURATION} turns. Status: CHARGING.")
+        logger.debug(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive starting recharge for {self.RECHARGE_DURATION} turns. Status: CHARGING.")
 
     def update_recharge(self) -> None:
         """Updates the recharge status of the hyperdrive. Called each turn."""
@@ -83,7 +87,7 @@ class Hyperdrive(UnitComponent):
             if self.recharge_time_remaining <= 0:
                 self.jump_status = JumpStatus.READY
                 self.recharge_time_remaining = 0
-                print(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive recharged. Status: READY.")
+                logger.debug(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive recharged. Status: READY.")
 
 @dataclasses.dataclass
 class HyperspaceInhibitionFieldEmitter(UnitComponent):
@@ -100,12 +104,12 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         """Activates the inhibition field. (Validation logic will be handled by the order)."""
         # In the future, an order will perform validation before setting this.
         self.is_active = True
-        print(f"Unit {self.unit.name} inhibition field activated.")
+        logger.debug(f"Unit {self.unit.name} inhibition field activated.")
 
     def turn_off(self) -> None:
         """Deactivates the inhibition field."""
         self.is_active = False
-        print(f"Unit {self.unit.name} inhibition field deactivated.")
+        logger.debug(f"Unit {self.unit.name} inhibition field deactivated.")
 
     def toggle(self, galaxy_ref: 'Galaxy') -> bool:
         """
@@ -151,13 +155,13 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
 
             # 1. Validate containment
             if not is_circle_contained(proposed_field, current_hex.boundary_circle):
-                print(f"[{self.unit.name}] TOGGLE_INHIBITOR (Direct): FAILED (field would cross sector boundary).")
+                logger.debug(f"[{self.unit.name}] TOGGLE_INHIBITOR (Direct): FAILED (field would cross sector boundary).")
                 return False
 
             # 2. Validate intersection
             for existing_zone in current_hex.get_all_inhibition_zones():
                 if do_circles_intersect(proposed_field, existing_zone):
-                    print(f"[{self.unit.name}] TOGGLE_INHIBITOR (Direct): FAILED (field would overlap with another).")
+                    logger.debug(f"[{self.unit.name}] TOGGLE_INHIBITOR (Direct): FAILED (field would overlap with another).")
                     return False
             
             # All checks passed, turn it on
@@ -256,7 +260,7 @@ class Commander(UnitComponent):
             self.current_order.update(galaxy_ref=galaxy_ref)
         else:
             unit_name = getattr(self.unit, 'name', f"Unit ID {getattr(self.unit, 'id', 'Unknown')}")
-            print(f"Error: [{unit_name}] Commander Component UPDATE: Cannot update order, unit.in_galaxy is None.")
+            logger.debug(f"Error: [{unit_name}] Commander Component UPDATE: Cannot update order, unit.in_galaxy is None.")
             if self.current_order.status == OrderStatus.IN_PROGRESS:
                  self.current_order.status = OrderStatus.FAILED
 
@@ -283,7 +287,7 @@ class Commander(UnitComponent):
                     self.current_order.update(galaxy_ref=galaxy_ref)
             else:
                 unit_name = getattr(self.unit, 'name', f"Unit ID {getattr(self.unit, 'id', 'Unknown')}")
-                print(f"Error: [{unit_name}] Commander Component START_NEXT_ORDER: Cannot execute order, unit.in_galaxy is None.")
+                logger.debug(f"Error: [{unit_name}] Commander Component START_NEXT_ORDER: Cannot execute order, unit.in_galaxy is None.")
                 if self.current_order:
                     self.current_order.status = OrderStatus.FAILED
 
@@ -315,7 +319,7 @@ class Turret:
         Fires at the turret's current target and resets the cooldown.
         """
         if self.target:
-            print(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}!")
+            logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}!")
             self.target.take_damage(int(self.damage))
         self.current_cooldown = self.cooldown
 
@@ -390,36 +394,36 @@ class ColonyComponent(UnitComponent):
 
     def load_population(self, planet: 'Planet', amount: int) -> bool:
         if planet.owner != self.unit.owner:
-            print(f"Error: Cannot load population from unowned planet {planet.name}.")
+            logger.debug(f"Error: Cannot load population from unowned planet {planet.name}.")
             return False
         if planet.population < amount:
-            print(f"Error: Not enough population on {planet.name} to load {amount}.")
+            logger.debug(f"Error: Not enough population on {planet.name} to load {amount}.")
             return False
         if self.population_cargo + amount > self.max_cargo:
-            print(f"Error: Not enough cargo space to load {amount} population.")
+            logger.debug(f"Error: Not enough cargo space to load {amount} population.")
             return False
         
         planet.population -= amount
         self.population_cargo += amount
-        print(f"Loaded {amount} population from {planet.name}. Current cargo: {self.population_cargo}")
+        logger.debug(f"Loaded {amount} population from {planet.name}. Current cargo: {self.population_cargo}")
         return True
 
     def unload_population(self, planet: 'Planet', amount: int) -> bool:
         if self.population_cargo < amount:
-            print(f"Error: Not enough population in cargo to unload {amount}.")
+            logger.debug(f"Error: Not enough population in cargo to unload {amount}.")
             return False
 
         if planet.owner is None:
             planet.owner = self.unit.owner
-            print(f"Planet {planet.name} has been colonized by {self.unit.owner.name}.")
+            logger.debug(f"Planet {planet.name} has been colonized by {self.unit.owner.name}.")
 
         if planet.owner != self.unit.owner:
-            print(f"Error: Cannot unload population on planet owned by another player.")
+            logger.debug(f"Error: Cannot unload population on planet owned by another player.")
             return False
 
         planet.population += amount
         self.population_cargo -= amount
-        print(f"Unloaded {amount} population onto {planet.name}. Current cargo: {self.population_cargo}")
+        logger.debug(f"Unloaded {amount} population onto {planet.name}. Current cargo: {self.population_cargo}")
         return True
 
 @dataclasses.dataclass
@@ -467,25 +471,25 @@ class Constructor(UnitComponent):
         """Starts the construction of a new unit."""
         buildable = self.can_build(unit_template_name)
         if not buildable:
-            print(f"Error: {self.unit.name} cannot build {unit_template_name}.")
+            logger.debug(f"Error: {self.unit.name} cannot build {unit_template_name}.")
             return False
 
         owner = self.unit.owner
         if owner.credits < buildable.cost_credits:
-            print(f"Error: Not enough credits to build {unit_template_name}.")
+            logger.debug(f"Error: Not enough credits to build {unit_template_name}.")
             return False
         owner.credits -= buildable.cost_credits
 
         self.current_construction_target = (unit_template_name, position)
         self.time_to_build = buildable.time_to_build
         self.construction_progress = 0
-        print(f"{self.unit.name} started constructing {unit_template_name} at {position}. Cost: {buildable.cost_credits}")
+        logger.debug(f"{self.unit.name} started constructing {unit_template_name} at {position}. Cost: {buildable.cost_credits}")
         return True
 
     def cancel_construction(self):
         """Cancels the current construction project."""
         if self.current_construction_target:
-            print(f"Construction of {self.current_construction_target[0]} cancelled.")
+            logger.debug(f"Construction of {self.current_construction_target[0]} cancelled.")
             # NOTE: Resource refund should be handled by the Order
             self.current_construction_target = None
             self.construction_progress = 0
@@ -504,12 +508,12 @@ class Constructor(UnitComponent):
 
         template = UNIT_TEMPLATES.get(template_name)
         if not template:
-            print(f"Error: Unit template '{template_name}' not found.")
+            logger.debug(f"Error: Unit template '{template_name}' not found.")
             return
 
         system = galaxy.systems.get(system_name)
         if not system:
-            print(f"Error: System '{system_name}' not found for unit creation.")
+            logger.debug(f"Error: System '{system_name}' not found for unit creation.")
             return
 
         new_unit = Unit(
@@ -537,7 +541,7 @@ class Constructor(UnitComponent):
             new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0), buildable_unit_names=template.get("buildable_units", None)))
 
         system.add_unit(new_unit)
-        print(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
+        logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
 
     def finish_construction(self, galaxy: 'Galaxy'):
         """Finalizes the construction and creates the new unit."""
@@ -545,7 +549,7 @@ class Constructor(UnitComponent):
             return
 
         unit_template_name, position = self.current_construction_target
-        print(f"Construction of {unit_template_name} finished by {self.unit.name}.")
+        logger.debug(f"Construction of {unit_template_name} finished by {self.unit.name}.")
         
         self.create_unit_from_template(
             galaxy=galaxy,

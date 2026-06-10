@@ -30,9 +30,5 @@ Currently, game definitions (unit templates, star names, celestial body spawn ra
 ### 2. Event Bus / Pub-Sub Architecture
 Currently, `input_processor.py` directly executes game logic (like creating and assigning orders). Implementing an Event Bus would decouple user input from game logic. The input processor would emit a "MovementRequestedEvent", and the Unit/Commander system would listen for it and create the order.
 
-### 3. Logging Module Replacement
-The codebase relies heavily on standard `print()` statements for warnings, errors, and debug traces.
-*Idea:* Replace `print()` with Python's built-in `logging` module. This allows separating different severity levels (`DEBUG`, `INFO`, `WARNING`, `ERROR`) and writing logs to a file instead of flooding the console.
-
-### 4. Add comprehensive testing
+### 3. Add comprehensive testing
 The codebase would benefit from having a more comprehensive test suite to catch bugs and regressions early on. Add Unit tests for the core logic and integration tests for the game flow.
