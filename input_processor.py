@@ -10,7 +10,7 @@ from utils import HexCoord
 from geometry import Vector, Position, distance_sq
 from hexgrid_utils import pixel_to_hex
 from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
-from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Wormhole, Order, OrderType, HullSize
+from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Wormhole, Order, OrderType, HullSize, MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
 
@@ -387,7 +387,7 @@ class InputProcessor:
                             "destination_hex_coord": self.game.current_sector_coord,
                             "destination_position": target_pos_in_sector
                         }
-                        move_order = Order(unit, OrderType.MOVE, move_params)
+                        move_order = MoveOrder(unit, move_params)
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
                             print(f"  Unit {unit.name} orders cancelled.")
@@ -403,7 +403,7 @@ class InputProcessor:
                                 "destination_hex_coord": target_hex_coord,
                                 "destination_position": random_point_in_sector()
                             }
-                            move_order = Order(unit, OrderType.MOVE, move_params)
+                            move_order = MoveOrder(unit, move_params)
                             if not shift_pressed:
                                 unit.commander_component.clear_orders()
                                 print(f"  Unit {unit.name} orders cancelled.")
@@ -428,7 +428,7 @@ class InputProcessor:
                                 "destination_hex_coord": exit_wormhole.in_hex,
                                 "destination_position": exit_wormhole.position 
                             }
-                            move_order = Order(unit, OrderType.MOVE, move_params)
+                            move_order = MoveOrder(unit, move_params)
                             if not shift_pressed:
                                 unit.commander_component.clear_orders()
                                 print(f"  Unit {unit.name} orders cancelled.")
@@ -439,7 +439,7 @@ class InputProcessor:
                 elif action_id == "attack_unit":
                     if isinstance(target, Unit):
                         attack_params = {"target_unit_id": target.id}
-                        attack_order = Order(unit, OrderType.ATTACK, attack_params)
+                        attack_order = AttackOrder(unit, attack_params)
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
                         unit.commander_component.add_order(attack_order)
@@ -449,7 +449,7 @@ class InputProcessor:
                             "target_id": target.id,
                             "target_name": target.name
                         }
-                        colonize_order = Order(unit, OrderType.COLONIZE, colonize_params)
+                        colonize_order = ColonizeOrder(unit, colonize_params)
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
                         unit.commander_component.add_order(colonize_order)
@@ -463,7 +463,7 @@ class InputProcessor:
                             "target_name": target.name,
                             "amount": amount_to_load
                         }
-                        load_order = Order(unit, OrderType.LOAD_COLONISTS, load_params)
+                        load_order = LoadColonistsOrder(unit, load_params)
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
                         unit.commander_component.add_order(load_order)
@@ -487,7 +487,7 @@ class InputProcessor:
                             "unit_template_name": unit_template_name,
                             "target_position": target
                         }
-                        construct_order = Order(unit, OrderType.CONSTRUCT, construct_params)
+                        construct_order = ConstructOrder(unit, construct_params)
                         if not shift_pressed:
                             unit.commander_component.clear_orders()
                         unit.commander_component.add_order(construct_order)

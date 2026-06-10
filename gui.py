@@ -579,8 +579,7 @@ class GUI_Handler:
                  action_result = {'action': 'navigate_back'}
 
             elif event.ui_element and event.ui_element.object_ids and event.ui_element.object_ids[-1] == '#toggle_inhibitor_button':
-                from entities import Unit
-                from unit_orders import Order, OrderType
+                from entities import Unit, ToggleInhibitorOrder
 
                 keys = pygame.key.get_pressed()
                 shift_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
@@ -591,7 +590,7 @@ class GUI_Handler:
                             # Queue an order if SHIFT is pressed
                             inhibitor = selected_unit.inhibitor_component
                             turn_on = not inhibitor.is_active
-                            new_order = Order(selected_unit, OrderType.TOGGLE_INHIBITOR, {'turn_on': turn_on})
+                            new_order = ToggleInhibitorOrder(selected_unit, {'turn_on': turn_on})
                             selected_unit.commander_component.add_order(new_order)
                             print(f"Queued TOGGLE_INHIBITOR order for {selected_unit.name}.")
                         else:

@@ -7,7 +7,11 @@ import uuid
 import dataclasses
 from enum import Enum, auto
 from collections import deque
-from unit_orders import Order, OrderStatus, OrderType
+from unit_orders import (
+    Order, OrderStatus, OrderType,
+    MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
+    LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder
+)
 from unit_components import (
     UnitComponent,
     Engines,

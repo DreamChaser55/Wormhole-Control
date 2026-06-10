@@ -7,13 +7,7 @@ Overall, the codebase is well-structured and conceptually ambitious. However, as
 
 ---
 
-## 1. Refactoring Opportunities
 
-### The Monolithic `Order` Class
-The `unit_orders.py` file is nearly 1000 lines long. The `Order` class acts as a monolith handling the logic for *all* possible order types (`MOVE`, `ATTACK`, `COLONIZE`, etc.) through giant `if/elif` blocks across its `execute`, `update`, `get_info_text`, and `check_completion_conditions` methods.
-**Recommendation:** Implement the **Command Pattern** or **Strategy Pattern**. Create an abstract base `Order` class, and derive specific subclasses like `MoveOrder`, `AttackOrder`, `ColonizeOrder`. This will dramatically reduce file size, improve readability, and adhere to the Open-Closed Principle.
-
----
 
 
 
