@@ -24,9 +24,6 @@ Files like `unit_orders.py` have comments that simply restate the code, creating
 *Example:* `# Check if already at the destination position` directly above `if distance(self.unit.position, dpos) < 0.01:`.
 **Recommendation:** Remove comments that duplicate the code's literal meaning. Focus comments on *why* something is done, rather than *what* is done.
 
-### Missing Docstrings
-As per standard requirements, every important function should have a top-level docstring explaining its purpose, logic, arguments, and return values. 
-**Recommendation:** Add comprehensive docstrings to complex methods, such as `toggle` in `HyperspaceInhibitionFieldEmitter` and `_generate_order_data_recursive` in `game.py`. 
 
 ---
 

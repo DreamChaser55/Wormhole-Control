@@ -505,7 +505,24 @@ class Game:
 
     def _generate_order_data_recursive(self, order: Order, current_indent_level: int) -> str:
         """
-        Helper to recursively generate an HTML string for an order and its sub-orders.
+        Helper method to recursively generate an HTML-formatted string representing
+        an order and its entire hierarchy of sub-orders for GUI display.
+
+        This function traverses the given order and its sub-orders, formatting each
+        level with appropriate HTML indentation and styling. It utilizes
+        `_format_order_state_data` to get the styled text representation of individual
+        order components and appends visual cues (like a prefix character) for nested
+        sub-orders.
+
+        Args:
+            order (Order): The base or current order in the hierarchy to be processed.
+            current_indent_level (int): The current depth of recursion, used to calculate
+                                        the amount of indentation (non-breaking spaces)
+                                        for the generated HTML lines.
+
+        Returns:
+            str: A continuous HTML string representing the formatted order and all its
+                 sub-orders, ready to be rendered by a UI text box component.
         """
         html_output_for_this_order_and_children = ""
         indent_html = "&nbsp;" * 4 * current_indent_level

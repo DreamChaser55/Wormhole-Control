@@ -109,14 +109,28 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
 
     def toggle(self, galaxy_ref: 'Galaxy') -> bool:
         """
-        Directly toggles the inhibition field on or off, performing all
-        necessary validation.
+        Directly toggles the hyperspace inhibition field on or off, performing
+        all necessary spatial and game-logic validation before applying the state change.
+
+        When turning ON, the method validates that:
+        1. The proposed field (a circle based on the emitter's radius) is fully
+           contained within the boundaries of the current sector (hex).
+        2. The proposed field does not overlap with any existing inhibition zones
+           in the current sector.
+        
+        If validation passes, it updates both the component's internal state and
+        registers the dynamic inhibition zone within the current hex. When turning OFF,
+        it cleans up the registered zone.
 
         Args:
-            galaxy_ref: A reference to the main galaxy object.
+            galaxy_ref ('Galaxy'): A reference to the main galaxy object, used to
+                                   access the current star system and hex grid data.
 
         Returns:
-            True if the toggle was successful, False otherwise.
+            bool: True if the toggle operation was successful and applied. False if
+                  the toggle failed due to validation errors (e.g., crossing a sector
+                  boundary or overlapping with another field), or if the unit's
+                  location data is invalid.
         """
         from geometry import Circle, is_circle_contained, do_circles_intersect
 
