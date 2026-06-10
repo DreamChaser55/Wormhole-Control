@@ -13,10 +13,6 @@ Overall, the codebase is well-structured and conceptually ambitious. However, as
 The `unit_orders.py` file is nearly 1000 lines long. The `Order` class acts as a monolith handling the logic for *all* possible order types (`MOVE`, `ATTACK`, `COLONIZE`, etc.) through giant `if/elif` blocks across its `execute`, `update`, `get_info_text`, and `check_completion_conditions` methods.
 **Recommendation:** Implement the **Command Pattern** or **Strategy Pattern**. Create an abstract base `Order` class, and derive specific subclasses like `MoveOrder`, `AttackOrder`, `ColonizeOrder`. This will dramatically reduce file size, improve readability, and adhere to the Open-Closed Principle.
 
-### Unit Composition Pattern (ECS)
-The `Unit` constructor in `entities.py` takes a massive list of parameters (e.g., `engines_speed`, `hyperdrive_type`, `has_weapons`, `has_colony_component`) and manually initializes components based on boolean flags. This tightly couples the `Unit` class to its components.
-**Recommendation:** Move toward a more robust Entity-Component-System (ECS) architecture. `Unit` should act as an empty container with an `add_component(component)` method. Templates should simply instantiate components and attach them to the entity.
-
 ---
 
 

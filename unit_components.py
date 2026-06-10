@@ -505,21 +505,22 @@ class Constructor(UnitComponent):
             game=self.unit.game,
             in_system=system_name,
             in_hex=hex_coord,
-            position=position,
-            # Engines
-            engines_speed=template["engine_speed"] if "engine_speed" in template else None,
-            engines_hull_cost=template["engine_hull_cost"],
-            # Hyperdrive
-            hyperdrive_type=template["hyperdrive_type"] if "hyperdrive_type" in template else None,
-            hyperdrive_hull_cost=template["hyperdrive_hull_cost"],
-            # Weapons
-            has_weapons=template["has_weapon_bays"],
-            weapons_hull_cost=template["weapon_bays_hull_cost"],
-            # Constructor
-            has_constructor_component=template["has_constructor_component"],
-            constructor_hull_cost=template["constructor_hull_cost"],
-            buildable_unit_names=template.get("buildable_units", None)
+            position=position
         )
+
+        if template.get("has_engine"):
+            speed = template.get("engine_speed", 0)
+            new_unit.add_component(Engines(new_unit, speed=speed, hull_cost=template.get("engine_hull_cost", 0)))
+
+        if template.get("has_hyperdrive"):
+            htype = template.get("hyperdrive_type", HyperdriveType.BASIC)
+            new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=template.get("hyperdrive_hull_cost", 0)))
+
+        if template.get("has_weapon_bays"):
+            new_unit.add_component(Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0)))
+
+        if template.get("has_constructor_component"):
+            new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0), buildable_unit_names=template.get("buildable_units", None)))
 
         system.add_unit(new_unit)
         print(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")

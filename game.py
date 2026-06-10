@@ -17,7 +17,7 @@ from geometry import (
 from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector, random_point_in_circle
 from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType
+from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent
 from entities import Order, AsteroidField, DebrisField, IceField, Nebula, Storm, Comet, Moon
 from galaxy import Galaxy, StarSystem, Hex
 from gui import GUI_Handler
@@ -213,19 +213,19 @@ class Game:
                                     in_system=target_system.name,
                                     name=ship_name,
                                     hull_size=hull_size,
-                                    game=self,
-                                    engines_speed=DEFAULT_SUBLIGHT_SHIP_SPEED,
-                                    hyperdrive_type=HyperdriveType.ADVANCED,
-                                    has_weapons=True)
-                    if ship_unit.weapons_component:
-                        turret = Turret(
-                            turret_type=TurretType.MASS_DRIVER,
-                            damage=10,
-                            range=300,
-                            cooldown=2,
-                            parent_unit=ship_unit
-                        )
-                        ship_unit.weapons_component.add_turret(turret)
+                                    game=self)
+                    ship_unit.add_component(Engines(ship_unit, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
+                    ship_unit.add_component(Hyperdrive(ship_unit, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
+                    weapons = Weapons(ship_unit, hull_cost=10)
+                    turret = Turret(
+                        turret_type=TurretType.MASS_DRIVER,
+                        damage=10,
+                        range=300,
+                        cooldown=2,
+                        parent_unit=ship_unit
+                    )
+                    weapons.add_turret(turret)
+                    ship_unit.add_component(weapons)
                     target_system.add_unit(ship_unit)
                     print(f"Added {ship_unit.name} to {target_system.name} at {start_hex_ship} for {player.name}")
 
@@ -249,34 +249,27 @@ class Game:
                     station_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4) # Closer to center
                     station_name = f"{player.name} {hull_size.name.capitalize()} Station"
                     
-                    # Add inhibitor to the medium station for testing
-                    inhibitor_radius_val = None
-                    if hull_size == HullSize.MEDIUM:
-                        inhibitor_radius_val = 100.0
-
                     station_unit = Unit(owner=player,
                                         position=station_pos,
                                         in_hex=start_hex_station,
                                         in_system=target_system.name,
                                         name=station_name,
                                         hull_size=hull_size,
-                                        game=self,
-                                        engines_speed=None, # No engines
-                                        hyperdrive_type=None, # No hyperdrive
-                                        has_weapons=True,
-                                        inhibitor_radius=inhibitor_radius_val,
-                                        has_constructor_component=True if hull_size == HullSize.MEDIUM else False,
-                                        buildable_unit_names=["STATION_MK1"] if hull_size == HullSize.MEDIUM else None)
+                                        game=self)
+                    if hull_size == HullSize.MEDIUM:
+                        station_unit.add_component(HyperspaceInhibitionFieldEmitter(station_unit, radius=100.0, hull_cost=20))
+                        station_unit.add_component(Constructor(station_unit, hull_cost=0, buildable_unit_names=["STATION_MK1"]))
 
-                    if station_unit.weapons_component:
-                        turret = Turret(
-                            turret_type=TurretType.BEAM,
-                            damage=15,
-                            range=400,
-                            cooldown=3,
-                            parent_unit=station_unit
-                        )
-                        station_unit.weapons_component.add_turret(turret)
+                    weapons = Weapons(station_unit, hull_cost=10)
+                    turret = Turret(
+                        turret_type=TurretType.BEAM,
+                        damage=15,
+                        range=400,
+                        cooldown=3,
+                        parent_unit=station_unit
+                    )
+                    weapons.add_turret(turret)
+                    station_unit.add_component(weapons)
 
                     target_system.add_unit(station_unit)
                     print(f"Added {station_unit.name} to {target_system.name} at {start_hex_station} for {player.name}")
@@ -302,11 +295,11 @@ class Game:
                         in_system=target_system.name,
                         name=colony_ship_name,
                         hull_size=HullSize.MEDIUM,
-                        game=self,
-                        engines_speed=DEFAULT_SUBLIGHT_SHIP_SPEED,
-                        hyperdrive_type=HyperdriveType.ADVANCED,
-                        has_colony_component=True
+                        game=self
                     )
+                    colony_ship.add_component(Engines(colony_ship, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
+                    colony_ship.add_component(Hyperdrive(colony_ship, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
+                    colony_ship.add_component(ColonyComponent(colony_ship, hull_cost=0))
                     target_system.add_unit(colony_ship)
                     print(f"Added {colony_ship.name} to {target_system.name} at {start_hex_colony_ship} for {player.name}")
                 else:

@@ -180,21 +180,7 @@ class Unit(GameObject):
     """Represents a generic unit in the game, composed of various components."""
     def __init__(self, owner: Player, position: Position, in_hex: HexCoord, in_system: str, name: str,
                  hull_size: HullSize,
-                 game: "Game",
-                 engines_speed: typing.Optional[float] = None,
-                 engines_hull_cost: int = 5,
-                 hyperdrive_type: typing.Optional[HyperdriveType] = None,
-                 hyperdrive_hull_cost: int = 10,
-                 inhibitor_radius: typing.Optional[float] = None,
-                 inhibitor_hull_cost: int = 20,
-                 has_weapons: bool = False,
-                 weapons_hull_cost: int = 10,
-                 has_colony_component: bool = False,
-                 colony_hull_cost: int = 0,
-                 has_constructor_component: bool = False,
-                 constructor_hull_cost: int = 0,
-                 buildable_unit_names: typing.Optional[list[str]] = None,
-                 ):
+                 game: "Game"):
         super().__init__(position, in_hex, in_system)
         self.owner = owner
         self.name: str = name
@@ -208,65 +194,50 @@ class Unit(GameObject):
         self.max_hit_points: int = HIT_POINTS[self.hull_size]
         self.current_hit_points: int = self.max_hit_points
 
-        if engines_speed is not None:
-            self.engines_component: typing.Optional[Engines] = Engines(
-                unit=self,
-                speed=engines_speed,
-                hull_cost=engines_hull_cost
-            )
-        else:
-            self.engines_component: typing.Optional[Engines] = None
-
-        if hyperdrive_type is not None:
-            self.hyperdrive_component: typing.Optional[Hyperdrive] = Hyperdrive(
-                unit=self,
-                drive_type=hyperdrive_type,
-                hull_cost=hyperdrive_hull_cost
-            )
-        else:
-            self.hyperdrive_component: typing.Optional[Hyperdrive] = None
-
-        if inhibitor_radius is not None:
-            self.inhibitor_component: typing.Optional[HyperspaceInhibitionFieldEmitter] = HyperspaceInhibitionFieldEmitter(
-                unit=self,
-                radius=inhibitor_radius,
-                hull_cost=inhibitor_hull_cost
-            )
-        else:
-            self.inhibitor_component: typing.Optional[HyperspaceInhibitionFieldEmitter] = None
-
-        if has_weapons:
-            self.weapons_component: typing.Optional[Weapons] = Weapons(
-                unit=self,
-                hull_cost=weapons_hull_cost
-            )
-        else:
-            self.weapons_component: typing.Optional[Weapons] = None
-            
-        if has_colony_component:
-            self.colony_component: typing.Optional[ColonyComponent] = ColonyComponent(
-                unit=self,
-                hull_cost=colony_hull_cost
-            )
-        else:
-            self.colony_component: typing.Optional[ColonyComponent] = None
-
-        if has_constructor_component:
-            self.constructor_component: typing.Optional[Constructor] = Constructor(
-                unit=self,
-                hull_cost=constructor_hull_cost,
-                buildable_unit_names=buildable_unit_names
-            )
-        else:
-            self.constructor_component: typing.Optional[Constructor] = None
+        self.components: typing.Dict[type, UnitComponent] = {}
         
-        self.commander_component: Commander = Commander(unit=self)
-        
+        # Every unit has a commander component by default
+        self.add_component(Commander(unit=self))
+
+    def add_component(self, component: UnitComponent) -> None:
+        self.components[type(component)] = component
         self._update_hull_usage()
 
-        if self.current_hull_usage > self.hull_capacity:
-            print(f"Warning: Unit '{self.name}' created exceeding hull capacity! "
-                  f"Usage: {self.current_hull_usage}, Capacity: {self.hull_capacity}")
+    def get_component(self, component_type: type) -> typing.Optional[UnitComponent]:
+        return self.components.get(component_type)
+        
+    def remove_component(self, component_type: type) -> None:
+        if component_type in self.components:
+            del self.components[component_type]
+            self._update_hull_usage()
+
+    @property
+    def engines_component(self) -> typing.Optional[Engines]:
+        return self.get_component(Engines)
+
+    @property
+    def hyperdrive_component(self) -> typing.Optional[Hyperdrive]:
+        return self.get_component(Hyperdrive)
+
+    @property
+    def inhibitor_component(self) -> typing.Optional[HyperspaceInhibitionFieldEmitter]:
+        return self.get_component(HyperspaceInhibitionFieldEmitter)
+
+    @property
+    def weapons_component(self) -> typing.Optional[Weapons]:
+        return self.get_component(Weapons)
+
+    @property
+    def colony_component(self) -> typing.Optional[ColonyComponent]:
+        return self.get_component(ColonyComponent)
+
+    @property
+    def constructor_component(self) -> typing.Optional[Constructor]:
+        return self.get_component(Constructor)
+
+    @property
+    def commander_component(self) -> Commander:
+        return self.get_component(Commander)
 
     def take_damage(self, amount: int) -> None:
         """Reduces the unit's current hit points by the given amount."""
@@ -289,22 +260,12 @@ class Unit(GameObject):
 
     def _update_hull_usage(self) -> None:
         """Recalculates and updates the current hull usage based on installed components."""
-        usage = 0
-        if self.engines_component:
-            usage += self.engines_component.hull_cost
-        if self.hyperdrive_component:
-            usage += self.hyperdrive_component.hull_cost
-        if self.inhibitor_component:
-            usage += self.inhibitor_component.hull_cost
-        if self.commander_component:
-            usage += self.commander_component.hull_cost
-        if self.weapons_component:
-            usage += self.weapons_component.hull_cost
-        if self.colony_component:
-            usage += self.colony_component.hull_cost
-        if self.constructor_component:
-            usage += self.constructor_component.hull_cost
+        usage = sum(c.hull_cost for c in self.components.values())
         self.current_hull_usage = usage
+        
+        if hasattr(self, 'hull_capacity') and self.current_hull_usage > self.hull_capacity:
+            print(f"Warning: Unit '{self.name}' created exceeding hull capacity! "
+                  f"Usage: {self.current_hull_usage}, Capacity: {self.hull_capacity}")
         
     def update(self) -> None:
         """Update the unit's state, including updating its components (processing orders etc.).
@@ -325,4 +286,5 @@ class Unit(GameObject):
         if self.constructor_component and self.in_galaxy:
             self.constructor_component.update(self.in_galaxy)
             
-        self.commander_component.update()
+        if self.commander_component:
+            self.commander_component.update()
