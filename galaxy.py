@@ -389,6 +389,9 @@ class Galaxy:
         Builds the system graph and stores it in self.system_graph.
         This should be called once after galaxy generation is complete.
         """
+        from pathfinding import clear_path_cache
+        clear_path_cache()
+
         graph: typing.Dict[str, typing.List[str]] = {name: [] for name in self.systems}
         for system_name, system_obj in self.systems.items():
             for _coord, hex_obj in system_obj.hexes.items():
