@@ -7,10 +7,6 @@ Overall, the codebase is well-structured and conceptually ambitious. However, as
 
 ---
 
-
-
-
-
 ## 3. Code Documentation and Comments
 
 ### Excessive "Play-by-Play" Comments
@@ -18,9 +14,7 @@ Files like `unit_orders.py` have comments that simply restate the code, creating
 *Example:* `# Check if already at the destination position` directly above `if distance(self.unit.position, dpos) < 0.01:`.
 **Recommendation:** Remove comments that duplicate the code's literal meaning. Focus comments on *why* something is done, rather than *what* is done.
 
-
 ---
-
 
 ## 5. Brainstorming Ideas for Improvements
 
