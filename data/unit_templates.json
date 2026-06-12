@@ -1,0 +1,35 @@
+{
+  "CONSTRUCTOR_MK1": {
+    "name": "Constructor Mk.I",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": true,
+    "engine_hull_cost": 10,
+    "has_hyperdrive": true,
+    "hyperdrive_hull_cost": 20,
+    "has_scanner": true,
+    "scanner_hull_cost": 5,
+    "has_weapon_bays": false,
+    "weapon_bays_hull_cost": 0,
+    "has_constructor_component": true,
+    "constructor_hull_cost": 15,
+    "buildable_units": ["STATION_MK1"]
+  },
+  "STATION_MK1": {
+    "name": "Station Mk.I",
+    "hull_size": "LARGE",
+    "hull_points": 500,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_scanner": true,
+    "scanner_hull_cost": 10,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 20,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 10,
+    "build_cost": 500
+  }
+}

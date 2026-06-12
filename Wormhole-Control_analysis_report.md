@@ -18,11 +18,8 @@ Files like `unit_orders.py` have comments that simply restate the code, creating
 
 ## 5. Brainstorming Ideas for Improvements
 
-### 1. Data-Driven Design
-Currently, game definitions (unit templates, star names, celestial body spawn rates) are hardcoded in Python. Moving these into JSON/YAML configuration files will make the game much easier to expand, mod, and balance.
-
-### 2. Event Bus / Pub-Sub Architecture
+### 1. Event Bus / Pub-Sub Architecture
 Currently, `input_processor.py` directly executes game logic (like creating and assigning orders). Implementing an Event Bus would decouple user input from game logic. The input processor would emit a "MovementRequestedEvent", and the Unit/Commander system would listen for it and create the order.
 
-### 3. Add comprehensive testing
+### 2. Add comprehensive testing
 The codebase would benefit from having a more comprehensive test suite to catch bugs and regressions early on. Add Unit tests for the core logic and integration tests for the game flow.

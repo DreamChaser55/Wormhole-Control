@@ -11,6 +11,43 @@ from constants import SCREEN_RES, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, Planet
 from utils import HexCoord
 from geometry import distance_sq, Vector, Position, Circle
 from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField
+import json
+import os
+
+CLASS_MAPPING = {
+    "Planet": Planet,
+    "Moon": Moon,
+    "Asteroid": Asteroid,
+    "AsteroidField": AsteroidField,
+    "IceField": IceField,
+    "Nebula": Nebula,
+    "Storm": Storm,
+    "Comet": Comet,
+    "DebrisField": DebrisField,
+}
+
+def _load_spawn_rates():
+    file_path = os.path.join(os.path.dirname(__file__), "data", "spawn_rates.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    body_types = []
+    weights = []
+    for class_name, weight in data.items():
+        if class_name in CLASS_MAPPING:
+            body_types.append(CLASS_MAPPING[class_name])
+            weights.append(weight)
+        else:
+            logger.warning(f"Unknown celestial body class in spawn_rates.json: {class_name}")
+    return body_types, weights
+
+BODY_TYPES_TO_SPAWN, SPAWN_WEIGHTS = _load_spawn_rates()
+
+def _load_star_names():
+    file_path = os.path.join(os.path.dirname(__file__), "data", "star_names.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+STAR_NAMES = _load_star_names()
 
 # Galaxy generation parameters
 NUM_SYSTEMS = 15
@@ -114,18 +151,14 @@ class StarSystem:
         available_hexes = [h for h in self.hexes.values() if h.coordinates() != (0, 0)]
         random.shuffle(available_hexes)
 
-        # Define probabilities for spawning different celestial bodies
-        body_types_to_spawn = [Planet, Moon, Asteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField]
-        weights = [0.4, 0.15, 0.15, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
-
         # Decide how many bodies to spawn in this system
         num_bodies_to_spawn = random.randint(4, len(available_hexes) // 2)
 
         for i in range(min(num_bodies_to_spawn, len(available_hexes))):
             hex_to_spawn_in = available_hexes[i]
 
-            # Choose a body type based on weights
-            chosen_body_class = random.choices(body_types_to_spawn, weights=weights, k=1)[0]
+            # Choose a body type based on weights loaded from configuration
+            chosen_body_class = random.choices(BODY_TYPES_TO_SPAWN, weights=SPAWN_WEIGHTS, k=1)[0]
 
             body = None
             if chosen_body_class == Planet:
@@ -289,9 +322,7 @@ class Galaxy:
             return
 
         # --- Generate unique system names ---
-        names = ["Sol", "Alpha Centauri", "Sirius", "Proxima Centauri", "Barnard's Star",
-                 "Tau Ceti", "Epsilon Eridani", "Kepler-186", "Gliese 581", "Vega",
-                 "Arcturus", "Capella", "Rigel", "Betelgeuse", "Procyon"]
+        names = list(STAR_NAMES)
         random.shuffle(names)
         base_len = len(names)
         if num_systems > base_len:
