@@ -36,6 +36,8 @@ from gui import GUI_Handler
 from renderer import Renderer
 from input_processor import InputProcessor
 from turn_processor import TurnProcessor
+from events import EventBus
+from order_system import OrderSystem
 
 # --- Game Class ---
 class Game:
@@ -77,6 +79,10 @@ class Game:
 
         # Instantiate the Renderer
         self.renderer = Renderer(self)
+
+        # Initialize Event Bus and Order System
+        self.event_bus = EventBus()
+        self.order_system = OrderSystem(self, self.event_bus)
 
         # Instantiate the InputProcessor
         self.input_processor = InputProcessor(self)

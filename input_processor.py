@@ -13,8 +13,12 @@ from constants import (
 from utils import HexCoord
 from geometry import Vector, Position, distance_sq
 from hexgrid_utils import pixel_to_hex
-from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
-from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Wormhole, Order, OrderType, HullSize, MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder
+from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
+from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Wormhole, HullSize
+from events import (
+    CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
+    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent
+)
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
 
@@ -370,136 +374,94 @@ class InputProcessor:
 
         logger.debug(f"Context Action: '{action_id}', Target: {target}, Actors: {[u.name for u in selected_units]}, SHIFT: {shift_pressed}")
 
-        if action_id == "view_hex": logger.debug("  Action: View Hex Details (Not Implemented)")
-        elif action_id == "view_planet": logger.debug(f"  Action: View Planet {getattr(target, 'name', target)} Info (Not Implemented)")
-        elif action_id == "view_star": logger.debug(f"  Action: View Star {getattr(target, 'name', target)} Info (Not Implemented)")
-        elif action_id == "view_wormhole": logger.debug(f"  Action: View Wormhole {getattr(target, 'name', target)} Info (Not Implemented)")
-        elif action_id == "view_unit": logger.debug(f"  Action: View Unit {getattr(target, 'name', target)} Info (Not Implemented)")
+        # Fix: robustly extract action_id if it is nested (from context menu with sub-options)
+        extracted_action_id = action_id
+        while isinstance(extracted_action_id, list) and len(extracted_action_id) > 0:
+            extracted_action_id = extracted_action_id[0]
+        if isinstance(extracted_action_id, tuple) and len(extracted_action_id) > 1:
+            extracted_action_id = extracted_action_id[1]
+        elif isinstance(extracted_action_id, tuple):
+            extracted_action_id = extracted_action_id[0]
+        if not isinstance(extracted_action_id, str):
+            extracted_action_id = str(extracted_action_id)
+
+        if extracted_action_id == "view_hex": logger.debug("  Action: View Hex Details (Not Implemented)")
+        elif extracted_action_id == "view_planet": logger.debug(f"  Action: View Planet {getattr(target, 'name', target)} Info (Not Implemented)")
+        elif extracted_action_id == "view_star": logger.debug(f"  Action: View Star {getattr(target, 'name', target)} Info (Not Implemented)")
+        elif extracted_action_id == "view_wormhole": logger.debug(f"  Action: View Wormhole {getattr(target, 'name', target)} Info (Not Implemented)")
+        elif extracted_action_id == "view_unit": logger.debug(f"  Action: View Unit {getattr(target, 'name', target)} Info (Not Implemented)")
+        elif extracted_action_id == "scan_hex": logger.debug("  Action: Scan Hex Contents (Not Implemented)")
         
         elif selected_units:
-            for unit in selected_units:
-                if action_id == "cancel_orders":
-                    if unit.commander_component:
-                        unit.commander_component.clear_orders()
-                        logger.debug(f"  Unit {unit.name} orders cancelled.")
-                
-                elif action_id == "issue_move_order":
-                    if isinstance(target, Position) and unit.engines_component:
-                        target_pos_in_sector: 'Position' = target
-                        move_params = {
-                            "destination_system_name": self.game.current_system_name,
-                            "destination_hex_coord": self.game.current_sector_coord,
-                            "destination_position": target_pos_in_sector
-                        }
-                        move_order = MoveOrder(unit, move_params)
-                        if not shift_pressed:
-                            unit.commander_component.clear_orders()
-                            logger.debug(f"  Unit {unit.name} orders cancelled.")
-                        unit.commander_component.add_order(move_order)
-                        logger.debug(f"  Unit {unit.name} ordered to move to {self.game.current_system_name}:{self.game.current_sector_coord}:{target_pos_in_sector}")
+            if extracted_action_id == "cancel_orders":
+                self.game.event_bus.publish(CancelOrdersEvent(selected_units))
+            
+            elif extracted_action_id == "issue_move_order":
+                if isinstance(target, Position):
+                    self.game.event_bus.publish(IssueMoveOrderEvent(
+                        selected_units,
+                        self.game.current_system_name,
+                        self.game.current_sector_coord,
+                        target,
+                        shift_pressed
+                    ))
 
-                elif action_id == "jump_interhex":
-                    if isinstance(target, tuple) and len(target) == 2 and unit.hyperdrive_component:
-                        target_hex_coord: HexCoord = target
-                        if target_hex_coord != unit.in_hex:
-                            move_params = {
-                                "destination_system_name": self.game.current_system_name,
-                                "destination_hex_coord": target_hex_coord,
-                                "destination_position": random_point_in_sector()
-                            }
-                            move_order = MoveOrder(unit, move_params)
-                            if not shift_pressed:
-                                unit.commander_component.clear_orders()
-                                logger.debug(f"  Unit {unit.name} orders cancelled.")
-                            unit.commander_component.add_order(move_order)
-                            logger.debug(f"  Unit {unit.name} ordered to move to {self.game.current_system_name}:{target_hex_coord}:{move_params['destination_position']}")
+            elif extracted_action_id == "jump_interhex":
+                if isinstance(target, tuple) and len(target) == 2:
+                    self.game.event_bus.publish(JumpInterhexEvent(
+                        selected_units,
+                        self.game.current_system_name,
+                        target,
+                        shift_pressed
+                    ))
 
-                elif action_id == "jump_wormhole":
-                    if isinstance(target, Wormhole) and unit.hyperdrive_component:
-                        target_wormhole: Wormhole = target
-                        exit_wh_id = target_wormhole.exit_wormhole_id
-                        exit_system_name = target_wormhole.exit_system_name
-                        if not self.game.galaxy: continue
-                        exit_wormhole = self.game.galaxy.wormholes.get(exit_wh_id, None)
+            elif extracted_action_id == "jump_wormhole":
+                if isinstance(target, Wormhole):
+                    self.game.event_bus.publish(JumpWormholeEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
 
-                        if (unit.in_system == target_wormhole.in_system and
-                                target_wormhole.stability > 0 and
-                                exit_system_name and
-                                exit_wormhole and 
-                                exit_wormhole.in_system == exit_system_name):
-                            move_params = {
-                                "destination_system_name": exit_system_name,
-                                "destination_hex_coord": exit_wormhole.in_hex,
-                                "destination_position": exit_wormhole.position 
-                            }
-                            move_order = MoveOrder(unit, move_params)
-                            if not shift_pressed:
-                                unit.commander_component.clear_orders()
-                                logger.debug(f"  Unit {unit.name} orders cancelled.")
-                            unit.commander_component.add_order(move_order)
-                            logger.debug(f"  Unit {unit.name} ordered to move via wormhole {target_wormhole.name} to {exit_system_name}:{exit_wormhole.in_hex}:{exit_wormhole.position}")
+            elif extracted_action_id == "attack_unit":
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(AttackUnitEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
 
-                elif action_id == "scan_hex": logger.debug("  Action: Scan Hex Contents (Not Implemented)")
-                elif action_id == "attack_unit":
-                    if isinstance(target, Unit):
-                        attack_params = {"target_unit_id": target.id}
-                        attack_order = AttackOrder(unit, attack_params)
-                        if not shift_pressed:
-                            unit.commander_component.clear_orders()
-                        unit.commander_component.add_order(attack_order)
-                elif action_id == "colonize":
-                    if isinstance(target, (Planet, Moon, Asteroid)):
-                        colonize_params = {
-                            "target_id": target.id,
-                            "target_name": target.name
-                        }
-                        colonize_order = ColonizeOrder(unit, colonize_params)
-                        if not shift_pressed:
-                            unit.commander_component.clear_orders()
-                        unit.commander_component.add_order(colonize_order)
-                        logger.debug(f"  Unit {unit.name} ordered to colonize {target.name}")
-                elif action_id == "load_colonists":
-                    if isinstance(target, (Planet, Moon, Asteroid)):
-                        # For now, load a fixed amount. Could be a dialog later.
-                        amount_to_load = 25
-                        load_params = {
-                            "target_id": target.id,
-                            "target_name": target.name,
-                            "amount": amount_to_load
-                        }
-                        load_order = LoadColonistsOrder(unit, load_params)
-                        if not shift_pressed:
-                            unit.commander_component.clear_orders()
-                        unit.commander_component.add_order(load_order)
-                        logger.debug(f"  Unit {unit.name} ordered to load {amount_to_load} colonists from planet {target.name}")
+            elif extracted_action_id == "colonize":
+                if isinstance(target, (Planet, Moon, Asteroid)):
+                    self.game.event_bus.publish(ColonizeEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
 
-                # Fix: robustly extract action_id if it is nested (from context menu with sub-options)
-                while isinstance(action_id, list) and len(action_id) > 0:
-                    # Flatten nested lists (e.g., [[('STATION_MK1', 'construct_STATION_MK1')]])
-                    action_id = action_id[0]
-                if isinstance(action_id, tuple) and len(action_id) > 1:
-                    action_id = action_id[1]
-                elif isinstance(action_id, tuple):
-                    action_id = action_id[0]
-                if not isinstance(action_id, str):
-                    action_id = str(action_id)
+            elif extracted_action_id == "load_colonists":
+                if isinstance(target, (Planet, Moon, Asteroid)):
+                    amount_to_load = 25
+                    self.game.event_bus.publish(LoadColonistsEvent(
+                        selected_units,
+                        target,
+                        amount_to_load,
+                        shift_pressed
+                    ))
 
-                elif action_id.startswith("construct_"):
-                    unit_template_name = action_id.split("construct_")[1]
-                    if isinstance(target, Position):
-                        construct_params = {
-                            "unit_template_name": unit_template_name,
-                            "target_position": target
-                        }
-                        construct_order = ConstructOrder(unit, construct_params)
-                        if not shift_pressed:
-                            unit.commander_component.clear_orders()
-                        unit.commander_component.add_order(construct_order)
-                        logger.debug(f"  Unit {unit.name} ordered to construct {unit_template_name} at {target}")
+            elif extracted_action_id.startswith("construct_"):
+                unit_template_name = extracted_action_id.split("construct_")[1]
+                if isinstance(target, Position):
+                    self.game.event_bus.publish(ConstructEvent(
+                        selected_units,
+                        unit_template_name,
+                        target,
+                        shift_pressed
+                    ))
 
-                else:
-                    logger.debug(f"  Unknown context action ID for selected unit: {action_id}")
+            else:
+                logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")
             
             self.game.sidebar_needs_update = True
         else:
-            logger.debug(f"  Unknown context action ID or no valid unit selected: {action_id}")
+            logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")
