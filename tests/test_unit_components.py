@@ -1,0 +1,270 @@
+import pytest
+from unittest.mock import MagicMock
+from geometry import Position, Circle, Vector
+from unit_components import (
+    Engines, Hyperdrive, HyperdriveType, JumpStatus,
+    HyperspaceInhibitionFieldEmitter, Commander,
+    Turret, TurretType, Weapons, ColonyComponent,
+    Constructor, BuildableUnit
+)
+from unit_orders import Order, OrderStatus, OrderType
+
+# Custom simple mocks to avoid Pygame setup during unit tests
+class MockPlayer:
+    def __init__(self, name="Test Player"):
+        self.id = 1
+        self.name = name
+        self.credits = 1000
+
+class MockUnit:
+    def __init__(self):
+        self.id = 123
+        self.name = "Test Unit"
+        self.position = Position(0, 0)
+        self.in_hex = (0, 0)
+        self.in_system = "Sol"
+        self.owner = MockPlayer()
+        self.components = {}
+        self.in_galaxy = MagicMock()
+        self.current_hit_points = 100
+        self.max_hit_points = 100
+        self.game = MagicMock()
+        
+    def add_component(self, component):
+        self.components[type(component)] = component
+        
+    def get_component(self, component_type):
+        return self.components.get(component_type)
+        
+    @property
+    def engines_component(self): return self.get_component(Engines)
+    @property
+    def hyperdrive_component(self): return self.get_component(Hyperdrive)
+    @property
+    def inhibitor_component(self): return self.get_component(HyperspaceInhibitionFieldEmitter)
+    @property
+    def weapons_component(self): return self.get_component(Weapons)
+    @property
+    def colony_component(self): return self.get_component(ColonyComponent)
+    @property
+    def constructor_component(self): return self.get_component(Constructor)
+    @property
+    def commander_component(self): return self.get_component(Commander)
+
+    def take_damage(self, amount):
+        self.current_hit_points -= amount
+
+    def update(self):
+        if self.hyperdrive_component:
+            self.hyperdrive_component.update_recharge()
+        if self.weapons_component and self.in_galaxy:
+            self.weapons_component.update(self.in_galaxy)
+        if self.constructor_component and self.in_galaxy:
+            self.constructor_component.update(self.in_galaxy)
+        if self.commander_component:
+            self.commander_component.update()
+
+def test_engines():
+    unit = MockUnit()
+    engines = Engines(unit, speed=100.0)
+    assert engines.speed == 100.0
+    assert engines.move_target is None
+
+def test_hyperdrive_recharge():
+    unit = MockUnit()
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, recharge_duration=3)
+    
+    assert hd.jump_status == JumpStatus.READY
+    assert hd.recharge_time_remaining == 0
+    
+    hd.start_recharge()
+    assert hd.jump_status == JumpStatus.CHARGING
+    assert hd.recharge_time_remaining == 3
+    
+    hd.update_recharge()
+    assert hd.recharge_time_remaining == 2
+    assert hd.jump_status == JumpStatus.CHARGING
+    
+    hd.update_recharge()
+    hd.update_recharge()
+    assert hd.recharge_time_remaining == 0
+    assert hd.jump_status == JumpStatus.READY
+
+def test_inhibition_field():
+    unit = MockUnit()
+    emitter = HyperspaceInhibitionFieldEmitter(unit, radius=100.0)
+    
+    assert not emitter.is_active
+    
+    # Set up mock spatial structure for toggle validation
+    mock_hex = MagicMock()
+    mock_hex.boundary_circle = Circle(Position(0, 0), 500.0)
+    mock_hex.dynamic_inhibition_zones = {}
+    mock_hex.get_all_inhibition_zones.return_value = []
+    
+    mock_system = MagicMock()
+    mock_system.hexes = {(0, 0): mock_hex}
+    
+    mock_galaxy = MagicMock()
+    mock_galaxy.systems = {"Sol": mock_system}
+    
+    # 1. Success path
+    success = emitter.toggle(mock_galaxy)
+    assert success
+    assert emitter.is_active
+    assert unit.id in mock_hex.dynamic_inhibition_zones
+    
+    # 2. Toggle off
+    success_off = emitter.toggle(mock_galaxy)
+    assert success_off
+    assert not emitter.is_active
+    assert unit.id not in mock_hex.dynamic_inhibition_zones
+    
+    # 3. Fail: Field boundary crosses hex boundary
+    unit.position = Position(450, 0) # Close to boundary of 500
+    success_boundary_fail = emitter.toggle(mock_galaxy)
+    assert not success_boundary_fail
+    assert not emitter.is_active
+    
+    # 4. Fail: Overlaps with an existing zone
+    unit.position = Position(0, 0)
+    existing_zone = Circle(Position(50, 0), 100.0)
+    mock_hex.get_all_inhibition_zones.return_value = [existing_zone]
+    success_overlap_fail = emitter.toggle(mock_galaxy)
+    assert not success_overlap_fail
+    assert not emitter.is_active
+
+def test_commander():
+    unit = MockUnit()
+    commander = Commander(unit)
+    
+    order1 = MagicMock(spec=Order)
+    order1.order_id = "1"
+    order1.is_completed.return_value = False
+    order1.status = OrderStatus.PENDING
+    
+    order2 = MagicMock(spec=Order)
+    order2.order_id = "2"
+    
+    commander.add_order(order1)
+    commander.add_order(order2)
+    
+    assert commander.get_active_orders_count() == 2
+    assert commander.current_order == order1
+    order1.execute.assert_called_once()
+    
+    # Cancel order 2 from queue
+    cancelled = commander.cancel_order("2")
+    assert cancelled
+    assert commander.get_active_orders_count() == 1
+    order2.cancel.assert_called_once()
+    
+    # Clear orders
+    commander.clear_orders()
+    assert commander.get_active_orders_count() == 0
+    order1.cancel.assert_called_once()
+
+def test_weapons_and_turrets():
+    unit = MockUnit()
+    target = MockUnit()
+    weapons = Weapons(unit)
+    
+    turret = Turret(
+        turret_type=TurretType.MASS_DRIVER,
+        damage=10,
+        range=100.0,
+        cooldown=2,
+        parent_unit=unit
+    )
+    
+    weapons.add_turret(turret)
+    assert len(weapons.turrets) == 1
+    
+    weapons.set_target(target)
+    assert turret.target == target
+    
+    # Set coordinates for range check
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(0, 0)
+    
+    target.in_system = "Sol"
+    target.in_hex = (0, 0)
+    target.position = Position(50, 0) # within range of 100
+    
+    # Update weapons: turret should fire
+    mock_galaxy = MagicMock()
+    weapons.update(mock_galaxy)
+    
+    # Target takes damage
+    assert target.current_hit_points == 90
+    assert turret.current_cooldown == 2
+    
+    # Update cooldown
+    weapons.update(mock_galaxy)
+    assert turret.current_cooldown == 1
+    
+    # Clear target
+    weapons.clear_target()
+    assert turret.target is None
+
+def test_colony_component():
+    unit = MockUnit()
+    colony = ColonyComponent(unit)
+    
+    planet = MagicMock()
+    planet.name = "Terra"
+    planet.owner = unit.owner
+    planet.population = 80
+    planet.max_population = 100
+    
+    # Load population
+    success = colony.load_population(planet, 50)
+    assert success
+    assert planet.population == 30
+    assert colony.population_cargo == 50
+    
+    # Load too much (exceeds cargo limit of 100)
+    success_fail = colony.load_population(planet, 60)
+    assert not success_fail
+    
+    # Unload population to unowned planet
+    unowned_planet = MagicMock()
+    unowned_planet.name = "Mars"
+    unowned_planet.owner = None
+    unowned_planet.population = 0
+    
+    success_unload = colony.unload_population(unowned_planet, 30)
+    assert success_unload
+    assert unowned_planet.owner == unit.owner
+    assert unowned_planet.population == 30
+    assert colony.population_cargo == 20
+
+def test_constructor():
+    unit = MockUnit()
+    constructor = Constructor(unit, hull_cost=10)
+    
+    bu = BuildableUnit(unit_template_name="Station", time_to_build=3, cost_credits=300)
+    constructor.buildable_units.append(bu)
+    
+    assert constructor.can_build("Station") == bu
+    assert constructor.can_build("Fighter") is None
+    
+    # Start construction
+    unit.owner.credits = 500
+    galaxy = MagicMock()
+    
+    success = constructor.start_construction("Station", Position(10, 10), galaxy)
+    assert success
+    assert unit.owner.credits == 200
+    assert constructor.current_construction_target == ("Station", Position(10, 10))
+    assert constructor.time_to_build == 3
+    assert constructor.construction_progress == 0
+    
+    # Update construction
+    constructor.update(galaxy)
+    assert constructor.construction_progress == 1
+    
+    # Cancel construction
+    constructor.cancel_construction()
+    assert constructor.current_construction_target is None
