@@ -10,6 +10,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+import os
+import ctypes
 import pygame
 import sys
 import random
@@ -43,6 +45,18 @@ from order_system import OrderSystem
 class Game:
     """Main game class, handles initialization, game loop, drawing, and input."""
     def __init__(self):
+        # Disable Windows OS window scaling to ensure 1:1 pixel perfect resolution
+        if os.name == 'nt':
+            try:
+                # Windows 8.1 and later
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)
+            except Exception:
+                try:
+                    # Windows Vista and later
+                    ctypes.windll.user32.SetProcessDPIAware()
+                except Exception:
+                    pass
+
         pygame.init()
         pygame.display.set_caption("Wormhole Control")
         self.screen = pygame.display.set_mode(SCREEN_RES.to_tuple())
