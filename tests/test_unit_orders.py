@@ -3,9 +3,10 @@ from unittest.mock import MagicMock
 from geometry import Position, Circle
 from unit_orders import (
     OrderStatus, OrderType, ReachWaypointOrder, MoveOrder, 
-    ToggleInhibitorOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder
+    ToggleInhibitorOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder,
+    ConstructOrder, Order
 )
-from unit_components import Engines, Hyperdrive, HyperdriveType, Weapons, ColonyComponent, HyperspaceInhibitionFieldEmitter
+from unit_components import Engines, Hyperdrive, HyperdriveType, Weapons, ColonyComponent, HyperspaceInhibitionFieldEmitter, Constructor
 from tests.test_unit_components import MockUnit, MockPlayer
 
 def test_reach_waypoint_order_validation():
@@ -206,3 +207,259 @@ def test_colonize_order():
     order.execute(galaxy)
     assert order.status == OrderStatus.COMPLETED
     colony.unload_population.assert_called_once_with(planet, 50)
+
+
+def test_move_order_inter_system_routing():
+    # Setup unit with Hyperdrive and Engines in Sol
+    unit = MockUnit()
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5)
+    engines = Engines(unit, speed=50.0)
+    unit.add_component(hd)
+    unit.add_component(engines)
+
+    # Destination is in Vega, hex (0, 0), Position(10, 10)
+    dest_system = "Vega"
+    dest_hex = (0, 0)
+    dest_pos = Position(10, 10)
+
+    # Mock galaxy structures and pathfinding
+    galaxy = MagicMock()
+    galaxy.system_graph = {"Sol": ["Vega"], "Vega": ["Sol"]}
+    
+    # We will simulate find_intersystem_path returning ["Sol", "Vega"]
+    # and find_wormhole_to_system finding a wormhole in Sol at (1, 1), exit in Vega at (2, 2)
+    wh_sol = MagicMock()
+    wh_sol.id = 1
+    wh_sol.in_system = "Sol"
+    wh_sol.in_hex = (1, 1)
+    wh_sol.position = Position(100, 100)
+    wh_sol.exit_wormhole_id = 2
+    wh_sol.name = "Wormhole-Sol"
+
+    wh_vega = MagicMock()
+    wh_vega.id = 2
+    wh_vega.in_system = "Vega"
+    wh_vega.in_hex = (2, 2)
+    wh_vega.position = Position(200, 200)
+    wh_vega.name = "Wormhole-Vega"
+
+    galaxy.wormholes = {1: wh_sol, 2: wh_vega}
+    
+    # Mock systems map
+    mock_sol_sys = MagicMock()
+    mock_vega_sys = MagicMock()
+    
+    mock_sol_hex = MagicMock()
+    mock_sol_hex.get_all_inhibition_zones.return_value = []
+    
+    mock_vega_hex = MagicMock()
+    mock_vega_hex.get_all_inhibition_zones.return_value = []
+    
+    mock_sol_sys.hexes = {
+        (0, 0): mock_sol_hex,
+        (1, 1): mock_sol_hex,
+    }
+    mock_vega_sys.hexes = {
+        (2, 2): mock_vega_hex,
+        (0, 0): mock_vega_hex,
+    }
+    
+    galaxy.systems = {"Sol": mock_sol_sys, "Vega": mock_vega_sys}
+
+    order = MoveOrder(unit, {
+        "destination_system_name": dest_system,
+        "destination_hex_coord": dest_hex,
+        "destination_position": dest_pos
+    })
+
+    # Mock find_intersystem_path to return the path ["Sol", "Vega"]
+    from unittest.mock import patch
+    with patch("unit_orders.find_intersystem_path", return_value=["Sol", "Vega"]), \
+         patch.object(order, "find_wormhole_to_system", side_effect=lambda current, target, g: wh_sol if current == "Sol" else None):
+        
+        order.execute(galaxy)
+        
+        # Sub-orders expected:
+        # 1. ReachWaypointOrder (hex jump) to Sol (1, 1) wormhole pos (100, 100)
+        # 2. ReachWaypointOrder (wormhole jump) to Vega (2, 2) exit wh pos (200, 200)
+        # 3. ReachWaypointOrder (hex jump) to Vega (0, 0) dest pos (10, 10)
+        assert len(order.sub_orders) == 3
+        
+        assert order.sub_orders[0].parameters["destination_system_name"] == "Sol"
+        assert order.sub_orders[0].parameters["destination_hex_coord"] == (1, 1)
+        assert order.sub_orders[0].parameters["destination_position"] == Position(100, 100)
+        
+        assert order.sub_orders[1].parameters["destination_system_name"] == "Vega"
+        assert order.sub_orders[1].parameters["destination_hex_coord"] == (2, 2)
+        assert order.sub_orders[1].parameters["destination_position"] == Position(200, 200)
+        
+        assert order.sub_orders[2].parameters["destination_system_name"] == "Vega"
+        assert order.sub_orders[2].parameters["destination_hex_coord"] == (0, 0)
+        assert order.sub_orders[2].parameters["destination_position"] == Position(10, 10)
+
+
+def test_move_order_inhibition_escape():
+    # Setup unit with Hyperdrive in Sol at Position(10, 10)
+    unit = MockUnit()
+    unit.position = Position(10, 10)
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5)
+    unit.add_component(hd)
+
+    # Destination is in Sol, different hex (0, 2)
+    dest_system = "Sol"
+    dest_hex = (0, 2)
+    dest_pos = Position(0, 0)
+
+    galaxy = MagicMock()
+    
+    # Setup inhibitor zone at current location
+    # Inhibitor field: center (0,0), radius 20. Unit is at (10,10) which is inside since dist = sqrt(200) ~ 14.14 < 20
+    current_hex_obj = MagicMock()
+    inhibitor_zone = Circle(Position(0, 0), 20.0)
+    current_hex_obj.get_all_inhibition_zones.return_value = [inhibitor_zone]
+
+    dest_hex_obj = MagicMock()
+    dest_hex_obj.get_all_inhibition_zones.return_value = []
+
+    mock_sys = MagicMock()
+    mock_sys.hexes = {
+        (0, 0): current_hex_obj,
+        (0, 2): dest_hex_obj
+    }
+    galaxy.systems = {"Sol": mock_sys}
+
+    order = MoveOrder(unit, {
+        "destination_system_name": dest_system,
+        "destination_hex_coord": dest_hex,
+        "destination_position": dest_pos
+    })
+
+    order.execute(galaxy)
+
+    # We expect suborders:
+    # 1. ReachWaypointOrder (sub-light escape move to edge of current hex's inhibition zone)
+    # 2. ReachWaypointOrder (the actual hex jump to destination)
+    assert len(order.sub_orders) == 2
+    
+    # Verify first sub-order is escape to edge
+    escape_order = order.sub_orders[0]
+    assert escape_order.parameters["destination_system_name"] == "Sol"
+    assert escape_order.parameters["destination_hex_coord"] == (0, 0)
+    # Closest point on circle edge from (10,10) with radius 20:
+    # unit vector from (0,0) is (sqrt(2)/2, sqrt(2)/2) ~ (0.7071, 0.7071)
+    # edge point = (20 * 0.7071, 20 * 0.7071) = (14.14, 14.14)
+    assert abs(escape_order.parameters["destination_position"].x - 14.142) < 0.01
+    assert abs(escape_order.parameters["destination_position"].y - 14.142) < 0.01
+
+    # Verify second sub-order is the jump to destination
+    jump_order = order.sub_orders[1]
+    assert jump_order.parameters["destination_system_name"] == "Sol"
+    assert jump_order.parameters["destination_hex_coord"] == (0, 2)
+    assert jump_order.parameters["destination_position"] == dest_pos
+
+
+def test_construct_order():
+    # Setup unit and constructor component
+    unit = MockUnit()
+    constructor = MagicMock()
+    unit.components[Constructor] = constructor
+
+    galaxy = MagicMock()
+    
+    # Mock player credits and matching owner ID
+    player = MockPlayer()
+    player.id = unit.owner.id
+    player.credits = 500
+    unit.game.players = [player]
+
+    buildable = MagicMock()
+    buildable.cost_credits = 300
+    constructor.can_build.return_value = buildable
+
+    # Valid order
+    order = ConstructOrder(unit, {
+        "unit_template_name": "Station",
+        "target_position": Position(10, 10)
+    })
+
+    order.execute(galaxy)
+
+    assert order.status == OrderStatus.COMPLETED
+    assert player.credits == 200
+    constructor.start_construction.assert_called_once_with("Station", Position(10, 10), galaxy)
+
+    # Insufficient credits case
+    player.credits = 100
+    order_fail = ConstructOrder(unit, {
+        "unit_template_name": "Station",
+        "target_position": Position(10, 10)
+    })
+    order_fail.execute(galaxy)
+    assert order_fail.status == OrderStatus.FAILED
+
+
+def test_load_colonists_order():
+    unit = MockUnit()
+    colony = MagicMock()
+    unit.components[ColonyComponent] = colony
+
+    planet = MagicMock()
+    planet.id = 999
+    planet.in_system = "Sol"
+    planet.in_hex = (0, 0)
+    planet.position = Position(0, 0)
+
+    galaxy = MagicMock()
+    galaxy.get_celestial_body_by_id.return_value = planet
+
+    # Case 1: Unit is at location and successfully loads colonists
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    colony.load_population.return_value = True
+
+    order = LoadColonistsOrder(unit, {
+        "target_id": 999,
+        "amount": 50
+    })
+
+    order.execute(galaxy)
+    assert order.status == OrderStatus.COMPLETED
+    colony.load_population.assert_called_once_with(planet, 50)
+
+    # Case 2: Unit is not at location, should spawn MoveOrder
+    unit.in_system = "Vega"
+    unit.in_hex = (1, 1)
+    
+    order_move = LoadColonistsOrder(unit, {
+        "target_id": 999,
+        "amount": 50
+    })
+    order_move.execute(galaxy)
+    
+    assert len(order_move.sub_orders) == 2
+    assert order_move.sub_orders[0].order_type == OrderType.MOVE
+    assert order_move.sub_orders[1].order_type == OrderType.LOAD_COLONISTS
+
+
+def test_order_cancellation_cascade():
+    unit = MockUnit()
+    order = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(10, 10)
+    })
+
+    # Add a real sub-order to avoid logging/mock property issues
+    sub_order = ReachWaypointOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(10, 10)
+    })
+    order.add_sub_order(sub_order)
+
+    # Cancel parent order
+    order.cancel()
+
+    assert order.status == OrderStatus.CANCELLED
+    assert sub_order.status == OrderStatus.CANCELLED
+

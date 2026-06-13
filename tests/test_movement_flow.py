@@ -257,3 +257,109 @@ def test_integration_wormhole_jump_flow():
     assert unit.in_hex == (-1, -1)
     assert unit.position == Position(10, 10)
     assert move_order.status == OrderStatus.COMPLETED
+
+
+def test_integration_multi_system_movement():
+    game = MagicMock()
+    galaxy = SimpleGalaxy()
+    # Add third system
+    galaxy.systems["Sirius"] = SimpleSystem("Sirius")
+    galaxy.system_graph = {
+        "Sol": ["Vega"],
+        "Vega": ["Sol", "Sirius"],
+        "Sirius": ["Vega"]
+    }
+    game.galaxy = galaxy
+    
+    player = MockPlayer()
+    game.players = [player]
+    game.current_player_index = 0
+    
+    # Setup wormholes
+    wh_sol_to_vega = SimpleWormhole(1, "Sol", (1, 1), "Vega", 2, Position(5, 5))
+    wh_vega_from_sol = SimpleWormhole(2, "Vega", (-1, -1), "Sol", 1, Position(5, 5))
+    wh_vega_to_sirius = SimpleWormhole(3, "Vega", (1, 1), "Sirius", 4, Position(10, 10))
+    wh_sirius_from_vega = SimpleWormhole(4, "Sirius", (-2, 2), "Vega", 3, Position(20, 20))
+    
+    galaxy.wormholes[1] = wh_sol_to_vega
+    galaxy.wormholes[2] = wh_vega_from_sol
+    galaxy.wormholes[3] = wh_vega_to_sirius
+    galaxy.wormholes[4] = wh_sirius_from_vega
+    
+    galaxy.systems["Sol"].hexes[(1, 1)].celestial_bodies.append(wh_sol_to_vega)
+    galaxy.systems["Vega"].hexes[(-1, -1)].celestial_bodies.append(wh_vega_from_sol)
+    galaxy.systems["Vega"].hexes[(1, 1)].celestial_bodies.append(wh_vega_to_sirius)
+    galaxy.systems["Sirius"].hexes[(-2, 2)].celestial_bodies.append(wh_sirius_from_vega)
+    
+    # Setup Unit in Sol at (0, 0)
+    unit = MockUnit()
+    unit.owner = player
+    unit.game = game
+    unit.in_galaxy = galaxy
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(0, 0)
+    
+    engines = Engines(unit, speed=100.0)
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5, recharge_duration=1)
+    commander = Commander(unit)
+    unit.add_component(engines)
+    unit.add_component(hd)
+    unit.add_component(commander)
+    
+    galaxy.systems["Sol"].add_unit(unit)
+    
+    # Move order to Sirius, hex (-2, 2), Position(20, 20)
+    move_order = MoveOrder(unit, {
+        "destination_system_name": "Sirius",
+        "destination_hex_coord": (-2, 2),
+        "destination_position": Position(20, 20)
+    })
+    
+    from unittest.mock import patch
+    with patch("unit_orders.find_intersystem_path", return_value=["Sol", "Vega", "Sirius"]):
+        commander.add_order(move_order)
+    
+    # We expect 5 sub-orders (including the final arrival waypoint check in Sirius)
+    assert len(move_order.sub_orders) == 5
+    assert move_order.sub_orders[0].parameters["destination_system_name"] == "Sol"
+    assert move_order.sub_orders[0].parameters["destination_hex_coord"] == (1, 1)
+    assert move_order.sub_orders[1].parameters["destination_system_name"] == "Vega"
+    assert move_order.sub_orders[1].parameters["destination_hex_coord"] == (-1, -1)
+    assert move_order.sub_orders[2].parameters["destination_system_name"] == "Vega"
+    assert move_order.sub_orders[2].parameters["destination_hex_coord"] == (1, 1)
+    assert move_order.sub_orders[3].parameters["destination_system_name"] == "Sirius"
+    assert move_order.sub_orders[3].parameters["destination_hex_coord"] == (-2, 2)
+    assert move_order.sub_orders[4].parameters["destination_system_name"] == "Sirius"
+    assert move_order.sub_orders[4].parameters["destination_hex_coord"] == (-2, 2)
+    
+    tp = TurnProcessor(game)
+    
+    # Turn 1: executes hex jump Sol (0,0) -> Sol (1,1)
+    tp.process_turn()
+    assert unit.in_system == "Sol"
+    assert unit.in_hex == (1, 1)
+    assert hd.jump_status == JumpStatus.READY # recharge completes in same turn updates
+    assert hd.wormhole_jump_target == wh_sol_to_vega
+    
+    # Turn 2: executes system jump Sol -> Vega (-1, -1)
+    tp.process_turn()
+    assert unit.in_system == "Vega"
+    assert unit.in_hex == (-1, -1)
+    assert hd.jump_status == JumpStatus.READY
+    assert hd.hex_jump_target == ((1, 1), Position(10, 10))
+    
+    # Turn 3: executes hex jump Vega (-1, -1) -> Vega (1, 1)
+    tp.process_turn()
+    assert unit.in_system == "Vega"
+    assert unit.in_hex == (1, 1)
+    assert hd.jump_status == JumpStatus.READY
+    assert hd.wormhole_jump_target == wh_vega_to_sirius
+    
+    # Turn 4: executes system jump Vega -> Sirius (-2, 2)
+    tp.process_turn()
+    assert unit.in_system == "Sirius"
+    assert unit.in_hex == (-2, 2)
+    assert unit.position == Position(20, 20)
+    assert move_order.status == OrderStatus.COMPLETED
+
