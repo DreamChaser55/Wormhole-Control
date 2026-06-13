@@ -44,19 +44,20 @@ class TurnProcessor:
                 logger.debug("Warning: Galaxy or systems not initialized in process_turn.")
                 return
 
-            # --- 1. Movement Planning & Execution ---
+            # The execution order is critical for game state consistency:
+            # 1. Resolve unit movement first so positions are updated.
+            # 2. Process population growth next so tax revenue utilizes updated sizes.
+            # 3. Generate resource credits based on the new population counts.
+            # 4. Run unit state updates (engines, weapons, order resolution) with updated context.
             with ProfileTimer("Movement processing"):
                 self._process_movement(current_player)
 
-            # --- 2. Population Growth ---
             with ProfileTimer("Population growth"):
                 self._process_population_growth()
 
-            # --- 3. Resource Generation ---
             with ProfileTimer("Resource generation"):
                 self._process_resource_generation(current_player)
 
-            # --- 4. Unit Updates ---
             with ProfileTimer("Unit updates"):
                 self._process_unit_updates(current_player)
 
@@ -90,7 +91,7 @@ class TurnProcessor:
                     unit.position = move_towards_position(unit.position, target_pos_in_sector, unit.engines_component.speed)
                     logger.debug(f"   {unit.name} moved to {unit.position} (sub-light)")
                     
-                    # If unit has an active inhibitor, update its position in the hex
+                    # Sync the active inhibitor field's location with the unit's new sub-light position.
                     if unit.inhibitor_component and unit.inhibitor_component.is_active:
                         current_hex_obj = system.hexes[unit.in_hex]
                         if current_hex_obj:
@@ -143,8 +144,9 @@ class TurnProcessor:
                     exit_wormhole_obj_for_exec: typing.Optional[Wormhole] = None
                     can_jump = False
 
-                    # Validation starts here, hd_comp.jump_status is JUMPING
-                    if not hd_comp.wormhole_jump_target: # Target might have been cleared by another process
+                    # Verify wormhole jump parameters are still valid at the moment of execution,
+                    # as targets could have been cleared or altered since planning.
+                    if not hd_comp.wormhole_jump_target:
                         logger.debug(f"   Error: Unit {unit.name} lost its wormhole_jump_target before system_jump execution. Aborting jump.")
                         hd_comp.jump_status = JumpStatus.ERROR 
                     elif not target_system:
@@ -214,26 +216,25 @@ class TurnProcessor:
 
                     target_hex, target_pos = typing.cast(typing.Tuple[HexCoord, "Position"], movement_data)
                     
-                    # Validation starts here, hd_comp.jump_status is JUMPING
-                    if not hd_comp.hex_jump_target: # Target might have been cleared
+                    # Validate the hex jump parameters. The destination must be within the same system,
+                    # within jump range, and not blocked by active inhibitor fields at the source or target.
+                    if not hd_comp.hex_jump_target:
                         logger.debug(f"   Error: Unit {unit.name} lost its hex_jump_target before hex_jump execution. Aborting jump.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         continue
 
-                    if target_hex not in origin_system.hexes: # Validate target hex
+                    if target_hex not in origin_system.hexes:
                         logger.debug(f"   Error: Unit {unit.name} hex_jump_target {target_hex} is invalid for system {origin_system.name}. Aborting.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.hex_jump_target = None
                         continue
 
-                    # Validate jump range
                     if unit.in_hex and hex_distance(unit.in_hex, target_hex) > hd_comp.jump_range:
                         logger.debug(f"   Error: Unit {unit.name} hex_jump to {target_hex} exceeds jump range of {hd_comp.jump_range}. Aborting.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.hex_jump_target = None
                         continue
 
-                    # Validate inhibition fields
                     jump_inhibited = False
                     origin_hex_obj = origin_system.hexes[unit.in_hex]
                     if origin_hex_obj:

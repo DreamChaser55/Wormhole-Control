@@ -87,7 +87,6 @@ class Order:
         if self.status != OrderStatus.COMPLETED:
             return False
             
-        # Check if all sub-orders are completed
         for sub_order in self.sub_orders:
             if not sub_order.is_completed():
                 return False
@@ -103,24 +102,23 @@ class Order:
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
         """Update the order status based on sub-orders status and own completion."""
-        # 1. Process active sub-orders
+        # Process the front sub-order in the queue sequentially. We block and wait
+        # until the current sub-order is fully resolved (completed, failed, or cancelled).
         while self.sub_orders:
-            current_sub_order = self.sub_orders[0]  # Front of the deque
+            current_sub_order = self.sub_orders[0]
 
             if current_sub_order.status == OrderStatus.PENDING:
                 current_sub_order.execute(galaxy_ref=galaxy_ref)
 
-            # If IN_PROGRESS after execute()...
             if current_sub_order.status == OrderStatus.IN_PROGRESS:
-                current_sub_order.update(galaxy_ref=galaxy_ref)  # ...run recursive update()
+                current_sub_order.update(galaxy_ref=galaxy_ref)
 
-            # If the sub-order is now finished, remove it and continue the loop
             if current_sub_order.status in [OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED]:
                 self.sub_orders.popleft()
             else:
                 return
 
-        # 2. If all sub-orders are completed (deque is empty), proceed with this order's own logic to check completion conditions.
+        # Once all sub-orders are cleared, verify if the parent order itself is complete.
         if self.status == OrderStatus.IN_PROGRESS:
             self.check_completion_conditions()
 
@@ -171,7 +169,7 @@ class ReachWaypointOrder(Order):
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (incomplete destination parameters).")
             return
             
-        # Case 1: Different hex in same system - use hyperdrive to jump
+        # Hex jumps require a hyperdrive. Sub-light movement engines are disabled.
         if current_system == dest_system and current_hex != dest_hex:
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
@@ -184,7 +182,7 @@ class ReachWaypointOrder(Order):
                 self.unit.engines_component.move_target = None
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating HEX JUMP to {dest_hex}:{dest_position} in {dest_system}.")
             
-        # Case 2: Same hex, different position - use engines for sublight movement
+        # Sub-light engine movement is used within the same hex. Hyperdrive targets are cleared.
         elif current_system == dest_system and current_hex == dest_hex:
             if not self.unit.engines_component:
                 self.status = OrderStatus.FAILED
@@ -206,7 +204,7 @@ class ReachWaypointOrder(Order):
                 self.unit.hyperdrive_component.wormhole_jump_target = None
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating sub-light move to {dest_position} in {dest_system}:{dest_hex}.")
             
-        # Case 3: Different system - need to use a wormhole to jump
+        # Inter-system travel requires navigating via a wormhole connecting the two systems.
         else: # current_system != dest_system
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
@@ -356,6 +354,8 @@ class MoveOrder(Order):
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: COMPLETED (already at destination {dest_system}:{dest_hex}:{dest_position}).")
             return
 
+        # If the unit starts inside an active inhibitor field, it cannot engage its hyperdrive.
+        # We must plan a sub-light escape move to the edge of the field before plotting the jump.
         if current_system != dest_system or current_hex != dest_hex:
             current_hex_obj = galaxy_ref.systems[current_system].hexes.get(current_hex)
             if current_hex_obj:
@@ -370,7 +370,7 @@ class MoveOrder(Order):
                         }, parent_order=self))
                         break
 
-        # 1. Inter-system travel: Destination is in a different system
+        # Inter-system travel: Destination is in a different system.
         if current_system != dest_system:
             if not self.unit.hyperdrive_component:
                 self.status = OrderStatus.FAILED
@@ -388,7 +388,7 @@ class MoveOrder(Order):
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (could not find exit for direct wormhole {direct_wormhole.id} in {dest_system}).")
                     return
 
-                # 1.1. Sub-order(s) to reach wormhole
+                # First, navigate to the entry wormhole.
                 if current_hex != direct_wormhole.in_hex:
                     self.plan_hex_jump_sequence(current_hex, direct_wormhole.in_hex, direct_wormhole.position, current_system, galaxy_ref)
                 else:
@@ -399,7 +399,7 @@ class MoveOrder(Order):
                     }, parent_order=self))
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Added sub-order to move to direct wormhole position.")
 
-                # 1.2. Sub-order to jump through wormhole
+                # Second, execute the wormhole jump.
                 self.add_sub_order(ReachWaypointOrder(self.unit, {
                     "destination_system_name": dest_system,
                     "destination_hex_coord": exit_wh.in_hex,
@@ -407,7 +407,8 @@ class MoveOrder(Order):
                 }, parent_order=self))
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Added sub-order to jump through direct wormhole to {dest_system}.")
 
-                # 1.3. Check if wormhole exit is inhibited and add sub-light move if needed
+                # If the destination wormhole exit is inhibited, we immediately schedule a sub-light escape
+                # maneuver to a random safe point outside the inhibitor field.
                 arrival_pos = exit_wh.position
                 arrival_hex_obj = galaxy_ref.systems[dest_system].hexes[exit_wh.in_hex]
                 if arrival_hex_obj:
@@ -428,13 +429,12 @@ class MoveOrder(Order):
                             arrival_pos = safe_pos
                             break
 
-                # 1.4. Sub-order(s) to move to final destination position
+                # Finally, navigate from the exit wormhole to the final destination.
                 if exit_wh.in_hex != dest_hex:
                     self.plan_hex_jump_sequence(exit_wh.in_hex, dest_hex, dest_position, dest_system, galaxy_ref)
 
             else:
-                # No direct wormhole, try pathfinding
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: No direct wormhole from {current_system} to {dest_system}. Attempting pathfinding using Dijkstra's algorithm (find_intersystem_path).")
+                # If no direct wormhole exists, find a multi-system path using Dijkstra's algorithm.
                 path_to_destination = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system)
 
                 if not path_to_destination or len(path_to_destination) < 2:
@@ -464,7 +464,7 @@ class MoveOrder(Order):
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no exit for wormhole {wormhole_for_leg.id}).")
                         return
 
-                    # Sub-order(s) to reach entry wormhole hex and move to entry wormhole position
+                    # Navigate from the last leg's entry point to this leg's entry wormhole position.
                     if current_leg_arrival_hex != wormhole_for_leg.in_hex:
                         self.plan_hex_jump_sequence(current_leg_arrival_hex, wormhole_for_leg.in_hex, wormhole_for_leg.position, leg_origin_system, galaxy_ref)
                     else:
@@ -475,7 +475,7 @@ class MoveOrder(Order):
                         }, parent_order=self))
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Leg {i+1} - Added sub-order to move by sub-light engines to entry Wormhole position in {leg_origin_system}.")
 
-                    # Sub-order to jump through wormhole
+                    # Jump to the target system of this leg.
                     self.add_sub_order(ReachWaypointOrder(self.unit, {
                         "destination_system_name": leg_destination_system,
                         "destination_hex_coord": exit_wormhole_for_leg.in_hex,
@@ -483,7 +483,7 @@ class MoveOrder(Order):
                     }, parent_order=self))
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Leg {i+1} - Added sub-order to jump {leg_origin_system} -> {leg_destination_system}.")
 
-                    # Check if the arrival point of this leg is inhibited
+                    # Handle case where the intermediate leg exit is blocked by an inhibitor field.
                     arrival_pos_leg = exit_wormhole_for_leg.position
                     arrival_hex_obj_leg = galaxy_ref.systems[leg_destination_system].hexes[exit_wormhole_for_leg.in_hex]
                     if arrival_hex_obj_leg:
@@ -505,23 +505,20 @@ class MoveOrder(Order):
 
                     current_leg_arrival_hex = exit_wormhole_for_leg.in_hex
 
-                # After all inter-system jumps, unit is in 'dest_system' at 'current_leg_arrival_hex'.
-                logger.debug(f"\n  [plan_route] Planning final movement from hex {current_leg_arrival_hex} to {dest_hex} in system {dest_system}.")
+                # Plan the final leg within the destination system.
                 self.plan_hex_jump_sequence(current_leg_arrival_hex, dest_hex, dest_position, dest_system, galaxy_ref)
 
-        # 2. Intra-system, inter-hex travel: Destination is in the same system but a different hex
+        # Intra-system travel: Jump to a different hex in the same system.
         elif current_hex != dest_hex:
             self.plan_hex_jump_sequence(current_hex, dest_hex, dest_position, current_system, galaxy_ref)
         
-        # 3. Intra-system, intra-hex travel (sub-light)
+        # Intra-hex travel: Move directly using sub-light engines.
         else:
             if not self.unit.engines_component:
                 self.status = OrderStatus.FAILED
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, no engines).")
                 return
             
-            logger.debug(f"  [plan_route] Destination is in the same hex. Planning final sub-light movement.")
-            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Adding REACH_WAYPOINT sub-order for final sub-light movement leg to {dest_position} in {dest_system}:{dest_hex}.")
             sub_order_params = {
                 "destination_system_name": dest_system,
                 "destination_hex_coord": dest_hex,
@@ -550,13 +547,13 @@ class ToggleInhibitorOrder(Order):
             inhibitor = self.unit.inhibitor_component
             proposed_field = Circle(center=self.unit.position, radius=inhibitor.radius)
 
-            # 1. Validate containment
+            # The inhibitor field must fit entirely inside the hex boundary
+            # and cannot overlap with any other active inhibitor fields.
             if not is_circle_contained(proposed_field, current_hex.boundary_circle):
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (field would cross sector boundary).")
                 self.status = OrderStatus.FAILED
                 return
 
-            # 2. Validate intersection
             for existing_zone in current_hex.get_all_inhibition_zones():
                 if do_circles_intersect(proposed_field, existing_zone):
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (field would overlap with another).")

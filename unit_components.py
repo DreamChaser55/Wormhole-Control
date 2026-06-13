@@ -144,27 +144,24 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         current_hex = galaxy_ref.systems[self.unit.in_system].hexes[self.unit.in_hex]
         
         if self.is_active:
-            # --- Logic for turning the field OFF ---
+            # Deactivate the field and clean up spatial registration.
             if self.unit.id in current_hex.dynamic_inhibition_zones:
                 del current_hex.dynamic_inhibition_zones[self.unit.id]
             self.turn_off()
             return True
         else:
-            # --- Logic for turning the field ON ---
+            # Activate the field after checking sector boundaries and overlap constraints.
             proposed_field = Circle(center=self.unit.position, radius=self.radius)
 
-            # 1. Validate containment
             if not is_circle_contained(proposed_field, current_hex.boundary_circle):
                 logger.debug(f"[{self.unit.name}] TOGGLE_INHIBITOR (Direct): FAILED (field would cross sector boundary).")
                 return False
 
-            # 2. Validate intersection
             for existing_zone in current_hex.get_all_inhibition_zones():
                 if do_circles_intersect(proposed_field, existing_zone):
                     logger.debug(f"[{self.unit.name}] TOGGLE_INHIBITOR (Direct): FAILED (field would overlap with another).")
                     return False
             
-            # All checks passed, turn it on
             self.turn_on()
             current_hex.dynamic_inhibition_zones[self.unit.id] = proposed_field
             return True
@@ -560,7 +557,7 @@ class Constructor(UnitComponent):
             position=position
         )
 
-        # Reset construction state
+        # Construction complete; reset building state variables.
         self.current_construction_target = None
         self.construction_progress = 0
         self.time_to_build = 0
