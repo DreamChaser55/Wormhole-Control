@@ -5,10 +5,12 @@ logger = logging.getLogger(__name__)
 import pygame
 import pygame_gui
 import typing
+import json
+import os
 from pygame import Color
 
 from constants import (
-    INFO_BOX_WIDTH, TOP_BAR_HEIGHT, CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT, BLUE, DEBUG, PROFILE
+    INFO_BOX_WIDTH, TOP_BAR_HEIGHT, CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT, BLUE, DEBUG, PROFILE, TEXT_SCALE
 )
 from utils import ContextMenuOption, resource_path
 from geometry import Vector, Position
@@ -26,7 +28,34 @@ class GUI_Handler:
 
         try:
             theme_path = resource_path('theme.json')
-            self.manager = pygame_gui.UIManager(self.screen_res.to_tuple(), theme_path)
+            
+            # Dynamically scale theme text sizes
+            scaled_theme_path = resource_path('theme_scaled.json')
+            try:
+                with open(theme_path, 'r') as f:
+                    theme_data = json.load(f)
+                
+                # Scale fonts array
+                for font in theme_data.get('fonts', []):
+                    if 'size' in font:
+                        font['size'] = str(max(1, int(int(font['size']) * TEXT_SCALE)))
+                    if 'point_size' in font:
+                        font['point_size'] = max(1, int(int(font['point_size']) * TEXT_SCALE))
+                
+                # Scale individual element font sizes
+                for key, value in theme_data.items():
+                    if isinstance(value, dict) and 'font' in value and 'size' in value['font']:
+                        value['font']['size'] = str(max(1, int(int(value['font']['size']) * TEXT_SCALE)))
+
+                with open(scaled_theme_path, 'w') as f:
+                    json.dump(theme_data, f)
+                
+                theme_path_to_use = scaled_theme_path
+            except Exception as e:
+                logger.error(f"Error generating scaled theme: {e}")
+                theme_path_to_use = theme_path
+                
+            self.manager = pygame_gui.UIManager(self.screen_res.to_tuple(), theme_path_to_use)
         except FileNotFoundError:
              logger.debug("Warning: theme.json not found. Using default UI theme.")
              self.manager = pygame_gui.UIManager(self.screen_res.to_tuple())
@@ -39,19 +68,19 @@ class GUI_Handler:
             font_dict = self.manager.ui_theme.get_font_dictionary()
             
             # Preload Arial 18 Regular
-            arial_18_reg_id = font_dict.create_font_id(font_size=18, font_name='arial', bold=False, italic=False, antialiased=True)
+            arial_18_reg_id = font_dict.create_font_id(font_size=max(1, int(18 * TEXT_SCALE)), font_name='arial', bold=False, italic=False, antialiased=True)
             if not font_dict.check_font_preloaded(arial_18_reg_id):
-                font_dict.preload_font(font_size=18, font_name='arial', bold=False, italic=False, antialiased=True)
+                font_dict.preload_font(font_size=max(1, int(18 * TEXT_SCALE)), font_name='arial', bold=False, italic=False, antialiased=True)
             
             # Preload Arial 16 Regular
-            arial_16_reg_id = font_dict.create_font_id(font_size=16, font_name='arial', bold=False, italic=False, antialiased=True)
+            arial_16_reg_id = font_dict.create_font_id(font_size=max(1, int(16 * TEXT_SCALE)), font_name='arial', bold=False, italic=False, antialiased=True)
             if not font_dict.check_font_preloaded(arial_16_reg_id):
-                font_dict.preload_font(font_size=16, font_name='arial', bold=False, italic=False, antialiased=True)
+                font_dict.preload_font(font_size=max(1, int(16 * TEXT_SCALE)), font_name='arial', bold=False, italic=False, antialiased=True)
 
             # Preload Noto Sans 14 Bold
-            noto_sans_14_bold_id = font_dict.create_font_id(font_size=14, font_name='noto_sans', bold=True, italic=False, antialiased=True)
+            noto_sans_14_bold_id = font_dict.create_font_id(font_size=max(1, int(14 * TEXT_SCALE)), font_name='noto_sans', bold=True, italic=False, antialiased=True)
             if not font_dict.check_font_preloaded(noto_sans_14_bold_id):
-                font_dict.preload_font(font_size=14, font_name='noto_sans', bold=True, italic=False, antialiased=True)
+                font_dict.preload_font(font_size=max(1, int(14 * TEXT_SCALE)), font_name='noto_sans', bold=True, italic=False, antialiased=True)
 
         if self.manager:
            self.manager.set_visual_debug_mode(True)

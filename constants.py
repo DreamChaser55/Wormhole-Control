@@ -9,7 +9,8 @@ PROFILE = False
 SQRT3 = 1.7320508075688772
 
 # UI Constants
-SCREEN_RES = Vector(1280, 720)
+SCREEN_RES = Vector(2560, 1440)
+TEXT_SCALE = SCREEN_RES.y / 720.0
 
 # System view parameters
 SYSTEM_CENTER_IN_PX = Position(SCREEN_RES.x // 2, SCREEN_RES.y // 2) # Center of system view hex grid in pixels

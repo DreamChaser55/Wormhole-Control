@@ -6,7 +6,7 @@ import math
 from galaxy import StarSystem
 from constants import (
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR, WORMHOLE_JUMP_ORDER_COLOR,
-    WORMHOLE_LINE_COLOR, BLUE, GRAY
+    WORMHOLE_LINE_COLOR, BLUE, GRAY, TEXT_SCALE
 )
 from entities import Unit, OrderType
 if TYPE_CHECKING:
@@ -53,7 +53,8 @@ class GalaxyViewRenderer:
             pygame.draw.circle(self.screen, color, pos_tuple, radius)
 
             # Draw system name
-            font = pygame.font.Font(None, 14)
+            font_size = max(1, int(14 * TEXT_SCALE))
+            font = pygame.font.Font(None, font_size)
             text_surface = font.render(system.name, True, color)
             text_rect = text_surface.get_rect()
             text_rect.midleft = (pos_tuple[0] + radius + 5, pos_tuple[1])
