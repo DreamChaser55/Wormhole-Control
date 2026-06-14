@@ -51,9 +51,9 @@ STAR_NAMES = _load_star_names()
 
 # Galaxy generation parameters
 NUM_SYSTEMS = 15
-GALAXY_PADDING = 50 # Pixels from edge for system placement
-MIN_SYSTEM_DISTANCE = 50
-MAX_SYSTEM_DISTANCE = 350
+GALAXY_PADDING = int(50 * (SCREEN_RES.y / 720.0)) # Pixels from edge for system placement
+MIN_SYSTEM_DISTANCE = int(50 * (SCREEN_RES.y / 720.0))
+MAX_SYSTEM_DISTANCE = int(350 * (SCREEN_RES.y / 720.0))
 SECOND_NEAREST_WORMHOLE_PROB = 1/3 # Probability of connecting a system to the second nearest system
 
 # --- Hex Class ---
