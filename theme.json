@@ -35,8 +35,30 @@
         }
     ],
     "defaults": {
+        "font": {
+            "name": "arial",
+            "size": "14"
+        },
         "colours": {
             "normal_text": "#FFFFFF"
+        }
+    },
+    "button": {
+        "font": {
+            "name": "arial",
+            "size": "14"
+        }
+    },
+    "label": {
+        "font": {
+            "name": "arial",
+            "size": "14"
+        }
+    },
+    "text_box": {
+        "font": {
+            "name": "arial",
+            "size": "14"
         }
     },
     "#side_bar_info_panel": {
