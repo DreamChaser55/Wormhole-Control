@@ -890,7 +890,7 @@ class GUI_Handler:
                 
                 total_height = 0
                 for i, line in enumerate(lines):
-                    label_rect = pygame.Rect(current_element_x, current_element_y + (i * line_height), current_element_width, line_height)
+                    label_rect = pygame.Rect(current_element_x, current_element_y + total_height, current_element_width, -1)
                     label = pygame_gui.elements.UILabel(
                         relative_rect=label_rect,
                         text=line,
@@ -899,7 +899,7 @@ class GUI_Handler:
                         object_id=obj_id
                     )
                     self.side_bar_dynamic_elements.append(label)
-                    total_height += line_height
+                    total_height += label.get_relative_rect().height
                 
                 actual_element_total_height = total_height
             

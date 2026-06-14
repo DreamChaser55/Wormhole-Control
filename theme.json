@@ -208,7 +208,7 @@
             "normal_text": "#B0B0C0" 
         },
         "misc": {
-            "text_horiz_alignment": "default",
+            "text_horiz_alignment": "left",
             "padding": "4",
             "line_spacing": "1.12"
         }
