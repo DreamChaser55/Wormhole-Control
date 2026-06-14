@@ -38,9 +38,10 @@ class SystemViewRenderer:
             hex_center_pixel = hex_to_pixel(q, r)
 
             # Draw celestial bodies
+            scale_val = self.screen.get_height() / 720.0
             for body in hex_obj.celestial_bodies:
                 body_color = DARK_GRAY
-                body_radius = 3
+                body_radius = int(3 * scale_val)
                 should_draw_circle = True
 
                 if isinstance(body, Star):
@@ -51,7 +52,7 @@ class SystemViewRenderer:
                         StarType.NEUTRON_STAR: WHITE,
                     }
                     body_color = star_color_map.get(body.star_type, YELLOW)
-                    body_radius = 8
+                    body_radius = int(8 * scale_val)
                 elif isinstance(body, Planet):
                     planet_color_map = {
                         PlanetType.TERRAN: (0, 128, 0),
@@ -65,19 +66,19 @@ class SystemViewRenderer:
                         PlanetType.GAS_GIANT: (255, 228, 181),
                     }
                     body_color = planet_color_map.get(body.planet_type, CYAN)
-                    body_radius = 4
+                    body_radius = int(4 * scale_val)
                     if body.owner:
-                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + 3, 1)
+                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val), 1)
                 elif isinstance(body, Moon):
                     body_color = (200, 200, 200)
-                    body_radius = 2
+                    body_radius = int(2 * scale_val)
                     if body.owner:
-                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + 3, 1)
+                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val), 1)
                 elif isinstance(body, Asteroid):
                     body_color = (90, 60, 50)
-                    body_radius = 2
+                    body_radius = int(2 * scale_val)
                     if body.owner:
-                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + 3, 1)
+                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val), 1)
                 elif isinstance(body, AsteroidField):
                     self._draw_celestial_field(body, hex_center_pixel, (100, 100, 100))
                     should_draw_circle = False
@@ -95,29 +96,29 @@ class SystemViewRenderer:
                     should_draw_circle = False
                 elif isinstance(body, Comet):
                     body_color = (240, 248, 255)
-                    body_radius = 2
+                    body_radius = int(2 * scale_val)
                 elif isinstance(body, Wormhole):
                     body_color = PURPLE
-                    body_radius = 4
+                    body_radius = int(4 * scale_val)
                     if body.stability < 100:
-                        pygame.draw.circle(self.screen, RED, (hex_center_pixel.x, hex_center_pixel.y), body_radius + 2, 1)
+                        pygame.draw.circle(self.screen, RED, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 1)
 
                 if should_draw_circle:
                     pygame.draw.circle(self.screen, body_color, (hex_center_pixel.x, hex_center_pixel.y), body_radius)
 
                 if body in self.game.selected_objects:
-                    pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (hex_center_pixel.x, hex_center_pixel.y), body_radius + 2, 2)
+                    pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 2)
 
             # Draw units
             unit_list = hex_obj.units
             num_units_in_hex = len(unit_list)
 
             if num_units_in_hex > 0:
-                new_system_view_icon_base_size = 3.0
+                new_system_view_icon_base_size = 3.0 * scale_val
                 icon_draw_width = new_system_view_icon_base_size * 2 
                 icon_draw_height = new_system_view_icon_base_size * 2 
-                icon_padding_x = 3
-                icon_padding_y = 3 
+                icon_padding_x = 3.0 * scale_val
+                icon_padding_y = 3.0 * scale_val 
                 icon_slot_width = icon_draw_width + icon_padding_x
                 icon_slot_height = icon_draw_height + icon_padding_y
                 icons_per_row = 3
@@ -512,8 +513,8 @@ class SystemViewRenderer:
 
     def _draw_nebula(self, nebula, pos_px):
         num_circles = 15
-        # Use a smaller radius for system view
-        base_radius = NEBULA_RADIUS / 20.0
+        scale_val = self.screen.get_height() / 720.0
+        base_radius = 10.0 * scale_val
         max_offset = base_radius * 0.6
 
         # Seed the random number generator for consistent nebula appearance
@@ -541,7 +542,8 @@ class SystemViewRenderer:
 
     def _draw_celestial_field(self, field, pos_px, base_color, num_particles=15):
         num_asteroids = num_particles
-        field_radius = 10
+        scale_val = self.screen.get_height() / 720.0
+        field_radius = 10 * scale_val
         time_ms = pygame.time.get_ticks()
 
         random.seed(field.id)
@@ -550,7 +552,7 @@ class SystemViewRenderer:
             initial_angle = random.uniform(0, 360)
             initial_radius = random.uniform(field_radius * 0.2, field_radius)
             rotation_speed = random.uniform(-3.0, 3.0)
-            asteroid_size = 1
+            asteroid_size = max(1, int(1 * scale_val))
             color_variation = random.randint(-20, 20)
             asteroid_color = (max(0, min(255, base_color[0] + color_variation)),
                               max(0, min(255, base_color[1] + color_variation)),
@@ -567,7 +569,8 @@ class SystemViewRenderer:
 
     def _draw_storm(self, storm, pos_px):
         num_circles = 25
-        base_radius = STORM_RADIUS / 20.0
+        scale_val = self.screen.get_height() / 720.0
+        base_radius = 10.0 * scale_val
         time_ms = pygame.time.get_ticks()
 
         random.seed(storm.id)

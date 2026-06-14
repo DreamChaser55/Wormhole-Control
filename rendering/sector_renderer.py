@@ -75,7 +75,7 @@ class SectorViewRenderer:
 
         for obj in all_objects_in_sector:
             obj_pixel_pos = sector_coords_to_pixels(obj.position) 
-            obj_radius = 5 
+            obj_radius_logical = 13.89 # Default logical radius (equivalent to 5 pixels)
             obj_color = WHITE 
 
             should_draw_circle = True
@@ -87,7 +87,7 @@ class SectorViewRenderer:
                     StarType.NEUTRON_STAR: WHITE,
                 }
                 obj_color = star_color_map.get(obj.star_type, YELLOW)
-                obj_radius = STAR_RADIUS
+                obj_radius_logical = STAR_RADIUS
             elif isinstance(obj, Planet):
                 planet_color_map = {
                     PlanetType.TERRAN: (0, 128, 0),
@@ -101,19 +101,22 @@ class SectorViewRenderer:
                     PlanetType.GAS_GIANT: (255, 228, 181),
                 }
                 obj_color = planet_color_map.get(obj.planet_type, CYAN)
-                obj_radius = PLANET_RADIUS
+                obj_radius_logical = PLANET_RADIUS
                 if obj.owner:
-                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), int(obj_radius) + 3, 1)
+                    pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
             elif isinstance(obj, Moon):
                 obj_color = (200, 200, 200)
-                obj_radius = 10
+                obj_radius_logical = 27.78
                 if obj.owner:
-                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), int(obj_radius) + 3, 1)
+                    pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
             elif isinstance(obj, Asteroid):
                 obj_color = (90, 60, 50)
-                obj_radius = 6
+                obj_radius_logical = 16.67
                 if obj.owner:
-                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), int(obj_radius) + 3, 1)
+                    pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
             elif isinstance(obj, AsteroidField):
                 self._draw_celestial_field(obj, obj_pixel_pos, (100, 100, 100))
                 should_draw_circle = False
@@ -131,35 +134,38 @@ class SectorViewRenderer:
                 should_draw_circle = False
             elif isinstance(obj, Comet):
                 obj_color = (240, 248, 255)
-                obj_radius = 6
+                obj_radius_logical = 16.67
             elif isinstance(obj, Wormhole):
-                obj_radius = WORMHOLE_RADIUS
+                obj_radius_logical = WORMHOLE_RADIUS
                 obj_color = PURPLE
                 if obj.stability < 100:
-                    pygame.draw.circle(self.screen, RED, (obj_pixel_pos.x, obj_pixel_pos.y), int(obj_radius) + 2, 1)
+                    pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                    pygame.draw.circle(self.screen, RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
             elif isinstance(obj, DebrisField):
                 obj_color = obj.color
-                obj_radius = 4
+                obj_radius_logical = 11.11
 
             if should_draw_circle and not isinstance(obj, Unit):
-                pygame.draw.circle(self.screen, obj_color, (obj_pixel_pos.x, obj_pixel_pos.y), int(obj_radius))
+                pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                pygame.draw.circle(self.screen, obj_color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius)
             elif isinstance(obj, Unit):
                 unit_obj: Unit = obj
                 obj_color = unit_obj.owner.color if unit_obj.owner else WHITE
 
                 shape_type = 'triangle' if unit_obj.engines_component else 'square'
                 scale_factor = HULL_BASE_ICON_SCALES[unit_obj.hull_size]
-                current_icon_base_size = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
+                current_icon_base_size_logical = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
                 dot_count = HULL_DOT_COUNTS[unit_obj.hull_size]
                 
-                obj_radius = current_icon_base_size
+                current_icon_base_size_px = int(current_icon_base_size_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                obj_radius_logical = current_icon_base_size_logical
 
-                draw_shape(self.screen, shape_type, obj_color, obj_pixel_pos, current_icon_base_size)
+                draw_shape(self.screen, shape_type, obj_color, obj_pixel_pos, current_icon_base_size_px)
 
                 if unit_obj in self.game.selected_objects and unit_obj.max_hit_points > 0:
-                    health_bar_width = current_icon_base_size * 2
+                    health_bar_width = current_icon_base_size_px * 2
                     health_bar_height = 4
-                    health_bar_y_offset = current_icon_base_size + 10
+                    health_bar_y_offset = current_icon_base_size_px + 10
                     
                     health_percentage = unit_obj.current_hit_points / unit_obj.max_hit_points
                     
@@ -172,32 +178,37 @@ class SectorViewRenderer:
                     pygame.draw.rect(self.screen, health_color, (health_bar_x, health_bar_y, health_bar_width * health_percentage, health_bar_height))
 
                 if dot_count > 0:
-                    dot_base_y_offset = current_icon_base_size * 0.6
-                    if shape_type == 'square':
-                        dot_base_y_offset = current_icon_base_size
+                    icon_dot_radius_px = int(ICON_DOT_RADIUS * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                    icon_dot_spacing_px = int(ICON_DOT_SPACING * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
                     
-                    dot_base_y = obj_pixel_pos.y + dot_base_y_offset + ICON_DOT_RADIUS + 2
+                    dot_base_y_offset = current_icon_base_size_px * 0.6
+                    if shape_type == 'square':
+                        dot_base_y_offset = current_icon_base_size_px
+                    
+                    dot_base_y = obj_pixel_pos.y + dot_base_y_offset + icon_dot_radius_px + 2
 
                     if shape_type == 'triangle':
-                        base_p2_x = obj_pixel_pos.x - int(current_icon_base_size * 0.8)
-                        base_p3_x = obj_pixel_pos.x + int(current_icon_base_size * 0.8)
+                        base_p2_x = obj_pixel_pos.x - int(current_icon_base_size_px * 0.8)
+                        base_p3_x = obj_pixel_pos.x + int(current_icon_base_size_px * 0.8)
                         base_width = base_p3_x - base_p2_x
-                        start_x = base_p2_x + (base_width - (dot_count - 1) * ICON_DOT_SPACING) / 2
+                        start_x = base_p2_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
                     else: # Square
-                        base_p_left_x = obj_pixel_pos.x - current_icon_base_size
-                        base_p_right_x = obj_pixel_pos.x + current_icon_base_size
+                        base_p_left_x = obj_pixel_pos.x - current_icon_base_size_px
+                        base_p_right_x = obj_pixel_pos.x + current_icon_base_size_px
                         base_width = base_p_right_x - base_p_left_x
-                        start_x = base_p_left_x + (base_width - (dot_count - 1) * ICON_DOT_SPACING) / 2
+                        start_x = base_p_left_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
 
                     for dot_i in range(dot_count):
-                        dot_x = start_x + dot_i * ICON_DOT_SPACING
-                        pygame.draw.circle(self.screen, obj_color, (dot_x, dot_base_y), ICON_DOT_RADIUS)
+                        dot_x = start_x + dot_i * icon_dot_spacing_px
+                        pygame.draw.circle(self.screen, obj_color, (dot_x, dot_base_y), icon_dot_radius_px)
 
             if obj == self.game.sector_view_mouse_hover_object:
-                pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), int(obj_radius) + 3, 1)
+                pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
 
             if obj in self.game.selected_objects:
-                pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), int(obj_radius) + 5, 2)
+                pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 5, 2)
 
             if isinstance(obj, Unit) and (obj in self.game.selected_objects or obj == self.game.sector_view_mouse_hover_object):
                 unit_obj: Unit = obj
@@ -211,7 +222,8 @@ class SectorViewRenderer:
                     if target_wh_for_jump.in_system == self.game.current_system_name and target_wh_for_jump.in_hex == self.game.current_sector_coord:
                         wh_pixel_pos = sector_coords_to_pixels(target_wh_for_jump.position)
                         pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
-                        pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), int(WORMHOLE_RADIUS) + 4, 1)
+                        wh_pixel_radius = int(WORMHOLE_RADIUS * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                        pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
                 elif unit_obj.commander_component and unit_obj.commander_component.current_order:
                     order = unit_obj.commander_component.current_order
                     if order.order_type == OrderType.MOVE and order.status in [OrderStatus.PENDING, OrderStatus.IN_PROGRESS]:
@@ -229,7 +241,8 @@ class SectorViewRenderer:
                                 if local_wh_for_jump and local_wh_for_jump.in_system == self.game.current_system_name and local_wh_for_jump.in_hex == self.game.current_sector_coord:
                                     wh_pixel_pos = sector_coords_to_pixels(local_wh_for_jump.position)
                                     pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
-                                    pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), int(WORMHOLE_RADIUS) + 4, 1)
+                                    wh_pixel_radius = int(WORMHOLE_RADIUS * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                                    pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
                 if unit_obj.commander_component and (unit_obj in self.game.selected_objects or unit_obj == self.game.sector_view_mouse_hover_object):
                     self._draw_sector_view_order_lines(unit_obj, obj_pixel_pos.x, obj_pixel_pos.y)
                                 
@@ -491,28 +504,32 @@ class SectorViewRenderer:
 
     def _draw_nebula(self, nebula, pos_px):
         num_circles = 15
-        max_offset = NEBULA_RADIUS / 2.0
-        base_radius = NEBULA_RADIUS
+        max_offset_logical = NEBULA_RADIUS / 2.0
+        base_radius_logical = NEBULA_RADIUS
 
         # Seed the random number generator for consistent nebula appearance
         random.seed(nebula.id)
 
         for _ in range(num_circles):
-            offset_x = random.uniform(-max_offset, max_offset)
-            offset_y = random.uniform(-max_offset, max_offset)
-            circle_pos = (pos_px.x + offset_x, pos_px.y + offset_y)
+            offset_x_logical = random.uniform(-max_offset_logical, max_offset_logical)
+            offset_y_logical = random.uniform(-max_offset_logical, max_offset_logical)
+            
+            offset_x_px = offset_x_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL
+            offset_y_px = offset_y_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL
+            circle_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
 
             radius_variation = random.uniform(0.5, 1.2)
-            circle_radius = int(base_radius * radius_variation)
+            circle_radius_logical = base_radius_logical * radius_variation
+            circle_radius_px = int(circle_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
 
             alpha = random.randint(20, 50)
             color = NEBULA_COLORS[nebula.nebula_type]
             color = (color[0], color[1], color[2], alpha)
 
             # Create a separate surface for each circle to handle alpha blending correctly
-            circle_surface = pygame.Surface((circle_radius * 2, circle_radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(circle_surface, color, (circle_radius, circle_radius), circle_radius)
-            self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_radius, circle_pos[1] - circle_radius))
+            circle_surface = pygame.Surface((circle_radius_px * 2, circle_radius_px * 2), pygame.SRCALPHA)
+            pygame.draw.circle(circle_surface, color, (circle_radius_px, circle_radius_px), circle_radius_px)
+            self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_radius_px, circle_pos[1] - circle_radius_px))
         
         # Reset seed
         random.seed()
@@ -540,7 +557,10 @@ class SectorViewRenderer:
             current_angle_rad = math.radians(initial_angle + (time_ms / 500.0) * rotation_speed)
             offset_x = initial_radius * math.cos(current_angle_rad)
             offset_y = initial_radius * math.sin(current_angle_rad)
-            object_pos = (pos_px.x + offset_x, pos_px.y + offset_y)
+            
+            offset_x_px = offset_x * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL
+            offset_y_px = offset_y * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL
+            object_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
 
             # Draw the object
             pygame.draw.circle(self.screen, object_color, object_pos, object_size)
@@ -549,7 +569,7 @@ class SectorViewRenderer:
 
     def _draw_storm(self, storm, pos_px):
         num_circles = 25
-        base_radius = STORM_RADIUS
+        base_radius_logical = STORM_RADIUS
         time_ms = pygame.time.get_ticks()
 
         # Seed the random number generator for consistent storm appearance
@@ -558,23 +578,29 @@ class SectorViewRenderer:
         for i in range(num_circles):
             # Generate consistent random properties for each circle
             initial_angle = random.uniform(0, 360)
-            initial_radius = random.uniform(base_radius * 0.1, base_radius * 0.9)
+            initial_radius_logical = random.uniform(base_radius_logical * 0.1, base_radius_logical * 0.9)
             rotation_speed = random.uniform(-3.0, 3.0)  # degrees per 100ms
-            circle_base_radius = int(base_radius * random.uniform(0.2, 0.5))
+            circle_base_radius_logical = base_radius_logical * random.uniform(0.2, 0.5)
+            
+            circle_base_radius_px = int(circle_base_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            
             alpha = random.randint(30, 60)
             color = STORM_COLORS[storm.storm_type]
             color = (color[0], color[1], color[2], alpha)
 
             # Animate the circle's position
             current_angle_rad = math.radians(initial_angle + (time_ms / 100.0) * rotation_speed)
-            offset_x = initial_radius * math.cos(current_angle_rad)
-            offset_y = initial_radius * math.sin(current_angle_rad)
-            circle_pos = (pos_px.x + offset_x, pos_px.y + offset_y)
+            offset_x_logical = initial_radius_logical * math.cos(current_angle_rad)
+            offset_y_logical = initial_radius_logical * math.sin(current_angle_rad)
+            
+            offset_x_px = offset_x_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL
+            offset_y_px = offset_y_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL
+            circle_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
 
             # Draw the circle
-            circle_surface = pygame.Surface((circle_base_radius * 2, circle_base_radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(circle_surface, color, (circle_base_radius, circle_base_radius), circle_base_radius)
-            self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_base_radius, circle_pos[1] - circle_base_radius))
+            circle_surface = pygame.Surface((circle_base_radius_px * 2, circle_base_radius_px * 2), pygame.SRCALPHA)
+            pygame.draw.circle(circle_surface, color, (circle_base_radius_px, circle_base_radius_px), circle_base_radius_px)
+            self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_base_radius_px, circle_pos[1] - circle_base_radius_px))
 
         # Reset seed
         random.seed()
@@ -582,9 +608,10 @@ class SectorViewRenderer:
         # Draw lightning flashes on top
         if random.random() < 0.05:
             num_bolts = random.randint(1, 3)
+            base_radius_px = int(base_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
             for _ in range(num_bolts):
                 angle = random.uniform(0, 2 * math.pi)
-                length = random.uniform(base_radius * 1.0, base_radius * 1.5)
-                end_pos_x = pos_px.x + length * math.cos(angle)
-                end_pos_y = pos_px.y + length * math.sin(angle)
+                length_px = random.uniform(base_radius_px * 1.0, base_radius_px * 1.5)
+                end_pos_x = pos_px.x + length_px * math.cos(angle)
+                end_pos_y = pos_px.y + length_px * math.sin(angle)
                 pygame.draw.line(self.overlay_surface, STORM_LIGHTNING_COLOR, (pos_px.x, pos_px.y), (end_pos_x, end_pos_y), 2)

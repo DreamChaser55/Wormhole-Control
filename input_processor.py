@@ -7,14 +7,14 @@ import typing
 from pygame import Color
 
 from constants import (
-    HEX_SIZE, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX,
+    HEX_SIZE, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL,
     SECTOR_OBJECT_CLICK_RADIUS_MULT, STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, HULL_BASE_ICON_SCALES, SECTOR_VIEW_BASE_ICON_SIZE
 )
 from utils import HexCoord
 from geometry import Vector, Position, distance_sq
 from hexgrid_utils import pixel_to_hex
 from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
-from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Wormhole, HullSize
+from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Wormhole, HullSize
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent
@@ -178,17 +178,26 @@ class InputProcessor:
                     units = hex_obj.units
                     for obj in units + bodies:
                         pixel_pos = sector_coords_to_pixels(obj.position)
-                        obj_radius = 0
-                        if isinstance(obj, Star): obj_radius = STAR_RADIUS
-                        elif isinstance(obj, Planet): obj_radius = PLANET_RADIUS
-                        elif isinstance(obj, Wormhole): obj_radius = WORMHOLE_RADIUS
+                        obj_radius_logical = 0
+                        if isinstance(obj, Star): obj_radius_logical = STAR_RADIUS
+                        elif isinstance(obj, Planet): obj_radius_logical = PLANET_RADIUS
+                        elif isinstance(obj, Wormhole): obj_radius_logical = WORMHOLE_RADIUS
                         elif isinstance(obj, Unit):
                             unit_obj: Unit = obj
                             # Calculate effective icon size dynamically
                             scale_factor = HULL_BASE_ICON_SCALES[unit_obj.hull_size]
                             effective_icon_size = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
-                            obj_radius = effective_icon_size
+                            obj_radius_logical = effective_icon_size
+                        elif isinstance(obj, Moon):
+                            obj_radius_logical = 27.78
+                        elif isinstance(obj, Asteroid):
+                            obj_radius_logical = 16.67
+                        elif isinstance(obj, Comet):
+                            obj_radius_logical = 16.67
+                        else:
+                            obj_radius_logical = 13.89
                         
+                        obj_radius = obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL
                         actual_click_radius = obj_radius * SECTOR_OBJECT_CLICK_RADIUS_MULT
                         click_radius_sq = (max(actual_click_radius, 5.0))**2
                         if click_radius_sq < 5**2: click_radius_sq = 5**2
