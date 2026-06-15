@@ -121,6 +121,10 @@ class GUI_Handler:
         self.context_menu_buttons: typing.List[pygame_gui.elements.UIButton] = []
         self.context_menu_target: typing.Any = None
         self.context_menu_options: typing.List[ContextMenuOption] = []
+        # Submenu support: maps button index -> list of sub-options
+        self.context_menu_submenus: typing.Dict[int, typing.List[typing.Tuple[str, str]]] = {}
+        self.context_menu_parent_options: typing.Optional[typing.List[ContextMenuOption]] = None
+        self.context_menu_parent_position: typing.Optional[Position] = None
 
         # In-Game Menu
         self.ingame_menu_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
@@ -644,15 +648,47 @@ class GUI_Handler:
             elif self.context_menu_buttons:
                 for i, button in enumerate(self.context_menu_buttons):
                     if event.ui_element == button and i < len(self.context_menu_options):
-                        action_id = self.context_menu_options[i][1]
-                        logger.debug(f"[GUI] Context menu button '{action_id}' pressed")
-                        action_result = {
-                            'action': 'context_menu_select', 
-                            'action_id': action_id, 
-                            'target': self.context_menu_target
-                        } 
-                        self.close_context_menu()
-                        break
+                        # Check if this is a submenu parent button
+                        if i in self.context_menu_submenus:
+                            # Replace menu in-place with submenu options
+                            sub_options = self.context_menu_submenus[i]
+                            saved_target = self.context_menu_target
+                            saved_parent_options = list(self.context_menu_options)
+                            saved_position = self.context_menu_parent_position or Position(
+                                self.context_menu_panel.get_abs_rect().x,
+                                self.context_menu_panel.get_abs_rect().y
+                            )
+                            # Build child menu with a back item
+                            child_options = [("← Back", "__submenu_back__")] + sub_options
+                            self.open_context_menu(saved_position, child_options, saved_target)
+                            # Store parent options for back navigation
+                            self.context_menu_parent_options = saved_parent_options
+                            self.context_menu_parent_position = saved_position
+                            action_result = {'action': 'ui_handled'}
+                            break
+                        # Check if this is the "back" button
+                        elif self.context_menu_options[i][1] == "__submenu_back__":
+                            if self.context_menu_parent_options:
+                                saved_target = self.context_menu_target
+                                saved_position = self.context_menu_parent_position or Position(
+                                    self.context_menu_panel.get_abs_rect().x,
+                                    self.context_menu_panel.get_abs_rect().y
+                                )
+                                parent_options = self.context_menu_parent_options
+                                self.open_context_menu(saved_position, parent_options, saved_target)
+                                self.context_menu_parent_options = None
+                            action_result = {'action': 'ui_handled'}
+                            break
+                        else:
+                            action_id = self.context_menu_options[i][1]
+                            logger.debug(f"[GUI] Context menu button '{action_id}' pressed")
+                            action_result = {
+                                'action': 'context_menu_select', 
+                                'action_id': action_id, 
+                                'target': self.context_menu_target
+                            } 
+                            self.close_context_menu()
+                            break
             
             elif event.ui_element in self.dynamic_button_actions and self.dynamic_button_actions[event.ui_element]:
                 button_data = self.dynamic_button_actions[event.ui_element]
@@ -965,12 +1001,17 @@ class GUI_Handler:
                 current_y_offset += element_padding
 
     def open_context_menu(self, position: Position, options: typing.List[ContextMenuOption], target: typing.Any):
-        """Creates and displays a context menu at the given position."""
+        """Creates and displays a context menu at the given position.
+        
+        Options can be flat (label, action_id) or submenu parents (label, [(label, action_id), ...]).
+        Submenu parent items are rendered with a ▸ suffix indicator.
+        """
         self.close_context_menu()
 
         self.context_menu_options = options
         self.context_menu_target = target
         self.context_menu_buttons = []
+        self.context_menu_submenus = {}
 
         if not options:
             return
@@ -979,9 +1020,9 @@ class GUI_Handler:
         panel_height = len(options) * (CONTEXT_MENU_ITEM_HEIGHT + 2) + 10
 
         if position.x + panel_width > self.screen_res.x:
-            position.x -= panel_width
+            position = Position(position.x - panel_width, position.y)
         if position.y + panel_height > self.screen_res.y:
-            position.y -= panel_height
+            position = Position(position.x, position.y - panel_height)
         panel_rect = pygame.Rect(position.x, position.y, panel_width, panel_height)
 
         self.context_menu_panel = pygame_gui.elements.UIPanel(relative_rect=panel_rect, 
@@ -991,9 +1032,15 @@ class GUI_Handler:
 
         button_y = 5
         for i, (text, action_id) in enumerate(options):
+            # Detect submenu parent: action_id is a list of (label, action_id) tuples
+            if isinstance(action_id, list):
+                display_text = f"{text} \u25b8"
+                self.context_menu_submenus[i] = action_id
+            else:
+                display_text = text
             button_rect = pygame.Rect(5, button_y, panel_width - 10, CONTEXT_MENU_ITEM_HEIGHT)
             button = pygame_gui.elements.UIButton(relative_rect=button_rect,
-                              text=text,
+                              text=display_text,
                               manager=self.manager,
                               container=self.context_menu_panel,
                               object_id=pygame_gui.core.ObjectID(class_id='@context_menu_button'))
@@ -1008,6 +1055,9 @@ class GUI_Handler:
         self.context_menu_buttons = []
         self.context_menu_options = []
         self.context_menu_target = None
+        self.context_menu_submenus = {}
+        self.context_menu_parent_options = None
+        self.context_menu_parent_position = None
 
     def is_mouse_over_context_menu(self, mouse_pos: Position) -> bool:
         """Checks if the mouse position is over the context menu panel."""

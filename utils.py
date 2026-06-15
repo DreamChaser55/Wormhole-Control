@@ -9,7 +9,10 @@ import time
 
 # Type definitions
 HexCoord = typing.Tuple[int, int]
-ContextMenuOption = typing.Tuple[str, str]
+ContextMenuOption = typing.Union[
+    typing.Tuple[str, str],                                    # Flat option: (label, action_id)
+    typing.Tuple[str, typing.List[typing.Tuple[str, str]]]     # Submenu parent: (label, [(label, action_id), ...])
+]
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """

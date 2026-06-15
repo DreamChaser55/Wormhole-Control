@@ -315,7 +315,11 @@ class InputProcessor:
                                 if actor.constructor_component:
                                     build_options = []
                                     for buildable in actor.constructor_component.buildable_units:
-                                        build_options.append((f"{buildable.unit_template_name}", f"construct_{buildable.unit_template_name}"))
+                                        from unit_templates import UNIT_TEMPLATES
+                                        template = UNIT_TEMPLATES.get(buildable.unit_template_name, {})
+                                        display_name = template.get("name", buildable.unit_template_name)
+                                        cost = buildable.cost_credits
+                                        build_options.append((f"{display_name} ({cost}c)", f"construct_{buildable.unit_template_name}"))
                                     if build_options:
                                         options.append(("Construct", build_options))
                                     break # Only need to check one constructor unit
