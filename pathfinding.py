@@ -12,13 +12,6 @@ from geometry import hex_distance
 Graph = typing.Dict[str, typing.List[str]] # Adjacency list: system_name -> [connected_system_names]
 Path = typing.List[str] # List of system names forming a path
 
-# Cache to store calculated paths between systems. Key is (start_node, end_node)
-_path_cache: typing.Dict[typing.Tuple[str, str], typing.Optional[Path]] = {}
-
-def clear_path_cache() -> None:
-    """Clears the inter-system pathfinding cache."""
-    global _path_cache
-    _path_cache.clear()
 
 def find_intersystem_path(graph: Graph, start_node: str, end_node: str) -> typing.Optional[Path]:
     """
@@ -40,12 +33,6 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str) -> typin
 
     if start_node == end_node:
         return [start_node]
-
-    # Check cache first
-    global _path_cache
-    cache_key = (start_node, end_node)
-    if cache_key in _path_cache:
-        return _path_cache[cache_key]
 
     # Distances from start_node to every other node
     # Initialize all distances to infinity, start_node to 0
@@ -74,9 +61,7 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str) -> typin
             while node_trace is not None:
                 path.append(node_trace)
                 node_trace = predecessors[node_trace]
-            res_path = path[::-1] # Reverse to get start -> end order
-            _path_cache[cache_key] = res_path
-            return res_path
+            return path[::-1] # Reverse to get start -> end order
 
         # Explore neighbors
         if current_node in graph: # Check if current_node has neighbors defined
@@ -95,7 +80,6 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str) -> typin
 
 
     # If the loop finishes and end_node wasn't reached
-    _path_cache[cache_key] = None
     return None
 
 # --- Hex Grid Pathfinding ---
