@@ -177,7 +177,7 @@ def test_attack_order():
     weapons.turrets = [turret]
     
     order.execute(MagicMock())
-    weapons.set_target.assert_called_once_with(target)
+    weapons.set_target.assert_called_once_with(target, None)
     # Should not spawn movement orders since in range
     assert len(order.sub_orders) == 0
 

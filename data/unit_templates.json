@@ -4,6 +4,7 @@
     "hull_size": "MEDIUM",
     "hull_points": 100,
     "has_engine": true,
+    "engine_speed": 100.0,
     "engine_hull_cost": 10,
     "has_hyperdrive": true,
     "hyperdrive_hull_cost": 20,
@@ -13,7 +14,9 @@
     "weapon_bays_hull_cost": 0,
     "has_constructor_component": true,
     "constructor_hull_cost": 15,
-    "buildable_units": ["STATION_MK1"]
+    "buildable_units": ["STATION_MK1"],
+    "build_time": 8,
+    "build_cost": 800
   },
   "STATION_MK1": {
     "name": "Station Mk.I",
@@ -27,9 +30,100 @@
     "scanner_hull_cost": 10,
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 20,
+    "turrets": [
+      {"type": "BEAM", "damage": 15, "range": 400, "cooldown": 3}
+    ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
     "build_time": 10,
     "build_cost": 500
+  },
+  "BATTLESHIP_TINY": {
+    "name": "Tiny Battleship",
+    "hull_size": "TINY",
+    "hull_points": 20,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 5,
+    "turrets": [
+      {"type": "MASS_DRIVER", "damage": 10, "range": 300, "cooldown": 2}
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 5,
+    "build_cost": 300
+  },
+  "BATTLESHIP_SMALL": {
+    "name": "Small Battleship",
+    "hull_size": "SMALL",
+    "hull_points": 50,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_hull_cost": 10,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {"type": "BEAM", "damage": 15, "range": 400, "cooldown": 3}
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 8,
+    "build_cost": 600
+  },
+  "BATTLESHIP_MEDIUM": {
+    "name": "Medium Battleship",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 10,
+    "has_hyperdrive": true,
+    "hyperdrive_hull_cost": 10,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 20,
+    "turrets": [
+      {"type": "MASS_DRIVER", "damage": 10, "range": 300, "cooldown": 2},
+      {"type": "MASS_DRIVER", "damage": 10, "range": 300, "cooldown": 2}
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 12,
+    "build_cost": 1000
+  },
+  "SHIPYARD_MK1": {
+    "name": "Shipyard Mk.I",
+    "hull_size": "HUGE",
+    "hull_points": 400,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_scanner": true,
+    "scanner_hull_cost": 10,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 20,
+    "turrets": [
+      {"type": "BEAM", "damage": 20, "range": 450, "cooldown": 3}
+    ],
+    "has_constructor_component": true,
+    "constructor_hull_cost": 30,
+    "buildable_units": [
+      "CONSTRUCTOR_MK1",
+      "BATTLESHIP_TINY",
+      "BATTLESHIP_SMALL",
+      "BATTLESHIP_MEDIUM"
+    ]
   }
 }

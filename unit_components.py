@@ -579,7 +579,17 @@ class Constructor(UnitComponent):
             new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=template.get("hyperdrive_hull_cost", 0)))
 
         if template.get("has_weapon_bays"):
-            new_unit.add_component(Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0)))
+            weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
+            for turret_def in template.get("turrets", []):
+                turret = Turret(
+                    turret_type=TurretType[turret_def["type"]],
+                    damage=turret_def["damage"],
+                    range=turret_def["range"],
+                    cooldown=turret_def["cooldown"],
+                    parent_unit=new_unit
+                )
+                weapons_comp.add_turret(turret)
+            new_unit.add_component(weapons_comp)
 
         if template.get("has_constructor_component"):
             new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0), buildable_unit_names=template.get("buildable_units", None)))
