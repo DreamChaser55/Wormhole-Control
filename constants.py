@@ -12,6 +12,9 @@ SQRT3 = 1.7320508075688772
 SCREEN_RES = Vector(2560, 1440)
 TEXT_SCALE = (SCREEN_RES.y / 720.0) ** 1.15
 
+# Logical Galaxy Constants
+LOGICAL_GALAXY_SIZE = Vector(2560.0, 1440.0)
+
 # System view parameters
 SYSTEM_CENTER_IN_PX = Position(SCREEN_RES.x // 2, SCREEN_RES.y // 2) # Center of system view hex grid in pixels
 HEX_SIZE = int(25 * (SCREEN_RES.y / 720.0)) # in pixels

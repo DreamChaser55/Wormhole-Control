@@ -118,16 +118,9 @@ class Game:
         # Set up game UI first to ensure galaxy_generation_rect is defined before galaxy generation
         self.gui.show_game_ui()
 
-        # Generate galaxy using the bounds from the GUI
+        # Generate galaxy using logical coordinates
         try:
-            if self.gui.galaxy_generation_rect is None:
-                logger.debug("Error: galaxy_generation_rect is not set in GUI_Handler before Galaxy creation.")
-                # Fallback to default Galaxy generation without GUI-specified bounds
-                # This is suboptimal but prevents a complete failure
-                self.galaxy = Galaxy()
-            else:
-                self.galaxy = Galaxy(generation_bounds=self.gui.galaxy_generation_rect)
-            
+            self.galaxy = Galaxy()
             if not self.galaxy.systems:
                 logger.debug("Warning: Galaxy generated with no systems.")
                 return False

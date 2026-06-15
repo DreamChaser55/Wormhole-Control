@@ -9,6 +9,7 @@ from constants import (
     WORMHOLE_LINE_COLOR, BLUE, GRAY, TEXT_SCALE
 )
 from entities import Unit, OrderType
+from galaxy_utils import logical_to_screen_galaxy
 if TYPE_CHECKING:
     from galaxy import StarSystem
 
@@ -30,15 +31,18 @@ class GalaxyViewRenderer:
                        start_system = self.game.galaxy.systems[wormhole.in_system]
                        end_system = self.game.galaxy.systems[exit_wormhole.in_system]
                        if start_system and end_system:
+                            start_screen_pos = logical_to_screen_galaxy(start_system.position, self.game.gui.galaxy_generation_rect)
+                            end_screen_pos = logical_to_screen_galaxy(end_system.position, self.game.gui.galaxy_generation_rect)
                             pygame.draw.line(self.screen, WORMHOLE_LINE_COLOR,
-                                              start_system.position.to_tuple(), end_system.position.to_tuple(), 1)
+                                              start_screen_pos.to_tuple(), end_screen_pos.to_tuple(), 1)
     
         # 2. Draw Order Lines
         self.draw_galaxy_view_order_lines()
 
         # 3. Draw Systems
         for sys_name, system in self.game.galaxy.systems.items():
-            pos_tuple = system.position.to_tuple()
+            screen_pos = logical_to_screen_galaxy(system.position, self.game.gui.galaxy_generation_rect)
+            pos_tuple = screen_pos.to_tuple()
             
             if self.game.galaxy_view_mouse_hover_system_name == sys_name:
                  color = HOVER_HIGHLIGHT_COLOR
@@ -152,8 +156,10 @@ class GalaxyViewRenderer:
                                  max(WORMHOLE_JUMP_ORDER_COLOR[1] - 40, 0),
                                  max(WORMHOLE_JUMP_ORDER_COLOR[2] - 40, 0))
                 
-                start_pos_tuple = start_system.position.to_tuple()
-                end_pos_tuple = end_system.position.to_tuple()
+                start_screen_pos = logical_to_screen_galaxy(start_system.position, self.game.gui.galaxy_generation_rect)
+                end_screen_pos = logical_to_screen_galaxy(end_system.position, self.game.gui.galaxy_generation_rect)
+                start_pos_tuple = start_screen_pos.to_tuple()
+                end_pos_tuple = end_screen_pos.to_tuple()
                 pygame.draw.line(self.overlay_surface, line_color, start_pos_tuple, end_pos_tuple, line_width)
                 
                 dx = end_pos_tuple[0] - start_pos_tuple[0]

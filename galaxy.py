@@ -7,7 +7,7 @@ import math
 import random
 from dataclasses import dataclass, field
 import pygame
-from constants import SCREEN_RES, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType
+from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType
 from utils import HexCoord
 from geometry import distance_sq, Vector, Position, Circle
 from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField
@@ -51,9 +51,9 @@ STAR_NAMES = _load_star_names()
 
 # Galaxy generation parameters
 NUM_SYSTEMS = 15
-GALAXY_PADDING = int(50 * (SCREEN_RES.y / 720.0)) # Pixels from edge for system placement
-MIN_SYSTEM_DISTANCE = int(50 * (SCREEN_RES.y / 720.0))
-MAX_SYSTEM_DISTANCE = int(350 * (SCREEN_RES.y / 720.0))
+GALAXY_PADDING = 50.0 # Logical distance from edge for system placement
+MIN_SYSTEM_DISTANCE = 50.0
+MAX_SYSTEM_DISTANCE = 350.0
 SECOND_NEAREST_WORMHOLE_PROB = 1/3 # Probability of connecting a system to the second nearest system
 
 # --- Hex Class ---
@@ -275,21 +275,15 @@ class StarSystem:
 # --- Galaxy Class ---
 class Galaxy:
     """Represents the entire game galaxy, containing systems and wormholes."""
-    def __init__(self, num_systems: int = NUM_SYSTEMS, generation_bounds: typing.Optional[pygame.Rect] = None):
+    def __init__(self, num_systems: int = NUM_SYSTEMS):
         self.systems: typing.Dict[str, StarSystem] = {}
         self.wormholes: typing.Dict[int, Wormhole] = {}
         self.system_graph: typing.Dict[str, typing.List[str]] = {}
         
-        if generation_bounds:
-            self.generation_x_min = generation_bounds.left + GALAXY_PADDING
-            self.generation_y_min = generation_bounds.top + GALAXY_PADDING
-            self.generation_x_max = generation_bounds.right - GALAXY_PADDING
-            self.generation_y_max = generation_bounds.bottom - GALAXY_PADDING
-        else:
-            self.generation_x_min = GALAXY_PADDING
-            self.generation_y_min = GALAXY_PADDING
-            self.generation_x_max = SCREEN_RES.x - GALAXY_PADDING
-            self.generation_y_max = SCREEN_RES.y - GALAXY_PADDING
+        self.generation_x_min = int(GALAXY_PADDING)
+        self.generation_y_min = int(GALAXY_PADDING)
+        self.generation_x_max = int(LOGICAL_GALAXY_SIZE.x - GALAXY_PADDING)
+        self.generation_y_max = int(LOGICAL_GALAXY_SIZE.y - GALAXY_PADDING)
 
         # Ensure max is greater than min (e.g., if padding is too large for bounds)
         self.generation_x_max = max(self.generation_x_min, self.generation_x_max)

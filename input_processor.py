@@ -21,6 +21,7 @@ from events import (
 )
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
+from galaxy_utils import logical_to_screen_galaxy
 
 class InputProcessor:
     def __init__(self, game_instance):
@@ -154,7 +155,8 @@ class InputProcessor:
              if not self.game.galaxy or not self.game.galaxy.systems: return
              hover_dist_sq = 15**2
              for sys_name, system in self.game.galaxy.systems.items():
-                 if distance_sq(mouse_pos, system.position) < hover_dist_sq:
+                 screen_pos = logical_to_screen_galaxy(system.position, self.gui.galaxy_generation_rect)
+                 if distance_sq(mouse_pos, screen_pos) < hover_dist_sq:
                      self.game.galaxy_view_mouse_hover_system_name = sys_name
                      break
 
