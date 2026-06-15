@@ -49,10 +49,11 @@ class JumpWormholeEvent(Event):
         self.shift_pressed = shift_pressed
 
 class AttackUnitEvent(Event):
-    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool):
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool, target_component_type_str: typing.Optional[str] = None):
         self.units = units
         self.target_unit = target_unit
         self.shift_pressed = shift_pressed
+        self.target_component_type_str = target_component_type_str
 
 class ColonizeEvent(Event):
     def __init__(self, units: list, target_body: typing.Any, shift_pressed: bool):

@@ -602,12 +602,18 @@ class AttackOrder(Order):
         target_unit_id = self.parameters["target_unit_id"]
         target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
 
+        target_component_type_str = self.parameters.get("target_component_type")
+        target_component_type = None
+        if target_component_type_str:
+            import unit_components
+            target_component_type = getattr(unit_components, target_component_type_str, None)
+
         if not target_unit:
             self.status = OrderStatus.FAILED
             return
         
         if self.unit.weapons_component:
-            self.unit.weapons_component.set_target(target_unit)
+            self.unit.weapons_component.set_target(target_unit, target_component_type)
 
             if self.unit.in_system != target_unit.in_system or self.unit.in_hex != target_unit.in_hex:
                 in_the_same_system_and_hex = False
@@ -638,8 +644,23 @@ class AttackOrder(Order):
             return
         target_unit_id = self.parameters["target_unit_id"]
         target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
+        target_component_type_str = self.parameters.get("target_component_type")
+
         if not target_unit or target_unit.current_hit_points <= 0:
             self.status = OrderStatus.COMPLETED
+            if self.unit.weapons_component:
+                self.unit.weapons_component.clear_target()
+            return
+            
+        if target_component_type_str:
+            import unit_components
+            target_component_type = getattr(unit_components, target_component_type_str, None)
+            if target_component_type:
+                target_component = target_unit.get_component(target_component_type)
+                if not target_component or target_component.is_destroyed:
+                    self.status = OrderStatus.COMPLETED
+                    if self.unit.weapons_component:
+                        self.unit.weapons_component.clear_target()
 
 class ColonizeOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):

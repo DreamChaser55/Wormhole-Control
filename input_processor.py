@@ -322,7 +322,15 @@ class InputProcessor:
                         elif target_object is not None:
                             if isinstance(target_object, Unit) and any(target_object.owner != a.owner for a in actors):
                                 if any(a.weapons_component for a in actors):
-                                    options.append(("Attack Unit", "attack_unit"))
+                                    options.append(("Attack Hull", "attack_unit"))
+                                    if target_object.engines_component:
+                                        options.append(("Attack Engines", "attack_unit_Engines"))
+                                    if target_object.hyperdrive_component:
+                                        options.append(("Attack Hyperdrive", "attack_unit_Hyperdrive"))
+                                    if target_object.weapons_component:
+                                        options.append(("Attack Weapons", "attack_unit_Weapons"))
+                                    if target_object.inhibitor_component:
+                                        options.append(("Attack Inhibitor", "attack_unit_HyperspaceInhibitionFieldEmitter"))
                             elif isinstance(target_object, Wormhole):
                                 if any(a.hyperdrive_component and a.hyperdrive_component.drive_type == HyperdriveType.ADVANCED and a.in_system == target_object.in_system for a in actors):
                                     options.append(("Jump Wormhole", "jump_wormhole"))
@@ -434,12 +442,15 @@ class InputProcessor:
                         shift_pressed
                     ))
 
-            elif extracted_action_id == "attack_unit":
+            elif extracted_action_id.startswith("attack_unit"):
                 if isinstance(target, Unit):
+                    parts = extracted_action_id.split("_", 2)
+                    target_component_type_str = parts[2] if len(parts) == 3 else None
                     self.game.event_bus.publish(AttackUnitEvent(
                         selected_units,
                         target,
-                        shift_pressed
+                        shift_pressed,
+                        target_component_type_str
                     ))
 
             elif extracted_action_id == "colonize":

@@ -257,6 +257,27 @@ class Unit(GameObject):
         if self.current_hit_points == 0:
             self.destroy()
 
+    def take_component_damage(self, component_type: type, amount: int) -> int:
+        """
+        Applies damage to a specific component. 
+        Returns any excess damage (spillover) if the component is destroyed.
+        """
+        component = self.get_component(component_type)
+        if not component or component.is_destroyed:
+            return amount  # All damage spills over if component is missing or already destroyed
+
+        logger.debug(f"Unit '{self.name}' component {component_type.__name__} takes {amount} damage.")
+        component.current_hit_points -= amount
+        spillover = 0
+        
+        if component.current_hit_points <= 0:
+            spillover = abs(component.current_hit_points)
+            component.current_hit_points = 0
+            component.on_destroyed()
+            logger.debug(f"Unit '{self.name}' component {component_type.__name__} has been destroyed!")
+
+        return spillover
+
     def destroy(self) -> None:
         """Handles the destruction of the unit."""
         logger.debug(f"Unit '{self.name}' has been destroyed.")

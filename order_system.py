@@ -102,6 +102,8 @@ class OrderSystem:
     def handle_attack_unit(self, event: AttackUnitEvent):
         for unit in event.units:
             attack_params = {"target_unit_id": event.target_unit.id}
+            if event.target_component_type_str:
+                attack_params["target_component_type"] = event.target_component_type_str
             attack_order = AttackOrder(unit, attack_params)
             if not event.shift_pressed:
                 unit.commander_component.clear_orders()

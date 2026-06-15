@@ -734,9 +734,13 @@ class Game:
                 data_for_gui.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hp_style_id, 'height': 25})
 
                 if unit.engines_component is not None:
-                    data_for_gui.append({'type': 'label', 'text': f"Speed: {unit.engines_component.speed}", 'object_id': '#sidebar_info_label', 'height': 20})
+                    comp = unit.engines_component
+                    status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                    data_for_gui.append({'type': 'label', 'text': f"Engines [{status}]: Speed: {comp.speed}", 'object_id': '#sidebar_info_label', 'height': 20})
 
                 if unit.hyperdrive_component is not None:
+                    comp = unit.hyperdrive_component
+                    status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
                     hd_comp = unit.hyperdrive_component
                     drive_type_str = hd_comp.drive_type.value if hd_comp.drive_type else 'N/A'
                 
@@ -750,7 +754,7 @@ class Game:
                     elif hd_comp.jump_status == JumpStatus.ERROR:
                         status_detail = " (Error)"
 
-                    final_hyperdrive_text = f"Hyperdrive: {drive_type_str}{status_detail}"
+                    final_hyperdrive_text = f"Hyperdrive [{status}]: {drive_type_str}{status_detail}"
                 
                     data_for_gui.append({
                         'type': 'label',
@@ -767,6 +771,9 @@ class Game:
                     })
 
                 if unit.inhibitor_component:
+                    comp = unit.inhibitor_component
+                    status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                    data_for_gui.append({'type': 'label', 'text': f"Inhibitor [{status}]", 'object_id': '#sidebar_info_label', 'height': 20})
                     data_for_gui.append({
                         'type': 'inhibitor_button',
                         'is_active': unit.inhibitor_component.is_active,
@@ -787,7 +794,9 @@ class Game:
                     })
 
                 if unit.weapons_component:
-                    data_for_gui.append({'type': 'label', 'text': "Weapons", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
+                    comp = unit.weapons_component
+                    status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                    data_for_gui.append({'type': 'label', 'text': f"Weapons [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
                     for turret in unit.weapons_component.turrets:
                         target = unit.weapons_component.turrets[0].target if unit.weapons_component.turrets else None
                         turret_text = f"- {turret.turret_type.name}: {turret.damage} dmg, {turret.range} range, {turret.cooldown} turns cooldown, Target: {target.name if target else 'N/A'}"

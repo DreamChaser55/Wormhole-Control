@@ -37,6 +37,16 @@ class UnitComponent:
     def __init__(self, unit: 'Unit', hull_cost: int = 0):
         self.unit: 'Unit' = unit
         self.hull_cost: int = hull_cost
+        self.max_hit_points: int = max(10, hull_cost * 10)
+        self.current_hit_points: int = self.max_hit_points
+
+    @property
+    def is_destroyed(self) -> bool:
+        return self.current_hit_points <= 0
+
+    def on_destroyed(self) -> None:
+        """Called when the component's hit points reach 0."""
+        pass
 
 # --- UnitComponent-derived Classes (Components) ---
 
@@ -102,6 +112,8 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
 
     def turn_on(self) -> None:
         """Activates the inhibition field. (Validation logic will be handled by the order)."""
+        if self.is_destroyed:
+            return
         # In the future, an order will perform validation before setting this.
         self.is_active = True
         logger.debug(f"Unit {self.unit.name} inhibition field activated.")
@@ -110,6 +122,15 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         """Deactivates the inhibition field."""
         self.is_active = False
         logger.debug(f"Unit {self.unit.name} inhibition field deactivated.")
+
+    def on_destroyed(self) -> None:
+        if self.is_active:
+            galaxy_ref = getattr(self.unit, 'in_galaxy', None)
+            if galaxy_ref and self.unit.in_system and self.unit.in_hex:
+                current_hex = galaxy_ref.systems[self.unit.in_system].hexes.get(self.unit.in_hex)
+                if current_hex and self.unit.id in current_hex.dynamic_inhibition_zones:
+                    del current_hex.dynamic_inhibition_zones[self.unit.id]
+            self.turn_off()
 
     def toggle(self, galaxy_ref: 'Galaxy') -> bool:
         """
@@ -139,6 +160,9 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         from geometry import Circle, is_circle_contained, do_circles_intersect
 
         if not galaxy_ref or not self.unit.in_system or self.unit.in_hex is None:
+            return False
+
+        if self.is_destroyed:
             return False
 
         current_hex = galaxy_ref.systems[self.unit.in_system].hexes[self.unit.in_hex]
@@ -310,14 +334,21 @@ class Turret:
     parent_unit: 'Unit'
     current_cooldown: int = 0
     target: Optional['Unit'] = None
+    target_component_type: Optional[type] = None
 
     def fire(self) -> None:
         """
         Fires at the turret's current target and resets the cooldown.
         """
         if self.target:
-            logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}!")
-            self.target.take_damage(int(self.damage))
+            if self.target_component_type:
+                logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}'s {self.target_component_type.__name__}!")
+                spillover = self.target.take_component_damage(self.target_component_type, int(self.damage))
+                if spillover > 0:
+                    self.target.take_damage(spillover)
+            else:
+                logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}!")
+                self.target.take_damage(int(self.damage))
         self.current_cooldown = self.cooldown
 
     def update(self) -> None:
@@ -350,6 +381,8 @@ class Weapons(UnitComponent):
         """
         Updates all turrets and fires if a target is set and is in the same system, hex, in range and the cooldown is over.
         """
+        if self.is_destroyed:
+            return
 
         for turret in self.turrets:
             turret.update()
@@ -358,6 +391,7 @@ class Weapons(UnitComponent):
             if turret.target:
                 if turret.target.current_hit_points <= 0:
                     turret.target = None
+                    turret.target_component_type = None
                     continue
 
                 target_in_same_system = self.unit.in_system == turret.target.in_system
@@ -368,15 +402,17 @@ class Weapons(UnitComponent):
                     if turret.current_cooldown <= 0:
                         turret.fire()
 
-    def set_target(self, target_unit: 'Unit') -> None:
-        """Sets the target of the turrets to the specified unit."""
+    def set_target(self, target_unit: 'Unit', target_component_type: Optional[type] = None) -> None:
+        """Sets the target of the turrets to the specified unit and optionally a specific component."""
         for turret in self.turrets:
             turret.target = target_unit
+            turret.target_component_type = target_component_type
     
     def clear_target(self) -> None:
         """Clears the target of the turrets."""
         for turret in self.turrets:
             turret.target = None
+            turret.target_component_type = None
 
 @dataclasses.dataclass
 class ColonyComponent(UnitComponent):
@@ -390,6 +426,9 @@ class ColonyComponent(UnitComponent):
         self.max_cargo = 100
 
     def load_population(self, planet: 'Planet', amount: int) -> bool:
+        if self.is_destroyed:
+            logger.debug(f"Error: Cannot load population, {self.unit.name}'s ColonyComponent is destroyed.")
+            return False
         if planet.owner != self.unit.owner:
             logger.debug(f"Error: Cannot load population from unowned planet {planet.name}.")
             return False
@@ -406,6 +445,9 @@ class ColonyComponent(UnitComponent):
         return True
 
     def unload_population(self, planet: 'Planet', amount: int) -> bool:
+        if self.is_destroyed:
+            logger.debug(f"Error: Cannot unload population, {self.unit.name}'s ColonyComponent is destroyed.")
+            return False
         if self.population_cargo < amount:
             logger.debug(f"Error: Not enough population in cargo to unload {amount}.")
             return False
@@ -466,6 +508,9 @@ class Constructor(UnitComponent):
 
     def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy') -> bool:
         """Starts the construction of a new unit."""
+        if self.is_destroyed:
+            return False
+
         buildable = self.can_build(unit_template_name)
         if not buildable:
             logger.debug(f"Error: {self.unit.name} cannot build {unit_template_name}.")
@@ -494,6 +539,8 @@ class Constructor(UnitComponent):
 
     def update(self, galaxy: 'Galaxy'):
         """Updates the construction progress. Called each turn."""
+        if self.is_destroyed:
+            return
         if self.current_construction_target:
             self.construction_progress += 1
             if self.construction_progress >= self.time_to_build:
