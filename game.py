@@ -174,7 +174,15 @@ class Game:
         return True
 
     def spawn_units(self):
-        """Sets up the starting units of all players."""
+        """Sets up the starting units of all players.
+
+        Each player receives the following units in the 'Sol' system:
+        - One ship per hull size (TINY–HUGE): Engines + Hyperdrive + Weapons
+        - One station per hull size (TINY–HUGE): Weapons (MEDIUM also gets Inhibitor)
+        - One Constructor Ship (MEDIUM): Engines + Hyperdrive + Constructor (builds STATION_MK1)
+        - One Shipyard Station (HUGE): Constructor (builds ships & constructors) + Weapons
+        - One Colony Ship (MEDIUM): Engines + Hyperdrive + ColonyComponent
+        """
         logger.debug("Spawning units...")
         if not self.galaxy or not self.galaxy.systems:
              logger.debug("Cannot set up initial state: No galaxy or systems exist.")
@@ -186,149 +194,169 @@ class Game:
             target_system = self.galaxy.systems[target_system_name]
         else:
             if self.galaxy.systems:
-                target_system = self.galaxy.systems.values()[0]
+                target_system = next(iter(self.galaxy.systems.values()))
             else:
                 logger.debug("Error: No systems available to place starting units.")
                 return
         logger.debug(f"Target system for starting units: {target_system.name}")
 
-        if target_system:
-            all_hull_sizes = list(HullSize)
+        all_hull_sizes = list(HullSize)
 
-            # Spawn units for all players
-            for player in self.players:
+        # Spawn units for all players
+        for player in self.players:
+            available_hexes = list(target_system.hexes.keys())
+            random.shuffle(available_hexes)
+            current_hex_index = 0
 
-                available_hexes = list(target_system.hexes.keys())
-                random.shuffle(available_hexes) # Shuffle to get varied starting positions
+            if not available_hexes:
+                logger.debug(f"Warning: Target system {target_system.name} has no grid coordinates for Player {player.name} units!")
+                return
 
-                current_hex_index = 0
-
-                if not available_hexes:
-                    logger.debug(f"Warning: Target system {target_system.name} has no grid coordinates for Player {player.name} units!")
-                    return
-
-                for hull_size in all_hull_sizes:
-                    if current_hex_index >= len(available_hexes):
-                        logger.debug(f"Warning: Ran out of hexes in {target_system.name} for Player {player.name}'s {hull_size.name} ship.")
-                        break
-                    
-                    # --- Spawn Ship ---
-                    # Find a valid hex for the ship (not containing a star, planet, or wormhole)
-                    start_hex_ship = None
-                    while current_hex_index < len(available_hexes):
-                        potential_hex_coord = available_hexes[current_hex_index]
-                        potential_hex = target_system.hexes[potential_hex_coord]
-                        current_hex_index += 1 # Consume the hex
-
-                        # Check if the hex contains any forbidden celestial bodies
-                        if not any(isinstance(body, (Star, Planet, Wormhole)) for body in potential_hex.celestial_bodies):
-                            start_hex_ship = potential_hex_coord
-                            break # Found a valid hex
-                    
-                    if start_hex_ship is None:
-                        logger.debug(f"Warning: Could not find a valid empty hex for Player {player.name}'s {hull_size.name} ship.")
-                        continue # Skip spawning this ship
-                    
-                    ship_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4) # Closer to center
-                    ship_name = f"{player.name} {hull_size.name.capitalize()} Ship"
-
-                    ship_unit = Unit(owner=player,
-                                    position=ship_pos,
-                                    in_hex=start_hex_ship,
-                                    in_system=target_system.name,
-                                    name=ship_name,
-                                    hull_size=hull_size,
-                                    game=self)
-                    ship_unit.add_component(Engines(ship_unit, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
-                    ship_unit.add_component(Hyperdrive(ship_unit, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
-                    weapons = Weapons(ship_unit, hull_cost=10)
-                    turret = Turret(
-                        turret_type=TurretType.MASS_DRIVER,
-                        damage=10,
-                        range=300,
-                        cooldown=2,
-                        parent_unit=ship_unit
-                    )
-                    weapons.add_turret(turret)
-                    ship_unit.add_component(weapons)
-                    target_system.add_unit(ship_unit)
-                    logger.debug(f"Added {ship_unit.name} to {target_system.name} at {start_hex_ship} for {player.name}")
-
-                    # --- Spawn Station ---
-                    # Find a valid hex for the station (not containing a star, planet, or wormhole)
-                    start_hex_station = None
-                    while current_hex_index < len(available_hexes):
-                        potential_hex_coord = available_hexes[current_hex_index]
-                        potential_hex = target_system.hexes[potential_hex_coord]
-                        current_hex_index += 1 # Consume the hex
-
-                        # Check if the hex contains any forbidden celestial bodies
-                        if not any(isinstance(body, (Star, Planet, Wormhole)) for body in potential_hex.celestial_bodies):
-                            start_hex_station = potential_hex_coord
-                            break # Found a valid hex
-                    
-                    if start_hex_station is None:
-                        logger.debug(f"Warning: Could not find a valid empty hex for Player {player.name}'s {hull_size.name} station.")
-                        continue # Skip spawning this station
-
-                    station_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4) # Closer to center
-                    station_name = f"{player.name} {hull_size.name.capitalize()} Station"
-                    
-                    station_unit = Unit(owner=player,
-                                        position=station_pos,
-                                        in_hex=start_hex_station,
-                                        in_system=target_system.name,
-                                        name=station_name,
-                                        hull_size=hull_size,
-                                        game=self)
-                    if hull_size == HullSize.MEDIUM:
-                        station_unit.add_component(HyperspaceInhibitionFieldEmitter(station_unit, radius=100.0, hull_cost=20))
-                        station_unit.add_component(Constructor(station_unit, hull_cost=0, buildable_unit_names=["STATION_MK1"]))
-
-                    weapons = Weapons(station_unit, hull_cost=10)
-                    turret = Turret(
-                        turret_type=TurretType.BEAM,
-                        damage=15,
-                        range=400,
-                        cooldown=3,
-                        parent_unit=station_unit
-                    )
-                    weapons.add_turret(turret)
-                    station_unit.add_component(weapons)
-
-                    target_system.add_unit(station_unit)
-                    logger.debug(f"Added {station_unit.name} to {target_system.name} at {start_hex_station} for {player.name}")
-
-                # --- Spawn Colony Ship ---
-                start_hex_colony_ship = None
+            def _find_next_valid_hex() -> typing.Optional[HexCoord]:
+                """Advances current_hex_index to find a hex containing no Star/Planet/Wormhole."""
+                nonlocal current_hex_index
                 while current_hex_index < len(available_hexes):
                     potential_hex_coord = available_hexes[current_hex_index]
                     potential_hex = target_system.hexes[potential_hex_coord]
                     current_hex_index += 1
-
                     if not any(isinstance(body, (Star, Planet, Wormhole)) for body in potential_hex.celestial_bodies):
-                        start_hex_colony_ship = potential_hex_coord
-                        break
-            
-                if start_hex_colony_ship:
-                    colony_ship_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4)
-                    colony_ship_name = f"{player.name} Colony Ship"
-                    colony_ship = Unit(
+                        return potential_hex_coord
+                return None
+
+            # --- Spawn Ship & Station for every hull size ---
+            for hull_size in all_hull_sizes:
+
+                # -- Ship --
+                start_hex_ship = _find_next_valid_hex()
+                if start_hex_ship is None:
+                    logger.debug(f"Warning: Ran out of hexes for Player {player.name}'s {hull_size.name} ship.")
+                else:
+                    ship_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4)
+                    ship_name = f"{player.name} {hull_size.name.capitalize()} Ship"
+                    ship_unit = Unit(
                         owner=player,
-                        position=colony_ship_pos,
-                        in_hex=start_hex_colony_ship,
+                        position=ship_pos,
+                        in_hex=start_hex_ship,
                         in_system=target_system.name,
-                        name=colony_ship_name,
-                        hull_size=HullSize.MEDIUM,
+                        name=ship_name,
+                        hull_size=hull_size,
                         game=self
                     )
-                    colony_ship.add_component(Engines(colony_ship, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
-                    colony_ship.add_component(Hyperdrive(colony_ship, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
-                    colony_ship.add_component(ColonyComponent(colony_ship, hull_cost=0))
-                    target_system.add_unit(colony_ship)
-                    logger.debug(f"Added {colony_ship.name} to {target_system.name} at {start_hex_colony_ship} for {player.name}")
+                    ship_unit.add_component(Engines(ship_unit, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
+                    ship_unit.add_component(Hyperdrive(ship_unit, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
+                    weapons = Weapons(ship_unit, hull_cost=10)
+                    weapons.add_turret(Turret(
+                        turret_type=TurretType.MASS_DRIVER,
+                        damage=10, range=300, cooldown=2,
+                        parent_unit=ship_unit
+                    ))
+                    ship_unit.add_component(weapons)
+                    target_system.add_unit(ship_unit)
+                    logger.debug(f"Added {ship_unit.name} to {target_system.name} at {start_hex_ship} for {player.name}")
+
+                # -- Station --
+                start_hex_station = _find_next_valid_hex()
+                if start_hex_station is None:
+                    logger.debug(f"Warning: Ran out of hexes for Player {player.name}'s {hull_size.name} station.")
                 else:
-                    logger.debug(f"Warning: Could not find a valid empty hex for Player {player.name}'s Colony Ship.")
+                    station_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4)
+                    station_name = f"{player.name} {hull_size.name.capitalize()} Station"
+                    station_unit = Unit(
+                        owner=player,
+                        position=station_pos,
+                        in_hex=start_hex_station,
+                        in_system=target_system.name,
+                        name=station_name,
+                        hull_size=hull_size,
+                        game=self
+                    )
+                    # MEDIUM stations get a hyperspace inhibition field emitter
+                    if hull_size == HullSize.MEDIUM:
+                        station_unit.add_component(HyperspaceInhibitionFieldEmitter(station_unit, radius=100.0, hull_cost=20))
+                    weapons = Weapons(station_unit, hull_cost=10)
+                    weapons.add_turret(Turret(
+                        turret_type=TurretType.BEAM,
+                        damage=15, range=400, cooldown=3,
+                        parent_unit=station_unit
+                    ))
+                    station_unit.add_component(weapons)
+                    target_system.add_unit(station_unit)
+                    logger.debug(f"Added {station_unit.name} to {target_system.name} at {start_hex_station} for {player.name}")
+
+            # --- Spawn Constructor Ship (MEDIUM mobile ship with Constructor component) ---
+            start_hex_constructor = _find_next_valid_hex()
+            if start_hex_constructor is None:
+                logger.debug(f"Warning: Could not find a valid hex for Player {player.name}'s Constructor Ship.")
+            else:
+                constructor_ship_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4)
+                constructor_ship_name = f"{player.name} Constructor Ship"
+                constructor_ship = Unit(
+                    owner=player,
+                    position=constructor_ship_pos,
+                    in_hex=start_hex_constructor,
+                    in_system=target_system.name,
+                    name=constructor_ship_name,
+                    hull_size=HullSize.MEDIUM,
+                    game=self
+                )
+                constructor_ship.add_component(Engines(constructor_ship, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=10))
+                constructor_ship.add_component(Hyperdrive(constructor_ship, drive_type=HyperdriveType.ADVANCED, hull_cost=20))
+                constructor_ship.add_component(Constructor(constructor_ship, hull_cost=15, buildable_unit_names=["STATION_MK1"]))
+                target_system.add_unit(constructor_ship)
+                logger.debug(f"Added {constructor_ship.name} to {target_system.name} at {start_hex_constructor} for {player.name}")
+
+            # --- Spawn Shipyard Station (HUGE immobile station that can build ships and constructors) ---
+            start_hex_shipyard = _find_next_valid_hex()
+            if start_hex_shipyard is None:
+                logger.debug(f"Warning: Could not find a valid hex for Player {player.name}'s Shipyard.")
+            else:
+                shipyard_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4)
+                shipyard_name = f"{player.name} Shipyard"
+                shipyard = Unit(
+                    owner=player,
+                    position=shipyard_pos,
+                    in_hex=start_hex_shipyard,
+                    in_system=target_system.name,
+                    name=shipyard_name,
+                    hull_size=HullSize.HUGE,
+                    game=self
+                )
+                shipyard.add_component(Constructor(
+                    shipyard, hull_cost=30,
+                    buildable_unit_names=["CONSTRUCTOR_MK1", "BATTLESHIP_TINY", "BATTLESHIP_SMALL", "BATTLESHIP_MEDIUM"]
+                ))
+                weapons = Weapons(shipyard, hull_cost=20)
+                weapons.add_turret(Turret(
+                    turret_type=TurretType.BEAM,
+                    damage=20, range=450, cooldown=3,
+                    parent_unit=shipyard
+                ))
+                shipyard.add_component(weapons)
+                target_system.add_unit(shipyard)
+                logger.debug(f"Added {shipyard.name} to {target_system.name} at {start_hex_shipyard} for {player.name}")
+
+            # --- Spawn Colony Ship ---
+            start_hex_colony_ship = _find_next_valid_hex()
+            if start_hex_colony_ship is None:
+                logger.debug(f"Warning: Could not find a valid hex for Player {player.name}'s Colony Ship.")
+            else:
+                colony_ship_pos = random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL / 4)
+                colony_ship_name = f"{player.name} Colony Ship"
+                colony_ship = Unit(
+                    owner=player,
+                    position=colony_ship_pos,
+                    in_hex=start_hex_colony_ship,
+                    in_system=target_system.name,
+                    name=colony_ship_name,
+                    hull_size=HullSize.MEDIUM,
+                    game=self
+                )
+                colony_ship.add_component(Engines(colony_ship, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
+                colony_ship.add_component(Hyperdrive(colony_ship, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
+                colony_ship.add_component(ColonyComponent(colony_ship, hull_cost=0))
+                target_system.add_unit(colony_ship)
+                logger.debug(f"Added {colony_ship.name} to {target_system.name} at {start_hex_colony_ship} for {player.name}")
+
 
     def handle_input(self):
         """Delegates input processing to the InputProcessor instance."""
