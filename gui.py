@@ -956,7 +956,7 @@ class GUI_Handler:
                 action_id = item_data.get('action_id', '')
                 target_data = item_data.get('target_data', None)
                 
-                button_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
+                button_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, -1)
                 button = pygame_gui.elements.UIButton(
                     relative_rect=button_rect,
                     text=text,
@@ -966,12 +966,12 @@ class GUI_Handler:
                 )
                 self.dynamic_button_actions[button] = {'action_id': action_id, 'target_data': target_data}
                 self.side_bar_dynamic_elements.append(button)
-                actual_element_total_height = height_from_data # Button height
+                actual_element_total_height = button.get_relative_rect().height # Button height
             
             elif item_type == 'inhibitor_button':
                 is_active = item_data.get('is_active', False)
                 button_text = "Deactivate Inhibitor" if is_active else "Activate Inhibitor"
-                button_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
+                button_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, -1)
                 button = pygame_gui.elements.UIButton(
                     relative_rect=button_rect,
                     text=button_text,
@@ -980,7 +980,7 @@ class GUI_Handler:
                     object_id='#toggle_inhibitor_button'
                 )
                 self.side_bar_dynamic_elements.append(button)
-                actual_element_total_height = height_from_data
+                actual_element_total_height = button.get_relative_rect().height
 
             elif item_type == 'progress_bar':
                 progress = item_data.get('progress', 0)
