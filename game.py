@@ -31,7 +31,7 @@ from geometry import (
 from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
 from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent
+from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent
 from entities import Order, AsteroidField, DebrisField, IceField, Nebula, Storm, Comet, Moon
 from galaxy import Galaxy, StarSystem, Hex
 from gui import GUI_Handler
@@ -182,11 +182,15 @@ class Game:
         homeworld planet, clustered with random positions for visual spread.
 
         Each player receives the following units in the 'Sol' system:
-        - One ship per hull size (TINY–HUGE): Engines + Hyperdrive + Weapons
-        - One station per hull size (TINY–HUGE): Weapons (MEDIUM also gets Inhibitor)
-        - One Constructor Ship (MEDIUM): Engines + Hyperdrive + Constructor (builds STATION_MK1)
-        - One Shipyard Station (HUGE): Constructor (builds ships & constructors) + Weapons
-        - One Colony Ship (MEDIUM): Engines + Hyperdrive + ColonyComponent
+        - One ship per hull size (TINY–LARGE): Engines + Hyperdrive + Weapons
+        - One station per hull size (TINY–LARGE): Weapons (MEDIUM also gets Inhibitor)
+        - One Huge Ship (HUGE): Engines + Hyperdrive + Weapons + Constructor
+            (builds STATION_MK1, REPAIR_STATION_SMALL, SHIPYARD_MK1)
+            + ColonyComponent + RepairComponent
+        - One Huge Station (HUGE): Weapons + Constructor
+            (builds CONSTRUCTOR_MK1, BATTLESHIP_TINY, BATTLESHIP_SMALL,
+             BATTLESHIP_MEDIUM, REPAIR_SHIP_SMALL)
+            + RepairComponent
 
         Args:
             player_homeworld_hexes: Optional mapping of Player -> HexCoord indicating
@@ -257,6 +261,20 @@ class Game:
                     parent_unit=ship_unit
                 ))
                 ship_unit.add_component(weapons)
+
+                # Huge Ships are multi-role flagships
+                if hull_size == HullSize.HUGE:
+                    ship_unit.add_component(Constructor(
+                        ship_unit, hull_cost=15,
+                        buildable_unit_names=["STATION_MK1", "REPAIR_STATION_SMALL", "SHIPYARD_MK1"]
+                    ))
+                    ship_unit.add_component(ColonyComponent(ship_unit, hull_cost=0))
+                    ship_unit.add_component(RepairComponent(
+                        ship_unit,
+                        repair_rate=15.0, repair_range=200.0,
+                        credit_cost_per_hp=1.0, hull_cost=10
+                    ))
+
                 target_system.add_unit(ship_unit)
                 logger.debug(f"Added {ship_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
@@ -282,70 +300,26 @@ class Game:
                     parent_unit=station_unit
                 ))
                 station_unit.add_component(weapons)
+
+                # Huge Stations are capital shipyard/repair facilities
+                if hull_size == HullSize.HUGE:
+                    station_unit.add_component(Constructor(
+                        station_unit, hull_cost=30,
+                        buildable_unit_names=[
+                            "CONSTRUCTOR_MK1", "BATTLESHIP_TINY",
+                            "BATTLESHIP_SMALL", "BATTLESHIP_MEDIUM",
+                            "REPAIR_SHIP_SMALL"
+                        ]
+                    ))
+                    station_unit.add_component(RepairComponent(
+                        station_unit,
+                        repair_rate=30.0, repair_range=350.0,
+                        credit_cost_per_hp=1.0, hull_cost=20
+                    ))
+
                 target_system.add_unit(station_unit)
                 logger.debug(f"Added {station_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
-            # --- Spawn Constructor Ship (MEDIUM mobile ship with Constructor component) ---
-            constructor_ship_pos = random_point_in_sector()
-            constructor_ship_name = f"{player.name} Constructor Ship"
-            constructor_ship = Unit(
-                owner=player,
-                position=constructor_ship_pos,
-                in_hex=spawn_hex,
-                in_system=target_system.name,
-                name=constructor_ship_name,
-                hull_size=HullSize.MEDIUM,
-                game=self
-            )
-            constructor_ship.add_component(Engines(constructor_ship, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=10))
-            constructor_ship.add_component(Hyperdrive(constructor_ship, drive_type=HyperdriveType.ADVANCED, hull_cost=20))
-            constructor_ship.add_component(Constructor(constructor_ship, hull_cost=15, buildable_unit_names=["STATION_MK1"]))
-            target_system.add_unit(constructor_ship)
-            logger.debug(f"Added {constructor_ship.name} to {target_system.name} at {spawn_hex} for {player.name}")
-
-            # --- Spawn Shipyard Station (HUGE immobile station that can build ships and constructors) ---
-            shipyard_pos = random_point_in_sector()
-            shipyard_name = f"{player.name} Shipyard"
-            shipyard = Unit(
-                owner=player,
-                position=shipyard_pos,
-                in_hex=spawn_hex,
-                in_system=target_system.name,
-                name=shipyard_name,
-                hull_size=HullSize.HUGE,
-                game=self
-            )
-            shipyard.add_component(Constructor(
-                shipyard, hull_cost=30,
-                buildable_unit_names=["CONSTRUCTOR_MK1", "BATTLESHIP_TINY", "BATTLESHIP_SMALL", "BATTLESHIP_MEDIUM"]
-            ))
-            weapons = Weapons(shipyard, hull_cost=20)
-            weapons.add_turret(Turret(
-                turret_type=TurretType.BEAM,
-                damage=20, range=450, cooldown=3,
-                parent_unit=shipyard
-            ))
-            shipyard.add_component(weapons)
-            target_system.add_unit(shipyard)
-            logger.debug(f"Added {shipyard.name} to {target_system.name} at {spawn_hex} for {player.name}")
-
-            # --- Spawn Colony Ship ---
-            colony_ship_pos = random_point_in_sector()
-            colony_ship_name = f"{player.name} Colony Ship"
-            colony_ship = Unit(
-                owner=player,
-                position=colony_ship_pos,
-                in_hex=spawn_hex,
-                in_system=target_system.name,
-                name=colony_ship_name,
-                hull_size=HullSize.MEDIUM,
-                game=self
-            )
-            colony_ship.add_component(Engines(colony_ship, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
-            colony_ship.add_component(Hyperdrive(colony_ship, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
-            colony_ship.add_component(ColonyComponent(colony_ship, hull_cost=0))
-            target_system.add_unit(colony_ship)
-            logger.debug(f"Added {colony_ship.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
 
     def handle_input(self):
