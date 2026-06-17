@@ -238,10 +238,10 @@ class Game:
             logger.debug(f"Spawning all units for {player.name} in hex {spawn_hex} of {target_system.name}")
 
             # --- Spawn Ship & Station for every hull size ---
-            for hull_size in all_hull_sizes:
+            for i, hull_size in enumerate(all_hull_sizes):
 
                 # -- Ship --
-                ship_pos = random_point_in_sector()
+                ship_pos = Position(-450.0 + i * 300.0, -100.0)
                 ship_name = f"{player.name} {hull_size.name.capitalize()} Ship"
                 ship_unit = Unit(
                     owner=player,
@@ -279,7 +279,7 @@ class Game:
                 logger.debug(f"Added {ship_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
                 # -- Station --
-                station_pos = random_point_in_sector()
+                station_pos = Position(-450.0 + i * 300.0, 100.0)
                 station_name = f"{player.name} {hull_size.name.capitalize()} Station"
                 station_unit = Unit(
                     owner=player,
