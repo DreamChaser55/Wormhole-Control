@@ -9,7 +9,8 @@ from constants import (
     HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE,
     ICON_DOT_RADIUS, ICON_DOT_SPACING,
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
-    MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, STORM_COLORS
+    MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, STORM_COLORS,
+    TEXT_SCALE
 )
 from sector_utils import sector_coords_to_pixels
 import random
@@ -201,6 +202,31 @@ class SectorViewRenderer:
                     for dot_i in range(dot_count):
                         dot_x = start_x + dot_i * icon_dot_spacing_px
                         pygame.draw.circle(self.screen, obj_color, (dot_x, dot_base_y), icon_dot_radius_px)
+
+                # Draw Unit Name
+                bottom_y = obj_pixel_pos.y + current_icon_base_size_px
+                
+                # If health bar is drawn, account for its height and vertical position
+                if unit_obj in self.game.selected_objects and unit_obj.max_hit_points > 0:
+                    health_bar_bottom = obj_pixel_pos.y + current_icon_base_size_px + 14
+                    if health_bar_bottom > bottom_y:
+                        bottom_y = health_bar_bottom
+                        
+                # If dots are drawn, account for their radius and vertical position
+                if dot_count > 0:
+                    icon_dot_radius_px = int(ICON_DOT_RADIUS * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                    dot_base_y_offset = current_icon_base_size_px * 0.6 if shape_type == 'triangle' else current_icon_base_size_px
+                    dot_bottom = obj_pixel_pos.y + dot_base_y_offset + 2 * icon_dot_radius_px + 2
+                    if dot_bottom > bottom_y:
+                        bottom_y = dot_bottom
+                        
+                name_font_size = max(1, int(12 * TEXT_SCALE))
+                name_font = pygame.font.Font(None, name_font_size)
+                name_surface = name_font.render(unit_obj.name, True, obj_color)
+                name_rect = name_surface.get_rect()
+                name_rect.midtop = (obj_pixel_pos.x, bottom_y + 4)
+                self.screen.blit(name_surface, name_rect)
+
 
             if obj == self.game.sector_view_mouse_hover_object:
                 pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
