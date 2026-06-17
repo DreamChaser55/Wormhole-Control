@@ -15,7 +15,7 @@ from unit_orders import (
     Order, OrderStatus, OrderType,
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
-    RepairOrder
+    RepairOrder, MineOrder, UnloadResourcesOrder
 )
 from unit_components import (
     UnitComponent,
@@ -26,7 +26,10 @@ from unit_components import (
     Weapons,
     ColonyComponent,
     Constructor,
-    RepairComponent
+    RepairComponent,
+    MiningComponent,
+    MetalRefineryComponent,
+    CrystalRefineryComponent
 )
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -250,6 +253,18 @@ class Unit(GameObject):
         return self.get_component(RepairComponent)
 
     @property
+    def mining_component(self) -> typing.Optional[MiningComponent]:
+        return self.get_component(MiningComponent)
+
+    @property
+    def metal_refinery_component(self) -> typing.Optional[MetalRefineryComponent]:
+        return self.get_component(MetalRefineryComponent)
+
+    @property
+    def crystal_refinery_component(self) -> typing.Optional[CrystalRefineryComponent]:
+        return self.get_component(CrystalRefineryComponent)
+
+    @property
     def commander_component(self) -> Commander:
         return self.get_component(Commander)
 
@@ -347,6 +362,9 @@ class Unit(GameObject):
 
         if self.repair_component and self.in_galaxy:
             self.repair_component.update(self.in_galaxy)
+
+        if self.mining_component and self.in_galaxy:
+            self.mining_component.update(self.in_galaxy)
             
         if self.commander_component:
             self.commander_component.update()

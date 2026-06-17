@@ -14,7 +14,7 @@
     "weapon_bays_hull_cost": 0,
     "has_constructor_component": true,
     "constructor_hull_cost": 15,
-    "buildable_units": ["STATION_MK1", "REPAIR_STATION_SMALL"],
+    "buildable_units": ["STATION_MK1", "REPAIR_STATION_SMALL", "METAL_REFINERY_STATION", "CRYSTAL_REFINERY_STATION"],
     "build_time": 8,
     "build_cost": 800
   },
@@ -124,7 +124,8 @@
       "BATTLESHIP_TINY",
       "BATTLESHIP_SMALL",
       "BATTLESHIP_MEDIUM",
-      "REPAIR_SHIP_SMALL"
+      "REPAIR_SHIP_SMALL",
+      "MINING_SHIP_SMALL"
     ]
   },
   "REPAIR_SHIP_SMALL": {
@@ -171,5 +172,44 @@
     "constructor_hull_cost": 0,
     "build_time": 10,
     "build_cost": 750
+  },
+  "MINING_SHIP_SMALL": {
+    "name": "Small Mining Ship",
+    "hull_size": "SMALL",
+    "hull_points": 50,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_hull_cost": 10,
+    "has_mining_component": true,
+    "mining_rate": 10.0,
+    "mining_range": 200.0,
+    "max_mining_cargo": 100.0,
+    "mining_hull_cost": 10,
+    "build_time": 6,
+    "build_cost": 400
+  },
+  "METAL_REFINERY_STATION": {
+    "name": "Metal Refinery Station",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": false,
+    "has_metal_refinery_component": true,
+    "unload_range": 300.0,
+    "metal_refinery_hull_cost": 20,
+    "build_time": 10,
+    "build_cost": 600
+  },
+  "CRYSTAL_REFINERY_STATION": {
+    "name": "Crystal Refinery Station",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": false,
+    "has_crystal_refinery_component": true,
+    "unload_range": 300.0,
+    "crystal_refinery_hull_cost": 20,
+    "build_time": 10,
+    "build_cost": 600
   }
 }

@@ -516,6 +516,18 @@ class Game:
             target_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
             return [f"{load_type_styled} {target_styled}"]
 
+        elif order_type == "MINE":
+            target_id = parameters.get("target_id", "Unknown")
+            mine_type_styled = f"<font color='#FFA500'><b>Mine:</b></font>"
+            target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_id}</i></font>"
+            return [f"{mine_type_styled} {target_styled}"]
+
+        elif order_type == "UNLOAD_RESOURCES":
+            target_unit_id = parameters.get("target_unit_id", "Unknown")
+            unload_type_styled = f"<font color='#00FFFF'><b>Unload:</b></font>"
+            target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
+            return [f"{unload_type_styled} {target_styled}"]
+
         else:
             # Default styling for other order types
             return [f"<font color='{INFO_COLOR}'>{order_type} ({status})</font>"]
@@ -709,6 +721,18 @@ class Game:
 
                 if unit.colony_component:
                     data_for_gui.append({'type': 'label', 'text': f"Population Cargo: {unit.colony_component.population_cargo}", 'object_id': '#sidebar_info_label', 'height': 20})
+        
+                if unit.mining_component:
+                    metal = int(unit.mining_component.raw_metal_cargo)
+                    crystal = int(unit.mining_component.raw_crystal_cargo)
+                    max_c = int(unit.mining_component.max_cargo)
+                    data_for_gui.append({'type': 'label', 'text': f"Raw Cargo: {metal} Metal, {crystal} Crystal / {max_c}", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                if unit.metal_refinery_component:
+                    data_for_gui.append({'type': 'label', 'text': "Metal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                if unit.crystal_refinery_component:
+                    data_for_gui.append({'type': 'label', 'text': "Crystal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
         
                 data_for_gui.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage}/{unit.hull_capacity}", 'object_id': '#sidebar_info_label', 'height': 25})
                 

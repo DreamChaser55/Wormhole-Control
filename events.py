@@ -80,3 +80,15 @@ class RepairUnitEvent(Event):
         self.units = units
         self.target_unit = target_unit
         self.shift_pressed = shift_pressed
+
+class MineEvent(Event):
+    def __init__(self, units: list, target_body: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_body = target_body
+        self.shift_pressed = shift_pressed
+
+class UnloadResourcesEvent(Event):
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_unit = target_unit
+        self.shift_pressed = shift_pressed

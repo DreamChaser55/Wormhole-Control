@@ -5,7 +5,8 @@ from unit_components import (
     Engines, Hyperdrive, HyperdriveType, JumpStatus,
     HyperspaceInhibitionFieldEmitter, Commander,
     Turret, TurretType, Weapons, ColonyComponent,
-    Constructor, BuildableUnit, RepairComponent
+    Constructor, BuildableUnit, RepairComponent,
+    MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
 )
 from unit_orders import Order, OrderStatus, OrderType
 
@@ -15,6 +16,8 @@ class MockPlayer:
         self.id = 1
         self.name = name
         self.credits = 1000
+        self.metal = 1000
+        self.crystal = 1000
 
 class MockUnit:
     def __init__(self):
@@ -52,6 +55,12 @@ class MockUnit:
     def repair_component(self): return self.get_component(RepairComponent)
     @property
     def commander_component(self): return self.get_component(Commander)
+    @property
+    def mining_component(self): return self.get_component(MiningComponent)
+    @property
+    def metal_refinery_component(self): return self.get_component(MetalRefineryComponent)
+    @property
+    def crystal_refinery_component(self): return self.get_component(CrystalRefineryComponent)
 
     def take_damage(self, amount):
         self.current_hit_points -= amount
@@ -355,3 +364,54 @@ def test_repair_component():
     # Should only repair 5 HP because of credits limit
     assert some_comp.current_hit_points == 40
     assert repairer.owner.credits == 0
+
+def test_mining_component():
+    unit = MockUnit()
+    mining = MiningComponent(unit, mining_rate=10.0, max_cargo=50.0)
+    
+    from entities import Asteroid, Moon
+    asteroid = Asteroid(in_hex=(0,0), in_system="Sol")
+    asteroid.position = Position(10, 0) # within 200 range
+    
+    # Not targeting
+    mock_galaxy = MagicMock()
+    mining.update(mock_galaxy)
+    assert mining.raw_metal_cargo == 0
+    
+    # Target asteroid
+    mining.set_target(asteroid)
+    mining.update(mock_galaxy)
+    assert mining.raw_metal_cargo == 10.0
+    assert mining.get_cargo_fullness() == 10.0 / 50.0
+    
+    # Out of range
+    asteroid.position = Position(300, 0)
+    mining.update(mock_galaxy)
+    assert mining.raw_metal_cargo == 10.0
+    
+    # Back in range and fill cargo
+    asteroid.position = Position(0, 0)
+    for _ in range(5):
+        mining.update(mock_galaxy)
+        
+    assert mining.raw_metal_cargo == 50.0
+    assert mining.get_cargo_fullness() == 1.0
+    
+    # Verify unload
+    metal, crystal = mining.unload_to_refinery()
+    assert metal == 50.0
+    assert crystal == 0.0
+    assert mining.raw_metal_cargo == 0.0
+
+def test_refinery_components():
+    unit = MockUnit()
+    unit.owner.metal = 100
+    unit.owner.crystal = 100
+    
+    metal_refinery = MetalRefineryComponent(unit)
+    metal_refinery.accept_resources(50)
+    assert unit.owner.metal == 150
+    
+    crystal_refinery = CrystalRefineryComponent(unit)
+    crystal_refinery.accept_resources(30)
+    assert unit.owner.crystal == 130

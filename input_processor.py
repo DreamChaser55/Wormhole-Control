@@ -17,7 +17,8 @@ from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
 from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Wormhole, HullSize
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
-    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent
+    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
+    MineEvent, UnloadResourcesEvent
 )
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
@@ -342,6 +343,11 @@ class InputProcessor:
                                 )
                                 if target_is_damaged and any(a.repair_component for a in actors):
                                     options.append(("Repair", "repair_unit"))
+                                
+                                target_has_refinery = getattr(target_object, 'metal_refinery_component', None) or getattr(target_object, 'crystal_refinery_component', None)
+                                has_cargo_miners = any(getattr(a, 'mining_component', None) and (a.mining_component.raw_metal_cargo > 0 or a.mining_component.raw_crystal_cargo > 0) for a in actors)
+                                if target_has_refinery and has_cargo_miners:
+                                    options.append(("Unload Resources", "unload_resources"))
                             elif isinstance(target_object, Wormhole):
                                 if any(a.hyperdrive_component and a.hyperdrive_component.drive_type == HyperdriveType.ADVANCED and a.in_system == target_object.in_system for a in actors):
                                     options.append(("Jump Wormhole", "jump_wormhole"))
@@ -356,6 +362,8 @@ class InputProcessor:
                                     options.append(("Colonize", "colonize"))
                                 if unit.colony_component and target_object.owner == unit.owner and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
                                     options.append(("Load Colonists", "load_colonists"))
+                            if isinstance(target_object, (Asteroid, Moon)) and any(getattr(a, 'mining_component', None) for a in actors):
+                                options.append(("Mine", "mine"))
                         elif isinstance(target_object, Wormhole): options.append(("View Wormhole Info", "view_wormhole"))
                         elif isinstance(target_object, Unit): options.append(("View Unit Info", "view_unit"))
                         elif isinstance(target_object, Star): options.append(("View Star", "view_star"))
@@ -485,6 +493,22 @@ class InputProcessor:
             elif extracted_action_id == "repair_unit":
                 if isinstance(target, Unit):
                     self.game.event_bus.publish(RepairUnitEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "mine":
+                if isinstance(target, (Asteroid, Moon)):
+                    self.game.event_bus.publish(MineEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "unload_resources":
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(UnloadResourcesEvent(
                         selected_units,
                         target,
                         shift_pressed

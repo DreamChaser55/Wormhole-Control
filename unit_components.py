@@ -539,6 +539,113 @@ class ColonyComponent(UnitComponent):
         return True
 
 @dataclasses.dataclass
+class MiningComponent(UnitComponent):
+    """A component that allows a unit to extract raw resources from celestial bodies."""
+    mining_rate: float = 10.0
+    mining_range: float = 200.0
+    raw_metal_cargo: float = 0.0
+    raw_crystal_cargo: float = 0.0
+    max_cargo: float = 100.0
+    mining_target: Optional['CelestialBody'] = None
+
+    def __init__(self, unit: 'Unit', mining_rate: float = 10.0, mining_range: float = 200.0, max_cargo: float = 100.0, hull_cost: int = 10):
+        super().__init__(unit, hull_cost=hull_cost)
+        self.mining_rate = mining_rate
+        self.mining_range = mining_range
+        self.raw_metal_cargo = 0.0
+        self.raw_crystal_cargo = 0.0
+        self.max_cargo = max_cargo
+        self.mining_target = None
+
+    def set_target(self, target: 'CelestialBody') -> None:
+        self.mining_target = target
+
+    def clear_target(self) -> None:
+        self.mining_target = None
+
+    def get_cargo_fullness(self) -> float:
+        """Returns the percentage of cargo that is full (0.0 to 1.0)."""
+        total_cargo = self.raw_metal_cargo + self.raw_crystal_cargo
+        if self.max_cargo <= 0:
+            return 1.0
+        return min(1.0, total_cargo / self.max_cargo)
+
+    def update(self, galaxy: 'Galaxy') -> None:
+        if self.is_destroyed:
+            return
+
+        if not self.mining_target:
+            return
+
+        # Need to be in same system and hex
+        if self.unit.in_system != self.mining_target.in_system or self.unit.in_hex != self.mining_target.in_hex:
+            return
+
+        # Need to be within range
+        if distance(self.unit.position, self.mining_target.position) > self.mining_range:
+            return
+
+        total_cargo = self.raw_metal_cargo + self.raw_crystal_cargo
+        if total_cargo >= self.max_cargo:
+            return
+
+        available_space = self.max_cargo - total_cargo
+        amount_to_mine = min(self.mining_rate, available_space)
+
+        from entities import Asteroid, Moon
+        if isinstance(self.mining_target, Asteroid):
+            # Infinite yield: we extract mining_rate without depleting the asteroid
+            self.raw_metal_cargo += amount_to_mine
+            logger.debug(f"{self.unit.name} mined {amount_to_mine} raw metal from {self.mining_target.name}. Cargo: {self.raw_metal_cargo}/{self.max_cargo}")
+        elif isinstance(self.mining_target, Moon):
+            # Infinite yield: we extract mining_rate without depleting the moon
+            self.raw_crystal_cargo += amount_to_mine
+            logger.debug(f"{self.unit.name} mined {amount_to_mine} raw crystal from {self.mining_target.name}. Cargo: {self.raw_crystal_cargo}/{self.max_cargo}")
+
+    def unload_to_refinery(self) -> float:
+        """Empties cargo and returns a tuple of (metal_amount, crystal_amount) unloaded."""
+        metal_amount = self.raw_metal_cargo
+        crystal_amount = self.raw_crystal_cargo
+        self.raw_metal_cargo = 0.0
+        self.raw_crystal_cargo = 0.0
+        return metal_amount, crystal_amount
+
+
+@dataclasses.dataclass
+class MetalRefineryComponent(UnitComponent):
+    """A component that instantly converts raw metal into player metal upon delivery."""
+    unload_range: float = 300.0
+
+    def __init__(self, unit: 'Unit', unload_range: float = 300.0, hull_cost: int = 20):
+        super().__init__(unit, hull_cost=hull_cost)
+        self.unload_range = unload_range
+
+    def accept_resources(self, amount: float) -> None:
+        if self.is_destroyed:
+            return
+        if self.unit.owner:
+            self.unit.owner.metal += amount
+            logger.debug(f"{self.unit.name} refined {amount} raw metal instantly for {self.unit.owner.name}.")
+
+
+@dataclasses.dataclass
+class CrystalRefineryComponent(UnitComponent):
+    """A component that instantly converts raw crystal into player crystal upon delivery."""
+    unload_range: float = 300.0
+
+    def __init__(self, unit: 'Unit', unload_range: float = 300.0, hull_cost: int = 20):
+        super().__init__(unit, hull_cost=hull_cost)
+        self.unload_range = unload_range
+
+    def accept_resources(self, amount: float) -> None:
+        if self.is_destroyed:
+            return
+        if self.unit.owner:
+            self.unit.owner.crystal += amount
+            logger.debug(f"{self.unit.name} refined {amount} raw crystal instantly for {self.unit.owner.name}.")
+
+
+@dataclasses.dataclass
 class BuildableUnit:
     unit_template_name: str
     time_to_build: int
@@ -674,6 +781,29 @@ class Constructor(UnitComponent):
                 repair_range=template.get("repair_range", 200.0),
                 credit_cost_per_hp=template.get("credit_cost_per_hp", 1.0),
                 hull_cost=template.get("repair_hull_cost", 15)
+            ))
+
+        if template.get("has_mining_component"):
+            new_unit.add_component(MiningComponent(
+                new_unit,
+                mining_rate=template.get("mining_rate", 10.0),
+                mining_range=template.get("mining_range", 200.0),
+                max_cargo=template.get("max_mining_cargo", 100.0),
+                hull_cost=template.get("mining_hull_cost", 10)
+            ))
+
+        if template.get("has_metal_refinery_component"):
+            new_unit.add_component(MetalRefineryComponent(
+                new_unit,
+                unload_range=template.get("unload_range", 300.0),
+                hull_cost=template.get("metal_refinery_hull_cost", 20)
+            ))
+
+        if template.get("has_crystal_refinery_component"):
+            new_unit.add_component(CrystalRefineryComponent(
+                new_unit,
+                unload_range=template.get("unload_range", 300.0),
+                hull_cost=template.get("crystal_refinery_hull_cost", 20)
             ))
 
         system.add_unit(new_unit)
