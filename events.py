@@ -74,3 +74,9 @@ class ConstructEvent(Event):
         self.unit_template_name = unit_template_name
         self.target_position = target_position
         self.shift_pressed = shift_pressed
+
+class RepairUnitEvent(Event):
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_unit = target_unit
+        self.shift_pressed = shift_pressed

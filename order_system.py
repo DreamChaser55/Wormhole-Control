@@ -2,10 +2,10 @@ import logging
 import typing
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
-    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent
+    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent
 )
 from entities import (
-    MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder
+    MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder
 )
 from sector_utils import random_point_in_sector
 
@@ -27,6 +27,7 @@ class OrderSystem:
         self.event_bus.subscribe(ColonizeEvent, self.handle_colonize)
         self.event_bus.subscribe(LoadColonistsEvent, self.handle_load_colonists)
         self.event_bus.subscribe(ConstructEvent, self.handle_construct)
+        self.event_bus.subscribe(RepairUnitEvent, self.handle_repair_unit)
 
     def handle_cancel_orders(self, event: CancelOrdersEvent):
         for unit in event.units:
@@ -149,4 +150,15 @@ class OrderSystem:
                 unit.commander_component.clear_orders()
             unit.commander_component.add_order(construct_order)
             logger.debug(f"  Unit {unit.name} ordered to construct {event.unit_template_name} at {event.target_position} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_repair_unit(self, event: RepairUnitEvent):
+        for unit in event.units:
+            if unit.repair_component:
+                repair_params = {"target_unit_id": event.target_unit.id}
+                repair_order = RepairOrder(unit, repair_params)
+                if not event.shift_pressed:
+                    unit.commander_component.clear_orders()
+                unit.commander_component.add_order(repair_order)
+                logger.debug(f"  Unit {unit.name} ordered to repair {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True

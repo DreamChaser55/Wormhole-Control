@@ -17,7 +17,7 @@ from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
 from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Wormhole, HullSize
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
-    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent
+    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent
 )
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
@@ -335,6 +335,13 @@ class InputProcessor:
                                         options.append(("Attack Weapons", "attack_unit_Weapons"))
                                     if target_object.inhibitor_component:
                                         options.append(("Attack Inhibitor", "attack_unit_HyperspaceInhibitionFieldEmitter"))
+                            elif isinstance(target_object, Unit) and any(target_object.owner == a.owner for a in actors) and target_object not in actors:
+                                target_is_damaged = (
+                                    target_object.current_hit_points < target_object.max_hit_points or
+                                    any(c.current_hit_points < c.max_hit_points for c in target_object.components.values())
+                                )
+                                if target_is_damaged and any(a.repair_component for a in actors):
+                                    options.append(("Repair", "repair_unit"))
                             elif isinstance(target_object, Wormhole):
                                 if any(a.hyperdrive_component and a.hyperdrive_component.drive_type == HyperdriveType.ADVANCED and a.in_system == target_object.in_system for a in actors):
                                     options.append(("Jump Wormhole", "jump_wormhole"))
@@ -472,6 +479,14 @@ class InputProcessor:
                         selected_units,
                         target,
                         amount_to_load,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "repair_unit":
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(RepairUnitEvent(
+                        selected_units,
+                        target,
                         shift_pressed
                     ))
 
