@@ -5,7 +5,7 @@ from unit_components import (
     Engines, Hyperdrive, HyperdriveType, JumpStatus,
     HyperspaceInhibitionFieldEmitter, Commander,
     Turret, TurretType, Weapons, ColonyComponent,
-    Constructor, BuildableUnit
+    Constructor, BuildableUnit, RepairComponent
 )
 from unit_orders import Order, OrderStatus, OrderType
 
@@ -49,10 +49,32 @@ class MockUnit:
     @property
     def constructor_component(self): return self.get_component(Constructor)
     @property
+    def repair_component(self): return self.get_component(RepairComponent)
+    @property
     def commander_component(self): return self.get_component(Commander)
 
     def take_damage(self, amount):
         self.current_hit_points -= amount
+
+    def heal_hull(self, amount):
+        if self.current_hit_points >= self.max_hit_points:
+            return 0
+        healed = min(amount, self.max_hit_points - self.current_hit_points)
+        self.current_hit_points += healed
+        return healed
+
+    def heal_components(self, amount):
+        healed_total = 0
+        for component in self.components.values():
+            if amount <= 0:
+                break
+            if component.current_hit_points < component.max_hit_points:
+                needed = component.max_hit_points - component.current_hit_points
+                healed = min(amount, needed)
+                component.current_hit_points += healed
+                healed_total += healed
+                amount -= healed
+        return healed_total
 
     def update(self):
         if self.hyperdrive_component:
@@ -61,6 +83,8 @@ class MockUnit:
             self.weapons_component.update(self.in_galaxy)
         if self.constructor_component and self.in_galaxy:
             self.constructor_component.update(self.in_galaxy)
+        if self.repair_component and self.in_galaxy:
+            self.repair_component.update(self.in_galaxy)
         if self.commander_component:
             self.commander_component.update()
 
@@ -268,3 +292,66 @@ def test_constructor():
     # Cancel construction
     constructor.cancel_construction()
     assert constructor.current_construction_target is None
+
+
+def test_repair_component():
+    # Setup repairer unit
+    repairer = MockUnit()
+    repair_comp = RepairComponent(
+        repairer,
+        repair_rate=15.0,
+        repair_range=200.0,
+        credit_cost_per_hp=1.0,
+        hull_cost=10
+    )
+    repairer.add_component(repair_comp)
+
+    # Setup target unit
+    target = MockUnit()
+    target.owner = repairer.owner  # Friendly
+    target.in_system = repairer.in_system
+    target.in_hex = repairer.in_hex
+    target.position = Position(50, 0)  # within 200 range
+
+    # Damage target
+    target.take_damage(20)
+    assert target.current_hit_points == 80
+
+    # Set target
+    repair_comp.set_target(target)
+    assert repair_comp.target == target
+
+    # Update: target should be repaired by 15 HP
+    mock_galaxy = MagicMock()
+    initial_credits = repairer.owner.credits
+    repair_comp.update(mock_galaxy)
+
+    # Target repaired: 80 -> 95. Credits deducted: 15
+    assert target.current_hit_points == 95
+    assert repairer.owner.credits == initial_credits - 15
+
+    # Update again: target should be repaired to 100 max HP
+    repair_comp.update(mock_galaxy)
+    assert target.current_hit_points == 100
+    # Repair amount was 5 (95 -> 100). Total credits deducted should be 15 + 5 = 20
+    assert repairer.owner.credits == initial_credits - 20
+
+    # Damage target component
+    some_comp = Engines(target, hull_cost=5)
+    some_comp.current_hit_points = 20  # damaged from 50 (max_hit_points = max(10, 50) = 50)
+    target.add_component(some_comp)
+
+    # Update: component should be repaired
+    current_credits = repairer.owner.credits
+    repair_comp.update(mock_galaxy)
+    # Target hull is full (100). Target component should get 15 HP (20 -> 35). Credits: 15 deducted
+    assert some_comp.current_hit_points == 35
+    assert repairer.owner.credits == current_credits - 15
+
+    # Test out of credits
+    repairer.owner.credits = 5
+    current_credits = repairer.owner.credits
+    repair_comp.update(mock_galaxy)
+    # Should only repair 5 HP because of credits limit
+    assert some_comp.current_hit_points == 40
+    assert repairer.owner.credits == 0

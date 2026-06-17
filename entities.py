@@ -14,7 +14,8 @@ from collections import deque
 from unit_orders import (
     Order, OrderStatus, OrderType,
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
-    LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder
+    LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
+    RepairOrder
 )
 from unit_components import (
     UnitComponent,
@@ -24,7 +25,8 @@ from unit_components import (
     HyperspaceInhibitionFieldEmitter,
     Weapons,
     ColonyComponent,
-    Constructor
+    Constructor,
+    RepairComponent
 )
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -244,6 +246,10 @@ class Unit(GameObject):
         return self.get_component(Constructor)
 
     @property
+    def repair_component(self) -> typing.Optional[RepairComponent]:
+        return self.get_component(RepairComponent)
+
+    @property
     def commander_component(self) -> Commander:
         return self.get_component(Commander)
 
@@ -277,6 +283,30 @@ class Unit(GameObject):
             logger.debug(f"Unit '{self.name}' component {component_type.__name__} has been destroyed!")
 
         return spillover
+
+    def heal_hull(self, amount: int) -> int:
+        """Heals the unit's hull by the given amount. Returns actual amount healed."""
+        if self.current_hit_points >= self.max_hit_points:
+            return 0
+        healed = min(amount, self.max_hit_points - self.current_hit_points)
+        self.current_hit_points += healed
+        logger.debug(f"Unit '{self.name}' hull healed by {healed}. HP: {self.current_hit_points}/{self.max_hit_points}")
+        return healed
+
+    def heal_components(self, amount: int) -> int:
+        """Heals damaged components by the given amount. Returns actual amount healed."""
+        healed_total = 0
+        for component in self.components.values():
+            if amount <= 0:
+                break
+            if component.current_hit_points < component.max_hit_points:
+                needed = component.max_hit_points - component.current_hit_points
+                healed = min(amount, needed)
+                component.current_hit_points += healed
+                healed_total += healed
+                amount -= healed
+                logger.debug(f"Unit '{self.name}' component {type(component).__name__} healed by {healed}. HP: {component.current_hit_points}/{component.max_hit_points}")
+        return healed_total
 
     def destroy(self) -> None:
         """Handles the destruction of the unit."""
@@ -314,6 +344,9 @@ class Unit(GameObject):
 
         if self.constructor_component and self.in_galaxy:
             self.constructor_component.update(self.in_galaxy)
+
+        if self.repair_component and self.in_galaxy:
+            self.repair_component.update(self.in_galaxy)
             
         if self.commander_component:
             self.commander_component.update()

@@ -4,9 +4,9 @@ from geometry import Position, Circle
 from unit_orders import (
     OrderStatus, OrderType, ReachWaypointOrder, MoveOrder, 
     ToggleInhibitorOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder,
-    ConstructOrder, Order
+    ConstructOrder, Order, RepairOrder
 )
-from unit_components import Engines, Hyperdrive, HyperdriveType, Weapons, ColonyComponent, HyperspaceInhibitionFieldEmitter, Constructor
+from unit_components import Engines, Hyperdrive, HyperdriveType, Weapons, ColonyComponent, HyperspaceInhibitionFieldEmitter, Constructor, RepairComponent
 from tests.test_unit_components import MockUnit, MockPlayer
 
 def test_reach_waypoint_order_validation():
@@ -462,4 +462,48 @@ def test_order_cancellation_cascade():
 
     assert order.status == OrderStatus.CANCELLED
     assert sub_order.status == OrderStatus.CANCELLED
+
+
+def test_repair_order():
+    # Setup unit and repair component
+    unit = MockUnit()
+    repair_comp = RepairComponent(unit, repair_rate=10, repair_range=100.0, credit_cost_per_hp=1.0)
+    unit.add_component(repair_comp)
+
+    target = MockUnit()
+    target.id = 999
+    target.owner = unit.owner  # Friendly
+    target.in_system = "Sol"
+    target.in_hex = (0, 0)
+    target.position = Position(0, 0)
+
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(20, 0) # within 100 range
+
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.return_value = target
+    unit.game.galaxy = galaxy
+
+    order = RepairOrder(unit, {"target_unit_id": target.id})
+
+    # Target is damaged
+    target.take_damage(30)
+    assert target.current_hit_points == 70
+
+    # Execute repair order
+    order.execute(galaxy)
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert repair_comp.target == target
+    assert len(order.sub_orders) == 0  # in range, no move needed
+
+    # Test out of range case
+    unit.position = Position(150, 0) # out of 100 range
+    order_out_of_range = RepairOrder(unit, {"target_unit_id": target.id})
+    order_out_of_range.execute(galaxy)
+
+    # Should spawn MoveOrder and RepairOrder suborders
+    assert len(order_out_of_range.sub_orders) == 2
+    assert order_out_of_range.sub_orders[0].order_type == OrderType.MOVE
+    assert order_out_of_range.sub_orders[1].order_type == OrderType.REPAIR
 

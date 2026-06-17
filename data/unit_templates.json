@@ -14,7 +14,7 @@
     "weapon_bays_hull_cost": 0,
     "has_constructor_component": true,
     "constructor_hull_cost": 15,
-    "buildable_units": ["STATION_MK1"],
+    "buildable_units": ["STATION_MK1", "REPAIR_STATION_SMALL"],
     "build_time": 8,
     "build_cost": 800
   },
@@ -123,7 +123,53 @@
       "CONSTRUCTOR_MK1",
       "BATTLESHIP_TINY",
       "BATTLESHIP_SMALL",
-      "BATTLESHIP_MEDIUM"
+      "BATTLESHIP_MEDIUM",
+      "REPAIR_SHIP_SMALL"
     ]
+  },
+  "REPAIR_SHIP_SMALL": {
+    "name": "Small Repair Ship",
+    "hull_size": "SMALL",
+    "hull_points": 50,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_hull_cost": 10,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": false,
+    "weapon_bays_hull_cost": 0,
+    "has_repair_component": true,
+    "repair_rate": 15.0,
+    "repair_range": 200.0,
+    "credit_cost_per_hp": 1.0,
+    "repair_hull_cost": 10,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 8,
+    "build_cost": 500
+  },
+  "REPAIR_STATION_SMALL": {
+    "name": "Small Repair Station",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_scanner": true,
+    "scanner_hull_cost": 5,
+    "has_weapon_bays": false,
+    "weapon_bays_hull_cost": 0,
+    "has_repair_component": true,
+    "repair_rate": 30.0,
+    "repair_range": 350.0,
+    "credit_cost_per_hp": 1.0,
+    "repair_hull_cost": 20,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 10,
+    "build_cost": 750
   }
 }
