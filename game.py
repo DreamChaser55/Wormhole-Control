@@ -919,7 +919,7 @@ class Game:
                                 'type': 'progress_bar',
                                 'progress': progress,
                                 'total': total,
-                                'height': 20
+                                'height': 25
                             })
                         else:
                             data_for_gui.append({'type': 'label', 'text': "Status: Idle", 'object_id': '#sidebar_info_label', 'height': 20})

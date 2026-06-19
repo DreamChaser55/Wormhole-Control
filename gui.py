@@ -1005,9 +1005,14 @@ class GUI_Handler:
                 progress_bar = pygame_gui.elements.UIProgressBar(
                     relative_rect=progress_bar_rect,
                     manager=self.manager,
-                    container=target_container_for_element
+                    container=target_container_for_element,
+                    object_id='#constructor_progress_bar'
                 )
-                progress_bar.set_current_progress(progress)
+                if total > 0:
+                    percent = (progress / total) * 100.0
+                else:
+                    percent = 100.0
+                progress_bar.set_current_progress(percent)
                 self.side_bar_dynamic_elements.append(progress_bar)
                 actual_element_total_height = height_from_data
 

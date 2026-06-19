@@ -212,5 +212,12 @@
             "padding": "4",
             "line_spacing": "1.12"
         }
+    },
+    "#constructor_progress_bar": {
+        "font": {
+            "name": "arial",
+            "size": "14",
+            "bold": "1"
+        }
     }
 }
