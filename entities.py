@@ -46,9 +46,9 @@ class Player:
         self.name = name if name else f"Player {self.id}"
         self.color = color
         self.is_human = is_human
-        self.credits = 2000
-        self.metal = 1000
-        self.crystal = 1000
+        self.credits = 20000
+        self.metal = 10000
+        self.crystal = 10000
 
     def __repr__(self):
         return f"Player({self.name}, ID:{self.id}, Color:{self.color})"
