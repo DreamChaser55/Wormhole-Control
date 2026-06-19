@@ -379,7 +379,7 @@ class GUI_Handler:
 
         # --- Elements in Top Left Panel (left-alinged) ---
         back_button_width = int(60 * self.scale_x)
-        back_button_rect = pygame.Rect(padding, padding, back_button_width, element_height)
+        back_button_rect = pygame.Rect(padding, padding, back_button_width, -1)
         self.back_button = pygame_gui.elements.UIButton(
             relative_rect=back_button_rect,
             text='Back',
@@ -390,7 +390,7 @@ class GUI_Handler:
         )
 
         view_label_width = int(300 * self.scale_x)
-        view_label_rect = pygame.Rect(back_button_rect.right + padding, padding, view_label_width, element_height)
+        view_label_rect = pygame.Rect(back_button_rect.right + padding, padding, view_label_width, -1)
         self.view_mode_label = pygame_gui.elements.UILabel(relative_rect=view_label_rect,
                                                       text=f"View: {self.game_instance.view_mode.capitalize()}",
                                                       manager=self.manager,
@@ -407,7 +407,7 @@ class GUI_Handler:
         # --- Elements in Bottom Left Panel (left-aligned) ---
         # Menu Button
         menu_button_width = int(80 * self.scale_x)
-        menu_button_rect = pygame.Rect(padding, padding, menu_button_width, element_height)
+        menu_button_rect = pygame.Rect(padding, padding, menu_button_width, -1)
         self.menu_button = pygame_gui.elements.UIButton(relative_rect=menu_button_rect,
                                                          text='Menu',
                                                          manager=self.manager,
@@ -416,7 +416,7 @@ class GUI_Handler:
 
         # Resource Labels
         self.credits_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(menu_button_rect.right + int(5 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), int(30 * self.scale_y)),
+            relative_rect=pygame.Rect(menu_button_rect.right + int(5 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), -1),
             text="Credits: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
@@ -424,7 +424,7 @@ class GUI_Handler:
         )
         self.credits_label.text_horiz_alignment='left'
         self.metal_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(menu_button_rect.right + int(105 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), int(30 * self.scale_y)),
+            relative_rect=pygame.Rect(menu_button_rect.right + int(105 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), -1),
             text="Metal: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
@@ -432,7 +432,7 @@ class GUI_Handler:
         )
         self.metal_label.text_horiz_alignment='left'
         self.crystal_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(menu_button_rect.right + int(210 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), int(30 * self.scale_y)),
+            relative_rect=pygame.Rect(menu_button_rect.right + int(210 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), -1),
             text="Crystal: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
@@ -453,7 +453,7 @@ class GUI_Handler:
         end_turn_button_rect = pygame.Rect(panel_width - end_turn_button_width - padding,
                                              padding,
                                              end_turn_button_width,
-                                             element_height)
+                                             -1)
         self.end_turn_button = pygame_gui.elements.UIButton(relative_rect=end_turn_button_rect,
                                                               text='End Turn',
                                                               manager=self.manager,
@@ -464,7 +464,7 @@ class GUI_Handler:
         turn_label_rect = pygame.Rect(end_turn_button_rect.left - turn_label_width - padding,
                                         padding,
                                         turn_label_width,
-                                        element_height)
+                                        -1)
         self.player_turn_label = pygame_gui.elements.UILabel(relative_rect=turn_label_rect,
                                                             text="",
                                                             manager=self.manager,
@@ -511,9 +511,10 @@ class GUI_Handler:
     def setup_ingame_menu(self):
         """Initializes the Pygame GUI elements for the in-game menu interface."""
         num_buttons = 3
-        button_height = 40
-        internal_padding = 15
-        panel_width = 300
+        button_height = int(40 * self.scale_y)  # Used only for panel height estimation
+        button_width = int(200 * self.scale_x)
+        internal_padding = int(15 * self.scale_y)
+        panel_width = int(300 * self.scale_x)
         panel_height = internal_padding + num_buttons * (button_height + internal_padding)
 
         menu_rect = pygame.Rect(
@@ -536,7 +537,7 @@ class GUI_Handler:
             (panel_width - button_width) // 2,
             current_y,
             button_width,
-            button_height
+            -1
         )
         self.resume_button = pygame_gui.elements.UIButton(
             relative_rect=button_rel_rect,
@@ -552,7 +553,7 @@ class GUI_Handler:
             (panel_width - button_width) // 2,
             current_y,
             button_width,
-            button_height
+            -1
         )
         self.save_game_button = pygame_gui.elements.UIButton(
             relative_rect=button_rel_rect,
@@ -568,7 +569,7 @@ class GUI_Handler:
             (panel_width - button_width) // 2,
             current_y,
             button_width,
-            button_height
+            -1
         )
         self.quit_to_menu_button = pygame_gui.elements.UIButton(
             relative_rect=button_rel_rect,
