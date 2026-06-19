@@ -136,13 +136,7 @@ class Game:
             Player("Player 3", YELLOW, is_human=True)
         ]
 
-
         self.current_player_index = 0
-
-        # Grant starting resources
-        for player in self.players:
-            player.metal = 1000
-            player.crystal = 1000
 
         # Assign homeworlds and track their hex locations
         player_homeworld_hexes: typing.Dict[Player, HexCoord] = {}
