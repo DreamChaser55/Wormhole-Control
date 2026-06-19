@@ -47,6 +47,17 @@ class GUI_Handler:
                     if isinstance(value, dict) and 'font' in value and 'size' in value['font']:
                         value['font']['size'] = str(max(1, int(int(value['font']['size']) * TEXT_SCALE)))
 
+                # Scale drop-down menu options list item height
+                dropdown_list_theme_id = "drop_down_menu.#drop_down_options_list"
+                if dropdown_list_theme_id not in theme_data:
+                    theme_data[dropdown_list_theme_id] = {"misc": {}}
+                elif "misc" not in theme_data[dropdown_list_theme_id]:
+                    theme_data[dropdown_list_theme_id]["misc"] = {}
+                
+                # Match the base height of 30 used for the dropdown button in game.py
+                scaled_item_height = max(20, int(30 * TEXT_SCALE))
+                theme_data[dropdown_list_theme_id]["misc"]["list_item_height"] = str(scaled_item_height)
+
                 with open(scaled_theme_path, 'w') as f:
                     json.dump(theme_data, f)
                 
