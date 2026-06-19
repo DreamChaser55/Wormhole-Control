@@ -9,7 +9,8 @@ from unit_orders import (
 from unit_components import (
     Engines, Hyperdrive, HyperdriveType, Weapons, ColonyComponent, 
     HyperspaceInhibitionFieldEmitter, Constructor, RepairComponent,
-    MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
+    MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
+    BuildableUnit
 )
 from tests.test_unit_components import MockUnit, MockPlayer
 
@@ -365,8 +366,8 @@ def test_move_order_inhibition_escape():
 def test_construct_order():
     # Setup unit and constructor component
     unit = MockUnit()
-    constructor = MagicMock()
-    unit.components[Constructor] = constructor
+    constructor = Constructor(unit, hull_cost=10)
+    unit.add_component(constructor)
 
     galaxy = MagicMock()
     
@@ -375,10 +376,10 @@ def test_construct_order():
     player.id = unit.owner.id
     player.credits = 500
     unit.game.players = [player]
+    unit.owner = player
 
-    buildable = MagicMock()
-    buildable.cost_credits = 300
-    constructor.can_build.return_value = buildable
+    buildable = BuildableUnit(unit_template_name="Station", time_to_build=3, cost_credits=300)
+    constructor.buildable_units.append(buildable)
 
     # Valid order
     order = ConstructOrder(unit, {
@@ -386,11 +387,46 @@ def test_construct_order():
         "target_position": Position(10, 10)
     })
 
+    assert order.status == OrderStatus.PENDING
+
+    # Execute
     order.execute(galaxy)
 
-    assert order.status == OrderStatus.COMPLETED
+    assert order.status == OrderStatus.IN_PROGRESS
     assert player.credits == 200
-    constructor.start_construction.assert_called_once_with("Station", Position(10, 10), galaxy)
+    assert constructor.current_construction_target == ("Station", Position(10, 10))
+    assert constructor.construction_progress == 0
+
+    # Progress turn
+    constructor.update(galaxy)
+    assert constructor.construction_progress == 1
+    order.update(galaxy)
+    assert order.status == OrderStatus.IN_PROGRESS
+
+    # Complete construction
+    constructor.update(galaxy) # progress = 2
+    constructor.update(galaxy) # progress = 3 -> completes
+    assert constructor.current_construction_target is None
+
+    # Check order completion
+    order.update(galaxy)
+    assert order.status == OrderStatus.COMPLETED
+
+    # Cancellation refund
+    player.credits = 500
+    order_cancel = ConstructOrder(unit, {
+        "unit_template_name": "Station",
+        "target_position": Position(10, 10)
+    })
+    order_cancel.execute(galaxy)
+    assert order_cancel.status == OrderStatus.IN_PROGRESS
+    assert player.credits == 200
+    assert constructor.current_construction_target == ("Station", Position(10, 10))
+
+    order_cancel.cancel()
+    assert order_cancel.status == OrderStatus.CANCELLED
+    assert player.credits == 500
+    assert constructor.current_construction_target is None
 
     # Insufficient credits case
     player.credits = 100
@@ -400,6 +436,8 @@ def test_construct_order():
     })
     order_fail.execute(galaxy)
     assert order_fail.status == OrderStatus.FAILED
+    assert player.credits == 100
+
 
 
 def test_load_colonists_order():

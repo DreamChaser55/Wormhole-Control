@@ -828,9 +828,28 @@ class ConstructOrder(Order):
             logger.debug(f"CONSTRUCT order failed: Not enough credits.")
             return
 
-        player.credits -= buildable.cost_credits
-        constructor.start_construction(unit_template_name, target_pos, galaxy_ref)
-        self.status = OrderStatus.COMPLETED
+        success = constructor.start_construction(unit_template_name, target_pos, galaxy_ref)
+        if not success:
+            self.status = OrderStatus.FAILED
+
+    def check_completion_conditions(self) -> None:
+        constructor = self.unit.constructor_component
+        if not constructor or constructor.current_construction_target is None:
+            self.status = OrderStatus.COMPLETED
+
+    def cancel(self) -> None:
+        constructor = self.unit.constructor_component
+        if constructor and constructor.current_construction_target:
+            unit_template_name = constructor.current_construction_target[0]
+            buildable = constructor.can_build(unit_template_name)
+            if buildable:
+                player = next((p for p in self.unit.game.players if p.id == self.unit.owner.id), None)
+                if player:
+                    player.credits += buildable.cost_credits
+                    logger.debug(f"Refunded {buildable.cost_credits} credits to player {player.name} for cancelled construction of {unit_template_name}.")
+            constructor.cancel_construction()
+        super().cancel()
+
 
 
 class RepairOrder(Order):
