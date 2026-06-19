@@ -720,6 +720,10 @@ class GUI_Handler:
                 if DEBUG:
                     logger.debug(f"[GUI_Handler DEBUG] Clicked UI element {event.ui_element} not found in dynamic_button_actions or no action_id.")
 
+        elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+            logger.debug(f"Drop down menu changed (GUI): {event.text}")
+            action_result = {'action': 'component_selected', 'component_name': event.text}
+
         if action_result:
             return action_result
         elif handled_by_manager:
@@ -993,6 +997,21 @@ class GUI_Handler:
                 )
                 progress_bar.set_current_progress(progress)
                 self.side_bar_dynamic_elements.append(progress_bar)
+                actual_element_total_height = height_from_data
+
+            elif item_type == 'drop_down_menu':
+                options_list = item_data.get('options_list', [])
+                starting_option = item_data.get('starting_option', '')
+                dropdown_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
+                dropdown = pygame_gui.elements.UIDropDownMenu(
+                    options_list=options_list,
+                    starting_option=starting_option,
+                    relative_rect=dropdown_rect,
+                    manager=self.manager,
+                    container=target_container_for_element,
+                    object_id=obj_id
+                )
+                self.side_bar_dynamic_elements.append(dropdown)
                 actual_element_total_height = height_from_data
 
             if actual_element_total_height > 0:

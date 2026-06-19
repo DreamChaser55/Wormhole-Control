@@ -108,6 +108,7 @@ class Game:
         self.gui.show_main_menu()
         self.sidebar_needs_update: bool = True
         self.pending_ai_turn_end_time: int = 0
+        self.selected_component_name: typing.Optional[str] = None
 
 
 
@@ -331,6 +332,8 @@ class Game:
         if obj_to_deselect in self.selected_objects:
             self.selected_objects.remove(obj_to_deselect)
             self.sidebar_needs_update = True
+            if not any(isinstance(obj, Unit) for obj in self.selected_objects):
+                self.selected_component_name = None
 
     # --- GUI Action Handling ---
     def handle_gui_action(self, action: typing.Dict[str, typing.Any]):
@@ -376,6 +379,9 @@ class Game:
                 self.update_view_specific_labels()
                 self.gui.update_back_button_visibility()
                 self.update_side_bar_content()
+        elif action_type == 'component_selected':
+            self.selected_component_name = action.get('component_name')
+            self.sidebar_needs_update = True
         elif action_type == 'ui_handled':
             pass
         else:
@@ -584,6 +590,9 @@ class Game:
         if not self.sidebar_needs_update:
             return
 
+        if not self.selected_objects or len(self.selected_objects) > 1 or not isinstance(self.selected_objects[0], Unit):
+            self.selected_component_name = None
+
         if PROFILE:
             sidebar_timer = Timer()
             sidebar_timer.start()
@@ -701,8 +710,6 @@ class Game:
 
                 elif isinstance(body, Comet):
                     data_for_gui.append({'type': 'label', 'text': "A celestial body of ice and rock.", 'object_id': '#sidebar_info_label', 'height': 20})
-
-            # --- Unit Selection ---
             elif isinstance(selected_obj, Unit):
                 unit: Unit = selected_obj
                 data_for_gui.append({'type': 'label', 'text': f"Unit: {unit.name}", 'object_id': '#sidebar_title_label', 'height': 30})
@@ -718,21 +725,6 @@ class Game:
                     hex_pos_str = str(unit.in_hex)
                 data_for_gui.append({'type': 'label', 'text': f"Hex: {hex_pos_str}", 'object_id': '#sidebar_info_label', 'height': 20})
                 data_for_gui.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
-
-                if unit.colony_component:
-                    data_for_gui.append({'type': 'label', 'text': f"Population Cargo: {unit.colony_component.population_cargo}", 'object_id': '#sidebar_info_label', 'height': 20})
-        
-                if unit.mining_component:
-                    metal = int(unit.mining_component.raw_metal_cargo)
-                    crystal = int(unit.mining_component.raw_crystal_cargo)
-                    max_c = int(unit.mining_component.max_cargo)
-                    data_for_gui.append({'type': 'label', 'text': f"Raw Cargo: {metal} Metal, {crystal} Crystal / {max_c}", 'object_id': '#sidebar_info_label', 'height': 20})
-
-                if unit.metal_refinery_component:
-                    data_for_gui.append({'type': 'label', 'text': "Metal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
-
-                if unit.crystal_refinery_component:
-                    data_for_gui.append({'type': 'label', 'text': "Crystal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
         
                 data_for_gui.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage}/{unit.hull_capacity}", 'object_id': '#sidebar_info_label', 'height': 25})
                 
@@ -749,134 +741,231 @@ class Game:
 
                 data_for_gui.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hp_style_id, 'height': 25})
 
-                if unit.engines_component is not None:
-                    comp = unit.engines_component
-                    status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
-                    data_for_gui.append({'type': 'label', 'text': f"Engines [{status}]: Speed: {comp.speed}", 'object_id': '#sidebar_info_label', 'height': 20})
-
-                if unit.hyperdrive_component is not None:
-                    comp = unit.hyperdrive_component
-                    status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
-                    hd_comp = unit.hyperdrive_component
-                    drive_type_str = hd_comp.drive_type.value if hd_comp.drive_type else 'N/A'
-                
-                    status_detail = ""
-                    if hd_comp.jump_status == JumpStatus.CHARGING:
-                        status_detail = f" (Charging: {hd_comp.recharge_time_remaining} turns)"
-                    elif hd_comp.jump_status == JumpStatus.JUMPING:
-                        status_detail = " (Jumping)"
-                    elif hd_comp.jump_status == JumpStatus.READY:
-                        status_detail = " (Ready)"
-                    elif hd_comp.jump_status == JumpStatus.ERROR:
-                        status_detail = " (Error)"
-
-                    final_hyperdrive_text = f"Hyperdrive [{status}]: {drive_type_str}{status_detail}"
-                
-                    data_for_gui.append({
-                        'type': 'label',
-                        'text': final_hyperdrive_text,
-                        'object_id': '#sidebar_info_label', 
-                        'height': 20
-                    })
-                else: # If no hyperdrive component at all
-                    data_for_gui.append({
-                        'type': 'label',
-                        'text': "Hyperdrive: None",
-                        'object_id': '#sidebar_info_label',
-                        'height': 20
-                    })
-
+                # Gather available components
+                components_map = {}
+                if unit.commander_component:
+                    components_map["Commander"] = unit.commander_component
+                if unit.weapons_component:
+                    components_map["Weapons"] = unit.weapons_component
+                if unit.engines_component:
+                    components_map["Engines"] = unit.engines_component
+                if unit.hyperdrive_component:
+                    components_map["Hyperdrive"] = unit.hyperdrive_component
                 if unit.inhibitor_component:
-                    comp = unit.inhibitor_component
-                    status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
-                    data_for_gui.append({'type': 'label', 'text': f"Inhibitor [{status}]", 'object_id': '#sidebar_info_label', 'height': 20})
+                    components_map["Inhibitor"] = unit.inhibitor_component
+                if unit.constructor_component:
+                    components_map["Constructor"] = unit.constructor_component
+                if unit.colony_component:
+                    components_map["Colony"] = unit.colony_component
+                if unit.mining_component:
+                    components_map["Mining"] = unit.mining_component
+                if unit.metal_refinery_component:
+                    components_map["Metal Refinery"] = unit.metal_refinery_component
+                if unit.crystal_refinery_component:
+                    components_map["Crystal Refinery"] = unit.crystal_refinery_component
+                if unit.repair_component:
+                    components_map["Repair"] = unit.repair_component
+
+                component_order = ["Commander", "Weapons", "Engines", "Hyperdrive", "Inhibitor", "Constructor", "Colony", "Mining", "Metal Refinery", "Crystal Refinery", "Repair"]
+                dropdown_options = [c for c in component_order if c in components_map]
+                for c in components_map:
+                    if c not in dropdown_options:
+                        dropdown_options.append(c)
+
+                if dropdown_options:
+                    if self.selected_component_name not in dropdown_options:
+                        if "Commander" in dropdown_options:
+                            self.selected_component_name = "Commander"
+                        else:
+                            self.selected_component_name = dropdown_options[0]
+                    starting_option = self.selected_component_name
+                else:
+                    self.selected_component_name = None
+                    starting_option = None
+
+                if dropdown_options and starting_option:
                     data_for_gui.append({
-                        'type': 'inhibitor_button',
-                        'is_active': unit.inhibitor_component.is_active,
+                        'type': 'drop_down_menu',
+                        'options_list': dropdown_options,
+                        'starting_option': starting_option,
                         'height': 30
                     })
 
-                if unit.constructor_component and unit.constructor_component.current_construction_target:
-                    constructor = unit.constructor_component
-                    target_name = constructor.current_construction_target[0]
-                    progress = constructor.construction_progress
-                    total = constructor.time_to_build
-                    data_for_gui.append({'type': 'label', 'text': f"Constructing: {target_name}", 'object_id': '#sidebar_info_label', 'height': 25})
-                    data_for_gui.append({
-                        'type': 'progress_bar',
-                        'progress': progress,
-                        'total': total,
-                        'height': 20
-                    })
+                # Render detailed info for the selected component only
+                if self.selected_component_name == "Commander":
+                    if unit.commander_component:
+                        # Display Current Order (always visible if exists)
+                        current_order = unit.commander_component.current_order
+                        if current_order:
+                            data_for_gui.append({
+                                'type': 'label', 
+                                'text': "Current Order:", 
+                                'object_id': '#sidebar_section_header_label', 
+                                'height': 25,
+                                'indent_level': 0
+                            })
 
-                if unit.weapons_component:
-                    comp = unit.weapons_component
-                    status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
-                    data_for_gui.append({'type': 'label', 'text': f"Weapons [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
-                    for turret in unit.weapons_component.turrets:
-                        target = unit.weapons_component.turrets[0].target if unit.weapons_component.turrets else None
-                        turret_text = f"- {turret.turret_type.name}: {turret.damage} dmg, {turret.range} range, {turret.cooldown} turns cooldown, Target: {target.name if target else 'N/A'}"
-                        data_for_gui.append({'type': 'label', 'text': turret_text, 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 1})
-        
-                # Orders Section
-                if unit.commander_component:
-                    # Display Current Order (always visible if exists)
-                    current_order = unit.commander_component.current_order
-                    if current_order:
-                        data_for_gui.append({
-                            'type': 'label', 
-                            'text': "Current Order:", 
-                            'object_id': '#sidebar_section_header_label', 
-                            'height': 25,
-                            'indent_level': 0
-                        })
-
-                        current_order_html = self._generate_order_data_recursive(current_order, 0)
-                        data_for_gui.append({
-                            'type': 'text_box',
-                            'html_text': current_order_html,
-                            'height': 120,
-                            'object_id': '#order_text_box'
-                        })
-                    else:
-                        data_for_gui.append({'type': 'label', 'text': "Current Order: None", 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 0})
-
-                    # Queued Orders Section Header
-                    data_for_gui.append({'type': 'label', 'text': "Queued Orders", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
-                
-                    queued_order_count = len(unit.commander_component.orders_queue)
-                    section_key = f"{unit.id}_orders_queue" 
-                    is_queue_expanded = self.gui.is_section_expanded(section_key)
-                    button_text = "[-] Queued" if is_queue_expanded else "[+] Queued"
-                
-                    data_for_gui.append({
-                        'type': 'button', 
-                        'text': f"{button_text} ({queued_order_count})", 
-                        'object_id': '#sidebar_expand_button',
-                        'action_id': 'toggle_orders_queue', 
-                        'target_data': unit.id, 
-                        'height': 25,
-                        'indent_level': 0 
-                    })
-
-                    if is_queue_expanded:
-                        queued_orders_html = ""
-                        if queued_order_count == 0:
-                            queued_orders_html = "No queued orders"
+                            current_order_html = self._generate_order_data_recursive(current_order, 0)
+                            data_for_gui.append({
+                                'type': 'text_box',
+                                'html_text': current_order_html,
+                                'height': 120,
+                                'object_id': '#order_text_box'
+                            })
                         else:
-                            for i, queued_top_order in enumerate(unit.commander_component.orders_queue):
-                                queued_orders_html += f"<b>{i+1}.</b> "
-                                queued_orders_html += self._generate_order_data_recursive(queued_top_order, 0)
-                        
+                            data_for_gui.append({'type': 'label', 'text': "Current Order: None", 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 0})
+
+                        # Queued Orders Section Header
+                        data_for_gui.append({'type': 'label', 'text': "Queued Orders", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
+                    
+                        queued_order_count = len(unit.commander_component.orders_queue)
+                        section_key = f"{unit.id}_orders_queue" 
+                        is_queue_expanded = self.gui.is_section_expanded(section_key)
+                        button_text = "[-] Queued" if is_queue_expanded else "[+] Queued"
+                    
                         data_for_gui.append({
-                            'type': 'text_box',
-                            'html_text': queued_orders_html,
-                            'height': 150,
-                            'object_id': '#order_text_box',
-                            'indent_level': 1
+                            'type': 'button', 
+                            'text': f"{button_text} ({queued_order_count})", 
+                            'object_id': '#sidebar_expand_button',
+                            'action_id': 'toggle_orders_queue', 
+                            'target_data': unit.id, 
+                            'height': 25,
+                            'indent_level': 0 
                         })
-                else:
-                    data_for_gui.append({'type': 'label', 'text': "Orders: N/A (No Commander)", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                        if is_queue_expanded:
+                            queued_orders_html = ""
+                            if queued_order_count == 0:
+                                queued_orders_html = "No queued orders"
+                            else:
+                                for i, queued_top_order in enumerate(unit.commander_component.orders_queue):
+                                    queued_orders_html += f"<b>{i+1}.</b> "
+                                    queued_orders_html += self._generate_order_data_recursive(queued_top_order, 0)
+                            
+                            data_for_gui.append({
+                                'type': 'text_box',
+                                'html_text': queued_orders_html,
+                                'height': 150,
+                                'object_id': '#order_text_box',
+                                'indent_level': 1
+                            })
+                    else:
+                        data_for_gui.append({'type': 'label', 'text': "Orders: N/A (No Commander)", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                elif self.selected_component_name == "Weapons":
+                    if unit.weapons_component:
+                        comp = unit.weapons_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Weapons [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
+                        for turret in comp.turrets:
+                            target = turret.target
+                            turret_text = f"- {turret.turret_type.name}: {turret.damage} dmg, {turret.range} range, {turret.cooldown} turns cooldown, Target: {target.name if target else 'N/A'}"
+                            data_for_gui.append({'type': 'label', 'text': turret_text, 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 1})
+
+                elif self.selected_component_name == "Engines":
+                    if unit.engines_component is not None:
+                        comp = unit.engines_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Engines [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        data_for_gui.append({'type': 'label', 'text': f"Speed: {comp.speed}", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                elif self.selected_component_name == "Hyperdrive":
+                    if unit.hyperdrive_component is not None:
+                        comp = unit.hyperdrive_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        drive_type_str = comp.drive_type.value if comp.drive_type else 'N/A'
+                    
+                        status_detail = ""
+                        if comp.jump_status == JumpStatus.CHARGING:
+                            status_detail = f" (Charging: {comp.recharge_time_remaining} turns)"
+                        elif comp.jump_status == JumpStatus.JUMPING:
+                            status_detail = " (Jumping)"
+                        elif comp.jump_status == JumpStatus.READY:
+                            status_detail = " (Ready)"
+                        elif comp.jump_status == JumpStatus.ERROR:
+                            status_detail = " (Error)"
+     
+                        final_hyperdrive_text = f"Hyperdrive [{status}]: {drive_type_str}{status_detail}"
+                    
+                        data_for_gui.append({
+                            'type': 'label',
+                            'text': final_hyperdrive_text,
+                            'object_id': '#sidebar_info_label', 
+                            'height': 20
+                        })
+
+                elif self.selected_component_name == "Inhibitor":
+                    if unit.inhibitor_component:
+                        comp = unit.inhibitor_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Inhibitor [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        data_for_gui.append({
+                            'type': 'inhibitor_button',
+                            'is_active': comp.is_active,
+                            'height': 30
+                        })
+
+                elif self.selected_component_name == "Constructor":
+                    if unit.constructor_component:
+                        comp = unit.constructor_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Constructor [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        if comp.current_construction_target:
+                            target_name = comp.current_construction_target[0]
+                            progress = comp.construction_progress
+                            total = comp.time_to_build
+                            data_for_gui.append({'type': 'label', 'text': f"Constructing: {target_name}", 'object_id': '#sidebar_info_label', 'height': 25})
+                            data_for_gui.append({
+                                'type': 'progress_bar',
+                                'progress': progress,
+                                'total': total,
+                                'height': 20
+                            })
+                        else:
+                            data_for_gui.append({'type': 'label', 'text': "Status: Idle", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                elif self.selected_component_name == "Colony":
+                    if unit.colony_component:
+                        comp = unit.colony_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Colony Component [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        data_for_gui.append({'type': 'label', 'text': f"Population Cargo: {comp.population_cargo} / {comp.max_cargo}", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                elif self.selected_component_name == "Mining":
+                    if unit.mining_component:
+                        comp = unit.mining_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        metal = int(comp.raw_metal_cargo)
+                        crystal = int(comp.raw_crystal_cargo)
+                        max_c = int(comp.max_cargo)
+                        data_for_gui.append({'type': 'label', 'text': f"Mining Component [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        data_for_gui.append({'type': 'label', 'text': f"Raw Cargo: {metal} Metal, {crystal} Crystal / {max_c}", 'object_id': '#sidebar_info_label', 'height': 20})
+                        if comp.mining_target:
+                            data_for_gui.append({'type': 'label', 'text': f"Mining Target: {comp.mining_target.name}", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                elif self.selected_component_name == "Metal Refinery":
+                    if unit.metal_refinery_component:
+                        comp = unit.metal_refinery_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Metal Refinery [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        data_for_gui.append({'type': 'label', 'text': "Metal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                elif self.selected_component_name == "Crystal Refinery":
+                    if unit.crystal_refinery_component:
+                        comp = unit.crystal_refinery_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Crystal Refinery [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        data_for_gui.append({'type': 'label', 'text': "Crystal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                elif self.selected_component_name == "Repair":
+                    if unit.repair_component:
+                        comp = unit.repair_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Repair Component [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        data_for_gui.append({'type': 'label', 'text': f"Repair Rate: {comp.repair_rate} HP/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+                        data_for_gui.append({'type': 'label', 'text': f"Repair Range: {comp.repair_range}", 'object_id': '#sidebar_info_label', 'height': 20})
+                        target_name = comp.target.name if comp.target else "None"
+                        data_for_gui.append({'type': 'label', 'text': f"Repair Target: {target_name}", 'object_id': '#sidebar_info_label', 'height': 20})
 
         # --- Default / Unknown ---
         else:
