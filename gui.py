@@ -409,7 +409,8 @@ class GUI_Handler:
                                                       object_id='#view_label')
 
         # --- Bottom Left Panel ---
-        left_bottom_panel_rect = pygame.Rect(0, self.screen_res.y - TOP_BAR_HEIGHT, panel_width, TOP_BAR_HEIGHT)
+        bottom_panel_width = int(580 * self.scale_x)
+        left_bottom_panel_rect = pygame.Rect(0, self.screen_res.y - TOP_BAR_HEIGHT, bottom_panel_width, TOP_BAR_HEIGHT)
         self.left_bottom_bar_panel = pygame_gui.elements.UIPanel(relative_rect=left_bottom_panel_rect,
                                                               starting_height=1,
                                                               manager=self.manager,
@@ -426,24 +427,32 @@ class GUI_Handler:
                                                          object_id='#menu_button')
 
         # Resource Labels
+        label_width = int(150 * self.scale_x)
+        label_spacing = int(10 * self.scale_x)
+
+        credits_x = menu_button_rect.right + label_spacing
         self.credits_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(menu_button_rect.right + int(5 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), -1),
+            relative_rect=pygame.Rect(credits_x, int(5 * self.scale_y), label_width, -1),
             text="Credits: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
             object_id='#resource_label'
         )
         self.credits_label.text_horiz_alignment='left'
+
+        metal_x = credits_x + label_width + label_spacing
         self.metal_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(menu_button_rect.right + int(105 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), -1),
+            relative_rect=pygame.Rect(metal_x, int(5 * self.scale_y), label_width, -1),
             text="Metal: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
             object_id='#resource_label'
         )
         self.metal_label.text_horiz_alignment='left'
+
+        crystal_x = metal_x + label_width + label_spacing
         self.crystal_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(menu_button_rect.right + int(210 * self.scale_x), int(5 * self.scale_y), int(100 * self.scale_x), -1),
+            relative_rect=pygame.Rect(crystal_x, int(5 * self.scale_y), label_width, -1),
             text="Crystal: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
