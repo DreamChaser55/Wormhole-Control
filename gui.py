@@ -901,7 +901,7 @@ class GUI_Handler:
             text = item_data.get('text', '')
             object_id_str = item_data.get('object_id', None)
             class_id_str = item_data.get('class_id', None)
-            height_from_data = item_data.get('height', 25)
+            height_from_data = int(item_data.get('height', 25) * TEXT_SCALE)
             item_indent_level = item_data.get('indent_level', 0)
 
             actual_element_total_height = 0
