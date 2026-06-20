@@ -498,8 +498,21 @@ class Game:
             return [f"{toggle_inhibitor_type_styled} {action_styled}"]
 
         elif order_type == "PATROL":
+            dsys = parameters.get("destination_system_name", "N/A")
+            dhex = parameters.get("destination_hex_coord", "N/A")
+            dpos_param = parameters.get("destination_position", None)
+            dpos_str = f"({dpos_param.x:.1f}, {dpos_param.y:.1f})" if isinstance(dpos_param, Position) else "N/A"
+
             patrol_type_styled = f"<font color='{PATROL_TYPE_COLOR}'><b>🔄 Patrol:</b></font>"
-            return [f"{patrol_type_styled} <font color='{INFO_COLOR}'><i>(Details TBD)</i></font>"]
+            dsys_styled = f"<font color='{INFO_COLOR}'><i>{dsys}</i></font>" if dsys != "N/A" else f"<font color='{INFO_COLOR}'>N/A</font>"
+            dhex_styled = f"<font color='{INFO_COLOR}'>{dhex}</font>"
+            dpos_styled = f"<font color='{INFO_COLOR}'>{dpos_str}</font>"
+            return [
+                patrol_type_styled,
+                f"  Sys: {dsys_styled}",
+                f"  Hex: {dhex_styled}",
+                f"  Pos: {dpos_styled}"
+            ]
 
         elif order_type == "ATTACK":
             target_unit_id = state_data.get("target_unit_id")

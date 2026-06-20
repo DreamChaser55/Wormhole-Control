@@ -3,11 +3,11 @@ import typing
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
-    MineEvent, UnloadResourcesEvent, DockEvent
+    MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent
 )
 from entities import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
-    MineOrder, UnloadResourcesOrder, DockOrder
+    MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder
 )
 from sector_utils import random_point_in_sector
 from constants import HullSize
@@ -24,6 +24,7 @@ class OrderSystem:
     def _subscribe_all(self):
         self.event_bus.subscribe(CancelOrdersEvent, self.handle_cancel_orders)
         self.event_bus.subscribe(IssueMoveOrderEvent, self.handle_issue_move_order)
+        self.event_bus.subscribe(IssuePatrolOrderEvent, self.handle_issue_patrol_order)
         self.event_bus.subscribe(JumpInterhexEvent, self.handle_jump_interhex)
         self.event_bus.subscribe(JumpWormholeEvent, self.handle_jump_wormhole)
         self.event_bus.subscribe(AttackUnitEvent, self.handle_attack_unit)
@@ -56,6 +57,22 @@ class OrderSystem:
                     logger.debug(f"  Unit {unit.name} orders cancelled.")
                 unit.commander_component.add_order(move_order)
                 logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
+        for unit in event.units:
+            if unit.engines_component:
+                patrol_params = {
+                    "destination_system_name": event.system_name,
+                    "destination_hex_coord": event.sector_coord,
+                    "destination_position": event.destination
+                }
+                patrol_order = PatrolOrder(unit, patrol_params)
+                if not event.shift_pressed:
+                    unit.commander_component.clear_orders()
+                    logger.debug(f"  Unit {unit.name} orders cancelled.")
+                unit.commander_component.add_order(patrol_order)
+                logger.debug(f"  Unit {unit.name} ordered to patrol to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_jump_interhex(self, event: JumpInterhexEvent):

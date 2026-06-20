@@ -35,6 +35,14 @@ class IssueMoveOrderEvent(Event):
         self.destination = destination
         self.shift_pressed = shift_pressed
 
+class IssuePatrolOrderEvent(Event):
+    def __init__(self, units: list, system_name: str, sector_coord: typing.Any, destination: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.system_name = system_name
+        self.sector_coord = sector_coord
+        self.destination = destination
+        self.shift_pressed = shift_pressed
+
 class JumpInterhexEvent(Event):
     def __init__(self, units: list, system_name: str, target_hex: typing.Any, shift_pressed: bool):
         self.units = units

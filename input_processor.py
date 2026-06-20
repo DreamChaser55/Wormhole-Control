@@ -16,7 +16,7 @@ from hexgrid_utils import pixel_to_hex
 from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
 from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Wormhole, HullSize
 from events import (
-    CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
+    CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent
 )
@@ -311,6 +311,7 @@ class InputProcessor:
                         if target_coords is not None:
                             if any(a.engines_component and a.engines_component.speed > 0 for a in actors):
                                 options.append(("Move Here", "issue_move_order"))
+                                options.append(("Patrol Here", "issue_patrol_order"))
 
                             for actor in actors:
                                 if actor.constructor_component:
@@ -441,6 +442,16 @@ class InputProcessor:
             elif extracted_action_id == "issue_move_order":
                 if isinstance(target, Position):
                     self.game.event_bus.publish(IssueMoveOrderEvent(
+                        selected_units,
+                        self.game.current_system_name,
+                        self.game.current_sector_coord,
+                        target,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "issue_patrol_order":
+                if isinstance(target, Position):
+                    self.game.event_bus.publish(IssuePatrolOrderEvent(
                         selected_units,
                         self.game.current_system_name,
                         self.game.current_sector_coord,
