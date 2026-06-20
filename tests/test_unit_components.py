@@ -514,3 +514,26 @@ def test_ship_size_hyperdrive_restrictions_in_constructor():
 
     finally:
         unit_components.UNIT_TEMPLATES = original_templates
+
+
+def test_shipyard_refinery_options():
+    from unit_templates import UNIT_TEMPLATES
+    
+    # 1. Verify template contains the refinery options
+    shipyard_tmpl = UNIT_TEMPLATES.get("SHIPYARD_MK1")
+    assert shipyard_tmpl is not None
+    buildable = shipyard_tmpl.get("buildable_units", [])
+    assert "METAL_REFINERY_STATION" in buildable
+    assert "CRYSTAL_REFINERY_STATION" in buildable
+
+    # 2. Verify Constructor component populated from templates registers them
+    unit = MockUnit()
+    constructor = Constructor(
+        unit, 
+        hull_cost=30, 
+        buildable_unit_names=shipyard_tmpl.get("buildable_units")
+    )
+    
+    assert constructor.can_build("METAL_REFINERY_STATION") is not None
+    assert constructor.can_build("CRYSTAL_REFINERY_STATION") is not None
+

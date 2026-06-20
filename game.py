@@ -184,7 +184,8 @@ class Game:
             + ColonyComponent + RepairComponent
         - One Huge Station (HUGE): Weapons + Constructor
             (builds CONSTRUCTOR_MK1, BATTLESHIP_TINY, BATTLESHIP_SMALL,
-             BATTLESHIP_MEDIUM, REPAIR_SHIP_SMALL)
+             BATTLESHIP_MEDIUM, REPAIR_SHIP_SMALL, METAL_REFINERY_STATION,
+             CRYSTAL_REFINERY_STATION)
             + RepairComponent
 
         Args:
@@ -308,7 +309,8 @@ class Game:
                         buildable_unit_names=[
                             "CONSTRUCTOR_MK1", "BATTLESHIP_TINY",
                             "BATTLESHIP_SMALL", "BATTLESHIP_MEDIUM",
-                            "REPAIR_SHIP_SMALL"
+                            "REPAIR_SHIP_SMALL", "METAL_REFINERY_STATION",
+                            "CRYSTAL_REFINERY_STATION"
                         ]
                     ))
                     station_unit.add_component(RepairComponent(
