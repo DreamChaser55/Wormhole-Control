@@ -454,9 +454,9 @@ class Galaxy:
             logger.debug(f"Error creating wormhole: Could not find empty hex in {sys_name_a} or {sys_name_b}")
             return
 
-        # Determine stability for the pair: 80% chance of 100%, 20% chance of 50-99%
+        # Determine stability for the pair: 80% chance of 100%, 20% chance of 50-95%
         if random.random() < 0.20:
-            stability = random.randint(50, 99)
+            stability = random.randint(50, 95)
         else:
             stability = 100
 
