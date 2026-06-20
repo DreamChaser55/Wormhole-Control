@@ -65,6 +65,18 @@ class MockUnit:
     def take_damage(self, amount):
         self.current_hit_points -= amount
 
+    def take_component_damage(self, component_type, amount):
+        component = self.get_component(component_type)
+        if not component or component.is_destroyed:
+            return amount
+        component.current_hit_points -= amount
+        spillover = 0
+        if component.current_hit_points <= 0:
+            spillover = abs(component.current_hit_points)
+            component.current_hit_points = 0
+            component.on_destroyed()
+        return spillover
+
     def heal_hull(self, amount):
         if self.current_hit_points >= self.max_hit_points:
             return 0

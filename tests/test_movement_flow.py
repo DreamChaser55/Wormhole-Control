@@ -84,6 +84,7 @@ class SimpleWormhole:
         self.exit_wormhole_id = exit_wormhole_id
         self.position = position
         self.name = f"Wormhole-{wh_id}"
+        self.stability = 100
 
 class SimpleGalaxy:
     def __init__(self):
@@ -362,4 +363,94 @@ def test_integration_multi_system_movement():
     assert unit.in_hex == (-2, 2)
     assert unit.position == Position(20, 20)
     assert move_order.status == OrderStatus.COMPLETED
+
+def test_unstable_wormhole_damage():
+    game = MagicMock()
+    galaxy = SimpleGalaxy()
+    game.galaxy = galaxy
+    
+    player = MockPlayer()
+    game.players = [player]
+    game.current_player_index = 0
+    
+    # Setup linked wormholes
+    wh_sol = SimpleWormhole(1, "Sol", (1, 1), "Vega", 2, Position(5, 5))
+    # Make entry wormhole unstable: stability = 0 (100% chance of damage)
+    wh_sol.stability = 0
+    
+    wh_vega = SimpleWormhole(2, "Vega", (-1, -1), "Sol", 1, Position(10, 10))
+    galaxy.wormholes[1] = wh_sol
+    galaxy.wormholes[2] = wh_vega
+    
+    galaxy.systems["Sol"].hexes[(1, 1)].celestial_bodies.append(wh_sol)
+    galaxy.systems["Vega"].hexes[(-1, -1)].celestial_bodies.append(wh_vega)
+    
+    # Setup Unit in Sol at (1, 1)
+    unit = MockUnit()
+    unit.owner = player
+    unit.game = game
+    unit.in_galaxy = galaxy
+    unit.in_system = "Sol"
+    unit.in_hex = (1, 1)
+    unit.position = Position(5, 5)
+    unit.max_hit_points = 100
+    unit.current_hit_points = 100
+    
+    engines = Engines(unit, speed=100.0)
+    # Give engines component some hit points so it can be damaged (max hit points by default is max(10, hull_cost * 10) = 50 since Engines default hull_cost = 5)
+    assert engines.max_hit_points == 50
+    engines.current_hit_points = 50
+    
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5, recharge_duration=3)
+    hd.wormhole_jump_target = wh_sol
+    hd.jump_status = JumpStatus.READY
+    
+    commander = Commander(unit)
+    unit.add_component(engines)
+    unit.add_component(hd)
+    unit.add_component(commander)
+    
+    galaxy.systems["Sol"].add_unit(unit)
+    
+    tp = TurnProcessor(game)
+    
+    # Patch random to control damage percentage and component choice
+    from unittest.mock import patch
+    
+    # Check 1: random.random() < 1.0 (since stability = 0) -> return 0.5 (True)
+    # Check 2: random.random() < 0.5 (component damage) -> return 0.2 (True)
+    # choice returns Engines class to target Engines component
+    with patch("random.random", side_effect=[0.5, 0.2]), \
+         patch("random.uniform", return_value=0.20), \
+         patch("random.choice", return_value=Engines):
+        tp.process_turn()
+        
+    # Unit should be in Vega
+    assert unit.in_system == "Vega"
+    assert unit.in_hex == (-1, -1)
+    
+    # Damage should be 20% of 100 max hp = 20 damage.
+    # Since component damage was triggered, engines should take 20 damage.
+    assert engines.current_hit_points == 30
+    # No damage should spill over to hull, so hull remains 100.
+    assert unit.current_hit_points == 100
+    
+    # Now test spillover
+    # Set engines current hit points to 5, so 20 damage will destroy engines (takes 5 damage) and spillover 15 to hull
+    engines.current_hit_points = 5
+    unit.current_hit_points = 100
+    hd.wormhole_jump_target = wh_sol
+    hd.jump_status = JumpStatus.READY
+    # Move unit back to Sol for another jump
+    galaxy.move_unit_between_systems(unit, "Vega", "Sol", (1, 1))
+    
+    with patch("random.random", side_effect=[0.5, 0.2]), \
+         patch("random.uniform", return_value=0.20), \
+         patch("random.choice", return_value=Engines):
+        tp.process_turn()
+        
+    # Engines should be destroyed (0 HP)
+    assert engines.current_hit_points == 0
+    # 15 damage spilled over to hull, so hull should be 100 - 15 = 85
+    assert unit.current_hit_points == 85
 

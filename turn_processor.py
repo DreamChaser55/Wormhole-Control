@@ -3,13 +3,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 import pygame
+import random
 import typing
 
 from utils import HexCoord, ProfileTimer
 from geometry import Vector, Position, distance, hex_distance, Circle, is_point_in_circle
 from sector_utils import move_towards_position
 from entities import Unit, Wormhole, Planet, Moon, Asteroid
-from unit_components import JumpStatus
+from unit_components import JumpStatus, Commander
 
 TAX_RATE = 0.1  # 10% tax rate
 
@@ -184,6 +185,38 @@ class TurnProcessor:
                         )
                         if moved:
                             logger.debug(f"   {unit.name} completed wormhole jump from {origin_system.name} to {target_sys_name}, into hex {arrival_hex}")
+                            
+                            # Apply probabilistic damage for unstable wormholes (< 100 stability)
+                            stability = entry_wormhole.stability
+                            if stability < 100:
+                                damage_chance = (100 - stability) / 100.0
+                                if random.random() < damage_chance:
+                                    # Calculate damage amount (10% to 25% of max hit points)
+                                    damage_percentage = random.uniform(0.10, 0.25)
+                                    damage_amount = int(unit.max_hit_points * damage_percentage)
+                                    damage_amount = max(1, damage_amount)
+                                    
+                                    # 50% chance of component damage
+                                    component_damaged = False
+                                    if random.random() < 0.5:
+                                        # Get eligible components (excluding Commander, and not destroyed)
+                                        eligible_components = [
+                                            comp_type for comp_type, comp in unit.components.items()
+                                            if comp_type != Commander and not comp.is_destroyed
+                                        ]
+                                        if eligible_components:
+                                            target_comp_type = random.choice(eligible_components)
+                                            logger.debug(f"   Wormhole instability damages {unit.name}'s {target_comp_type.__name__} component for {damage_amount} damage.")
+                                            spillover = unit.take_component_damage(target_comp_type, damage_amount)
+                                            if spillover > 0:
+                                                logger.debug(f"   {spillover} damage spilled over to {unit.name}'s hull.")
+                                                unit.take_damage(spillover)
+                                            component_damaged = True
+                                            
+                                    if not component_damaged:
+                                        logger.debug(f"   Wormhole instability damages {unit.name}'s hull for {damage_amount} damage.")
+                                        unit.take_damage(damage_amount)
+
                             hd_comp.start_recharge() # Clears targets and sets status to CHARGING
                         else:
                             logger.debug(f"   Error during final wormhole jump execution for {unit.name}. Jump aborted.")
