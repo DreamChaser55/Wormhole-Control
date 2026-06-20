@@ -8,20 +8,22 @@ import math
 
 from utils import HexCoord
 from geometry import hex_distance
+from constants import HullSize
 
-Graph = typing.Dict[str, typing.List[str]] # Adjacency list: system_name -> [connected_system_names]
+Graph = typing.Dict[str, typing.Dict[str, HullSize]] # Adjacency map: system_name -> {connected_system_name: max_diameter}
 Path = typing.List[str] # List of system names forming a path
 
 
-def find_intersystem_path(graph: Graph, start_node: str, end_node: str) -> typing.Optional[Path]:
+def find_intersystem_path(graph: Graph, start_node: str, end_node: str, ship_size: typing.Optional[HullSize] = None) -> typing.Optional[Path]:
     """
     Finds the shortest path between two nodes in a graph (star systems in the galaxy) using Dijkstra's algorithm.
     Assumes all edge weights are 1 (i.e., finds the path with the fewest hops).
 
     Args:
-        graph: The graph represented as an adjacency list.
+        graph: The graph represented as an adjacency map system_name -> {connected_system_name: max_diameter}.
         start_node: The starting system name.
         end_node: The target system name.
+        ship_size: The hull size of the ship requesting the path.
 
     Returns:
         A list of system names representing the shortest path from start_node to
@@ -65,7 +67,11 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str) -> typin
 
         # Explore neighbors
         if current_node in graph: # Check if current_node has neighbors defined
-            for neighbor in graph[current_node]:
+            for neighbor, edge_diameter in graph[current_node].items():
+                # Skip if the ship is too large to traverse this connection
+                if ship_size is not None and ship_size.value > edge_diameter.value:
+                    continue
+
                 # Assuming edge weight is 1 for each jump
                 distance_to_neighbor = current_distance + 1
 

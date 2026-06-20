@@ -13,6 +13,7 @@ from unit_components import (
     BuildableUnit
 )
 from tests.test_unit_components import MockUnit, MockPlayer
+from constants import HullSize
 
 def test_reach_waypoint_order_validation():
     unit = MockUnit()
@@ -229,7 +230,7 @@ def test_move_order_inter_system_routing():
 
     # Mock galaxy structures and pathfinding
     galaxy = MagicMock()
-    galaxy.system_graph = {"Sol": ["Vega"], "Vega": ["Sol"]}
+    galaxy.system_graph = {"Sol": {"Vega": HullSize.HUGE}, "Vega": {"Sol": HullSize.HUGE}}
     
     # We will simulate find_intersystem_path returning ["Sol", "Vega"]
     # and find_wormhole_to_system finding a wormhole in Sol at (1, 1), exit in Vega at (2, 2)
@@ -280,7 +281,7 @@ def test_move_order_inter_system_routing():
     # Mock find_intersystem_path to return the path ["Sol", "Vega"]
     from unittest.mock import patch
     with patch("unit_orders.find_intersystem_path", return_value=["Sol", "Vega"]), \
-         patch.object(order, "find_wormhole_to_system", side_effect=lambda current, target, g: wh_sol if current == "Sol" else None):
+         patch.object(order, "find_wormhole_to_system", side_effect=lambda current, target, g, *args: wh_sol if current == "Sol" else None):
         
         order.execute(galaxy)
         

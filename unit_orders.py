@@ -13,6 +13,7 @@ from utils import HexCoord
 from geometry import Position, distance, hex_distance, Circle, is_circle_contained, do_circles_intersect, is_point_in_circle, get_closest_point_on_circle_edge, move_towards_position
 from pathfinding import find_intersystem_path, find_hex_jump_path
 from hexgrid_utils import hex_to_pixel
+from constants import HullSize
 
 if TYPE_CHECKING:
     from galaxy import Galaxy, Wormhole
@@ -147,11 +148,13 @@ class Order:
         self.status = OrderStatus.IN_PROGRESS
         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] {self.__class__.__name__}.execute: {self.order_type.name} (id:{self.order_id}): Executing order.")
 
-    def find_wormhole_to_system(self, current_system_name: str, target_system_name: str, galaxy_ref: 'Galaxy') -> Optional['Wormhole']:
+    def find_wormhole_to_system(self, current_system_name: str, target_system_name: str, galaxy_ref: 'Galaxy', ship_size: Optional[HullSize] = None) -> Optional['Wormhole']:
         if not galaxy_ref: return None
         for wh_id, wormhole_obj in galaxy_ref.wormholes.items():
             if wormhole_obj.in_system == current_system_name and \
                wormhole_obj.exit_system_name == target_system_name:
+                if ship_size and ship_size.value > wormhole_obj.diameter.value:
+                    continue
                 return wormhole_obj
         return None
 
@@ -217,7 +220,7 @@ class ReachWaypointOrder(Order):
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump to different system, no advanced hyperdrive).")
                 return
                 
-            wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref)
+            wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref, self.unit.hull_size)
             if not wormhole:
                 self.status = OrderStatus.FAILED
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {current_system} to {dest_system}).")
@@ -385,7 +388,7 @@ class MoveOrder(Order):
                 return
 
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Checking for direct wormhole from {current_system} to {dest_system}...")
-            direct_wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref)
+            direct_wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref, self.unit.hull_size)
 
             if direct_wormhole:
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct wormhole from {current_system} to {dest_system} found: {direct_wormhole.name}. Planning a single inter-system jump.")
@@ -442,7 +445,7 @@ class MoveOrder(Order):
 
             else:
                 # If no direct wormhole exists, find a multi-system path using Dijkstra's algorithm.
-                path_to_destination = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system)
+                path_to_destination = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system, self.unit.hull_size)
 
                 if not path_to_destination or len(path_to_destination) < 2:
                     self.status = OrderStatus.FAILED
@@ -459,7 +462,7 @@ class MoveOrder(Order):
                     leg_destination_system = path_to_destination[i+1]
                     logger.debug(f"\n  --- Planning Leg {i+1}: {leg_origin_system} -> {leg_destination_system} ---")
 
-                    wormhole_for_leg = self.find_wormhole_to_system(leg_origin_system, leg_destination_system, galaxy_ref)
+                    wormhole_for_leg = self.find_wormhole_to_system(leg_origin_system, leg_destination_system, galaxy_ref, self.unit.hull_size)
                     if not wormhole_for_leg:
                         self.status = OrderStatus.FAILED
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no wormhole for leg {leg_origin_system} -> {leg_destination_system}).")

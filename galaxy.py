@@ -278,7 +278,7 @@ class Galaxy:
     def __init__(self, num_systems: int = NUM_SYSTEMS):
         self.systems: typing.Dict[str, StarSystem] = {}
         self.wormholes: typing.Dict[int, Wormhole] = {}
-        self.system_graph: typing.Dict[str, typing.List[str]] = {}
+        self.system_graph: typing.Dict[str, typing.Dict[str, HullSize]] = {}
         
         self.generation_x_min = int(GALAXY_PADDING)
         self.generation_y_min = int(GALAXY_PADDING)
@@ -419,14 +419,16 @@ class Galaxy:
         This should be called once after galaxy generation is complete.
         """
 
-        graph: typing.Dict[str, typing.List[str]] = {name: [] for name in self.systems}
+        graph: typing.Dict[str, typing.Dict[str, HullSize]] = {name: {} for name in self.systems}
         for system_name, system_obj in self.systems.items():
             for _coord, hex_obj in system_obj.hexes.items():
                 for body in hex_obj.celestial_bodies:
                     if isinstance(body, Wormhole) and body.exit_system_name:
                         if body.exit_system_name in graph:
-                            if body.exit_system_name not in graph[system_name]:
-                                graph[system_name].append(body.exit_system_name)
+                            # Keep the maximum diameter edge if multiple wormholes exist between system_name and exit_system_name
+                            current_max = graph[system_name].get(body.exit_system_name)
+                            if current_max is None or body.diameter.value > current_max.value:
+                                graph[system_name][body.exit_system_name] = body.diameter
                         else:
                             logger.debug(f"Warning: Wormhole in {system_name} points to non-existent system {body.exit_system_name}")
         self.system_graph = graph
@@ -438,7 +440,7 @@ class Galaxy:
         potential_hexes = [h for h in system.hexes if system.hexes[h].is_empty()]
         return random.choice(potential_hexes) if potential_hexes else None
 
-    def add_wormhole_pair(self, sys_name_a: str, sys_name_b: str):
+    def add_wormhole_pair(self, sys_name_a: str, sys_name_b: str, diameter: typing.Optional[HullSize] = None):
         """Creates a pair of linked wormholes between two systems."""
         system_a = self.systems[sys_name_a]
         system_b = self.systems[sys_name_b]
@@ -460,9 +462,19 @@ class Galaxy:
         else:
             stability = 100
 
+        # Determine diameter: 70% HUGE, 15% LARGE, 15% MEDIUM
+        if diameter is None:
+            rand = random.random()
+            if rand < 0.70:
+                diameter = HullSize.HUGE
+            elif rand < 0.85:
+                diameter = HullSize.LARGE
+            else:
+                diameter = HullSize.MEDIUM
+
         # Create wormholes
-        wh_a = Wormhole(in_hex=hex_a, in_system=sys_name_a, exit_system_name=sys_name_b, stability=stability)
-        wh_b = Wormhole(in_hex=hex_b, in_system=sys_name_b, exit_system_name=sys_name_a, stability=stability)
+        wh_a = Wormhole(in_hex=hex_a, in_system=sys_name_a, exit_system_name=sys_name_b, stability=stability, diameter=diameter)
+        wh_b = Wormhole(in_hex=hex_b, in_system=sys_name_b, exit_system_name=sys_name_a, stability=stability, diameter=diameter)
 
         # Link them
         wh_a.exit_wormhole_id = wh_b.id

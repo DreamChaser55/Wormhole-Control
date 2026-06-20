@@ -76,7 +76,8 @@ class SimpleSystem:
         return True
 
 class SimpleWormhole:
-    def __init__(self, wh_id, in_system, in_hex, exit_system_name, exit_wormhole_id, position):
+    def __init__(self, wh_id, in_system, in_hex, exit_system_name, exit_wormhole_id, position, diameter=None):
+        from constants import HullSize
         self.id = wh_id
         self.in_system = in_system
         self.in_hex = in_hex
@@ -85,6 +86,7 @@ class SimpleWormhole:
         self.position = position
         self.name = f"Wormhole-{wh_id}"
         self.stability = 100
+        self.diameter = diameter if diameter is not None else HullSize.HUGE
 
 class SimpleGalaxy:
     def __init__(self):
@@ -93,7 +95,8 @@ class SimpleGalaxy:
             "Vega": SimpleSystem("Vega")
         }
         self.wormholes = {}
-        self.system_graph = {"Sol": ["Vega"], "Vega": ["Sol"]}
+        from constants import HullSize
+        self.system_graph = {"Sol": {"Vega": HullSize.HUGE}, "Vega": {"Sol": HullSize.HUGE}}
         
     def get_unit_by_id(self, unit_id):
         for sys in self.systems.values():
@@ -265,10 +268,11 @@ def test_integration_multi_system_movement():
     galaxy = SimpleGalaxy()
     # Add third system
     galaxy.systems["Sirius"] = SimpleSystem("Sirius")
+    from constants import HullSize
     galaxy.system_graph = {
-        "Sol": ["Vega"],
-        "Vega": ["Sol", "Sirius"],
-        "Sirius": ["Vega"]
+        "Sol": {"Vega": HullSize.HUGE},
+        "Vega": {"Sol": HullSize.HUGE, "Sirius": HullSize.HUGE},
+        "Sirius": {"Vega": HullSize.HUGE}
     }
     game.galaxy = galaxy
     
@@ -453,4 +457,104 @@ def test_unstable_wormhole_damage():
     assert engines.current_hit_points == 0
     # 15 damage spilled over to hull, so hull should be 100 - 15 = 85
     assert unit.current_hit_points == 85
+
+def test_wormhole_diameter_restrictions_pathfinding():
+    from pathfinding import find_intersystem_path
+    from constants import HullSize
+
+    # Graph representation: Sol -(MEDIUM)-> Vega, Vega -(HUGE)-> Sirius
+    graph = {
+        "Sol": {"Vega": HullSize.MEDIUM},
+        "Vega": {"Sol": HullSize.MEDIUM, "Sirius": HullSize.HUGE},
+        "Sirius": {"Vega": HullSize.HUGE}
+    }
+
+    # Medium ship: should go Sol -> Vega -> Sirius
+    path_medium = find_intersystem_path(graph, "Sol", "Sirius", HullSize.MEDIUM)
+    assert path_medium == ["Sol", "Vega", "Sirius"]
+
+    # Huge ship: should fail because Sol -> Vega is MEDIUM
+    path_huge = find_intersystem_path(graph, "Sol", "Sirius", HullSize.HUGE)
+    assert path_huge is None
+
+def test_wormhole_diameter_restrictions_movement_planning():
+    # Setup game, galaxy, player
+    game = MagicMock()
+    galaxy = SimpleGalaxy()
+    game.galaxy = galaxy
+    
+    player = MockPlayer()
+    game.players = [player]
+    game.current_player_index = 0
+
+    from constants import HullSize
+    # Sol wormhole in hex (1, 1) leading to Vega with MEDIUM diameter
+    wh_sol = SimpleWormhole(1, "Sol", (1, 1), "Vega", 2, Position(5, 5), diameter=HullSize.MEDIUM)
+    wh_vega = SimpleWormhole(2, "Vega", (-1, -1), "Sol", 1, Position(10, 10), diameter=HullSize.MEDIUM)
+    galaxy.wormholes[1] = wh_sol
+    galaxy.wormholes[2] = wh_vega
+    
+    galaxy.systems["Sol"].hexes[(1, 1)].celestial_bodies.append(wh_sol)
+    galaxy.systems["Vega"].hexes[(-1, -1)].celestial_bodies.append(wh_vega)
+
+    # Set up system graph with MEDIUM limit
+    galaxy.system_graph = {
+        "Sol": {"Vega": HullSize.MEDIUM},
+        "Vega": {"Sol": HullSize.MEDIUM}
+    }
+
+    # Case 1: MEDIUM ship can make the move
+    unit_medium = MockUnit()
+    unit_medium.hull_size = HullSize.MEDIUM
+    unit_medium.owner = player
+    unit_medium.game = game
+    unit_medium.in_galaxy = galaxy
+    unit_medium.in_system = "Sol"
+    unit_medium.in_hex = (0, 0)
+    unit_medium.position = Position(0, 0)
+    
+    engines_m = Engines(unit_medium, speed=100.0)
+    hd_m = Hyperdrive(unit_medium, drive_type=HyperdriveType.ADVANCED, jump_range=5)
+    commander_m = Commander(unit_medium)
+    unit_medium.add_component(engines_m)
+    unit_medium.add_component(hd_m)
+    unit_medium.add_component(commander_m)
+    galaxy.systems["Sol"].add_unit(unit_medium)
+
+    move_order_m = MoveOrder(unit_medium, {
+        "destination_system_name": "Vega",
+        "destination_hex_coord": (-1, -1),
+        "destination_position": Position(10, 10)
+    })
+    commander_m.add_order(move_order_m)
+    # Since it's a medium ship and wormhole is medium, routing should succeed (creating sub-orders)
+    assert move_order_m.status != OrderStatus.FAILED
+    assert len(move_order_m.sub_orders) == 2
+
+    # Case 2: HUGE ship should fail to plan path
+    unit_huge = MockUnit()
+    unit_huge.hull_size = HullSize.HUGE
+    unit_huge.owner = player
+    unit_huge.game = game
+    unit_huge.in_galaxy = galaxy
+    unit_huge.in_system = "Sol"
+    unit_huge.in_hex = (0, 0)
+    unit_huge.position = Position(0, 0)
+    
+    engines_h = Engines(unit_huge, speed=100.0)
+    hd_h = Hyperdrive(unit_huge, drive_type=HyperdriveType.ADVANCED, jump_range=5)
+    commander_h = Commander(unit_huge)
+    unit_huge.add_component(engines_h)
+    unit_huge.add_component(hd_h)
+    unit_huge.add_component(commander_h)
+    galaxy.systems["Sol"].add_unit(unit_huge)
+
+    move_order_h = MoveOrder(unit_huge, {
+        "destination_system_name": "Vega",
+        "destination_hex_coord": (-1, -1),
+        "destination_position": Position(10, 10)
+    })
+    commander_h.add_order(move_order_h)
+    # Routing should fail because HUGE ship is larger than MEDIUM wormhole
+    assert move_order_h.status == OrderStatus.FAILED
 

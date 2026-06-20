@@ -10,6 +10,8 @@ from unit_components import (
 )
 from unit_orders import Order, OrderStatus, OrderType
 
+from constants import HullSize
+
 # Custom simple mocks to avoid Pygame setup during unit tests
 class MockPlayer:
     def __init__(self, name="Test Player"):
@@ -32,6 +34,7 @@ class MockUnit:
         self.current_hit_points = 100
         self.max_hit_points = 100
         self.game = MagicMock()
+        self.hull_size = HullSize.HUGE
         
     def add_component(self, component):
         self.components[type(component)] = component
