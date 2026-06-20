@@ -81,11 +81,11 @@ class CelestialBody(GameObject):
 
 class Wormhole(CelestialBody):
     """Represents a wormhole connecting two systems."""
-    def __init__(self, in_hex: HexCoord, in_system: str, exit_system_name: str):
+    def __init__(self, in_hex: HexCoord, in_system: str, exit_system_name: str, stability: int = 100):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=500.0)
         self.exit_system_name = exit_system_name
         self.exit_wormhole_id: typing.Optional[int] = None
-        self.stability = 100
+        self.stability = stability
         self.name = f"Wormhole {self.id}"
 
 class Star(CelestialBody):

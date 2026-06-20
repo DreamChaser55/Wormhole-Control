@@ -454,9 +454,15 @@ class Galaxy:
             logger.debug(f"Error creating wormhole: Could not find empty hex in {sys_name_a} or {sys_name_b}")
             return
 
+        # Determine stability for the pair: 80% chance of 100%, 20% chance of 50-99%
+        if random.random() < 0.20:
+            stability = random.randint(50, 99)
+        else:
+            stability = 100
+
         # Create wormholes
-        wh_a = Wormhole(in_hex=hex_a, in_system=sys_name_a, exit_system_name=sys_name_b)
-        wh_b = Wormhole(in_hex=hex_b, in_system=sys_name_b, exit_system_name=sys_name_a)
+        wh_a = Wormhole(in_hex=hex_a, in_system=sys_name_a, exit_system_name=sys_name_b, stability=stability)
+        wh_b = Wormhole(in_hex=hex_b, in_system=sys_name_b, exit_system_name=sys_name_a, stability=stability)
 
         # Link them
         wh_a.exit_wormhole_id = wh_b.id
