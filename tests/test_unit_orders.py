@@ -625,3 +625,55 @@ def test_unload_resources_order():
     assert len(order_out_of_range.sub_orders) == 2
     assert order_out_of_range.sub_orders[0].order_type == OrderType.MOVE
     assert order_out_of_range.sub_orders[1].order_type == OrderType.UNLOAD_RESOURCES
+
+
+def test_inter_system_jump_drive_type_validation():
+    from unittest.mock import patch
+    
+    # Test ReachWaypointOrder inter-system jump with BASIC drive fails
+    unit_basic = MockUnit()
+    hd_basic = Hyperdrive(unit_basic, drive_type=HyperdriveType.BASIC)
+    unit_basic.add_component(hd_basic)
+    
+    order_reach_basic = ReachWaypointOrder(unit_basic, {
+        "destination_system_name": "Vega",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(0, 0)
+    })
+    
+    galaxy = MagicMock()
+    order_reach_basic.execute(galaxy)
+    assert order_reach_basic.status == OrderStatus.FAILED
+
+    # Test ReachWaypointOrder inter-system jump with ADVANCED drive starts/proceeds
+    unit_adv = MockUnit()
+    hd_adv = Hyperdrive(unit_adv, drive_type=HyperdriveType.ADVANCED)
+    unit_adv.add_component(hd_adv)
+    
+    order_reach_adv = ReachWaypointOrder(unit_adv, {
+        "destination_system_name": "Vega",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(0, 0)
+    })
+    
+    # Mock find_wormhole_to_system
+    wh = MagicMock()
+    wh.exit_wormhole_id = 99
+    wh.in_hex = (0, 0)
+    wh.position = Position(0, 0)
+    wh.name = "wh1"
+    
+    # Patch find_wormhole_to_system for test
+    with patch.object(order_reach_adv, "find_wormhole_to_system", return_value=wh):
+        order_reach_adv.execute(galaxy)
+        assert order_reach_adv.status == OrderStatus.IN_PROGRESS
+        assert hd_adv.wormhole_jump_target == wh
+
+    # Test MoveOrder inter-system path planning with BASIC drive fails
+    order_move_basic = MoveOrder(unit_basic, {
+        "destination_system_name": "Vega",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(0, 0)
+    })
+    order_move_basic.plan_route(galaxy)
+    assert order_move_basic.status == OrderStatus.FAILED

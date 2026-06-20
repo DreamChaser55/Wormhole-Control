@@ -11,7 +11,7 @@ from enum import Enum, auto
 from utils import HexCoord
 from geometry import Vector, Position, distance
 from unit_orders import Order, OrderStatus
-from constants import DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE
+from constants import DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE, HullSize
 from unit_templates import UNIT_TEMPLATES
 
 if TYPE_CHECKING:
@@ -755,8 +755,29 @@ class Constructor(UnitComponent):
             new_unit.add_component(Engines(new_unit, speed=speed, hull_cost=template.get("engine_hull_cost", 0)))
 
         if template.get("has_hyperdrive"):
-            htype = template.get("hyperdrive_type", HyperdriveType.BASIC)
-            new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=template.get("hyperdrive_hull_cost", 0)))
+            htype_raw = template.get("hyperdrive_type", HyperdriveType.BASIC)
+            if isinstance(htype_raw, str):
+                raw_upper = htype_raw.upper()
+                if raw_upper == "ADVANCED":
+                    htype = HyperdriveType.ADVANCED
+                elif raw_upper == "BASIC":
+                    htype = HyperdriveType.BASIC
+                else:
+                    try:
+                        htype = HyperdriveType(htype_raw.lower())
+                    except ValueError:
+                        htype = HyperdriveType.BASIC
+            else:
+                htype = htype_raw
+
+            hull_size = new_unit.hull_size
+            if hull_size == HullSize.TINY:
+                logger.warning(f"Warning: Attempted to add hyperdrive to TINY unit template '{template_name}'. Skipping hyperdrive component.")
+            else:
+                if hull_size == HullSize.SMALL and htype == HyperdriveType.ADVANCED:
+                    logger.warning(f"Warning: Attempted to add ADVANCED hyperdrive to SMALL unit template '{template_name}'. Downgrading to BASIC.")
+                    htype = HyperdriveType.BASIC
+                new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=template.get("hyperdrive_hull_cost", 0)))
 
         if template.get("has_weapon_bays"):
             weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))

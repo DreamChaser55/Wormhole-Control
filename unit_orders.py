@@ -209,9 +209,10 @@ class ReachWaypointOrder(Order):
             
         # Inter-system travel requires navigating via a wormhole connecting the two systems.
         else: # current_system != dest_system
-            if not self.unit.hyperdrive_component:
+            from unit_components import HyperdriveType
+            if not self.unit.hyperdrive_component or self.unit.hyperdrive_component.drive_type != HyperdriveType.ADVANCED:
                 self.status = OrderStatus.FAILED
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump to different system, no hyperdrive).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump to different system, no advanced hyperdrive).")
                 return
                 
             wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref)
@@ -375,9 +376,10 @@ class MoveOrder(Order):
 
         # Inter-system travel: Destination is in a different system.
         if current_system != dest_system:
-            if not self.unit.hyperdrive_component:
+            from unit_components import HyperdriveType
+            if not self.unit.hyperdrive_component or self.unit.hyperdrive_component.drive_type != HyperdriveType.ADVANCED:
                 self.status = OrderStatus.FAILED
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot jump system, no hyperdrive).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot jump system, no advanced hyperdrive).")
                 return
 
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Checking for direct wormhole from {current_system} to {dest_system}...")

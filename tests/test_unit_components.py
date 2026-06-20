@@ -415,3 +415,80 @@ def test_refinery_components():
     crystal_refinery = CrystalRefineryComponent(unit)
     crystal_refinery.accept_resources(30)
     assert unit.owner.crystal == 130
+
+
+def test_ship_size_hyperdrive_restrictions_in_constructor():
+    # Setup constructor
+    unit = MockUnit()
+    constructor = Constructor(unit, hull_cost=10)
+    
+    # We will mock the galaxy and systems
+    galaxy = MagicMock()
+    mock_system = MagicMock()
+    galaxy.systems = {"Sol": mock_system}
+    
+    # Let's mock the UNIT_TEMPLATES dict in unit_components module to have custom templates
+    import unit_components
+    from constants import HullSize
+    
+    # Backup original
+    original_templates = unit_components.UNIT_TEMPLATES
+    try:
+        unit_components.UNIT_TEMPLATES = {
+            "TINY_TEST": {
+                "name": "Tiny Test",
+                "hull_size": HullSize.TINY,
+                "has_engine": True,
+                "has_hyperdrive": True,
+                "hyperdrive_type": "BASIC"
+            },
+            "SMALL_TEST_ADVANCED": {
+                "name": "Small Test",
+                "hull_size": HullSize.SMALL,
+                "has_engine": True,
+                "has_hyperdrive": True,
+                "hyperdrive_type": "ADVANCED"
+            },
+            "MEDIUM_TEST_ADVANCED": {
+                "name": "Medium Test",
+                "hull_size": HullSize.MEDIUM,
+                "has_engine": True,
+                "has_hyperdrive": True,
+                "hyperdrive_type": "ADVANCED"
+            }
+        }
+        
+        # Test TINY_TEST template creation
+        constructor.create_unit_from_template(galaxy, "TINY_TEST", unit.owner, "Sol", (0, 0), Position(0, 0))
+        created_units = mock_system.add_unit.call_args_list
+        assert len(created_units) == 1
+        tiny_unit = created_units[0][0][0]
+        # TINY ship should NOT have a hyperdrive component
+        assert tiny_unit.hyperdrive_component is None
+        
+        # Reset mock
+        mock_system.add_unit.reset_mock()
+        
+        # Test SMALL_TEST_ADVANCED template creation
+        constructor.create_unit_from_template(galaxy, "SMALL_TEST_ADVANCED", unit.owner, "Sol", (0, 0), Position(0, 0))
+        created_units = mock_system.add_unit.call_args_list
+        assert len(created_units) == 1
+        small_unit = created_units[0][0][0]
+        # SMALL ship should have a BASIC hyperdrive component, even though template said ADVANCED
+        assert small_unit.hyperdrive_component is not None
+        assert small_unit.hyperdrive_component.drive_type == HyperdriveType.BASIC
+        
+        # Reset mock
+        mock_system.add_unit.reset_mock()
+        
+        # Test MEDIUM_TEST_ADVANCED template creation
+        constructor.create_unit_from_template(galaxy, "MEDIUM_TEST_ADVANCED", unit.owner, "Sol", (0, 0), Position(0, 0))
+        created_units = mock_system.add_unit.call_args_list
+        assert len(created_units) == 1
+        medium_unit = created_units[0][0][0]
+        # MEDIUM ship should have an ADVANCED hyperdrive component
+        assert medium_unit.hyperdrive_component is not None
+        assert medium_unit.hyperdrive_component.drive_type == HyperdriveType.ADVANCED
+
+    finally:
+        unit_components.UNIT_TEMPLATES = original_templates
