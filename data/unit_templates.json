@@ -127,7 +127,8 @@
       "BATTLESHIP_SMALL",
       "BATTLESHIP_MEDIUM",
       "REPAIR_SHIP_SMALL",
-      "MINING_SHIP_SMALL"
+      "MINING_SHIP_SMALL",
+      "CARRIER_MEDIUM"
     ]
   },
   "REPAIR_SHIP_SMALL": {
@@ -213,5 +214,27 @@
     "crystal_refinery_hull_cost": 20,
     "build_time": 10,
     "build_cost": 600
+  },
+  "CARRIER_MEDIUM": {
+    "name": "Medium Carrier",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 10,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_hull_cost": 10,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": false,
+    "weapon_bays_hull_cost": 0,
+    "has_hangar": true,
+    "hangar_slots": 4,
+    "hangar_hull_cost": 20,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 12,
+    "build_cost": 1200
   }
 }

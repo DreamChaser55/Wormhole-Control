@@ -92,3 +92,9 @@ class UnloadResourcesEvent(Event):
         self.units = units
         self.target_unit = target_unit
         self.shift_pressed = shift_pressed
+
+class DockEvent(Event):
+    def __init__(self, units: list, target_carrier: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_carrier = target_carrier
+        self.shift_pressed = shift_pressed

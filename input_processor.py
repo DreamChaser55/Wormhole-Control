@@ -18,7 +18,7 @@ from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Worm
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
-    MineEvent, UnloadResourcesEvent
+    MineEvent, UnloadResourcesEvent, DockEvent
 )
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
@@ -348,6 +348,10 @@ class InputProcessor:
                                 has_cargo_miners = any(getattr(a, 'mining_component', None) and (a.mining_component.raw_metal_cargo > 0 or a.mining_component.raw_crystal_cargo > 0) for a in actors)
                                 if target_has_refinery and has_cargo_miners:
                                     options.append(("Unload Resources", "unload_resources"))
+
+                                if target_object.hangar_component and any(target_object.hangar_component.can_dock(a) for a in actors):
+                                    options.append(("Dock at Carrier", "dock_at_carrier"))
+
                             elif isinstance(target_object, Wormhole):
                                 if any(a.hyperdrive_component and a.hyperdrive_component.drive_type == HyperdriveType.ADVANCED and a.in_system == target_object.in_system for a in actors):
                                     options.append(("Jump Wormhole", "jump_wormhole"))
@@ -493,6 +497,14 @@ class InputProcessor:
             elif extracted_action_id == "repair_unit":
                 if isinstance(target, Unit):
                     self.game.event_bus.publish(RepairUnitEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "dock_at_carrier":
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(DockEvent(
                         selected_units,
                         target,
                         shift_pressed

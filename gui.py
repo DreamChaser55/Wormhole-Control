@@ -723,6 +723,13 @@ class GUI_Handler:
                     current_state_after_toggle = self.is_section_expanded(section_key)
                     self.game_instance.sidebar_needs_update = True
                     action_result = {'action': 'ui_handled'}
+                elif action_id == 'deploy_ship':
+                    carrier_id, docked_unit_id = target_data
+                    action_result = {
+                        'action': 'deploy_ship',
+                        'carrier_id': carrier_id,
+                        'docked_unit_id': docked_unit_id
+                    }
 
                         # --- In-Game Menu Buttons ---
             elif self.menu_button and event.ui_element == self.menu_button:

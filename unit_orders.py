@@ -40,6 +40,8 @@ class OrderType(Enum):
     REPAIR = auto()         # Repair a damaged friendly unit
     MINE = auto()           # Mine raw resources from a celestial body
     UNLOAD_RESOURCES = auto() # Unload raw resources to a refinery
+    DOCK = auto()
+    DEPLOY_UNIT = auto()
 
 class Order:
     """Represents an order given to a unit by the player.
@@ -1077,5 +1079,132 @@ class UnloadResourcesOrder(Order):
         if self.status != OrderStatus.IN_PROGRESS:
             return
         # Execution is immediate once in range, so handled above.
+        if not self.sub_orders:
+            self.status = OrderStatus.COMPLETED
+
+
+class DockOrder(Order):
+    def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
+        super().__init__(unit, OrderType.DOCK, parameters, parent_order)
+
+    def get_state_data(self) -> Dict[str, Any]:
+        state_data = super().get_state_data()
+        target_carrier_id = self.parameters.get("target_carrier_id")
+        target_name = None
+        if target_carrier_id and self.unit and self.unit.game:
+            target_carrier = self.unit.game.galaxy.get_unit_by_id(target_carrier_id)
+            if target_carrier:
+                target_name = target_carrier.name
+        state_data["target_carrier_id"] = target_carrier_id
+        state_data["target_name"] = target_name
+        return state_data
+
+    def execute(self, galaxy_ref: 'Galaxy') -> None:
+        super().execute(galaxy_ref)
+
+        target_carrier_id = self.parameters.get("target_carrier_id")
+        target_carrier = self.unit.game.galaxy.get_unit_by_id(target_carrier_id)
+
+        if not target_carrier:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"DOCK order failed: Target carrier {target_carrier_id} not found.")
+            return
+
+        if not target_carrier.hangar_component:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no HangarComponent.")
+            return
+
+        if not target_carrier.hangar_component.can_dock(self.unit):
+            self.status = OrderStatus.FAILED
+            logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no space/slots for {self.unit.name}.")
+            return
+
+        docking_range = 100.0
+        in_same_system_and_hex = (self.unit.in_system == target_carrier.in_system and self.unit.in_hex == target_carrier.in_hex)
+        in_range = in_same_system_and_hex and (distance(self.unit.position, target_carrier.position) <= docking_range)
+
+        if not in_range:
+            if in_same_system_and_hex:
+                dest_pos = move_towards_position(self.unit.position, target_carrier.position, docking_range - 5.0)
+            else:
+                dest_pos = target_carrier.position
+
+            move_params = {
+                "destination_system_name": target_carrier.in_system,
+                "destination_hex_coord": target_carrier.in_hex,
+                "destination_position": dest_pos
+            }
+            move_order = MoveOrder(self.unit, move_params, parent_order=self)
+            self.add_sub_order(move_order)
+
+            dock_sub_order = DockOrder(self.unit, self.parameters, parent_order=self)
+            self.add_sub_order(dock_sub_order)
+            return
+
+        success = target_carrier.hangar_component.dock(self.unit, galaxy_ref)
+        if success:
+            self.status = OrderStatus.COMPLETED
+            logger.debug(f"Unit {self.unit.name} successfully docked to {target_carrier.name}.")
+        else:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"Docking of {self.unit.name} to {target_carrier.name} failed.")
+
+    def check_completion_conditions(self) -> None:
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        if not self.sub_orders:
+            self.status = OrderStatus.COMPLETED
+
+
+class DeployUnitOrder(Order):
+    def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
+        super().__init__(unit, OrderType.DEPLOY_UNIT, parameters, parent_order)
+
+    def get_state_data(self) -> Dict[str, Any]:
+        state_data = super().get_state_data()
+        docked_unit_id = self.parameters.get("docked_unit_id")
+        docked_name = None
+        if docked_unit_id and self.unit and self.unit.game:
+            if self.unit.hangar_component:
+                for du in self.unit.hangar_component.docked_units:
+                    if du.id == docked_unit_id:
+                        docked_name = du.name
+                        break
+        state_data["docked_unit_id"] = docked_unit_id
+        state_data["docked_name"] = docked_name
+        return state_data
+
+    def execute(self, galaxy_ref: 'Galaxy') -> None:
+        super().execute(galaxy_ref)
+
+        if not self.unit.hangar_component:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"DEPLOY_UNIT order failed: Unit {self.unit.name} has no HangarComponent.")
+            return
+
+        docked_unit_id = self.parameters.get("docked_unit_id")
+        docked_unit = None
+        for du in self.unit.hangar_component.docked_units:
+            if du.id == docked_unit_id:
+                docked_unit = du
+                break
+
+        if not docked_unit:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"DEPLOY_UNIT order failed: Docked unit {docked_unit_id} not found in hangar.")
+            return
+
+        success = self.unit.hangar_component.deploy(docked_unit, galaxy_ref)
+        if success:
+            self.status = OrderStatus.COMPLETED
+            logger.debug(f"Unit {docked_unit.name} successfully deployed from {self.unit.name}.")
+        else:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"Deployment of {docked_unit.name} from {self.unit.name} failed.")
+
+    def check_completion_conditions(self) -> None:
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
         if not self.sub_orders:
             self.status = OrderStatus.COMPLETED

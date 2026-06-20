@@ -15,7 +15,7 @@ from unit_orders import (
     Order, OrderStatus, OrderType,
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
-    RepairOrder, MineOrder, UnloadResourcesOrder
+    RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder
 )
 from unit_components import (
     UnitComponent,
@@ -29,7 +29,8 @@ from unit_components import (
     RepairComponent,
     MiningComponent,
     MetalRefineryComponent,
-    CrystalRefineryComponent
+    CrystalRefineryComponent,
+    HangarComponent
 )
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -265,6 +266,10 @@ class Unit(GameObject):
         return self.get_component(CrystalRefineryComponent)
 
     @property
+    def hangar_component(self) -> typing.Optional[HangarComponent]:
+        return self.get_component(HangarComponent)
+
+    @property
     def commander_component(self) -> Commander:
         return self.get_component(Commander)
 
@@ -326,6 +331,9 @@ class Unit(GameObject):
     def destroy(self) -> None:
         """Handles the destruction of the unit."""
         logger.debug(f"Unit '{self.name}' has been destroyed.")
+        if self.hangar_component:
+            for docked_unit in list(self.hangar_component.docked_units):
+                docked_unit.destroy()
         # Here you would add logic to remove the unit from the game,
         # e.g., by notifying the galaxy or a unit manager.
         if self.in_galaxy:

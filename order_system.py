@@ -3,13 +3,14 @@ import typing
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
-    MineEvent, UnloadResourcesEvent
+    MineEvent, UnloadResourcesEvent, DockEvent
 )
 from entities import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
-    MineOrder, UnloadResourcesOrder
+    MineOrder, UnloadResourcesOrder, DockOrder
 )
 from sector_utils import random_point_in_sector
+from constants import HullSize
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class OrderSystem:
         self.event_bus.subscribe(RepairUnitEvent, self.handle_repair_unit)
         self.event_bus.subscribe(MineEvent, self.handle_mine)
         self.event_bus.subscribe(UnloadResourcesEvent, self.handle_unload_resources)
+        self.event_bus.subscribe(DockEvent, self.handle_dock)
 
     def handle_cancel_orders(self, event: CancelOrdersEvent):
         for unit in event.units:
@@ -187,4 +189,15 @@ class OrderSystem:
                     unit.commander_component.clear_orders()
                 unit.commander_component.add_order(unload_order)
                 logger.debug(f"  Unit {unit.name} ordered to unload resources to {event.target_unit.name} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_dock(self, event: DockEvent):
+        for unit in event.units:
+            if unit.hull_size in (HullSize.TINY, HullSize.SMALL):
+                dock_params = {"target_carrier_id": event.target_carrier.id}
+                dock_order = DockOrder(unit, dock_params)
+                if not event.shift_pressed:
+                    unit.commander_component.clear_orders()
+                unit.commander_component.add_order(dock_order)
+                logger.debug(f"  Unit {unit.name} ordered to dock to {event.target_carrier.name} via event.")
         self.game.sidebar_needs_update = True
