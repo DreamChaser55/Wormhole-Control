@@ -120,12 +120,15 @@ class SectorViewRenderer:
                     pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
             elif isinstance(obj, AsteroidField):
                 self._draw_celestial_field(obj, obj_pixel_pos, (100, 100, 100))
+                obj_radius_logical = 100.0
                 should_draw_circle = False
             elif isinstance(obj, IceField):
                 self._draw_celestial_field(obj, obj_pixel_pos, (173, 216, 230), num_particles=20)
+                obj_radius_logical = 100.0
                 should_draw_circle = False
             elif isinstance(obj, DebrisField):
                 self._draw_celestial_field(obj, obj_pixel_pos, (112, 128, 144), num_particles=15)
+                obj_radius_logical = 100.0
                 should_draw_circle = False
             elif isinstance(obj, Nebula):
                 self._draw_nebula(obj, obj_pixel_pos)
@@ -142,9 +145,6 @@ class SectorViewRenderer:
                 if obj.stability < 100:
                     pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
                     pygame.draw.circle(self.screen, RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
-            elif isinstance(obj, DebrisField):
-                obj_color = obj.color
-                obj_radius_logical = 11.11
 
             if should_draw_circle and not isinstance(obj, Unit):
                 pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)

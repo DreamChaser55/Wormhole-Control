@@ -14,7 +14,7 @@ from utils import HexCoord
 from geometry import Vector, Position, distance_sq
 from hexgrid_utils import pixel_to_hex
 from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
-from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Wormhole, HullSize
+from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Wormhole, HullSize, AsteroidField, IceField, DebrisField
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
@@ -195,6 +195,8 @@ class InputProcessor:
                             obj_radius_logical = 27.78
                         elif isinstance(obj, Asteroid):
                             obj_radius_logical = 16.67
+                        elif isinstance(obj, (AsteroidField, IceField, DebrisField)):
+                            obj_radius_logical = 100.0
                         elif isinstance(obj, Comet):
                             obj_radius_logical = 16.67
                         else:
@@ -358,16 +360,17 @@ class InputProcessor:
                                     options.append(("Jump Wormhole", "jump_wormhole"))
                     
                     if target_object is not None:
-                        if isinstance(target_object, (Planet, Moon, Asteroid)):
+                        if isinstance(target_object, (Planet, Moon, Asteroid, AsteroidField)):
                             if isinstance(target_object, Planet):
                                 options.append(("View Planet", "view_planet"))
                             if len(self.game.selected_objects) == 1 and isinstance(self.game.selected_objects[0], Unit):
                                 unit = self.game.selected_objects[0]
-                                if unit.colony_component and unit.colony_component.population_cargo > 0 and not target_object.owner:
-                                    options.append(("Colonize", "colonize"))
-                                if unit.colony_component and target_object.owner == unit.owner and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
-                                    options.append(("Load Colonists", "load_colonists"))
-                            if isinstance(target_object, (Asteroid, Moon)) and any(getattr(a, 'mining_component', None) for a in actors):
+                                if isinstance(target_object, (Planet, Moon, Asteroid)):
+                                    if unit.colony_component and unit.colony_component.population_cargo > 0 and not target_object.owner:
+                                        options.append(("Colonize", "colonize"))
+                                    if unit.colony_component and target_object.owner == unit.owner and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
+                                        options.append(("Load Colonists", "load_colonists"))
+                            if isinstance(target_object, (Asteroid, AsteroidField, Moon)) and any(getattr(a, 'mining_component', None) for a in actors):
                                 options.append(("Mine", "mine"))
                         elif isinstance(target_object, Wormhole): options.append(("View Wormhole Info", "view_wormhole"))
                         elif isinstance(target_object, Unit): options.append(("View Unit Info", "view_unit"))
@@ -522,7 +525,7 @@ class InputProcessor:
                     ))
 
             elif extracted_action_id == "mine":
-                if isinstance(target, (Asteroid, Moon)):
+                if isinstance(target, (Asteroid, AsteroidField, Moon)):
                     self.game.event_bus.publish(MineEvent(
                         selected_units,
                         target,

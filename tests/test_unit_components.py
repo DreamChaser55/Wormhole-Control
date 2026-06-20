@@ -384,7 +384,7 @@ def test_mining_component():
     unit = MockUnit()
     mining = MiningComponent(unit, mining_rate=10.0, max_cargo=50.0)
     
-    from entities import Asteroid, Moon
+    from entities import Asteroid, AsteroidField, Moon
     asteroid = Asteroid(in_hex=(0,0), in_system="Sol")
     asteroid.position = Position(10, 0) # within 200 range
     
@@ -417,6 +417,13 @@ def test_mining_component():
     assert metal == 50.0
     assert crystal == 0.0
     assert mining.raw_metal_cargo == 0.0
+
+    # Target asteroid field
+    asteroid_field = AsteroidField(in_hex=(0,0), in_system="Sol")
+    asteroid_field.position = Position(0, 0)
+    mining.set_target(asteroid_field)
+    mining.update(mock_galaxy)
+    assert mining.raw_metal_cargo == 10.0
 
 def test_refinery_components():
     unit = MockUnit()
