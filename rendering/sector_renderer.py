@@ -62,7 +62,7 @@ class SectorViewRenderer:
                 circle_surface = pygame.Surface((zone_pixel_radius * 2, zone_pixel_radius * 2), pygame.SRCALPHA)
                 pygame.draw.circle(circle_surface, (255, 0, 0, 50), (zone_pixel_radius, zone_pixel_radius), zone_pixel_radius)
                 
-                self.overlay_surface.blit(circle_surface, (zone_pixel_center.x - zone_pixel_radius, zone_pixel_center.y - zone_pixel_radius))
+                self.screen.blit(circle_surface, (zone_pixel_center.x - zone_pixel_radius, zone_pixel_center.y - zone_pixel_radius))
 
         # 3. Get Objects in the Current Hex
         hex_obj = system.hexes[self.game.current_sector_coord]
