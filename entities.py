@@ -15,7 +15,8 @@ from unit_orders import (
     Order, OrderStatus, OrderType,
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
-    RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder
+    RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
+    UseAbilityOrder
 )
 from unit_components import (
     UnitComponent,
@@ -30,7 +31,9 @@ from unit_components import (
     MiningComponent,
     MetalRefineryComponent,
     CrystalRefineryComponent,
-    HangarComponent
+    HangarComponent,
+    AbilityComponent,
+    AbilityType,
 )
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -210,7 +213,21 @@ class Unit(GameObject):
         self.current_hit_points: int = self.max_hit_points
 
         self.components: typing.Dict[type, UnitComponent] = {}
-        
+
+        # --- Status effects applied by abilities ---
+        # Damage reduction (0.0 = none, 0.75 = 75% reduction). Stacks additively.
+        self.damage_reduction: float = 0.0
+        # Extra damage taken multiplier from Designate Target. Stacks additively.
+        self.damage_amplification: float = 0.0
+        # Ion Bolt disable: unit cannot move or attack while True.
+        self.is_disabled: bool = False
+        # Set of unit IDs that have applied a disable. Disable lifts when the set is empty.
+        self.disabled_by_unit_ids: typing.Set[int] = set()
+        # Lifetime in turns (None = permanent). Used by temporary units (Missile Platforms).
+        self.lifetime: typing.Optional[int] = None
+        # Flag to distinguish spawned temporary units from regular units.
+        self.is_temporary: bool = False
+
         # Every unit has a commander component by default
         self.add_component(Commander(unit=self))
 
@@ -271,11 +288,17 @@ class Unit(GameObject):
         return self.get_component(HangarComponent)
 
     @property
+    def ability_component(self) -> typing.Optional[AbilityComponent]:
+        return self.get_component(AbilityComponent)
+
+    @property
     def commander_component(self) -> Commander:
         return self.get_component(Commander)
 
     def take_damage(self, amount: int) -> None:
-        """Reduces the unit's current hit points by the given amount."""
+        """Reduces the unit's current hit points by the given amount, applying any active damage reduction."""
+        if self.damage_reduction > 0.0:
+            amount = max(1, int(amount * (1.0 - self.damage_reduction)))
         self.current_hit_points -= amount
         if self.current_hit_points < 0:
             self.current_hit_points = 0
@@ -355,6 +378,13 @@ class Unit(GameObject):
         
         This method should be called on each turn processing cycle.
         """
+        # --- Lifetime check for temporary units (e.g. Missile Platforms) ---
+        if self.lifetime is not None:
+            self.lifetime -= 1
+            if self.lifetime <= 0:
+                self.destroy()
+                return
+
         # Update hyperdrive recharge status if applicable
         if self.hyperdrive_component:
             self.hyperdrive_component.update_recharge()
@@ -363,8 +393,10 @@ class Unit(GameObject):
         # if self.inhibitor_component:
         #     self.inhibitor_component.update()
 
-        if self.weapons_component and self.in_galaxy:
-            self.weapons_component.update(self.in_galaxy)
+        # Skip weapons updates for disabled units (Ion Bolt)
+        if not self.is_disabled:
+            if self.weapons_component and self.in_galaxy:
+                self.weapons_component.update(self.in_galaxy)
 
         if self.constructor_component and self.in_galaxy:
             self.constructor_component.update(self.in_galaxy)
@@ -374,6 +406,10 @@ class Unit(GameObject):
 
         if self.mining_component and self.in_galaxy:
             self.mining_component.update(self.in_galaxy)
+
+        # Tick ability cooldowns and apply ongoing ability effects
+        if self.ability_component and self.in_galaxy:
+            self.ability_component.update(self.in_galaxy)
             
         if self.commander_component:
             self.commander_component.update()

@@ -72,6 +72,11 @@ class TurnProcessor:
             for unit, current_hex in all_units_in_system:
                 if unit.owner != current_player:
                     continue
+
+                # Units disabled by Ion Bolt cannot move
+                if unit.is_disabled:
+                    logger.debug(f"   {unit.name} is disabled (Ion Bolt) — movement skipped.")
+                    continue
                 
                 if unit.hyperdrive_component and unit.hyperdrive_component.wormhole_jump_target:
                     target_wormhole_obj = unit.hyperdrive_component.wormhole_jump_target

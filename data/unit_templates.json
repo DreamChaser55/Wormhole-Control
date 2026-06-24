@@ -19,26 +19,6 @@
     "build_time": 8,
     "build_cost": 800
   },
-  "STATION_MK1": {
-    "name": "Station Mk.I",
-    "hull_size": "LARGE",
-    "hull_points": 500,
-    "has_engine": false,
-    "engine_hull_cost": 0,
-    "has_hyperdrive": false,
-    "hyperdrive_hull_cost": 0,
-    "has_scanner": true,
-    "scanner_hull_cost": 10,
-    "has_weapon_bays": true,
-    "weapon_bays_hull_cost": 20,
-    "turrets": [
-      {"type": "BEAM", "damage": 15, "range": 400, "cooldown": 3}
-    ],
-    "has_constructor_component": false,
-    "constructor_hull_cost": 0,
-    "build_time": 10,
-    "build_cost": 500
-  },
   "BATTLESHIP_TINY": {
     "name": "Tiny Battleship",
     "hull_size": "TINY",
@@ -78,6 +58,9 @@
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
+    "has_ability_component": true,
+    "ability_hull_cost": 0,
+    "abilities": ["cluster_warhead", "ion_bolt"],
     "build_time": 8,
     "build_cost": 600
   },
@@ -101,6 +84,9 @@
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
+    "has_ability_component": true,
+    "ability_hull_cost": 0,
+    "abilities": ["cluster_warhead", "adaptive_forcefield", "designate_target", "ion_bolt"],
     "build_time": 12,
     "build_cost": 1000
   },
@@ -131,7 +117,10 @@
       "CARRIER_MEDIUM",
       "METAL_REFINERY_STATION",
       "CRYSTAL_REFINERY_STATION"
-    ]
+    ],
+    "has_ability_component": true,
+    "ability_hull_cost": 0,
+    "abilities": ["missile_batteries", "adaptive_forcefield"]
   },
   "REPAIR_SHIP_SMALL": {
     "name": "Small Repair Ship",
@@ -153,6 +142,9 @@
     "repair_hull_cost": 10,
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
+    "has_ability_component": true,
+    "ability_hull_cost": 0,
+    "abilities": ["repair_cloud"],
     "build_time": 8,
     "build_cost": 500
   },
@@ -175,6 +167,9 @@
     "repair_hull_cost": 20,
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
+    "has_ability_component": true,
+    "ability_hull_cost": 0,
+    "abilities": ["repair_cloud"],
     "build_time": 10,
     "build_cost": 750
   },
@@ -238,5 +233,48 @@
     "constructor_hull_cost": 0,
     "build_time": 12,
     "build_cost": 1200
+  },
+  "STATION_MK1": {
+    "name": "Station Mk.I",
+    "hull_size": "LARGE",
+    "hull_points": 500,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_scanner": true,
+    "scanner_hull_cost": 10,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 20,
+    "turrets": [
+      {"type": "BEAM", "damage": 15, "range": 400, "cooldown": 3}
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "has_ability_component": true,
+    "ability_hull_cost": 0,
+    "abilities": ["adaptive_forcefield", "designate_target", "missile_batteries"],
+    "build_time": 10,
+    "build_cost": 500
+  },
+  "MISSILE_PLATFORM": {
+    "name": "Missile Platform",
+    "hull_size": "TINY",
+    "hull_points": 20,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 0,
+    "turrets": [
+      {"type": "MISSILE", "damage": 15, "range": 350, "cooldown": 2}
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 1,
+    "build_cost": 0
   }
 }

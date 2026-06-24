@@ -18,7 +18,7 @@ from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Worm
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
-    MineEvent, UnloadResourcesEvent, DockEvent
+    MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent
 )
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
@@ -55,6 +55,11 @@ class InputProcessor:
                 if event.key == pygame.K_ESCAPE:
                     if self.gui.is_mouse_over_context_menu((-1,-1)): 
                         self.gui.close_context_menu()
+                    elif self.game.pending_ability is not None:
+                        # Cancel ability targeting mode
+                        logger.debug(f"Ability targeting cancelled via ESC.")
+                        self.game.pending_ability = None
+                        self.game.sidebar_needs_update = True
                     elif self.game.view_mode == 'about':
                         self.game.view_mode = 'main_menu'
                         self.gui.show_main_menu()
@@ -219,6 +224,42 @@ class InputProcessor:
         is_right_click = (button == 3)
         is_middle_click = (button == 2)
         shift_pressed = pygame.key.get_mods() & pygame.KMOD_SHIFT
+
+        # --- Pending Ability Targeting Mode ---
+        # If an ability awaiting a target is pending, intercept the next right-click
+        if self.game.pending_ability and is_right_click:
+            ability_type_str, requires_unit, requires_pos = self.game.pending_ability
+            selected_units = [u for u in self.game.selected_objects if isinstance(u, Unit)]
+
+            if self.game.view_mode == 'sector' and selected_units:
+                clicked_object = self.game.sector_view_mouse_hover_object
+                clicked_sector_coord = pixels_to_sector_coords(position)
+
+                if requires_unit and isinstance(clicked_object, Unit):
+                    # Complete unit-targeted ability
+                    self.game.event_bus.publish(UseAbilityEvent(
+                        units=selected_units,
+                        ability_type_str=ability_type_str,
+                        target_unit=clicked_object,
+                    ))
+                    logger.debug(f"Ability {ability_type_str} targeted at unit {clicked_object.name}.")
+                    self.game.pending_ability = None
+                    self.game.sidebar_needs_update = True
+                    return  # Consume the click
+
+                elif requires_pos and not isinstance(clicked_object, Unit):
+                    # Complete position-targeted ability (clicking on empty space / non-unit)
+                    self.game.event_bus.publish(UseAbilityEvent(
+                        units=selected_units,
+                        ability_type_str=ability_type_str,
+                        target_position=clicked_sector_coord,
+                    ))
+                    logger.debug(f"Ability {ability_type_str} targeted at position {clicked_sector_coord}.")
+                    self.game.pending_ability = None
+                    self.game.sidebar_needs_update = True
+                    return  # Consume the click
+
+            # Wrong view or wrong target type — don't consume; let normal handling proceed
 
         if self.game.view_mode == 'galaxy':
             clicked_system_name = self.game.galaxy_view_mouse_hover_system_name

@@ -106,3 +106,20 @@ class DockEvent(Event):
         self.units = units
         self.target_carrier = target_carrier
         self.shift_pressed = shift_pressed
+
+
+class UseAbilityEvent(Event):
+    """Fired when the player activates a special ability for one or more units."""
+    def __init__(
+        self,
+        units: list,
+        ability_type_str: str,
+        target_unit: typing.Optional[typing.Any] = None,
+        target_position: typing.Optional[typing.Any] = None,
+        shift_pressed: bool = False,
+    ):
+        self.units = units
+        self.ability_type_str = ability_type_str   # AbilityType.value string
+        self.target_unit = target_unit             # Optional Unit for unit-targeted abilities
+        self.target_position = target_position     # Optional Position for position-targeted abilities
+        self.shift_pressed = shift_pressed

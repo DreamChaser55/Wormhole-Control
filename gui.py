@@ -730,6 +730,14 @@ class GUI_Handler:
                         'carrier_id': carrier_id,
                         'docked_unit_id': docked_unit_id
                     }
+                elif action_id == 'use_ability':
+                    # target_data is a dict with ability_type_str and targeting flags
+                    action_result = {
+                        'action': 'use_ability',
+                        'ability_type_str': target_data.get('ability_type_str'),
+                        'requires_target_unit': target_data.get('requires_target_unit', False),
+                        'requires_target_position': target_data.get('requires_target_position', False),
+                    }
 
                         # --- In-Game Menu Buttons ---
             elif self.menu_button and event.ui_element == self.menu_button:

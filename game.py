@@ -32,6 +32,11 @@ from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
 from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
 from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent
+from events import (
+    CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
+    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
+    MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent
+)
 from entities import Order, AsteroidField, DebrisField, IceField, Nebula, Storm, Comet, Moon
 from galaxy import Galaxy, StarSystem, Hex
 from gui import GUI_Handler
@@ -109,6 +114,10 @@ class Game:
         self.sidebar_needs_update: bool = True
         self.pending_ai_turn_end_time: int = 0
         self.selected_component_name: typing.Optional[str] = None
+
+        # Pending ability activation state (when targeting mode is active)
+        # Holds (ability_type_str, requires_target_unit, requires_target_position)
+        self.pending_ability: typing.Optional[typing.Tuple[str, bool, bool]] = None
 
 
 
@@ -393,6 +402,25 @@ class Game:
             self.sidebar_needs_update = True
         elif action_type == 'component_selected':
             self.selected_component_name = action.get('component_name')
+            self.sidebar_needs_update = True
+        elif action_type == 'use_ability':
+            # A sidebar ability button was clicked
+            ability_type_str = action.get('ability_type_str')
+            requires_unit = action.get('requires_target_unit', False)
+            requires_pos = action.get('requires_target_position', False)
+            selected_units = [u for u in self.selected_objects if isinstance(u, Unit)]
+            if selected_units and ability_type_str:
+                if requires_unit or requires_pos:
+                    # Enter targeting mode — next click will complete the activation
+                    self.pending_ability = (ability_type_str, requires_unit, requires_pos)
+                    logger.debug(f"Ability {ability_type_str} awaiting target (unit={requires_unit}, pos={requires_pos}).")
+                else:
+                    # Self-targeted / no-target ability: fire immediately
+                    self.event_bus.publish(UseAbilityEvent(
+                        units=selected_units,
+                        ability_type_str=ability_type_str,
+                    ))
+                    logger.debug(f"Fired self-targeted ability {ability_type_str} for {len(selected_units)} unit(s).")
             self.sidebar_needs_update = True
         elif action_type == 'ui_handled':
             pass
@@ -793,8 +821,10 @@ class Game:
                     components_map["Repair"] = unit.repair_component
                 if unit.hangar_component:
                     components_map["Hangar"] = unit.hangar_component
+                if unit.ability_component:
+                    components_map["Abilities"] = unit.ability_component
 
-                component_order = ["Commander", "Weapons", "Engines", "Hyperdrive", "Inhibitor", "Constructor", "Colony", "Mining", "Metal Refinery", "Crystal Refinery", "Repair", "Hangar"]
+                component_order = ["Commander", "Weapons", "Engines", "Hyperdrive", "Inhibitor", "Constructor", "Colony", "Mining", "Metal Refinery", "Crystal Refinery", "Repair", "Hangar", "Abilities"]
                 dropdown_options = [c for c in component_order if c in components_map]
                 for c in components_map:
                     if c not in dropdown_options:
@@ -1018,6 +1048,62 @@ class Game:
                                     'target_data': (unit.id, docked_ship.id),
                                     'height': 25
                                 })
+
+                elif self.selected_component_name == "Abilities":
+                    if unit.ability_component:
+                        comp = unit.ability_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({
+                            'type': 'label',
+                            'text': f"Ability System [{status}]",
+                            'object_id': '#sidebar_section_header_label',
+                            'height': 28,
+                        })
+
+                        # Show Ion Bolt / Designate Target targeting-mode indicator
+                        if self.pending_ability:
+                            pending_name = self.pending_ability[0].replace('_', ' ').title()
+                            data_for_gui.append({
+                                'type': 'label',
+                                'text': f"\u25b6 Select target for: {pending_name}",
+                                'object_id': '#sidebar_hit_points_light_damage_label',
+                                'height': 22,
+                            })
+
+                        from unit_components import ABILITY_DEFINITIONS, AbilityType
+                        for ability_type, instance in comp.abilities.items():
+                            defn = instance.definition
+                            if instance.is_active:
+                                cd_str = f"Active ({instance.duration_remaining} turns)"
+                                btn_obj_id = '#sidebar_section_header_label'
+                            elif instance.cooldown_remaining > 0:
+                                cd_str = f"Cooldown: {instance.cooldown_remaining} turns"
+                                btn_obj_id = '#sidebar_info_label'
+                            else:
+                                cd_str = "Ready"
+                                btn_obj_id = '#sidebar_expand_button'
+
+                            btn_text = f"{defn.name}  [{cd_str}]"
+                            data_for_gui.append({
+                                'type': 'button',
+                                'text': btn_text,
+                                'object_id': btn_obj_id,
+                                'action_id': 'use_ability',
+                                'target_data': {
+                                    'ability_type_str': ability_type.value,
+                                    'requires_target_unit': defn.requires_target_unit,
+                                    'requires_target_position': defn.requires_target_position,
+                                },
+                                'height': 28,
+                                'enabled': instance.is_ready and not comp.is_destroyed,
+                            })
+                            data_for_gui.append({
+                                'type': 'label',
+                                'text': f"  {defn.description}",
+                                'object_id': '#sidebar_info_label',
+                                'height': 18,
+                            })
+
 
         # --- Default / Unknown ---
         else:
