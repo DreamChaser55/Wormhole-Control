@@ -767,9 +767,9 @@ class HangarComponent(UnitComponent):
         return slots
 
     def can_dock(self, unit: 'Unit') -> bool:
-        if unit.hull_size not in (HullSize.TINY, HullSize.SMALL):
+        if unit.hull_size != HullSize.TINY:
             return False
-        needed = 1 if unit.hull_size == HullSize.TINY else 2
+        needed = 1
         return self.get_used_slots() + needed <= self.max_slots
 
     def dock(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:

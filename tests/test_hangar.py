@@ -25,9 +25,9 @@ def test_hangar_component_capacity():
     ship_medium = MockUnit()
     ship_medium.hull_size = HullSize.MEDIUM
 
-    # Can dock tiny and small
+    # Can dock tiny, but NOT small or medium
     assert hangar.can_dock(ship_tiny)
-    assert hangar.can_dock(ship_small)
+    assert not hangar.can_dock(ship_small)
     # Cannot dock medium
     assert not hangar.can_dock(ship_medium)
 
@@ -36,20 +36,26 @@ def test_hangar_component_capacity():
     assert hangar.dock(ship_tiny, carrier.in_galaxy)
     assert hangar.get_used_slots() == 1
 
-    # Dock small: takes 2 slots. 1 slot remaining.
-    assert hangar.dock(ship_small, carrier.in_galaxy)
-    assert hangar.get_used_slots() == 3
+    # Dock small should fail
+    assert not hangar.dock(ship_small, carrier.in_galaxy)
+    assert hangar.get_used_slots() == 1
 
-    # Try to dock another small (needs 2, but only 1 free) -> should fail
-    ship_small2 = MockUnit()
-    ship_small2.hull_size = HullSize.SMALL
-    assert not hangar.can_dock(ship_small2)
-    assert not hangar.dock(ship_small2, carrier.in_galaxy)
-
-    # Dock another tiny: takes 1 slot. 0 slots remaining.
+    # Dock another tiny: takes 1 slot. 2 slots remaining.
     ship_tiny2 = MockUnit()
     ship_tiny2.hull_size = HullSize.TINY
     assert hangar.dock(ship_tiny2, carrier.in_galaxy)
+    assert hangar.get_used_slots() == 2
+
+    # Dock third tiny: takes 1 slot. 1 slot remaining.
+    ship_tiny3 = MockUnit()
+    ship_tiny3.hull_size = HullSize.TINY
+    assert hangar.dock(ship_tiny3, carrier.in_galaxy)
+    assert hangar.get_used_slots() == 3
+
+    # Dock fourth tiny: takes 1 slot. 0 slots remaining.
+    ship_tiny4 = MockUnit()
+    ship_tiny4.hull_size = HullSize.TINY
+    assert hangar.dock(ship_tiny4, carrier.in_galaxy)
     assert hangar.get_used_slots() == 4
 
     # Full hangar cannot dock any more
