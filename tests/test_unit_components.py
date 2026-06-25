@@ -500,9 +500,10 @@ def test_ship_size_hyperdrive_restrictions_in_constructor():
         created_units = mock_system.add_unit.call_args_list
         assert len(created_units) == 1
         small_unit = created_units[0][0][0]
-        # SMALL ship should have a BASIC hyperdrive component, even though template said ADVANCED
+        # SMALL ship should have an ADVANCED hyperdrive component
         assert small_unit.hyperdrive_component is not None
-        assert small_unit.hyperdrive_component.drive_type == HyperdriveType.BASIC
+        assert small_unit.hyperdrive_component.drive_type == HyperdriveType.ADVANCED
+        assert small_unit.hyperdrive_component.hull_cost == 10
         
         # Reset mock
         mock_system.add_unit.reset_mock()

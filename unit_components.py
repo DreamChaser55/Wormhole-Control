@@ -960,9 +960,6 @@ class Constructor(UnitComponent):
             if hull_size == HullSize.TINY and htype == HyperdriveType.ADVANCED:
                 logger.warning(f"Warning: Attempted to add ADVANCED hyperdrive to TINY unit template '{template_name}'. Downgrading to BASIC.")
                 htype = HyperdriveType.BASIC
-            elif hull_size == HullSize.SMALL and htype == HyperdriveType.ADVANCED:
-                logger.warning(f"Warning: Attempted to add ADVANCED hyperdrive to SMALL unit template '{template_name}'. Downgrading to BASIC.")
-                htype = HyperdriveType.BASIC
 
             cost = template.get("hyperdrive_hull_cost")
             if cost is None or cost == 0:

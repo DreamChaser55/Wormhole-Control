@@ -263,8 +263,6 @@ class Game:
                 ship_unit.add_component(Engines(ship_unit, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
                 if hull_size == HullSize.TINY:
                     ship_unit.add_component(Hyperdrive(ship_unit, drive_type=HyperdriveType.BASIC, hull_cost=5))
-                elif hull_size == HullSize.SMALL:
-                    ship_unit.add_component(Hyperdrive(ship_unit, drive_type=HyperdriveType.BASIC, hull_cost=5))
                 else:
                     ship_unit.add_component(Hyperdrive(ship_unit, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
                 weapons = Weapons(ship_unit, hull_cost=10)

@@ -46,8 +46,8 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
     HullSize.HUGE: set(),
 }
 
-# Advanced hyperdrive is unavailable on SMALL hulls (existing game rule).
-ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.MEDIUM
+# Advanced hyperdrive is unavailable on TINY hulls (existing game rule).
+ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.SMALL
 
 # --------------------------------------------------------------------------
 # Hull-size cost multipliers (used in build cost calculation)

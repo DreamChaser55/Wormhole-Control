@@ -105,12 +105,11 @@ class TestCustomUnitTemplateValidation(unittest.TestCase):
         errors = t.validate()
         self.assertTrue(any("inhibitor" in e.lower() for e in errors))
 
-    def test_small_cannot_have_advanced_hyperdrive(self):
+    def test_small_can_have_advanced_hyperdrive(self):
         t = self._make_valid(HullSize.SMALL)
         t.components.has_hyperdrive = True
         t.components.hyperdrive_type = "ADVANCED"
-        errors = t.validate()
-        self.assertTrue(any("ADVANCED" in e for e in errors))
+        self.assertEqual(t.validate(), [])
 
     def test_small_can_have_basic_hyperdrive(self):
         t = self._make_valid(HullSize.SMALL)
