@@ -487,8 +487,10 @@ def test_ship_size_hyperdrive_restrictions_in_constructor():
         created_units = mock_system.add_unit.call_args_list
         assert len(created_units) == 1
         tiny_unit = created_units[0][0][0]
-        # TINY ship should NOT have a hyperdrive component
-        assert tiny_unit.hyperdrive_component is None
+        # TINY ship should have a BASIC hyperdrive component
+        assert tiny_unit.hyperdrive_component is not None
+        assert tiny_unit.hyperdrive_component.drive_type == HyperdriveType.BASIC
+        assert tiny_unit.hyperdrive_component.hull_cost == 5
         
         # Reset mock
         mock_system.add_unit.reset_mock()

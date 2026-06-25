@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 # Keys are HullSize enum values; values are sets of component key strings.
 HULL_RESTRICTIONS: Dict[HullSize, set] = {
     HullSize.TINY: {
-        "has_hyperdrive",
         "has_inhibitor",
         "has_hangar",
         "has_constructor_component",
@@ -97,7 +96,7 @@ class ComponentConfig:
     # Hyperdrive
     has_hyperdrive: bool = False
     hyperdrive_type: str = "BASIC"      # "BASIC" or "ADVANCED"
-    hyperdrive_hull_cost: int = 10
+    hyperdrive_hull_cost: int = 5
 
     # Weapons
     has_weapon_bays: bool = False
@@ -149,6 +148,12 @@ class ComponentConfig:
     has_ability_component: bool = False
     ability_hull_cost: int = 10
     abilities: List[str] = dataclasses.field(default_factory=list)
+
+    def __post_init__(self):
+        if self.hyperdrive_type == "BASIC":
+            self.hyperdrive_hull_cost = 5
+        elif self.hyperdrive_type == "ADVANCED":
+            self.hyperdrive_hull_cost = 10
 
 
 # --------------------------------------------------------------------------

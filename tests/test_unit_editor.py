@@ -85,11 +85,19 @@ class TestCustomUnitTemplateValidation(unittest.TestCase):
     # Hull-size restrictions
     # ------------------------------------------------------------------ #
 
-    def test_tiny_cannot_have_hyperdrive(self):
+    def test_tiny_can_have_basic_hyperdrive(self):
         t = self._make_valid(HullSize.TINY)
         t.components.has_hyperdrive = True
+        t.components.hyperdrive_type = "BASIC"
         errors = t.validate()
-        self.assertTrue(any("hyperdrive" in e.lower() for e in errors))
+        self.assertFalse(any("hyperdrive" in e.lower() for e in errors))
+
+    def test_tiny_cannot_have_advanced_hyperdrive(self):
+        t = self._make_valid(HullSize.TINY)
+        t.components.has_hyperdrive = True
+        t.components.hyperdrive_type = "ADVANCED"
+        errors = t.validate()
+        self.assertTrue(any("advanced hyperdrive" in e.lower() for e in errors))
 
     def test_tiny_cannot_have_inhibitor(self):
         t = self._make_valid(HullSize.TINY)

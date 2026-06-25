@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5},
-    {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 10},
+    {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 5},
     {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10},
     {"key": "has_constructor_component", "label": "Constructor",        "cost_key": "constructor_hull_cost",      "default_cost": 15},
     {"key": "has_repair_component",      "label": "Repair",             "cost_key": "repair_hull_cost",           "default_cost": 15},
@@ -577,6 +577,7 @@ class UnitEditorWindow:
                 return "ui_handled"
             elif elem is self._hd_type_dropdown:
                 self._comp.hyperdrive_type = event.text
+                self._comp.hyperdrive_hull_cost = 5 if event.text == "BASIC" else 10
                 self._update_summary()
                 return "ui_handled"
             elif elem is self._load_dd and event.text != "— select —":

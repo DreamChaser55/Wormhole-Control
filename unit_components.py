@@ -73,7 +73,9 @@ class Hyperdrive(UnitComponent):
     recharge_time_remaining: int = 0
     RECHARGE_DURATION: int = DEFAULT_HYPERDRIVE_RECHARGE_DURATION
 
-    def __init__(self, unit: 'Unit', drive_type: HyperdriveType = HyperdriveType.BASIC, hull_cost: int = 10, recharge_duration: int = DEFAULT_HYPERDRIVE_RECHARGE_DURATION, jump_range: int = DEFAULT_JUMP_RANGE):
+    def __init__(self, unit: 'Unit', drive_type: HyperdriveType = HyperdriveType.BASIC, hull_cost: Optional[int] = None, recharge_duration: int = DEFAULT_HYPERDRIVE_RECHARGE_DURATION, jump_range: int = DEFAULT_JUMP_RANGE):
+        if hull_cost is None:
+            hull_cost = 5 if drive_type == HyperdriveType.BASIC else 10
         super().__init__(unit, hull_cost=hull_cost)
         self.drive_type = drive_type
         self.jump_range = jump_range
@@ -955,13 +957,17 @@ class Constructor(UnitComponent):
                 htype = htype_raw
 
             hull_size = new_unit.hull_size
-            if hull_size == HullSize.TINY:
-                logger.warning(f"Warning: Attempted to add hyperdrive to TINY unit template '{template_name}'. Skipping hyperdrive component.")
-            else:
-                if hull_size == HullSize.SMALL and htype == HyperdriveType.ADVANCED:
-                    logger.warning(f"Warning: Attempted to add ADVANCED hyperdrive to SMALL unit template '{template_name}'. Downgrading to BASIC.")
-                    htype = HyperdriveType.BASIC
-                new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=template.get("hyperdrive_hull_cost", 0)))
+            if hull_size == HullSize.TINY and htype == HyperdriveType.ADVANCED:
+                logger.warning(f"Warning: Attempted to add ADVANCED hyperdrive to TINY unit template '{template_name}'. Downgrading to BASIC.")
+                htype = HyperdriveType.BASIC
+            elif hull_size == HullSize.SMALL and htype == HyperdriveType.ADVANCED:
+                logger.warning(f"Warning: Attempted to add ADVANCED hyperdrive to SMALL unit template '{template_name}'. Downgrading to BASIC.")
+                htype = HyperdriveType.BASIC
+
+            cost = template.get("hyperdrive_hull_cost")
+            if cost is None or cost == 0:
+                cost = 5 if htype == HyperdriveType.BASIC else 10
+            new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=cost))
 
         if template.get("has_weapon_bays"):
             weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
