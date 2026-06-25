@@ -17,6 +17,19 @@ from geometry import Vector, Position
 if typing.TYPE_CHECKING:
     from game import Game
     from entities import Player
+    from unit_editor_gui import UnitEditorWindow
+
+
+def _editor_action_to_gui_action(editor_action: str) -> typing.Optional[dict]:
+    """Convert a UnitEditorWindow action string to a GUI action dict."""
+    if editor_action == 'close':
+        return {'action': 'toggle_unit_editor'}
+    elif editor_action == 'design_saved':
+        return {'action': 'unit_editor_design_saved'}
+    elif editor_action == 'design_deleted':
+        return {'action': 'unit_editor_design_deleted'}
+    return None
+
 
 class GUI_Handler:
     """Manages the Pygame GUI elements."""
@@ -144,6 +157,10 @@ class GUI_Handler:
         self.save_game_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.quit_to_menu_button: typing.Optional[pygame_gui.elements.UIButton] = None
 
+        # Unit Editor
+        self.unit_editor_window: typing.Optional['UnitEditorWindow'] = None
+        self.unit_editor_button: typing.Optional[pygame_gui.elements.UIButton] = None
+
         # Galaxy generation area
         self.galaxy_generation_rect: typing.Optional[pygame.Rect] = None
         self.galaxy_border_color: pygame.Color = pygame.Color(BLUE)
@@ -163,6 +180,10 @@ class GUI_Handler:
 
         if self.ingame_menu_panel: self.ingame_menu_panel.kill(); self.ingame_menu_panel = None
 
+        if self.unit_editor_window:
+            self.unit_editor_window.kill()
+            self.unit_editor_window = None
+
         self.new_game_button = self.about_button = self.quit_button = None
         self.about_title = self.about_text = self.about_screen_back_button = None
         self.back_button = self.view_mode_label = self.end_turn_button = self.player_turn_label = self.player_color_indicator = None
@@ -172,6 +193,7 @@ class GUI_Handler:
         self.context_menu_options = []
 
         self.menu_button = self.resume_button = self.save_game_button = self.quit_to_menu_button = None
+        self.unit_editor_button = None
 
         self.manager.clear_and_reset()
 
@@ -186,6 +208,7 @@ class GUI_Handler:
         if self.side_bar_info_panel: self.side_bar_info_panel.hide()
         if self.context_menu_panel: self.context_menu_panel.hide()
         if self.ingame_menu_panel: self.ingame_menu_panel.hide()
+        if self.unit_editor_window: self.unit_editor_window.hide()
 
     def show_main_menu(self):
         """Configures and shows the Main Menu UI."""
@@ -425,6 +448,17 @@ class GUI_Handler:
                                                          manager=self.manager,
                                                          container=self.left_bottom_bar_panel,
                                                          object_id='#menu_button')
+
+        # Unit Editor Button
+        editor_button_width = int(110 * self.scale_x)
+        editor_button_rect = pygame.Rect(menu_button_rect.right + padding, padding, editor_button_width, -1)
+        self.unit_editor_button = pygame_gui.elements.UIButton(
+            relative_rect=editor_button_rect,
+            text='Unit Editor',
+            manager=self.manager,
+            container=self.left_bottom_bar_panel,
+            object_id='#unit_editor_button'
+        )
 
         # Resource Labels
         label_width = int(150 * self.scale_x)
@@ -752,13 +786,41 @@ class GUI_Handler:
             elif self.quit_to_menu_button and event.ui_element == self.quit_to_menu_button:
                 logger.debug("Quit to Main Menu button pressed (GUI)")
                 action_result = {'action': 'quit_to_main_menu'}
+            elif self.unit_editor_button and event.ui_element == self.unit_editor_button:
+                logger.debug("Unit Editor button pressed (GUI)")
+                action_result = {'action': 'toggle_unit_editor'}
+            elif self.unit_editor_window and self.unit_editor_window.is_visible:
+                # Let the unit editor handle its own button presses
+                editor_action = self.unit_editor_window.process_event(event)
+                if editor_action:
+                    action_result = _editor_action_to_gui_action(editor_action)
+                    if action_result is None:
+                        action_result = {'action': 'ui_handled'}
+                else:
+                    if DEBUG:
+                        logger.debug(f"[GUI_Handler DEBUG] Clicked UI element {event.ui_element} not found in dynamic_button_actions or no action_id.")
             else:
                 if DEBUG:
                     logger.debug(f"[GUI_Handler DEBUG] Clicked UI element {event.ui_element} not found in dynamic_button_actions or no action_id.")
 
         elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
-            logger.debug(f"Drop down menu changed (GUI): {event.text}")
-            action_result = {'action': 'component_selected', 'component_name': event.text}
+            # Forward dropdown change to unit editor first; if it consumes it, don't treat it as a component_selected
+            editor_action = self.process_unit_editor_event(event)
+            if editor_action:
+                action_result = _editor_action_to_gui_action(editor_action)
+                if action_result is None:
+                    action_result = {'action': 'ui_handled'}
+            else:
+                logger.debug(f"Drop down menu changed (GUI): {event.text}")
+                action_result = {'action': 'component_selected', 'component_name': event.text}
+
+        # If no action from standard handling, check if the unit editor consumed this event
+        if not action_result and self.unit_editor_window and self.unit_editor_window.is_visible:
+            editor_action = self.process_unit_editor_event(event)
+            if editor_action:
+                action_result = _editor_action_to_gui_action(editor_action)
+                if action_result is None:
+                    action_result = {'action': 'ui_handled'}
 
         if action_result:
             return action_result
@@ -770,6 +832,9 @@ class GUI_Handler:
     def update(self, time_delta: float):
         """Updates the GUI Manager."""
         self.manager.update(time_delta)
+        # Forward update to unit editor so its internal widgets animate/update
+        if self.unit_editor_window and self.unit_editor_window.is_visible:
+            pass  # UIManager handles child widget updates automatically
 
     def draw(self, surface: pygame.Surface):
         """Draws the UI elements onto the provided surface."""
@@ -777,6 +842,38 @@ class GUI_Handler:
             pygame.draw.rect(surface, self.galaxy_border_color, self.galaxy_generation_rect, 2)
         
         self.manager.draw_ui(surface)
+
+        # Draw custom pygame elements (capacity bar) after the UI manager
+        if self.unit_editor_window and self.unit_editor_window.is_visible:
+            self.unit_editor_window.draw(surface)
+
+    # --- Unit Editor helpers ---
+
+    def open_unit_editor(self, template_manager) -> None:
+        """Create (if needed) and show the Unit Editor window."""
+        if self.unit_editor_window is None:
+            from unit_editor_gui import UnitEditorWindow
+            self.unit_editor_window = UnitEditorWindow(
+                manager=self.manager,
+                screen_res=pygame.Vector2(self.screen_res.x, self.screen_res.y),
+                template_manager=template_manager,
+            )
+        self.unit_editor_window.show()
+
+    def close_unit_editor(self) -> None:
+        """Hide the Unit Editor window."""
+        if self.unit_editor_window:
+            self.unit_editor_window.hide()
+
+    def is_unit_editor_open(self) -> bool:
+        """Return True if the unit editor is currently visible."""
+        return self.unit_editor_window is not None and self.unit_editor_window.is_visible
+
+    def process_unit_editor_event(self, event: pygame.event.Event) -> typing.Optional[str]:
+        """Forward a pygame event to the unit editor and return any action string."""
+        if self.unit_editor_window:
+            return self.unit_editor_window.process_event(event)
+        return None
 
     # --- UI Update Methods ---
     def update_back_button_visibility(self):

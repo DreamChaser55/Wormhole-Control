@@ -849,6 +849,27 @@ class Constructor(UnitComponent):
                 return bu
         return None
 
+    def refresh_buildable_units(self, additional_names: typing.List[str]) -> None:
+        """Append template names to buildable_units if not already present.
+
+        Args:
+            additional_names: List of template keys to add (e.g. custom designs).
+        """
+        existing = {bu.unit_template_name for bu in self.buildable_units}
+        for name in additional_names:
+            if name in existing:
+                continue
+            template = UNIT_TEMPLATES.get(name)
+            if not template:
+                logger.warning(f"[Constructor.refresh_buildable_units] Template '{name}' not found. Skipping.")
+                continue
+            self.buildable_units.append(BuildableUnit(
+                unit_template_name=name,
+                time_to_build=template.get("build_time", 10),
+                cost_credits=template.get("build_cost", 500),
+            ))
+            logger.debug(f"[Constructor] Added '{name}' to buildable units for {self.unit.name}.")
+
     def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy') -> bool:
         """Starts the construction of a new unit."""
         if self.is_destroyed:
@@ -995,6 +1016,19 @@ class Constructor(UnitComponent):
                 new_unit,
                 max_slots=template.get("hangar_slots", 0),
                 hull_cost=template.get("hangar_hull_cost", 0)
+            ))
+
+        if template.get("has_colony_component"):
+            new_unit.add_component(ColonyComponent(
+                new_unit,
+                hull_cost=template.get("colony_hull_cost", 10)
+            ))
+
+        if template.get("has_inhibitor"):
+            new_unit.add_component(HyperspaceInhibitionFieldEmitter(
+                new_unit,
+                radius=template.get("inhibitor_radius", 100.0),
+                hull_cost=template.get("inhibitor_hull_cost", 20)
             ))
 
         if template.get("has_ability_component"):

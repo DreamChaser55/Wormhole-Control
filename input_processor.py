@@ -51,6 +51,10 @@ class InputProcessor:
             if self.gui.is_ingame_menu_open():
                 continue
 
+            # Similarly, block game-world input when the unit editor is open.
+            if self.gui.is_unit_editor_open():
+                continue
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     if self.gui.is_mouse_over_context_menu((-1,-1)): 

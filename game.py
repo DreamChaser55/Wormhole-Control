@@ -45,6 +45,7 @@ from input_processor import InputProcessor
 from turn_processor import TurnProcessor
 from events import EventBus
 from order_system import OrderSystem
+from custom_unit_templates import CustomTemplateManager
 
 # --- Game Class ---
 class Game:
@@ -119,7 +120,9 @@ class Game:
         # Holds (ability_type_str, requires_target_unit, requires_target_position)
         self.pending_ability: typing.Optional[typing.Tuple[str, bool, bool]] = None
 
-
+        # Custom unit template manager (persists designs across sessions)
+        self.custom_template_manager = CustomTemplateManager()
+        self.custom_template_manager.load_from_file()
 
     def start_new_game(self):
         """Initializes a new game when the New Game button is clicked."""
@@ -371,6 +374,24 @@ class Game:
             self.end_turn()
         elif action_type == 'toggle_ingame_menu':
             self.gui.toggle_ingame_menu()
+        elif action_type == 'toggle_unit_editor':
+            if self.gui.is_unit_editor_open():
+                self.gui.close_unit_editor()
+            else:
+                self.gui.open_unit_editor(self.custom_template_manager)
+        elif action_type == 'unit_editor_design_saved':
+            # Refresh SHIPYARD_MK1 constructors so they can build the new design
+            if self.galaxy:
+                all_units = [
+                    u for system in self.galaxy.systems.values()
+                    for h in system.hexes.values()
+                    for u in h.units
+                ]
+                count = self.custom_template_manager.refresh_shipyard_buildables(all_units)
+                if count:
+                    logger.debug(f"[Game] Refreshed constructors on {count} shipyard unit(s) with custom designs.")
+        elif action_type == 'unit_editor_design_deleted':
+            pass  # No constructor refresh needed on delete
         elif action_type == 'save_game':
             self.save_game()
         elif action_type == 'quit_to_main_menu':

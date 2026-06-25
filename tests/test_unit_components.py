@@ -35,6 +35,8 @@ class MockUnit:
         self.max_hit_points = 100
         self.game = MagicMock()
         self.hull_size = HullSize.HUGE
+        self.is_disabled = False
+        self.damage_amplification = 0.0
         
     def add_component(self, component):
         self.components[type(component)] = component

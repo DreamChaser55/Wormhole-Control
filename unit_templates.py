@@ -12,3 +12,21 @@ def _load_templates() -> dict:
     return data
 
 UNIT_TEMPLATES = _load_templates()
+
+
+def register_template(name: str, template: dict) -> None:
+    """Insert or overwrite a template in UNIT_TEMPLATES at runtime.
+
+    The template dict must already have its ``hull_size`` value as a
+    :class:`~constants.HullSize` enum member (matching the convention used
+    by :func:`_load_templates`).
+    """
+    UNIT_TEMPLATES[name] = template
+
+
+def unregister_template(name: str) -> bool:
+    """Remove a template from UNIT_TEMPLATES.  Returns True if it existed."""
+    if name in UNIT_TEMPLATES:
+        del UNIT_TEMPLATES[name]
+        return True
+    return False
