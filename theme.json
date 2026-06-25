@@ -55,6 +55,12 @@
             "size": "14"
         }
     },
+    "#resource_label": {
+        "font": {
+            "name": "arial",
+            "size": "12"
+        }
+    },
     "text_box": {
         "font": {
             "name": "arial",
