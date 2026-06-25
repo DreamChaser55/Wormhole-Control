@@ -420,9 +420,11 @@ class UnitEditorWindow:
         ry = separator_y + pad
         rw = self._panel_rect.w - self._col_split - pad * 2
 
+        entry_h = int(32 * scale_y)
+
         def right_label(text, y):
             lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(rx, y, rw, row_h),
+                relative_rect=pygame.Rect(rx, y, -1, row_h),
                 text=text,
                 manager=self.manager,
                 container=self._panel,
@@ -433,23 +435,23 @@ class UnitEditorWindow:
 
         ry = right_label("Design Key (unique, no spaces):", ry)
         self._name_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(rx, ry, rw, row_h),
+            relative_rect=pygame.Rect(rx, ry, rw, entry_h),
             manager=self.manager,
             container=self._panel,
             object_id="#editor_name_entry",
         )
         self._elements.append(self._name_entry)
-        ry += row_h + pad
+        ry += entry_h + pad
 
         ry = right_label("Display Name:", ry)
         self._display_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(rx, ry, rw, row_h),
+            relative_rect=pygame.Rect(rx, ry, rw, entry_h),
             manager=self.manager,
             container=self._panel,
             object_id="#editor_display_entry",
         )
         self._elements.append(self._display_entry)
-        ry += row_h + pad
+        ry += entry_h + pad
 
         ry = right_label("Design Summary:", ry)
         summary_h = int(200 * scale_y)

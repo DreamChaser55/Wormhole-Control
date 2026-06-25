@@ -2,6 +2,11 @@
     "fonts": [
         {
             "name": "arial",
+            "point_size": 18,
+            "antialiased": "1"
+        },
+        {
+            "name": "arial",
             "point_size": 16,
             "antialiased": "1"
         },
@@ -224,6 +229,18 @@
             "name": "arial",
             "size": "14",
             "bold": "1"
+        }
+    },
+    "#editor_name_entry": {
+        "font": {
+            "name": "arial",
+            "size": "18"
+        }
+    },
+    "#editor_display_entry": {
+        "font": {
+            "name": "arial",
+            "size": "18"
         }
     }
 }
