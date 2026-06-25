@@ -123,6 +123,22 @@ class TestCustomUnitTemplateValidation(unittest.TestCase):
         t.components.hyperdrive_type = "ADVANCED"
         self.assertEqual(t.validate(), [])
 
+    def test_medium_cannot_have_hangar(self):
+        t = self._make_valid(HullSize.MEDIUM)
+        t.components.has_hangar = True
+        errors = t.validate()
+        self.assertTrue(any("hangar" in e.lower() for e in errors))
+
+    def test_large_can_have_hangar(self):
+        t = self._make_valid(HullSize.LARGE)
+        t.components.has_hangar = True
+        self.assertEqual(t.validate(), [])
+
+    def test_huge_can_have_hangar(self):
+        t = self._make_valid(HullSize.HUGE)
+        t.components.has_hangar = True
+        self.assertEqual(t.validate(), [])
+
     # ------------------------------------------------------------------ #
     # Build cost / build time
     # ------------------------------------------------------------------ #

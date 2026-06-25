@@ -114,7 +114,7 @@
       "BATTLESHIP_MEDIUM",
       "REPAIR_SHIP_SMALL",
       "MINING_SHIP_SMALL",
-      "CARRIER_MEDIUM",
+      "CARRIER_LARGE",
       "METAL_REFINERY_STATION",
       "CRYSTAL_REFINERY_STATION"
     ],
@@ -212,10 +212,10 @@
     "build_time": 10,
     "build_cost": 600
   },
-  "CARRIER_MEDIUM": {
-    "name": "Medium Carrier",
-    "hull_size": "MEDIUM",
-    "hull_points": 100,
+  "CARRIER_LARGE": {
+    "name": "Large Carrier",
+    "hull_size": "LARGE",
+    "hull_points": 200,
     "has_engine": true,
     "engine_speed": 100.0,
     "engine_hull_cost": 10,
@@ -231,8 +231,8 @@
     "hangar_hull_cost": 20,
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
-    "build_time": 12,
-    "build_cost": 1200
+    "build_time": 15,
+    "build_cost": 1500
   },
   "STATION_MK1": {
     "name": "Station Mk.I",

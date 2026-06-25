@@ -1015,11 +1015,15 @@ class Constructor(UnitComponent):
             ))
 
         if template.get("has_hangar"):
-            new_unit.add_component(HangarComponent(
-                new_unit,
-                max_slots=template.get("hangar_slots", 0),
-                hull_cost=template.get("hangar_hull_cost", 0)
-            ))
+            hull_size = new_unit.hull_size
+            if hull_size in (HullSize.TINY, HullSize.SMALL, HullSize.MEDIUM):
+                logger.warning(f"Warning: Attempted to add hangar to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
+            else:
+                new_unit.add_component(HangarComponent(
+                    new_unit,
+                    max_slots=template.get("hangar_slots", 0),
+                    hull_cost=template.get("hangar_hull_cost", 0)
+                ))
 
         if template.get("has_colony_component"):
             new_unit.add_component(ColonyComponent(

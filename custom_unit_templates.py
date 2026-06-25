@@ -41,7 +41,9 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_hangar",
         "has_inhibitor",
     },
-    HullSize.MEDIUM: set(),
+    HullSize.MEDIUM: {
+        "has_hangar",
+    },
     HullSize.LARGE: set(),
     HullSize.HUGE: set(),
 }
