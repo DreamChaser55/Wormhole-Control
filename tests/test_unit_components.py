@@ -291,33 +291,48 @@ def test_colony_component():
     assert colony.population_cargo == 20
 
 def test_constructor():
-    unit = MockUnit()
-    constructor = Constructor(unit, hull_cost=10)
-    
-    bu = BuildableUnit(unit_template_name="Station", time_to_build=3, cost_credits=300)
-    constructor.buildable_units.append(bu)
-    
-    assert constructor.can_build("Station") == bu
-    assert constructor.can_build("Fighter") is None
-    
-    # Start construction
-    unit.owner.credits = 500
-    galaxy = MagicMock()
-    
-    success = constructor.start_construction("Station", Position(10, 10), galaxy)
-    assert success
-    assert unit.owner.credits == 200
-    assert constructor.current_construction_target == ("Station", Position(10, 10))
-    assert constructor.time_to_build == 3
-    assert constructor.construction_progress == 0
-    
-    # Update construction
-    constructor.update(galaxy)
-    assert constructor.construction_progress == 1
-    
-    # Cancel construction
-    constructor.cancel_construction()
-    assert constructor.current_construction_target is None
+    from unit_templates import register_template, unregister_template
+    from constants import HullSize
+
+    register_template("Station", {
+        "name": "Station",
+        "hull_size": HullSize.MEDIUM,
+        "build_time": 3,
+        "build_cost": 300
+    })
+
+    try:
+        unit = MockUnit()
+        constructor = Constructor(unit, hull_cost=10)
+        
+        bu = constructor.can_build("Station")
+        assert bu is not None
+        assert bu.unit_template_name == "Station"
+        assert bu.time_to_build == 3
+        assert bu.cost_credits == 300
+        
+        assert constructor.can_build("Fighter") is None
+        
+        # Start construction
+        unit.owner.credits = 500
+        galaxy = MagicMock()
+        
+        success = constructor.start_construction("Station", Position(10, 10), galaxy)
+        assert success
+        assert unit.owner.credits == 200
+        assert constructor.current_construction_target == ("Station", Position(10, 10))
+        assert constructor.time_to_build == 3
+        assert constructor.construction_progress == 0
+        
+        # Update construction
+        constructor.update(galaxy)
+        assert constructor.construction_progress == 1
+        
+        # Cancel construction
+        constructor.cancel_construction()
+        assert constructor.current_construction_target is None
+    finally:
+        unregister_template("Station")
 
 
 def test_repair_component():
@@ -522,22 +537,9 @@ def test_ship_size_hyperdrive_restrictions_in_constructor():
 
 
 def test_shipyard_refinery_options():
-    from unit_templates import UNIT_TEMPLATES
-    
-    # 1. Verify template contains the refinery options
-    shipyard_tmpl = UNIT_TEMPLATES.get("SHIPYARD_MK1")
-    assert shipyard_tmpl is not None
-    buildable = shipyard_tmpl.get("buildable_units", [])
-    assert "METAL_REFINERY_STATION" in buildable
-    assert "CRYSTAL_REFINERY_STATION" in buildable
-
-    # 2. Verify Constructor component populated from templates registers them
+    # Verify Constructor component can build refinery templates
     unit = MockUnit()
-    constructor = Constructor(
-        unit, 
-        hull_cost=30, 
-        buildable_unit_names=shipyard_tmpl.get("buildable_units")
-    )
+    constructor = Constructor(unit, hull_cost=30)
     
     assert constructor.can_build("METAL_REFINERY_STATION") is not None
     assert constructor.can_build("CRYSTAL_REFINERY_STATION") is not None

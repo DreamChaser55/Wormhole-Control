@@ -15,7 +15,6 @@
     "weapon_bays_hull_cost": 0,
     "has_constructor_component": true,
     "constructor_hull_cost": 15,
-    "buildable_units": ["STATION_MK1", "REPAIR_STATION_SMALL", "METAL_REFINERY_STATION", "CRYSTAL_REFINERY_STATION"],
     "build_time": 8,
     "build_cost": 800
   },
@@ -107,17 +106,6 @@
     ],
     "has_constructor_component": true,
     "constructor_hull_cost": 30,
-    "buildable_units": [
-      "CONSTRUCTOR_MK1",
-      "BATTLESHIP_TINY",
-      "BATTLESHIP_SMALL",
-      "BATTLESHIP_MEDIUM",
-      "REPAIR_SHIP_SMALL",
-      "MINING_SHIP_SMALL",
-      "CARRIER_LARGE",
-      "METAL_REFINERY_STATION",
-      "CRYSTAL_REFINERY_STATION"
-    ],
     "has_ability_component": true,
     "ability_hull_cost": 0,
     "abilities": ["missile_batteries", "adaptive_forcefield"]

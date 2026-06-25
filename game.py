@@ -276,8 +276,7 @@ class Game:
                 # Huge Ships are multi-role flagships
                 if hull_size == HullSize.HUGE:
                     ship_unit.add_component(Constructor(
-                        ship_unit, hull_cost=15,
-                        buildable_unit_names=["STATION_MK1", "REPAIR_STATION_SMALL", "SHIPYARD_MK1"]
+                        ship_unit, hull_cost=15
                     ))
                     ship_unit.add_component(ColonyComponent(ship_unit, hull_cost=0))
                     ship_unit.add_component(RepairComponent(
@@ -315,13 +314,7 @@ class Game:
                 # Huge Stations are capital shipyard/repair facilities
                 if hull_size == HullSize.HUGE:
                     station_unit.add_component(Constructor(
-                        station_unit, hull_cost=30,
-                        buildable_unit_names=[
-                            "CONSTRUCTOR_MK1", "BATTLESHIP_TINY",
-                            "BATTLESHIP_SMALL", "BATTLESHIP_MEDIUM",
-                            "REPAIR_SHIP_SMALL", "METAL_REFINERY_STATION",
-                            "CRYSTAL_REFINERY_STATION"
-                        ]
+                        station_unit, hull_cost=30
                     ))
                     station_unit.add_component(RepairComponent(
                         station_unit,

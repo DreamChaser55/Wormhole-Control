@@ -820,7 +820,6 @@ class BuildableUnit:
 @dataclasses.dataclass
 class Constructor(UnitComponent):
     """A component that allows a unit to construct other units (stations)."""
-    buildable_units: list[BuildableUnit] = dataclasses.field(default_factory=list)
     build_range: float = 500.0
     
     # Construction state
@@ -830,47 +829,38 @@ class Constructor(UnitComponent):
 
     def __init__(self, unit: 'Unit', hull_cost: int, buildable_unit_names: typing.Optional[list[str]] = None):
         super().__init__(unit, hull_cost)
-        self.buildable_units = []
         self.current_construction_target = None
         self.construction_progress = 0
         self.time_to_build = 0
-        if buildable_unit_names:
-            for name in buildable_unit_names:
-                template = UNIT_TEMPLATES.get(name)
-                if template:
-                    self.buildable_units.append(BuildableUnit(
-                        unit_template_name=name,
-                        time_to_build=template.get("build_time", 10),
-                        cost_credits=template.get("build_cost", 500)
-                    ))
+
+    @property
+    def buildable_units(self) -> list[BuildableUnit]:
+        """Dynamically retrieve all buildable units based on UNIT_TEMPLATES."""
+        from unit_templates import UNIT_TEMPLATES
+        buildables = []
+        for name, template in UNIT_TEMPLATES.items():
+            buildables.append(BuildableUnit(
+                unit_template_name=name,
+                time_to_build=template.get("build_time", 10),
+                cost_credits=template.get("build_cost", 500)
+            ))
+        return buildables
 
     def can_build(self, unit_template_name: str) -> Optional[BuildableUnit]:
         """Check if this constructor can build a specific unit type."""
-        for bu in self.buildable_units:
-            if bu.unit_template_name == unit_template_name:
-                return bu
+        from unit_templates import UNIT_TEMPLATES
+        template = UNIT_TEMPLATES.get(unit_template_name)
+        if template:
+            return BuildableUnit(
+                unit_template_name=unit_template_name,
+                time_to_build=template.get("build_time", 10),
+                cost_credits=template.get("build_cost", 500)
+            )
         return None
 
     def refresh_buildable_units(self, additional_names: typing.List[str]) -> None:
-        """Append template names to buildable_units if not already present.
-
-        Args:
-            additional_names: List of template keys to add (e.g. custom designs).
-        """
-        existing = {bu.unit_template_name for bu in self.buildable_units}
-        for name in additional_names:
-            if name in existing:
-                continue
-            template = UNIT_TEMPLATES.get(name)
-            if not template:
-                logger.warning(f"[Constructor.refresh_buildable_units] Template '{name}' not found. Skipping.")
-                continue
-            self.buildable_units.append(BuildableUnit(
-                unit_template_name=name,
-                time_to_build=template.get("build_time", 10),
-                cost_credits=template.get("build_cost", 500),
-            ))
-            logger.debug(f"[Constructor] Added '{name}' to buildable units for {self.unit.name}.")
+        """Append template names to buildable_units if not already present. (Deprecated/No-op)"""
+        pass
 
     def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy') -> bool:
         """Starts the construction of a new unit."""
@@ -980,7 +970,7 @@ class Constructor(UnitComponent):
             new_unit.add_component(weapons_comp)
 
         if template.get("has_constructor_component"):
-            new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0), buildable_unit_names=template.get("buildable_units", None)))
+            new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0)))
 
         if template.get("has_repair_component"):
             new_unit.add_component(RepairComponent(

@@ -108,7 +108,6 @@ class ComponentConfig:
     # Constructor
     has_constructor_component: bool = False
     constructor_hull_cost: int = 15
-    buildable_units: List[str] = dataclasses.field(default_factory=list)
 
     # Repair
     has_repair_component: bool = False
@@ -370,41 +369,9 @@ class CustomTemplateManager:
 
     def refresh_shipyard_buildables(self, units_iter) -> int:
         """
-        Append custom designs to every SHIPYARD_MK1 constructor's buildable list.
-
-        ``units_iter`` should be an iterable of all Unit objects in the galaxy.
-        Returns the number of constructors updated.
+        Append custom designs to every SHIPYARD_MK1 constructor's buildable list. (Deprecated/No-op)
         """
-        from unit_components import Constructor, BuildableUnit
-        from unit_templates import UNIT_TEMPLATES
-
-        count = 0
-        for unit in units_iter:
-            constructor: Optional[Constructor] = getattr(unit, "constructor_component", None)
-            if constructor is None:
-                continue
-            # Only refresh SHIPYARD_MK1-equivalent constructors (those that can already
-            # build BATTLESHIP_MEDIUM, a hallmark of shipyard capability).
-            existing_names = {bu.unit_template_name for bu in constructor.buildable_units}
-            if "BATTLESHIP_MEDIUM" not in existing_names:
-                continue
-            added = False
-            for key, template in self.designs.items():
-                if key not in existing_names:
-                    t = UNIT_TEMPLATES.get(key, {})
-                    new_bu = BuildableUnit(
-                        unit_template_name=key,
-                        time_to_build=t.get("build_time", template.build_time),
-                        cost_credits=t.get("build_cost", template.build_cost),
-                    )
-                    constructor.buildable_units.append(new_bu)
-                    added = True
-                    logger.debug(
-                        f"[CustomTemplateManager] Added '{key}' to constructor on '{unit.name}'."
-                    )
-            if added:
-                count += 1
-        return count
+        return 0
 
     # ------------------------------------------------------------------
     # Conversion helpers
@@ -450,7 +417,6 @@ class CustomTemplateManager:
 
             "has_constructor_component": c.has_constructor_component,
             "constructor_hull_cost": c.constructor_hull_cost,
-            "buildable_units": c.buildable_units,
 
             "has_repair_component": c.has_repair_component,
             "repair_rate": c.repair_rate,
@@ -524,7 +490,6 @@ class CustomTemplateManager:
 
             has_constructor_component=d.get("has_constructor_component", False),
             constructor_hull_cost=d.get("constructor_hull_cost", 15),
-            buildable_units=d.get("buildable_units", []),
 
             has_repair_component=d.get("has_repair_component", False),
             repair_rate=d.get("repair_rate", 10.0),
