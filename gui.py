@@ -432,15 +432,15 @@ class GUI_Handler:
                                                       object_id='#view_label')
 
         # --- Bottom Left Panel ---
-        bottom_panel_width = int(580 * self.scale_x)
-        left_bottom_panel_rect = pygame.Rect(0, self.screen_res.y - TOP_BAR_HEIGHT, bottom_panel_width, TOP_BAR_HEIGHT)
+        bottom_panel_width = panel_width
+        left_bottom_panel_rect = pygame.Rect(0, self.screen_res.y - TOP_BAR_HEIGHT * 2, bottom_panel_width, TOP_BAR_HEIGHT * 2)
         self.left_bottom_bar_panel = pygame_gui.elements.UIPanel(relative_rect=left_bottom_panel_rect,
                                                               starting_height=1,
                                                               manager=self.manager,
                                                               object_id='#left_bottom_bar')
 
-        # --- Elements in Bottom Left Panel (left-aligned) ---
-        # Menu Button
+        # --- Elements in Bottom Left Panel (2 rows layout) ---
+        # --- Row 1: Buttons ---
         menu_button_width = int(80 * self.scale_x)
         menu_button_rect = pygame.Rect(padding, padding, menu_button_width, -1)
         self.menu_button = pygame_gui.elements.UIButton(relative_rect=menu_button_rect,
@@ -449,7 +449,6 @@ class GUI_Handler:
                                                          container=self.left_bottom_bar_panel,
                                                          object_id='#menu_button')
 
-        # Unit Editor Button
         editor_button_width = int(110 * self.scale_x)
         editor_button_rect = pygame.Rect(menu_button_rect.right + padding, padding, editor_button_width, -1)
         self.unit_editor_button = pygame_gui.elements.UIButton(
@@ -460,13 +459,14 @@ class GUI_Handler:
             object_id='#unit_editor_button'
         )
 
-        # Resource Labels
-        label_width = int(150 * self.scale_x)
+        # --- Row 2: Resource Labels ---
         label_spacing = int(10 * self.scale_x)
+        label_width = (bottom_panel_width - 2 * padding - 2 * label_spacing) // 3
+        row2_y = TOP_BAR_HEIGHT + padding
 
-        credits_x = menu_button_rect.right + label_spacing
+        credits_x = padding
         self.credits_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(credits_x, int(5 * self.scale_y), label_width, -1),
+            relative_rect=pygame.Rect(credits_x, row2_y, label_width, -1),
             text="Credits: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
@@ -476,7 +476,7 @@ class GUI_Handler:
 
         metal_x = credits_x + label_width + label_spacing
         self.metal_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(metal_x, int(5 * self.scale_y), label_width, -1),
+            relative_rect=pygame.Rect(metal_x, row2_y, label_width, -1),
             text="Metal: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
@@ -486,7 +486,7 @@ class GUI_Handler:
 
         crystal_x = metal_x + label_width + label_spacing
         self.crystal_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(crystal_x, int(5 * self.scale_y), label_width, -1),
+            relative_rect=pygame.Rect(crystal_x, row2_y, label_width, -1),
             text="Crystal: 0",
             manager=self.manager,
             container=self.left_bottom_bar_panel,
