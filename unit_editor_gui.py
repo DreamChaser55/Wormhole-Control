@@ -145,6 +145,7 @@ class UnitEditorWindow:
 
         # Ability checkboxes (UIButton toggles)
         self._ability_buttons: typing.Dict[str, pygame_gui.elements.UIButton] = {}
+        self._abil_hdr: typing.Optional[pygame_gui.elements.UILabel] = None
 
         # Right column
         self._name_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
@@ -263,7 +264,7 @@ class UnitEditorWindow:
         # Component section heading
         comp_heading = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(lx, ly, lw, row_h),
-            text="Components",
+            text="Components (hull cost)",
             manager=self.manager,
             container=self._panel,
             object_id="#editor_section_label",
@@ -271,17 +272,24 @@ class UnitEditorWindow:
         self._elements.append(comp_heading)
         ly += row_h + 2
 
-        # Component toggle rows
-        toggle_w = int(lw * 0.60)
-        cost_w = lw - toggle_w - pad
+        # Component toggle rows (2 columns)
+        col_w = (lw - pad) // 2
+        btn_w = col_w - 30
+        cost_w = 25
 
-        for row in COMPONENT_ROWS:
+        for idx, row in enumerate(COMPONENT_ROWS):
+            col = idx % 2
+            row_idx = idx // 2
+
+            cx = lx + col * (col_w + pad)
+            cy = ly + row_idx * (small_h + 3)
+
             key = row["key"]
             label = row["label"]
             cost = row["default_cost"]
 
             btn = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(lx, ly, toggle_w, small_h),
+                relative_rect=pygame.Rect(cx, cy, btn_w, small_h),
                 text=f"[ ] {label}",
                 manager=self.manager,
                 container=self._panel,
@@ -291,8 +299,8 @@ class UnitEditorWindow:
             self._elements.append(btn)
 
             cost_lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(lx + toggle_w + pad, ly, cost_w, small_h),
-                text=f"{cost} hull",
+                relative_rect=pygame.Rect(cx + btn_w + 5, cy, cost_w, small_h),
+                text=str(cost),
                 manager=self.manager,
                 container=self._panel,
                 object_id="#comp_cost_label",
@@ -300,10 +308,7 @@ class UnitEditorWindow:
             self._comp_cost_labels[key] = cost_lbl
             self._elements.append(cost_lbl)
 
-            ly += small_h + 3
-
-        # Scroll hint if content overflows (we don't implement scrolling, so keep panel tall enough)
-        ly += pad
+        ly += 6 * (small_h + 3) + pad
 
         # ---- Hyperdrive type sub-row ----
         hd_lbl = pygame_gui.elements.UILabel(
@@ -381,37 +386,7 @@ class UnitEditorWindow:
         self._turret_list_lw = lw - pad * 2
         # (labels are created/destroyed dynamically in _rebuild_turret_list)
 
-        # ---- Abilities sub-panel ----
-        # Positioned after turret list area; we need to know max turrets * row_h
-        # We reserve space for up to 4 turret rows statically
-        turret_reserve = small_h * 4 + 3 * 4
-        abilities_y = ly + turret_reserve + pad
-
-        abil_hdr = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(lx + pad * 2, abilities_y, lw - pad * 2, small_h),
-            text="Abilities:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._elements.append(abil_hdr)
-        abilities_y += small_h + 2
-
-        half_w = (lw - pad * 2 - 4) // 2
-        for i, aname in enumerate(ABILITY_NAMES):
-            col = i % 2
-            row_idx = i // 2
-            ax = lx + pad * 2 + col * (half_w + 4)
-            ay = abilities_y + row_idx * (small_h + 2)
-            abtn = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(ax, ay, half_w, small_h),
-                text=f"[ ] {aname}",
-                manager=self.manager,
-                container=self._panel,
-                object_id="#ability_toggle_button",
-            )
-            self._ability_buttons[aname] = abtn
-            self._elements.append(abtn)
+        # (Abilities sub-panel is built dynamically in _rebuild_abilities via _rebuild_turret_list)
 
         # ----------------------------------------------------------------
         # RIGHT COLUMN
@@ -812,6 +787,55 @@ class UnitEditorWindow:
             )
             self._turret_remove_buttons.append(rbtn)
             ly += small_h + 3
+
+        self._rebuild_abilities(ly)
+
+    def _rebuild_abilities(self, y_start: int) -> None:
+        """Rebuild the abilities list dynamically based on the current Y position."""
+        if hasattr(self, "_abil_hdr") and self._abil_hdr and self._abil_hdr.alive():
+            self._abil_hdr.kill()
+        self._abil_hdr = None
+
+        for btn in list(self._ability_buttons.values()):
+            if btn.alive():
+                btn.kill()
+        self._ability_buttons.clear()
+
+        if not self._panel:
+            return
+
+        scale_y = self.screen_res.y / 720.0
+        small_h = int(22 * scale_y)
+        lx = self._turret_list_lx
+        lw = self._turret_list_lw
+        pad = self._pad
+
+        # Heading
+        self._abil_hdr = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(lx, y_start + pad, lw, small_h),
+            text="Abilities:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+
+        abilities_y = y_start + pad + small_h + 2
+        half_w = (lw - 4) // 2
+        for i, aname in enumerate(ABILITY_NAMES):
+            col = i % 2
+            row_idx = i // 2
+            ax = lx + col * (half_w + 4)
+            ay = abilities_y + row_idx * (small_h + 2)
+            abtn = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(ax, ay, half_w, small_h),
+                text=f"[ ] {aname}",
+                manager=self.manager,
+                container=self._panel,
+                object_id="#ability_toggle_button",
+            )
+            self._ability_buttons[aname] = abtn
+        
+        self._update_ability_toggle_labels()
 
     def _do_save(self) -> typing.Optional[str]:
         key = self._name_entry.get_text().strip() if self._name_entry else ""
