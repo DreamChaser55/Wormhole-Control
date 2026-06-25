@@ -570,19 +570,19 @@ class UnitEditorWindow:
 
             if elem is self._add_turret_button:
                 self._do_add_turret()
-                return None
+                return "ui_handled"
 
             # Component toggles
             for key, btn in self._comp_toggles.items():
                 if elem is btn:
                     self._toggle_component(key)
-                    return None
+                    return "ui_handled"
 
             # Ability toggles
             for aname, abtn in self._ability_buttons.items():
                 if elem is abtn:
                     self._toggle_ability(aname)
-                    return None
+                    return "ui_handled"
 
             # Turret remove buttons
             for i, rbtn in enumerate(self._turret_remove_buttons):
@@ -591,17 +591,20 @@ class UnitEditorWindow:
                         self._turrets.pop(i)
                         self._rebuild_turret_list()
                         self._update_summary()
-                    return None
+                    return "ui_handled"
 
         elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
             elem = event.ui_element
             if elem is self._hull_dropdown:
                 self._on_hull_changed(event.text)
+                return "ui_handled"
             elif elem is self._hd_type_dropdown:
                 self._comp.hyperdrive_type = event.text
                 self._update_summary()
+                return "ui_handled"
             elif elem is self._load_dd and event.text != "— select —":
                 self._load_design(event.text)
+                return "ui_handled"
 
         return None
 
