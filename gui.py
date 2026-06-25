@@ -448,17 +448,7 @@ class GUI_Handler:
                                                          container=self.left_bottom_bar_panel,
                                                          object_id='#menu_button')
 
-        editor_button_width = int(100 * self.scale_x)
-        editor_button_rect = pygame.Rect(menu_button_rect.right + padding, padding, editor_button_width, -1)
-        self.unit_editor_button = pygame_gui.elements.UIButton(
-            relative_rect=editor_button_rect,
-            text='Unit Editor',
-            manager=self.manager,
-            container=self.left_bottom_bar_panel,
-            object_id='#unit_editor_button'
-        )
-
-        buttons_right = editor_button_rect.right
+        buttons_right = menu_button_rect.right
         label_spacing = int(5 * self.scale_x)
         remaining_width = bottom_panel_width - buttons_right - padding
         label_width = (remaining_width - 2 * label_spacing) // 3
@@ -563,7 +553,7 @@ class GUI_Handler:
 
     def setup_ingame_menu(self):
         """Initializes the Pygame GUI elements for the in-game menu interface."""
-        num_buttons = 3
+        num_buttons = 4
         button_height = int(40 * self.scale_y)  # Used only for panel height estimation
         button_width = int(200 * self.scale_x)
         internal_padding = int(15 * self.scale_y)
@@ -598,6 +588,22 @@ class GUI_Handler:
             manager=self.manager,
             container=self.ingame_menu_panel,
             object_id='#resume_button'
+        )
+        current_y += button_height + internal_padding
+
+        # Unit Editor Button
+        button_rel_rect = pygame.Rect(
+            (panel_width - button_width) // 2,
+            current_y,
+            button_width,
+            -1
+        )
+        self.unit_editor_button = pygame_gui.elements.UIButton(
+            relative_rect=button_rel_rect,
+            text='Unit Editor',
+            manager=self.manager,
+            container=self.ingame_menu_panel,
+            object_id='#unit_editor_button'
         )
         current_y += button_height + internal_padding
 
@@ -858,6 +864,7 @@ class GUI_Handler:
                 template_manager=template_manager,
             )
         self.unit_editor_window.show()
+        self.hide_ingame_menu()
 
     def close_unit_editor(self) -> None:
         """Hide the Unit Editor window."""
