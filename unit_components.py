@@ -811,6 +811,199 @@ class HangarComponent(UnitComponent):
 
 
 @dataclasses.dataclass
+class FighterWingComponent(UnitComponent):
+    """A component specifically for strikecraft (fighter wings) to track individual fighter counts."""
+    def __init__(self, unit: 'Unit', hull_cost: int = 0):
+        super().__init__(unit, hull_cost=hull_cost)
+
+    @property
+    def active_fighters(self) -> int:
+        if self.unit.current_hit_points <= 0:
+            return 0
+        return math.ceil((self.unit.current_hit_points / self.unit.max_hit_points) * 4)
+
+
+@dataclasses.dataclass
+class FighterBayComponent(UnitComponent):
+    """A component that allows a unit to store, transport, and automatically construct/replenish fighter wings."""
+    max_slots: int = 0
+    docked_units: list['Unit'] = dataclasses.field(default_factory=list)
+    
+    # Auto-construction and replenishment state
+    constructing: bool = False
+    construction_progress: int = 0
+    replenishing_unit: typing.Optional['Unit'] = None
+    replenish_progress: int = 0
+
+    def __init__(self, unit: 'Unit', max_slots: int = 0, hull_cost: int = 0):
+        super().__init__(unit, hull_cost=hull_cost)
+        self.max_slots = max_slots
+        self.docked_units = []
+        self.constructing = False
+        self.construction_progress = 0
+        self.replenishing_unit = None
+        self.replenish_progress = 0
+
+    def get_used_slots(self) -> int:
+        return len(self.docked_units)
+
+    def can_dock(self, unit: 'Unit') -> bool:
+        if unit.hull_size != HullSize.STRIKECRAFT:
+            return False
+        return self.get_used_slots() < self.max_slots
+
+    def dock(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+        if not self.can_dock(unit):
+            return False
+        
+        # Remove from system
+        if unit.in_system and unit.in_hex is not None:
+            system = galaxy_ref.systems.get(unit.in_system)
+            if system:
+                system.remove_unit(unit)
+        
+        unit.in_system = self.unit.in_system
+        unit.in_hex = self.unit.in_hex
+        unit.position = Position(self.unit.position.x, self.unit.position.y)
+        
+        self.docked_units.append(unit)
+        if unit.commander_component:
+            unit.commander_component.clear_orders()
+            
+        logger.debug(f"Fighter wing {unit.name} docked into carrier {self.unit.name}.")
+        return True
+
+    def deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+        if unit not in self.docked_units:
+            return False
+        
+        unit.in_system = self.unit.in_system
+        unit.in_hex = self.unit.in_hex
+        unit.position = Position(self.unit.position.x, self.unit.position.y)
+        
+        system = galaxy_ref.systems.get(unit.in_system)
+        if system:
+            system.add_unit(unit)
+            
+        self.docked_units.remove(unit)
+        logger.debug(f"Fighter wing {unit.name} deployed from carrier {self.unit.name}.")
+        return True
+
+    def finish_auto_construction(self, galaxy: 'Galaxy'):
+        """Creates the new Fighter Wing and docks it."""
+        from entities import Unit # Avoid circular import
+        from unit_templates import UNIT_TEMPLATES
+        
+        template_name = "FIGHTER_WING"
+        template = UNIT_TEMPLATES.get(template_name)
+        if not template:
+            logger.debug(f"Error: Unit template '{template_name}' not found for auto-construction.")
+            return
+
+        new_unit = Unit(
+            owner=self.unit.owner,
+            name=template["name"],
+            hull_size=template["hull_size"],
+            game=self.unit.game,
+            in_system=self.unit.in_system,
+            in_hex=self.unit.in_hex,
+            position=Position(self.unit.position.x, self.unit.position.y)
+        )
+
+        if template.get("has_engine"):
+            new_unit.add_component(Engines(new_unit, speed=template.get("engine_speed", 0), hull_cost=template.get("engine_hull_cost", 0)))
+        
+        if template.get("has_weapon_bays"):
+            weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
+            for turret_def in template.get("turrets", []):
+                turret = Turret(
+                    turret_type=TurretType[turret_def["type"]],
+                    damage=turret_def["damage"],
+                    range=turret_def["range"],
+                    cooldown=turret_def["cooldown"],
+                    parent_unit=new_unit
+                )
+                weapons_comp.add_turret(turret)
+            new_unit.add_component(weapons_comp)
+
+        new_unit.add_component(FighterWingComponent(new_unit))
+
+        # Direct dock
+        self.docked_units.append(new_unit)
+        logger.debug(f"Auto-constructed and docked new fighter wing {new_unit.name} ({new_unit.id}) for carrier {self.unit.name}.")
+
+    def update(self, galaxy: 'Galaxy'):
+        """Automatically constructs or replenishes wings. Called each turn."""
+        if self.is_destroyed:
+            return
+
+        owner = self.unit.owner
+        if not owner:
+            return
+
+        # 1. Update ongoing replenishment
+        if self.replenishing_unit:
+            # If the unit was deployed or destroyed in the meantime, cancel replenishment
+            if self.replenishing_unit not in self.docked_units or self.replenishing_unit.current_hit_points <= 0:
+                self.replenishing_unit = None
+                self.replenish_progress = 0
+            else:
+                self.replenish_progress += 1
+                if self.replenish_progress >= 1: # 1 turn to replenish 1 fighter (10 HP)
+                    self.replenishing_unit.heal_hull(10)
+                    logger.debug(f"Fighter bay on {self.unit.name} replenished 1 fighter in wing {self.replenishing_unit.name}. HP: {self.replenishing_unit.current_hit_points}/{self.replenishing_unit.max_hit_points}")
+                    # If fully healed, clear. Otherwise keep replenishing on next turn
+                    if self.replenishing_unit.current_hit_points >= self.replenishing_unit.max_hit_points:
+                        self.replenishing_unit = None
+                        self.replenish_progress = 0
+                    else:
+                        # Start next replenishment step immediately if we have credits
+                        cost = 35
+                        if owner.credits >= cost:
+                            owner.credits -= cost
+                            self.replenish_progress = 0
+                        else:
+                            self.replenishing_unit = None
+                            self.replenish_progress = 0
+                return
+
+        # 2. Update ongoing construction
+        if self.constructing:
+            self.construction_progress += 1
+            if self.construction_progress >= 2: # 2 turns to construct a new wing
+                self.finish_auto_construction(galaxy)
+                self.constructing = False
+                self.construction_progress = 0
+            return
+
+        # 3. If not busy, check if we need to replenish a damaged wing
+        damaged_wing = None
+        for wing in self.docked_units:
+            if wing.current_hit_points < wing.max_hit_points:
+                damaged_wing = wing
+                break
+
+        if damaged_wing:
+            cost = 35
+            if owner.credits >= cost:
+                owner.credits -= cost
+                self.replenishing_unit = damaged_wing
+                self.replenish_progress = 0
+                logger.debug(f"Fighter bay on {self.unit.name} started replenishing wing {damaged_wing.name} for {cost} credits.")
+                return
+
+        # 4. If not busy and we have free slots, start constructing a new wing
+        if len(self.docked_units) < self.max_slots:
+            cost = 150
+            if owner.credits >= cost:
+                owner.credits -= cost
+                self.constructing = True
+                self.construction_progress = 0
+                logger.debug(f"Fighter bay on {self.unit.name} started constructing new Fighter Wing for {cost} credits.")
+                return
+
+
+@dataclasses.dataclass
 class BuildableUnit:
     unit_template_name: str
     time_to_build: int
@@ -1014,6 +1207,20 @@ class Constructor(UnitComponent):
                     max_slots=template.get("hangar_slots", 0),
                     hull_cost=template.get("hangar_hull_cost", 0)
                 ))
+
+        if template.get("has_fighter_bay"):
+            hull_size = new_unit.hull_size
+            if hull_size in (HullSize.STRIKECRAFT, HullSize.TINY, HullSize.SMALL, HullSize.MEDIUM):
+                logger.warning(f"Warning: Attempted to add fighter bay to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
+            else:
+                new_unit.add_component(FighterBayComponent(
+                    new_unit,
+                    max_slots=template.get("fighter_bay_slots", 0),
+                    hull_cost=template.get("fighter_bay_hull_cost", 0)
+                ))
+
+        if new_unit.hull_size == HullSize.STRIKECRAFT:
+            new_unit.add_component(FighterWingComponent(new_unit))
 
         if template.get("has_colony_component"):
             new_unit.add_component(ColonyComponent(

@@ -1235,12 +1235,18 @@ class DockOrder(Order):
             logger.debug(f"DOCK order failed: Target carrier {target_carrier_id} not found.")
             return
 
-        if not target_carrier.hangar_component:
+        docking_component = None
+        if self.unit.hull_size == HullSize.STRIKECRAFT and target_carrier.fighter_bay_component:
+            docking_component = target_carrier.fighter_bay_component
+        elif target_carrier.hangar_component:
+            docking_component = target_carrier.hangar_component
+
+        if not docking_component:
             self.status = OrderStatus.FAILED
-            logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no HangarComponent.")
+            logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no compatible hangar/fighterbay for {self.unit.name}.")
             return
 
-        if not target_carrier.hangar_component.can_dock(self.unit):
+        if not docking_component.can_dock(self.unit):
             self.status = OrderStatus.FAILED
             logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no space/slots for {self.unit.name}.")
             return
@@ -1267,7 +1273,7 @@ class DockOrder(Order):
             self.add_sub_order(dock_sub_order)
             return
 
-        success = target_carrier.hangar_component.dock(self.unit, galaxy_ref)
+        success = docking_component.dock(self.unit, galaxy_ref)
         if success:
             self.status = OrderStatus.COMPLETED
             logger.debug(f"Unit {self.unit.name} successfully docked to {target_carrier.name}.")
@@ -1291,11 +1297,15 @@ class DeployUnitOrder(Order):
         docked_unit_id = self.parameters.get("docked_unit_id")
         docked_name = None
         if docked_unit_id and self.unit and self.unit.game:
+            docked_units = []
             if self.unit.hangar_component:
-                for du in self.unit.hangar_component.docked_units:
-                    if du.id == docked_unit_id:
-                        docked_name = du.name
-                        break
+                docked_units.extend(self.unit.hangar_component.docked_units)
+            if self.unit.fighter_bay_component:
+                docked_units.extend(self.unit.fighter_bay_component.docked_units)
+            for du in docked_units:
+                if du.id == docked_unit_id:
+                    docked_name = du.name
+                    break
         state_data["docked_unit_id"] = docked_unit_id
         state_data["docked_name"] = docked_name
         return state_data
@@ -1303,24 +1313,34 @@ class DeployUnitOrder(Order):
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
 
-        if not self.unit.hangar_component:
+        if not self.unit.hangar_component and not self.unit.fighter_bay_component:
             self.status = OrderStatus.FAILED
-            logger.debug(f"DEPLOY_UNIT order failed: Unit {self.unit.name} has no HangarComponent.")
+            logger.debug(f"DEPLOY_UNIT order failed: Unit {self.unit.name} has no HangarComponent or FighterBayComponent.")
             return
 
         docked_unit_id = self.parameters.get("docked_unit_id")
         docked_unit = None
-        for du in self.unit.hangar_component.docked_units:
-            if du.id == docked_unit_id:
-                docked_unit = du
-                break
+        source_component = None
+        
+        if self.unit.hangar_component:
+            for du in self.unit.hangar_component.docked_units:
+                if du.id == docked_unit_id:
+                    docked_unit = du
+                    source_component = self.unit.hangar_component
+                    break
+        if not docked_unit and self.unit.fighter_bay_component:
+            for du in self.unit.fighter_bay_component.docked_units:
+                if du.id == docked_unit_id:
+                    docked_unit = du
+                    source_component = self.unit.fighter_bay_component
+                    break
 
         if not docked_unit:
             self.status = OrderStatus.FAILED
-            logger.debug(f"DEPLOY_UNIT order failed: Docked unit {docked_unit_id} not found in hangar.")
+            logger.debug(f"DEPLOY_UNIT order failed: Docked unit {docked_unit_id} not found in hangar or fighter bay.")
             return
 
-        success = self.unit.hangar_component.deploy(docked_unit, galaxy_ref)
+        success = source_component.deploy(docked_unit, galaxy_ref)
         if success:
             self.status = OrderStatus.COMPLETED
             logger.debug(f"Unit {docked_unit.name} successfully deployed from {self.unit.name}.")

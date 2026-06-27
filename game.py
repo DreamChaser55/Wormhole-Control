@@ -31,7 +31,7 @@ from geometry import (
 from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
 from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent
+from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent, FighterBayComponent, FighterWingComponent
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
@@ -224,7 +224,7 @@ class Game:
                 return
         logger.debug(f"Target system for starting units: {target_system.name}")
 
-        all_hull_sizes = list(HullSize)
+        all_hull_sizes = [h for h in HullSize if h != HullSize.STRIKECRAFT]
 
         # Spawn units for all players
         for player in self.players:
@@ -405,12 +405,12 @@ class Game:
             carrier_id = action.get('carrier_id')
             docked_unit_id = action.get('docked_unit_id')
             carrier = self.galaxy.get_unit_by_id(carrier_id)
-            if carrier and carrier.hangar_component:
+            if carrier and (carrier.hangar_component or carrier.fighter_bay_component):
                 from unit_orders import DeployUnitOrder
                 deploy_order = DeployUnitOrder(carrier, {"docked_unit_id": docked_unit_id})
                 if carrier.commander_component:
                     carrier.commander_component.add_order(deploy_order)
-                    logger.debug(f"Issued DEPLOY_UNIT order for carrier {carrier.name} (docked ship ID: {docked_unit_id}).")
+                    logger.debug(f"Issued DEPLOY_UNIT order for carrier {carrier.name} (docked unit ID: {docked_unit_id}).")
             self.sidebar_needs_update = True
         elif action_type == 'component_selected':
             self.selected_component_name = action.get('component_name')
@@ -833,10 +833,12 @@ class Game:
                     components_map["Repair"] = unit.repair_component
                 if unit.hangar_component:
                     components_map["Hangar"] = unit.hangar_component
+                if unit.fighter_bay_component:
+                    components_map["Fighter Bay"] = unit.fighter_bay_component
                 if unit.ability_component:
                     components_map["Abilities"] = unit.ability_component
 
-                component_order = ["Commander", "Weapons", "Engines", "Hyperdrive", "Inhibitor", "Constructor", "Colony", "Mining", "Metal Refinery", "Crystal Refinery", "Repair", "Hangar", "Abilities"]
+                component_order = ["Commander", "Weapons", "Engines", "Hyperdrive", "Inhibitor", "Constructor", "Colony", "Mining", "Metal Refinery", "Crystal Refinery", "Repair", "Hangar", "Fighter Bay", "Abilities"]
                 dropdown_options = [c for c in component_order if c in components_map]
                 for c in components_map:
                     if c not in dropdown_options:
@@ -1052,6 +1054,34 @@ class Game:
                                 size_slots = 1 if docked_ship.hull_size == HullSize.TINY else 2
                                 ship_label = f"  - {docked_ship.name} ({size_slots} slot)" if size_slots == 1 else f"  - {docked_ship.name} ({size_slots} slots)"
                                 data_for_gui.append({'type': 'label', 'text': ship_label, 'object_id': '#sidebar_info_label', 'height': 20})
+                                data_for_gui.append({
+                                    'type': 'button',
+                                    'text': f"Deploy {docked_ship.name}",
+                                    'object_id': '#sidebar_expand_button',
+                                    'action_id': 'deploy_ship',
+                                    'target_data': (unit.id, docked_ship.id),
+                                    'height': 25
+                                })
+
+                elif self.selected_component_name == "Fighter Bay":
+                    if unit.fighter_bay_component:
+                        comp = unit.fighter_bay_component
+                        status = "DESTROYED" if comp.is_destroyed else f"HP: {comp.current_hit_points}/{comp.max_hit_points}"
+                        data_for_gui.append({'type': 'label', 'text': f"Fighter Bay [{status}]", 'object_id': '#sidebar_section_header_label', 'height': 28})
+                        used_slots = comp.get_used_slots()
+                        data_for_gui.append({'type': 'label', 'text': f"Capacity: {used_slots} / {comp.max_slots} wings", 'object_id': '#sidebar_info_label', 'height': 20})
+                        if comp.constructing:
+                            data_for_gui.append({'type': 'label', 'text': f"Constructing Fighter Wing ({comp.construction_progress + 1}/2 turns)", 'object_id': '#sidebar_info_label', 'height': 20})
+                        elif comp.replenishing_unit:
+                            data_for_gui.append({'type': 'label', 'text': f"Replenishing Wing: {comp.replenishing_unit.name}", 'object_id': '#sidebar_info_label', 'height': 20})
+                        data_for_gui.append({'type': 'label', 'text': "Docked Fighter Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
+                        if not comp.docked_units:
+                            data_for_gui.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
+                        else:
+                            for docked_ship in comp.docked_units:
+                                f_count = docked_ship.fighter_wing_component.active_fighters if docked_ship.fighter_wing_component else 4
+                                wing_label = f"  - {docked_ship.name} ({f_count}/4 fighters, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
+                                data_for_gui.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
                                 data_for_gui.append({
                                     'type': 'button',
                                     'text': f"Deploy {docked_ship.name}",

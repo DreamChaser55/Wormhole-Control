@@ -27,6 +27,18 @@ logger = logging.getLogger(__name__)
 # Components that are FORBIDDEN for a given hull size.
 # Keys are HullSize enum values; values are sets of component key strings.
 HULL_RESTRICTIONS: Dict[HullSize, set] = {
+    HullSize.STRIKECRAFT: {
+        "has_inhibitor",
+        "has_hangar",
+        "has_constructor_component",
+        "has_repair_component",
+        "has_colony_component",
+        "has_metal_refinery_component",
+        "has_crystal_refinery_component",
+        "has_ability_component",
+        "has_hyperdrive",
+        "has_fighter_bay",
+    },
     HullSize.TINY: {
         "has_inhibitor",
         "has_hangar",
@@ -36,13 +48,16 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_metal_refinery_component",
         "has_crystal_refinery_component",
         "has_ability_component",
+        "has_fighter_bay",
     },
     HullSize.SMALL: {
         "has_hangar",
         "has_inhibitor",
+        "has_fighter_bay",
     },
     HullSize.MEDIUM: {
         "has_hangar",
+        "has_fighter_bay",
     },
     HullSize.LARGE: set(),
     HullSize.HUGE: set(),
@@ -55,6 +70,7 @@ ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.SMALL
 # Hull-size cost multipliers (used in build cost calculation)
 # --------------------------------------------------------------------------
 HULL_BASE_COST: Dict[HullSize, int] = {
+    HullSize.STRIKECRAFT: 50,
     HullSize.TINY: 100,
     HullSize.SMALL: 250,
     HullSize.MEDIUM: 500,
@@ -63,6 +79,7 @@ HULL_BASE_COST: Dict[HullSize, int] = {
 }
 
 HULL_BASE_BUILD_TIME: Dict[HullSize, int] = {
+    HullSize.STRIKECRAFT: 1,
     HullSize.TINY: 3,
     HullSize.SMALL: 6,
     HullSize.MEDIUM: 10,
@@ -140,6 +157,11 @@ class ComponentConfig:
     hangar_slots: int = 2
     hangar_hull_cost: int = 20
 
+    # Fighter Bay
+    has_fighter_bay: bool = False
+    fighter_bay_slots: int = 2
+    fighter_bay_hull_cost: int = 15
+
     # Hyperspace inhibitor
     has_inhibitor: bool = False
     inhibitor_radius: float = 100.0
@@ -187,6 +209,7 @@ class CustomUnitTemplate:
         if c.has_metal_refinery_component: total += c.metal_refinery_hull_cost
         if c.has_crystal_refinery_component: total += c.crystal_refinery_hull_cost
         if c.has_hangar:            total += c.hangar_hull_cost
+        if c.has_fighter_bay:       total += c.fighter_bay_hull_cost
         if c.has_inhibitor:         total += c.inhibitor_hull_cost
         if c.has_ability_component: total += c.ability_hull_cost
         return total
@@ -227,8 +250,9 @@ class CustomUnitTemplate:
         c = self.components
         comp_flags = {
             "has_hyperdrive": c.has_hyperdrive,
-            "has_inhibitor": c.has_inhibitor,
             "has_hangar": c.has_hangar,
+            "has_fighter_bay": c.has_fighter_bay,
+            "has_inhibitor": c.has_inhibitor,
             "has_constructor_component": c.has_constructor_component,
             "has_repair_component": c.has_repair_component,
             "has_colony_component": c.has_colony_component,
@@ -255,7 +279,7 @@ class CustomUnitTemplate:
             c.has_constructor_component, c.has_repair_component,
             c.has_colony_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
-            c.has_hangar, c.has_inhibitor, c.has_ability_component,
+            c.has_hangar, c.has_fighter_bay, c.has_inhibitor, c.has_ability_component,
         ])
         if not any_component:
             errors.append("At least one component must be enabled.")
@@ -444,6 +468,10 @@ class CustomTemplateManager:
             "hangar_slots": c.hangar_slots,
             "hangar_hull_cost": c.hangar_hull_cost,
 
+            "has_fighter_bay": c.has_fighter_bay,
+            "fighter_bay_slots": c.fighter_bay_slots,
+            "fighter_bay_hull_cost": c.fighter_bay_hull_cost,
+
             "has_inhibitor": c.has_inhibitor,
             "inhibitor_radius": c.inhibitor_radius,
             "inhibitor_hull_cost": c.inhibitor_hull_cost,
@@ -515,6 +543,10 @@ class CustomTemplateManager:
             has_hangar=d.get("has_hangar", False),
             hangar_slots=d.get("hangar_slots", 2),
             hangar_hull_cost=d.get("hangar_hull_cost", 20),
+
+            has_fighter_bay=d.get("has_fighter_bay", False),
+            fighter_bay_slots=d.get("fighter_bay_slots", 2),
+            fighter_bay_hull_cost=d.get("fighter_bay_hull_cost", 15),
 
             has_inhibitor=d.get("has_inhibitor", False),
             inhibitor_radius=d.get("inhibitor_radius", 100.0),

@@ -264,5 +264,48 @@
     "constructor_hull_cost": 0,
     "build_time": 1,
     "build_cost": 0
+  },
+  "FIGHTER_WING": {
+    "name": "Fighter Wing",
+    "hull_size": "STRIKECRAFT",
+    "hull_points": 40,
+    "has_engine": true,
+    "engine_speed": 150.0,
+    "engine_hull_cost": 2,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 3,
+    "turrets": [
+      {"type": "MASS_DRIVER", "damage": 5, "range": 200, "cooldown": 1}
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 2,
+    "build_cost": 150
+  },
+  "CARRIER_STRIKECRAFT": {
+    "name": "Strikecraft Carrier",
+    "hull_size": "LARGE",
+    "hull_points": 200,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 10,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_hull_cost": 10,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": false,
+    "weapon_bays_hull_cost": 0,
+    "has_fighter_bay": true,
+    "fighter_bay_slots": 3,
+    "fighter_bay_hull_cost": 20,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 15,
+    "build_cost": 1600
   }
 }

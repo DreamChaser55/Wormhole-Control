@@ -397,7 +397,11 @@ class InputProcessor:
                                 if target_has_refinery and has_cargo_miners:
                                     options.append(("Unload Resources", "unload_resources"))
 
-                                if target_object.hangar_component and any(target_object.hangar_component.can_dock(a) for a in actors):
+                                can_dock_at_carrier = (
+                                    (target_object.hangar_component and any(target_object.hangar_component.can_dock(a) for a in actors)) or
+                                    (target_object.fighter_bay_component and any(target_object.fighter_bay_component.can_dock(a) for a in actors))
+                                )
+                                if can_dock_at_carrier:
                                     options.append(("Dock at Carrier", "dock_at_carrier"))
 
                             elif isinstance(target_object, Wormhole):
