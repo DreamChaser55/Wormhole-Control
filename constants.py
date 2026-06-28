@@ -63,9 +63,9 @@ MOVE_ORDER_LINE_COLOR = (0, 255, 0, 150) # Semi-transparent green line for subli
 HEX_JUMP_ORDER_LINE_COLOR = (0, 255, 255, 150) # Semi-transparent cyan line for hex jump orders
 WORMHOLE_JUMP_ORDER_COLOR = (255, 80, 255, 150) # Semi-transparent light magenta line for wormhole jump orders
 WORMHOLE_LINE_COLOR = (180, 0, 255) # Bluish magenta for wormhole lines in galaxy view
-GALAXY_BG_COLOR = (5, 5, 10)
-SYSTEM_BG_COLOR = (10, 10, 20)
-SECTOR_BG_COLOR = (20, 20, 40)
+GALAXY_BG_COLOR = (3, 3, 6)
+SYSTEM_BG_COLOR = (6, 6, 12)
+SECTOR_BG_COLOR = (9, 9, 18)
 SECTOR_BORDER_COLOR = (60, 60, 80)
 
 # Hull Size Constants
