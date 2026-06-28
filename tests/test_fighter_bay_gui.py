@@ -42,7 +42,7 @@ def test_fighter_bay_gui_data_generation():
         in_hex=(0, 0),
         in_system="Sol",
         name="Docked Wing",
-        hull_size=HullSize.STRIKECRAFT,
+        hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
     docked_wing_comp = FighterWingComponent(docked_wing)
@@ -56,7 +56,7 @@ def test_fighter_bay_gui_data_generation():
         in_hex=(0, 0),
         in_system="Sol",
         name="Launched Wing",
-        hull_size=HullSize.STRIKECRAFT,
+        hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
     launched_wing_comp = FighterWingComponent(launched_wing)
@@ -135,7 +135,7 @@ def test_fighter_bay_gui_data_generation_non_owner():
         in_hex=(0, 0),
         in_system="Sol",
         name="Enemy Wing",
-        hull_size=HullSize.STRIKECRAFT,
+        hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
     docked_wing_comp = FighterWingComponent(docked_wing)
@@ -188,7 +188,7 @@ def test_recall_ship_action_handling():
         in_hex=(0, 0),
         in_system="Sol",
         name="Launched Wing",
-        hull_size=HullSize.STRIKECRAFT,
+        hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
     launched_wing_comp = FighterWingComponent(launched_wing)

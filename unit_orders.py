@@ -1236,7 +1236,7 @@ class DockOrder(Order):
             return
 
         docking_component = None
-        if self.unit.hull_size == HullSize.STRIKECRAFT and target_carrier.fighter_bay_component:
+        if self.unit.hull_size == HullSize.STRIKECRAFT_WING and target_carrier.fighter_bay_component:
             docking_component = target_carrier.fighter_bay_component
         elif target_carrier.hangar_component:
             docking_component = target_carrier.hangar_component

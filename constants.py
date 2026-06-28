@@ -71,7 +71,7 @@ SECTOR_BORDER_COLOR = (60, 60, 80)
 # Hull Size Constants
 
 class HullSize(Enum):
-    STRIKECRAFT = auto()
+    STRIKECRAFT_WING = auto()
     TINY = auto()
     SMALL = auto()
     MEDIUM = auto()
@@ -135,7 +135,7 @@ STORM_LIGHTNING_COLOR = (255, 255, 224, 150) # Light Yellow for lightning
 
 
 HULL_CAPACITIES = {
-    HullSize.STRIKECRAFT: 5,
+    HullSize.STRIKECRAFT_WING: 5,
     HullSize.TINY: 10,
     HullSize.SMALL: 25,
     HullSize.MEDIUM: 50,
@@ -144,7 +144,7 @@ HULL_CAPACITIES = {
 }
 
 HIT_POINTS = {
-    HullSize.STRIKECRAFT: 40,
+    HullSize.STRIKECRAFT_WING: 40,
     HullSize.TINY: 20,
     HullSize.SMALL: 50,
     HullSize.MEDIUM: 100,
@@ -153,7 +153,7 @@ HIT_POINTS = {
 }
 
 HULL_BASE_ICON_SCALES = {
-    HullSize.STRIKECRAFT: 0.5,
+    HullSize.STRIKECRAFT_WING: 0.5,
     HullSize.TINY: 0.6,
     HullSize.SMALL: 0.8,
     HullSize.MEDIUM: 1.0, # Medium is the baseline
@@ -162,7 +162,7 @@ HULL_BASE_ICON_SCALES = {
 }
 
 HULL_DOT_COUNTS = {
-    HullSize.STRIKECRAFT: 1,
+    HullSize.STRIKECRAFT_WING: 1,
     HullSize.TINY: 1,
     HullSize.SMALL: 2,
     HullSize.MEDIUM: 3,

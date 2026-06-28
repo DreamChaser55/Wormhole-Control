@@ -32,7 +32,12 @@
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 5,
     "turrets": [
-      {"type": "MASS_DRIVER", "damage": 10, "range": 300, "cooldown": 2}
+      {
+        "type": "MASS_DRIVER",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      }
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
@@ -53,13 +58,21 @@
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 10,
     "turrets": [
-      {"type": "BEAM", "damage": 15, "range": 400, "cooldown": 3}
+      {
+        "type": "BEAM",
+        "damage": 15,
+        "range": 400,
+        "cooldown": 3
+      }
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
     "has_ability_component": true,
     "ability_hull_cost": 0,
-    "abilities": ["cluster_warhead", "ion_bolt"],
+    "abilities": [
+      "cluster_warhead",
+      "ion_bolt"
+    ],
     "build_time": 8,
     "build_cost": 600
   },
@@ -78,14 +91,29 @@
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 20,
     "turrets": [
-      {"type": "MASS_DRIVER", "damage": 10, "range": 300, "cooldown": 2},
-      {"type": "MASS_DRIVER", "damage": 10, "range": 300, "cooldown": 2}
+      {
+        "type": "MASS_DRIVER",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      }
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
     "has_ability_component": true,
     "ability_hull_cost": 0,
-    "abilities": ["cluster_warhead", "adaptive_forcefield", "designate_target", "ion_bolt"],
+    "abilities": [
+      "cluster_warhead",
+      "adaptive_forcefield",
+      "designate_target",
+      "ion_bolt"
+    ],
     "build_time": 12,
     "build_cost": 1000
   },
@@ -102,13 +130,21 @@
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 20,
     "turrets": [
-      {"type": "BEAM", "damage": 20, "range": 450, "cooldown": 3}
+      {
+        "type": "BEAM",
+        "damage": 20,
+        "range": 450,
+        "cooldown": 3
+      }
     ],
     "has_constructor_component": true,
     "constructor_hull_cost": 30,
     "has_ability_component": true,
     "ability_hull_cost": 0,
-    "abilities": ["missile_batteries", "adaptive_forcefield"]
+    "abilities": [
+      "missile_batteries",
+      "adaptive_forcefield"
+    ]
   },
   "REPAIR_SHIP_SMALL": {
     "name": "Small Repair Ship",
@@ -132,7 +168,9 @@
     "constructor_hull_cost": 0,
     "has_ability_component": true,
     "ability_hull_cost": 0,
-    "abilities": ["repair_cloud"],
+    "abilities": [
+      "repair_cloud"
+    ],
     "build_time": 8,
     "build_cost": 500
   },
@@ -157,7 +195,9 @@
     "constructor_hull_cost": 0,
     "has_ability_component": true,
     "ability_hull_cost": 0,
-    "abilities": ["repair_cloud"],
+    "abilities": [
+      "repair_cloud"
+    ],
     "build_time": 10,
     "build_cost": 750
   },
@@ -235,13 +275,22 @@
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 20,
     "turrets": [
-      {"type": "BEAM", "damage": 15, "range": 400, "cooldown": 3}
+      {
+        "type": "BEAM",
+        "damage": 15,
+        "range": 400,
+        "cooldown": 3
+      }
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
     "has_ability_component": true,
     "ability_hull_cost": 0,
-    "abilities": ["adaptive_forcefield", "designate_target", "missile_batteries"],
+    "abilities": [
+      "adaptive_forcefield",
+      "designate_target",
+      "missile_batteries"
+    ],
     "build_time": 10,
     "build_cost": 500
   },
@@ -258,7 +307,12 @@
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 0,
     "turrets": [
-      {"type": "MISSILE", "damage": 15, "range": 350, "cooldown": 2}
+      {
+        "type": "MISSILE",
+        "damage": 15,
+        "range": 350,
+        "cooldown": 2
+      }
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
@@ -267,7 +321,7 @@
   },
   "FIGHTER_WING": {
     "name": "Fighter Wing",
-    "hull_size": "STRIKECRAFT",
+    "hull_size": "STRIKECRAFT_WING",
     "hull_points": 40,
     "has_engine": true,
     "engine_speed": 150.0,
@@ -279,7 +333,12 @@
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 3,
     "turrets": [
-      {"type": "MASS_DRIVER", "damage": 5, "range": 200, "cooldown": 1}
+      {
+        "type": "MASS_DRIVER",
+        "damage": 5,
+        "range": 200,
+        "cooldown": 1
+      }
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,

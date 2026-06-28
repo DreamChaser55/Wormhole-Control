@@ -826,7 +826,7 @@ class HangarComponent(UnitComponent):
 
 @dataclasses.dataclass
 class FighterWingComponent(UnitComponent):
-    """A component specifically for strikecraft (fighter wings) to track individual fighter counts."""
+    """A component specifically for STRIKECRAFT_WING (fighter wings) to track individual fighter counts."""
     mother_carrier: typing.Optional['Unit'] = None
 
     def __init__(self, unit: 'Unit', hull_cost: int = 0):
@@ -867,7 +867,7 @@ class FighterBayComponent(UnitComponent):
         return len(self.docked_units) + len(self.launched_units)
 
     def can_dock(self, unit: 'Unit') -> bool:
-        if unit.hull_size != HullSize.STRIKECRAFT:
+        if unit.hull_size != HullSize.STRIKECRAFT_WING:
             return False
         if unit in self.launched_units:
             return True
@@ -1257,7 +1257,7 @@ class Constructor(UnitComponent):
 
         if template.get("has_fighter_bay"):
             hull_size = new_unit.hull_size
-            if hull_size in (HullSize.STRIKECRAFT, HullSize.TINY, HullSize.SMALL, HullSize.MEDIUM):
+            if hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL, HullSize.MEDIUM):
                 logger.warning(f"Warning: Attempted to add fighter bay to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
             else:
                 new_unit.add_component(FighterBayComponent(
@@ -1266,7 +1266,7 @@ class Constructor(UnitComponent):
                     hull_cost=template.get("fighter_bay_hull_cost", 0)
                 ))
 
-        if new_unit.hull_size == HullSize.STRIKECRAFT:
+        if new_unit.hull_size == HullSize.STRIKECRAFT_WING:
             new_unit.add_component(FighterWingComponent(new_unit))
 
         if template.get("has_colony_component"):

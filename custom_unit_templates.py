@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Components that are FORBIDDEN for a given hull size.
 # Keys are HullSize enum values; values are sets of component key strings.
 HULL_RESTRICTIONS: Dict[HullSize, set] = {
-    HullSize.STRIKECRAFT: {
+    HullSize.STRIKECRAFT_WING: {
         "has_inhibitor",
         "has_hangar",
         "has_constructor_component",
@@ -70,7 +70,7 @@ ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.SMALL
 # Hull-size cost multipliers (used in build cost calculation)
 # --------------------------------------------------------------------------
 HULL_BASE_COST: Dict[HullSize, int] = {
-    HullSize.STRIKECRAFT: 50,
+    HullSize.STRIKECRAFT_WING: 50,
     HullSize.TINY: 100,
     HullSize.SMALL: 250,
     HullSize.MEDIUM: 500,
@@ -79,7 +79,7 @@ HULL_BASE_COST: Dict[HullSize, int] = {
 }
 
 HULL_BASE_BUILD_TIME: Dict[HullSize, int] = {
-    HullSize.STRIKECRAFT: 1,
+    HullSize.STRIKECRAFT_WING: 1,
     HullSize.TINY: 3,
     HullSize.SMALL: 6,
     HullSize.MEDIUM: 10,

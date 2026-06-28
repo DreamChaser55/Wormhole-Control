@@ -53,7 +53,7 @@ def test_fighter_bay_capacity():
     carrier.add_component(fighter_bay)
 
     strikecraft = MockUnit()
-    strikecraft.hull_size = HullSize.STRIKECRAFT
+    strikecraft.hull_size = HullSize.STRIKECRAFT_WING
 
     tiny_ship = MockUnit()
     tiny_ship.hull_size = HullSize.TINY
@@ -67,12 +67,12 @@ def test_fighter_bay_capacity():
     assert fighter_bay.get_used_slots() == 1
 
     strikecraft2 = MockUnit()
-    strikecraft2.hull_size = HullSize.STRIKECRAFT
+    strikecraft2.hull_size = HullSize.STRIKECRAFT_WING
     assert fighter_bay.dock(strikecraft2, carrier.in_galaxy)
     assert fighter_bay.get_used_slots() == 2
 
     strikecraft3 = MockUnit()
-    strikecraft3.hull_size = HullSize.STRIKECRAFT
+    strikecraft3.hull_size = HullSize.STRIKECRAFT_WING
     assert not fighter_bay.can_dock(strikecraft3)
 
 def test_fighter_bay_dock_and_deploy():
@@ -81,7 +81,7 @@ def test_fighter_bay_dock_and_deploy():
     carrier.add_component(fighter_bay)
 
     wing = MockUnit()
-    wing.hull_size = HullSize.STRIKECRAFT
+    wing.hull_size = HullSize.STRIKECRAFT_WING
     wing.in_system = "Sol"
     wing.in_hex = (0, 0)
     wing.position = Position(10, 20)
@@ -116,7 +116,7 @@ def test_fighter_bay_auto_construction():
     from unit_templates import UNIT_TEMPLATES
     UNIT_TEMPLATES["FIGHTER_WING"] = {
         "name": "Fighter Wing",
-        "hull_size": HullSize.STRIKECRAFT,
+        "hull_size": HullSize.STRIKECRAFT_WING,
         "has_engine": True,
         "engine_speed": 150.0,
         "engine_hull_cost": 2
@@ -139,7 +139,7 @@ def test_fighter_bay_auto_construction():
     assert fighter_bay.get_used_slots() == 1
     
     new_wing = fighter_bay.docked_units[0]
-    assert new_wing.hull_size == HullSize.STRIKECRAFT
+    assert new_wing.hull_size == HullSize.STRIKECRAFT_WING
     assert new_wing.fighter_wing_component is not None
 
 def test_fighter_bay_auto_replenishment():
@@ -149,7 +149,7 @@ def test_fighter_bay_auto_replenishment():
     carrier.add_component(fighter_bay)
 
     wing = MockUnit()
-    wing.hull_size = HullSize.STRIKECRAFT
+    wing.hull_size = HullSize.STRIKECRAFT_WING
     wing.max_hit_points = 40
     wing.current_hit_points = 20  # needs replenishment (2 fighters lost)
     wing_comp = FighterWingComponent(wing)
@@ -192,7 +192,7 @@ def test_dock_and_deploy_orders_with_fighter_bay():
 
     wing = MockUnit()
     wing.id = 200
-    wing.hull_size = HullSize.STRIKECRAFT
+    wing.hull_size = HullSize.STRIKECRAFT_WING
     wing.in_system = "Sol"
     wing.in_hex = (0, 0)
     wing.position = Position(5, 5) # in range (<= 100.0)
@@ -225,7 +225,7 @@ def test_fighter_wing_limit_enforced():
     carrier.add_component(fighter_bay)
 
     wing = MockUnit()
-    wing.hull_size = HullSize.STRIKECRAFT
+    wing.hull_size = HullSize.STRIKECRAFT_WING
     wing_comp = FighterWingComponent(wing)
     wing.add_component(wing_comp)
     
@@ -245,7 +245,7 @@ def test_fighter_wing_limit_enforced():
 
     # Limit reached, cannot dock another wing
     other_wing = MockUnit()
-    other_wing.hull_size = HullSize.STRIKECRAFT
+    other_wing.hull_size = HullSize.STRIKECRAFT_WING
     assert not fighter_bay.can_dock(other_wing)
 
     # Deploy wing: still 1/1 (1 launched)
@@ -278,7 +278,7 @@ def test_fighter_wing_orphan_adoption():
     carrier.add_component(fighter_bay)
 
     wing = MockUnit()
-    wing.hull_size = HullSize.STRIKECRAFT
+    wing.hull_size = HullSize.STRIKECRAFT_WING
     wing_comp = FighterWingComponent(wing)
     wing.add_component(wing_comp)
 
@@ -307,7 +307,7 @@ def test_fighter_bay_deploy_offset():
     carrier.add_component(fighter_bay)
     
     wing = MockUnit()
-    wing.hull_size = HullSize.STRIKECRAFT
+    wing.hull_size = HullSize.STRIKECRAFT_WING
     
     galaxy = MagicMock()
     fighter_bay.dock(wing, galaxy)

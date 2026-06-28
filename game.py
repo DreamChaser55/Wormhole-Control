@@ -224,7 +224,7 @@ class Game:
                 return
         logger.debug(f"Target system for starting units: {target_system.name}")
 
-        all_hull_sizes = [h for h in HullSize if h != HullSize.STRIKECRAFT]
+        all_hull_sizes = [h for h in HullSize if h != HullSize.STRIKECRAFT_WING]
 
         # Spawn units for all players
         for player in self.players:
