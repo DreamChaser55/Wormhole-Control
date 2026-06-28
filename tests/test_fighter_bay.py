@@ -294,3 +294,34 @@ def test_fighter_wing_orphan_adoption():
     assert fighter_bay.dock(wing, galaxy)
     assert wing.fighter_wing_component.mother_carrier == carrier
 
+
+def test_fighter_bay_deploy_offset():
+    import math
+    from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
+    
+    carrier = MockUnit()
+    carrier.position = Position(990.0, 0.0) # Near the right edge
+    carrier.in_system = None # In sector view
+    
+    fighter_bay = FighterBayComponent(carrier, max_slots=2)
+    carrier.add_component(fighter_bay)
+    
+    wing = MockUnit()
+    wing.hull_size = HullSize.STRIKECRAFT
+    
+    galaxy = MagicMock()
+    fighter_bay.dock(wing, galaxy)
+    
+    # Deploy
+    success = fighter_bay.deploy(wing, galaxy)
+    assert success
+    
+    # Distance between carrier and wing should be between 20.0 and 50.0
+    dist = math.hypot(wing.position.x - carrier.position.x, wing.position.y - carrier.position.y)
+    assert 20.0 <= dist <= 50.0
+    
+    # Wing position should be inside sector radius
+    wing_dist_from_center = math.hypot(wing.position.x, wing.position.y)
+    assert wing_dist_from_center <= SECTOR_CIRCLE_RADIUS_LOGICAL
+
+

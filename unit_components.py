@@ -8,11 +8,12 @@ import dataclasses
 from collections import deque
 from enum import Enum, auto
 import math
+import random
 
 from utils import HexCoord
 from geometry import Vector, Position, distance
 from unit_orders import Order, OrderStatus
-from constants import DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE, HullSize
+from constants import DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE, HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL
 from unit_templates import UNIT_TEMPLATES
 
 if TYPE_CHECKING:
@@ -799,7 +800,20 @@ class HangarComponent(UnitComponent):
         
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
-        unit.position = Position(self.unit.position.x, self.unit.position.y)
+        
+        while True:
+            angle = random.uniform(0, 2 * math.pi)
+            offset_dist = random.uniform(20.0, 50.0)
+            candidate_x = self.unit.position.x + math.cos(angle) * offset_dist
+            candidate_y = self.unit.position.y + math.sin(angle) * offset_dist
+            
+            if self.unit.in_system is None:
+                if math.hypot(candidate_x, candidate_y) <= SECTOR_CIRCLE_RADIUS_LOGICAL:
+                    unit.position = Position(candidate_x, candidate_y)
+                    break
+            else:
+                unit.position = Position(candidate_x, candidate_y)
+                break
         
         system = galaxy_ref.systems.get(unit.in_system)
         if system:
@@ -893,7 +907,20 @@ class FighterBayComponent(UnitComponent):
         
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
-        unit.position = Position(self.unit.position.x, self.unit.position.y)
+        
+        while True:
+            angle = random.uniform(0, 2 * math.pi)
+            offset_dist = random.uniform(20.0, 50.0)
+            candidate_x = self.unit.position.x + math.cos(angle) * offset_dist
+            candidate_y = self.unit.position.y + math.sin(angle) * offset_dist
+            
+            if self.unit.in_system is None:
+                if math.hypot(candidate_x, candidate_y) <= SECTOR_CIRCLE_RADIUS_LOGICAL:
+                    unit.position = Position(candidate_x, candidate_y)
+                    break
+            else:
+                unit.position = Position(candidate_x, candidate_y)
+                break
         
         system = galaxy_ref.systems.get(unit.in_system)
         if system:

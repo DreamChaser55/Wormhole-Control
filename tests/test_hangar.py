@@ -197,3 +197,34 @@ def test_cascading_destruction():
     # Verify carrier's destroy() triggers destroy() on docked ships, calling remove_unit
     galaxy_mock.remove_unit.assert_any_call(docked1)
     galaxy_mock.remove_unit.assert_any_call(docked2)
+
+
+def test_hangar_deploy_offset():
+    import math
+    from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
+    
+    carrier = MockUnit()
+    carrier.position = Position(990.0, 0.0) # Near the right edge
+    carrier.in_system = None # In sector view
+    
+    hangar = HangarComponent(carrier, max_slots=4)
+    carrier.add_component(hangar)
+    
+    ship = MockUnit()
+    ship.hull_size = HullSize.TINY
+    
+    galaxy = MagicMock()
+    hangar.dock(ship, galaxy)
+    
+    # Deploy
+    success = hangar.deploy(ship, galaxy)
+    assert success
+    
+    # Distance between carrier and ship should be between 20.0 and 50.0
+    dist = math.hypot(ship.position.x - carrier.position.x, ship.position.y - carrier.position.y)
+    assert 20.0 <= dist <= 50.0
+    
+    # Ship position should be inside sector radius
+    ship_dist_from_center = math.hypot(ship.position.x, ship.position.y)
+    assert ship_dist_from_center <= SECTOR_CIRCLE_RADIUS_LOGICAL
+
