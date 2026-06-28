@@ -406,11 +406,25 @@ class Game:
             docked_unit_id = action.get('docked_unit_id')
             carrier = self.galaxy.get_unit_by_id(carrier_id)
             if carrier and (carrier.hangar_component or carrier.fighter_bay_component):
-                from unit_orders import DeployUnitOrder
-                deploy_order = DeployUnitOrder(carrier, {"docked_unit_id": docked_unit_id})
-                if carrier.commander_component:
-                    carrier.commander_component.add_order(deploy_order)
-                    logger.debug(f"Issued DEPLOY_UNIT order for carrier {carrier.name} (docked unit ID: {docked_unit_id}).")
+                if carrier.owner == self.players[self.current_player_index]:
+                    from unit_orders import DeployUnitOrder
+                    deploy_order = DeployUnitOrder(carrier, {"docked_unit_id": docked_unit_id})
+                    if carrier.commander_component:
+                        carrier.commander_component.add_order(deploy_order)
+                        logger.debug(f"Issued DEPLOY_UNIT order for carrier {carrier.name} (docked unit ID: {docked_unit_id}).")
+            self.sidebar_needs_update = True
+        elif action_type == 'recall_ship':
+            carrier_id = action.get('carrier_id')
+            launched_unit_id = action.get('launched_unit_id')
+            carrier = self.galaxy.get_unit_by_id(carrier_id)
+            launched_unit = self.galaxy.get_unit_by_id(launched_unit_id)
+            if carrier and launched_unit and carrier.fighter_bay_component:
+                if carrier.owner == self.players[self.current_player_index]:
+                    from unit_orders import DockOrder
+                    dock_order = DockOrder(launched_unit, {"target_carrier_id": carrier.id})
+                    if launched_unit.commander_component:
+                        launched_unit.commander_component.add_order(dock_order)
+                        logger.debug(f"Issued DOCK order for launched wing {launched_unit.name} to dock to carrier {carrier.name}.")
             self.sidebar_needs_update = True
         elif action_type == 'component_selected':
             self.selected_component_name = action.get('component_name')
@@ -1074,6 +1088,10 @@ class Game:
                             data_for_gui.append({'type': 'label', 'text': f"Constructing Fighter Wing ({comp.construction_progress + 1}/2 turns)", 'object_id': '#sidebar_info_label', 'height': 20})
                         elif comp.replenishing_unit:
                             data_for_gui.append({'type': 'label', 'text': f"Replenishing Wing: {comp.replenishing_unit.name}", 'object_id': '#sidebar_info_label', 'height': 20})
+                        
+                        is_owner = unit.owner == self.players[self.current_player_index]
+
+                        # Docked Wings
                         data_for_gui.append({'type': 'label', 'text': "Docked Fighter Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
                         if not comp.docked_units:
                             data_for_gui.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
@@ -1082,14 +1100,34 @@ class Game:
                                 f_count = docked_ship.fighter_wing_component.active_fighters if docked_ship.fighter_wing_component else 4
                                 wing_label = f"  - {docked_ship.name} ({f_count}/4 fighters, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
                                 data_for_gui.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
-                                data_for_gui.append({
-                                    'type': 'button',
-                                    'text': f"Deploy {docked_ship.name}",
-                                    'object_id': '#sidebar_expand_button',
-                                    'action_id': 'deploy_ship',
-                                    'target_data': (unit.id, docked_ship.id),
-                                    'height': 25
-                                })
+                                if is_owner:
+                                    data_for_gui.append({
+                                        'type': 'button',
+                                        'text': f"Deploy {docked_ship.name}",
+                                        'object_id': '#sidebar_expand_button',
+                                        'action_id': 'deploy_ship',
+                                        'target_data': (unit.id, docked_ship.id),
+                                        'height': 25
+                                    })
+
+                        # Launched Wings
+                        data_for_gui.append({'type': 'label', 'text': "Launched Fighter Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
+                        if not comp.launched_units:
+                            data_for_gui.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
+                        else:
+                            for launched_ship in comp.launched_units:
+                                f_count = launched_ship.fighter_wing_component.active_fighters if launched_ship.fighter_wing_component else 4
+                                wing_label = f"  - {launched_ship.name} ({f_count}/4 fighters, HP: {launched_ship.current_hit_points}/{launched_ship.max_hit_points})"
+                                data_for_gui.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
+                                if is_owner:
+                                    data_for_gui.append({
+                                        'type': 'button',
+                                        'text': f"Recall {launched_ship.name}",
+                                        'object_id': '#sidebar_expand_button',
+                                        'action_id': 'recall_ship',
+                                        'target_data': (unit.id, launched_ship.id),
+                                        'height': 25
+                                    })
 
                 elif self.selected_component_name == "Abilities":
                     if unit.ability_component:

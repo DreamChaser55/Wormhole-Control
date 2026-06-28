@@ -769,6 +769,13 @@ class GUI_Handler:
                         'carrier_id': carrier_id,
                         'docked_unit_id': docked_unit_id
                     }
+                elif action_id == 'recall_ship':
+                    carrier_id, launched_unit_id = target_data
+                    action_result = {
+                        'action': 'recall_ship',
+                        'carrier_id': carrier_id,
+                        'launched_unit_id': launched_unit_id
+                    }
                 elif action_id == 'use_ability':
                     # target_data is a dict with ability_type_str and targeting flags
                     action_result = {
