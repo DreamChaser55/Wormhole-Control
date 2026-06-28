@@ -217,3 +217,80 @@ def test_dock_and_deploy_orders_with_fighter_bay():
 
     assert deploy_order.status == OrderStatus.COMPLETED
     assert wing not in fighter_bay.docked_units
+
+
+def test_fighter_wing_limit_enforced():
+    carrier = MockUnit()
+    fighter_bay = FighterBayComponent(carrier, max_slots=1)
+    carrier.add_component(fighter_bay)
+
+    wing = MockUnit()
+    wing.hull_size = HullSize.STRIKECRAFT
+    wing_comp = FighterWingComponent(wing)
+    wing.add_component(wing_comp)
+    
+    galaxy = MagicMock()
+    mock_system = MagicMock()
+    galaxy.systems = {"Sol": mock_system}
+    carrier.in_galaxy = galaxy
+    
+    # Initially 0/1 slots used
+    assert fighter_bay.get_used_slots() == 0
+    assert fighter_bay.can_dock(wing)
+
+    # Dock wing: becomes 1/1
+    assert fighter_bay.dock(wing, galaxy)
+    assert fighter_bay.get_used_slots() == 1
+    assert wing.fighter_wing_component.mother_carrier == carrier
+
+    # Limit reached, cannot dock another wing
+    other_wing = MockUnit()
+    other_wing.hull_size = HullSize.STRIKECRAFT
+    assert not fighter_bay.can_dock(other_wing)
+
+    # Deploy wing: still 1/1 (1 launched)
+    assert fighter_bay.deploy(wing, galaxy)
+    assert fighter_bay.get_used_slots() == 1
+    assert wing in fighter_bay.launched_units
+    assert wing not in fighter_bay.docked_units
+
+    # Limit still reached, cannot dock another wing
+    assert not fighter_bay.can_dock(other_wing)
+
+    # Calling update with credits should NOT trigger construction since limit is reached
+    carrier.owner.credits = 1000
+    fighter_bay.update(galaxy)
+    assert not fighter_bay.constructing
+
+    # But we can dock the returning launched wing because it already occupies a slot
+    assert fighter_bay.can_dock(wing)
+
+    # If the launched wing is destroyed, slot is freed
+    wing.current_hit_points = 0
+    fighter_bay.update(galaxy)
+    assert fighter_bay.get_used_slots() == 0
+    assert fighter_bay.can_dock(other_wing)
+
+
+def test_fighter_wing_orphan_adoption():
+    carrier = MockUnit()
+    fighter_bay = FighterBayComponent(carrier, max_slots=1)
+    carrier.add_component(fighter_bay)
+
+    wing = MockUnit()
+    wing.hull_size = HullSize.STRIKECRAFT
+    wing_comp = FighterWingComponent(wing)
+    wing.add_component(wing_comp)
+
+    # Wing has no mother carrier (orphan)
+    assert wing.fighter_wing_component.mother_carrier is None
+
+    galaxy = MagicMock()
+    mock_system = MagicMock()
+    galaxy.systems = {"Sol": mock_system}
+    carrier.in_galaxy = galaxy
+
+    # Dock wing and check if it is adopted
+    assert fighter_bay.dock(wing, galaxy)
+    assert wing.fighter_wing_component.mother_carrier == carrier
+

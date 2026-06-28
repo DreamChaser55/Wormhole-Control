@@ -813,8 +813,11 @@ class HangarComponent(UnitComponent):
 @dataclasses.dataclass
 class FighterWingComponent(UnitComponent):
     """A component specifically for strikecraft (fighter wings) to track individual fighter counts."""
+    mother_carrier: typing.Optional['Unit'] = None
+
     def __init__(self, unit: 'Unit', hull_cost: int = 0):
         super().__init__(unit, hull_cost=hull_cost)
+        self.mother_carrier = None
 
     @property
     def active_fighters(self) -> int:
@@ -828,6 +831,7 @@ class FighterBayComponent(UnitComponent):
     """A component that allows a unit to store, transport, and automatically construct/replenish fighter wings."""
     max_slots: int = 0
     docked_units: list['Unit'] = dataclasses.field(default_factory=list)
+    launched_units: list['Unit'] = dataclasses.field(default_factory=list)
     
     # Auto-construction and replenishment state
     constructing: bool = False
@@ -839,17 +843,20 @@ class FighterBayComponent(UnitComponent):
         super().__init__(unit, hull_cost=hull_cost)
         self.max_slots = max_slots
         self.docked_units = []
+        self.launched_units = []
         self.constructing = False
         self.construction_progress = 0
         self.replenishing_unit = None
         self.replenish_progress = 0
 
     def get_used_slots(self) -> int:
-        return len(self.docked_units)
+        return len(self.docked_units) + len(self.launched_units)
 
     def can_dock(self, unit: 'Unit') -> bool:
         if unit.hull_size != HullSize.STRIKECRAFT:
             return False
+        if unit in self.launched_units:
+            return True
         return self.get_used_slots() < self.max_slots
 
     def dock(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
@@ -865,6 +872,13 @@ class FighterBayComponent(UnitComponent):
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
         unit.position = Position(self.unit.position.x, self.unit.position.y)
+        
+        if unit in self.launched_units:
+            self.launched_units.remove(unit)
+        
+        # Orphaned wings are adopted
+        if unit.fighter_wing_component:
+            unit.fighter_wing_component.mother_carrier = self.unit
         
         self.docked_units.append(unit)
         if unit.commander_component:
@@ -886,6 +900,7 @@ class FighterBayComponent(UnitComponent):
             system.add_unit(unit)
             
         self.docked_units.remove(unit)
+        self.launched_units.append(unit)
         logger.debug(f"Fighter wing {unit.name} deployed from carrier {self.unit.name}.")
         return True
 
@@ -899,7 +914,7 @@ class FighterBayComponent(UnitComponent):
         if not template:
             logger.debug(f"Error: Unit template '{template_name}' not found for auto-construction.")
             return
-
+ 
         new_unit = Unit(
             owner=self.unit.owner,
             name=template["name"],
@@ -926,7 +941,9 @@ class FighterBayComponent(UnitComponent):
                 weapons_comp.add_turret(turret)
             new_unit.add_component(weapons_comp)
 
-        new_unit.add_component(FighterWingComponent(new_unit))
+        wing_comp = FighterWingComponent(new_unit)
+        wing_comp.mother_carrier = self.unit
+        new_unit.add_component(wing_comp)
 
         # Direct dock
         self.docked_units.append(new_unit)
@@ -936,6 +953,9 @@ class FighterBayComponent(UnitComponent):
         """Automatically constructs or replenishes wings. Called each turn."""
         if self.is_destroyed:
             return
+
+        # Prune destroyed launched units
+        self.launched_units = [u for u in self.launched_units if u.current_hit_points > 0]
 
         owner = self.unit.owner
         if not owner:
@@ -993,7 +1013,7 @@ class FighterBayComponent(UnitComponent):
                 return
 
         # 4. If not busy and we have free slots, start constructing a new wing
-        if len(self.docked_units) < self.max_slots:
+        if self.get_used_slots() < self.max_slots:
             cost = 150
             if owner.credits >= cost:
                 owner.credits -= cost
