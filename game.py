@@ -249,7 +249,7 @@ class Game:
             for i, hull_size in enumerate(all_hull_sizes):
 
                 # -- Ship --
-                ship_pos = Position(-450.0 + i * 300.0, -100.0)
+                ship_pos = Position(-500.0 + i * 200.0, -100.0)
                 ship_name = f"{player.name} {hull_size.name.capitalize()} Ship"
                 ship_unit = Unit(
                     owner=player,
@@ -289,7 +289,7 @@ class Game:
                 logger.debug(f"Added {ship_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
                 # -- Station --
-                station_pos = Position(-450.0 + i * 300.0, 100.0)
+                station_pos = Position(-500.0 + i * 200.0, 100.0)
                 station_name = f"{player.name} {hull_size.name.capitalize()} Station"
                 station_unit = Unit(
                     owner=player,
@@ -325,7 +325,32 @@ class Game:
                 target_system.add_unit(station_unit)
                 logger.debug(f"Added {station_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
-
+            # -- Carrier Ship --
+            carrier_pos = Position(-500.0 + 5 * 200.0, 0.0)
+            carrier_name = f"{player.name} Carrier"
+            carrier_unit = Unit(
+                owner=player,
+                position=carrier_pos,
+                in_hex=spawn_hex,
+                in_system=target_system.name,
+                name=carrier_name,
+                hull_size=HullSize.LARGE,
+                game=self
+            )
+            carrier_unit.add_component(Engines(carrier_unit, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
+            carrier_unit.add_component(Hyperdrive(carrier_unit, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
+            carrier_unit.add_component(FighterBayComponent(carrier_unit, max_slots=4, hull_cost=20))
+            
+            weapons = Weapons(carrier_unit, hull_cost=10)
+            weapons.add_turret(Turret(
+                turret_type=TurretType.BEAM,
+                damage=10, range=300, cooldown=2,
+                parent_unit=carrier_unit
+            ))
+            carrier_unit.add_component(weapons)
+            
+            target_system.add_unit(carrier_unit)
+            logger.debug(f"Added {carrier_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
     def handle_input(self):
         """Delegates input processing to the InputProcessor instance."""
