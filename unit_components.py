@@ -19,6 +19,7 @@ from unit_templates import UNIT_TEMPLATES
 if TYPE_CHECKING:
     from entities import Unit, Wormhole, Planet
     from galaxy import Galaxy
+    from game import Game
 
 # --- Enums for Hyperdrive Component ---
 
@@ -36,6 +37,9 @@ class JumpStatus(Enum):
 
 class UnitComponent:
     """Base class for all components that make up a Unit."""
+    DISPLAY_NAME: str = "Component"
+    SIDEBAR_ORDER: int = 100
+
     def __init__(self, unit: 'Unit', hull_cost: int = 0):
         self.unit: 'Unit' = unit
         self.hull_cost: int = hull_cost
@@ -50,11 +54,28 @@ class UnitComponent:
         """Called when the component's hit points reach 0."""
         pass
 
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        """
+        Returns a list of UI element definitions (labels, progress bars, buttons)
+        to render in the sidebar when this component is selected.
+        """
+        status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"
+        return [
+            {
+                'type': 'label',
+                'text': f"{self.DISPLAY_NAME} [{status}]",
+                'object_id': '#sidebar_section_header_label',
+                'height': 28
+            }
+        ]
+
 # --- UnitComponent-derived Classes (Components) ---
 
 @dataclasses.dataclass
 class Engines(UnitComponent):
     """Engines for sublight (non-faster-than-light) travel, within a single sector."""
+    DISPLAY_NAME: str = "Engines"
+    SIDEBAR_ORDER: int = 2
     speed: float = 0.0
     move_target: typing.Optional[Position] = None
 
@@ -63,9 +84,16 @@ class Engines(UnitComponent):
         self.speed = speed
         self.move_target = None
 
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        data.append({'type': 'label', 'text': f"Speed: {self.speed}", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
+
 @dataclasses.dataclass
 class Hyperdrive(UnitComponent):
     """Hyperdrive for faster-than-light travel - inter-sector (basic) or inter-system through wormholes (advanced). """
+    DISPLAY_NAME: str = "Hyperdrive"
+    SIDEBAR_ORDER: int = 3
     drive_type: HyperdriveType = HyperdriveType.BASIC
     jump_range: int = DEFAULT_JUMP_RANGE
     hex_jump_target: typing.Optional[Tuple[HexCoord, Position]] = None
@@ -85,6 +113,29 @@ class Hyperdrive(UnitComponent):
         self.jump_status = JumpStatus.READY
         self.recharge_time_remaining = 0
         self.RECHARGE_DURATION = recharge_duration
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"
+        drive_type_str = self.drive_type.value if self.drive_type else 'N/A'
+        
+        status_detail = ""
+        if self.jump_status == JumpStatus.CHARGING:
+            status_detail = f" (Charging: {self.recharge_time_remaining} turns)"
+        elif self.jump_status == JumpStatus.JUMPING:
+            status_detail = " (Jumping)"
+        elif self.jump_status == JumpStatus.READY:
+            status_detail = " (Ready)"
+        elif self.jump_status == JumpStatus.ERROR:
+            status_detail = " (Error)"
+
+        final_hyperdrive_text = f"Hyperdrive [{status}]: {drive_type_str}{status_detail}"
+        
+        return [{
+            'type': 'label',
+            'text': final_hyperdrive_text,
+            'object_id': '#sidebar_info_label', 
+            'height': 20
+        }]
 
     def start_recharge(self) -> None:
         """Initiates the hyperdrive recharge sequence."""
@@ -106,6 +157,8 @@ class Hyperdrive(UnitComponent):
 @dataclasses.dataclass
 class HyperspaceInhibitionFieldEmitter(UnitComponent):
     """A component that generates a hyperspace inhibition field, preventing jumps."""
+    DISPLAY_NAME: str = "Inhibitor"
+    SIDEBAR_ORDER: int = 4
     radius: float = 50.0
     is_active: bool = False
 
@@ -113,6 +166,15 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         super().__init__(unit, hull_cost=hull_cost)
         self.radius = radius
         self.is_active = False
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        data.append({
+            'type': 'inhibitor_button',
+            'is_active': self.is_active,
+            'height': 30
+        })
+        return data
 
     def turn_on(self) -> None:
         """Activates the inhibition field. (Validation logic will be handled by the order)."""
@@ -201,6 +263,8 @@ class Commander(UnitComponent):
     This component maintains a queue of orders and processes them in sequence,
     handling the execution and status updates of each order.
     """
+    DISPLAY_NAME: str = "Commander"
+    SIDEBAR_ORDER: int = 0
     current_order: Optional[Order] = None
     orders_queue: Deque[Order] = dataclasses.field(default_factory=deque)
 
@@ -208,6 +272,65 @@ class Commander(UnitComponent):
         super().__init__(unit, hull_cost=0)
         self.current_order = None
         self.orders_queue = deque()
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = []
+        # Display Current Order (always visible if exists)
+        current_order = self.current_order
+        if current_order:
+            data.append({
+                'type': 'label', 
+                'text': "Current Order:", 
+                'object_id': '#sidebar_section_header_label', 
+                'height': 25,
+                'indent_level': 0
+            })
+
+            current_order_html = game_state._generate_order_data_recursive(current_order, 0)
+            data.append({
+                'type': 'text_box',
+                'html_text': current_order_html,
+                'height': 120,
+                'object_id': '#order_text_box'
+            })
+        else:
+            data.append({'type': 'label', 'text': "Current Order: None", 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 0})
+
+        # Queued Orders Section Header
+        data.append({'type': 'label', 'text': "Queued Orders", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
+    
+        queued_order_count = len(self.orders_queue)
+        section_key = f"{self.unit.id}_orders_queue" 
+        is_queue_expanded = game_state.gui.is_section_expanded(section_key)
+        button_text = "[-] Queued" if is_queue_expanded else "[+] Queued"
+    
+        data.append({
+            'type': 'button', 
+            'text': f"{button_text} ({queued_order_count})", 
+            'object_id': '#sidebar_expand_button',
+            'action_id': 'toggle_orders_queue', 
+            'target_data': self.unit.id, 
+            'height': 25,
+            'indent_level': 0 
+        })
+
+        if is_queue_expanded:
+            queued_orders_html = ""
+            if queued_order_count == 0:
+                queued_orders_html = "No queued orders"
+            else:
+                for i, queued_top_order in enumerate(self.orders_queue):
+                    queued_orders_html += f"<b>{i+1}.</b> "
+                    queued_orders_html += game_state._generate_order_data_recursive(queued_top_order, 0)
+            
+            data.append({
+                'type': 'text_box',
+                'html_text': queued_orders_html,
+                'height': 150,
+                'object_id': '#order_text_box',
+                'indent_level': 1
+            })
+        return data
 
     def add_order(self, order: Order) -> None:
         """Add a new order to the queue.
@@ -462,16 +585,25 @@ class Turret:
 
 # --- Weapons Component ---
 
-@dataclasses.dataclass
 class Weapons(UnitComponent):
     """
     Manages all weapon systems for a unit.
     """
+    DISPLAY_NAME: str = "Weapons"
+    SIDEBAR_ORDER: int = 1
     turrets: list[Turret] = dataclasses.field(default_factory=list)
 
     def __init__(self, unit: 'Unit', hull_cost: int = 0):
         super().__init__(unit, hull_cost=hull_cost)
         self.turrets = []
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        for turret in self.turrets:
+            target = turret.target
+            turret_text = f"- {turret.turret_type.name}: {turret.damage} dmg, {turret.range} range, {turret.cooldown} turns cooldown, Target: {target.name if target else 'N/A'}"
+            data.append({'type': 'label', 'text': turret_text, 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 1})
+        return data
 
     def add_turret(self, turret: Turret) -> None:
         """
@@ -516,9 +648,10 @@ class Weapons(UnitComponent):
             turret.target = None
             turret.target_component_type = None
 
-@dataclasses.dataclass
 class RepairComponent(UnitComponent):
     """A component that allows a unit to repair damaged friendly units."""
+    DISPLAY_NAME: str = "Repair"
+    SIDEBAR_ORDER: int = 10
     repair_rate: float = 10.0
     repair_range: float = 200.0
     credit_cost_per_hp: float = 1.0
@@ -530,6 +663,14 @@ class RepairComponent(UnitComponent):
         self.repair_range = repair_range
         self.credit_cost_per_hp = credit_cost_per_hp
         self.target = None
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        data.append({'type': 'label', 'text': f"Repair Rate: {self.repair_rate} HP/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"Repair Range: {self.repair_range}", 'object_id': '#sidebar_info_label', 'height': 20})
+        target_name = self.target.name if self.target else "None"
+        data.append({'type': 'label', 'text': f"Repair Target: {target_name}", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
     def set_target(self, target_unit: 'Unit') -> None:
         self.target = target_unit
@@ -589,9 +730,10 @@ class RepairComponent(UnitComponent):
             logger.debug(f"Unit {self.unit.name} repaired {self.target.name} for {hp_repaired} HP, costing {cost} credits.")
 
 
-@dataclasses.dataclass
 class ColonyComponent(UnitComponent):
     """A component that allows a unit to transport population and colonize planets."""
+    DISPLAY_NAME: str = "Colony"
+    SIDEBAR_ORDER: int = 6
     population_cargo: int = 0
     max_cargo: int = 100
 
@@ -599,6 +741,11 @@ class ColonyComponent(UnitComponent):
         super().__init__(unit, hull_cost=hull_cost)
         self.population_cargo = 0
         self.max_cargo = 100
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        data.append({'type': 'label', 'text': f"Population Cargo: {self.population_cargo} / {self.max_cargo}", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
     def load_population(self, planet: 'Planet', amount: int) -> bool:
         if self.is_destroyed:
@@ -640,9 +787,10 @@ class ColonyComponent(UnitComponent):
         logger.debug(f"Unloaded {amount} population onto {planet.name}. Current cargo: {self.population_cargo}")
         return True
 
-@dataclasses.dataclass
 class MiningComponent(UnitComponent):
     """A component that allows a unit to extract raw resources from celestial bodies."""
+    DISPLAY_NAME: str = "Mining"
+    SIDEBAR_ORDER: int = 7
     mining_rate: float = 10.0
     mining_range: float = 200.0
     raw_metal_cargo: float = 0.0
@@ -658,6 +806,16 @@ class MiningComponent(UnitComponent):
         self.raw_crystal_cargo = 0.0
         self.max_cargo = max_cargo
         self.mining_target = None
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        metal = int(self.raw_metal_cargo)
+        crystal = int(self.raw_crystal_cargo)
+        max_c = int(self.max_cargo)
+        data.append({'type': 'label', 'text': f"Raw Cargo: {metal} Metal, {crystal} Crystal / {max_c}", 'object_id': '#sidebar_info_label', 'height': 20})
+        if self.mining_target:
+            data.append({'type': 'label', 'text': f"Mining Target: {self.mining_target.name}", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
     def set_target(self, target: 'CelestialBody') -> None:
         self.mining_target = target
@@ -713,14 +871,20 @@ class MiningComponent(UnitComponent):
         return metal_amount, crystal_amount
 
 
-@dataclasses.dataclass
 class MetalRefineryComponent(UnitComponent):
     """A component that instantly converts raw metal into player metal upon delivery."""
+    DISPLAY_NAME: str = "Metal Refinery"
+    SIDEBAR_ORDER: int = 8
     unload_range: float = 300.0
 
     def __init__(self, unit: 'Unit', unload_range: float = 300.0, hull_cost: int = 20):
         super().__init__(unit, hull_cost=hull_cost)
         self.unload_range = unload_range
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        data.append({'type': 'label', 'text': "Metal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
     def accept_resources(self, amount: float) -> None:
         if self.is_destroyed:
@@ -730,14 +894,20 @@ class MetalRefineryComponent(UnitComponent):
             logger.debug(f"{self.unit.name} refined {amount} raw metal instantly for {self.unit.owner.name}.")
 
 
-@dataclasses.dataclass
 class CrystalRefineryComponent(UnitComponent):
     """A component that instantly converts raw crystal into player crystal upon delivery."""
+    DISPLAY_NAME: str = "Crystal Refinery"
+    SIDEBAR_ORDER: int = 9
     unload_range: float = 300.0
 
     def __init__(self, unit: 'Unit', unload_range: float = 300.0, hull_cost: int = 20):
         super().__init__(unit, hull_cost=hull_cost)
         self.unload_range = unload_range
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        data.append({'type': 'label', 'text': "Crystal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
     def accept_resources(self, amount: float) -> None:
         if self.is_destroyed:
@@ -747,9 +917,10 @@ class CrystalRefineryComponent(UnitComponent):
             logger.debug(f"{self.unit.name} refined {amount} raw crystal instantly for {self.unit.owner.name}.")
 
 
-@dataclasses.dataclass
 class HangarComponent(UnitComponent):
     """A component that allows a unit to store and transport smaller units."""
+    DISPLAY_NAME: str = "Hangar"
+    SIDEBAR_ORDER: int = 11
     max_slots: int = 0
     docked_units: list['Unit'] = dataclasses.field(default_factory=list)
 
@@ -757,6 +928,28 @@ class HangarComponent(UnitComponent):
         super().__init__(unit, hull_cost=hull_cost)
         self.max_slots = max_slots
         self.docked_units = []
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        used_slots = self.get_used_slots()
+        data.append({'type': 'label', 'text': f"Capacity: {used_slots} / {self.max_slots} slots", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': "Docked Ships:", 'object_id': '#sidebar_section_header_label', 'height': 24})
+        if not self.docked_units:
+            data.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
+        else:
+            for docked_ship in self.docked_units:
+                size_slots = 1 if docked_ship.hull_size == HullSize.TINY else 2
+                ship_label = f"  - {docked_ship.name} ({size_slots} slot)" if size_slots == 1 else f"  - {docked_ship.name} ({size_slots} slots)"
+                data.append({'type': 'label', 'text': ship_label, 'object_id': '#sidebar_info_label', 'height': 20})
+                data.append({
+                    'type': 'button',
+                    'text': f"Deploy {docked_ship.name}",
+                    'object_id': '#sidebar_expand_button',
+                    'action_id': 'deploy_ship',
+                    'target_data': (self.unit.id, docked_ship.id),
+                    'height': 25
+                })
+        return data
 
     def get_used_slots(self) -> int:
         slots = 0
@@ -824,9 +1017,10 @@ class HangarComponent(UnitComponent):
         return True
 
 
-@dataclasses.dataclass
 class FighterWingComponent(UnitComponent):
     """A component specifically for STRIKECRAFT_WING (fighter wings) to track individual fighter counts."""
+    DISPLAY_NAME: str = "Fighter Wing"
+    SIDEBAR_ORDER: int = 13
     mother_carrier: typing.Optional['Unit'] = None
 
     def __init__(self, unit: 'Unit', hull_cost: int = 0):
@@ -839,10 +1033,18 @@ class FighterWingComponent(UnitComponent):
             return 0
         return math.ceil((self.unit.current_hit_points / self.unit.max_hit_points) * 4)
 
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        data.append({'type': 'label', 'text': f"Fighters: {self.active_fighters} / 4", 'object_id': '#sidebar_info_label', 'height': 20})
+        mother_name = self.mother_carrier.name if self.mother_carrier else "None"
+        data.append({'type': 'label', 'text': f"Mother Carrier: {mother_name}", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
-@dataclasses.dataclass
+
 class FighterBayComponent(UnitComponent):
     """A component that allows a unit to store, transport, and automatically construct/replenish fighter wings."""
+    DISPLAY_NAME: str = "Fighter Bay"
+    SIDEBAR_ORDER: int = 12
     max_slots: int = 0
     docked_units: list['Unit'] = dataclasses.field(default_factory=list)
     launched_units: list['Unit'] = dataclasses.field(default_factory=list)
@@ -862,6 +1064,67 @@ class FighterBayComponent(UnitComponent):
         self.construction_progress = 0
         self.replenishing_unit = None
         self.replenish_progress = 0
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        used_slots = self.get_used_slots()
+        data.append({'type': 'label', 'text': f"Capacity: {used_slots} / {self.max_slots} wings", 'object_id': '#sidebar_info_label', 'height': 20})
+        if self.constructing:
+            data.append({'type': 'label', 'text': f"Constructing Fighter Wing ({self.construction_progress + 1}/2 turns)", 'object_id': '#sidebar_info_label', 'height': 20})
+        elif self.replenishing_unit:
+            data.append({'type': 'label', 'text': f"Replenishing Wing: {self.replenishing_unit.name}", 'object_id': '#sidebar_info_label', 'height': 20})
+        
+        is_owner = self.unit.owner == game_state.players[game_state.current_player_index]
+
+        # Docked Wings
+        data.append({'type': 'label', 'text': "Docked Fighter Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
+        if self.docked_units and is_owner:
+            data.append({
+                'type': 'button',
+                'text': "Launch All Wings",
+                'object_id': '#sidebar_expand_button',
+                'action_id': 'launch_all_wings',
+                'target_data': self.unit.id,
+                'height': 25
+            })
+        if not self.docked_units:
+            data.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
+        else:
+            for docked_ship in self.docked_units:
+                f_comp = docked_ship.fighter_wing_component
+                f_count = f_comp.active_fighters if f_comp else 4
+                wing_label = f"  - {docked_ship.name} ({f_count}/4 fighters, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
+                data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
+                if is_owner:
+                    data.append({
+                        'type': 'button',
+                        'text': f"Deploy {docked_ship.name}",
+                        'object_id': '#sidebar_expand_button',
+                        'action_id': 'deploy_ship',
+                        'target_data': (self.unit.id, docked_ship.id),
+                        'height': 25
+                    })
+
+        # Launched Wings
+        data.append({'type': 'label', 'text': "Launched Fighter Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
+        if not self.launched_units:
+            data.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
+        else:
+            for launched_ship in self.launched_units:
+                f_comp = launched_ship.fighter_wing_component
+                f_count = f_comp.active_fighters if f_comp else 4
+                wing_label = f"  - {launched_ship.name} ({f_count}/4 fighters, HP: {launched_ship.current_hit_points}/{launched_ship.max_hit_points})"
+                data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
+                if is_owner:
+                    data.append({
+                        'type': 'button',
+                        'text': f"Recall {launched_ship.name}",
+                        'object_id': '#sidebar_expand_button',
+                        'action_id': 'recall_ship',
+                        'target_data': (self.unit.id, launched_ship.id),
+                        'height': 25
+                    })
+        return data
 
     def get_used_slots(self) -> int:
         return len(self.docked_units) + len(self.launched_units)
@@ -1057,9 +1320,10 @@ class BuildableUnit:
     cost_credits: int
 
 
-@dataclasses.dataclass
 class Constructor(UnitComponent):
     """A component that allows a unit to construct other units (stations)."""
+    DISPLAY_NAME: str = "Constructor"
+    SIDEBAR_ORDER: int = 5
     build_range: float = 500.0
     
     # Construction state
@@ -1072,6 +1336,23 @@ class Constructor(UnitComponent):
         self.current_construction_target = None
         self.construction_progress = 0
         self.time_to_build = 0
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        if self.current_construction_target:
+            target_name = self.current_construction_target[0]
+            progress = self.construction_progress
+            total = self.time_to_build
+            data.append({'type': 'label', 'text': f"Constructing: {target_name}", 'object_id': '#sidebar_info_label', 'height': 25})
+            data.append({
+                'type': 'progress_bar',
+                'progress': progress,
+                'total': total,
+                'height': 25
+            })
+        else:
+            data.append({'type': 'label', 'text': "Status: Idle", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
     @property
     def buildable_units(self) -> list[BuildableUnit]:
@@ -1343,7 +1624,6 @@ class AbilityInstance:
         return self.cooldown_remaining <= 0 and not self.is_active
 
 
-@dataclasses.dataclass
 class AbilityComponent(UnitComponent):
     """
     Manages the set of special abilities available to a unit.
@@ -1353,6 +1633,8 @@ class AbilityComponent(UnitComponent):
     (e.g. Repair Cloud healing, Designate Target marking), and cleaning up expired
     effects. If this component is destroyed the unit cannot use any abilities.
     """
+    DISPLAY_NAME: str = "Abilities"
+    SIDEBAR_ORDER: int = 14
     abilities: typing.Dict[AbilityType, AbilityInstance] = dataclasses.field(default_factory=dict)
 
     def __init__(self, unit: 'Unit', ability_types: typing.List[AbilityType], hull_cost: int = 10):
@@ -1364,6 +1646,59 @@ class AbilityComponent(UnitComponent):
                 self.abilities[atype] = AbilityInstance(definition=defn)
             else:
                 logger.warning(f"[AbilityComponent] Unknown ability type: {atype}")
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"
+        data = [{
+            'type': 'label',
+            'text': f"Ability System [{status}]",
+            'object_id': '#sidebar_section_header_label',
+            'height': 28,
+        }]
+
+        # Show Ion Bolt / Designate Target targeting-mode indicator
+        if game_state.pending_ability:
+            pending_name = game_state.pending_ability[0].replace('_', ' ').title()
+            data.append({
+                'type': 'label',
+                'text': f"\u25b6 Select target for: {pending_name}",
+                'object_id': '#sidebar_hit_points_light_damage_label',
+                'height': 22,
+            })
+
+        for ability_type, instance in self.abilities.items():
+            defn = instance.definition
+            if instance.is_active:
+                cd_str = f"Active ({instance.duration_remaining} turns)"
+                btn_obj_id = '#sidebar_section_header_label'
+            elif instance.cooldown_remaining > 0:
+                cd_str = f"Cooldown: {instance.cooldown_remaining} turns"
+                btn_obj_id = '#sidebar_info_label'
+            else:
+                cd_str = "Ready"
+                btn_obj_id = '#sidebar_expand_button'
+
+            btn_text = f"{defn.name}  [{cd_str}]"
+            data.append({
+                'type': 'button',
+                'text': btn_text,
+                'object_id': btn_obj_id,
+                'action_id': 'use_ability',
+                'target_data': {
+                    'ability_type_str': ability_type.value,
+                    'requires_target_unit': defn.requires_target_unit,
+                    'requires_target_position': defn.requires_target_position,
+                },
+                'height': 28,
+                'enabled': instance.is_ready and not self.is_destroyed,
+            })
+            data.append({
+                'type': 'label',
+                'text': f"  {defn.description}",
+                'object_id': '#sidebar_info_label',
+                'height': 18,
+            })
+        return data
 
     def can_use(self, ability_type: AbilityType) -> bool:
         """Returns True if the ability exists, the component is intact, and it is off cooldown."""

@@ -259,3 +259,52 @@ def test_launch_all_wings_action_handling():
     carrier.commander_component.add_order.assert_called_once()
     order = carrier.commander_component.add_order.call_args[0][0]
     assert isinstance(order, DeployAllWingsOrder)
+
+
+def test_fighter_wing_gui_data_generation():
+    # Mock game
+    game = MagicMock()
+    player = MockPlayer("Player 1")
+    game.players = [player]
+    game.current_player_index = 0
+    game.sidebar_needs_update = True
+    
+    # Create wing unit
+    wing = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Test Wing",
+        hull_size=HullSize.STRIKECRAFT_WING,
+        game=game
+    )
+    # Add FighterWingComponent
+    wing_comp = FighterWingComponent(wing)
+    wing.add_component(wing_comp)
+    
+    # Setup selection
+    game.selected_objects = [wing]
+    game.selected_component_name = "Fighter Wing"
+    
+    # Run update_side_bar_content
+    import game as game_module
+    original_profile = game_module.PROFILE
+    game_module.PROFILE = False
+    
+    try:
+        game.gui.update_side_bar_content = MagicMock()
+        Game.update_side_bar_content(game)
+        
+        # Assert side bar content updated
+        game.gui.update_side_bar_content.assert_called_once()
+        data_list = game.gui.update_side_bar_content.call_args[0][0]
+        
+        # Check that "Fighter Wing" related labels are present
+        labels = [d.get("text") for d in data_list if d.get("type") == "label"]
+        
+        assert any("Fighter Wing" in l for l in labels)
+        assert any("Fighters: 4 / 4" in l for l in labels)
+        assert any("Mother Carrier: None" in l for l in labels)
+    finally:
+        game_module.PROFILE = original_profile
