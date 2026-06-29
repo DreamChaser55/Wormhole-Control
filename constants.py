@@ -153,7 +153,7 @@ HIT_POINTS = {
 }
 
 HULL_BASE_ICON_SCALES = {
-    HullSize.STRIKECRAFT_WING: 0.5,
+    HullSize.STRIKECRAFT_WING: 0.8,
     HullSize.TINY: 0.6,
     HullSize.SMALL: 0.8,
     HullSize.MEDIUM: 1.0, # Medium is the baseline
