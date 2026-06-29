@@ -142,17 +142,47 @@ class SystemViewRenderer:
 
                     unit_screen_x = icon_center_x
                     
-                    shape_type = 'triangle' if unit.engines_component else 'square'
+                    if unit.hull_size.name == "STRIKECRAFT_WING":
+                        shape_type = 'strikecraft_wing'
+                    else:
+                        shape_type = 'triangle' if unit.engines_component else 'square'
                     current_icon_base_size = new_system_view_icon_base_size 
 
-                    if shape_type == 'triangle':
+                    if shape_type in ('triangle', 'strikecraft_wing'):
                         unit_screen_y = icon_center_y + current_icon_base_size * 0.2 
                     else: # square
                         unit_screen_y = icon_center_y
                     
                     unit_color = unit.owner.color if unit.owner else WHITE
                 
-                    if shape_type == 'triangle':
+                    if shape_type == 'strikecraft_wing':
+                        cx, cy = unit_screen_x, unit_screen_y
+                        r = current_icon_base_size
+                        
+                        # Define the vertices of the three smaller triangles
+                        t1_p1 = (cx, cy - r)
+                        t1_p2 = (cx - int(r * 0.4), cy - int(r * 0.2))
+                        t1_p3 = (cx + int(r * 0.4), cy - int(r * 0.2))
+                        
+                        t2_p1 = (cx - int(r * 0.4), cy - int(r * 0.2))
+                        t2_p2 = (cx - int(r * 0.8), cy + int(r * 0.6))
+                        t2_p3 = (cx, cy + int(r * 0.6))
+                        
+                        t3_p1 = (cx + int(r * 0.4), cy - int(r * 0.2))
+                        t3_p2 = (cx, cy + int(r * 0.6))
+                        t3_p3 = (cx + int(r * 0.8), cy + int(r * 0.6))
+                        
+                        pygame.draw.polygon(self.screen, unit_color, [t1_p1, t1_p2, t1_p3])
+                        pygame.draw.polygon(self.screen, unit_color, [t2_p1, t2_p2, t2_p3])
+                        pygame.draw.polygon(self.screen, unit_color, [t3_p1, t3_p2, t3_p3])
+                        
+                        if unit in self.game.selected_objects:
+                            p1 = (cx, cy - r)
+                            p2 = (cx - int(r * 0.8), cy + int(r * 0.6))
+                            p3 = (cx + int(r * 0.8), cy + int(r * 0.6))
+                            pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, [p1, p2, p3], 2)
+                            
+                    elif shape_type == 'triangle':
                         p1 = (unit_screen_x, unit_screen_y - current_icon_base_size)
                         p2 = (unit_screen_x - int(current_icon_base_size * 0.8), unit_screen_y + int(current_icon_base_size * 0.6))
                         p3 = (unit_screen_x + int(current_icon_base_size * 0.8), unit_screen_y + int(current_icon_base_size * 0.6))

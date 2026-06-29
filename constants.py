@@ -162,7 +162,7 @@ HULL_BASE_ICON_SCALES = {
 }
 
 HULL_DOT_COUNTS = {
-    HullSize.STRIKECRAFT_WING: 1,
+    HullSize.STRIKECRAFT_WING: 0,
     HullSize.TINY: 1,
     HullSize.SMALL: 2,
     HullSize.MEDIUM: 3,

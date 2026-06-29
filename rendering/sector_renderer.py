@@ -153,7 +153,10 @@ class SectorViewRenderer:
                 unit_obj: Unit = obj
                 obj_color = unit_obj.owner.color if unit_obj.owner else WHITE
 
-                shape_type = 'triangle' if unit_obj.engines_component else 'square'
+                if unit_obj.hull_size.name == "STRIKECRAFT_WING":
+                    shape_type = 'strikecraft_wing'
+                else:
+                    shape_type = 'triangle' if unit_obj.engines_component else 'square'
                 scale_factor = HULL_BASE_ICON_SCALES[unit_obj.hull_size]
                 current_icon_base_size_logical = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
                 dot_count = HULL_DOT_COUNTS[unit_obj.hull_size]
