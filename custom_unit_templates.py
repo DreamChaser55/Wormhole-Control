@@ -122,6 +122,13 @@ class ComponentConfig:
     weapon_bays_hull_cost: int = 10
     turrets: List[TurretConfig] = dataclasses.field(default_factory=list)
 
+    # Defenses
+    has_defenses: bool = False
+    defenses_hull_cost: int = 10
+    armor: int = 0
+    shields: int = 0
+    point_defense: int = 0
+
     # Constructor
     has_constructor_component: bool = False
     constructor_hull_cost: int = 15
@@ -276,6 +283,7 @@ class CustomUnitTemplate:
         # At least one meaningful component
         any_component = any([
             c.has_engine, c.has_hyperdrive, c.has_weapon_bays,
+            c.has_defenses,
             c.has_constructor_component, c.has_repair_component,
             c.has_colony_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
@@ -439,6 +447,12 @@ class CustomTemplateManager:
                 for t in c.turrets
             ],
 
+            "has_defenses": c.has_defenses,
+            "defenses_hull_cost": c.defenses_hull_cost,
+            "armor": c.armor,
+            "shields": c.shields,
+            "point_defense": c.point_defense,
+
             "has_constructor_component": c.has_constructor_component,
             "constructor_hull_cost": c.constructor_hull_cost,
 
@@ -515,6 +529,12 @@ class CustomTemplateManager:
             has_weapon_bays=d.get("has_weapon_bays", False),
             weapon_bays_hull_cost=d.get("weapon_bays_hull_cost", 10),
             turrets=turrets,
+
+            has_defenses=d.get("has_defenses", False),
+            defenses_hull_cost=d.get("defenses_hull_cost", 10),
+            armor=d.get("armor", 0),
+            shields=d.get("shields", 0),
+            point_defense=d.get("point_defense", 0),
 
             has_constructor_component=d.get("has_constructor_component", False),
             constructor_hull_cost=d.get("constructor_hull_cost", 15),

@@ -6,7 +6,8 @@ from unit_components import (
     HyperspaceInhibitionFieldEmitter, Commander,
     Turret, TurretType, Weapons, ColonyComponent,
     Constructor, BuildableUnit, RepairComponent,
-    MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
+    MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
+    Defenses
 )
 from unit_orders import Order, OrderStatus, OrderType
 
@@ -67,10 +68,18 @@ class MockUnit:
     @property
     def crystal_refinery_component(self): return self.get_component(CrystalRefineryComponent)
 
-    def take_damage(self, amount):
+    def take_damage(self, amount, damage_type=None):
+        if damage_type:
+            defenses = self.get_component(Defenses)
+            if defenses:
+                amount = max(0, amount - defenses.calculate_mitigation(amount, damage_type))
         self.current_hit_points -= amount
 
-    def take_component_damage(self, component_type, amount):
+    def take_component_damage(self, component_type, amount, damage_type=None):
+        if damage_type:
+            defenses = self.get_component(Defenses)
+            if defenses:
+                amount = max(0, amount - defenses.calculate_mitigation(amount, damage_type))
         component = self.get_component(component_type)
         if not component or component.is_destroyed:
             return amount
@@ -543,4 +552,39 @@ def test_shipyard_refinery_options():
     
     assert constructor.can_build("METAL_REFINERY_STATION") is not None
     assert constructor.can_build("CRYSTAL_REFINERY_STATION") is not None
+
+
+def test_defenses():
+    # Test Defenses component mitigation logic directly
+    unit = MockUnit()
+    defenses = Defenses(unit, armor=20, shields=50, point_defense=10)
+    unit.add_component(defenses)
+
+    # Mitigation with MASS_DRIVER
+    # Armor (matching): random(0, 20) -> avg 10
+    # Shields (non-matching): random(0, sqrt(50)) -> random(0, 7) -> avg 3.5
+    # Point Defense (non-matching): random(0, sqrt(10)) -> random(0, 3) -> avg 1.5
+    # Max mitigation = 20 + 7 + 3 = 30
+    mitigations = [defenses.calculate_mitigation(100, TurretType.MASS_DRIVER) for _ in range(100)]
+    assert all(0 <= m <= 30 for m in mitigations)
+    # Check that we actually rolled some values > 0
+    assert any(m > 0 for m in mitigations)
+
+    # Test that mitigation is capped at incoming damage
+    assert defenses.calculate_mitigation(5, TurretType.MASS_DRIVER) <= 5
+
+    # Test take_damage integration
+    unit.current_hit_points = 100
+    # Mocking random to return max values
+    import unittest.mock as mock
+    with mock.patch("random.randint", side_effect=lambda a, b: b):
+        unit.take_damage(50, TurretType.MASS_DRIVER)
+        # Expected mitigation:
+        # armor = 20
+        # shields = sqrt(50) = 7
+        # point_defense = sqrt(10) = 3
+        # Total mitigation = 20 + 7 + 3 = 30
+        # Damage taken = 50 - 30 = 20
+        # Remaining HP = 100 - 20 = 80
+        assert unit.current_hit_points == 80
 

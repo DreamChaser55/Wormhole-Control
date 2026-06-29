@@ -568,12 +568,12 @@ class Turret:
 
             if self.target_component_type:
                 logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}'s {self.target_component_type.__name__}! (effective dmg: {effective_damage:.1f})")
-                spillover = self.target.take_component_damage(self.target_component_type, int(effective_damage))
+                spillover = self.target.take_component_damage(self.target_component_type, int(effective_damage), damage_type=self.turret_type)
                 if spillover > 0:
                     self.target.take_damage(spillover)
             else:
                 logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}! (effective dmg: {effective_damage:.1f})")
-                self.target.take_damage(int(effective_damage))
+                self.target.take_damage(int(effective_damage), damage_type=self.turret_type)
         self.current_cooldown = self.cooldown
 
     def update(self) -> None:
@@ -647,6 +647,55 @@ class Weapons(UnitComponent):
         for turret in self.turrets:
             turret.target = None
             turret.target_component_type = None
+
+
+@dataclasses.dataclass
+class Defenses(UnitComponent):
+    """
+    Provides protection against incoming attacks.
+    - Armor reduces mass driver damage.
+    - Shields reduce beam damage.
+    - Point defense cannons reduce missile damage.
+    """
+    DISPLAY_NAME: str = "Defenses"
+    SIDEBAR_ORDER: int = 4
+    armor: int = 0
+    shields: int = 0
+    point_defense: int = 0
+
+    def __init__(self, unit: 'Unit', armor: int = 0, shields: int = 0, point_defense: int = 0, hull_cost: int = 0):
+        super().__init__(unit, hull_cost=hull_cost)
+        self.armor = armor
+        self.shields = shields
+        self.point_defense = point_defense
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        data.append({'type': 'label', 'text': f"Armor: {self.armor}", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"Shields: {self.shields}", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"Point Defense: {self.point_defense}", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
+
+    def calculate_mitigation(self, incoming_damage: int, damage_type: Optional[TurretType]) -> int:
+        if self.is_destroyed or damage_type is None:
+            return 0
+
+        mitigation = 0
+        if damage_type == TurretType.MASS_DRIVER:
+            mitigation += random.randint(0, self.armor)
+            mitigation += random.randint(0, int(math.sqrt(self.shields)))
+            mitigation += random.randint(0, int(math.sqrt(self.point_defense)))
+        elif damage_type == TurretType.BEAM:
+            mitigation += random.randint(0, self.shields)
+            mitigation += random.randint(0, int(math.sqrt(self.armor)))
+            mitigation += random.randint(0, int(math.sqrt(self.point_defense)))
+        elif damage_type == TurretType.MISSILE:
+            mitigation += random.randint(0, self.point_defense)
+            mitigation += random.randint(0, int(math.sqrt(self.armor)))
+            mitigation += random.randint(0, int(math.sqrt(self.shields)))
+
+        return min(incoming_damage, mitigation)
+
 
 class RepairComponent(UnitComponent):
     """A component that allows a unit to repair damaged friendly units."""
@@ -1489,6 +1538,15 @@ class Constructor(UnitComponent):
                 )
                 weapons_comp.add_turret(turret)
             new_unit.add_component(weapons_comp)
+
+        if template.get("has_defenses"):
+            new_unit.add_component(Defenses(
+                new_unit,
+                armor=template.get("armor", 0),
+                shields=template.get("shields", 0),
+                point_defense=template.get("point_defense", 0),
+                hull_cost=template.get("defenses_hull_cost", 0)
+            ))
 
         if template.get("has_constructor_component"):
             new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0)))

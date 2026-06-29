@@ -25,6 +25,8 @@ from unit_components import (
     Commander,
     HyperspaceInhibitionFieldEmitter,
     Weapons,
+    Defenses,
+    TurretType,
     ColonyComponent,
     Constructor,
     RepairComponent,
@@ -305,8 +307,15 @@ class Unit(GameObject):
     def commander_component(self) -> Commander:
         return self.get_component(Commander)
 
-    def take_damage(self, amount: int) -> None:
-        """Reduces the unit's current hit points by the given amount, applying any active damage reduction."""
+    def take_damage(self, amount: int, damage_type: Optional[TurretType] = None) -> None:
+        """Reduces the unit's current hit points by the given amount, applying any active damage reduction and defenses mitigation."""
+        if damage_type:
+            defenses = self.get_component(Defenses)
+            if defenses:
+                mitigation = defenses.calculate_mitigation(amount, damage_type)
+                amount = max(0, amount - mitigation)
+                logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} damage. Remaining damage: {amount}")
+
         if self.damage_reduction > 0.0:
             amount = max(1, int(amount * (1.0 - self.damage_reduction)))
         self.current_hit_points -= amount
@@ -317,11 +326,18 @@ class Unit(GameObject):
         if self.current_hit_points == 0:
             self.destroy()
 
-    def take_component_damage(self, component_type: type, amount: int) -> int:
+    def take_component_damage(self, component_type: type, amount: int, damage_type: Optional[TurretType] = None) -> int:
         """
         Applies damage to a specific component. 
         Returns any excess damage (spillover) if the component is destroyed.
         """
+        if damage_type:
+            defenses = self.get_component(Defenses)
+            if defenses:
+                mitigation = defenses.calculate_mitigation(amount, damage_type)
+                amount = max(0, amount - mitigation)
+                logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} component damage. Remaining damage: {amount}")
+
         component = self.get_component(component_type)
         if not component or component.is_destroyed:
             return amount  # All damage spills over if component is missing or already destroyed
