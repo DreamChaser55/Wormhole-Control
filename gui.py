@@ -769,6 +769,12 @@ class GUI_Handler:
                         'carrier_id': carrier_id,
                         'docked_unit_id': docked_unit_id
                     }
+                elif action_id == 'launch_all_wings':
+                    carrier_id = target_data
+                    action_result = {
+                        'action': 'launch_all_wings',
+                        'carrier_id': carrier_id
+                    }
                 elif action_id == 'recall_ship':
                     carrier_id, launched_unit_id = target_data
                     action_result = {

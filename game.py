@@ -438,6 +438,17 @@ class Game:
                         carrier.commander_component.add_order(deploy_order)
                         logger.debug(f"Issued DEPLOY_UNIT order for carrier {carrier.name} (docked unit ID: {docked_unit_id}).")
             self.sidebar_needs_update = True
+        elif action_type == 'launch_all_wings':
+            carrier_id = action.get('carrier_id')
+            carrier = self.galaxy.get_unit_by_id(carrier_id)
+            if carrier and carrier.fighter_bay_component:
+                if carrier.owner == self.players[self.current_player_index]:
+                    from unit_orders import DeployAllWingsOrder
+                    deploy_order = DeployAllWingsOrder(carrier)
+                    if carrier.commander_component:
+                        carrier.commander_component.add_order(deploy_order)
+                        logger.debug(f"Issued DEPLOY_ALL_WINGS order for carrier {carrier.name}.")
+            self.sidebar_needs_update = True
         elif action_type == 'recall_ship':
             carrier_id = action.get('carrier_id')
             launched_unit_id = action.get('launched_unit_id')
@@ -1118,6 +1129,15 @@ class Game:
 
                         # Docked Wings
                         data_for_gui.append({'type': 'label', 'text': "Docked Fighter Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
+                        if comp.docked_units and is_owner:
+                            data_for_gui.append({
+                                'type': 'button',
+                                'text': "Launch All Wings",
+                                'object_id': '#sidebar_expand_button',
+                                'action_id': 'launch_all_wings',
+                                'target_data': unit.id,
+                                'height': 25
+                            })
                         if not comp.docked_units:
                             data_for_gui.append({'type': 'label', 'text': "  None", 'object_id': '#sidebar_info_label', 'height': 20})
                         else:

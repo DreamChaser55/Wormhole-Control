@@ -4,7 +4,7 @@ from entities import Unit
 from geometry import Position
 from constants import HullSize
 from unit_components import FighterBayComponent, FighterWingComponent
-from unit_orders import DockOrder
+from unit_orders import DockOrder, DeployAllWingsOrder
 from game import Game
 from tests.test_unit_components import MockPlayer
 
@@ -92,6 +92,11 @@ def test_fighter_bay_gui_data_generation():
         assert deploy_btn is not None
         assert deploy_btn["target_data"] == (carrier.id, docked_wing.id)
         
+        # Find Launch All Wings button
+        launch_all_btn = next((b for b in buttons if b["action_id"] == "launch_all_wings"), None)
+        assert launch_all_btn is not None
+        assert launch_all_btn["target_data"] == carrier.id
+        
         # Find Recall button
         recall_btn = next((b for b in buttons if b["action_id"] == "recall_ship"), None)
         assert recall_btn is not None
@@ -160,6 +165,7 @@ def test_fighter_bay_gui_data_generation_non_owner():
         
         # Non-owner should see labels but NOT action buttons (like Deploy)
         assert not any(b["action_id"] == "deploy_ship" for b in buttons)
+        assert not any(b["action_id"] == "launch_all_wings" for b in buttons)
     finally:
         game_module.PROFILE = original_profile
 
@@ -215,3 +221,41 @@ def test_recall_ship_action_handling():
     order = launched_wing.commander_component.add_order.call_args[0][0]
     assert isinstance(order, DockOrder)
     assert order.parameters["target_carrier_id"] == carrier.id
+
+
+def test_launch_all_wings_action_handling():
+    game = MagicMock()
+    player = MockPlayer("Player 1")
+    game.players = [player]
+    game.current_player_index = 0
+    
+    carrier = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Carrier",
+        hull_size=HullSize.HUGE,
+        game=game
+    )
+    fighter_bay = FighterBayComponent(carrier, max_slots=2)
+    carrier.add_component(fighter_bay)
+    
+    # Mock galaxy.get_unit_by_id
+    game.galaxy.get_unit_by_id.side_effect = lambda uid: carrier if uid == carrier.id else None
+    
+    # Trigger handle_gui_action
+    action = {
+        'action': 'launch_all_wings',
+        'carrier_id': carrier.id
+    }
+    
+    # Mock Commander.add_order
+    carrier.commander_component.add_order = MagicMock()
+    
+    Game.handle_gui_action(game, action)
+    
+    # Verify DeployAllWingsOrder is added to the carrier
+    carrier.commander_component.add_order.assert_called_once()
+    order = carrier.commander_component.add_order.call_args[0][0]
+    assert isinstance(order, DeployAllWingsOrder)

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
 from unit_components import FighterWingComponent, FighterBayComponent
-from unit_orders import OrderStatus, OrderType, DockOrder, DeployUnitOrder
+from unit_orders import OrderStatus, OrderType, DockOrder, DeployUnitOrder, DeployAllWingsOrder
 from tests.test_unit_components import MockUnit as BaseMockUnit, MockPlayer
 
 class MockUnit(BaseMockUnit):
@@ -323,5 +323,45 @@ def test_fighter_bay_deploy_offset():
     # Wing position should be inside sector radius
     wing_dist_from_center = math.hypot(wing.position.x, wing.position.y)
     assert wing_dist_from_center <= SECTOR_CIRCLE_RADIUS_LOGICAL
+
+
+def test_deploy_all_wings_order():
+    carrier = MockUnit()
+    fighter_bay = FighterBayComponent(carrier, max_slots=2)
+    carrier.add_component(fighter_bay)
+
+    wing1 = MockUnit()
+    wing1.hull_size = HullSize.STRIKECRAFT_WING
+    wing1.in_system = "Sol"
+    wing1.in_hex = (0, 0)
+    wing1.position = Position(0, 0)
+
+    wing2 = MockUnit()
+    wing2.hull_size = HullSize.STRIKECRAFT_WING
+    wing2.in_system = "Sol"
+    wing2.in_hex = (0, 0)
+    wing2.position = Position(0, 0)
+
+    galaxy = MagicMock()
+    mock_system = MagicMock()
+    galaxy.systems = {"Sol": mock_system}
+    carrier.in_galaxy = galaxy
+    wing1.game.galaxy = galaxy
+    wing2.game.galaxy = galaxy
+
+    # Dock both wings
+    assert fighter_bay.dock(wing1, galaxy)
+    assert fighter_bay.dock(wing2, galaxy)
+    assert len(fighter_bay.docked_units) == 2
+
+    # Execute DeployAllWingsOrder
+    deploy_all_order = DeployAllWingsOrder(carrier)
+    deploy_all_order.execute(galaxy)
+
+    assert deploy_all_order.status == OrderStatus.COMPLETED
+    assert len(fighter_bay.docked_units) == 0
+    assert len(fighter_bay.launched_units) == 2
+    assert wing1 in fighter_bay.launched_units
+    assert wing2 in fighter_bay.launched_units
 
 

@@ -43,6 +43,7 @@ class OrderType(Enum):
     UNLOAD_RESOURCES = auto() # Unload raw resources to a refinery
     DOCK = auto()
     DEPLOY_UNIT = auto()
+    DEPLOY_ALL_WINGS = auto()
     USE_ABILITY = auto()  # Use a special ability (with optional target unit or position)
 
 class Order:
@@ -1347,6 +1348,49 @@ class DeployUnitOrder(Order):
         else:
             self.status = OrderStatus.FAILED
             logger.debug(f"Deployment of {docked_unit.name} from {self.unit.name} failed.")
+
+    def check_completion_conditions(self) -> None:
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        if not self.sub_orders:
+            self.status = OrderStatus.COMPLETED
+
+
+class DeployAllWingsOrder(Order):
+    def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
+        super().__init__(unit, OrderType.DEPLOY_ALL_WINGS, parameters, parent_order)
+
+    def get_state_data(self) -> Dict[str, Any]:
+        state_data = super().get_state_data()
+        return state_data
+
+    def execute(self, galaxy_ref: 'Galaxy') -> None:
+        super().execute(galaxy_ref)
+
+        if not self.unit.fighter_bay_component:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"DEPLOY_ALL_WINGS order failed: Unit {self.unit.name} has no FighterBayComponent.")
+            return
+
+        comp = self.unit.fighter_bay_component
+        if not comp.docked_units:
+            self.status = OrderStatus.COMPLETED
+            logger.debug(f"DEPLOY_ALL_WINGS: No docked fighter wings to deploy on {self.unit.name}.")
+            return
+
+        docked_copy = list(comp.docked_units)
+        success_count = 0
+        for docked_unit in docked_copy:
+            success = comp.deploy(docked_unit, galaxy_ref)
+            if success:
+                success_count += 1
+
+        if success_count > 0:
+            self.status = OrderStatus.COMPLETED
+            logger.debug(f"Successfully deployed {success_count} fighter wings from {self.unit.name}.")
+        else:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"Failed to deploy any fighter wings from {self.unit.name}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
