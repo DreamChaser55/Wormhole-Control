@@ -279,5 +279,20 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         self.assertEqual(len(mgr.list_design_names()), 1)
 
 
+class TestUnitEditorGuiComponents(unittest.TestCase):
+    """Verifies that all valid components are supported by the unit editor GUI."""
+
+    def test_all_components_in_gui(self):
+        import dataclasses
+        from custom_unit_templates import ComponentConfig
+        from unit_editor_gui import COMPONENT_ROWS
+
+        gui_keys = {row["key"] for row in COMPONENT_ROWS}
+        config_keys = {f.name for f in dataclasses.fields(ComponentConfig) if f.name.startswith("has_")}
+
+        self.assertEqual(config_keys, gui_keys)
+
+
 if __name__ == "__main__":
     unittest.main()
+

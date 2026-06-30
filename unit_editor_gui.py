@@ -39,6 +39,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5},
     {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 5},
     {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10},
+    {"key": "has_defenses",              "label": "Defenses",           "cost_key": "defenses_hull_cost",         "default_cost": 10},
     {"key": "has_constructor_component", "label": "Constructor",        "cost_key": "constructor_hull_cost",      "default_cost": 15},
     {"key": "has_repair_component",      "label": "Repair",             "cost_key": "repair_hull_cost",           "default_cost": 15},
     {"key": "has_colony_component",      "label": "Colony",             "cost_key": "colony_hull_cost",           "default_cost": 10},
@@ -46,6 +47,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_metal_refinery_component", "label": "Metal Refinery",  "cost_key": "metal_refinery_hull_cost",   "default_cost": 20},
     {"key": "has_crystal_refinery_component", "label": "Crystal Refinery", "cost_key": "crystal_refinery_hull_cost", "default_cost": 20},
     {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20},
+    {"key": "has_fighter_bay",           "label": "Fighter Bay",        "cost_key": "fighter_bay_hull_cost",      "default_cost": 15},
     {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20},
     {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10},
 ]
@@ -310,7 +312,8 @@ class UnitEditorWindow:
             self._comp_cost_labels[key] = cost_lbl
             self._elements.append(cost_lbl)
 
-        ly += 6 * (small_h + 3) + pad
+        num_rows = (len(COMPONENT_ROWS) + 1) // 2
+        ly += num_rows * (small_h + 3) + pad
 
         # ---- Hyperdrive type sub-row ----
         hd_lbl = pygame_gui.elements.UILabel(
