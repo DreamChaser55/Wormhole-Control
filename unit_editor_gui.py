@@ -107,7 +107,7 @@ class UnitEditorWindow:
         self._editing_key: typing.Optional[str] = None  # key of design being edited
 
         # --- Panel geometry ---
-        panel_w = int(min(900, screen_res.x * 0.65))
+        panel_w = int(min(1200, screen_res.x * 0.85))
         panel_h = int(screen_res.y * 0.88)
         panel_x = (screen_res.x - panel_w) // 2
         panel_y = int(screen_res.y * 0.06)
@@ -115,13 +115,13 @@ class UnitEditorWindow:
 
         pad = int(8 * (screen_res.y / 720.0))
         self._pad = pad
-        col_split = int(panel_w * 0.52)
-        self._col_split = col_split
 
-        # Left column rect (inside panel, relative)
-        self._left_rect = pygame.Rect(pad, pad, col_split - pad * 2, panel_h - pad * 2)
-        # Right column rect (inside panel, relative)
-        self._right_rect = pygame.Rect(col_split + pad, pad, panel_w - col_split - pad * 2, panel_h - pad * 2)
+        # 3 column layout parameters
+        col_w = (panel_w - pad * 4) // 3
+        self._col_w = col_w
+        self._col1_x = pad
+        self._col2_x = pad + col_w + pad
+        self._col3_x = pad + (col_w + pad) * 2
 
         # Tracked UI elements — built once in _build_ui, shown/hidden together
         self._elements: typing.List[pygame_gui.core.UIElement] = []
@@ -210,19 +210,24 @@ class UnitEditorWindow:
 
         separator_y = int(pad + 30 * scale_y)
 
-        # ----------------------------------------------------------------
-        # LEFT COLUMN
-        # ----------------------------------------------------------------
-        lx = pad
-        ly = separator_y + pad
-        lw = self._col_split - pad * 2
-
+        # Heights & spacing constants
         row_h = int(26 * scale_y)
         small_h = int(22 * scale_y)
+        dd_h = int(28 * scale_y)
+
+        ly = separator_y + pad
+        my = separator_y + pad
+        ry = separator_y + pad
+
+        # ----------------------------------------------------------------
+        # COLUMN 1 (Left): Hull Size, Capacity, Components (Toggles)
+        # ----------------------------------------------------------------
+        c1x = self._col1_x
+        c1w = self._col_w
 
         # Hull size section
         hull_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(lx, ly, lw, row_h),
+            relative_rect=pygame.Rect(c1x, ly, c1w, row_h),
             text="Hull Size",
             manager=self.manager,
             container=self._panel,
@@ -231,11 +236,10 @@ class UnitEditorWindow:
         self._elements.append(hull_label)
         ly += row_h + pad
 
-        dd_h = int(28 * scale_y)
         self._hull_dropdown = pygame_gui.elements.UIDropDownMenu(
             options_list=HULL_SIZE_NAMES,
             starting_option=self._hull_size.name,
-            relative_rect=pygame.Rect(lx, ly, lw, dd_h),
+            relative_rect=pygame.Rect(c1x, ly, c1w, dd_h),
             manager=self.manager,
             container=self._panel,
             object_id="#hull_size_dropdown",
@@ -245,7 +249,7 @@ class UnitEditorWindow:
 
         # Capacity bar label
         self._capacity_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(lx, ly, lw, row_h),
+            relative_rect=pygame.Rect(c1x, ly, c1w, row_h),
             text=self._capacity_text(),
             manager=self.manager,
             container=self._panel,
@@ -256,18 +260,17 @@ class UnitEditorWindow:
 
         # Capacity bar visual (drawn manually — just record its screen rect)
         bar_h = int(10 * scale_y)
-        # Compute absolute rect for drawing
         self._cap_bar_rect = pygame.Rect(
-            pr.x + lx,
+            pr.x + c1x,
             pr.y + ly,
-            lw,
+            c1w,
             bar_h,
         )
         ly += bar_h + pad
 
         # Component section heading
         comp_heading = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(lx, ly, lw, row_h),
+            relative_rect=pygame.Rect(c1x, ly, c1w, row_h),
             text="Components (hull cost)",
             manager=self.manager,
             container=self._panel,
@@ -276,17 +279,13 @@ class UnitEditorWindow:
         self._elements.append(comp_heading)
         ly += row_h + 2
 
-        # Component toggle rows (2 columns)
-        col_w = (lw - pad) // 2
-        btn_w = col_w - 30
+        # Component toggle rows (single column)
+        btn_w = c1w - 35
         cost_w = 25
 
         for idx, row in enumerate(COMPONENT_ROWS):
-            col = idx % 2
-            row_idx = idx // 2
-
-            cx = lx + col * (col_w + pad)
-            cy = ly + row_idx * (small_h + 3)
+            cx = c1x
+            cy = ly + idx * (small_h + 3)
 
             key = row["key"]
             label = row["label"]
@@ -312,12 +311,12 @@ class UnitEditorWindow:
             self._comp_cost_labels[key] = cost_lbl
             self._elements.append(cost_lbl)
 
-        num_rows = (len(COMPONENT_ROWS) + 1) // 2
-        ly += num_rows * (small_h + 3) + pad
+        ly += len(COMPONENT_ROWS) * (small_h + 3) + pad
 
         # ---- Hyperdrive type sub-row ----
+        hd_lbl_w = c1w - int(100 * scale_y)
         hd_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(lx + pad * 2, ly, int(lw * 0.4), small_h),
+            relative_rect=pygame.Rect(c1x, ly, hd_lbl_w, small_h),
             text="Hyperdrive type:",
             manager=self.manager,
             container=self._panel,
@@ -327,7 +326,7 @@ class UnitEditorWindow:
         self._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(
             options_list=HYPERDRIVE_TYPES,
             starting_option=self._comp.hyperdrive_type,
-            relative_rect=pygame.Rect(lx + pad * 2 + int(lw * 0.4) + 4, ly, int(lw * 0.5) - pad, small_h),
+            relative_rect=pygame.Rect(c1x + hd_lbl_w + 4, ly, int(100 * scale_y) - 4, small_h),
             manager=self.manager,
             container=self._panel,
             object_id="#hd_type_dropdown",
@@ -335,36 +334,42 @@ class UnitEditorWindow:
         self._elements.append(self._hd_type_dropdown)
         ly += small_h + pad
 
+        # ----------------------------------------------------------------
+        # COLUMN 2 (Middle): Weapons (Turrets config, Turret list, Abilities list)
+        # ----------------------------------------------------------------
+        c2x = self._col2_x
+        c2w = self._col_w
+
         # ---- Weapons: add-turret sub-panel ----
         turret_hdr = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(lx + pad * 2, ly, lw - pad * 2, small_h),
-            text="Turrets (type  dmg  rng  cd):",
+            relative_rect=pygame.Rect(c2x, my, c2w, small_h),
+            text="Turrets (type/dmg/rng/cd):",
             manager=self.manager,
             container=self._panel,
             object_id="#comp_cost_label",
         )
         self._elements.append(turret_hdr)
-        ly += small_h + 2
+        my += small_h + 2
 
-        entry_w = int((lw - pad * 3) * 0.20)
+        entry_w = int((c2w - pad * 2) * 0.20)
         self._turret_type_dd = pygame_gui.elements.UIDropDownMenu(
             options_list=TURRET_TYPES,
             starting_option=TURRET_TYPES[0],
-            relative_rect=pygame.Rect(lx + pad * 2, ly, int((lw - pad * 3) * 0.35), small_h),
+            relative_rect=pygame.Rect(c2x, my, int((c2w - pad * 2) * 0.35), small_h),
             manager=self.manager,
             container=self._panel,
             object_id="#turret_type_dropdown",
         )
         self._elements.append(self._turret_type_dd)
 
-        field_x = lx + pad * 2 + int((lw - pad * 3) * 0.36)
+        field_x = c2x + int((c2w - pad * 2) * 0.36)
         for attr, placeholder, entry_ref in [
             ("dmg", "15", "_turret_dmg_entry"),
             ("rng", "300", "_turret_range_entry"),
             ("cd", "2", "_turret_cd_entry"),
         ]:
             entry = pygame_gui.elements.UITextEntryLine(
-                relative_rect=pygame.Rect(field_x, ly, entry_w, small_h),
+                relative_rect=pygame.Rect(field_x, my, entry_w, small_h),
                 manager=self.manager,
                 container=self._panel,
                 object_id="#turret_entry",
@@ -374,12 +379,12 @@ class UnitEditorWindow:
             self._elements.append(entry)
             field_x += entry_w + 3
 
-        ly += small_h + 3
+        my += small_h + 3
         # Variant dropdown next to Add Turret button
         self._turret_variant_dd = pygame_gui.elements.UIDropDownMenu(
             options_list=TURRET_VARIANTS,
             starting_option=TURRET_VARIANTS[0],
-            relative_rect=pygame.Rect(lx + pad * 2, ly, int((lw - pad * 4) * 0.5), small_h),
+            relative_rect=pygame.Rect(c2x, my, int((c2w - pad) * 0.5), small_h),
             manager=self.manager,
             container=self._panel,
             object_id="#turret_variant_dropdown",
@@ -387,35 +392,34 @@ class UnitEditorWindow:
         self._elements.append(self._turret_variant_dd)
 
         self._add_turret_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(lx + pad * 2 + int((lw - pad * 4) * 0.5) + pad, ly, int((lw - pad * 4) * 0.5), small_h),
+            relative_rect=pygame.Rect(c2x + int((c2w - pad) * 0.5) + pad, my, int((c2w - pad) * 0.5), small_h),
             text="+ Add Turret",
             manager=self.manager,
             container=self._panel,
             object_id="#add_turret_button",
         )
         self._elements.append(self._add_turret_button)
-        ly += small_h + pad
+        my += small_h + pad
 
         # Turret list area — static labels refreshed by _rebuild_turret_list()
-        self._turret_list_y_start = ly
-        self._turret_list_lx = lx + pad * 2
-        self._turret_list_lw = lw - pad * 2
+        self._turret_list_y_start = my
+        self._turret_list_lx = c2x
+        self._turret_list_lw = c2w
         # (labels are created/destroyed dynamically in _rebuild_turret_list)
 
         # (Abilities sub-panel is built dynamically in _rebuild_abilities via _rebuild_turret_list)
 
         # ----------------------------------------------------------------
-        # RIGHT COLUMN
+        # COLUMN 3 (Right): Naming & Save/Load Actions
         # ----------------------------------------------------------------
-        rx = self._col_split + pad
-        ry = separator_y + pad
-        rw = self._panel_rect.w - self._col_split - pad * 2
+        c3x = self._col3_x
+        c3w = self._col_w
 
         entry_h = int(32 * scale_y)
 
         def right_label(text, y):
             lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(rx, y, -1, row_h),
+                relative_rect=pygame.Rect(c3x, y, -1, row_h),
                 text=text,
                 manager=self.manager,
                 container=self._panel,
@@ -426,7 +430,7 @@ class UnitEditorWindow:
 
         ry = right_label("Design Key (unique, no spaces):", ry)
         self._name_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(rx, ry, rw, entry_h),
+            relative_rect=pygame.Rect(c3x, ry, c3w, entry_h),
             manager=self.manager,
             container=self._panel,
             object_id="#editor_name_entry",
@@ -436,7 +440,7 @@ class UnitEditorWindow:
 
         ry = right_label("Display Name:", ry)
         self._display_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(rx, ry, rw, entry_h),
+            relative_rect=pygame.Rect(c3x, ry, c3w, entry_h),
             manager=self.manager,
             container=self._panel,
             object_id="#editor_display_entry",
@@ -448,7 +452,7 @@ class UnitEditorWindow:
         summary_h = int(200 * scale_y)
         self._summary_box = pygame_gui.elements.UITextBox(
             html_text="",
-            relative_rect=pygame.Rect(rx, ry, rw, summary_h),
+            relative_rect=pygame.Rect(c3x, ry, c3w, summary_h),
             manager=self.manager,
             container=self._panel,
             object_id="#editor_summary_box",
@@ -458,7 +462,7 @@ class UnitEditorWindow:
 
         # Status label
         self._status_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(rx, ry, rw, row_h),
+            relative_rect=pygame.Rect(c3x, ry, c3w, row_h),
             text="",
             manager=self.manager,
             container=self._panel,
@@ -470,7 +474,7 @@ class UnitEditorWindow:
         # Save button
         btn_h = int(32 * scale_y)
         self._save_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(rx, ry, rw, btn_h),
+            relative_rect=pygame.Rect(c3x, ry, c3w, btn_h),
             text="💾  Save Design",
             manager=self.manager,
             container=self._panel,
@@ -486,7 +490,7 @@ class UnitEditorWindow:
         self._load_dd = pygame_gui.elements.UIDropDownMenu(
             options_list=load_options,
             starting_option="— select —",
-            relative_rect=pygame.Rect(rx, ry, rw, dd_h),
+            relative_rect=pygame.Rect(c3x, ry, c3w, dd_h),
             manager=self.manager,
             container=self._panel,
             object_id="#editor_load_dropdown",
@@ -496,7 +500,7 @@ class UnitEditorWindow:
 
         # Delete button
         self._delete_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(rx, ry, rw, btn_h),
+            relative_rect=pygame.Rect(c3x, ry, c3w, btn_h),
             text="🗑  Delete Design",
             manager=self.manager,
             container=self._panel,
