@@ -4,7 +4,7 @@ from geometry import Position, Circle, Vector
 from unit_components import (
     Engines, Hyperdrive, HyperdriveType, JumpStatus,
     HyperspaceInhibitionFieldEmitter, Commander,
-    Turret, TurretType, Weapons, ColonyComponent,
+    Turret, TurretType, TurretVariant, Weapons, ColonyComponent,
     Constructor, BuildableUnit, RepairComponent,
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
     Defenses
@@ -587,4 +587,76 @@ def test_defenses():
         # Damage taken = 50 - 30 = 20
         # Remaining HP = 100 - 20 = 80
         assert unit.current_hit_points == 80
+
+
+def test_turret_variants():
+    unit = MockUnit()
+    target_normal = MockUnit()
+    target_normal.hull_size = HullSize.MEDIUM
+    target_strikecraft = MockUnit()
+    target_strikecraft.hull_size = HullSize.STRIKECRAFT_WING
+
+    # 1. Standard turret: Cannot target strikecraft
+    weapons_std = Weapons(unit)
+    turret_std = Turret(
+        turret_type=TurretType.MASS_DRIVER,
+        damage=10.0,
+        range=100.0,
+        cooldown=2,
+        parent_unit=unit,
+        variant=TurretVariant.STANDARD
+    )
+    weapons_std.add_turret(turret_std)
+    
+    # Try targeting normal target
+    weapons_std.set_target(target_normal)
+    assert turret_std.target == target_normal
+
+    # Try targeting strikecraft (should be filtered out by set_target)
+    weapons_std.clear_target()
+    weapons_std.set_target(target_strikecraft)
+    assert turret_std.target is None
+
+    # 2. Long range turret: 3x range, 3x cooldown
+    turret_lr = Turret(
+        turret_type=TurretType.MASS_DRIVER,
+        damage=10.0,
+        range=100.0,
+        cooldown=2,
+        parent_unit=unit,
+        variant=TurretVariant.LONG_RANGE
+    )
+    assert turret_lr.range == 300.0
+    assert turret_lr.cooldown == 6
+
+    # 3. Anti-strikecraft turret: Can target strikecraft, damage to others reduced to 25%
+    weapons_as = Weapons(unit)
+    turret_as = Turret(
+        turret_type=TurretType.MASS_DRIVER,
+        damage=100.0,
+        range=100.0,
+        cooldown=2,
+        parent_unit=unit,
+        variant=TurretVariant.ANTI_STRIKECRAFT
+    )
+    weapons_as.add_turret(turret_as)
+
+    # Can target strikecraft
+    weapons_as.set_target(target_strikecraft)
+    assert turret_as.target == target_strikecraft
+
+    # Damage against strikecraft: 100% (damage is 100)
+    target_strikecraft.current_hit_points = 500
+    turret_as.fire()
+    assert target_strikecraft.current_hit_points == 400
+
+    # Can target normal target, but damage is 25% (damage is 100 -> 25)
+    weapons_as.clear_target()
+    weapons_as.set_target(target_normal)
+    assert turret_as.target == target_normal
+
+    target_normal.current_hit_points = 500
+    turret_as.fire()
+    assert target_normal.current_hit_points == 475
+
 

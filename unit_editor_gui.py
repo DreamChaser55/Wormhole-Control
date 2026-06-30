@@ -27,7 +27,7 @@ from custom_unit_templates import (
     CustomUnitTemplate, ComponentConfig, TurretConfig,
     CustomTemplateManager, HULL_RESTRICTIONS, ADVANCED_HYPERDRIVE_MIN_HULL,
 )
-from unit_components import AbilityType, TurretType
+from unit_components import AbilityType, TurretType, TurretVariant
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
 HULL_SIZE_NAMES = [hs.name for hs in HullSize]
 
 TURRET_TYPES = [t.name for t in TurretType]
+TURRET_VARIANTS = [v.name for v in TurretVariant]
 ABILITY_NAMES = [a.value for a in AbilityType]
 HYPERDRIVE_TYPES = ["BASIC", "ADVANCED"]
 
@@ -139,6 +140,7 @@ class UnitEditorWindow:
         self._turret_dmg_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._turret_range_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._turret_cd_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._turret_variant_dd: typing.Optional[pygame_gui.elements.UIDropDownMenu] = None
 
         # Hyperdrive type dropdown
         self._hd_type_dropdown: typing.Optional[pygame_gui.elements.UIDropDownMenu] = None
@@ -370,8 +372,19 @@ class UnitEditorWindow:
             field_x += entry_w + 3
 
         ly += small_h + 3
+        # Variant dropdown next to Add Turret button
+        self._turret_variant_dd = pygame_gui.elements.UIDropDownMenu(
+            options_list=TURRET_VARIANTS,
+            starting_option=TURRET_VARIANTS[0],
+            relative_rect=pygame.Rect(lx + pad * 2, ly, int((lw - pad * 4) * 0.5), small_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_variant_dropdown",
+        )
+        self._elements.append(self._turret_variant_dd)
+
         self._add_turret_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(lx + pad * 2, ly, int(lw * 0.4), small_h),
+            relative_rect=pygame.Rect(lx + pad * 2 + int((lw - pad * 4) * 0.5) + pad, ly, int((lw - pad * 4) * 0.5), small_h),
             text="+ Add Turret",
             manager=self.manager,
             container=self._panel,
@@ -741,7 +754,14 @@ class UnitEditorWindow:
             cd = int(self._turret_cd_entry.get_text()) if self._turret_cd_entry else 2
         except ValueError:
             cd = 2
-        self._turrets.append(TurretConfig(turret_type=ttype, damage=dmg, range=rng, cooldown=cd))
+        
+        if self._turret_variant_dd:
+            raw_variant = self._turret_variant_dd.selected_option
+            variant = raw_variant[0] if isinstance(raw_variant, tuple) else str(raw_variant)
+        else:
+            variant = "STANDARD"
+
+        self._turrets.append(TurretConfig(turret_type=ttype, damage=dmg, range=rng, cooldown=cd, variant=variant))
         self._comp.turrets = self._turrets
         self._rebuild_turret_list()
         self._update_summary()
@@ -769,7 +789,9 @@ class UnitEditorWindow:
         pad = self._pad
 
         for i, tc in enumerate(self._turrets):
-            text = f"{tc.turret_type}  dmg:{tc.damage:.0f}  rng:{tc.range:.0f}  cd:{tc.cooldown}"
+            disp_range = tc.range * 3.0 if tc.variant == "LONG_RANGE" else tc.range
+            disp_cooldown = tc.cooldown * 3 if tc.variant == "LONG_RANGE" else tc.cooldown
+            text = f"{tc.turret_type} ({tc.variant.lower()})  dmg:{tc.damage:.0f}  rng:{disp_range:.0f}  cd:{disp_cooldown}"
             lbl = pygame_gui.elements.UILabel(
                 relative_rect=pygame.Rect(lx, ly, int(lw * 0.80), small_h),
                 text=text,
@@ -978,7 +1000,9 @@ class UnitEditorWindow:
             lines.append("")
             lines.append(f"<b>Turrets ({len(self._turrets)}):</b>")
             for t in self._turrets:
-                lines.append(f"  • {t.turret_type}  dmg:{t.damage:.0f}  rng:{t.range:.0f}  cd:{t.cooldown}")
+                disp_range = t.range * 3.0 if t.variant == "LONG_RANGE" else t.range
+                disp_cooldown = t.cooldown * 3 if t.variant == "LONG_RANGE" else t.cooldown
+                lines.append(f"  • {t.turret_type} ({t.variant.lower()})  dmg:{t.damage:.0f}  rng:{disp_range:.0f}  cd:{disp_cooldown}")
 
         if self._selected_abilities:
             lines.append("")

@@ -99,6 +99,7 @@ class TurretConfig:
     damage: float
     range: float
     cooldown: int
+    variant: str = "STANDARD"
 
 
 # --------------------------------------------------------------------------
@@ -443,6 +444,7 @@ class CustomTemplateManager:
                     "damage": t.damage,
                     "range": t.range,
                     "cooldown": t.cooldown,
+                    "variant": t.variant,
                 }
                 for t in c.turrets
             ],
@@ -513,6 +515,7 @@ class CustomTemplateManager:
                 damage=t["damage"],
                 range=t["range"],
                 cooldown=t["cooldown"],
+                variant=t.get("variant", "STANDARD"),
             )
             for t in d.get("turrets", [])
         ]

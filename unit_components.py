@@ -538,6 +538,11 @@ class TurretType(Enum):
     BEAM = "beam"
     MISSILE = "missile"
 
+class TurretVariant(Enum):
+    STANDARD = "standard"
+    LONG_RANGE = "long_range"
+    ANTI_STRIKECRAFT = "anti_strikecraft"
+
 # --- Weapon-related dataclasses ---
 
 @dataclasses.dataclass
@@ -551,9 +556,15 @@ class Turret:
     range: float
     cooldown: int
     parent_unit: 'Unit'
+    variant: TurretVariant = TurretVariant.STANDARD
     current_cooldown: int = 0
     target: Optional['Unit'] = None
     target_component_type: Optional[type] = None
+
+    def __post_init__(self) -> None:
+        if self.variant == TurretVariant.LONG_RANGE:
+            self.range *= 3.0
+            self.cooldown *= 3
 
     def fire(self) -> None:
         """
@@ -565,6 +576,10 @@ class Turret:
             effective_damage = self.damage
             if self.target.damage_amplification > 0.0:
                 effective_damage = self.damage * (1.0 + self.target.damage_amplification)
+
+            # Anti-strikecraft damage reduced to 25% against other targets
+            if self.variant == TurretVariant.ANTI_STRIKECRAFT and self.target.hull_size != HullSize.STRIKECRAFT_WING:
+                effective_damage *= 0.25
 
             if self.target_component_type:
                 logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}'s {self.target_component_type.__name__}! (effective dmg: {effective_damage:.1f})")
@@ -639,6 +654,9 @@ class Weapons(UnitComponent):
     def set_target(self, target_unit: 'Unit', target_component_type: Optional[type] = None) -> None:
         """Sets the target of the turrets to the specified unit and optionally a specific component."""
         for turret in self.turrets:
+            if target_unit and target_unit.hull_size == HullSize.STRIKECRAFT_WING and turret.variant != TurretVariant.ANTI_STRIKECRAFT:
+                # Standard and Long Range turrets cannot target strikecraft (fighter wings)
+                continue
             turret.target = target_unit
             turret.target_component_type = target_component_type
     
@@ -1270,12 +1288,19 @@ class FighterBayComponent(UnitComponent):
         if template.get("has_weapon_bays"):
             weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
             for turret_def in template.get("turrets", []):
+                variant_str = turret_def.get("variant", "STANDARD")
+                try:
+                    variant = TurretVariant[variant_str.upper()]
+                except (KeyError, ValueError, AttributeError):
+                    variant = TurretVariant.STANDARD
+
                 turret = Turret(
                     turret_type=TurretType[turret_def["type"]],
                     damage=turret_def["damage"],
                     range=turret_def["range"],
                     cooldown=turret_def["cooldown"],
-                    parent_unit=new_unit
+                    parent_unit=new_unit,
+                    variant=variant
                 )
                 weapons_comp.add_turret(turret)
             new_unit.add_component(weapons_comp)
@@ -1529,12 +1554,19 @@ class Constructor(UnitComponent):
         if template.get("has_weapon_bays"):
             weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
             for turret_def in template.get("turrets", []):
+                variant_str = turret_def.get("variant", "STANDARD")
+                try:
+                    variant = TurretVariant[variant_str.upper()]
+                except (KeyError, ValueError, AttributeError):
+                    variant = TurretVariant.STANDARD
+
                 turret = Turret(
                     turret_type=TurretType[turret_def["type"]],
                     damage=turret_def["damage"],
                     range=turret_def["range"],
                     cooldown=turret_def["cooldown"],
-                    parent_unit=new_unit
+                    parent_unit=new_unit,
+                    variant=variant
                 )
                 weapons_comp.add_turret(turret)
             new_unit.add_component(weapons_comp)

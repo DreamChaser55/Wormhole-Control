@@ -619,7 +619,7 @@ class PatrolOrder(Order):
         if not weapons or weapons.is_destroyed or not weapons.turrets:
             return None
 
-        max_range = max(t.range for t in weapons.turrets)
+        from unit_components import TurretVariant
 
         system = galaxy_ref.systems.get(self.unit.in_system)
         if not system:
@@ -634,8 +634,21 @@ class PatrolOrder(Order):
 
         for unit in hex_obj.units:
             if unit.owner != self.unit.owner and unit.current_hit_points > 0:
+                # Find maximum range of turrets that can target this unit
+                can_target = False
+                max_range_for_unit = 0.0
+                for t in weapons.turrets:
+                    if unit.hull_size == HullSize.STRIKECRAFT_WING and t.variant != TurretVariant.ANTI_STRIKECRAFT:
+                        continue
+                    can_target = True
+                    if t.range > max_range_for_unit:
+                        max_range_for_unit = t.range
+
+                if not can_target:
+                    continue
+
                 dist = distance(self.unit.position, unit.position)
-                if dist <= max_range and dist < min_dist:
+                if dist <= max_range_for_unit and dist < min_dist:
                     min_dist = dist
                     closest_enemy = unit
 
