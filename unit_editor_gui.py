@@ -214,6 +214,7 @@ class UnitEditorWindow:
         row_h = int(26 * scale_y)
         small_h = int(22 * scale_y)
         dd_h = int(28 * scale_y)
+        entry_h = int(32 * scale_y)
 
         ly = separator_y + pad
         my = separator_y + pad
@@ -355,7 +356,7 @@ class UnitEditorWindow:
         self._turret_type_dd = pygame_gui.elements.UIDropDownMenu(
             options_list=TURRET_TYPES,
             starting_option=TURRET_TYPES[0],
-            relative_rect=pygame.Rect(c2x, my, int((c2w - pad * 2) * 0.35), small_h),
+            relative_rect=pygame.Rect(c2x, my, int((c2w - pad * 2) * 0.35), entry_h),
             manager=self.manager,
             container=self._panel,
             object_id="#turret_type_dropdown",
@@ -369,7 +370,7 @@ class UnitEditorWindow:
             ("cd", "2", "_turret_cd_entry"),
         ]:
             entry = pygame_gui.elements.UITextEntryLine(
-                relative_rect=pygame.Rect(field_x, my, entry_w, small_h),
+                relative_rect=pygame.Rect(field_x, my, entry_w, entry_h),
                 manager=self.manager,
                 container=self._panel,
                 object_id="#turret_entry",
@@ -379,7 +380,7 @@ class UnitEditorWindow:
             self._elements.append(entry)
             field_x += entry_w + 3
 
-        my += small_h + 3
+        my += entry_h + 3
         # Variant dropdown next to Add Turret button
         self._turret_variant_dd = pygame_gui.elements.UIDropDownMenu(
             options_list=TURRET_VARIANTS,
@@ -414,9 +415,7 @@ class UnitEditorWindow:
         # ----------------------------------------------------------------
         c3x = self._col3_x
         c3w = self._col_w
-
-        entry_h = int(32 * scale_y)
-
+        
         def right_label(text, y):
             lbl = pygame_gui.elements.UILabel(
                 relative_rect=pygame.Rect(c3x, y, -1, row_h),

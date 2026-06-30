@@ -242,5 +242,11 @@
             "name": "arial",
             "size": "18"
         }
+    },
+    "#turret_entry": {
+        "font": {
+            "name": "arial",
+            "size": "18"
+        }
     }
 }
