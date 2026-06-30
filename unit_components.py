@@ -1628,7 +1628,7 @@ class Constructor(UnitComponent):
 
         if template.get("has_fighter_bay"):
             hull_size = new_unit.hull_size
-            if hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL, HullSize.MEDIUM):
+            if hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL):
                 logger.warning(f"Warning: Attempted to add fighter bay to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
             else:
                 new_unit.add_component(FighterBayComponent(

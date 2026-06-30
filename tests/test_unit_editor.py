@@ -139,6 +139,17 @@ class TestCustomUnitTemplateValidation(unittest.TestCase):
         t.components.has_hangar = True
         self.assertEqual(t.validate(), [])
 
+    def test_small_cannot_have_fighter_bay(self):
+        t = self._make_valid(HullSize.SMALL)
+        t.components.has_fighter_bay = True
+        errors = t.validate()
+        self.assertTrue(any("fighter" in e.lower() for e in errors) or any("bay" in e.lower() for e in errors))
+
+    def test_medium_can_have_fighter_bay(self):
+        t = self._make_valid(HullSize.MEDIUM)
+        t.components.has_fighter_bay = True
+        self.assertEqual(t.validate(), [])
+
     # ------------------------------------------------------------------ #
     # Build cost / build time
     # ------------------------------------------------------------------ #
