@@ -614,10 +614,56 @@ class Weapons(UnitComponent):
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
-        for turret in self.turrets:
-            target = turret.target
-            turret_text = f"- {turret.turret_type.name}: {turret.damage} dmg, {turret.range} range, {turret.cooldown} turns cooldown, Target: {target.name if target else 'N/A'}"
-            data.append({'type': 'label', 'text': turret_text, 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 1})
+        for i, turret in enumerate(self.turrets):
+            if i > 0:
+                # Add a small vertical space between turrets
+                data.append({
+                    'type': 'label',
+                    'text': '',
+                    'object_id': '#sidebar_info_label',
+                    'height': 5,
+                    'indent_level': 1
+                })
+            
+            variant_str = turret.variant.name.replace('_', ' ').title()
+            type_str = turret.turret_type.name.replace('_', ' ').title()
+            
+            header_text = f"• Turret {i + 1}: {variant_str} {type_str}"
+            data.append({
+                'type': 'label',
+                'text': header_text,
+                'object_id': '#sidebar_info_label',
+                'height': 20,
+                'indent_level': 1
+            })
+            
+            stats_text = f"Damage: {turret.damage} | Range: {turret.range} | Cooldown: {turret.cooldown}t"
+            data.append({
+                'type': 'label',
+                'text': stats_text,
+                'object_id': '#sidebar_info_label',
+                'height': 18,
+                'indent_level': 2
+            })
+            
+            cooldown_status = f"On Cooldown ({turret.current_cooldown}t)" if turret.current_cooldown > 0 else "Ready"
+            
+            target_str = "None"
+            if turret.target:
+                if turret.target_component_type:
+                    comp_name = getattr(turret.target_component_type, 'DISPLAY_NAME', turret.target_component_type.__name__)
+                    target_str = f"{turret.target.name} ({comp_name})"
+                else:
+                    target_str = f"{turret.target.name} (Hull)"
+                    
+            status_text = f"Status: {cooldown_status} | Target: {target_str}"
+            data.append({
+                'type': 'label',
+                'text': status_text,
+                'object_id': '#sidebar_info_label',
+                'height': 18,
+                'indent_level': 2
+            })
         return data
 
     def add_turret(self, turret: Turret) -> None:

@@ -660,3 +660,84 @@ def test_turret_variants():
     assert target_normal.current_hit_points == 475
 
 
+def test_weapons_sidebar_data():
+    # Setup unit and weapons component
+    unit = MockUnit()
+    weapons = Weapons(unit)
+    unit.add_component(weapons)
+
+    # Add standard turret
+    turret1 = Turret(
+        turret_type=TurretType.MASS_DRIVER,
+        damage=15.0,
+        range=300.0,
+        cooldown=2,
+        parent_unit=unit,
+        variant=TurretVariant.STANDARD
+    )
+    weapons.add_turret(turret1)
+
+    # Add long-range turret on cooldown, targeting Engines component of target_unit
+    target_unit = MockUnit()
+    target_unit.name = "Enemy Cruisey"
+    
+    turret2 = Turret(
+        turret_type=TurretType.BEAM,
+        damage=30.0,
+        range=200.0,
+        cooldown=3,
+        parent_unit=unit,
+        variant=TurretVariant.LONG_RANGE,
+        current_cooldown=2,
+        target=target_unit,
+        target_component_type=Engines
+    )
+    weapons.add_turret(turret2)
+
+    # Call get_sidebar_data
+    mock_game = MagicMock()
+    sidebar_data = weapons.get_sidebar_data(mock_game)
+    
+    # Assert elements exist
+    assert len(sidebar_data) > 0
+    assert sidebar_data[0]['type'] == 'label'
+    assert "Weapons" in sidebar_data[0]['text']
+
+    # Now verify turret 1 labels
+    t1_header = sidebar_data[1]
+    assert t1_header['type'] == 'label'
+    assert "Turret 1" in t1_header['text']
+    assert "Standard" in t1_header['text']
+    assert "Mass Driver" in t1_header['text']
+
+    t1_stats = sidebar_data[2]
+    assert "Damage: 15" in t1_stats['text']
+    assert "Range: 300" in t1_stats['text']
+    assert "Cooldown: 2t" in t1_stats['text']
+
+    t1_status = sidebar_data[3]
+    assert "Status: Ready" in t1_status['text']
+    assert "Target: None" in t1_status['text']
+
+    # Spacer at index 4
+    spacer = sidebar_data[4]
+    assert spacer['text'] == ''
+    assert spacer['height'] == 5
+
+    # Turret 2 at index 5
+    t2_header = sidebar_data[5]
+    assert "Turret 2" in t2_header['text']
+    assert "Long Range" in t2_header['text']
+    assert "Beam" in t2_header['text']
+
+    t2_stats = sidebar_data[6]
+    assert "Damage: 30" in t2_stats['text']
+    assert "Range: 600" in t2_stats['text']
+    assert "Cooldown: 9t" in t2_stats['text']
+
+    t2_status = sidebar_data[7]
+    assert "Status: On Cooldown (2t)" in t2_status['text']
+    assert "Target: Enemy Cruisey (Engines)" in t2_status['text']
+
+
+
