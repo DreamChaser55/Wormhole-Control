@@ -7,9 +7,9 @@ import math
 import random
 from dataclasses import dataclass, field
 import pygame
-from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType
+from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3
 from utils import HexCoord
-from geometry import distance_sq, Vector, Position, Circle
+from geometry import distance_sq, Vector, Position, Circle, hex_distance
 from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField
 import json
 import os
@@ -440,6 +440,50 @@ class Galaxy:
         potential_hexes = [h for h in system.hexes if system.hexes[h].is_empty()]
         return random.choice(potential_hexes) if potential_hexes else None
 
+    def find_wormhole_hex(self, system: StarSystem, target_system: StarSystem) -> typing.Optional[HexCoord]:
+        """Finds an empty hex in the system outskirts and in the direction of the target system."""
+        empty_hexes = [h for h in system.hexes if system.hexes[h].is_empty()]
+        if not empty_hexes:
+            return None
+
+        # Calculate direction angle from system to target_system in the galaxy map
+        dx = target_system.position.x - system.position.x
+        dy = target_system.position.y - system.position.y
+        target_angle = math.atan2(dy, dx)
+
+        # Calculate max distance among empty hexes
+        max_dist = max(hex_distance(h, (0, 0)) for h in empty_hexes)
+        # Outskirts threshold: empty hexes in the outer layers (at least max_dist - 1)
+        # Ensure we don't include the center (0, 0)
+        outskirts_threshold = max(1, max_dist - 1)
+
+        candidates = [h for h in empty_hexes if hex_distance(h, (0, 0)) >= outskirts_threshold]
+        if not candidates:
+            candidates = empty_hexes
+
+        # Select the candidate with the smallest angular difference to target_angle
+        best_hex = None
+        min_angle_diff = float('inf')
+
+        for q, r in candidates:
+            # Compute axial hex coordinates' relative pixel-like positions to estimate angle.
+            # Using pointy-top hex grid layout projection:
+            # x = SQRT3 * q + SQRT3/2 * r
+            # y = 1.5 * r
+            # (See hex_to_pixel in hexgrid_utils.py)
+            hex_x = SQRT3 * q + (SQRT3 / 2.0) * r
+            hex_y = 1.5 * r
+            hex_angle = math.atan2(hex_y, hex_x)
+
+            # Compute shortest angular difference in [0, pi]
+            angle_diff = abs((hex_angle - target_angle + math.pi) % (2.0 * math.pi) - math.pi)
+            
+            if angle_diff < min_angle_diff:
+                min_angle_diff = angle_diff
+                best_hex = (q, r)
+
+        return best_hex
+
     def add_wormhole_pair(self, sys_name_a: str, sys_name_b: str, diameter: typing.Optional[HullSize] = None):
         """Creates a pair of linked wormholes between two systems."""
         system_a = self.systems[sys_name_a]
@@ -449,8 +493,8 @@ class Galaxy:
             logger.debug(f"Error creating wormhole: System not found ({sys_name_a} or {sys_name_b})")
             return
 
-        hex_a = self.find_empty_hex(system_a)
-        hex_b = self.find_empty_hex(system_b)
+        hex_a = self.find_wormhole_hex(system_a, system_b)
+        hex_b = self.find_wormhole_hex(system_b, system_a)
 
         if hex_a is None or hex_b is None:
             logger.debug(f"Error creating wormhole: Could not find empty hex in {sys_name_a} or {sys_name_b}")
