@@ -239,53 +239,69 @@ class SectorViewRenderer:
                 pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
                 pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 5, 2)
 
-            if isinstance(obj, Unit) and (obj in self.game.selected_objects or obj == self.game.sector_view_mouse_hover_object):
+            if isinstance(obj, Unit):
                 unit_obj: Unit = obj
-                if unit_obj.engines_component and unit_obj.engines_component.move_target:
-                    target_pos_in_sector = unit_obj.engines_component.move_target
-                    target_pixel_pos = sector_coords_to_pixels(target_pos_in_sector)
-                    pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
-                    pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
-                elif unit_obj.hyperdrive_component and unit_obj.hyperdrive_component.wormhole_jump_target:
-                    target_wh_for_jump = unit_obj.hyperdrive_component.wormhole_jump_target
-                    if target_wh_for_jump.in_system == self.game.current_system_name and target_wh_for_jump.in_hex == self.game.current_sector_coord:
-                        wh_pixel_pos = sector_coords_to_pixels(target_wh_for_jump.position)
-                        pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
-                        wh_pixel_radius = int(WORMHOLE_RADIUS * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                        pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
-                elif unit_obj.commander_component and unit_obj.commander_component.current_order:
-                    order = unit_obj.commander_component.current_order
-                    if order.order_type == OrderType.MOVE and order.status in [OrderStatus.PENDING, OrderStatus.IN_PROGRESS]:
-                        dest_sys = order.parameters["destination_system_name"]
-                        dest_hex = order.parameters["destination_hex_coord"]
-                        dest_pos = order.parameters["destination_position"]
+                is_turn_player_unit = self.game.players and unit_obj.owner == self.game.players[self.game.current_player_index]
+                is_selected_or_hovered = unit_obj in self.game.selected_objects or unit_obj == self.game.sector_view_mouse_hover_object
 
-                        if dest_sys == self.game.current_system_name and dest_hex == self.game.current_sector_coord and dest_pos:
-                            target_pixel_pos = sector_coords_to_pixels(dest_pos)
-                            pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
-                            pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
-                        elif dest_sys != self.game.current_system_name:
-                            if unit_obj.in_galaxy:
-                                local_wh_for_jump = order.find_wormhole_to_system(unit_obj.in_system, dest_sys, unit_obj.in_galaxy, unit_obj.hull_size)
-                                if local_wh_for_jump and local_wh_for_jump.in_system == self.game.current_system_name and local_wh_for_jump.in_hex == self.game.current_sector_coord:
-                                    wh_pixel_pos = sector_coords_to_pixels(local_wh_for_jump.position)
-                                    pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
-                                    wh_pixel_radius = int(WORMHOLE_RADIUS * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                                    pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
-                if unit_obj.commander_component and (unit_obj in self.game.selected_objects or unit_obj == self.game.sector_view_mouse_hover_object):
-                    self._draw_sector_view_order_lines(unit_obj, obj_pixel_pos.x, obj_pixel_pos.y)
+                if is_turn_player_unit or is_selected_or_hovered:
+                    if unit_obj.engines_component and unit_obj.engines_component.move_target:
+                        target_pos_in_sector = unit_obj.engines_component.move_target
+                        target_pixel_pos = sector_coords_to_pixels(target_pos_in_sector)
+                        pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
+                        pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
+                    elif unit_obj.hyperdrive_component and unit_obj.hyperdrive_component.wormhole_jump_target:
+                        target_wh_for_jump = unit_obj.hyperdrive_component.wormhole_jump_target
+                        if target_wh_for_jump.in_system == self.game.current_system_name and target_wh_for_jump.in_hex == self.game.current_sector_coord:
+                            wh_pixel_pos = sector_coords_to_pixels(target_wh_for_jump.position)
+                            pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
+                            wh_pixel_radius = int(WORMHOLE_RADIUS * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                            pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
+                    elif unit_obj.commander_component and unit_obj.commander_component.current_order:
+                        order = unit_obj.commander_component.current_order
+                        if order.order_type == OrderType.MOVE and order.status in [OrderStatus.PENDING, OrderStatus.IN_PROGRESS]:
+                            dest_sys = order.parameters["destination_system_name"]
+                            dest_hex = order.parameters["destination_hex_coord"]
+                            dest_pos = order.parameters["destination_position"]
+
+                            if dest_sys == self.game.current_system_name and dest_hex == self.game.current_sector_coord and dest_pos:
+                                target_pixel_pos = sector_coords_to_pixels(dest_pos)
+                                pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
+                                pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
+                            elif dest_sys != self.game.current_system_name:
+                                if unit_obj.in_galaxy:
+                                    local_wh_for_jump = order.find_wormhole_to_system(unit_obj.in_system, dest_sys, unit_obj.in_galaxy, unit_obj.hull_size)
+                                    if local_wh_for_jump and local_wh_for_jump.in_system == self.game.current_system_name and local_wh_for_jump.in_hex == self.game.current_sector_coord:
+                                        wh_pixel_pos = sector_coords_to_pixels(local_wh_for_jump.position)
+                                        pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
+                                        wh_pixel_radius = int(WORMHOLE_RADIUS * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                                        pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
+                    if unit_obj.commander_component:
+                        self._draw_sector_view_order_lines(unit_obj, obj_pixel_pos.x, obj_pixel_pos.y)
                                 
+        # Collect external units targeting this sector:
+        # 1. Any selected unit (regardless of owner) that is in another sector but targeting this one
+        # 2. Any unit belonging to the current turn player that is in another sector but targeting this one
+        candidate_units = set(self.game.selected_objects)
+        current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
+        if current_turn_player and self.game.galaxy:
+            for system in self.game.galaxy.systems.values():
+                for hex_obj in system.hexes.values():
+                    for unit in hex_obj.units:
+                        if unit.owner == current_turn_player:
+                            candidate_units.add(unit)
+
         external_units_with_orders_to_this_sector = []
-        for selected_unit in self.game.selected_objects:
-            if isinstance(selected_unit, Unit):
+        for candidate_unit in candidate_units:
+            if isinstance(candidate_unit, Unit):
                 is_external_unit = (
-                    selected_unit.in_system != self.game.current_system_name or
-                    selected_unit.in_hex != self.game.current_sector_coord
+                    candidate_unit.in_system != self.game.current_system_name or
+                    candidate_unit.in_hex != self.game.current_sector_coord
                 )
-                if is_external_unit and selected_unit.commander_component:
+                if is_external_unit and candidate_unit.commander_component:
                     has_orders_to_current_sector = False
-                    if selected_unit.commander_component.current_order:
-                        order = selected_unit.commander_component.current_order
+                    if candidate_unit.commander_component.current_order:
+                        order = candidate_unit.commander_component.current_order
                         if self._order_targets_sector(order, self.game.current_system_name, self.game.current_sector_coord):
                             has_orders_to_current_sector = True
                         for sub_order in order.sub_orders:
@@ -293,7 +309,7 @@ class SectorViewRenderer:
                                 has_orders_to_current_sector = True
                                 break
                     if not has_orders_to_current_sector:
-                        for queued_order in selected_unit.commander_component.orders_queue:
+                        for queued_order in candidate_unit.commander_component.orders_queue:
                             if self._order_targets_sector(queued_order, self.game.current_system_name, self.game.current_sector_coord):
                                 has_orders_to_current_sector = True
                                 break
@@ -304,7 +320,7 @@ class SectorViewRenderer:
                             if has_orders_to_current_sector:
                                 break
                     if has_orders_to_current_sector:
-                        external_units_with_orders_to_this_sector.append(selected_unit)
+                        external_units_with_orders_to_this_sector.append(candidate_unit)
 
         self._draw_sector_view_order_lines_from_other_sectors(external_units_with_orders_to_this_sector)
 
