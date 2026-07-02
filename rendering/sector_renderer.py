@@ -244,7 +244,7 @@ class SectorViewRenderer:
                 is_turn_player_unit = self.game.players and unit_obj.owner == self.game.players[self.game.current_player_index]
                 is_selected_or_hovered = unit_obj in self.game.selected_objects or unit_obj == self.game.sector_view_mouse_hover_object
 
-                if is_turn_player_unit or is_selected_or_hovered:
+                if is_turn_player_unit:
                     if unit_obj.engines_component and unit_obj.engines_component.move_target:
                         target_pos_in_sector = unit_obj.engines_component.move_target
                         target_pixel_pos = sector_coords_to_pixels(target_pos_in_sector)
@@ -282,14 +282,18 @@ class SectorViewRenderer:
         # Collect external units targeting this sector:
         # 1. Any selected unit (regardless of owner) that is in another sector but targeting this one
         # 2. Any unit belonging to the current turn player that is in another sector but targeting this one
-        candidate_units = set(self.game.selected_objects)
         current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
-        if current_turn_player and self.game.galaxy:
-            for system in self.game.galaxy.systems.values():
-                for hex_obj in system.hexes.values():
-                    for unit in hex_obj.units:
-                        if unit.owner == current_turn_player:
-                            candidate_units.add(unit)
+        candidate_units = set()
+        if current_turn_player:
+            for obj in self.game.selected_objects:
+                if isinstance(obj, Unit) and obj.owner == current_turn_player:
+                    candidate_units.add(obj)
+            if self.game.galaxy:
+                for system in self.game.galaxy.systems.values():
+                    for hex_obj in system.hexes.values():
+                        for unit in hex_obj.units:
+                            if unit.owner == current_turn_player:
+                                candidate_units.add(unit)
 
         external_units_with_orders_to_this_sector = []
         for candidate_unit in candidate_units:

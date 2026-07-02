@@ -112,9 +112,12 @@ class GalaxyViewRenderer:
         jumps for the currently selected unit.
         """
         system_to_system_jumps = []
+        current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
+        if not current_turn_player:
+            return
         
         for selected_unit in self.game.selected_objects:
-            if isinstance(selected_unit, Unit) and selected_unit.commander_component:
+            if isinstance(selected_unit, Unit) and selected_unit.owner == current_turn_player and selected_unit.commander_component:
                 all_collected_waypoints = []
             
                 waypoint_global_sequence_counter = 0 

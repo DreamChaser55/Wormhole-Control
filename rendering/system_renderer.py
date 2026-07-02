@@ -240,16 +240,19 @@ class SystemViewRenderer:
 
     def _draw_system_view_order_lines(self, system):
         units_to_process = []
+        current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
+        if not current_turn_player:
+            return
         
         for obj in self.game.selected_objects:
             if isinstance(obj, Unit):
-                if obj.commander_component:
+                if obj.owner == current_turn_player and obj.commander_component:
                     units_to_process.append((obj, obj.in_hex))
         
         if self.game.system_view_mouse_hover_hex:
             units_in_hovered_hex = system.get_units_in_hex(self.game.system_view_mouse_hover_hex)
             for unit in units_in_hovered_hex:
-                if unit.commander_component and unit not in [u for u, _ in units_to_process]:
+                if unit.owner == current_turn_player and unit.commander_component and unit not in [u for u, _ in units_to_process]:
                     units_to_process.append((unit, self.game.system_view_mouse_hover_hex))
         
         if not units_to_process:
