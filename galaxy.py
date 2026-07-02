@@ -6,7 +6,6 @@ import typing
 import math
 import random
 from dataclasses import dataclass, field
-import pygame
 from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3
 from utils import HexCoord
 from geometry import distance_sq, Vector, Position, Circle, hex_distance
