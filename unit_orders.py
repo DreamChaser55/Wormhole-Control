@@ -634,6 +634,18 @@ class PatrolOrder(Order):
 
         for unit in hex_obj.units:
             if unit.owner != self.unit.owner and unit.current_hit_points > 0:
+                # Fighter/Bomber targeting rules
+                if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
+                    wing_comp = self.unit.strikecraft_wing_component
+                    if wing_comp:
+                        from unit_components import WingType
+                        if wing_comp.wing_type == WingType.FIGHTER:
+                            if unit.hull_size != HullSize.STRIKECRAFT_WING:
+                                continue
+                        elif wing_comp.wing_type == WingType.BOMBER:
+                            if unit.hull_size == HullSize.STRIKECRAFT_WING:
+                                continue
+
                 # Find maximum range of turrets that can target this unit
                 can_target = False
                 max_range_for_unit = 0.0
@@ -1250,14 +1262,14 @@ class DockOrder(Order):
             return
 
         docking_component = None
-        if self.unit.hull_size == HullSize.STRIKECRAFT_WING and target_carrier.fighter_bay_component:
-            docking_component = target_carrier.fighter_bay_component
+        if self.unit.hull_size == HullSize.STRIKECRAFT_WING and target_carrier.strikecraft_bay_component:
+            docking_component = target_carrier.strikecraft_bay_component
         elif target_carrier.hangar_component:
             docking_component = target_carrier.hangar_component
 
         if not docking_component:
             self.status = OrderStatus.FAILED
-            logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no compatible hangar/fighterbay for {self.unit.name}.")
+            logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no compatible hangar/strikecraftbay for {self.unit.name}.")
             return
 
         if not docking_component.can_dock(self.unit):
@@ -1314,8 +1326,8 @@ class DeployUnitOrder(Order):
             docked_units = []
             if self.unit.hangar_component:
                 docked_units.extend(self.unit.hangar_component.docked_units)
-            if self.unit.fighter_bay_component:
-                docked_units.extend(self.unit.fighter_bay_component.docked_units)
+            if self.unit.strikecraft_bay_component:
+                docked_units.extend(self.unit.strikecraft_bay_component.docked_units)
             for du in docked_units:
                 if du.id == docked_unit_id:
                     docked_name = du.name
@@ -1327,9 +1339,9 @@ class DeployUnitOrder(Order):
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
 
-        if not self.unit.hangar_component and not self.unit.fighter_bay_component:
+        if not self.unit.hangar_component and not self.unit.strikecraft_bay_component:
             self.status = OrderStatus.FAILED
-            logger.debug(f"DEPLOY_UNIT order failed: Unit {self.unit.name} has no HangarComponent or FighterBayComponent.")
+            logger.debug(f"DEPLOY_UNIT order failed: Unit {self.unit.name} has no HangarComponent or StrikecraftBayComponent.")
             return
 
         docked_unit_id = self.parameters.get("docked_unit_id")
@@ -1342,16 +1354,16 @@ class DeployUnitOrder(Order):
                     docked_unit = du
                     source_component = self.unit.hangar_component
                     break
-        if not docked_unit and self.unit.fighter_bay_component:
-            for du in self.unit.fighter_bay_component.docked_units:
+        if not docked_unit and self.unit.strikecraft_bay_component:
+            for du in self.unit.strikecraft_bay_component.docked_units:
                 if du.id == docked_unit_id:
                     docked_unit = du
-                    source_component = self.unit.fighter_bay_component
+                    source_component = self.unit.strikecraft_bay_component
                     break
 
         if not docked_unit:
             self.status = OrderStatus.FAILED
-            logger.debug(f"DEPLOY_UNIT order failed: Docked unit {docked_unit_id} not found in hangar or fighter bay.")
+            logger.debug(f"DEPLOY_UNIT order failed: Docked unit {docked_unit_id} not found in hangar or strikecraft bay.")
             return
 
         success = source_component.deploy(docked_unit, galaxy_ref)
@@ -1380,15 +1392,15 @@ class DeployAllWingsOrder(Order):
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
 
-        if not self.unit.fighter_bay_component:
+        if not self.unit.strikecraft_bay_component:
             self.status = OrderStatus.FAILED
-            logger.debug(f"DEPLOY_ALL_WINGS order failed: Unit {self.unit.name} has no FighterBayComponent.")
+            logger.debug(f"DEPLOY_ALL_WINGS order failed: Unit {self.unit.name} has no StrikecraftBayComponent.")
             return
 
-        comp = self.unit.fighter_bay_component
+        comp = self.unit.strikecraft_bay_component
         if not comp.docked_units:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"DEPLOY_ALL_WINGS: No docked fighter wings to deploy on {self.unit.name}.")
+            logger.debug(f"DEPLOY_ALL_WINGS: No docked strikecraft wings to deploy on {self.unit.name}.")
             return
 
         docked_copy = list(comp.docked_units)

@@ -332,18 +332,48 @@
     "scanner_hull_cost": 0,
     "has_weapon_bays": true,
     "weapon_bays_hull_cost": 3,
+    "wing_type": "FIGHTER",
     "turrets": [
       {
         "type": "MASS_DRIVER",
         "damage": 5,
         "range": 200,
-        "cooldown": 1
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
       }
     ],
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
     "build_time": 2,
     "build_cost": 150
+  },
+  "BOMBER_WING": {
+    "name": "Bomber Wing",
+    "hull_size": "STRIKECRAFT_WING",
+    "hull_points": 40,
+    "has_engine": true,
+    "engine_speed": 120.0,
+    "engine_hull_cost": 2,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_scanner": false,
+    "scanner_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 4,
+    "wing_type": "BOMBER",
+    "turrets": [
+      {
+        "type": "MISSILE",
+        "damage": 10,
+        "range": 250,
+        "cooldown": 2,
+        "variant": "STANDARD"
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 2,
+    "build_cost": 180
   },
   "CARRIER_STRIKECRAFT": {
     "name": "Strikecraft Carrier",
@@ -359,9 +389,9 @@
     "scanner_hull_cost": 0,
     "has_weapon_bays": false,
     "weapon_bays_hull_cost": 0,
-    "has_fighter_bay": true,
-    "fighter_bay_slots": 3,
-    "fighter_bay_hull_cost": 20,
+    "has_strikecraft_bay": true,
+    "strikecraft_bay_slots": 3,
+    "strikecraft_bay_hull_cost": 20,
     "has_constructor_component": false,
     "constructor_hull_cost": 0,
     "build_time": 15,

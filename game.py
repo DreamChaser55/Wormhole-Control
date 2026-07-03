@@ -31,7 +31,7 @@ from geometry import (
 from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
 from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent, FighterBayComponent, FighterWingComponent
+from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent, StrikecraftBayComponent, StrikecraftWingComponent
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
@@ -339,7 +339,7 @@ class Game:
             )
             carrier_unit.add_component(Engines(carrier_unit, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
             carrier_unit.add_component(Hyperdrive(carrier_unit, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
-            carrier_unit.add_component(FighterBayComponent(carrier_unit, max_slots=4, hull_cost=20))
+            carrier_unit.add_component(StrikecraftBayComponent(carrier_unit, max_slots=4, hull_cost=20))
             
             weapons = Weapons(carrier_unit, hull_cost=10)
             weapons.add_turret(Turret(
@@ -430,7 +430,7 @@ class Game:
             carrier_id = action.get('carrier_id')
             docked_unit_id = action.get('docked_unit_id')
             carrier = self.galaxy.get_unit_by_id(carrier_id)
-            if carrier and (carrier.hangar_component or carrier.fighter_bay_component):
+            if carrier and (carrier.hangar_component or carrier.strikecraft_bay_component):
                 if carrier.owner == self.players[self.current_player_index]:
                     from unit_orders import DeployUnitOrder
                     deploy_order = DeployUnitOrder(carrier, {"docked_unit_id": docked_unit_id})
@@ -441,7 +441,7 @@ class Game:
         elif action_type == 'launch_all_wings':
             carrier_id = action.get('carrier_id')
             carrier = self.galaxy.get_unit_by_id(carrier_id)
-            if carrier and carrier.fighter_bay_component:
+            if carrier and carrier.strikecraft_bay_component:
                 if carrier.owner == self.players[self.current_player_index]:
                     from unit_orders import DeployAllWingsOrder
                     deploy_order = DeployAllWingsOrder(carrier)
@@ -454,13 +454,26 @@ class Game:
             launched_unit_id = action.get('launched_unit_id')
             carrier = self.galaxy.get_unit_by_id(carrier_id)
             launched_unit = self.galaxy.get_unit_by_id(launched_unit_id)
-            if carrier and launched_unit and carrier.fighter_bay_component:
+            if carrier and launched_unit and carrier.strikecraft_bay_component:
                 if carrier.owner == self.players[self.current_player_index]:
                     from unit_orders import DockOrder
                     dock_order = DockOrder(launched_unit, {"target_carrier_id": carrier.id})
                     if launched_unit.commander_component:
                         launched_unit.commander_component.add_order(dock_order)
                         logger.debug(f"Issued DOCK order for launched wing {launched_unit.name} to dock to carrier {carrier.name}.")
+            self.sidebar_needs_update = True
+        elif action_type == 'toggle_build_wing_type':
+            carrier_id = action.get('carrier_id')
+            carrier = self.galaxy.get_unit_by_id(carrier_id)
+            if carrier and carrier.strikecraft_bay_component:
+                if carrier.owner == self.players[self.current_player_index]:
+                    from unit_components import WingType
+                    bay = carrier.strikecraft_bay_component
+                    if bay.build_wing_type == WingType.FIGHTER:
+                        bay.build_wing_type = WingType.BOMBER
+                    else:
+                        bay.build_wing_type = WingType.FIGHTER
+                    logger.debug(f"Carrier {carrier.name} build wing type toggled to {bay.build_wing_type.name}.")
             self.sidebar_needs_update = True
         elif action_type == 'component_selected':
             self.selected_component_name = action.get('component_name')

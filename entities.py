@@ -36,8 +36,8 @@ from unit_components import (
     HangarComponent,
     AbilityComponent,
     AbilityType,
-    FighterBayComponent,
-    FighterWingComponent,
+    StrikecraftBayComponent,
+    StrikecraftWingComponent,
 )
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -292,12 +292,12 @@ class Unit(GameObject):
         return self.get_component(HangarComponent)
 
     @property
-    def fighter_bay_component(self) -> typing.Optional[FighterBayComponent]:
-        return self.get_component(FighterBayComponent)
+    def strikecraft_bay_component(self) -> typing.Optional[StrikecraftBayComponent]:
+        return self.get_component(StrikecraftBayComponent)
 
     @property
-    def fighter_wing_component(self) -> typing.Optional[FighterWingComponent]:
-        return self.get_component(FighterWingComponent)
+    def strikecraft_wing_component(self) -> typing.Optional[StrikecraftWingComponent]:
+        return self.get_component(StrikecraftWingComponent)
 
     @property
     def ability_component(self) -> typing.Optional[AbilityComponent]:
@@ -384,8 +384,8 @@ class Unit(GameObject):
         if self.hangar_component:
             for docked_unit in list(self.hangar_component.docked_units):
                 docked_unit.destroy()
-        if self.fighter_bay_component:
-            for docked_unit in list(self.fighter_bay_component.docked_units):
+        if self.strikecraft_bay_component:
+            for docked_unit in list(self.strikecraft_bay_component.docked_units):
                 docked_unit.destroy()
         # Here you would add logic to remove the unit from the game,
         # e.g., by notifying the galaxy or a unit manager.
@@ -440,8 +440,8 @@ class Unit(GameObject):
         if self.ability_component and self.in_galaxy:
             self.ability_component.update(self.in_galaxy)
             
-        if self.fighter_bay_component and self.in_galaxy:
-            self.fighter_bay_component.update(self.in_galaxy)
+        if self.strikecraft_bay_component and self.in_galaxy:
+            self.strikecraft_bay_component.update(self.in_galaxy)
             
         if self.commander_component:
             self.commander_component.update()

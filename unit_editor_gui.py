@@ -53,7 +53,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_metal_refinery_component", "label": "Metal Refinery",  "cost_key": "metal_refinery_hull_cost",   "default_cost": 20, "is_dynamic": False},
     {"key": "has_crystal_refinery_component", "label": "Crystal Refinery", "cost_key": "crystal_refinery_hull_cost", "default_cost": 20, "is_dynamic": False},
     {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20, "is_dynamic": False},
-    {"key": "has_fighter_bay",           "label": "Fighter Bay",        "cost_key": "fighter_bay_hull_cost",      "default_cost": 15, "is_dynamic": False},
+    {"key": "has_strikecraft_bay",       "label": "Strikecraft Bay",    "cost_key": "strikecraft_bay_hull_cost",  "default_cost": 15, "is_dynamic": False},
     {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20, "is_dynamic": False},
     {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10, "is_dynamic": True},
 ]
@@ -543,6 +543,29 @@ class UnitEditorWindow:
 
         c2y += pad
 
+        # ---- Wing Type sub-options ----
+        wt_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
+            text="Wing Type:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(wt_lbl)
+        self._wt_lbl = wt_lbl
+        c2y += small_h
+
+        self._wt_dropdown = pygame_gui.elements.UIDropDownMenu(
+            options_list=["FIGHTER", "BOMBER"],
+            starting_option=self._comp.wing_type if hasattr(self._comp, "wing_type") else "FIGHTER",
+            relative_rect=pygame.Rect(c2x, c2y, c2w, dd_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#hd_type_dropdown",
+        )
+        self._elements.append(self._wt_dropdown)
+        c2y += dd_h + pad
+
 
         # ----------------------------------------------------------------
         # COLUMN 3 (Middle-Right): Weapons (Turrets configuration)
@@ -784,6 +807,10 @@ class UnitEditorWindow:
                 self._sync_dynamic_costs()
                 self._update_summary()
                 return "ui_handled"
+            elif elem is self._wt_dropdown:
+                self._comp.wing_type = event.text
+                self._update_summary()
+                return "ui_handled"
             elif elem is self._load_dd and event.text != "— select —":
                 self._load_design(event.text)
                 return "ui_handled"
@@ -1003,6 +1030,18 @@ class UnitEditorWindow:
                         container=container,
                         object_id="#hd_type_dropdown",
                     )
+        
+        # Wing type show/hide & enable/disable
+        if self._wt_dropdown and self._wt_lbl:
+            if self._hull_size == HullSize.STRIKECRAFT_WING:
+                self._wt_dropdown.enable()
+                self._wt_lbl.show()
+                self._wt_dropdown.show()
+            else:
+                self._wt_dropdown.disable()
+                self._wt_lbl.hide()
+                self._wt_dropdown.hide()
+
         self._update_component_toggle_labels()
         self._sync_dynamic_costs()
         self._update_capacity_label()
@@ -1231,6 +1270,20 @@ class UnitEditorWindow:
             self._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(
                 options_list=HYPERDRIVE_TYPES,
                 starting_option=self._comp.hyperdrive_type,
+                relative_rect=rect,
+                manager=self.manager,
+                container=container,
+                object_id="#hd_type_dropdown",
+            )
+
+        # Rebuild wing type dropdown selection
+        if self._wt_dropdown:
+            rect = self._wt_dropdown.get_relative_rect()
+            container = self._wt_dropdown.ui_container
+            self._wt_dropdown.kill()
+            self._wt_dropdown = pygame_gui.elements.UIDropDownMenu(
+                options_list=["FIGHTER", "BOMBER"],
+                starting_option=self._comp.wing_type if hasattr(self._comp, "wing_type") else "FIGHTER",
                 relative_rect=rect,
                 manager=self.manager,
                 container=container,

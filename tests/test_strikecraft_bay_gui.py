@@ -3,12 +3,12 @@ from unittest.mock import MagicMock
 from entities import Unit
 from geometry import Position
 from constants import HullSize
-from unit_components import FighterBayComponent, FighterWingComponent
+from unit_components import StrikecraftBayComponent, StrikecraftWingComponent
 from unit_orders import DockOrder, DeployAllWingsOrder
 from game import Game
 from tests.test_unit_components import MockPlayer
 
-def test_fighter_bay_gui_data_generation():
+def test_strikecraft_bay_gui_data_generation():
     # Mock game
     game = MagicMock()
     player = MockPlayer("Player 1")
@@ -31,9 +31,9 @@ def test_fighter_bay_gui_data_generation():
         game=game
     )
     
-    # Add FighterBayComponent
-    fighter_bay = FighterBayComponent(carrier, max_slots=2)
-    carrier.add_component(fighter_bay)
+    # Add StrikecraftBayComponent
+    strikecraft_bay = StrikecraftBayComponent(carrier, max_slots=2)
+    carrier.add_component(strikecraft_bay)
     
     # Add a docked wing
     docked_wing = Unit(
@@ -45,9 +45,9 @@ def test_fighter_bay_gui_data_generation():
         hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
-    docked_wing_comp = FighterWingComponent(docked_wing)
+    docked_wing_comp = StrikecraftWingComponent(docked_wing)
     docked_wing.add_component(docked_wing_comp)
-    fighter_bay.docked_units.append(docked_wing)
+    strikecraft_bay.docked_units.append(docked_wing)
     
     # Add a launched wing
     launched_wing = Unit(
@@ -59,13 +59,13 @@ def test_fighter_bay_gui_data_generation():
         hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
-    launched_wing_comp = FighterWingComponent(launched_wing)
+    launched_wing_comp = StrikecraftWingComponent(launched_wing)
     launched_wing.add_component(launched_wing_comp)
-    fighter_bay.launched_units.append(launched_wing)
+    strikecraft_bay.launched_units.append(launched_wing)
     
     # Setup selection
     game.selected_objects = [carrier]
-    game.selected_component_name = "Fighter Bay"
+    game.selected_component_name = "Strikecraft Bay"
     
     # Run update_side_bar_content
     import game as game_module
@@ -80,12 +80,12 @@ def test_fighter_bay_gui_data_generation():
         game.gui.update_side_bar_content.assert_called_once()
         data_list = game.gui.update_side_bar_content.call_args[0][0]
         
-        # Check that "Docked Fighter Wings:" and "Launched Fighter Wings:" are present
+        # Check that "Docked Strikecraft Wings:" and "Launched Strikecraft Wings:" are present
         labels = [d.get("text") for d in data_list if d.get("type") == "label"]
         buttons = [d for d in data_list if d.get("type") == "button"]
         
-        assert "Docked Fighter Wings:" in labels
-        assert "Launched Fighter Wings:" in labels
+        assert "Docked Strikecraft Wings:" in labels
+        assert "Launched Strikecraft Wings:" in labels
         
         # Find Deploy button
         deploy_btn = next((b for b in buttons if b["action_id"] == "deploy_ship"), None)
@@ -105,7 +105,7 @@ def test_fighter_bay_gui_data_generation():
         game_module.PROFILE = original_profile
 
 
-def test_fighter_bay_gui_data_generation_non_owner():
+def test_strikecraft_bay_gui_data_generation_non_owner():
     # Mock game
     game = MagicMock()
     player = MockPlayer("Player 1")
@@ -129,9 +129,9 @@ def test_fighter_bay_gui_data_generation_non_owner():
         game=game
     )
     
-    # Add FighterBayComponent
-    fighter_bay = FighterBayComponent(carrier, max_slots=2)
-    carrier.add_component(fighter_bay)
+    # Add StrikecraftBayComponent
+    strikecraft_bay = StrikecraftBayComponent(carrier, max_slots=2)
+    carrier.add_component(strikecraft_bay)
     
     # Add a docked wing
     docked_wing = Unit(
@@ -143,13 +143,13 @@ def test_fighter_bay_gui_data_generation_non_owner():
         hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
-    docked_wing_comp = FighterWingComponent(docked_wing)
+    docked_wing_comp = StrikecraftWingComponent(docked_wing)
     docked_wing.add_component(docked_wing_comp)
-    fighter_bay.docked_units.append(docked_wing)
+    strikecraft_bay.docked_units.append(docked_wing)
     
     # Setup selection
     game.selected_objects = [carrier]
-    game.selected_component_name = "Fighter Bay"
+    game.selected_component_name = "Strikecraft Bay"
     
     # Run update_side_bar_content
     import game as game_module
@@ -185,8 +185,8 @@ def test_recall_ship_action_handling():
         hull_size=HullSize.HUGE,
         game=game
     )
-    fighter_bay = FighterBayComponent(carrier, max_slots=2)
-    carrier.add_component(fighter_bay)
+    strikecraft_bay = StrikecraftBayComponent(carrier, max_slots=2)
+    carrier.add_component(strikecraft_bay)
     
     launched_wing = Unit(
         owner=player,
@@ -197,9 +197,9 @@ def test_recall_ship_action_handling():
         hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
-    launched_wing_comp = FighterWingComponent(launched_wing)
+    launched_wing_comp = StrikecraftWingComponent(launched_wing)
     launched_wing.add_component(launched_wing_comp)
-    fighter_bay.launched_units.append(launched_wing)
+    strikecraft_bay.launched_units.append(launched_wing)
     
     # Mock galaxy.get_unit_by_id
     game.galaxy.get_unit_by_id.side_effect = lambda uid: carrier if uid == carrier.id else (launched_wing if uid == launched_wing.id else None)
@@ -238,8 +238,8 @@ def test_launch_all_wings_action_handling():
         hull_size=HullSize.HUGE,
         game=game
     )
-    fighter_bay = FighterBayComponent(carrier, max_slots=2)
-    carrier.add_component(fighter_bay)
+    strikecraft_bay = StrikecraftBayComponent(carrier, max_slots=2)
+    carrier.add_component(strikecraft_bay)
     
     # Mock galaxy.get_unit_by_id
     game.galaxy.get_unit_by_id.side_effect = lambda uid: carrier if uid == carrier.id else None
@@ -279,13 +279,13 @@ def test_fighter_wing_gui_data_generation():
         hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
-    # Add FighterWingComponent
-    wing_comp = FighterWingComponent(wing)
+    # Add StrikecraftWingComponent
+    wing_comp = StrikecraftWingComponent(wing)
     wing.add_component(wing_comp)
     
     # Setup selection
     game.selected_objects = [wing]
-    game.selected_component_name = "Fighter Wing"
+    game.selected_component_name = "Strikecraft Wing"
     
     # Run update_side_bar_content
     import game as game_module
@@ -300,11 +300,11 @@ def test_fighter_wing_gui_data_generation():
         game.gui.update_side_bar_content.assert_called_once()
         data_list = game.gui.update_side_bar_content.call_args[0][0]
         
-        # Check that "Fighter Wing" related labels are present
+        # Check that "Strikecraft Wing" related labels are present
         labels = [d.get("text") for d in data_list if d.get("type") == "label"]
         
-        assert any("Fighter Wing" in l for l in labels)
-        assert any("Fighters: 4 / 4" in l for l in labels)
+        assert any("Strikecraft Wing" in l for l in labels)
+        assert any("Active Craft: 4 / 4" in l for l in labels)
         assert any("Mother Carrier: None" in l for l in labels)
     finally:
         game_module.PROFILE = original_profile

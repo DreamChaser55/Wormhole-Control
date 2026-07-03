@@ -43,7 +43,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_crystal_refinery_component",
         "has_ability_component",
         "has_hyperdrive",
-        "has_fighter_bay",
+        "has_strikecraft_bay",
     },
     HullSize.TINY: {
         "has_inhibitor",
@@ -54,12 +54,12 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_metal_refinery_component",
         "has_crystal_refinery_component",
         "has_ability_component",
-        "has_fighter_bay",
+        "has_strikecraft_bay",
     },
     HullSize.SMALL: {
         "has_hangar",
         "has_inhibitor",
-        "has_fighter_bay",
+        "has_strikecraft_bay",
     },
     HullSize.MEDIUM: {
         "has_hangar",
@@ -307,10 +307,13 @@ class ComponentConfig:
     hangar_slots: int = 2
     hangar_hull_cost: int = 20
 
-    # Fighter Bay
-    has_fighter_bay: bool = False
-    fighter_bay_slots: int = 2
-    fighter_bay_hull_cost: int = 15
+    # Strikecraft Bay
+    has_strikecraft_bay: bool = False
+    strikecraft_bay_slots: int = 2
+    strikecraft_bay_hull_cost: int = 15
+
+    # Wing Type (Fighter vs Bomber) - only for Strikecraft hulls
+    wing_type: str = "FIGHTER"
 
     # Hyperspace inhibitor
     has_inhibitor: bool = False
@@ -396,7 +399,7 @@ class CustomUnitTemplate:
         if c.has_metal_refinery_component:      total += c.metal_refinery_hull_cost
         if c.has_crystal_refinery_component:    total += c.crystal_refinery_hull_cost
         if c.has_hangar:                        total += c.hangar_hull_cost
-        if c.has_fighter_bay:                   total += c.fighter_bay_hull_cost
+        if c.has_strikecraft_bay:               total += c.strikecraft_bay_hull_cost
         if c.has_inhibitor:                     total += c.inhibitor_hull_cost
         if c.has_ability_component:             total += c.ability_hull_cost
         return total
@@ -438,7 +441,7 @@ class CustomUnitTemplate:
         comp_flags = {
             "has_hyperdrive": c.has_hyperdrive,
             "has_hangar": c.has_hangar,
-            "has_fighter_bay": c.has_fighter_bay,
+            "has_strikecraft_bay": c.has_strikecraft_bay,
             "has_inhibitor": c.has_inhibitor,
             "has_constructor_component": c.has_constructor_component,
             "has_repair_component": c.has_repair_component,
@@ -452,6 +455,21 @@ class CustomUnitTemplate:
                 errors.append(
                     f"Component '{flag}' is not allowed on {self.hull_size.name} hull."
                 )
+
+        # Validate Strikecraft Wing wing_type and turret variants
+        if self.hull_size == HullSize.STRIKECRAFT_WING:
+            wing_type_upper = c.wing_type.upper() if hasattr(c, "wing_type") else "FIGHTER"
+            if wing_type_upper not in ("FIGHTER", "BOMBER"):
+                errors.append(f"Invalid strikecraft wing role: {c.wing_type}. Must be FIGHTER or BOMBER.")
+            else:
+                for idx, turret in enumerate(c.turrets):
+                    variant_upper = turret.variant.upper()
+                    if wing_type_upper == "FIGHTER":
+                        if variant_upper != "ANTI_STRIKECRAFT":
+                            errors.append(f"Fighter Wing turret {idx + 1} must be ANTI_STRIKECRAFT (got {variant_upper}).")
+                    elif wing_type_upper == "BOMBER":
+                        if variant_upper == "ANTI_STRIKECRAFT":
+                            errors.append(f"Bomber Wing turret {idx + 1} cannot be ANTI_STRIKECRAFT.")
         # Advanced hyperdrive restriction
         hull_sizes = list(HullSize)
         min_idx = hull_sizes.index(ADVANCED_HYPERDRIVE_MIN_HULL)
@@ -470,7 +488,7 @@ class CustomUnitTemplate:
             c.has_constructor_component, c.has_repair_component,
             c.has_colony_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
-            c.has_hangar, c.has_fighter_bay, c.has_inhibitor, c.has_ability_component,
+            c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
         ])
         if not any_component:
             errors.append("At least one component must be enabled.")
@@ -678,9 +696,10 @@ class CustomTemplateManager:
             "hangar_slots": c.hangar_slots,
             "hangar_hull_cost": c.hangar_hull_cost,
 
-            "has_fighter_bay": c.has_fighter_bay,
-            "fighter_bay_slots": c.fighter_bay_slots,
-            "fighter_bay_hull_cost": c.fighter_bay_hull_cost,
+            "has_strikecraft_bay": c.has_strikecraft_bay,
+            "strikecraft_bay_slots": c.strikecraft_bay_slots,
+            "strikecraft_bay_hull_cost": c.strikecraft_bay_hull_cost,
+            "wing_type": c.wing_type,
 
             "has_inhibitor": c.has_inhibitor,
             "inhibitor_radius": c.inhibitor_radius,
@@ -765,9 +784,10 @@ class CustomTemplateManager:
             hangar_slots=d.get("hangar_slots", 2),
             hangar_hull_cost=d.get("hangar_hull_cost", 20),
 
-            has_fighter_bay=d.get("has_fighter_bay", False),
-            fighter_bay_slots=d.get("fighter_bay_slots", 2),
-            fighter_bay_hull_cost=d.get("fighter_bay_hull_cost", 15),
+            has_strikecraft_bay=d.get("has_strikecraft_bay", False) or d.get("has_fighter_bay", False),
+            strikecraft_bay_slots=d.get("strikecraft_bay_slots", d.get("fighter_bay_slots", 2)),
+            strikecraft_bay_hull_cost=d.get("strikecraft_bay_hull_cost", d.get("fighter_bay_hull_cost", 15)),
+            wing_type=d.get("wing_type", "FIGHTER"),
 
             has_inhibitor=d.get("has_inhibitor", False),
             inhibitor_radius=d.get("inhibitor_radius", 100.0),

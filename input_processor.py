@@ -399,7 +399,7 @@ class InputProcessor:
 
                                 can_dock_at_carrier = (
                                     (target_object.hangar_component and any(target_object.hangar_component.can_dock(a) for a in actors)) or
-                                    (target_object.fighter_bay_component and any(target_object.fighter_bay_component.can_dock(a) for a in actors))
+                                    (target_object.strikecraft_bay_component and any(target_object.strikecraft_bay_component.can_dock(a) for a in actors))
                                 )
                                 if can_dock_at_carrier:
                                     options.append(("Dock at Carrier", "dock_at_carrier"))
