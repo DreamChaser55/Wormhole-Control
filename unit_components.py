@@ -115,27 +115,21 @@ class Hyperdrive(UnitComponent):
         self.RECHARGE_DURATION = recharge_duration
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
-        status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"
+        data = super().get_sidebar_data(game_state)
         drive_type_str = self.drive_type.value if self.drive_type else 'N/A'
         
         status_detail = ""
         if self.jump_status == JumpStatus.CHARGING:
-            status_detail = f" (Charging: {self.recharge_time_remaining} turns)"
+            status_detail = f"Charging: {self.recharge_time_remaining} turns"
         elif self.jump_status == JumpStatus.JUMPING:
-            status_detail = " (Jumping)"
+            status_detail = "Jumping"
         elif self.jump_status == JumpStatus.READY:
-            status_detail = " (Ready)"
+            status_detail = "Ready"
         elif self.jump_status == JumpStatus.ERROR:
-            status_detail = " (Error)"
+            status_detail = "Error"
 
-        final_hyperdrive_text = f"Hyperdrive [{status}]: {drive_type_str}{status_detail}"
-        
-        return [{
-            'type': 'label',
-            'text': final_hyperdrive_text,
-            'object_id': '#sidebar_info_label', 
-            'height': 20
-        }]
+        data.append({'type': 'label', 'text': f"Type: {drive_type_str}  Status: {status_detail}", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
     def start_recharge(self) -> None:
         """Initiates the hyperdrive recharge sequence."""
