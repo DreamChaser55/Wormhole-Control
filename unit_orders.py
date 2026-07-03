@@ -121,7 +121,21 @@ class Order:
             if current_sub_order.status == OrderStatus.IN_PROGRESS:
                 current_sub_order.update(galaxy_ref=galaxy_ref)
 
-            if current_sub_order.status in [OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED]:
+            if current_sub_order.status == OrderStatus.FAILED:
+                self.status = OrderStatus.FAILED
+                for sub in list(self.sub_orders):
+                    sub.cancel()
+                self.sub_orders.clear()
+                return
+
+            elif current_sub_order.status == OrderStatus.CANCELLED:
+                self.status = OrderStatus.CANCELLED
+                for sub in list(self.sub_orders):
+                    sub.cancel()
+                self.sub_orders.clear()
+                return
+
+            elif current_sub_order.status == OrderStatus.COMPLETED:
                 self.sub_orders.popleft()
             else:
                 return

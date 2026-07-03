@@ -550,6 +550,13 @@ class Game:
         COLONIZE_COLOR = "#FFD700" # Gold for Colonize
         LOAD_COLONISTS_COLOR = "#ADD8E6" # Light Blue for Load Colonists
         INFO_COLOR = "#D3D3D3"       # Light Gray for general info (destinations, targets, hex/pos)
+        CONSTRUCT_COLOR = "#FF8C00"  # Dark Orange for Construct order type
+        REPAIR_COLOR = "#00FF7F"     # Spring Green for Repair order type
+        DOCK_COLOR = "#EE82EE"       # Violet for Dock order type
+        DEPLOY_COLOR = "#00FFFF"     # Cyan for Deploy order type
+        ABILITY_COLOR = "#FF69B4"    # Hot Pink for Use Ability order type
+        MINE_COLOR = "#FFA500"       # Orange for Mine
+        UNLOAD_COLOR = "#00FFFF"     # Cyan for Unload Resources
 
         if order_type == "MOVE":
             dsys = parameters.get("destination_system_name", "N/A")
@@ -643,15 +650,100 @@ class Game:
 
         elif order_type == "MINE":
             target_id = parameters.get("target_id", "Unknown")
-            mine_type_styled = f"<font color='#FFA500'><b>Mine:</b></font>"
+            mine_type_styled = f"<font color='{MINE_COLOR}'><b>Mine:</b></font>"
             target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_id}</i></font>"
             return [f"{mine_type_styled} {target_styled}"]
 
         elif order_type == "UNLOAD_RESOURCES":
             target_unit_id = parameters.get("target_unit_id", "Unknown")
-            unload_type_styled = f"<font color='#00FFFF'><b>Unload:</b></font>"
+            unload_type_styled = f"<font color='{UNLOAD_COLOR}'><b>Unload:</b></font>"
             target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
             return [f"{unload_type_styled} {target_styled}"]
+
+        elif order_type == "CONSTRUCT":
+            unit_template_name = parameters.get("unit_template_name", "Unknown Unit")
+            target_pos = parameters.get("target_position")
+            pos_str = f"({target_pos.x:.1f}, {target_pos.y:.1f})" if isinstance(target_pos, Position) else "N/A"
+            
+            construct_type_styled = f"<font color='{CONSTRUCT_COLOR}'><b>Construct:</b></font>"
+            template_styled = f"<font color='{INFO_COLOR}'><i>{unit_template_name}</i></font>"
+            pos_styled = f"<font color='{INFO_COLOR}'>{pos_str}</font>"
+            return [
+                f"{construct_type_styled} {template_styled}",
+                f"  Pos: {pos_styled}"
+            ]
+
+        elif order_type == "REPAIR":
+            target_name = state_data.get("target_name")
+            target_unit_id = state_data.get("target_unit_id")
+            lookup_success = state_data.get("lookup_success", False)
+
+            if lookup_success:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
+            elif target_unit_id:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
+            else:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Target</i></font>"
+
+            repair_type_styled = f"<font color='{REPAIR_COLOR}'><b>Repair:</b></font>"
+            return [f"{repair_type_styled} {target_unit_name_styled}"]
+
+        elif order_type == "DOCK":
+            target_name = state_data.get("target_name")
+            target_carrier_id = state_data.get("target_carrier_id")
+
+            if target_name:
+                carrier_name_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
+            elif target_carrier_id:
+                carrier_name_styled = f"<font color='{INFO_COLOR}'><i>Carrier ID: {target_carrier_id}</i></font>"
+            else:
+                carrier_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Carrier</i></font>"
+
+            dock_type_styled = f"<font color='{DOCK_COLOR}'><b>Dock:</b></font>"
+            return [f"{dock_type_styled} {carrier_name_styled}"]
+
+        elif order_type == "DEPLOY_UNIT":
+            docked_name = state_data.get("docked_name")
+            docked_unit_id = state_data.get("docked_unit_id")
+
+            if docked_name:
+                unit_name_styled = f"<font color='{INFO_COLOR}'><i>{docked_name}</i></font>"
+            elif docked_unit_id:
+                unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unit ID: {docked_unit_id}</i></font>"
+            else:
+                unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Unit</i></font>"
+
+            deploy_type_styled = f"<font color='{DEPLOY_COLOR}'><b>Deploy:</b></font>"
+            return [f"{deploy_type_styled} {unit_name_styled}"]
+
+        elif order_type == "DEPLOY_ALL_WINGS":
+            deploy_all_type_styled = f"<font color='{DEPLOY_COLOR}'><b>Deploy All Wings</b></font>"
+            return [deploy_all_type_styled]
+
+        elif order_type == "USE_ABILITY":
+            ability_type_str = parameters.get("ability_type", "Unknown")
+            target_unit_id = parameters.get("target_unit_id")
+            target_position = parameters.get("target_position")
+
+            target_name = None
+            if target_unit_id and self.galaxy:
+                target_unit = self.galaxy.get_unit_by_id(target_unit_id)
+                if target_unit:
+                    target_name = target_unit.name
+
+            ability_type_styled = f"<font color='{ABILITY_COLOR}'><b>Ability: {ability_type_str}</b></font>"
+
+            lines = [ability_type_styled]
+            if target_name:
+                lines.append(f"  Target: <font color='{INFO_COLOR}'><i>{target_name}</i></font>")
+            elif target_unit_id:
+                lines.append(f"  Target: <font color='{INFO_COLOR}'><i>ID: {target_unit_id}</i></font>")
+
+            if target_position:
+                pos_str = f"({target_position.x:.1f}, {target_position.y:.1f})" if isinstance(target_position, Position) else "N/A"
+                lines.append(f"  Pos: <font color='{INFO_COLOR}'>{pos_str}</font>")
+
+            return lines
 
         else:
             # Default styling for other order types

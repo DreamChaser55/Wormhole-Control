@@ -918,3 +918,146 @@ def test_patrol_order_combat_engagement_strikecraft():
     assert len(patrol_order.sub_orders) == 1
     assert patrol_order.sub_orders[0].order_type == OrderType.ATTACK
 
+
+def test_order_formatting():
+    from game import Game
+    from unit_orders import (
+        ConstructOrder, RepairOrder, DockOrder, DeployUnitOrder, DeployAllWingsOrder, UseAbilityOrder
+    )
+
+    class MockGame(Game):
+        def __init__(self):
+            self.galaxy = MagicMock()
+            self.sidebar_needs_update = False
+
+    game = MockGame()
+    unit = MockUnit()
+    unit.game = game
+    unit.hangar_component = None
+    unit.strikecraft_bay_component = None
+
+    # 1. ConstructOrder formatting
+    construct_order = ConstructOrder(unit, {
+        "unit_template_name": "TestStation",
+        "target_position": Position(15.5, 25.3)
+    })
+    state_data = construct_order.get_state_data()
+    lines = game._format_order_state_data(state_data)
+    assert len(lines) == 2
+    assert "Construct:" in lines[0]
+    assert "TestStation" in lines[0]
+    assert "Pos:" in lines[1]
+    assert "(15.5, 25.3)" in lines[1]
+
+    # 2. RepairOrder formatting
+    repair_order = RepairOrder(unit, {
+        "target_unit_id": 456
+    })
+    target_unit = MockUnit()
+    target_unit.id = 456
+    target_unit.name = "Friendly Ship"
+    game.galaxy.get_unit_by_id.return_value = target_unit
+    
+    state_data = repair_order.get_state_data()
+    lines = game._format_order_state_data(state_data)
+    assert len(lines) == 1
+    assert "Repair:" in lines[0]
+    assert "Friendly Ship" in lines[0]
+
+    # 3. DockOrder formatting
+    dock_order = DockOrder(unit, {
+        "target_carrier_id": 789
+    })
+    carrier_unit = MockUnit()
+    carrier_unit.id = 789
+    carrier_unit.name = "Huge Carrier"
+    game.galaxy.get_unit_by_id.return_value = carrier_unit
+
+    state_data = dock_order.get_state_data()
+    lines = game._format_order_state_data(state_data)
+    assert len(lines) == 1
+    assert "Dock:" in lines[0]
+    assert "Huge Carrier" in lines[0]
+
+    # 4. DeployUnitOrder formatting
+    deploy_order = DeployUnitOrder(unit, {
+        "docked_unit_id": 101
+    })
+    # Set docked name inside the order's state data lookup
+    state_data = deploy_order.get_state_data()
+    lines = game._format_order_state_data(state_data)
+    assert len(lines) == 1
+    assert "Deploy:" in lines[0]
+
+    # 5. DeployAllWingsOrder formatting
+    deploy_all_order = DeployAllWingsOrder(unit, {})
+    state_data = deploy_all_order.get_state_data()
+    lines = game._format_order_state_data(state_data)
+    assert len(lines) == 1
+    assert "Deploy All Wings" in lines[0]
+
+    # 6. UseAbilityOrder formatting
+    ability_order = UseAbilityOrder(unit, {
+        "ability_type": "Jump",
+        "target_unit_id": 456,
+        "target_position": Position(12.0, 34.0)
+    })
+    game.galaxy.get_unit_by_id.return_value = target_unit
+    state_data = ability_order.get_state_data()
+    lines = game._format_order_state_data(state_data)
+    assert len(lines) == 3
+    assert "Ability: Jump" in lines[0]
+    assert "Target:" in lines[1]
+    assert "Friendly Ship" in lines[1]
+    assert "Pos:" in lines[2]
+    assert "(12.0, 34.0)" in lines[2]
+
+
+def test_stationary_unit_repair_order_recursion_prevention():
+    from unit_orders import RepairOrder
+    from unit_components import RepairComponent
+    
+    unit = MockUnit()
+    unit.game = MagicMock()
+    unit.hangar_component = None
+    unit.strikecraft_bay_component = None
+    
+    # Give unit a RepairComponent but NO Engines
+    repair_comp = RepairComponent(unit)
+    unit.add_component(repair_comp)
+    assert unit.engines_component is None
+    
+    target_unit = MockUnit()
+    target_unit.id = 999
+    target_unit.name = "Damaged Friendly"
+    target_unit.owner = unit.owner
+    target_unit.current_hit_points = 50
+    target_unit.max_hit_points = 100
+    target_unit.position = Position(500, 500) # Far away, so movement is required
+    
+    # Mock game galaxy registry
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.return_value = target_unit
+    unit.game.galaxy = galaxy
+    
+    order = RepairOrder(unit, {
+        "target_unit_id": 999
+    })
+    
+    # Execute the order (this will spawn MoveOrder because target is far away)
+    order.execute(galaxy)
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert len(order.sub_orders) == 2
+    assert order.sub_orders[0].order_type == OrderType.MOVE
+    assert order.sub_orders[1].order_type == OrderType.REPAIR
+    
+    # Update the order. MoveOrder.execute will be called inside order.update.
+    # Because unit has no engines, MoveOrder.execute will fail immediately.
+    # Under our new propagation logic, this should fail the parent order cleanly.
+    order.update(galaxy)
+    
+    assert order.status == OrderStatus.FAILED
+    assert len(order.sub_orders) == 0
+
+
+
