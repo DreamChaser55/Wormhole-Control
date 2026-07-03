@@ -55,7 +55,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20, "is_dynamic": False},
     {"key": "has_fighter_bay",           "label": "Fighter Bay",        "cost_key": "fighter_bay_hull_cost",      "default_cost": 15, "is_dynamic": False},
     {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20, "is_dynamic": False},
-    {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10, "is_dynamic": False},
+    {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10, "is_dynamic": True},
 ]
 
 HULL_SIZE_NAMES = [hs.name for hs in HullSize]
@@ -899,6 +899,7 @@ class UnitEditorWindow:
             "has_hyperdrive": c.hyperdrive_hull_cost,
             "has_weapon_bays": c.weapon_bays_hull_cost,
             "has_defenses":   c.defenses_hull_cost,
+            "has_ability_component": c.ability_hull_cost,
         }
         for key, computed_cost in dynamic_values.items():
             lbl = self._comp_cost_labels.get(key)
@@ -933,6 +934,8 @@ class UnitEditorWindow:
             self._selected_abilities.add(aname)
         self._comp.abilities = list(self._selected_abilities)
         self._update_ability_toggle_labels()
+        self._sync_dynamic_costs()
+        self._update_capacity_label()
         self._update_summary()
 
     def _update_component_toggle_labels(self) -> None:

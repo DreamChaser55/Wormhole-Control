@@ -15,6 +15,7 @@ from custom_unit_templates import (
     calc_weapons_hull_cost,
     calc_defenses_hull_cost,
     calc_hyperdrive_hull_cost,
+    calc_ability_hull_cost,
     ComponentConfig,
     CustomUnitTemplate,
     SPEED_PER_HULL_POINT,
@@ -25,6 +26,8 @@ from custom_unit_templates import (
     DEFENSE_PER_HULL_POINT,
     HYPERDRIVE_BASE_COST,
     HYPERDRIVE_RANGE_PER_POINT,
+    ABILITY_BASE_COST,
+    ABILITY_COST_PER_ABILITY,
 )
 from constants import HullSize
 
@@ -199,6 +202,25 @@ class TestCalcHyperdriveCost:
 
 
 # ---------------------------------------------------------------------------
+# calc_ability_hull_cost
+# ---------------------------------------------------------------------------
+
+class TestCalcAbilityCost:
+    def test_no_abilities_gives_base_cost(self):
+        assert calc_ability_hull_cost([]) == ABILITY_BASE_COST
+
+    def test_one_ability(self):
+        assert calc_ability_hull_cost(["ion_bolt"]) == ABILITY_BASE_COST + ABILITY_COST_PER_ABILITY
+
+    def test_multiple_abilities(self):
+        assert calc_ability_hull_cost(["ion_bolt", "cluster_warhead", "repair_cloud"]) == \
+               ABILITY_BASE_COST + 3 * ABILITY_COST_PER_ABILITY
+
+    def test_result_always_int(self):
+        assert isinstance(calc_ability_hull_cost(["ion_bolt"]), int)
+
+
+# ---------------------------------------------------------------------------
 # ComponentConfig computed properties
 # ---------------------------------------------------------------------------
 
@@ -236,6 +258,14 @@ class TestComponentConfigProperties:
         c = ComponentConfig(has_defenses=False, armor=10, shields=10, point_defense=10)
         assert c.defenses_hull_cost == 0
 
+    def test_ability_hull_cost_property_uses_calc(self):
+        c = ComponentConfig(has_ability_component=True, abilities=["ion_bolt", "cluster_warhead"])
+        assert c.ability_hull_cost == calc_ability_hull_cost(["ion_bolt", "cluster_warhead"])
+
+    def test_ability_hull_cost_zero_when_disabled(self):
+        c = ComponentConfig(has_ability_component=False, abilities=["ion_bolt", "cluster_warhead"])
+        assert c.ability_hull_cost == 0
+
 
 # ---------------------------------------------------------------------------
 # CustomUnitTemplate.total_hull_cost
@@ -262,6 +292,10 @@ class TestCustomUnitTemplateHullCost:
     def test_hyperdrive_only(self):
         t = self._make(has_hyperdrive=True, hyperdrive_type="BASIC", hyperdrive_jump_range=5)
         assert t.total_hull_cost == calc_hyperdrive_hull_cost("BASIC", 5)
+
+    def test_ability_only(self):
+        t = self._make(has_ability_component=True, abilities=["ion_bolt"])
+        assert t.total_hull_cost == calc_ability_hull_cost(["ion_bolt"])
 
     def test_engine_plus_hyperdrive(self):
         t = self._make(has_engine=True, engine_speed=100.0,

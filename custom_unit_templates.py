@@ -120,6 +120,10 @@ HYPERDRIVE_BASE_COST: Dict[str, int] = {
 }
 HYPERDRIVE_RANGE_PER_POINT: float = 5.0   # jump range units per hull point
 
+# Abilities: base cost + cost per selected ability
+ABILITY_BASE_COST: int = 10
+ABILITY_COST_PER_ABILITY: int = 5
+
 
 # --------------------------------------------------------------------------
 # Dynamic hull-cost calculation functions
@@ -212,6 +216,14 @@ def calc_hyperdrive_hull_cost(drive_type: str, jump_range: int) -> int:
     base = HYPERDRIVE_BASE_COST.get(drive_type.upper(), HYPERDRIVE_BASE_COST["BASIC"])
     range_cost = math.ceil(max(0, jump_range) / HYPERDRIVE_RANGE_PER_POINT)
     return max(1, base + range_cost)
+
+
+def calc_ability_hull_cost(abilities: List[str]) -> int:
+    """Compute the hull cost of an Ability component from its list of selected abilities.
+
+    Formula: ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY
+    """
+    return ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY
 
 
 # --------------------------------------------------------------------------
@@ -307,7 +319,6 @@ class ComponentConfig:
 
     # Abilities
     has_ability_component: bool = False
-    ability_hull_cost: int = 10
     abilities: List[str] = dataclasses.field(default_factory=list)
 
     # ------------------------------------------------------------------
@@ -341,6 +352,13 @@ class ComponentConfig:
         if not self.has_hyperdrive:
             return 0
         return calc_hyperdrive_hull_cost(self.hyperdrive_type, self.hyperdrive_jump_range)
+
+    @property
+    def ability_hull_cost(self) -> int:
+        """Hull cost of Abilities, computed from the number of abilities."""
+        if not self.has_ability_component:
+            return 0
+        return calc_ability_hull_cost(self.abilities)
 
 
 # --------------------------------------------------------------------------
@@ -756,7 +774,6 @@ class CustomTemplateManager:
             inhibitor_hull_cost=d.get("inhibitor_hull_cost", 20),
 
             has_ability_component=d.get("has_ability_component", False),
-            ability_hull_cost=d.get("ability_hull_cost", 10),
             abilities=d.get("abilities", []),
         )
 
