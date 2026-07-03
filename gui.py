@@ -755,7 +755,15 @@ class GUI_Handler:
                 action_id = button_data['action_id']
                 target_data = button_data['target_data']
 
-                if action_id == 'toggle_orders_queue':
+                if action_id == 'unload_resources_nearest':
+                    keys = pygame.key.get_pressed()
+                    shift_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
+                    action_result = {
+                        'action': 'unload_resources_nearest',
+                        'unit_id': target_data,
+                        'shift_pressed': shift_pressed
+                    }
+                elif action_id == 'toggle_orders_queue':
                     section_key = f"{target_data}_orders_queue"
                     current_state_before_toggle = self.is_section_expanded(section_key)
                     self.toggle_section_expansion(section_key)

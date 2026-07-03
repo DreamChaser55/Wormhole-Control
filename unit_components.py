@@ -934,6 +934,15 @@ class MiningComponent(UnitComponent):
         crystal = int(self.raw_crystal_cargo)
         max_c = int(self.max_cargo)
         data.append({'type': 'label', 'text': f"Raw Cargo: {metal} Metal, {crystal} Crystal / {max_c}", 'object_id': '#sidebar_info_label', 'height': 20})
+        if self.raw_metal_cargo > 0 or self.raw_crystal_cargo > 0:
+            data.append({
+                'type': 'button',
+                'text': "Unload to Nearest Refinery",
+                'object_id': '#sidebar_expand_button',
+                'action_id': 'unload_resources_nearest',
+                'target_data': self.unit.id,
+                'height': 25
+            })
         if self.mining_target:
             data.append({'type': 'label', 'text': f"Mining Target: {self.mining_target.name}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data

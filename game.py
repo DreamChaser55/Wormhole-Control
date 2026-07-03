@@ -466,6 +466,68 @@ class Game:
                         bay.build_wing_type = WingType.FIGHTER
                     logger.debug(f"Carrier {carrier.name} build wing type toggled to {bay.build_wing_type.name}.")
             self.sidebar_needs_update = True
+        elif action_type == 'unload_resources_nearest':
+            unit_id = action.get('unit_id')
+            shift_pressed = action.get('shift_pressed', False)
+            unit = self.galaxy.get_unit_by_id(unit_id)
+            if unit and getattr(unit, 'mining_component', None) is not None:
+                mining_comp = unit.mining_component
+                from geometry import distance, hex_distance
+                from pathfinding import find_intersystem_path
+                from unit_orders import UnloadResourcesOrder
+
+                friendly_refineries = []
+                for system in self.galaxy.systems.values():
+                    for hex_obj in system.hexes.values():
+                        for u in hex_obj.units:
+                            if u.owner == unit.owner:
+                                if getattr(u, 'metal_refinery_component', None) is not None or \
+                                   getattr(u, 'crystal_refinery_component', None) is not None:
+                                    friendly_refineries.append(u)
+
+                def get_dist_to_refinery(refinery):
+                    if unit.in_system == refinery.in_system:
+                        if unit.in_hex == refinery.in_hex:
+                            return distance(unit.position, refinery.position)
+                        else:
+                            return hex_distance(unit.in_hex, refinery.in_hex) * 10000.0
+                    else:
+                        path = find_intersystem_path(self.galaxy.system_graph, unit.in_system, refinery.in_system, unit.hull_size)
+                        if path is None:
+                            return float('inf')
+                        return (len(path) - 1) * 1000000.0 + hex_distance(unit.in_hex, refinery.in_hex) * 10000.0
+
+                nearest_metal = None
+                min_metal_dist = float('inf')
+                nearest_crystal = None
+                min_crystal_dist = float('inf')
+
+                for r in friendly_refineries:
+                    dist = get_dist_to_refinery(r)
+                    if dist == float('inf'):
+                        continue
+                    if getattr(r, 'metal_refinery_component', None) is not None:
+                        if dist < min_metal_dist:
+                            min_metal_dist = dist
+                            nearest_metal = r
+                    if getattr(r, 'crystal_refinery_component', None) is not None:
+                        if dist < min_crystal_dist:
+                            min_crystal_dist = dist
+                            nearest_crystal = r
+
+                orders_to_add = []
+                if mining_comp.raw_metal_cargo > 0 and nearest_metal is not None:
+                    orders_to_add.append(UnloadResourcesOrder(unit, {"target_unit_id": nearest_metal.id}))
+                if mining_comp.raw_crystal_cargo > 0 and nearest_crystal is not None:
+                    orders_to_add.append(UnloadResourcesOrder(unit, {"target_unit_id": nearest_crystal.id}))
+
+                if orders_to_add:
+                    if not shift_pressed:
+                        unit.commander_component.clear_orders()
+                    for order in orders_to_add:
+                        unit.commander_component.add_order(order)
+                        logger.debug(f"Added UnloadResourcesOrder to unit {unit.name} queue targeting refinery ID {order.parameters['target_unit_id']}.")
+            self.sidebar_needs_update = True
         elif action_type == 'component_selected':
             self.selected_component_name = action.get('component_name')
             self.sidebar_needs_update = True
