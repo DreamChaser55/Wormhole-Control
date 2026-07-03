@@ -112,7 +112,7 @@ def test_move_order_plan_route_multi_stage_hex_jump():
     order = MoveOrder(unit, {
         "destination_system_name": "Sol",
         "destination_hex_coord": (0, 5),
-        "destination_position": Position(0, 0)
+        "destination_position": Position(100, 100)
     })
     
     mock_hex = MagicMock()
@@ -134,8 +134,11 @@ def test_move_order_plan_route_multi_stage_hex_jump():
     # (0,2), (0,3), and (0,5)
     assert len(order.sub_orders) == 3
     assert order.sub_orders[0].parameters["destination_hex_coord"] == (0, 2)
+    assert order.sub_orders[0].parameters["destination_position"] == Position(0, 0)
     assert order.sub_orders[1].parameters["destination_hex_coord"] == (0, 3)
+    assert order.sub_orders[1].parameters["destination_position"] == Position(0, 0)
     assert order.sub_orders[2].parameters["destination_hex_coord"] == (0, 5)
+    assert order.sub_orders[2].parameters["destination_position"] == Position(100, 100)
 
 def test_toggle_inhibitor_order():
     unit = MockUnit()

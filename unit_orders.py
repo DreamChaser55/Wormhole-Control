@@ -334,7 +334,7 @@ class MoveOrder(Order):
             
             for i, waypoint_hex in enumerate(waypoints):
                 is_final = (i == len(waypoints) - 1)
-                waypoint_pos = end_pos if is_final else hex_to_pixel(waypoint_hex[0], waypoint_hex[1])
+                waypoint_pos = end_pos if is_final else Position(0.0, 0.0)
                 self.handle_inhibited_waypoint(waypoint_hex, waypoint_pos, is_final_destination=is_final, system_name=system_name, galaxy_ref=galaxy_ref)
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Added waypoint {i+1}/{len(waypoints)} at hex {waypoint_hex}.")
 
