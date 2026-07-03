@@ -8,10 +8,16 @@ so that create_unit_from_template() works without modification.
 
 Designs are persisted to data/custom_unit_templates.json so they survive
 game restarts.
+
+Component hull costs for Engines, Weapons, Defenses, and Hyperdrive are
+**computed dynamically** from their performance parameters using the
+calc_*_hull_cost() functions in this module.  All other components retain
+fixed hull costs.
 """
 
 import json
 import logging
+import math
 import os
 import dataclasses
 from typing import Dict, List, Optional, Any
@@ -90,6 +96,125 @@ COMPONENT_COST_PER_HULL_POINT = 30  # credits per hull capacity point used
 
 
 # --------------------------------------------------------------------------
+# Dynamic hull-cost tuning constants
+# --------------------------------------------------------------------------
+
+# Engines: 1 hull point per SPEED_PER_HULL_POINT units of speed.
+# Speed 100 → hull cost 5.
+SPEED_PER_HULL_POINT: float = 20.0
+
+# Weapons: per-turret formula components
+BASE_TURRET_COST: float = 1.0          # flat per turret
+DMG_PER_POINT: float = 5.0             # hull points per unit of damage
+RANGE_PER_POINT: float = 100.0         # hull points per unit of range
+COOLDOWN_BONUS: float = 2.0            # hull points granted by short cooldown
+
+# Defenses: 1 hull point per DEFENSE_PER_HULL_POINT total defense rating.
+# armor=5 + shields=5 + pd=5 → hull cost 5.
+DEFENSE_PER_HULL_POINT: float = 3.0
+
+# Hyperdrive: base costs per drive type + cost per jump range unit.
+HYPERDRIVE_BASE_COST: Dict[str, int] = {
+    "BASIC": 3,
+    "ADVANCED": 7,
+}
+HYPERDRIVE_RANGE_PER_POINT: float = 5.0   # jump range units per hull point
+
+
+# --------------------------------------------------------------------------
+# Dynamic hull-cost calculation functions
+# --------------------------------------------------------------------------
+
+def calc_engine_hull_cost(speed: float) -> int:
+    """Compute the hull cost of an Engines component from its speed.
+
+    Formula: ceil(speed / SPEED_PER_HULL_POINT), minimum 1.
+
+    Examples:
+        speed=100 → 5
+        speed=200 → 10
+        speed=50  → 3
+    """
+    if speed <= 0:
+        return 0
+    return max(1, math.ceil(speed / SPEED_PER_HULL_POINT))
+
+
+def calc_turret_hull_cost(turret: 'TurretConfig') -> int:
+    """Compute the hull cost of a single turret based on its stats.
+
+    Formula:
+        BASE_TURRET_COST
+        + damage / DMG_PER_POINT
+        + range / RANGE_PER_POINT
+        + COOLDOWN_BONUS / max(1, cooldown)
+
+    Note: Long-Range turrets already triple their effective range and cooldown
+    in Turret.__post_init__, so the stored config values are pre-variant.
+    We apply the variant multiplier here to price LONG_RANGE accordingly.
+    """
+    effective_range = turret.range
+    effective_cooldown = max(1, turret.cooldown)
+
+    if turret.variant.upper() == "LONG_RANGE":
+        effective_range *= 3.0
+        effective_cooldown *= 3
+
+    cost = (
+        BASE_TURRET_COST
+        + turret.damage / DMG_PER_POINT
+        + effective_range / RANGE_PER_POINT
+        + COOLDOWN_BONUS / effective_cooldown
+    )
+    return max(1, math.ceil(cost))
+
+
+def calc_weapons_hull_cost(turrets: List['TurretConfig']) -> int:
+    """Compute the total hull cost of a Weapons component from its turrets.
+
+    Returns 0 if no turrets are configured (0 hull used, but component still
+    may be toggled on — the UI should enforce at least 1 turret if weapons
+    are enabled).
+    """
+    if not turrets:
+        return 0
+    return sum(calc_turret_hull_cost(t) for t in turrets)
+
+
+def calc_defenses_hull_cost(armor: int, shields: int, point_defense: int) -> int:
+    """Compute the hull cost of a Defenses component from its stats.
+
+    Formula: ceil((armor + shields + point_defense) / DEFENSE_PER_HULL_POINT),
+    minimum 1.
+
+    Examples:
+        armor=5, shields=5, pd=5 → 5
+        armor=10, shields=10, pd=10 → 10
+        all zeros → 0 (not enabled)
+    """
+    total = armor + shields + point_defense
+    if total <= 0:
+        return 0
+    return max(1, math.ceil(total / DEFENSE_PER_HULL_POINT))
+
+
+def calc_hyperdrive_hull_cost(drive_type: str, jump_range: int) -> int:
+    """Compute the hull cost of a Hyperdrive component.
+
+    Formula: HYPERDRIVE_BASE_COST[drive_type] + ceil(jump_range / RANGE_PER_POINT),
+    minimum 1.
+
+    Examples:
+        BASIC,    range=5  → 3 + 1 = 4
+        ADVANCED, range=5  → 7 + 1 = 8
+        BASIC,    range=10 → 3 + 2 = 5
+    """
+    base = HYPERDRIVE_BASE_COST.get(drive_type.upper(), HYPERDRIVE_BASE_COST["BASIC"])
+    range_cost = math.ceil(max(0, jump_range) / HYPERDRIVE_RANGE_PER_POINT)
+    return max(1, base + range_cost)
+
+
+# --------------------------------------------------------------------------
 # Turret definition
 # --------------------------------------------------------------------------
 @dataclasses.dataclass
@@ -106,28 +231,34 @@ class TurretConfig:
 # --------------------------------------------------------------------------
 @dataclasses.dataclass
 class ComponentConfig:
-    """Configuration for every component type that can appear in a design."""
+    """Configuration for every component type that can appear in a design.
+
+    Hull costs for Engines, Weapons, Defenses, and Hyperdrive are computed
+    dynamically from their performance parameters.  All other components
+    use fixed hull costs stored as plain fields.
+    """
     # Engines
     has_engine: bool = False
     engine_speed: float = 100.0
-    engine_hull_cost: int = 5
+    # hull cost is computed: see engine_hull_cost property
 
     # Hyperdrive
     has_hyperdrive: bool = False
     hyperdrive_type: str = "BASIC"      # "BASIC" or "ADVANCED"
-    hyperdrive_hull_cost: int = 5
+    hyperdrive_jump_range: int = 5      # in hexes
+    # hull cost is computed: see hyperdrive_hull_cost property
 
     # Weapons
     has_weapon_bays: bool = False
-    weapon_bays_hull_cost: int = 10
     turrets: List[TurretConfig] = dataclasses.field(default_factory=list)
+    # hull cost is computed: see weapon_bays_hull_cost property
 
     # Defenses
     has_defenses: bool = False
-    defenses_hull_cost: int = 10
     armor: int = 0
     shields: int = 0
     point_defense: int = 0
+    # hull cost is computed: see defenses_hull_cost property
 
     # Constructor
     has_constructor_component: bool = False
@@ -179,11 +310,37 @@ class ComponentConfig:
     ability_hull_cost: int = 10
     abilities: List[str] = dataclasses.field(default_factory=list)
 
-    def __post_init__(self):
-        if self.hyperdrive_type == "BASIC":
-            self.hyperdrive_hull_cost = 5
-        elif self.hyperdrive_type == "ADVANCED":
-            self.hyperdrive_hull_cost = 10
+    # ------------------------------------------------------------------
+    # Computed hull-cost properties for dynamic components
+    # ------------------------------------------------------------------
+
+    @property
+    def engine_hull_cost(self) -> int:
+        """Hull cost of Engines, computed from engine_speed."""
+        if not self.has_engine:
+            return 0
+        return calc_engine_hull_cost(self.engine_speed)
+
+    @property
+    def weapon_bays_hull_cost(self) -> int:
+        """Hull cost of Weapons, computed from turret list."""
+        if not self.has_weapon_bays:
+            return 0
+        return calc_weapons_hull_cost(self.turrets)
+
+    @property
+    def defenses_hull_cost(self) -> int:
+        """Hull cost of Defenses, computed from armor/shields/point_defense."""
+        if not self.has_defenses:
+            return 0
+        return calc_defenses_hull_cost(self.armor, self.shields, self.point_defense)
+
+    @property
+    def hyperdrive_hull_cost(self) -> int:
+        """Hull cost of Hyperdrive, computed from type and jump_range."""
+        if not self.has_hyperdrive:
+            return 0
+        return calc_hyperdrive_hull_cost(self.hyperdrive_type, self.hyperdrive_jump_range)
 
 
 # --------------------------------------------------------------------------
@@ -203,22 +360,27 @@ class CustomUnitTemplate:
 
     @property
     def total_hull_cost(self) -> int:
-        """Sum of hull costs for all enabled components."""
+        """Sum of hull costs for all enabled components.
+
+        Dynamic components (Engines, Weapons, Defenses, Hyperdrive) use
+        their computed properties; fixed components use their stored values.
+        """
         c = self.components
         total = 0
-        if c.has_engine:            total += c.engine_hull_cost
-        if c.has_hyperdrive:        total += c.hyperdrive_hull_cost
-        if c.has_weapon_bays:       total += c.weapon_bays_hull_cost
-        if c.has_constructor_component: total += c.constructor_hull_cost
-        if c.has_repair_component:  total += c.repair_hull_cost
-        if c.has_colony_component:  total += c.colony_hull_cost
-        if c.has_mining_component:  total += c.mining_hull_cost
-        if c.has_metal_refinery_component: total += c.metal_refinery_hull_cost
-        if c.has_crystal_refinery_component: total += c.crystal_refinery_hull_cost
-        if c.has_hangar:            total += c.hangar_hull_cost
-        if c.has_fighter_bay:       total += c.fighter_bay_hull_cost
-        if c.has_inhibitor:         total += c.inhibitor_hull_cost
-        if c.has_ability_component: total += c.ability_hull_cost
+        if c.has_engine:                        total += c.engine_hull_cost
+        if c.has_hyperdrive:                    total += c.hyperdrive_hull_cost
+        if c.has_weapon_bays:                   total += c.weapon_bays_hull_cost
+        if c.has_defenses:                      total += c.defenses_hull_cost
+        if c.has_constructor_component:         total += c.constructor_hull_cost
+        if c.has_repair_component:              total += c.repair_hull_cost
+        if c.has_colony_component:              total += c.colony_hull_cost
+        if c.has_mining_component:              total += c.mining_hull_cost
+        if c.has_metal_refinery_component:      total += c.metal_refinery_hull_cost
+        if c.has_crystal_refinery_component:    total += c.crystal_refinery_hull_cost
+        if c.has_hangar:                        total += c.hangar_hull_cost
+        if c.has_fighter_bay:                   total += c.fighter_bay_hull_cost
+        if c.has_inhibitor:                     total += c.inhibitor_hull_cost
+        if c.has_ability_component:             total += c.ability_hull_cost
         return total
 
     @property
@@ -280,6 +442,9 @@ class CustomUnitTemplate:
                 errors.append(
                     f"ADVANCED hyperdrive requires at least {ADVANCED_HYPERDRIVE_MIN_HULL.name} hull."
                 )
+        # Jump range must be positive
+        if c.has_hyperdrive and c.hyperdrive_jump_range < 1:
+            errors.append("Hyperdrive jump range must be at least 1.")
         # At least one meaningful component
         any_component = any([
             c.has_engine, c.has_hyperdrive, c.has_weapon_bays,
@@ -418,7 +583,13 @@ class CustomTemplateManager:
         UNIT_TEMPLATES.pop(key, None)
 
     def _template_to_dict(self, template: CustomUnitTemplate) -> Dict[str, Any]:
-        """Convert a CustomUnitTemplate to the unit_templates.json dict format."""
+        """Convert a CustomUnitTemplate to the unit_templates.json dict format.
+
+        Dynamic hull costs (Engines, Weapons, Defenses, Hyperdrive) are stored
+        as computed values so that create_unit_from_template() picks them up
+        correctly.  Performance parameters are also stored so the design can
+        be reconstructed faithfully on load.
+        """
         c = template.components
         d: Dict[str, Any] = {
             "name": template.display_name,
@@ -427,16 +598,20 @@ class CustomTemplateManager:
             "build_time": template.build_time,
             "build_cost": template.build_cost,
 
+            # --- Engines ---
             "has_engine": c.has_engine,
             "engine_speed": c.engine_speed,
-            "engine_hull_cost": c.engine_hull_cost,
+            "engine_hull_cost": c.engine_hull_cost,  # computed
 
+            # --- Hyperdrive ---
             "has_hyperdrive": c.has_hyperdrive,
             "hyperdrive_type": c.hyperdrive_type,
-            "hyperdrive_hull_cost": c.hyperdrive_hull_cost,
+            "hyperdrive_jump_range": c.hyperdrive_jump_range,
+            "hyperdrive_hull_cost": c.hyperdrive_hull_cost,  # computed
 
+            # --- Weapons ---
             "has_weapon_bays": c.has_weapon_bays,
-            "weapon_bays_hull_cost": c.weapon_bays_hull_cost,
+            "weapon_bays_hull_cost": c.weapon_bays_hull_cost,  # computed
             "turrets": [
                 {
                     "type": t.turret_type,
@@ -448,12 +623,14 @@ class CustomTemplateManager:
                 for t in c.turrets
             ],
 
+            # --- Defenses ---
             "has_defenses": c.has_defenses,
-            "defenses_hull_cost": c.defenses_hull_cost,
+            "defenses_hull_cost": c.defenses_hull_cost,  # computed
             "armor": c.armor,
             "shields": c.shields,
             "point_defense": c.point_defense,
 
+            # --- Fixed-cost components ---
             "has_constructor_component": c.has_constructor_component,
             "constructor_hull_cost": c.constructor_hull_cost,
 
@@ -500,7 +677,12 @@ class CustomTemplateManager:
         return d
 
     def _dict_to_template(self, key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
-        """Reconstruct a CustomUnitTemplate from its persisted dict form."""
+        """Reconstruct a CustomUnitTemplate from its persisted dict form.
+
+        Performance parameters are loaded from the dict.  Hull costs for
+        dynamic components are NOT read from the dict — they are recomputed
+        from the performance parameters to ensure correctness.
+        """
         # hull_size stored as string in JSON
         hull_size_raw = d.get("hull_size", "MEDIUM")
         if isinstance(hull_size_raw, str):
@@ -520,24 +702,23 @@ class CustomTemplateManager:
         ]
 
         comp = ComponentConfig(
+            # --- Dynamic components: load performance params only ---
             has_engine=d.get("has_engine", False),
             engine_speed=d.get("engine_speed", 100.0),
-            engine_hull_cost=d.get("engine_hull_cost", 5),
 
             has_hyperdrive=d.get("has_hyperdrive", False),
             hyperdrive_type=d.get("hyperdrive_type", "BASIC"),
-            hyperdrive_hull_cost=d.get("hyperdrive_hull_cost", 10),
+            hyperdrive_jump_range=d.get("hyperdrive_jump_range", 5),
 
             has_weapon_bays=d.get("has_weapon_bays", False),
-            weapon_bays_hull_cost=d.get("weapon_bays_hull_cost", 10),
             turrets=turrets,
 
             has_defenses=d.get("has_defenses", False),
-            defenses_hull_cost=d.get("defenses_hull_cost", 10),
             armor=d.get("armor", 0),
             shields=d.get("shields", 0),
             point_defense=d.get("point_defense", 0),
 
+            # --- Fixed-cost components ---
             has_constructor_component=d.get("has_constructor_component", False),
             constructor_hull_cost=d.get("constructor_hull_cost", 15),
 

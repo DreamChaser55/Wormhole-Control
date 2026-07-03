@@ -8,13 +8,14 @@ The editor is intentionally structured as a plain UIPanel (not a UIWindow)
 so we have full layout control.  It can be shown/hidden without destroying
 and recreating all child elements.
 
-Layout (three columns inside a full-height panel on the right side):
-  ┌────────────────────────────────────────────────────────────────┐
-  │  UNIT DESIGNER                                     [X Close]   │
-  ├──────────────────────┬─────────────────────────────────────────┤
-  │  LEFT: Hull &        │  RIGHT: Summary & Actions               │
-  │  Components          │                                         │
-  └──────────────────────┴─────────────────────────────────────────┘
+Layout (four columns inside a full-height panel):
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  UNIT DESIGNER                                          [X Close]   │
+  ├────────────────┬──────────────────┬──────────────────┬──────────────┤
+  │  COL1:         │  COL2:           │  COL3:           │  COL4:       │
+  │  Config &      │  Components      │  Turrets &       │  Abilities & │
+  │  Save/Load     │  (toggle+cost)   │  sub-options     │  Summary     │
+  └────────────────┴──────────────────┴──────────────────┴──────────────┘
 """
 
 import logging
@@ -26,30 +27,35 @@ from constants import HullSize, HULL_CAPACITIES, TEXT_SCALE
 from custom_unit_templates import (
     CustomUnitTemplate, ComponentConfig, TurretConfig,
     CustomTemplateManager, HULL_RESTRICTIONS, ADVANCED_HYPERDRIVE_MIN_HULL,
+    calc_engine_hull_cost, calc_weapons_hull_cost, calc_defenses_hull_cost,
+    calc_hyperdrive_hull_cost,
 )
 from unit_components import AbilityType, TurretType, TurretVariant
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Component catalogue — defines order, labels, hull-cost defaults
+# Component catalogue — defines order and labels.
+# Dynamic components (Engines, Hyperdrive, Weapons, Defenses) have
+# is_dynamic=True; their hull cost is computed at runtime.
+# Fixed components carry a default_cost that is editable.
 # ---------------------------------------------------------------------------
 
 COMPONENT_ROWS: typing.List[typing.Dict] = [
-    {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5},
-    {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 5},
-    {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10},
-    {"key": "has_defenses",              "label": "Defenses",           "cost_key": "defenses_hull_cost",         "default_cost": 10},
-    {"key": "has_constructor_component", "label": "Constructor",        "cost_key": "constructor_hull_cost",      "default_cost": 15},
-    {"key": "has_repair_component",      "label": "Repair",             "cost_key": "repair_hull_cost",           "default_cost": 15},
-    {"key": "has_colony_component",      "label": "Colony",             "cost_key": "colony_hull_cost",           "default_cost": 10},
-    {"key": "has_mining_component",      "label": "Mining",             "cost_key": "mining_hull_cost",           "default_cost": 10},
-    {"key": "has_metal_refinery_component", "label": "Metal Refinery",  "cost_key": "metal_refinery_hull_cost",   "default_cost": 20},
-    {"key": "has_crystal_refinery_component", "label": "Crystal Refinery", "cost_key": "crystal_refinery_hull_cost", "default_cost": 20},
-    {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20},
-    {"key": "has_fighter_bay",           "label": "Fighter Bay",        "cost_key": "fighter_bay_hull_cost",      "default_cost": 15},
-    {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20},
-    {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10},
+    {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5,  "is_dynamic": True},
+    {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 5,  "is_dynamic": True},
+    {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10, "is_dynamic": True},
+    {"key": "has_defenses",              "label": "Defenses",           "cost_key": "defenses_hull_cost",         "default_cost": 10, "is_dynamic": True},
+    {"key": "has_constructor_component", "label": "Constructor",        "cost_key": "constructor_hull_cost",      "default_cost": 15, "is_dynamic": False},
+    {"key": "has_repair_component",      "label": "Repair",             "cost_key": "repair_hull_cost",           "default_cost": 15, "is_dynamic": False},
+    {"key": "has_colony_component",      "label": "Colony",             "cost_key": "colony_hull_cost",           "default_cost": 10, "is_dynamic": False},
+    {"key": "has_mining_component",      "label": "Mining",             "cost_key": "mining_hull_cost",           "default_cost": 10, "is_dynamic": False},
+    {"key": "has_metal_refinery_component", "label": "Metal Refinery",  "cost_key": "metal_refinery_hull_cost",   "default_cost": 20, "is_dynamic": False},
+    {"key": "has_crystal_refinery_component", "label": "Crystal Refinery", "cost_key": "crystal_refinery_hull_cost", "default_cost": 20, "is_dynamic": False},
+    {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20, "is_dynamic": False},
+    {"key": "has_fighter_bay",           "label": "Fighter Bay",        "cost_key": "fighter_bay_hull_cost",      "default_cost": 15, "is_dynamic": False},
+    {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20, "is_dynamic": False},
+    {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10, "is_dynamic": False},
 ]
 
 HULL_SIZE_NAMES = [hs.name for hs in HullSize]
@@ -145,8 +151,17 @@ class UnitEditorWindow:
         self._turret_cd_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._turret_variant_dd: typing.Optional[pygame_gui.elements.UIDropDownMenu] = None
 
-        # Hyperdrive type dropdown
+        # Hyperdrive type dropdown + jump range entry
         self._hd_type_dropdown: typing.Optional[pygame_gui.elements.UIDropDownMenu] = None
+        self._hd_jump_range_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+
+        # Engine speed entry
+        self._engine_speed_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+
+        # Defenses sub-entries
+        self._armor_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._shields_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._pd_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
 
         # Ability checkboxes (UIButton toggles)
         self._ability_buttons: typing.Dict[str, pygame_gui.elements.UIButton] = {}
@@ -232,7 +247,7 @@ class UnitEditorWindow:
         # ----------------------------------------------------------------
         # COLUMN 1 (Left): Configuration & Files (Basic info, Save/Load/Delete)
         # ----------------------------------------------------------------
-        
+
         # Hull Size dropdown
         hull_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c1x, c1y, c1w, row_h),
@@ -398,7 +413,8 @@ class UnitEditorWindow:
 
             key = row["key"]
             label = row["label"]
-            cost = row["default_cost"]
+            # For dynamic components, show "~" to indicate it's computed
+            cost_display = "~" if row["is_dynamic"] else str(row["default_cost"])
 
             btn = pygame_gui.elements.UIButton(
                 relative_rect=pygame.Rect(cx, cy, btn_w, small_h),
@@ -412,7 +428,7 @@ class UnitEditorWindow:
 
             cost_lbl = pygame_gui.elements.UILabel(
                 relative_rect=pygame.Rect(cx + btn_w + 5, cy, cost_w, small_h),
-                text=str(cost),
+                text=cost_display,
                 manager=self.manager,
                 container=self._panel,
                 object_id="#comp_cost_label",
@@ -422,7 +438,7 @@ class UnitEditorWindow:
 
         c2y += len(COMPONENT_ROWS) * (small_h + 3) + pad
 
-        # ---- Hyperdrive type sub-row (Stacked) ----
+        # ---- Hyperdrive sub-options (Stacked) ----
         hd_lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
             text="Hyperdrive Type:",
@@ -442,7 +458,90 @@ class UnitEditorWindow:
             object_id="#hd_type_dropdown",
         )
         self._elements.append(self._hd_type_dropdown)
-        c2y += dd_h + pad
+        c2y += dd_h + 3
+
+        hd_range_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
+            text="Jump Range (hexes):",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(hd_range_lbl)
+        c2y += small_h
+
+        self._hd_jump_range_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c2x, c2y, c2w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._hd_jump_range_entry.set_text(str(self._comp.hyperdrive_jump_range))
+        self._elements.append(self._hd_jump_range_entry)
+        c2y += entry_h + pad
+
+        # ---- Engine speed sub-option ----
+        eng_speed_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
+            text="Engine Speed:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(eng_speed_lbl)
+        c2y += small_h
+
+        self._engine_speed_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c2x, c2y, c2w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._engine_speed_entry.set_text(str(int(self._comp.engine_speed)))
+        self._elements.append(self._engine_speed_entry)
+        c2y += entry_h + pad
+
+        # ---- Defenses sub-options ----
+        def_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
+            text="Defenses (Armor / Shields / PD):",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(def_lbl)
+        c2y += small_h
+
+        def_label_w = int(c2w * 0.30)
+        def_entry_w = int((c2w - def_label_w * 3) // 3)
+
+        for stat_label, entry_ref, default_val in [
+            ("Armor", "_armor_entry", 0),
+            ("Shields", "_shields_entry", 0),
+            ("PD", "_pd_entry", 0),
+        ]:
+            stat_lbl = pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect(c2x, c2y, def_label_w + def_entry_w, small_h),
+                text=f"{stat_label}:",
+                manager=self.manager,
+                container=self._panel,
+                object_id="#comp_cost_label",
+            )
+            self._elements.append(stat_lbl)
+            c2y += small_h
+
+            entry = pygame_gui.elements.UITextEntryLine(
+                relative_rect=pygame.Rect(c2x, c2y, c2w, entry_h),
+                manager=self.manager,
+                container=self._panel,
+                object_id="#turret_entry",
+            )
+            entry.set_text(str(default_val))
+            setattr(self, entry_ref, entry)
+            self._elements.append(entry)
+            c2y += entry_h + 3
+
+        c2y += pad
 
 
         # ----------------------------------------------------------------
@@ -669,7 +768,9 @@ class UnitEditorWindow:
                 if elem is rbtn:
                     if i < len(self._turrets):
                         self._turrets.pop(i)
+                        self._comp.turrets = self._turrets
                         self._rebuild_turret_list()
+                        self._sync_dynamic_costs()
                         self._update_summary()
                     return "ui_handled"
 
@@ -680,11 +781,29 @@ class UnitEditorWindow:
                 return "ui_handled"
             elif elem is self._hd_type_dropdown:
                 self._comp.hyperdrive_type = event.text
-                self._comp.hyperdrive_hull_cost = 5 if event.text == "BASIC" else 10
+                self._sync_dynamic_costs()
                 self._update_summary()
                 return "ui_handled"
             elif elem is self._load_dd and event.text != "— select —":
                 self._load_design(event.text)
+                return "ui_handled"
+
+        elif event.type == pygame_gui.UI_TEXT_ENTRY_CHANGED:
+            elem = event.ui_element
+            if elem is self._hd_jump_range_entry:
+                self._read_hyperdrive_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
+            elif elem is self._engine_speed_entry:
+                self._read_engine_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
+            elif elem in (self._armor_entry, self._shields_entry, self._pd_entry):
+                self._read_defense_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
                 return "ui_handled"
 
         return None
@@ -719,11 +838,51 @@ class UnitEditorWindow:
         pygame.draw.rect(surface, (100, 100, 120), bar, 1, border_radius=3)
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Internal helpers — parameter reading
+    # ------------------------------------------------------------------
+
+    def _read_engine_params(self) -> None:
+        """Read engine speed from the entry widget and write to _comp."""
+        try:
+            speed = float(self._engine_speed_entry.get_text()) if self._engine_speed_entry else 100.0
+            self._comp.engine_speed = max(0.0, speed)
+        except ValueError:
+            pass
+
+    def _read_hyperdrive_params(self) -> None:
+        """Read hyperdrive jump range from the entry widget and write to _comp."""
+        try:
+            jr = int(self._hd_jump_range_entry.get_text()) if self._hd_jump_range_entry else 5
+            self._comp.hyperdrive_jump_range = max(1, jr)
+        except ValueError:
+            pass
+
+    def _read_defense_params(self) -> None:
+        """Read armor/shields/point_defense from entry widgets and write to _comp."""
+        try:
+            self._comp.armor = max(0, int(self._armor_entry.get_text())) if self._armor_entry else 0
+        except ValueError:
+            pass
+        try:
+            self._comp.shields = max(0, int(self._shields_entry.get_text())) if self._shields_entry else 0
+        except ValueError:
+            pass
+        try:
+            self._comp.point_defense = max(0, int(self._pd_entry.get_text())) if self._pd_entry else 0
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------
+    # Internal helpers — cost tracking
     # ------------------------------------------------------------------
 
     def _current_hull_used(self) -> int:
-        """Compute total hull cost of enabled components."""
+        """Compute total hull cost of enabled components.
+
+        Dynamic components (Engines, Weapons, Defenses, Hyperdrive) use
+        the calc_* functions via ComponentConfig properties.  Fixed
+        components use their stored hull cost fields.
+        """
         total = 0
         c = self._comp
         for row in COMPONENT_ROWS:
@@ -731,6 +890,22 @@ class UnitEditorWindow:
             if getattr(c, key, False):
                 total += getattr(c, row["cost_key"], row["default_cost"])
         return total
+
+    def _sync_dynamic_costs(self) -> None:
+        """Refresh the cost labels for dynamic components and the capacity label."""
+        c = self._comp
+        dynamic_values = {
+            "has_engine":     c.engine_hull_cost,
+            "has_hyperdrive": c.hyperdrive_hull_cost,
+            "has_weapon_bays": c.weapon_bays_hull_cost,
+            "has_defenses":   c.defenses_hull_cost,
+        }
+        for key, computed_cost in dynamic_values.items():
+            lbl = self._comp_cost_labels.get(key)
+            if lbl:
+                lbl.set_text(str(computed_cost))
+
+        self._update_capacity_label()
 
     def _capacity_text(self) -> str:
         capacity = HULL_CAPACITIES[self._hull_size]
@@ -747,6 +922,7 @@ class UnitEditorWindow:
                 return
         setattr(self._comp, key, not current)
         self._update_component_toggle_labels()
+        self._sync_dynamic_costs()
         self._update_capacity_label()
         self._update_summary()
 
@@ -785,6 +961,7 @@ class UnitEditorWindow:
             return
         self._apply_hull_restrictions()
         self._update_component_toggle_labels()
+        self._sync_dynamic_costs()
         self._update_capacity_label()
         self._update_summary()
 
@@ -824,6 +1001,7 @@ class UnitEditorWindow:
                         object_id="#hd_type_dropdown",
                     )
         self._update_component_toggle_labels()
+        self._sync_dynamic_costs()
         self._update_capacity_label()
 
     def _do_add_turret(self) -> None:
@@ -844,7 +1022,7 @@ class UnitEditorWindow:
             cd = int(self._turret_cd_entry.get_text()) if self._turret_cd_entry else 2
         except ValueError:
             cd = 2
-        
+
         if self._turret_variant_dd:
             raw_variant = self._turret_variant_dd.selected_option
             variant = raw_variant[0] if isinstance(raw_variant, tuple) else str(raw_variant)
@@ -854,6 +1032,7 @@ class UnitEditorWindow:
         self._turrets.append(TurretConfig(turret_type=ttype, damage=dmg, range=rng, cooldown=cd, variant=variant))
         self._comp.turrets = self._turrets
         self._rebuild_turret_list()
+        self._sync_dynamic_costs()
         self._update_summary()
 
     def _rebuild_turret_list(self) -> None:
@@ -947,7 +1126,7 @@ class UnitEditorWindow:
             )
             self._ability_buttons[aname] = abtn
             ay += small_h + 2
-        
+
         self._update_ability_toggle_labels()
 
     def _do_save(self) -> typing.Optional[str]:
@@ -960,6 +1139,10 @@ class UnitEditorWindow:
             self._set_status("⚠ Please enter a display name.", error=True)
             return None
 
+        # Sync all input fields before saving
+        self._read_engine_params()
+        self._read_hyperdrive_params()
+        self._read_defense_params()
         self._comp.turrets = self._turrets
         self._comp.abilities = list(self._selected_abilities)
 
@@ -1011,6 +1194,18 @@ class UnitEditorWindow:
         if self._display_entry:
             self._display_entry.set_text(template.display_name)
 
+        # Restore dynamic sub-option entry fields
+        if self._engine_speed_entry:
+            self._engine_speed_entry.set_text(str(int(self._comp.engine_speed)))
+        if self._hd_jump_range_entry:
+            self._hd_jump_range_entry.set_text(str(self._comp.hyperdrive_jump_range))
+        if self._armor_entry:
+            self._armor_entry.set_text(str(self._comp.armor))
+        if self._shields_entry:
+            self._shields_entry.set_text(str(self._comp.shields))
+        if self._pd_entry:
+            self._pd_entry.set_text(str(self._comp.point_defense))
+
         # Rebuild hull dropdown selection
         if self._hull_dropdown:
             rect = self._hull_dropdown.get_relative_rect()
@@ -1025,10 +1220,25 @@ class UnitEditorWindow:
                 object_id="#hull_size_dropdown",
             )
 
+        # Rebuild hyperdrive type dropdown selection
+        if self._hd_type_dropdown:
+            rect = self._hd_type_dropdown.get_relative_rect()
+            container = self._hd_type_dropdown.ui_container
+            self._hd_type_dropdown.kill()
+            self._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(
+                options_list=HYPERDRIVE_TYPES,
+                starting_option=self._comp.hyperdrive_type,
+                relative_rect=rect,
+                manager=self.manager,
+                container=container,
+                object_id="#hd_type_dropdown",
+            )
+
         self._apply_hull_restrictions()
         self._update_component_toggle_labels()
         self._update_ability_toggle_labels()
         self._rebuild_turret_list()
+        self._sync_dynamic_costs()
         self._update_capacity_label()
         self._update_summary()
         self._set_status(f"Loaded design '{key}'.", error=False)
@@ -1081,10 +1291,23 @@ class UnitEditorWindow:
         comps = []
         for row in COMPONENT_ROWS:
             if getattr(c, row["key"], False):
-                comps.append(f"  • {row['label']} ({getattr(c, row['cost_key'], row['default_cost'])} hull)")
+                cost = getattr(c, row["cost_key"], row["default_cost"])
+                comps.append(f"  • {row['label']} ({cost} hull)")
         if comps:
             lines.append("<b>Components:</b>")
             lines.extend(comps)
+
+        # Engine speed detail
+        if c.has_engine:
+            lines.append(f"    speed={c.engine_speed:.0f}")
+
+        # Hyperdrive detail
+        if c.has_hyperdrive:
+            lines.append(f"    type={c.hyperdrive_type}  jump_range={c.hyperdrive_jump_range}")
+
+        # Defenses detail
+        if c.has_defenses:
+            lines.append(f"    armor={c.armor}  shields={c.shields}  PD={c.point_defense}")
 
         if self._turrets:
             lines.append("")

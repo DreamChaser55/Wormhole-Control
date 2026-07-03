@@ -1595,7 +1595,8 @@ class Constructor(UnitComponent):
             cost = template.get("hyperdrive_hull_cost")
             if cost is None or cost == 0:
                 cost = 5 if htype == HyperdriveType.BASIC else 10
-            new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=cost))
+            jump_range = template.get("hyperdrive_jump_range", DEFAULT_JUMP_RANGE)
+            new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=cost, jump_range=jump_range))
 
         if template.get("has_weapon_bays"):
             weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
