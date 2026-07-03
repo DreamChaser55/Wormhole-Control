@@ -771,9 +771,16 @@ class Game:
                     data_for_gui.append({'type': 'label', 'text': "Contains: Nothing", 'object_id': '#sidebar_info_label', 'height': 25})
                 else:
                     if hex_obj.celestial_bodies:
-                        data_for_gui.append({'type': 'label', 'text': "Bodies: " + ", ".join([b.name for b in hex_obj.celestial_bodies]), 'object_id': '#sidebar_info_label', 'height': 25})
+                        data_for_gui.append({'type': 'label', 'text': "Bodies:", 'object_id': '#sidebar_info_label', 'height': 20})
+                        for b in hex_obj.celestial_bodies:
+                            owner = getattr(b, 'owner', None)
+                            style = f'#player_{owner.name.lower().replace(" ", "_")}_label' if owner else '#sidebar_info_label'
+                            data_for_gui.append({'type': 'label', 'text': b.name, 'object_id': style, 'height': 20, 'indent_level': 1})
                     if hex_obj.units:
-                        data_for_gui.append({'type': 'label', 'text': "Units: " + ", ".join([u.name for u in hex_obj.units]), 'object_id': '#sidebar_info_label', 'height': 25})
+                        data_for_gui.append({'type': 'label', 'text': "Units:", 'object_id': '#sidebar_info_label', 'height': 20})
+                        for u in hex_obj.units:
+                            style = f'#player_{u.owner.name.lower().replace(" ", "_")}_label'
+                            data_for_gui.append({'type': 'label', 'text': u.name, 'object_id': style, 'height': 20, 'indent_level': 1})
 
             # --- Celestial Body Selection ---
             elif isinstance(selected_obj, CelestialBody):
