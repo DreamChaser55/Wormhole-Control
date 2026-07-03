@@ -814,7 +814,7 @@ class Game:
 
                 elif isinstance(body, AsteroidField):
                     data_for_gui.append({'type': 'label', 'text': f"Asteroid Count: {body.asteroid_count}", 'object_id': '#sidebar_info_label', 'height': 20})
-                    data_for_gui.append({'type': 'label', 'text': "Rich in metals.", 'object_id': '#sidebar_info_label', 'height': 20})
+                    data_for_gui.append({'type': 'label', 'text': "Can interfere with long-range sensors.", 'object_id': '#sidebar_info_label', 'height': 20})
 
                 elif isinstance(body, IceField):
                     data_for_gui.append({'type': 'label', 'text': "A field of frozen particles.", 'object_id': '#sidebar_info_label', 'height': 20})
