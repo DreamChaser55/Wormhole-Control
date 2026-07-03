@@ -1,3 +1,19 @@
+import pygame
+import os
+import ctypes
+
+# Disable Windows OS window scaling to ensure 1:1 pixel perfect resolution
+if os.name == 'nt':
+    try:
+        # Windows 8.1 and later
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except Exception:
+        try:
+            # Windows Vista and later
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
 from geometry import Vector, Position
 from enum import Enum, auto
 
@@ -8,8 +24,33 @@ PROFILE = False
 # Math constants
 SQRT3 = 1.7320508075688772
 
+# Fullscreen mode config (supports environment override)
+FULLSCREEN = os.environ.get("WORMHOLE_FULLSCREEN", "True").lower() == "true"
+
+# Determine resolution at game start
+DEFAULT_RES = Vector(2560, 1440)
+SCREEN_RES = DEFAULT_RES
+
+if FULLSCREEN:
+    try:
+        had_to_init = False
+        if not pygame.display.get_init():
+            pygame.display.init()
+            had_to_init = True
+        
+        info = pygame.display.Info()
+        if info.current_w > 0 and info.current_h > 0:
+            SCREEN_RES = Vector(info.current_w, info.current_h)
+            
+        if had_to_init:
+            pygame.display.quit()
+    except Exception:
+        # Fallback in headless or test environments
+        SCREEN_RES = DEFAULT_RES
+else:
+    SCREEN_RES = DEFAULT_RES
+
 # UI Constants
-SCREEN_RES = Vector(2560, 1440)
 TEXT_SCALE = (SCREEN_RES.y / 720.0) ** 1.15
 
 # Logical Galaxy Constants
@@ -68,54 +109,71 @@ SYSTEM_BG_COLOR = (6, 6, 12)
 SECTOR_BG_COLOR = (9, 9, 18)
 SECTOR_BORDER_COLOR = (60, 60, 80)
 
-# Hull Size Constants
+# Check if enums are already defined to prevent breaking identity during reload
+import sys
+_existing = sys.modules.get('constants')
 
-class HullSize(Enum):
-    STRIKECRAFT_WING = auto()
-    TINY = auto()
-    SMALL = auto()
-    MEDIUM = auto()
-    LARGE = auto()
-    HUGE = auto()
+if _existing and hasattr(_existing, 'HullSize'):
+    HullSize = _existing.HullSize
+else:
+    class HullSize(Enum):
+        STRIKECRAFT_WING = auto()
+        TINY = auto()
+        SMALL = auto()
+        MEDIUM = auto()
+        LARGE = auto()
+        HUGE = auto()
 
-class StarType(Enum):
-    # Main sequence stars
-    G_TYPE = auto()  # Sun-like
-    RED_DWARF = auto()
-    # Stellar remnants
-    WHITE_DWARF = auto()
-    NEUTRON_STAR = auto()
-    PULSAR = auto()
-    BLACK_HOLE = auto()
-    # Giant stars
-    RED_GIANT = auto()
-    YELLOW_GIANT = auto()
-    BLUE_GIANT = auto()
-    # Pre-stellar objects
-    PROTOSTAR = auto()
-    BROWN_DWARF = auto()
+if _existing and hasattr(_existing, 'StarType'):
+    StarType = _existing.StarType
+else:
+    class StarType(Enum):
+        # Main sequence stars
+        G_TYPE = auto()  # Sun-like
+        RED_DWARF = auto()
+        # Stellar remnants
+        WHITE_DWARF = auto()
+        NEUTRON_STAR = auto()
+        PULSAR = auto()
+        BLACK_HOLE = auto()
+        # Giant stars
+        RED_GIANT = auto()
+        YELLOW_GIANT = auto()
+        BLUE_GIANT = auto()
+        # Pre-stellar objects
+        PROTOSTAR = auto()
+        BROWN_DWARF = auto()
 
-class PlanetType(Enum):
-    TERRAN = auto()
-    DESERT = auto()
-    VOLCANIC = auto()
-    ICE = auto()
-    BARREN = auto()
-    FERROUS = auto()
-    GREENHOUSE = auto()
-    OCEANIC = auto()
-    GAS_GIANT = auto()
+if _existing and hasattr(_existing, 'PlanetType'):
+    PlanetType = _existing.PlanetType
+else:
+    class PlanetType(Enum):
+        TERRAN = auto()
+        DESERT = auto()
+        VOLCANIC = auto()
+        ICE = auto()
+        BARREN = auto()
+        FERROUS = auto()
+        GREENHOUSE = auto()
+        OCEANIC = auto()
+        GAS_GIANT = auto()
 
-class NebulaType(Enum):
-    HYDROGEN = auto()
-    NITROGEN = auto()
-    OXYGEN = auto()
-    DUST = auto()
+if _existing and hasattr(_existing, 'NebulaType'):
+    NebulaType = _existing.NebulaType
+else:
+    class NebulaType(Enum):
+        HYDROGEN = auto()
+        NITROGEN = auto()
+        OXYGEN = auto()
+        DUST = auto()
 
-class StormType(Enum):
-    PLASMA = auto()
-    MAGNETIC = auto()
-    RADIATION = auto()
+if _existing and hasattr(_existing, 'StormType'):
+    StormType = _existing.StormType
+else:
+    class StormType(Enum):
+        PLASMA = auto()
+        MAGNETIC = auto()
+        RADIATION = auto()
 
 
 NEBULA_COLORS = {

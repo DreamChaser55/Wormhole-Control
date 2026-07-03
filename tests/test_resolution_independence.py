@@ -36,3 +36,58 @@ def test_coordinate_roundtrip():
 def test_strikecraft_wing_icon_scale():
     # Verify that the scale factor for strikecraft wings is set to 1.2
     assert HULL_BASE_ICON_SCALES[HullSize.STRIKECRAFT_WING] == 1.2
+
+def test_fullscreen_resolution_autodetect():
+    import importlib
+    from unittest.mock import patch, MagicMock
+    import os
+    import constants
+
+    orig_env = os.environ.get("WORMHOLE_FULLSCREEN")
+
+    try:
+        # 1. Test when FULLSCREEN is True and display info returns a specific resolution
+        mock_info = MagicMock()
+        mock_info.current_w = 1920
+        mock_info.current_h = 1080
+        
+        if "WORMHOLE_FULLSCREEN" in os.environ:
+            del os.environ["WORMHOLE_FULLSCREEN"]
+
+        with patch('pygame.display.init') as mock_init, \
+             patch('pygame.display.quit') as mock_quit, \
+             patch('pygame.display.Info', return_value=mock_info), \
+             patch('pygame.display.get_init', return_value=False):
+            
+            importlib.reload(constants)
+            
+            assert constants.SCREEN_RES.x == 1920
+            assert constants.SCREEN_RES.y == 1080
+            assert constants.HEX_SIZE == 37
+            assert constants.INFO_BOX_WIDTH == 375
+            mock_init.assert_called_once()
+            mock_quit.assert_called_once()
+
+        # 2. Test when FULLSCREEN is False (using environment variable override)
+        os.environ["WORMHOLE_FULLSCREEN"] = "False"
+        
+        with patch('pygame.display.init') as mock_init, \
+             patch('pygame.display.quit') as mock_quit:
+            
+            importlib.reload(constants)
+            
+            assert constants.SCREEN_RES.x == 2560
+            assert constants.SCREEN_RES.y == 1440
+            assert constants.HEX_SIZE == 50
+            mock_init.assert_not_called()
+            mock_quit.assert_not_called()
+            
+    finally:
+        if orig_env is None:
+            if "WORMHOLE_FULLSCREEN" in os.environ:
+                del os.environ["WORMHOLE_FULLSCREEN"]
+        else:
+            os.environ["WORMHOLE_FULLSCREEN"] = orig_env
+            
+        importlib.reload(constants)
+
