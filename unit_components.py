@@ -983,12 +983,14 @@ class MiningComponent(UnitComponent):
             self.raw_crystal_cargo += amount_to_mine
             logger.debug(f"{self.unit.name} mined {amount_to_mine} raw crystal from {self.mining_target.name}. Cargo: {self.raw_crystal_cargo}/{self.max_cargo}")
 
-    def unload_to_refinery(self) -> float:
+    def unload_to_refinery(self, unload_metal: bool = True, unload_crystal: bool = True) -> tuple[float, float]:
         """Empties cargo and returns a tuple of (metal_amount, crystal_amount) unloaded."""
-        metal_amount = self.raw_metal_cargo
-        crystal_amount = self.raw_crystal_cargo
-        self.raw_metal_cargo = 0.0
-        self.raw_crystal_cargo = 0.0
+        metal_amount = self.raw_metal_cargo if unload_metal else 0.0
+        crystal_amount = self.raw_crystal_cargo if unload_crystal else 0.0
+        if unload_metal:
+            self.raw_metal_cargo = 0.0
+        if unload_crystal:
+            self.raw_crystal_cargo = 0.0
         return metal_amount, crystal_amount
 
 

@@ -1223,19 +1223,16 @@ class UnloadResourcesOrder(Order):
             return
 
         # We are in range, execute unload
-        metal_amount, crystal_amount = self.unit.mining_component.unload_to_refinery()
+        metal_amount, crystal_amount = self.unit.mining_component.unload_to_refinery(
+            unload_metal=is_metal_refinery,
+            unload_crystal=is_crystal_refinery
+        )
 
         if is_metal_refinery and metal_amount > 0:
             target_unit.metal_refinery_component.accept_resources(metal_amount)
-        elif not is_metal_refinery and metal_amount > 0:
-            # Drop it if not matching
-            logger.debug(f"{self.unit.name} dumped {metal_amount} metal as {target_unit.name} cannot refine it.")
 
         if is_crystal_refinery and crystal_amount > 0:
             target_unit.crystal_refinery_component.accept_resources(crystal_amount)
-        elif not is_crystal_refinery and crystal_amount > 0:
-            # Drop it if not matching
-            logger.debug(f"{self.unit.name} dumped {crystal_amount} crystal as {target_unit.name} cannot refine it.")
 
         self.status = OrderStatus.COMPLETED
         logger.debug(f"UNLOAD_RESOURCES order completed: {self.unit.name} unloaded resources to {target_unit.name}.")

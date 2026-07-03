@@ -392,9 +392,15 @@ class InputProcessor:
                                 if target_is_damaged and any(a.repair_component for a in actors):
                                     options.append(("Repair", "repair_unit"))
                                 
-                                target_has_refinery = getattr(target_object, 'metal_refinery_component', None) or getattr(target_object, 'crystal_refinery_component', None)
-                                has_cargo_miners = any(getattr(a, 'mining_component', None) and (a.mining_component.raw_metal_cargo > 0 or a.mining_component.raw_crystal_cargo > 0) for a in actors)
-                                if target_has_refinery and has_cargo_miners:
+                                is_metal_refinery = bool(getattr(target_object, 'metal_refinery_component', None))
+                                is_crystal_refinery = bool(getattr(target_object, 'crystal_refinery_component', None))
+                                has_correct_cargo_miners = any(
+                                    getattr(a, 'mining_component', None) and (
+                                        (is_metal_refinery and a.mining_component.raw_metal_cargo > 0) or
+                                        (is_crystal_refinery and a.mining_component.raw_crystal_cargo > 0)
+                                    ) for a in actors
+                                )
+                                if (is_metal_refinery or is_crystal_refinery) and has_correct_cargo_miners:
                                     options.append(("Unload Resources", "unload_resources"))
 
                                 can_dock_at_carrier = (

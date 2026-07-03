@@ -199,14 +199,22 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_unload_resources(self, event: UnloadResourcesEvent):
+        is_metal_refinery = bool(getattr(event.target_unit, 'metal_refinery_component', None))
+        is_crystal_refinery = bool(getattr(event.target_unit, 'crystal_refinery_component', None))
         for unit in event.units:
-            if getattr(unit, 'mining_component', None):
-                unload_params = {"target_unit_id": event.target_unit.id}
-                unload_order = UnloadResourcesOrder(unit, unload_params)
-                if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
-                unit.commander_component.add_order(unload_order)
-                logger.debug(f"  Unit {unit.name} ordered to unload resources to {event.target_unit.name} via event.")
+            mining_comp = getattr(unit, 'mining_component', None)
+            if mining_comp:
+                has_correct_cargo = (
+                    (is_metal_refinery and mining_comp.raw_metal_cargo > 0) or
+                    (is_crystal_refinery and mining_comp.raw_crystal_cargo > 0)
+                )
+                if has_correct_cargo:
+                    unload_params = {"target_unit_id": event.target_unit.id}
+                    unload_order = UnloadResourcesOrder(unit, unload_params)
+                    if not event.shift_pressed:
+                        unit.commander_component.clear_orders()
+                    unit.commander_component.add_order(unload_order)
+                    logger.debug(f"  Unit {unit.name} ordered to unload resources to {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_dock(self, event: DockEvent):
