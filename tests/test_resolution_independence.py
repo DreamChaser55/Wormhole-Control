@@ -1,7 +1,7 @@
 import pytest
 from constants import (
     SCREEN_RES, INFO_BOX_WIDTH, TOP_BAR_HEIGHT, CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT,
-    PLANET_RADIUS, WORMHOLE_RADIUS, STAR_RADIUS, HEX_SIZE
+    PLANET_RADIUS, WORMHOLE_RADIUS, STAR_RADIUS, HEX_SIZE, HullSize, HULL_BASE_ICON_SCALES
 )
 from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
 from geometry import Position
@@ -32,3 +32,7 @@ def test_coordinate_roundtrip():
     # Assert they are reasonably close (due to integer truncation in pixel conversion)
     assert abs(logical_pos.x - logical_back.x) <= 5.0
     assert abs(logical_pos.y - logical_back.y) <= 5.0
+
+def test_strikecraft_wing_icon_scale():
+    # Verify that the scale factor for strikecraft wings is set to 1.2
+    assert HULL_BASE_ICON_SCALES[HullSize.STRIKECRAFT_WING] == 1.2

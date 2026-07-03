@@ -147,6 +147,8 @@ class SystemViewRenderer:
                     else:
                         shape_type = 'triangle' if unit.engines_component else 'square'
                     current_icon_base_size = new_system_view_icon_base_size 
+                    if shape_type == 'strikecraft_wing':
+                        current_icon_base_size *= 1.2
 
                     if shape_type in ('triangle', 'strikecraft_wing'):
                         unit_screen_y = icon_center_y + current_icon_base_size * 0.2 
