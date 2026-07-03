@@ -752,6 +752,14 @@ class Game:
                 num_units = sum(len(hex_data.units) for hex_data in sys_obj.hexes.values())
                 num_bodies = sum(len(hex_data.celestial_bodies) for hex_data in sys_obj.hexes.values())
                 data_for_gui.append({'type': 'label', 'text': f"Objects: {num_bodies} Bodies, {num_units} Units", 'object_id': '#sidebar_info_label', 'height': 25})
+                data_for_gui.append({'type': 'label', 'text': f"Hex Radius: {sys_obj.radius}", 'object_id': '#sidebar_info_label', 'height': 25})
+                connected_systems = sorted(set(
+                    wh.exit_system_name
+                    for wh in self.galaxy.wormholes.values()
+                    if wh.in_system == sys_obj.name
+                ))
+                wormhole_text = ", ".join(connected_systems) if connected_systems else "None"
+                data_for_gui.append({'type': 'label', 'text': f"Wormholes: {wormhole_text}", 'object_id': '#sidebar_info_label', 'height': 25})
 
             # --- Hex Selection ---
             elif isinstance(selected_obj, Hex):
