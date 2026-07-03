@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock, patch
 from entities import Unit, Player, OrderType
 from constants import HullSize, BLUE
