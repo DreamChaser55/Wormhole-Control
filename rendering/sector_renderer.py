@@ -137,7 +137,7 @@ class SectorViewRenderer:
                 self._draw_storm(obj, obj_pixel_pos)
                 should_draw_circle = False
             elif isinstance(obj, Comet):
-                obj_color = (240, 248, 255)
+                obj_color = CYAN
                 obj_radius_logical = 16.67
             elif isinstance(obj, Wormhole):
                 obj_radius_logical = WORMHOLE_RADIUS

@@ -95,7 +95,7 @@ class SystemViewRenderer:
                     self._draw_storm(body, hex_center_pixel)
                     should_draw_circle = False
                 elif isinstance(body, Comet):
-                    body_color = (240, 248, 255)
+                    body_color = CYAN
                     body_radius = int(2 * scale_val)
                 elif isinstance(body, Wormhole):
                     body_color = PURPLE
