@@ -1368,7 +1368,8 @@ class StrikecraftBayComponent(UnitComponent):
             game=self.unit.game,
             in_system=self.unit.in_system,
             in_hex=self.unit.in_hex,
-            position=Position(self.unit.position.x, self.unit.position.y)
+            position=Position(self.unit.position.x, self.unit.position.y),
+            template_name=template.get("name", template_name)
         )
 
         if template.get("has_engine"):
@@ -1608,7 +1609,8 @@ class Constructor(UnitComponent):
             game=self.unit.game,
             in_system=system_name,
             in_hex=hex_coord,
-            position=position
+            position=position,
+            template_name=template.get("name", template_name)
         )
 
         if template.get("has_engine"):

@@ -1030,6 +1030,8 @@ class Game:
                     data_for_gui.append({'type': 'label', 'text': f"Unit: {unit.name}", 'object_id': '#sidebar_title_label', 'height': 30})
                 data_for_gui.append({'type': 'label', 'text': f"Type: {unit.__class__.__name__}", 'object_id': '#sidebar_info_label', 'height': 20})
                 data_for_gui.append({'type': 'label', 'text': f"Hull Size: {unit.hull_size.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
+                if getattr(unit, 'template_name', None):
+                    data_for_gui.append({'type': 'label', 'text': f"Template: {unit.template_name}", 'object_id': '#sidebar_info_label', 'height': 20})
             
                 owner_name_style_id = f'#player_{unit.owner.name.lower().replace(" ", "_")}_label' # e.g. #player_player_1_label
                 data_for_gui.append({'type': 'label', 'text': f"Owner: {unit.owner.name}", 'object_id': owner_name_style_id, 'height': 25})

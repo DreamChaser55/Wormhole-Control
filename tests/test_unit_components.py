@@ -740,4 +740,109 @@ def test_weapons_sidebar_data():
     assert "Target: Enemy Cruisey (Engines)" in t2_status['text']
 
 
+def test_unit_template_name_assignment():
+    from unittest.mock import MagicMock
+    from entities import Unit
+    from unit_components import Constructor, HangarComponent, WingType
+    from constants import HullSize
+    from geometry import Position
+    import unit_components
+
+    # 1. Test create_unit_from_template assigns template_name
+    owner_unit = MockUnit()
+    constructor = Constructor(owner_unit, hull_cost=30)
+    owner_unit.add_component(constructor)
+
+    galaxy = MagicMock()
+    mock_system = MagicMock()
+    galaxy.systems = {"Sol": mock_system}
+
+    original_templates = unit_components.UNIT_TEMPLATES
+    try:
+        unit_components.UNIT_TEMPLATES = {
+            "TEST_TEMPLATE": {
+                "name": "Test Template Friendly Name",
+                "hull_size": HullSize.TINY,
+                "has_engine": True,
+                "has_hyperdrive": False
+            },
+            "FIGHTER_WING": {
+                "name": "Fighter Wing",
+                "hull_size": HullSize.STRIKECRAFT_WING,
+                "has_engine": True,
+                "wing_type": "FIGHTER"
+            }
+        }
+        
+        # Test creation via create_unit_from_template
+        constructor.create_unit_from_template(galaxy, "TEST_TEMPLATE", owner_unit.owner, "Sol", (0, 0), Position(0, 0))
+        created_units = mock_system.add_unit.call_args_list
+        assert len(created_units) == 1
+        unit = created_units[0][0][0]
+        assert unit.template_name == "Test Template Friendly Name"
+
+        # 2. Test auto-construction in StrikecraftBayComponent assigns template_name
+        from unit_components import StrikecraftBayComponent
+        carrier_unit = MockUnit()
+        carrier_unit.game = owner_unit.game
+        bay = StrikecraftBayComponent(carrier_unit, max_slots=2)
+        carrier_unit.add_component(bay)
+        bay.build_wing_type = WingType.FIGHTER
+        
+        # Call auto-construction
+        bay.finish_auto_construction(galaxy)
+        assert len(bay.docked_units) == 1
+        wing = bay.docked_units[0]
+        assert wing.template_name == "Fighter Wing"
+
+    finally:
+        unit_components.UNIT_TEMPLATES = original_templates
+
+
+def test_unit_template_name_in_sidebar():
+    from entities import Unit
+    from game import Game
+    from unittest.mock import MagicMock
+    from constants import HullSize
+    from geometry import Position
+    
+    # Setup mock game and unit
+    mock_game = MagicMock()
+    mock_game.galaxy = MagicMock()
+    mock_game.sidebar_needs_update = True
+    mock_game.selected_objects = []
+    
+    player = MagicMock()
+    player.name = "Player 1"
+    
+    unit = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="My Constructor",
+        hull_size=HullSize.MEDIUM,
+        game=mock_game,
+        template_name="Constructor Mk.I"
+    )
+    
+    mock_game.selected_objects = [unit]
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
+    mock_game.selected_component_name = None
+    mock_game.gui = MagicMock()
+    
+    # Call update_side_bar_content (which is on Game class)
+    Game.update_side_bar_content(mock_game)
+    
+    # Verify that the gui update was called with sidebar data containing the template label
+    mock_game.gui.update_side_bar_content.assert_called_once()
+    data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
+    
+    template_labels = [d for d in data_list if d.get("type") == "label" and "Template: Constructor Mk.I" in d.get("text", "")]
+    assert len(template_labels) == 1
+
+
+
+
 

@@ -202,7 +202,8 @@ class Unit(GameObject):
     """Represents a generic unit in the game, composed of various components."""
     def __init__(self, owner: Player, position: Position, in_hex: HexCoord, in_system: str, name: str,
                  hull_size: HullSize,
-                 game: "Game"):
+                 game: "Game",
+                 template_name: typing.Optional[str] = None):
         super().__init__(position, in_hex, in_system)
         self.owner = owner
         self.name: str = name
@@ -231,6 +232,8 @@ class Unit(GameObject):
         self.lifetime: typing.Optional[int] = None
         # Flag to distinguish spawned temporary units from regular units.
         self.is_temporary: bool = False
+        
+        self.template_name: typing.Optional[str] = template_name
 
         # Every unit has a commander component by default
         self.add_component(Commander(unit=self))
