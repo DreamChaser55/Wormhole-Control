@@ -248,5 +248,16 @@
             "name": "arial",
             "size": "18"
         }
+    },
+    "#unit_name_entry": {
+        "font": {
+            "name": "arial",
+            "size": "16",
+            "bold": "1"
+        },
+        "colours": {
+            "normal_text": "#E0E0FF",
+            "focused_text": "#FFFFFF"
+        }
     }
 }

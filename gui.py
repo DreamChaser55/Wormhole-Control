@@ -139,6 +139,8 @@ class GUI_Handler:
         self.side_bar_dynamic_elements: typing.List[pygame_gui.core.UIElement] = []
         self.dynamic_button_actions: typing.Dict[pygame_gui.elements.UIButton, typing.Dict[str, typing.Any]] = {}
         self.expanded_sections: typing.Dict[str, bool] = {}
+        # Editable unit name field — set when a single owned unit is selected
+        self.unit_name_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         
         # Context Menu (Placeholders)
         self.context_menu_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
@@ -835,6 +837,10 @@ class GUI_Handler:
                 if DEBUG:
                     logger.debug(f"[GUI_Handler DEBUG] Clicked UI element {event.ui_element} not found in dynamic_button_actions or no action_id.")
 
+        elif event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
+            if self.unit_name_entry and event.ui_element is self.unit_name_entry:
+                action_result = {'action': 'rename_unit', 'new_name': event.text}
+
         elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
             # Forward dropdown change to unit editor first; if it consumes it, don't treat it as a component_selected
             editor_action = self.process_unit_editor_event(event)
@@ -954,6 +960,7 @@ class GUI_Handler:
                 element.kill()
         self.side_bar_dynamic_elements.clear()
         self.dynamic_button_actions.clear()
+        self.unit_name_entry = None
 
     def is_section_expanded(self, section_id: str) -> bool:
         """Checks if a given UI section is marked as expanded."""
@@ -1183,6 +1190,23 @@ class GUI_Handler:
                     object_id=obj_id
                 )
                 self.side_bar_dynamic_elements.append(dropdown)
+                actual_element_total_height = height_from_data
+
+            elif item_type == 'text_entry_line':
+                initial_text = item_data.get('initial_text', '')
+                entry_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
+                entry = pygame_gui.elements.UITextEntryLine(
+                    relative_rect=entry_rect,
+                    manager=self.manager,
+                    container=target_container_for_element,
+                    object_id=obj_id
+                )
+                max_length = item_data.get('max_length', 0)
+                if max_length > 0:
+                    entry.set_text_length_limit(max_length)
+                entry.set_text(initial_text)
+                self.unit_name_entry = entry
+                self.side_bar_dynamic_elements.append(entry)
                 actual_element_total_height = height_from_data
 
             if actual_element_total_height > 0:

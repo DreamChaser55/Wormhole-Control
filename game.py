@@ -528,6 +528,18 @@ class Game:
                         unit.commander_component.add_order(order)
                         logger.debug(f"Added UnloadResourcesOrder to unit {unit.name} queue targeting refinery ID {order.parameters['target_unit_id']}.")
             self.sidebar_needs_update = True
+        elif action_type == 'rename_unit':
+            new_name = action.get('new_name', '').strip()
+            selected_units = [obj for obj in self.selected_objects if isinstance(obj, Unit)]
+            current_player = self.players[self.current_player_index]
+            if selected_units and isinstance(selected_units[0], Unit) and selected_units[0].owner == current_player:
+                unit_to_rename = selected_units[0]
+                if new_name and len(new_name) <= 30:
+                    logger.debug(f"Renaming unit '{unit_to_rename.name}' -> '{new_name}'")
+                    unit_to_rename.name = new_name
+                else:
+                    logger.debug(f"Rename rejected (empty or too long: '{new_name}'). Keeping '{unit_to_rename.name}'.")
+            self.sidebar_needs_update = True
         elif action_type == 'component_selected':
             self.selected_component_name = action.get('component_name')
             self.sidebar_needs_update = True
@@ -1001,7 +1013,21 @@ class Game:
                     data_for_gui.append({'type': 'label', 'text': "A celestial body of ice and rock.", 'object_id': '#sidebar_info_label', 'height': 20})
             elif isinstance(selected_obj, Unit):
                 unit: Unit = selected_obj
-                data_for_gui.append({'type': 'label', 'text': f"Unit: {unit.name}", 'object_id': '#sidebar_title_label', 'height': 30})
+                current_player = self.players[self.current_player_index]
+                is_owned = (unit.owner == current_player)
+
+                if is_owned:
+                    # Editable text entry for the unit name
+                    data_for_gui.append({
+                        'type': 'text_entry_line',
+                        'initial_text': unit.name,
+                        'object_id': '#unit_name_entry',
+                        'max_length': 30,
+                        'height': 30
+                    })
+                else:
+                    # Static label for enemy units
+                    data_for_gui.append({'type': 'label', 'text': f"Unit: {unit.name}", 'object_id': '#sidebar_title_label', 'height': 30})
                 data_for_gui.append({'type': 'label', 'text': f"Type: {unit.__class__.__name__}", 'object_id': '#sidebar_info_label', 'height': 20})
                 data_for_gui.append({'type': 'label', 'text': f"Hull Size: {unit.hull_size.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
             
