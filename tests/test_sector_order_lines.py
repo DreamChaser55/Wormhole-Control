@@ -197,3 +197,71 @@ def test_galaxy_view_order_lines_only_for_active_player():
          # If both units were drawn, we would have 6 line calls (3 lines per unit).
          # Since only Unit 1 is active, we expect 3 line calls.
          assert len(mock_draw_line.call_args_list) == 3
+
+
+def test_draw_sector_view_draws_four_corner_selection_brackets():
+    # Setup mock game, player, and renderer
+    game = MagicMock()
+    player1 = Player("Player 1", BLUE, is_human=True)
+    game.players = [player1]
+    game.current_player_index = 0
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.sector_view_mouse_hover_object = None
+    game.is_dragging_selection_box = False
+
+    renderer = SectorViewRenderer(game)
+    renderer.screen = MagicMock()
+    renderer.overlay_surface = MagicMock()
+
+    # Setup StarSystem and Hex
+    system = MagicMock()
+    game.galaxy.systems = {"Sol": system}
+    hex_obj = MagicMock()
+    system.hexes = {(0, 0): hex_obj}
+
+    # Create selected Unit
+    unit = Unit(player1, Position(10, 10), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
+    unit.max_hit_points = 0  # set to 0 to avoid extra healthbar draw lines
+    game.selected_objects = [unit]
+    hex_obj.celestial_bodies = []
+    hex_obj.units = [unit]
+
+    # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
+    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
+         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
+         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
+         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
+         patch("rendering.sector_renderer.pygame.font.Font") as mock_font:
+
+        renderer.draw_sector_view()
+
+        # Selection brackets should call pygame.draw.lines exactly 4 times (one for each corner)
+        assert len(mock_draw_lines.call_args_list) == 4
+
+        # Extract the coordinate list arguments from mock_draw_lines (the 4th argument)
+        called_points_lists = [call[0][3] for call in mock_draw_lines.call_args_list]
+
+        from constants import SECTOR_VIEW_BASE_ICON_SIZE, SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL
+        expected_pixel_radius = int(SECTOR_VIEW_BASE_ICON_SIZE * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+        r = expected_pixel_radius + 5
+        tick_length = 8
+
+        left = 10 - r
+        right = 10 + r
+        top = 10 - r
+        bottom = 10 + r
+
+        expected_corners = [
+            [(left + tick_length, top), (left, top), (left, top + tick_length)],
+            [(right - tick_length, top), (right, top), (right, top + tick_length)],
+            [(left + tick_length, bottom), (left, bottom), (left, bottom - tick_length)],
+            [(right - tick_length, bottom), (right, bottom), (right, bottom - tick_length)]
+        ]
+
+        # Verify that all expected corner paths are in the called_points_lists (regardless of order)
+        for expected in expected_corners:
+            assert expected in called_points_lists

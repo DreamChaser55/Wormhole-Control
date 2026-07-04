@@ -239,30 +239,45 @@ class SectorViewRenderer:
 
             if obj in self.game.selected_objects:
                 pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                # Draw selection brackets instead of a circle
+                # Draw four selection brackets in the corners instead of a circle
                 r = pixel_radius + 5
-                h = max(4, int(pixel_radius * 0.6))  # Do not extend vertically as much
-                tick_length = 5
+                tick_length = 8
                 
                 left = obj_pixel_pos.x - r
                 right = obj_pixel_pos.x + r
-                top = obj_pixel_pos.y - h
-                bottom = obj_pixel_pos.y + h
+                top = obj_pixel_pos.y - r
+                bottom = obj_pixel_pos.y + r
                 
-                # Left bracket
+                # Top-Left corner bracket
                 pygame.draw.lines(
                     self.overlay_surface,
                     SELECTION_HIGHLIGHT_COLOR,
                     False,
-                    [(left + tick_length, top), (left, top), (left, bottom), (left + tick_length, bottom)],
+                    [(left + tick_length, top), (left, top), (left, top + tick_length)],
                     2
                 )
-                # Right bracket
+                # Top-Right corner bracket
                 pygame.draw.lines(
                     self.overlay_surface,
                     SELECTION_HIGHLIGHT_COLOR,
                     False,
-                    [(right - tick_length, top), (right, top), (right, bottom), (right - tick_length, bottom)],
+                    [(right - tick_length, top), (right, top), (right, top + tick_length)],
+                    2
+                )
+                # Bottom-Left corner bracket
+                pygame.draw.lines(
+                    self.overlay_surface,
+                    SELECTION_HIGHLIGHT_COLOR,
+                    False,
+                    [(left + tick_length, bottom), (left, bottom), (left, bottom - tick_length)],
+                    2
+                )
+                # Bottom-Right corner bracket
+                pygame.draw.lines(
+                    self.overlay_surface,
+                    SELECTION_HIGHLIGHT_COLOR,
+                    False,
+                    [(right - tick_length, bottom), (right, bottom), (right, bottom - tick_length)],
                     2
                 )
 
