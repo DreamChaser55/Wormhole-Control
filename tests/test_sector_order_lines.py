@@ -57,6 +57,7 @@ def test_draw_sector_view_draws_lines_for_all_turn_player_units():
     # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
     with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
          patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
          patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
          patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \

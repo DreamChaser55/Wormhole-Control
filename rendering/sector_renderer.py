@@ -209,8 +209,10 @@ class SectorViewRenderer:
                 # Draw Unit Name
                 bottom_y = obj_pixel_pos.y + current_icon_base_size_px
                 
-                # If health bar is drawn, account for its height and vertical position
-                if unit_obj in self.game.selected_objects and unit_obj.max_hit_points > 0:
+                # If health bar is drawn, account for its height and vertical position.
+                # To prevent the unit name text from moving when selected, we always reserve space 
+                # for the health bar if the unit can have one (i.e. max_hit_points > 0).
+                if unit_obj.max_hit_points > 0:
                     health_bar_bottom = obj_pixel_pos.y + current_icon_base_size_px + 14
                     if health_bar_bottom > bottom_y:
                         bottom_y = health_bar_bottom
@@ -237,7 +239,32 @@ class SectorViewRenderer:
 
             if obj in self.game.selected_objects:
                 pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 5, 2)
+                # Draw selection brackets instead of a circle
+                r = pixel_radius + 5
+                h = max(4, int(pixel_radius * 0.6))  # Do not extend vertically as much
+                tick_length = 5
+                
+                left = obj_pixel_pos.x - r
+                right = obj_pixel_pos.x + r
+                top = obj_pixel_pos.y - h
+                bottom = obj_pixel_pos.y + h
+                
+                # Left bracket
+                pygame.draw.lines(
+                    self.overlay_surface,
+                    SELECTION_HIGHLIGHT_COLOR,
+                    False,
+                    [(left + tick_length, top), (left, top), (left, bottom), (left + tick_length, bottom)],
+                    2
+                )
+                # Right bracket
+                pygame.draw.lines(
+                    self.overlay_surface,
+                    SELECTION_HIGHLIGHT_COLOR,
+                    False,
+                    [(right - tick_length, top), (right, top), (right, bottom), (right - tick_length, bottom)],
+                    2
+                )
 
             if isinstance(obj, Unit):
                 unit_obj: Unit = obj
