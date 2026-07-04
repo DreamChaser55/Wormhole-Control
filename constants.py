@@ -68,6 +68,7 @@ SECTOR_CIRCLE_RADIUS_LOGICAL = 1000.0
 # Game Mechanics Constants
 DEFAULT_HYPERDRIVE_RECHARGE_DURATION: int = 3
 DEFAULT_JUMP_RANGE: int = 5 # in hexes
+UPKEEP_COST_PER_HULL_POINT: float = 0.01  # Credits per used hull point per turn
 
 # Object sizes in sector view (in logical world coordinates):
 STATION_ICON_SIZE = 27.78

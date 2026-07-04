@@ -38,6 +38,8 @@ class MockUnit:
         self.hull_size = HullSize.HUGE
         self.is_disabled = False
         self.damage_amplification = 0.0
+        self.is_temporary = False
+        self.current_hull_usage = 0
         
     def add_component(self, component):
         self.components[type(component)] = component

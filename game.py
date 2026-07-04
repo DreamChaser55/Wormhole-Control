@@ -22,7 +22,7 @@ from pygame import Color
 from constants import (
     SCREEN_RES, STATION_ICON_SIZE, SHIP_ICON_SIZE,
     DEFAULT_SUBLIGHT_SHIP_SPEED, RED, BLUE, YELLOW, DEBUG, PROFILE,
-    FULLSCREEN
+    FULLSCREEN, UPKEEP_COST_PER_HULL_POINT
 )
 from utils import HexCoord, Timer
 from geometry import (
@@ -1044,6 +1044,8 @@ class Game:
                 data_for_gui.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
         
                 data_for_gui.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage}/{unit.hull_capacity}", 'object_id': '#sidebar_info_label', 'height': 25})
+                upkeep_per_turn = unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
+                data_for_gui.append({'type': 'label', 'text': f"Upkeep: {upkeep_per_turn:.2f} cr/turn", 'object_id': '#sidebar_info_label', 'height': 20})
                 
                 # Determine HP label color style based on damage
                 hp_percentage = unit.current_hit_points / unit.max_hit_points

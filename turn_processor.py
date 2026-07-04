@@ -11,6 +11,7 @@ from geometry import Vector, Position, distance, hex_distance, Circle, is_point_
 from sector_utils import move_towards_position
 from entities import Unit, Wormhole, Planet, Moon, Asteroid
 from unit_components import JumpStatus, Commander
+from constants import UPKEEP_COST_PER_HULL_POINT, HullSize
 
 TAX_RATE = 0.1  # 10% tax rate
 
@@ -58,6 +59,9 @@ class TurnProcessor:
 
             with ProfileTimer("Resource generation"):
                 self._process_resource_generation(current_player)
+
+            with ProfileTimer("Unit upkeep"):
+                self._process_unit_upkeep(current_player)
 
             with ProfileTimer("Unit updates"):
                 self._process_unit_updates(current_player)
@@ -326,6 +330,28 @@ class TurnProcessor:
 
         if total_credits_generated > 0:
             logger.debug(f"  {current_player.name} generated {total_credits_generated:.2f} credits from taxes.")
+
+    def _process_unit_upkeep(self, current_player):
+        """Deducts upkeep costs from the current player's credits for every owned unit.
+
+        Upkeep = unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT per turn.
+        Temporary units and strikecraft wings are excluded.
+        Credits are clamped to zero (no negative balance).
+        """
+        total_upkeep = 0.0
+        for system_obj in self.game.galaxy.systems.values():
+            for unit, _ in system_obj.get_all_units():
+                if unit.owner != current_player:
+                    continue
+                if unit.is_temporary:
+                    continue
+                if unit.hull_size == HullSize.STRIKECRAFT_WING:
+                    continue
+                total_upkeep += unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
+
+        if total_upkeep > 0:
+            current_player.credits = max(0.0, current_player.credits - total_upkeep)
+            logger.debug(f"  {current_player.name} paid {total_upkeep:.2f} credits in unit upkeep.")
 
     def _process_unit_updates(self, current_player):
         if current_player:

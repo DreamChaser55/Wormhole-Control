@@ -4,6 +4,7 @@ from turn_processor import TurnProcessor, TAX_RATE
 from geometry import Position
 from entities import Planet
 from tests.test_unit_components import MockUnit, MockPlayer
+from constants import UPKEEP_COST_PER_HULL_POINT, HullSize
 
 def test_end_turn_advances_player():
     game = MagicMock()
@@ -191,3 +192,99 @@ def test_process_orders():
     # Order execution should be triggered via commander.update() -> order.execute()
     order.execute.assert_called_once()
 
+
+# --- Unit Upkeep Tests ---
+
+def _make_upkeep_unit(player, hull_usage, hull_size=HullSize.TINY, is_temporary=False):
+    """Helper that returns a MockUnit configured for upkeep tests."""
+    unit = MockUnit()
+    unit.owner = player
+    unit.current_hull_usage = hull_usage
+    unit.hull_size = hull_size
+    unit.is_temporary = is_temporary
+    return unit
+
+
+def _make_upkeep_game(units):
+    """Helper that returns a mock game whose galaxy has a single system containing `units`."""
+    game = MagicMock()
+    system = MagicMock()
+    system.get_all_units.return_value = [(u, (0, 0)) for u in units]
+    game.galaxy.systems = {"Sol": system}
+    return game
+
+
+def test_process_unit_upkeep_basic():
+    """Upkeep is correctly deducted from player credits."""
+    player = MockPlayer("Player 1")
+    player.credits = 1000.0
+
+    unit = _make_upkeep_unit(player, hull_usage=10)
+    game = _make_upkeep_game([unit])
+
+    tp = TurnProcessor(game)
+    tp._process_unit_upkeep(player)
+
+    expected = 10 * UPKEEP_COST_PER_HULL_POINT
+    assert player.credits == pytest.approx(1000.0 - expected)
+
+
+def test_process_unit_upkeep_clamps_to_zero():
+    """Credits never go below zero even when upkeep exceeds the balance."""
+    player = MockPlayer("Player 1")
+    player.credits = 0.05  # Less than the upkeep that will be charged
+
+    unit = _make_upkeep_unit(player, hull_usage=200)  # 200 * 0.01 = 2.0 upkeep
+    game = _make_upkeep_game([unit])
+
+    tp = TurnProcessor(game)
+    tp._process_unit_upkeep(player)
+
+    assert player.credits == 0.0
+
+
+def test_process_unit_upkeep_skips_temporary_units():
+    """Temporary units (e.g. Missile Platforms) are excluded from upkeep."""
+    player = MockPlayer("Player 1")
+    player.credits = 1000.0
+
+    temp_unit = _make_upkeep_unit(player, hull_usage=50, is_temporary=True)
+    game = _make_upkeep_game([temp_unit])
+
+    tp = TurnProcessor(game)
+    tp._process_unit_upkeep(player)
+
+    assert player.credits == 1000.0  # No credits deducted
+
+
+def test_process_unit_upkeep_skips_strikecraft():
+    """Strikecraft wings are excluded from upkeep charges."""
+    player = MockPlayer("Player 1")
+    player.credits = 1000.0
+
+    wing = _make_upkeep_unit(player, hull_usage=5, hull_size=HullSize.STRIKECRAFT_WING)
+    game = _make_upkeep_game([wing])
+
+    tp = TurnProcessor(game)
+    tp._process_unit_upkeep(player)
+
+    assert player.credits == 1000.0  # No credits deducted
+
+
+def test_process_unit_upkeep_multiple_units():
+    """Upkeep accumulates correctly across multiple units owned by the same player."""
+    player = MockPlayer("Player 1")
+    player.credits = 500.0
+    other_player = MockPlayer("Player 2")
+
+    unit_a = _make_upkeep_unit(player, hull_usage=10)       # 10 * 0.01 = 0.10
+    unit_b = _make_upkeep_unit(player, hull_usage=25)       # 25 * 0.01 = 0.25
+    unit_enemy = _make_upkeep_unit(other_player, hull_usage=100)  # should not count
+
+    game = _make_upkeep_game([unit_a, unit_b, unit_enemy])
+
+    tp = TurnProcessor(game)
+    tp._process_unit_upkeep(player)
+
+    expected = (10 + 25) * UPKEEP_COST_PER_HULL_POINT
+    assert player.credits == pytest.approx(500.0 - expected)
