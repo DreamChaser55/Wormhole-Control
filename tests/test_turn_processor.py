@@ -288,3 +288,73 @@ def test_process_unit_upkeep_multiple_units():
 
     expected = (10 + 25) * UPKEEP_COST_PER_HULL_POINT
     assert player.credits == pytest.approx(500.0 - expected)
+
+
+def test_game_get_player_income():
+    from game import Game
+    from entities import Planet
+    
+    class DummyGame(Game):
+        def __init__(self):
+            self.galaxy = MagicMock()
+
+    game = DummyGame()
+    player = MockPlayer("Player 1")
+    
+    planet1 = MagicMock(spec=Planet)
+    planet1.owner = player
+    planet1.population = 100.0
+    
+    planet2 = MagicMock(spec=Planet)
+    planet2.owner = player
+    planet2.population = 50.0
+    
+    other_player = MockPlayer("Player 2")
+    planet_other = MagicMock(spec=Planet)
+    planet_other.owner = other_player
+    planet_other.population = 200.0
+    
+    system = MagicMock()
+    system.get_all_celestial_bodies.return_value = [
+        ((0, 0), planet1),
+        ((0, 1), planet2),
+        ((0, 2), planet_other)
+    ]
+    game.galaxy.systems = {"Sol": system}
+    
+    from constants import TAX_RATE
+    expected_income = (100.0 + 50.0) * TAX_RATE
+    assert game.get_player_income(player) == pytest.approx(expected_income)
+
+
+def test_game_get_player_upkeep():
+    from game import Game
+    
+    class DummyGame(Game):
+        def __init__(self):
+            self.galaxy = MagicMock()
+            
+    game = DummyGame()
+    player = MockPlayer("Player 1")
+    
+    unit_a = _make_upkeep_unit(player, hull_usage=10)       # counts
+    unit_b = _make_upkeep_unit(player, hull_usage=25)       # counts
+    unit_temp = _make_upkeep_unit(player, hull_usage=50, is_temporary=True)  # skipped
+    unit_wing = _make_upkeep_unit(player, hull_usage=5, hull_size=HullSize.STRIKECRAFT_WING)  # skipped
+    
+    other_player = MockPlayer("Player 2")
+    unit_enemy = _make_upkeep_unit(other_player, hull_usage=100)  # skipped
+    
+    system = MagicMock()
+    system.get_all_units.return_value = [
+        (unit_a, (0, 0)),
+        (unit_b, (0, 0)),
+        (unit_temp, (0, 0)),
+        (unit_wing, (0, 0)),
+        (unit_enemy, (0, 0))
+    ]
+    game.galaxy.systems = {"Sol": system}
+    
+    expected_upkeep = (10 + 25) * UPKEEP_COST_PER_HULL_POINT
+    assert game.get_player_upkeep(player) == pytest.approx(expected_upkeep)
+

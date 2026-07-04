@@ -1122,7 +1122,36 @@ class Game:
             sidebar_timer.stop()
             logger.debug(f"  [Profile] Sidebar update took: {sidebar_timer}")
 
+    def get_player_income(self, player: Player) -> float:
+        """Calculates total credit income per turn for the player."""
+        from entities import Planet, Moon, Asteroid
+        from constants import TAX_RATE
+        total_income = 0.0
+        if self.galaxy:
+            for system in self.galaxy.systems.values():
+                for hexcoord, body in system.get_all_celestial_bodies():
+                    if isinstance(body, (Planet, Moon, Asteroid)) and body.owner == player:
+                        total_income += body.population * TAX_RATE
+        return total_income
+
+    def get_player_upkeep(self, player: Player) -> float:
+        """Calculates total unit upkeep cost per turn for the player."""
+        from constants import UPKEEP_COST_PER_HULL_POINT, HullSize
+        total_upkeep = 0.0
+        if self.galaxy:
+            for system_obj in self.galaxy.systems.values():
+                for unit, _ in system_obj.get_all_units():
+                    if unit.owner != player:
+                        continue
+                    if unit.is_temporary:
+                        continue
+                    if unit.hull_size == HullSize.STRIKECRAFT_WING:
+                        continue
+                    total_upkeep += unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
+        return total_upkeep
+
     def update_player_turn_display(self):
+
         """Updates the turn label and player color indicator."""
         if not self.players:
             return

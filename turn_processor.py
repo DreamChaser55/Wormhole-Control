@@ -11,9 +11,8 @@ from geometry import Vector, Position, distance, hex_distance, Circle, is_point_
 from sector_utils import move_towards_position
 from entities import Unit, Wormhole, Planet, Moon, Asteroid
 from unit_components import JumpStatus, Commander
-from constants import UPKEEP_COST_PER_HULL_POINT, HullSize
+from constants import UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE
 
-TAX_RATE = 0.1  # 10% tax rate
 
 class TurnProcessor:
     def __init__(self, game_instance):

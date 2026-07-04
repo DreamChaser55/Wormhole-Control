@@ -464,6 +464,8 @@ class GUI_Handler:
             object_id='#resource_label'
         )
         self.credits_label.text_horiz_alignment='left'
+        self.credits_label.tool_tip_delay = 0.3
+        self.credits_label.tool_tip_wrap_width = int(120 * self.scale_x)
 
         metal_x = credits_x + label_width + label_spacing
         self.metal_label = pygame_gui.elements.UILabel(
@@ -948,6 +950,22 @@ class GUI_Handler:
         """Updates the resource labels with the current player's values."""
         if self.credits_label:
             self.credits_label.set_text(f"Credits: {player.credits:.0f}")
+            
+            # Calculate total income and unit upkeep cost
+            total_income = self.game_instance.get_player_income(player)
+            total_upkeep = self.game_instance.get_player_upkeep(player)
+            net_change = total_income - total_upkeep
+            sign = "+" if net_change >= 0 else ""
+            net_color = "#00FF00" if net_change >= 0 else "#FF4040"
+            
+            tooltip_text = (
+                f"Income: <font color='#00FF00'>+{total_income:.1f}</font><br>"
+                f"Upkeep: <font color='#FF4040'>-{total_upkeep:.1f}</font><br>"
+                f"Net: <font color='{net_color}'>{sign}{net_change:.1f}</font>"
+            )
+            self.credits_label.tool_tip_text = tooltip_text
+            if self.credits_label.tool_tip is not None:
+                self.credits_label.tool_tip.text_block.set_text(tooltip_text)
         if self.metal_label:
             self.metal_label.set_text(f"Metal: {player.metal:.0f}")
         if self.crystal_label:
