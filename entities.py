@@ -16,7 +16,7 @@ from unit_orders import (
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
     RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
-    UseAbilityOrder
+    UseAbilityOrder, ProtectOrder
 )
 from unit_components import (
     UnitComponent,

@@ -63,6 +63,12 @@ class AttackUnitEvent(Event):
         self.shift_pressed = shift_pressed
         self.target_component_type_str = target_component_type_str
 
+class IssueProtectOrderEvent(Event):
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_unit = target_unit
+        self.shift_pressed = shift_pressed
+
 class ColonizeEvent(Event):
     def __init__(self, units: list, target_body: typing.Any, shift_pressed: bool):
         self.units = units

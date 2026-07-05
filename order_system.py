@@ -3,11 +3,12 @@ import typing
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
-    MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent
+    MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent,
+    IssueProtectOrderEvent
 )
 from entities import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
-    MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder
+    MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder
 )
 from sector_utils import random_point_in_sector
 from constants import HullSize
@@ -36,6 +37,7 @@ class OrderSystem:
         self.event_bus.subscribe(UnloadResourcesEvent, self.handle_unload_resources)
         self.event_bus.subscribe(DockEvent, self.handle_dock)
         self.event_bus.subscribe(UseAbilityEvent, self.handle_use_ability)
+        self.event_bus.subscribe(IssueProtectOrderEvent, self.handle_issue_protect_order)
 
     def handle_cancel_orders(self, event: CancelOrdersEvent):
         for unit in event.units:
@@ -185,6 +187,16 @@ class OrderSystem:
                     unit.commander_component.clear_orders()
                 unit.commander_component.add_order(repair_order)
                 logger.debug(f"  Unit {unit.name} ordered to repair {event.target_unit.name} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_issue_protect_order(self, event: IssueProtectOrderEvent):
+        for unit in event.units:
+            protect_params = {"target_unit_id": event.target_unit.id}
+            protect_order = ProtectOrder(unit, protect_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(protect_order)
+            logger.debug(f"  Unit {unit.name} ordered to protect {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_mine(self, event: MineEvent):

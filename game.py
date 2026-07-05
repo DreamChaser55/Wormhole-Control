@@ -762,6 +762,21 @@ class Game:
             repair_type_styled = f"<font color='{REPAIR_COLOR}'><b>Repair:</b></font>"
             return [f"{repair_type_styled} {target_unit_name_styled}"]
 
+        elif order_type == "PROTECT":
+            target_name = state_data.get("target_name")
+            target_unit_id = state_data.get("target_unit_id")
+            lookup_success = state_data.get("lookup_success", False)
+
+            if lookup_success:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
+            elif target_unit_id:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
+            else:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Target</i></font>"
+
+            protect_type_styled = f"<font color='#FF69B4'><b>Protect:</b></font>"
+            return [f"{protect_type_styled} {target_unit_name_styled}"]
+
         elif order_type == "DOCK":
             target_name = state_data.get("target_name")
             target_carrier_id = state_data.get("target_carrier_id")

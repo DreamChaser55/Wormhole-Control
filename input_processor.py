@@ -18,7 +18,7 @@ from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Worm
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
-    MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent
+    MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent
 )
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
@@ -385,6 +385,7 @@ class InputProcessor:
                                     if target_object.inhibitor_component:
                                         options.append(("Attack Inhibitor", "attack_unit_HyperspaceInhibitionFieldEmitter"))
                             elif isinstance(target_object, Unit) and any(target_object.owner == a.owner for a in actors) and target_object not in actors:
+                                options.append(("Protect", "protect_unit"))
                                 target_is_damaged = (
                                     target_object.current_hit_points < target_object.max_hit_points or
                                     any(c.current_hit_points < c.max_hit_points for c in target_object.components.values())
@@ -566,6 +567,14 @@ class InputProcessor:
             elif extracted_action_id == "repair_unit":
                 if isinstance(target, Unit):
                     self.game.event_bus.publish(RepairUnitEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "protect_unit":
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(IssueProtectOrderEvent(
                         selected_units,
                         target,
                         shift_pressed

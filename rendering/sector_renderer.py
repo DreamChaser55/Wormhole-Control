@@ -397,7 +397,7 @@ class SectorViewRenderer:
                 'sequence_index': sequence_index,
                 'order_type': order.order_type
             })
-        elif order.order_type == OrderType.ATTACK:
+        elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
             target_unit_id = order.parameters["target_unit_id"]
             target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
             if target_unit:
@@ -467,6 +467,9 @@ class SectorViewRenderer:
                     
                     if waypoint['order_type'] == OrderType.ATTACK:
                         line_color = RED
+                        line_width = 2
+                    elif waypoint['order_type'] == OrderType.PROTECT:
+                        line_color = (255, 105, 180)
                         line_width = 2
                     elif waypoint['is_current']:
                         line_width = 2
@@ -542,6 +545,9 @@ class SectorViewRenderer:
                     
                     if waypoint['order_type'] == OrderType.ATTACK:
                         line_color = RED
+                        line_width = 2
+                    elif waypoint['order_type'] == OrderType.PROTECT:
+                        line_color = (255, 105, 180)
                         line_width = 2
                     elif waypoint['is_current']:
                         line_width = 2

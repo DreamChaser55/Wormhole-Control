@@ -5,13 +5,13 @@ from unit_orders import (
     OrderStatus, OrderType, ReachWaypointOrder, MoveOrder, 
     ToggleInhibitorOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder,
     ConstructOrder, Order, RepairOrder, MineOrder, UnloadResourcesOrder,
-    PatrolOrder
+    PatrolOrder, ProtectOrder
 )
 from unit_components import (
     Engines, Hyperdrive, HyperdriveType, Weapons, ColonyComponent, 
     HyperspaceInhibitionFieldEmitter, Constructor, RepairComponent,
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
-    BuildableUnit, Turret, TurretType, TurretVariant
+    BuildableUnit, Turret, TurretType, TurretVariant, Commander
 )
 from tests.test_unit_components import MockUnit, MockPlayer
 from constants import HullSize
@@ -1170,6 +1170,160 @@ def test_order_system_handle_unload_resources():
     
     # unit_crystal has crystal cargo (unmatching), so it should NOT get an unload order
     assert unit_crystal.commander_component.current_order is None
+
+
+def test_protect_order_validation():
+    protector = MockUnit()
+    protector.add_component(Commander(protector))
+    
+    # 1. Target doesn't exist
+    order_no_target = ProtectOrder(protector, {"target_unit_id": 999})
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.return_value = None
+    protector.game.galaxy = galaxy
+    order_no_target.execute(galaxy)
+    assert order_no_target.status == OrderStatus.FAILED
+    
+    # Setup target
+    target = MockUnit()
+    target.id = 123
+    target.name = "TargetUnit"
+    target.owner = MockPlayer("Player1")
+    galaxy.get_unit_by_id.return_value = target
+    
+    # 2. Target hostile (protector belongs to Player2)
+    protector.owner = MockPlayer("Player2")
+    order_hostile = ProtectOrder(protector, {"target_unit_id": 123})
+    order_hostile.execute(galaxy)
+    assert order_hostile.status == OrderStatus.FAILED
+    
+    # 3. Target friendly (both belong to Player1)
+    protector.owner = target.owner
+    order_friendly = ProtectOrder(protector, {"target_unit_id": 123})
+    order_friendly.execute(galaxy)
+    assert order_friendly.status == OrderStatus.IN_PROGRESS
+
+
+def test_protect_order_follow_movement():
+    protector = MockUnit()
+    protector.name = "Protector"
+    protector.add_component(Commander(protector))
+    engines = Engines(protector, speed=50.0)
+    protector.add_component(engines)
+    protector.in_system = "Sol"
+    protector.in_hex = (0, 0)
+    protector.position = Position(10, 10)
+    
+    target = MockUnit()
+    target.id = 123
+    target.name = "TargetUnit"
+    target.owner = MockPlayer("Player1")
+    target.in_system = "Sol"
+    target.in_hex = (0, 0)
+    target.position = Position(100, 10)
+    
+    protector.owner = target.owner
+    
+    galaxy = MagicMock()
+    protector.game.galaxy = galaxy
+    mock_hex = MagicMock()
+    mock_hex.units = [protector, target]
+    mock_hex.get_all_inhibition_zones.return_value = []
+    mock_sys = MagicMock()
+    mock_sys.hexes = {(0, 0): mock_hex}
+    galaxy.systems = {"Sol": mock_sys}
+    galaxy.get_unit_by_id.return_value = target
+    
+    order = ProtectOrder(protector, {"target_unit_id": target.id})
+    order.execute(galaxy)
+    order.update(galaxy)
+    
+    # Should spawn follow MoveOrder to (100, 10)
+    assert len(order.sub_orders) == 1
+    move_sub = order.sub_orders[0]
+    assert move_sub.order_type == OrderType.MOVE
+    assert move_sub.parameters["destination_position"] == Position(100, 10)
+    
+    # Simulate target moving to (150, 10)
+    target.position = Position(150, 10)
+    order.update(galaxy)
+    
+    # Since destination is far, it should cancel previous and spawn a new move to (150, 10)
+    assert len(order.sub_orders) == 1
+    move_sub = order.sub_orders[0]
+    assert move_sub.parameters["destination_position"] == Position(150, 10)
+    
+    # Simulate protector getting close (distance <= 30.0)
+    protector.position = Position(130, 10)
+    # The sub-order might still be in progress, updating should cancel it since we are close
+    order.update(galaxy)
+    assert len(order.sub_orders) == 0
+    assert engines.move_target is None
+
+
+def test_protect_order_combat_engagement():
+    protector = MockUnit()
+    protector.name = "Protector"
+    protector.add_component(Commander(protector))
+    engines = Engines(protector, speed=50.0)
+    protector.add_component(engines)
+    
+    weapons = Weapons(protector)
+    # Give protector a mock turret with range 100.0
+    turret = Turret(turret_type=TurretType.MASS_DRIVER, damage=10, range=100.0, cooldown=1, parent_unit=protector)
+    weapons.add_turret(turret)
+    protector.add_component(weapons)
+    
+    protector.in_system = "Sol"
+    protector.in_hex = (0, 0)
+    protector.position = Position(10, 10)
+    
+    target = MockUnit()
+    target.id = 123
+    target.name = "TargetUnit"
+    target.owner = MockPlayer("Player1")
+    target.in_system = "Sol"
+    target.in_hex = (0, 0)
+    target.position = Position(50, 10)
+    
+    protector.owner = target.owner
+    
+    enemy = MockUnit()
+    enemy.id = 666
+    enemy.name = "Enemy"
+    enemy.owner = MockPlayer("Player2")
+    enemy.in_system = "Sol"
+    enemy.in_hex = (0, 0)
+    enemy.position = Position(80, 10) # within 150.0 detection range of target/protector
+    
+    galaxy = MagicMock()
+    protector.game.galaxy = galaxy
+    mock_hex = MagicMock()
+    mock_hex.units = [protector, target, enemy]
+    mock_hex.get_all_inhibition_zones.return_value = []
+    mock_sys = MagicMock()
+    mock_sys.hexes = {(0, 0): mock_hex}
+    galaxy.systems = {"Sol": mock_sys}
+    galaxy.get_unit_by_id.side_effect = lambda uid: {123: target, 666: enemy}.get(uid)
+    
+    order = ProtectOrder(protector, {"target_unit_id": target.id})
+    order.execute(galaxy)
+    
+    # First update: enemy is close, should spawn AttackOrder (cancelling move)
+    order.update(galaxy)
+    assert len(order.sub_orders) == 1
+    assert order.sub_orders[0].order_type == OrderType.ATTACK
+    assert order.sub_orders[0].parameters["target_unit_id"] == enemy.id
+    
+    # Complete AttackOrder by destroying enemy (HP = 0)
+    enemy.current_hit_points = 0
+    order.update(galaxy)
+    
+    # Attack sub-order should be cleared, and follow MoveOrder to target should spawn
+    assert len(order.sub_orders) == 1
+    assert order.sub_orders[0].order_type == OrderType.MOVE
+    assert order.sub_orders[0].parameters["destination_position"] == Position(50, 10)
+
 
 
 
