@@ -7,7 +7,7 @@ from unit_components import (
     Turret, TurretType, TurretVariant, Weapons, ColonyComponent,
     Constructor, BuildableUnit, RepairComponent,
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
-    Defenses
+    Defenses, AntimatterStorage
 )
 from unit_orders import Order, OrderStatus, OrderType
 
@@ -51,6 +51,8 @@ class MockUnit:
         
     @property
     def engines_component(self): return self.get_component(Engines)
+    @property
+    def antimatter_component(self): return self.get_component(AntimatterStorage)
     @property
     def hyperdrive_component(self): return self.get_component(Hyperdrive)
     @property

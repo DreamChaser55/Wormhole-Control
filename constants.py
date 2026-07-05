@@ -71,6 +71,14 @@ DEFAULT_JUMP_RANGE: int = 5 # in hexes
 UPKEEP_COST_PER_HULL_POINT: float = 0.01  # Credits per used hull point per turn
 TAX_RATE: float = 0.1  # 10% tax rate
 
+# Antimatter Mechanics Constants
+DEFAULT_ANTIMATTER_CAPACITY: float = 100.0
+DEFAULT_ANTIMATTER_REGEN: float = 10.0
+ENGINE_ANTIMATTER_COST_PER_TURN: float = 5.0
+HYPERDRIVE_SYSTEM_JUMP_COST: float = 50.0
+HYPERDRIVE_HEX_JUMP_COST: float = 20.0
+
+
 # Experience point (XP) constants
 MAX_UNIT_XP: int = 1000               # Maximum XP a unit can accumulate
 XP_WEAPON_DAMAGE_BONUS: float = 0.25  # +25% weapon damage at max XP

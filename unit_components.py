@@ -13,7 +13,12 @@ import random
 from utils import HexCoord
 from geometry import Vector, Position, distance
 from unit_orders import Order, OrderStatus
-from constants import DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE, HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
+from constants import (
+    DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE, HullSize,
+    SECTOR_CIRCLE_RADIUS_LOGICAL, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS,
+    XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS,
+    DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_REGEN
+)
 from unit_templates import UNIT_TEMPLATES
 
 if TYPE_CHECKING:
@@ -70,6 +75,46 @@ class UnitComponent:
         ]
 
 # --- UnitComponent-derived Classes (Components) ---
+
+@dataclasses.dataclass
+class AntimatterStorage(UnitComponent):
+    """Component storing and managing antimatter energy levels for a unit."""
+    DISPLAY_NAME: str = "Antimatter Storage"
+    SIDEBAR_ORDER: int = 1
+    max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY
+    current_amount: float = DEFAULT_ANTIMATTER_CAPACITY
+    regen_rate: float = DEFAULT_ANTIMATTER_REGEN
+
+    def __init__(self, unit: 'Unit', max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY, regen_rate: float = DEFAULT_ANTIMATTER_REGEN, hull_cost: int = 0):
+        super().__init__(unit, hull_cost=hull_cost)
+        self.max_capacity = max_capacity
+        self.regen_rate = regen_rate
+        self.current_amount = max_capacity
+
+    def consume(self, amount: float) -> bool:
+        """Deducts antimatter. Returns True on success, False if insufficient."""
+        if self.is_destroyed:
+            return False
+        if self.current_amount >= amount:
+            self.current_amount -= amount
+            logger.debug(f"[{self.unit.name}] Consumed {amount} antimatter. Remaining: {self.current_amount:.1f}/{self.max_capacity:.1f}")
+            return True
+        return False
+
+    def regenerate(self) -> None:
+        """Regenerates antimatter up to max_capacity."""
+        if self.is_destroyed:
+            return
+        if self.current_amount < self.max_capacity:
+            old = self.current_amount
+            self.current_amount = min(self.max_capacity, self.current_amount + self.regen_rate)
+            logger.debug(f"[{self.unit.name}] Regenerated {self.current_amount - old:.1f} antimatter. Current: {self.current_amount:.1f}/{self.max_capacity:.1f}")
+
+    def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_sidebar_data(game_state)
+        status = f"{self.current_amount:.1f}/{self.max_capacity:.1f} (+{self.regen_rate:.1f}/turn)"
+        data.append({'type': 'label', 'text': f"Antimatter: {status}", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
 
 @dataclasses.dataclass
 class Engines(UnitComponent):
@@ -474,6 +519,7 @@ class AbilityDefinition:
     range: float             # Max targeting distance in logical units (0 = self only)
     requires_target_unit: bool       # True if the ability needs a unit to be selected
     requires_target_position: bool   # True if the ability needs a position click
+    antimatter_cost: int = 0         # Cost in antimatter to activate this ability
 
 
 # Registry of all ability definitions. Tuned values live here.
@@ -487,6 +533,7 @@ ABILITY_DEFINITIONS: typing.Dict['AbilityType', 'AbilityDefinition'] = {
         range=0.0,
         requires_target_unit=False,
         requires_target_position=False,
+        antimatter_cost=20,
     ),
     AbilityType.CLUSTER_WARHEAD: AbilityDefinition(
         ability_type=AbilityType.CLUSTER_WARHEAD,
@@ -497,6 +544,7 @@ ABILITY_DEFINITIONS: typing.Dict['AbilityType', 'AbilityDefinition'] = {
         range=500.0,
         requires_target_unit=False,
         requires_target_position=True,
+        antimatter_cost=30,
     ),
     AbilityType.DESIGNATE_TARGET: AbilityDefinition(
         ability_type=AbilityType.DESIGNATE_TARGET,
@@ -507,6 +555,7 @@ ABILITY_DEFINITIONS: typing.Dict['AbilityType', 'AbilityDefinition'] = {
         range=450.0,
         requires_target_unit=True,
         requires_target_position=False,
+        antimatter_cost=15,
     ),
     AbilityType.ION_BOLT: AbilityDefinition(
         ability_type=AbilityType.ION_BOLT,
@@ -517,6 +566,7 @@ ABILITY_DEFINITIONS: typing.Dict['AbilityType', 'AbilityDefinition'] = {
         range=400.0,
         requires_target_unit=True,
         requires_target_position=False,
+        antimatter_cost=25,
     ),
     AbilityType.MISSILE_BATTERIES: AbilityDefinition(
         ability_type=AbilityType.MISSILE_BATTERIES,
@@ -527,6 +577,7 @@ ABILITY_DEFINITIONS: typing.Dict['AbilityType', 'AbilityDefinition'] = {
         range=0.0,
         requires_target_unit=False,
         requires_target_position=False,
+        antimatter_cost=40,
     ),
     AbilityType.REPAIR_CLOUD: AbilityDefinition(
         ability_type=AbilityType.REPAIR_CLOUD,
@@ -537,6 +588,7 @@ ABILITY_DEFINITIONS: typing.Dict['AbilityType', 'AbilityDefinition'] = {
         range=350.0,
         requires_target_unit=False,
         requires_target_position=False,
+        antimatter_cost=35,
     ),
 }
 
@@ -1914,7 +1966,13 @@ class AbilityComponent(UnitComponent):
                 cd_str = "Ready"
                 btn_obj_id = '#sidebar_expand_button'
 
-            btn_text = f"{defn.name}  [{cd_str}]"
+            # Check if there is enough antimatter
+            am_comp = self.unit.antimatter_component
+            has_enough_am = True
+            if am_comp and am_comp.current_amount < defn.antimatter_cost:
+                has_enough_am = False
+
+            btn_text = f"{defn.name} ({defn.antimatter_cost} AM) [{cd_str}]"
             data.append({
                 'type': 'button',
                 'text': btn_text,
@@ -1926,7 +1984,7 @@ class AbilityComponent(UnitComponent):
                     'requires_target_position': defn.requires_target_position,
                 },
                 'height': 28,
-                'enabled': instance.is_ready and not self.is_destroyed,
+                'enabled': instance.is_ready and not self.is_destroyed and has_enough_am,
             })
             data.append({
                 'type': 'label',
@@ -1937,13 +1995,18 @@ class AbilityComponent(UnitComponent):
         return data
 
     def can_use(self, ability_type: AbilityType) -> bool:
-        """Returns True if the ability exists, the component is intact, and it is off cooldown."""
+        """Returns True if the ability exists, the component is intact, it is off cooldown, and has enough antimatter."""
         if self.is_destroyed:
             return False
         instance = self.abilities.get(ability_type)
         if not instance:
             return False
-        return instance.is_ready
+        if not instance.is_ready:
+            return False
+        am_comp = self.unit.antimatter_component
+        if am_comp and am_comp.current_amount < instance.definition.antimatter_cost:
+            return False
+        return True
 
     def activate(
         self,
@@ -1959,7 +2022,7 @@ class AbilityComponent(UnitComponent):
         state. Returns True on success, False on failure.
         """
         if not self.can_use(ability_type):
-            logger.debug(f"[{self.unit.name}] Cannot use {ability_type.name}: not ready or component destroyed.")
+            logger.debug(f"[{self.unit.name}] Cannot use {ability_type.name}: not ready, component destroyed, or low antimatter.")
             return False
 
         instance = self.abilities[ability_type]
@@ -2009,6 +2072,14 @@ class AbilityComponent(UnitComponent):
         elif ability_type == AbilityType.REPAIR_CLOUD:
             # Healing applied each turn in update(); nothing immediate needed.
             logger.debug(f"[{self.unit.name}] Repair Cloud activated. Healing friendlies within {defn.range} units for {defn.duration} turns.")
+
+        # --- Consume antimatter ---
+        am_comp = self.unit.antimatter_component
+        if am_comp:
+            consumed = am_comp.consume(defn.antimatter_cost)
+            if not consumed:
+                logger.debug(f"[{self.unit.name}] Consume failed during activation (insufficient antimatter).")
+                return False
 
         # --- Mark as active and set cooldown ---
         instance.is_active = (defn.duration > 0)

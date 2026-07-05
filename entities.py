@@ -20,6 +20,7 @@ from unit_orders import (
 )
 from unit_components import (
     UnitComponent,
+    AntimatterStorage,
     Engines,
     Hyperdrive, HyperdriveType,
     Commander,
@@ -240,6 +241,8 @@ class Unit(GameObject):
 
         # Every unit has a commander component by default
         self.add_component(Commander(unit=self))
+        # Every unit has an antimatter storage component by default
+        self.add_component(AntimatterStorage(unit=self))
 
     def add_component(self, component: UnitComponent) -> None:
         self.components[type(component)] = component
@@ -252,6 +255,10 @@ class Unit(GameObject):
         if component_type in self.components:
             del self.components[component_type]
             self._update_hull_usage()
+
+    @property
+    def antimatter_component(self) -> typing.Optional[AntimatterStorage]:
+        return self.get_component(AntimatterStorage)
 
     @property
     def engines_component(self) -> typing.Optional[Engines]:
@@ -423,6 +430,10 @@ class Unit(GameObject):
         
         This method should be called on each turn processing cycle.
         """
+        # Regenerate antimatter
+        if self.antimatter_component:
+            self.antimatter_component.regenerate()
+
         # --- Lifetime check for temporary units (e.g. Missile Platforms) ---
         if self.lifetime is not None:
             self.lifetime -= 1

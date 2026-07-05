@@ -11,7 +11,10 @@ from geometry import Vector, Position, distance, hex_distance, Circle, is_point_
 from sector_utils import move_towards_position
 from entities import Unit, Wormhole, Planet, Moon, Asteroid
 from unit_components import JumpStatus, Commander
-from constants import UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
+from constants import (
+    UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS,
+    ENGINE_ANTIMATTER_COST_PER_TURN, HYPERDRIVE_SYSTEM_JUMP_COST, HYPERDRIVE_HEX_JUMP_COST
+)
 
 
 class TurnProcessor:
@@ -96,6 +99,15 @@ class TurnProcessor:
                         units_to_move.append((unit, ("hex_jump", (target_hex_for_jump, target_position_for_jump))))
 
                 elif unit.engines_component and unit.engines_component.move_target:
+                    # Engines consume antimatter per turn while moving
+                    am_comp = unit.antimatter_component
+                    if am_comp and am_comp.current_amount < ENGINE_ANTIMATTER_COST_PER_TURN:
+                        logger.debug(f"   {unit.name} cannot move sub-light: Insufficient antimatter ({am_comp.current_amount:.1f}/{ENGINE_ANTIMATTER_COST_PER_TURN:.1f}).")
+                        continue
+
+                    if am_comp:
+                        am_comp.consume(ENGINE_ANTIMATTER_COST_PER_TURN)
+
                     target_pos_in_sector = unit.engines_component.move_target
                     effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
                     unit.position = move_towards_position(unit.position, target_pos_in_sector, effective_speed)
@@ -185,6 +197,17 @@ class TurnProcessor:
                                 can_jump = True
                     
                     if can_jump and arrival_hex and target_system and exit_wormhole_obj_for_exec:
+                        # Check/consume antimatter for system jump
+                        am_comp = unit.antimatter_component
+                        if am_comp and am_comp.current_amount < HYPERDRIVE_SYSTEM_JUMP_COST:
+                            logger.debug(f"   {unit.name} system jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{HYPERDRIVE_SYSTEM_JUMP_COST:.1f}).")
+                            hd_comp.jump_status = JumpStatus.ERROR
+                            hd_comp.wormhole_jump_target = None
+                            continue
+
+                        if am_comp:
+                            am_comp.consume(HYPERDRIVE_SYSTEM_JUMP_COST)
+
                         unit.position = exit_wormhole_obj_for_exec.position 
                         moved = self.game.galaxy.move_unit_between_systems(
                             unit=unit,
@@ -304,8 +327,18 @@ class TurnProcessor:
                         continue
                         
                     unit.position = target_pos
+                    # Check/consume antimatter for hex jump
+                    am_comp = unit.antimatter_component
+                    if am_comp and am_comp.current_amount < HYPERDRIVE_HEX_JUMP_COST:
+                        logger.debug(f"   {unit.name} hex jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{HYPERDRIVE_HEX_JUMP_COST:.1f}).")
+                        hd_comp.jump_status = JumpStatus.ERROR
+                        hd_comp.hex_jump_target = None
+                        continue
+
                     moved = origin_system.move_unit_between_hexes(unit=unit, destination_hex=target_hex)
                     if moved:
+                        if am_comp:
+                            am_comp.consume(HYPERDRIVE_HEX_JUMP_COST)
                         logger.debug(f"   {unit.name}(id:{unit.id}) completed hex jump to {target_hex}:{target_pos} in {origin_system.name} system.")
                         hd_comp.start_recharge() # Clears targets and sets status to CHARGING
                     else:
