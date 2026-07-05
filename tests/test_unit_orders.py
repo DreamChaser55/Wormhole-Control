@@ -1325,5 +1325,78 @@ def test_protect_order_combat_engagement():
     assert order.sub_orders[0].parameters["destination_position"] == Position(50, 10)
 
 
+def test_protect_order_target_range_limit():
+    protector = MockUnit()
+    protector.name = "Protector"
+    protector.add_component(Commander(protector))
+    engines = Engines(protector, speed=50.0)
+    protector.add_component(engines)
+    
+    weapons = Weapons(protector)
+    # Give protector a mock turret with range 50.0
+    turret = Turret(turret_type=TurretType.MASS_DRIVER, damage=10, range=50.0, cooldown=1, parent_unit=protector)
+    weapons.add_turret(turret)
+    protector.add_component(weapons)
+    
+    protector.in_system = "Sol"
+    protector.in_hex = (0, 0)
+    protector.position = Position(100, 100)
+    
+    target = MockUnit()
+    target.id = 123
+    target.name = "TargetUnit"
+    target.owner = MockPlayer("Player1")
+    target.in_system = "Sol"
+    target.in_hex = (0, 0)
+    target.position = Position(100, 100)
+    
+    protector.owner = target.owner
+    
+    # Enemy 1: distance to target is 800.0 (within 1000.0, but outside protector turret range 50.0)
+    enemy_near = MockUnit()
+    enemy_near.id = 111
+    enemy_near.name = "EnemyNear"
+    enemy_near.owner = MockPlayer("Player2")
+    enemy_near.in_system = "Sol"
+    enemy_near.in_hex = (0, 0)
+    enemy_near.position = Position(100, 900)
+    
+    # Enemy 2: distance to target is 1100.0 (outside 1000.0)
+    enemy_far = MockUnit()
+    enemy_far.id = 222
+    enemy_far.name = "EnemyFar"
+    enemy_far.owner = MockPlayer("Player2")
+    enemy_far.in_system = "Sol"
+    enemy_far.in_hex = (0, 0)
+    enemy_far.position = Position(100, 1200)
+    
+    galaxy = MagicMock()
+    protector.game.galaxy = galaxy
+    mock_hex = MagicMock()
+    mock_hex.units = [protector, target, enemy_near, enemy_far]
+    mock_hex.get_all_inhibition_zones.return_value = []
+    mock_sys = MagicMock()
+    mock_sys.hexes = {(0, 0): mock_hex}
+    galaxy.systems = {"Sol": mock_sys}
+    galaxy.get_unit_by_id.side_effect = lambda uid: {123: target, 111: enemy_near, 222: enemy_far}.get(uid)
+    
+    order = ProtectOrder(protector, {"target_unit_id": target.id})
+    order.execute(galaxy)
+    
+    # First update: only enemy_near should be targeted
+    order.update(galaxy)
+    assert len(order.sub_orders) == 1
+    assert order.sub_orders[0].order_type == OrderType.ATTACK
+    assert order.sub_orders[0].parameters["target_unit_id"] == enemy_near.id
+    
+    # Move enemy_near out of 1000.0 range (distance 1100.0)
+    enemy_near.position = Position(100, 1200)
+    order.update(galaxy)
+    
+    # Attack sub-order should be cleared (cancelled)
+    assert len(order.sub_orders) == 0 or order.sub_orders[0].order_type != OrderType.ATTACK
+
+
+
 
 

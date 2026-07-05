@@ -879,6 +879,10 @@ class ProtectOrder(Order):
 
         from unit_components import TurretVariant, WingType
 
+        # The protector must be in the same system and hex as the protected unit to search for enemies
+        if self.unit.in_system != target_unit.in_system or self.unit.in_hex != target_unit.in_hex:
+            return None
+
         system = galaxy_ref.systems.get(self.unit.in_system)
         if not system:
             return None
@@ -890,8 +894,8 @@ class ProtectOrder(Order):
         closest_enemy = None
         min_dist = float('inf')
 
-        max_turret_range = max((t.range for t in weapons.turrets), default=0.0)
-        detection_range = max(150.0, max_turret_range)
+        # Any enemy that gets closer than 1000.0 to the protected ship is a valid target.
+        detection_range = 1000.0
 
         for candidate in hex_obj.units:
             if candidate.owner != self.unit.owner and candidate.current_hit_points > 0:
@@ -917,9 +921,9 @@ class ProtectOrder(Order):
                     continue
 
                 dist_to_protector = distance(self.unit.position, candidate.position)
-                dist_to_protected = distance(target_unit.position, candidate.position) if target_unit.in_hex == self.unit.in_hex else float('inf')
+                dist_to_protected = distance(target_unit.position, candidate.position)
 
-                if dist_to_protector <= detection_range or dist_to_protected <= detection_range:
+                if dist_to_protected < detection_range:
                     if dist_to_protector < min_dist:
                         min_dist = dist_to_protector
                         closest_enemy = candidate
@@ -949,16 +953,15 @@ class ProtectOrder(Order):
                 enemy_id = current_sub.parameters.get("target_unit_id")
                 enemy_unit = self.unit.game.galaxy.get_unit_by_id(enemy_id) if enemy_id else None
 
-                # Calculate threat/detection range
-                weapons = self.unit.weapons_component
-                max_turret_range = max((t.range for t in weapons.turrets), default=0.0) if weapons else 0.0
-                detection_range = max(150.0, max_turret_range)
-
                 is_in_range = False
-                if enemy_unit and enemy_unit.current_hit_points > 0 and enemy_unit.in_system == self.unit.in_system and enemy_unit.in_hex == self.unit.in_hex:
-                    dist_to_protector = distance(self.unit.position, enemy_unit.position)
-                    dist_to_protected = distance(target_unit.position, enemy_unit.position) if target_unit.in_hex == self.unit.in_hex else float('inf')
-                    if dist_to_protector <= detection_range or dist_to_protected <= detection_range:
+                if (enemy_unit and 
+                        enemy_unit.current_hit_points > 0 and 
+                        enemy_unit.in_system == self.unit.in_system and 
+                        enemy_unit.in_hex == self.unit.in_hex and
+                        target_unit.in_system == self.unit.in_system and
+                        target_unit.in_hex == self.unit.in_hex):
+                    dist_to_protected = distance(target_unit.position, enemy_unit.position)
+                    if dist_to_protected < 1000.0:
                         is_in_range = True
 
                 if not is_in_range:
