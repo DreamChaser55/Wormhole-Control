@@ -6,7 +6,7 @@ import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 from utils import HexCoord
 from geometry import Position, distance, Vector
-from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS
+from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
 import uuid
 import dataclasses
 from enum import Enum, auto
@@ -232,7 +232,10 @@ class Unit(GameObject):
         self.lifetime: typing.Optional[int] = None
         # Flag to distinguish spawned temporary units from regular units.
         self.is_temporary: bool = False
-        
+
+        # Experience points earned through combat (0 – MAX_UNIT_XP).
+        self.experience_points: int = 0
+
         self.template_name: typing.Optional[str] = template_name
 
         # Every unit has a commander component by default
@@ -309,6 +312,16 @@ class Unit(GameObject):
     @property
     def commander_component(self) -> Commander:
         return self.get_component(Commander)
+
+    def gain_experience(self, amount: int) -> None:
+        """Awards experience points to the unit, capped at MAX_UNIT_XP."""
+        if self.experience_points >= MAX_UNIT_XP:
+            return
+        self.experience_points = min(MAX_UNIT_XP, self.experience_points + max(0, amount))
+
+    def xp_multiplier(self, max_bonus: float) -> float:
+        """Returns a linear scaling multiplier (1.0 at 0 XP, 1.0 + max_bonus at MAX_UNIT_XP)."""
+        return 1.0 + max_bonus * (self.experience_points / MAX_UNIT_XP)
 
     def take_damage(self, amount: int, damage_type: Optional[TurretType] = None) -> None:
         """Reduces the unit's current hit points by the given amount, applying any active damage reduction and defenses mitigation."""

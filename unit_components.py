@@ -13,7 +13,7 @@ import random
 from utils import HexCoord
 from geometry import Vector, Position, distance
 from unit_orders import Order, OrderStatus
-from constants import DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE, HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL
+from constants import DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE, HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
 from unit_templates import UNIT_TEMPLATES
 
 if TYPE_CHECKING:
@@ -86,7 +86,14 @@ class Engines(UnitComponent):
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
-        data.append({'type': 'label', 'text': f"Speed: {self.speed}", 'object_id': '#sidebar_info_label', 'height': 20})
+        xp = self.unit.experience_points
+        if xp > 0:
+            effective_speed = self.speed * self.unit.xp_multiplier(XP_SPEED_BONUS)
+            bonus_pct = int((effective_speed / self.speed - 1.0) * 100) if self.speed else 0
+            speed_text = f"Speed: {self.speed} (+{bonus_pct}% XP → {effective_speed:.1f})"
+        else:
+            speed_text = f"Speed: {self.speed}"
+        data.append({'type': 'label', 'text': speed_text, 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
 @dataclasses.dataclass
@@ -129,6 +136,15 @@ class Hyperdrive(UnitComponent):
             status_detail = "Error"
 
         data.append({'type': 'label', 'text': f"Type: {drive_type_str}  Status: {status_detail}", 'object_id': '#sidebar_info_label', 'height': 20})
+
+        xp = self.unit.experience_points
+        if xp > 0:
+            effective_range = int(self.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
+            bonus_pct = int((effective_range / self.jump_range - 1.0) * 100) if self.jump_range else 0
+            range_text = f"Jump Range: {self.jump_range} (+{bonus_pct}% XP → {effective_range})"
+        else:
+            range_text = f"Jump Range: {self.jump_range}"
+        data.append({'type': 'label', 'text': range_text, 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
     def start_recharge(self) -> None:
@@ -564,6 +580,7 @@ class Turret:
         """
         Fires at the turret's current target and resets the cooldown.
         Damage is amplified if the target is marked by Designate Target.
+        The parent unit earns XP equal to the actual damage dealt.
         """
         if self.target:
             # Apply damage amplification from Designate Target (stacks additively)
@@ -571,9 +588,15 @@ class Turret:
             if self.target.damage_amplification > 0.0:
                 effective_damage = self.damage * (1.0 + self.target.damage_amplification)
 
+            # Apply XP weapon damage bonus from the firing unit
+            effective_damage *= self.parent_unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
+
             # Anti-strikecraft damage reduced to 25% against other targets
             if self.variant == TurretVariant.ANTI_STRIKECRAFT and self.target.hull_size != HullSize.STRIKECRAFT_WING:
                 effective_damage *= 0.25
+
+            # Record target HP before damage to compute actual damage dealt for XP
+            hp_before = self.target.current_hit_points
 
             if self.target_component_type:
                 logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}'s {self.target_component_type.__name__}! (effective dmg: {effective_damage:.1f})")
@@ -583,6 +606,12 @@ class Turret:
             else:
                 logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}! (effective dmg: {effective_damage:.1f})")
                 self.target.take_damage(int(effective_damage), damage_type=self.turret_type)
+
+            # Award XP based on actual HP lost (overkill damage does not grant bonus XP)
+            xp_earned = max(0, hp_before - self.target.current_hit_points)
+            if xp_earned > 0:
+                self.parent_unit.gain_experience(xp_earned)
+
         self.current_cooldown = self.cooldown
 
     def update(self) -> None:
@@ -608,6 +637,8 @@ class Weapons(UnitComponent):
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
+        xp = self.unit.experience_points
+        xp_dmg_mult = self.unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
         for i, turret in enumerate(self.turrets):
             if i > 0:
                 # Add a small vertical space between turrets
@@ -631,7 +662,12 @@ class Weapons(UnitComponent):
                 'indent_level': 1
             })
             
-            stats_text = f"Damage: {turret.damage} | Range: {turret.range} | Cooldown: {turret.cooldown}t"
+            if xp > 0:
+                effective_dmg = turret.damage * xp_dmg_mult
+                bonus_pct = int((xp_dmg_mult - 1.0) * 100)
+                stats_text = f"Damage: {turret.damage} (+{bonus_pct}% XP → {effective_dmg:.1f}) | Range: {turret.range} | Cooldown: {turret.cooldown}t"
+            else:
+                stats_text = f"Damage: {turret.damage} | Range: {turret.range} | Cooldown: {turret.cooldown}t"
             data.append({
                 'type': 'label',
                 'text': stats_text,
@@ -743,9 +779,18 @@ class Defenses(UnitComponent):
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
-        data.append({'type': 'label', 'text': f"Armor: {self.armor}", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': f"Shields: {self.shields}", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': f"Point Defense: {self.point_defense}", 'object_id': '#sidebar_info_label', 'height': 20})
+        xp = self.unit.experience_points
+        if xp > 0:
+            mult = self.unit.xp_multiplier(XP_DEFENSE_BONUS)
+            bonus_pct = int((mult - 1.0) * 100)
+            def fmt(val: int) -> str:
+                return f"{val} (+{bonus_pct}% XP)"
+        else:
+            def fmt(val: int) -> str:
+                return str(val)
+        data.append({'type': 'label', 'text': f"Armor: {fmt(self.armor)}", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"Shields: {fmt(self.shields)}", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"Point Defense: {fmt(self.point_defense)}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
     def calculate_mitigation(self, incoming_damage: int, damage_type: Optional[TurretType]) -> int:
@@ -765,6 +810,9 @@ class Defenses(UnitComponent):
             mitigation += random.randint(0, self.point_defense)
             mitigation += random.randint(0, int(math.sqrt(self.armor)))
             mitigation += random.randint(0, int(math.sqrt(self.shields)))
+
+        # Apply XP defense bonus: veteran units are more effective at blocking damage
+        mitigation = int(mitigation * self.unit.xp_multiplier(XP_DEFENSE_BONUS))
 
         return min(incoming_damage, mitigation)
 

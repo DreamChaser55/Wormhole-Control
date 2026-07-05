@@ -13,7 +13,7 @@ from utils import HexCoord
 from geometry import Position, distance, hex_distance, Circle, is_circle_contained, do_circles_intersect, is_point_in_circle, get_closest_point_on_circle_edge, move_towards_position
 from pathfinding import find_intersystem_path, find_hex_jump_path
 from hexgrid_utils import hex_to_pixel
-from constants import HullSize
+from constants import HullSize, XP_JUMP_RANGE_BONUS
 
 if TYPE_CHECKING:
     from galaxy import Galaxy, Wormhole
@@ -334,7 +334,7 @@ class MoveOrder(Order):
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.plan_hex_jump_sequence: FAILED (no hyperdrive).")
             return
 
-        jump_range = self.unit.hyperdrive_component.jump_range
+        jump_range = int(self.unit.hyperdrive_component.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
         distance_to_jump = hex_distance(start_hex, end_hex)
 
         if distance_to_jump <= jump_range:

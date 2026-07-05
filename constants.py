@@ -71,6 +71,13 @@ DEFAULT_JUMP_RANGE: int = 5 # in hexes
 UPKEEP_COST_PER_HULL_POINT: float = 0.01  # Credits per used hull point per turn
 TAX_RATE: float = 0.1  # 10% tax rate
 
+# Experience point (XP) constants
+MAX_UNIT_XP: int = 1000               # Maximum XP a unit can accumulate
+XP_WEAPON_DAMAGE_BONUS: float = 0.25  # +25% weapon damage at max XP
+XP_DEFENSE_BONUS: float = 0.25        # +25% defense mitigation at max XP
+XP_SPEED_BONUS: float = 0.15          # +15% sub-FTL speed at max XP
+XP_JUMP_RANGE_BONUS: float = 0.20     # +20% hyperdrive jump range at max XP
+
 
 # Object sizes in sector view (in logical world coordinates):
 STATION_ICON_SIZE = 27.78

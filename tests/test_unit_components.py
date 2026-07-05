@@ -40,6 +40,8 @@ class MockUnit:
         self.damage_amplification = 0.0
         self.is_temporary = False
         self.current_hull_usage = 0
+        # XP system
+        self.experience_points = 0
         
     def add_component(self, component):
         self.components[type(component)] = component
@@ -112,6 +114,16 @@ class MockUnit:
                 healed_total += healed
                 amount -= healed
         return healed_total
+
+    def gain_experience(self, amount: int) -> None:
+        from constants import MAX_UNIT_XP
+        if self.experience_points >= MAX_UNIT_XP:
+            return
+        self.experience_points = min(MAX_UNIT_XP, self.experience_points + max(0, amount))
+
+    def xp_multiplier(self, max_bonus: float) -> float:
+        from constants import MAX_UNIT_XP
+        return 1.0 + max_bonus * (self.experience_points / MAX_UNIT_XP)
 
     def update(self):
         if self.hyperdrive_component:

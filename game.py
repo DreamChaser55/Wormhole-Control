@@ -22,7 +22,7 @@ from pygame import Color
 from constants import (
     SCREEN_RES, STATION_ICON_SIZE, SHIP_ICON_SIZE,
     DEFAULT_SUBLIGHT_SHIP_SPEED, RED, BLUE, YELLOW, DEBUG, PROFILE,
-    FULLSCREEN, UPKEEP_COST_PER_HULL_POINT
+    FULLSCREEN, UPKEEP_COST_PER_HULL_POINT, MAX_UNIT_XP
 )
 from utils import HexCoord, Timer
 from geometry import (
@@ -1059,6 +1059,13 @@ class Game:
                     hp_style_id = '#sidebar_hit_points_critical_damage_label'
 
                 data_for_gui.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hp_style_id, 'height': 25})
+
+                # XP display row
+                xp = unit.experience_points
+                xp_text = f"Experience: {xp} / {MAX_UNIT_XP}"
+                if xp >= MAX_UNIT_XP:
+                    xp_text += " [Veteran]"
+                data_for_gui.append({'type': 'label', 'text': xp_text, 'object_id': '#sidebar_info_label', 'height': 20})
 
                 # Gather available components dynamically
                 installed_components = list(unit.components.values())

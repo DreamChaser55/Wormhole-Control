@@ -11,7 +11,7 @@ from geometry import Vector, Position, distance, hex_distance, Circle, is_point_
 from sector_utils import move_towards_position
 from entities import Unit, Wormhole, Planet, Moon, Asteroid
 from unit_components import JumpStatus, Commander
-from constants import UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE
+from constants import UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
 
 
 class TurnProcessor:
@@ -97,8 +97,9 @@ class TurnProcessor:
 
                 elif unit.engines_component and unit.engines_component.move_target:
                     target_pos_in_sector = unit.engines_component.move_target
-                    unit.position = move_towards_position(unit.position, target_pos_in_sector, unit.engines_component.speed)
-                    logger.debug(f"   {unit.name} moved to {unit.position} (sub-light)")
+                    effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
+                    unit.position = move_towards_position(unit.position, target_pos_in_sector, effective_speed)
+                    logger.debug(f"   {unit.name} moved to {unit.position} (sub-light, speed={effective_speed:.1f})")
                     
                     # Sync the active inhibitor field's location with the unit's new sub-light position.
                     if unit.inhibitor_component and unit.inhibitor_component.is_active:
@@ -270,8 +271,9 @@ class TurnProcessor:
                         hd_comp.hex_jump_target = None
                         continue
 
-                    if unit.in_hex and hex_distance(unit.in_hex, target_hex) > hd_comp.jump_range:
-                        logger.debug(f"   Error: Unit {unit.name} hex_jump to {target_hex} exceeds jump range of {hd_comp.jump_range}. Aborting.")
+                    effective_jump_range = int(hd_comp.jump_range * unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
+                    if unit.in_hex and hex_distance(unit.in_hex, target_hex) > effective_jump_range:
+                        logger.debug(f"   Error: Unit {unit.name} hex_jump to {target_hex} exceeds jump range of {effective_jump_range}. Aborting.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.hex_jump_target = None
                         continue
