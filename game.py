@@ -527,6 +527,23 @@ class Game:
                     for order in orders_to_add:
                         unit.commander_component.add_order(order)
                         logger.debug(f"Added UnloadResourcesOrder to unit {unit.name} queue targeting refinery ID {order.parameters['target_unit_id']}.")
+        elif action_type == 'set_stance':
+            unit_id = action.get('unit_id')
+            stance_display_name = action.get('stance_display_name')
+            unit = self.galaxy.get_unit_by_id(unit_id)
+            if unit and unit.commander_component and stance_display_name:
+                if unit.owner == self.players[self.current_player_index]:
+                    from unit_components import UnitStance
+                    matching_stance = None
+                    for stance in UnitStance:
+                        if stance.display_name == stance_display_name:
+                            matching_stance = stance
+                            break
+                    if matching_stance is not None:
+                        unit.commander_component.stance = matching_stance
+                        logger.debug(f"Unit {unit.name} (id:{unit.id}) stance set to {matching_stance.name}.")
+                    else:
+                        logger.debug(f"Stance not found for display name: {stance_display_name}")
             self.sidebar_needs_update = True
         elif action_type == 'cycle_stance':
             unit_id = action.get('unit_id')

@@ -1013,6 +1013,67 @@ def test_unit_template_name_in_sidebar():
     assert len(template_labels) == 1
 
 
+def test_commander_get_sidebar_data_stance_dropdown():
+    # Setup players
+    player_friendly = MockPlayer()
+    player_friendly.id = 1
+    player_enemy = MockPlayer()
+    player_enemy.id = 2
+
+    # Friendly unit
+    friendly_unit = MockUnit()
+    friendly_unit.id = 100
+    friendly_unit.owner = player_friendly
+    friendly_unit.name = "Friendly Unit"
+
+    # Enemy unit
+    enemy_unit = MockUnit()
+    enemy_unit.id = 200
+    enemy_unit.owner = player_enemy
+    enemy_unit.name = "Enemy Unit"
+
+    # Mock game
+    mock_game = MagicMock()
+    mock_game.players = [player_friendly, player_enemy]
+    mock_game.current_player_index = 0  # player_friendly is current
+
+    # Commander for friendly unit
+    commander_friendly = Commander(friendly_unit)
+    commander_friendly.stance = UnitStance.ATTACK_SAME_SECTOR
+
+    # Commander for enemy unit
+    commander_enemy = Commander(enemy_unit)
+    commander_enemy.stance = UnitStance.ATTACK_WEAPON_RANGE
+
+    # Get sidebar data for friendly unit (owned)
+    friendly_data = commander_friendly.get_sidebar_data(mock_game)
+
+    # Assert stance dropdown exists
+    stance_label = next((d for d in friendly_data if d.get('type') == 'label' and d.get('text') == 'Stance:'), None)
+    assert stance_label is not None
+
+    dropdown = next((d for d in friendly_data if d.get('type') == 'drop_down_menu'), None)
+    assert dropdown is not None
+    assert dropdown['action_id'] == 'set_stance'
+    assert dropdown['starting_option'] == UnitStance.ATTACK_SAME_SECTOR.display_name
+    assert dropdown['target_data'] == friendly_unit.id
+    assert UnitStance.DO_NOTHING.display_name in dropdown['options_list']
+
+    # Get sidebar data for enemy unit (unowned)
+    enemy_data = commander_enemy.get_sidebar_data(mock_game)
+
+    # Assert stance static label exists instead of a dropdown
+    stance_label_enemy = next((d for d in enemy_data if d.get('type') == 'label' and d.get('text') == 'Stance:'), None)
+    assert stance_label_enemy is not None
+
+    dropdown_enemy = next((d for d in enemy_data if d.get('type') == 'drop_down_menu'), None)
+    assert dropdown_enemy is None
+
+    static_stance_enemy = next((d for d in enemy_data if d.get('type') == 'label' and d.get('text') == UnitStance.ATTACK_WEAPON_RANGE.display_name), None)
+    assert static_stance_enemy is not None
+    assert static_stance_enemy['indent_level'] == 1
+
+
 
 
 

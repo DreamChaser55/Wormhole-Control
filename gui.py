@@ -138,6 +138,7 @@ class GUI_Handler:
         self.side_bar_scroll_bar: typing.Optional[pygame_gui.elements.UIVerticalScrollBar] = None
         self.side_bar_dynamic_elements: typing.List[pygame_gui.core.UIElement] = []
         self.dynamic_button_actions: typing.Dict[pygame_gui.elements.UIButton, typing.Dict[str, typing.Any]] = {}
+        self.dynamic_dropdown_actions: typing.Dict[pygame_gui.elements.UIDropDownMenu, typing.Dict[str, typing.Any]] = {}
         self.expanded_sections: typing.Dict[str, bool] = {}
         # Editable unit name field — set when a single owned unit is selected
         self.unit_name_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
@@ -860,6 +861,22 @@ class GUI_Handler:
                 action_result = _editor_action_to_gui_action(editor_action)
                 if action_result is None:
                     action_result = {'action': 'ui_handled'}
+            elif event.ui_element in self.dynamic_dropdown_actions:
+                dropdown_data = self.dynamic_dropdown_actions[event.ui_element]
+                action_id = dropdown_data['action_id']
+                target_data = dropdown_data['target_data']
+                if action_id == 'set_stance':
+                    action_result = {
+                        'action': 'set_stance',
+                        'unit_id': target_data,
+                        'stance_display_name': event.text
+                    }
+                else:
+                    action_result = {
+                        'action': action_id,
+                        'target_data': target_data,
+                        'selected_text': event.text
+                    }
             else:
                 logger.debug(f"Drop down menu changed (GUI): {event.text}")
                 action_result = {'action': 'component_selected', 'component_name': event.text}
@@ -988,6 +1005,7 @@ class GUI_Handler:
                 element.kill()
         self.side_bar_dynamic_elements.clear()
         self.dynamic_button_actions.clear()
+        self.dynamic_dropdown_actions.clear()
         self.unit_name_entry = None
 
     def is_section_expanded(self, section_id: str) -> bool:
@@ -1208,6 +1226,8 @@ class GUI_Handler:
             elif item_type == 'drop_down_menu':
                 options_list = item_data.get('options_list', [])
                 starting_option = item_data.get('starting_option', '')
+                action_id = item_data.get('action_id', '')
+                target_data = item_data.get('target_data', None)
                 dropdown_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
                 dropdown = pygame_gui.elements.UIDropDownMenu(
                     options_list=options_list,
@@ -1217,6 +1237,8 @@ class GUI_Handler:
                     container=target_container_for_element,
                     object_id=obj_id
                 )
+                if action_id:
+                    self.dynamic_dropdown_actions[dropdown] = {'action_id': action_id, 'target_data': target_data}
                 self.side_bar_dynamic_elements.append(dropdown)
                 actual_element_total_height = height_from_data
 

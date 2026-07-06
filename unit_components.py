@@ -474,7 +474,7 @@ class Commander(UnitComponent):
         # Display Unit Stance
         data.append({
             'type': 'label',
-            'text': f"Stance: {self.stance.display_name}",
+            'text': "Stance:",
             'object_id': '#sidebar_info_label',
             'height': 20,
             'indent_level': 0
@@ -482,24 +482,33 @@ class Commander(UnitComponent):
         
         is_owned = (self.unit.owner == game_state.players[game_state.current_player_index])
         if is_owned:
+            options_list = [s.display_name for s in UnitStance]
             data.append({
-                'type': 'button',
-                'text': "Cycle Stance",
-                'object_id': '#sidebar_expand_button',
-                'action_id': 'cycle_stance',
+                'type': 'drop_down_menu',
+                'options_list': options_list,
+                'starting_option': self.stance.display_name,
+                'action_id': 'set_stance',
                 'target_data': self.unit.id,
-                'height': 25,
+                'height': 30,
                 'indent_level': 0
             })
-            
-            # Add a vertical gap before order list
+        else:
             data.append({
                 'type': 'label',
-                'text': "",
+                'text': self.stance.display_name,
                 'object_id': '#sidebar_info_label',
-                'height': 5,
-                'indent_level': 0
+                'height': 20,
+                'indent_level': 1
             })
+            
+        # Add a vertical gap before order list
+        data.append({
+            'type': 'label',
+            'text': "",
+            'object_id': '#sidebar_info_label',
+            'height': 5,
+            'indent_level': 0
+        })
 
         # Display Current Order (always visible if exists)
         current_order = self.current_order
