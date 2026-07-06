@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from geometry import Position, Circle, Vector
 from unit_components import (
     Engines, Hyperdrive, HyperdriveType, JumpStatus,
-    HyperspaceInhibitionFieldEmitter, Commander,
+    HyperspaceInhibitionFieldEmitter, Commander, UnitStance,
     Turret, TurretType, TurretVariant, Weapons, ColonyComponent,
     Constructor, BuildableUnit, RepairComponent,
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
@@ -238,6 +238,160 @@ def test_commander():
     commander.clear_orders()
     assert commander.get_active_orders_count() == 0
     order1.cancel.assert_called_once()
+
+def test_commander_stances():
+    # Setup players
+    player_friendly = MockPlayer()
+    player_friendly.id = 1
+    player_enemy = MockPlayer()
+    player_enemy.id = 2
+
+    # Setup units
+    friendly = MockUnit()
+    friendly.id = 100
+    friendly.name = "Friendly Unit"
+    friendly.owner = player_friendly
+    friendly.in_system = "Sol"
+    friendly.in_hex = (0, 0)
+    friendly.position = Position(0, 0)
+
+    enemy_in_range = MockUnit()
+    enemy_in_range.id = 200
+    enemy_in_range.name = "Enemy in Range"
+    enemy_in_range.owner = player_enemy
+    enemy_in_range.in_system = "Sol"
+    enemy_in_range.in_hex = (0, 0)
+    enemy_in_range.position = Position(10, 0) # 10 distance
+    enemy_in_range.current_hit_points = 50
+
+    enemy_in_sector = MockUnit()
+    enemy_in_sector.id = 300
+    enemy_in_sector.name = "Enemy in Sector but out of range"
+    enemy_in_sector.owner = player_enemy
+    enemy_in_sector.in_system = "Sol"
+    enemy_in_sector.in_hex = (0, 0)
+    enemy_in_sector.position = Position(500, 0) # 500 distance (out of 100 range)
+    enemy_in_sector.current_hit_points = 50
+
+    enemy_in_jump_range = MockUnit()
+    enemy_in_jump_range.id = 400
+    enemy_in_jump_range.name = "Enemy in different sector, within jump range"
+    enemy_in_jump_range.owner = player_enemy
+    enemy_in_jump_range.in_system = "Sol"
+    enemy_in_jump_range.in_hex = (0, 1) # hex distance 1
+    enemy_in_jump_range.position = Position(0, 0)
+    enemy_in_jump_range.current_hit_points = 50
+
+    enemy_far = MockUnit()
+    enemy_far.id = 500
+    enemy_far.name = "Enemy far away in system"
+    enemy_far.owner = player_enemy
+    enemy_far.in_system = "Sol"
+    enemy_far.in_hex = (0, 5) # hex distance 5
+    enemy_far.position = Position(0, 0)
+    enemy_far.current_hit_points = 50
+
+    # Add components to friendly unit
+    weapons = Weapons(friendly)
+    turret = Turret(
+        turret_type=TurretType.MASS_DRIVER,
+        damage=10,
+        range=100.0,
+        cooldown=2,
+        parent_unit=friendly
+    )
+    weapons.add_turret(turret)
+    friendly.add_component(weapons)
+
+    hyperdrive = Hyperdrive(friendly, drive_type=HyperdriveType.BASIC, jump_range=2)
+    friendly.add_component(hyperdrive)
+
+    commander = Commander(friendly)
+    friendly.add_component(commander)
+
+    # Setup mock galaxy and system structure
+    mock_galaxy = MagicMock()
+    friendly.in_galaxy = mock_galaxy
+    friendly.game.galaxy = mock_galaxy
+    mock_galaxy.get_unit_by_id.side_effect = lambda uid: {
+        100: friendly,
+        200: enemy_in_range,
+        300: enemy_in_sector,
+        400: enemy_in_jump_range,
+        500: enemy_far
+    }.get(uid)
+
+    mock_system = MagicMock()
+    mock_galaxy.systems.get.return_value = mock_system
+
+    # Set up hexes containing units
+    hex_center = MagicMock()
+    hex_center.units = [friendly, enemy_in_range, enemy_in_sector]
+    hex_jump = MagicMock()
+    hex_jump.units = [enemy_in_jump_range]
+    hex_far = MagicMock()
+    hex_far.units = [enemy_far]
+
+    mock_system.hexes = {
+        (0, 0): hex_center,
+        (0, 1): hex_jump,
+        (0, 5): hex_far
+    }
+
+    # Test Stance: DO_NOTHING
+    commander.stance = UnitStance.DO_NOTHING
+    commander.update()
+    assert commander.current_order is None
+    assert turret.target is None
+
+    # Test Stance: ATTACK_WEAPON_RANGE
+    commander.stance = UnitStance.ATTACK_WEAPON_RANGE
+    commander.update()
+    assert commander.current_order is None
+    assert turret.target == enemy_in_range
+
+    # If the target moves out of range or dies, it should clear and find no target
+    enemy_in_range.position = Position(200, 0) # out of 100 range
+    commander.update()
+    assert turret.target is None
+
+    # Move target back
+    enemy_in_range.position = Position(10, 0)
+    commander.update()
+    assert turret.target == enemy_in_range
+
+    # Test Stance: ATTACK_SAME_SECTOR
+    enemy_in_range.current_hit_points = 0 # dead
+    commander.stance = UnitStance.ATTACK_SAME_SECTOR
+    weapons.clear_target()
+    commander.update()
+    assert commander.current_order is not None
+    assert getattr(commander.current_order, 'is_stance_order', False)
+    assert commander.current_order.parameters["target_unit_id"] == enemy_in_sector.id
+
+    # If enemy_in_sector leaves the sector, the order should get cancelled
+    enemy_in_sector.in_hex = (0, 1)
+    commander.update()
+    assert commander.current_order is None
+
+    # Test Stance: ATTACK_INTRA_SYSTEM_JUMP_RANGE
+    enemy_in_sector.current_hit_points = 0 # dead
+    commander.stance = UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE
+    commander.update()
+    assert commander.current_order is not None
+    assert commander.current_order.parameters["target_unit_id"] == enemy_in_jump_range.id
+
+    # If the target moves too far away (e.g. to (0, 5)), the order should be cancelled
+    enemy_in_jump_range.in_hex = (0, 5)
+    commander.update()
+    assert commander.current_order is None
+
+    # Test Stance: ATTACK_SAME_SYSTEM
+    enemy_in_jump_range.current_hit_points = 0 # dead
+    commander.stance = UnitStance.ATTACK_SAME_SYSTEM
+    commander.update()
+    assert commander.current_order is not None
+    assert commander.current_order.parameters["target_unit_id"] == enemy_far.id
 
 def test_weapons_and_turrets():
     unit = MockUnit()

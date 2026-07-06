@@ -528,6 +528,19 @@ class Game:
                         unit.commander_component.add_order(order)
                         logger.debug(f"Added UnloadResourcesOrder to unit {unit.name} queue targeting refinery ID {order.parameters['target_unit_id']}.")
             self.sidebar_needs_update = True
+        elif action_type == 'cycle_stance':
+            unit_id = action.get('unit_id')
+            unit = self.galaxy.get_unit_by_id(unit_id)
+            if unit and unit.commander_component:
+                if unit.owner == self.players[self.current_player_index]:
+                    from unit_components import UnitStance
+                    current_stance = unit.commander_component.stance
+                    stances = list(UnitStance)
+                    current_idx = stances.index(current_stance)
+                    next_idx = (current_idx + 1) % len(stances)
+                    unit.commander_component.stance = stances[next_idx]
+                    logger.debug(f"Unit {unit.name} (id:{unit.id}) stance cycled to {unit.commander_component.stance.name}.")
+            self.sidebar_needs_update = True
         elif action_type == 'rename_unit':
             new_name = action.get('new_name', '').strip()
             selected_units = [obj for obj in self.selected_objects if isinstance(obj, Unit)]
