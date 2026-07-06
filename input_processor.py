@@ -18,7 +18,8 @@ from entities import GameObject, Unit, Star, Planet, Moon, Asteroid, Comet, Worm
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
-    MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent
+    MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
+    ContinuousMineEvent
 )
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
@@ -428,6 +429,7 @@ class InputProcessor:
                                         options.append(("Load Colonists", "load_colonists"))
                             if isinstance(target_object, (Asteroid, AsteroidField, Moon)) and any(getattr(a, 'mining_component', None) for a in actors):
                                 options.append(("Mine", "mine"))
+                                options.append(("Continuous Mine", "continuous_mine"))
                         elif isinstance(target_object, Wormhole): options.append(("View Wormhole Info", "view_wormhole"))
                         elif isinstance(target_object, Unit): options.append(("View Unit Info", "view_unit"))
                         elif isinstance(target_object, Star): options.append(("View Star", "view_star"))
@@ -591,6 +593,14 @@ class InputProcessor:
             elif extracted_action_id == "mine":
                 if isinstance(target, (Asteroid, AsteroidField, Moon)):
                     self.game.event_bus.publish(MineEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "continuous_mine":
+                if isinstance(target, (Asteroid, AsteroidField, Moon)):
+                    self.game.event_bus.publish(ContinuousMineEvent(
                         selected_units,
                         target,
                         shift_pressed

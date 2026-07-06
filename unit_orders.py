@@ -46,6 +46,8 @@ class OrderType(Enum):
     DEPLOY_UNIT = auto()
     DEPLOY_ALL_WINGS = auto()
     USE_ABILITY = auto()  # Use a special ability (with optional target unit or position)
+    CONTINUOUS_MINE = auto() # Cycles between mining and unloading at closest refinery
+
 
 class Order:
     """Represents an order given to a unit by the player.
@@ -1734,3 +1736,123 @@ class UseAbilityOrder(Order):
             return
         if not self.sub_orders:
             self.status = OrderStatus.COMPLETED
+
+
+class ContinuousMineOrder(Order):
+    def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
+        super().__init__(unit, OrderType.CONTINUOUS_MINE, parameters, parent_order)
+
+    def execute(self, galaxy_ref: 'Galaxy') -> None:
+        super().execute(galaxy_ref)
+
+        target_id = self.parameters.get("target_id")
+        if not target_id:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: no target_id.")
+            return
+
+        target = galaxy_ref.get_celestial_body_by_id(target_id)
+        if not target:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Celestial body with ID {target_id} not found.")
+            return
+
+        if not getattr(self.unit, 'mining_component', None):
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Unit has no MiningComponent.")
+            return
+
+        mining_comp = self.unit.mining_component
+        if mining_comp.get_cargo_fullness() >= 1.0:
+            refinery = self._find_closest_refinery(galaxy_ref)
+            if not refinery:
+                self.status = OrderStatus.FAILED
+                logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Cargo full but no refinery found.")
+                return
+            self._spawn_unload_order(refinery.id)
+        else:
+            self._spawn_mine_order(target_id)
+
+    def _spawn_mine_order(self, target_id: str) -> None:
+        mine_params = {"target_id": target_id}
+        self.add_sub_order(MineOrder(self.unit, mine_params, parent_order=self))
+
+    def _spawn_unload_order(self, refinery_id: typing.Union[str, int]) -> None:
+        unload_params = {"target_unit_id": refinery_id}
+        self.add_sub_order(UnloadResourcesOrder(self.unit, unload_params, parent_order=self))
+
+    def _find_closest_refinery(self, galaxy_ref: 'Galaxy') -> Optional['Unit']:
+        mining_comp = self.unit.mining_component
+        if not mining_comp:
+            return None
+
+        has_metal = mining_comp.raw_metal_cargo > 0
+        has_crystal = mining_comp.raw_crystal_cargo > 0
+
+        target = galaxy_ref.get_celestial_body_by_id(self.parameters.get("target_id"))
+        from entities import Asteroid, AsteroidField, Moon
+        if not has_metal and not has_crystal and target:
+            if isinstance(target, (Asteroid, AsteroidField)):
+                has_metal = True
+            elif isinstance(target, Moon):
+                has_crystal = True
+
+        friendly_refineries = []
+        for system in galaxy_ref.systems.values():
+            for hex_obj in system.hexes.values():
+                for u in hex_obj.units:
+                    if u.owner == self.unit.owner:
+                        is_metal_ref = getattr(u, 'metal_refinery_component', None) is not None
+                        is_crystal_ref = getattr(u, 'crystal_refinery_component', None) is not None
+                        if (has_metal and is_metal_ref) or (has_crystal and is_crystal_ref):
+                            friendly_refineries.append(u)
+
+        if not friendly_refineries:
+            return None
+
+        def get_dist_to_refinery(refinery):
+            if self.unit.in_system == refinery.in_system:
+                if self.unit.in_hex == refinery.in_hex:
+                    return distance(self.unit.position, refinery.position)
+                else:
+                    return hex_distance(self.unit.in_hex, refinery.in_hex) * 10000.0
+            else:
+                path = find_intersystem_path(galaxy_ref.system_graph, self.unit.in_system, refinery.in_system, self.unit.hull_size)
+                if path is None:
+                    return float('inf')
+                return (len(path) - 1) * 1000000.0 + hex_distance(self.unit.in_hex, refinery.in_hex) * 10000.0
+
+        nearest_refinery = None
+        min_dist = float('inf')
+        for r in friendly_refineries:
+            dist = get_dist_to_refinery(r)
+            if dist < min_dist:
+                min_dist = dist
+                nearest_refinery = r
+
+        return nearest_refinery
+
+    def check_completion_conditions(self) -> None:
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+
+        if not self.sub_orders:
+            galaxy_ref = self.unit.game.galaxy
+            target_id = self.parameters.get("target_id")
+            
+            mining_comp = self.unit.mining_component
+            if not mining_comp:
+                self.status = OrderStatus.FAILED
+                return
+
+            if mining_comp.get_cargo_fullness() >= 1.0:
+                refinery = self._find_closest_refinery(galaxy_ref)
+                if not refinery:
+                    self.status = OrderStatus.FAILED
+                    logger.debug(f"[{self.unit.name}] ContinuousMineOrder failed: cargo full, no refinery found.")
+                    return
+                self._spawn_unload_order(refinery.id)
+                logger.debug(f"[{self.unit.name}] ContinuousMineOrder: cargo full. Heading to refinery {refinery.name} (id:{refinery.id}).")
+            else:
+                self._spawn_mine_order(target_id)
+                logger.debug(f"[{self.unit.name}] ContinuousMineOrder: cargo has space. Heading back to mine target {target_id}.")

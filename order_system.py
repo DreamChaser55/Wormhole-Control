@@ -4,11 +4,12 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent,
-    IssueProtectOrderEvent
+    IssueProtectOrderEvent, ContinuousMineEvent
 )
 from entities import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
-    MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder
+    MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
+    ContinuousMineOrder
 )
 from sector_utils import random_point_in_sector
 from constants import HullSize
@@ -34,6 +35,7 @@ class OrderSystem:
         self.event_bus.subscribe(ConstructEvent, self.handle_construct)
         self.event_bus.subscribe(RepairUnitEvent, self.handle_repair_unit)
         self.event_bus.subscribe(MineEvent, self.handle_mine)
+        self.event_bus.subscribe(ContinuousMineEvent, self.handle_continuous_mine)
         self.event_bus.subscribe(UnloadResourcesEvent, self.handle_unload_resources)
         self.event_bus.subscribe(DockEvent, self.handle_dock)
         self.event_bus.subscribe(UseAbilityEvent, self.handle_use_ability)
@@ -208,6 +210,17 @@ class OrderSystem:
                     unit.commander_component.clear_orders()
                 unit.commander_component.add_order(mine_order)
                 logger.debug(f"  Unit {unit.name} ordered to mine {event.target_body.name} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_continuous_mine(self, event: ContinuousMineEvent):
+        for unit in event.units:
+            if getattr(unit, 'mining_component', None):
+                mine_params = {"target_id": event.target_body.id}
+                continuous_mine_order = ContinuousMineOrder(unit, mine_params)
+                if not event.shift_pressed:
+                    unit.commander_component.clear_orders()
+                unit.commander_component.add_order(continuous_mine_order)
+                logger.debug(f"  Unit {unit.name} ordered to continuous mine {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_unload_resources(self, event: UnloadResourcesEvent):

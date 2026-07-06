@@ -728,6 +728,12 @@ class Game:
             target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_id}</i></font>"
             return [f"{mine_type_styled} {target_styled}"]
 
+        elif order_type == "CONTINUOUS_MINE":
+            target_id = parameters.get("target_id", "Unknown")
+            continuous_mine_type_styled = f"<font color='{MINE_COLOR}'><b>🔁 Continuous Mine:</b></font>"
+            target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_id}</i></font>"
+            return [f"{continuous_mine_type_styled} {target_styled}"]
+
         elif order_type == "UNLOAD_RESOURCES":
             target_unit_id = parameters.get("target_unit_id", "Unknown")
             unload_type_styled = f"<font color='{UNLOAD_COLOR}'><b>Unload:</b></font>"
