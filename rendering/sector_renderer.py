@@ -239,9 +239,9 @@ class SectorViewRenderer:
 
             if obj in self.game.selected_objects:
                 pixel_radius = int(obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                # Draw four selection brackets in the corners instead of a circle
+                # Draw four selection brackets in the corners
                 r = pixel_radius + 5
-                tick_length = 8
+                tick_length = 10
                 
                 left = obj_pixel_pos.x - r
                 right = obj_pixel_pos.x + r
