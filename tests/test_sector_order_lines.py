@@ -331,3 +331,62 @@ def test_draw_sector_view_draws_turn_notches():
                 found_notches += 1
                 
         assert found_notches == 3
+
+
+def test_system_view_wormhole_lines():
+    # Setup mock game, player, and renderer
+    game = MagicMock()
+    game.current_system_name = "Sol"
+    game.system_view_mouse_hover_hex = None
+    game.selected_objects = []
+    
+    renderer = SystemViewRenderer(game)
+    renderer.screen = MagicMock()
+    renderer.overlay_surface = MagicMock()
+
+    # Setup StarSystem and Hex with a Wormhole
+    system = MagicMock()
+    system.name = "Sol"
+    system.radius = 3
+    
+    hex_obj = MagicMock()
+    from entities import Wormhole
+    wh = Wormhole(in_hex=(3, 0), in_system="Sol", exit_system_name="Vega")
+    hex_obj.celestial_bodies = [wh]
+    hex_obj.units = []
+    
+    system.hexes = {(3, 0): hex_obj}
+    game.galaxy.systems = {"Sol": system}
+    
+    # Mock hex_to_pixel, pygame.draw.line, pygame.draw.polygon, and pygame.draw.circle
+    with patch("rendering.system_renderer.hex_to_pixel") as mock_hex_to_pixel, \
+         patch("rendering.system_renderer.pygame.draw.line") as mock_draw_line, \
+         patch("rendering.system_renderer.pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle:
+         
+         # Mock positions:
+         # center (0,0) is at (500, 500)
+         # wormhole (3,0) is at (800, 500)
+         mock_hex_to_pixel.side_effect = lambda q, r: Position(500, 500) if (q == 0 and r == 0) else Position(800, 500)
+         
+         renderer.draw_system_view()
+         
+         # The code should draw a line from (800, 500) to the calculated edge.
+         # dx = 800 - 500 = 300, dy = 0. dist = 300.
+         # ux = 1.0, uy = 0.0.
+         # edge_radius = (3 + 0.5) * SQRT3 * HEX_SIZE.
+         # Let's verify that a line was drawn with WORMHOLE_LINE_COLOR.
+         assert mock_draw_line.call_count == 1
+         call_args = mock_draw_line.call_args_list[0][0]
+         # call_args: (surface, color, start_pos, end_pos, width)
+         # Verify color is WORMHOLE_LINE_COLOR
+         from constants import WORMHOLE_LINE_COLOR
+         assert call_args[1] == WORMHOLE_LINE_COLOR
+         # Verify start_pos is wormhole center (800, 500)
+         assert call_args[2] == (800, 500)
+         # Verify end_pos.x is greater than start_pos.x (since it extends outwards)
+         assert call_args[3][0] > 800
+         # Verify end_pos.y is exactly 500 (since dy = 0)
+         assert call_args[3][1] == 500
+         # Verify width is 2
+         assert call_args[4] == 2

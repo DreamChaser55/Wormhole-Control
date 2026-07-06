@@ -5,7 +5,7 @@ from constants import (
     DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE,
     SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY,
     HEX_JUMP_ORDER_LINE_COLOR, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS,
-    STORM_LIGHTNING_COLOR
+    STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR
 )
 from hexgrid_utils import get_hex_vertices, hex_to_pixel
 from entities import (
@@ -31,6 +31,26 @@ class SystemViewRenderer:
              hex_points_objects = get_hex_vertices(q, r)
              hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
              pygame.draw.polygon(self.screen, DARK_GRAY, hex_points_tuples, 1)
+
+        # 1b. Draw Wormhole Lines
+        for hex_coord, hex_obj in system.hexes.items():
+            for body in hex_obj.celestial_bodies:
+                if isinstance(body, Wormhole):
+                    q_w, r_w = hex_coord
+                    if q_w == 0 and r_w == 0:
+                        continue
+                    center_px = hex_to_pixel(0, 0)
+                    wh_px = hex_to_pixel(q_w, r_w)
+                    dx = wh_px.x - center_px.x
+                    dy = wh_px.y - center_px.y
+                    dist = math.hypot(dx, dy)
+                    if dist > 0:
+                        ux = dx / dist
+                        uy = dy / dist
+                        edge_radius = (system.radius + 0.5) * SQRT3 * HEX_SIZE
+                        end_x = int(center_px.x + edge_radius * ux)
+                        end_y = int(center_px.y + edge_radius * uy)
+                        pygame.draw.line(self.screen, WORMHOLE_LINE_COLOR, (wh_px.x, wh_px.y), (end_x, end_y), 2)
 
         # 2. Draw Contents of Hexes (Stars, Planets, Units)
         for hex_coord, hex_obj in system.hexes.items():
