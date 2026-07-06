@@ -594,9 +594,13 @@ class Game:
             self.sidebar_needs_update = True
         elif action_type == 'select_individual_unit':
             unit_id = action.get('unit_id')
+            shift_pressed = action.get('shift_pressed', False)
             unit = self.galaxy.get_unit_by_id(unit_id)
             if unit:
-                self.selected_objects = [unit]
+                if shift_pressed:
+                    self.deselect_object(unit)
+                else:
+                    self.selected_objects = [unit]
                 self.sidebar_needs_update = True
         elif action_type == 'ui_handled':
             pass

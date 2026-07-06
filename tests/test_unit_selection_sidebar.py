@@ -53,9 +53,9 @@ def test_multi_unit_selection_sidebar_buttons():
     buttons = [d for d in data_list if d.get("type") == "button" and d.get("action_id") == "select_individual_unit"]
     assert len(buttons) == 2
     
-    assert buttons[0]["text"] == "Select Ship A"
+    assert buttons[0]["text"] == "Ship A"
     assert buttons[0]["target_data"] == 101
-    assert buttons[1]["text"] == "Select Ship B"
+    assert buttons[1]["text"] == "Ship B"
     assert buttons[1]["target_data"] == 102
 
 def test_handle_gui_action_select_individual_unit():
@@ -81,4 +81,29 @@ def test_handle_gui_action_select_individual_unit():
     
     # Verify selection is updated to only unit1, and sidebar is marked for update
     assert mock_game.selected_objects == [unit1]
+    assert mock_game.sidebar_needs_update is True
+
+def test_handle_gui_action_deselect_individual_unit_shift():
+    # Setup mock game, galaxy, and units
+    mock_game = MagicMock()
+    mock_game.galaxy = MagicMock()
+    mock_game.sidebar_needs_update = False
+    
+    unit1 = MagicMock()
+    unit1.id = 101
+    
+    # Mock get_unit_by_id
+    mock_game.galaxy.get_unit_by_id.side_effect = lambda uid: unit1 if uid == 101 else None
+    
+    # Execute handle_gui_action with select_individual_unit action AND shift_pressed=True
+    action = {
+        'action': 'select_individual_unit',
+        'unit_id': 101,
+        'shift_pressed': True
+    }
+    
+    Game.handle_gui_action(mock_game, action)
+    
+    # Verify deselect_object was called on mock_game with unit1
+    mock_game.deselect_object.assert_called_once_with(unit1)
     assert mock_game.sidebar_needs_update is True

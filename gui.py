@@ -815,9 +815,12 @@ class GUI_Handler:
                         'requires_target_position': target_data.get('requires_target_position', False),
                     }
                 elif action_id == 'select_individual_unit':
+                    keys = pygame.key.get_pressed()
+                    shift_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
                     action_result = {
                         'action': 'select_individual_unit',
-                        'unit_id': target_data
+                        'unit_id': target_data,
+                        'shift_pressed': shift_pressed
                     }
 
                         # --- In-Game Menu Buttons ---
