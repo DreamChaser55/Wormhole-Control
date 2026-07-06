@@ -248,7 +248,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets():
         from constants import SECTOR_VIEW_BASE_ICON_SIZE, SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL
         expected_pixel_radius = int(SECTOR_VIEW_BASE_ICON_SIZE * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
         r = expected_pixel_radius + 5
-        tick_length = 8
+        tick_length = 10
 
         left = 10 - r
         right = 10 + r
@@ -265,3 +265,69 @@ def test_draw_sector_view_draws_four_corner_selection_brackets():
         # Verify that all expected corner paths are in the called_points_lists (regardless of order)
         for expected in expected_corners:
             assert expected in called_points_lists
+
+
+def test_draw_sector_view_draws_turn_notches():
+    # Setup mock game, player, and renderer
+    game = MagicMock()
+    player1 = Player("Player 1", BLUE, is_human=True)
+    game.players = [player1]
+    game.current_player_index = 0
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.sector_view_mouse_hover_object = None
+    game.is_dragging_selection_box = False
+
+    renderer = SectorViewRenderer(game)
+    renderer.screen = MagicMock()
+    renderer.overlay_surface = MagicMock()
+
+    # Setup StarSystem and Hex
+    system = MagicMock()
+    game.galaxy.systems = {"Sol": system}
+    hex_obj = MagicMock()
+    system.hexes = {(0, 0): hex_obj}
+
+    # Create Unit with engines
+    unit = Unit(player1, Position(0, 0), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
+    unit.max_hit_points = 0  # avoid healthbar rendering
+    
+    from unit_components import Engines
+    engines = Engines(unit, speed=10.0)
+    # Give it a move target
+    engines.move_target = Position(35.0, 0.0)
+    unit.add_component(engines)
+    
+    hex_obj.celestial_bodies = []
+    hex_obj.units = [unit]
+
+    # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
+    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
+         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
+         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
+         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
+         patch("rendering.sector_renderer.pygame.font.Font") as mock_font:
+
+        renderer.draw_sector_view()
+
+        # Let's see the arguments for mock_draw_line.
+        # The main movement line is drawn from (0,0) to (35,0).
+        # The notches are drawn perpendicular to this line at intervals of 10.0.
+        # Since the line is on the x-axis, the notches will be vertical lines at x=10, x=20, x=30.
+        drawn_lines = [call[0] for call in mock_draw_line.call_args_list]
+        
+        found_notches = 0
+        for draw_call in drawn_lines:
+            # draw_call is (surface, color, p_start, p_end, width)
+            p_start, p_end = draw_call[2], draw_call[3]
+            if (p_start == (10, 4) and p_end == (10, -4)) or (p_start == (10, -4) and p_end == (10, 4)):
+                found_notches += 1
+            elif (p_start == (20, 4) and p_end == (20, -4)) or (p_start == (20, -4) and p_end == (20, 4)):
+                found_notches += 1
+            elif (p_start == (30, 4) and p_end == (30, -4)) or (p_start == (30, -4) and p_end == (30, 4)):
+                found_notches += 1
+                
+        assert found_notches == 3

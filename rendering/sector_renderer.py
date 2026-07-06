@@ -10,9 +10,10 @@ from constants import (
     ICON_DOT_RADIUS, ICON_DOT_SPACING,
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
     MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, STORM_COLORS,
-    TEXT_SCALE
+    TEXT_SCALE, XP_SPEED_BONUS
 )
 from sector_utils import sector_coords_to_pixels
+from geometry import distance, Position
 import random
 from entities import (
     Star, Planet, Wormhole, Unit, OrderType, OrderStatus, Moon, Asteroid, 
@@ -292,6 +293,14 @@ class SectorViewRenderer:
                         target_pixel_pos = sector_coords_to_pixels(target_pos_in_sector)
                         pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
                         pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
+                        
+                        mock_wp = {
+                            'order_type': OrderType.MOVE,
+                            'is_current': True,
+                            'position': target_pos_in_sector
+                        }
+                        effective_speed = unit_obj.engines_component.speed * unit_obj.xp_multiplier(XP_SPEED_BONUS)
+                        self._draw_path_turn_notches_for_segment([mock_wp], True, unit_obj.position, effective_speed)
                     elif unit_obj.hyperdrive_component and unit_obj.hyperdrive_component.wormhole_jump_target:
                         target_wh_for_jump = unit_obj.hyperdrive_component.wormhole_jump_target
                         if target_wh_for_jump.in_system == self.game.current_system_name and target_wh_for_jump.in_hex == self.game.current_sector_coord:
@@ -310,6 +319,15 @@ class SectorViewRenderer:
                                 target_pixel_pos = sector_coords_to_pixels(dest_pos)
                                 pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
                                 pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
+                                
+                                if unit_obj.engines_component:
+                                    mock_wp = {
+                                        'order_type': OrderType.MOVE,
+                                        'is_current': True,
+                                        'position': dest_pos
+                                    }
+                                    effective_speed = unit_obj.engines_component.speed * unit_obj.xp_multiplier(XP_SPEED_BONUS)
+                                    self._draw_path_turn_notches_for_segment([mock_wp], True, unit_obj.position, effective_speed)
                             elif dest_sys != self.game.current_system_name:
                                 if unit_obj.in_galaxy:
                                     local_wh_for_jump = order.find_wormhole_to_system(unit_obj.in_system, dest_sys, unit_obj.in_galaxy, unit_obj.hull_size)
@@ -369,6 +387,94 @@ class SectorViewRenderer:
                         external_units_with_orders_to_this_sector.append(candidate_unit)
 
         self._draw_sector_view_order_lines_from_other_sectors(external_units_with_orders_to_this_sector)
+
+    def _get_waypoint_style(self, waypoint):
+        if waypoint['order_type'] == OrderType.ATTACK:
+            line_color = RED
+            line_width = 2
+        elif waypoint['order_type'] == OrderType.PROTECT:
+            line_color = (255, 105, 180)
+            line_width = 2
+        elif waypoint['is_current']:
+            line_width = 2
+            line_color = MOVE_ORDER_LINE_COLOR
+        else:
+            line_width = 1
+            line_color = (max(MOVE_ORDER_LINE_COLOR[0] - 40, 0), 
+                         max(MOVE_ORDER_LINE_COLOR[1] - 40, 0), 
+                         max(MOVE_ORDER_LINE_COLOR[2] - 40, 0))
+        return line_color, line_width
+
+    def _draw_single_notch(self, p_start, p_end, p_notch, color, line_width):
+        start_px = sector_coords_to_pixels(p_start)
+        end_px = sector_coords_to_pixels(p_end)
+        notch_px = sector_coords_to_pixels(p_notch)
+        
+        dx = end_px.x - start_px.x
+        dy = end_px.y - start_px.y
+        dist = math.sqrt(dx*dx + dy*dy)
+        if dist > 0:
+            nx = -dy / dist
+            ny = dx / dist
+            
+            notch_half_len = 4
+            x1 = int(notch_px.x + nx * notch_half_len)
+            y1 = int(notch_px.y + ny * notch_half_len)
+            x2 = int(notch_px.x - nx * notch_half_len)
+            y2 = int(notch_px.y - ny * notch_half_len)
+            
+            pygame.draw.line(self.overlay_surface, color, (x1, y1), (x2, y2), max(2, line_width))
+
+    def _draw_path_turn_notches_for_segment(self, segment, connect_to_unit, start_pos, effective_speed):
+        if effective_speed <= 0 or not segment:
+            return
+            
+        segment_points = []
+        segment_wps = []
+        
+        if connect_to_unit:
+            segment_points.append(start_pos)
+            for wp in segment:
+                segment_points.append(wp['position'])
+                segment_wps.append(wp)
+        else:
+            if len(segment) < 2:
+                return
+            for wp in segment:
+                segment_points.append(wp['position'])
+            for wp in segment[1:]:
+                segment_wps.append(wp)
+                
+        current_idx = 0
+        p_curr = segment_points[0]
+        dist_to_next_notch = effective_speed
+        
+        while current_idx < len(segment_points) - 1:
+            p_next = segment_points[current_idx + 1]
+            wp = segment_wps[current_idx]
+            segment_len = distance(p_curr, p_next)
+            
+            if segment_len <= 0:
+                current_idx += 1
+                p_curr = p_next
+                continue
+                
+            if dist_to_next_notch <= segment_len:
+                t = dist_to_next_notch / segment_len
+                p_notch = Position(
+                    p_curr.x + (p_next.x - p_curr.x) * t,
+                    p_curr.y + (p_next.y - p_curr.y) * t
+                )
+                
+                color, width = self._get_waypoint_style(wp)
+                self._draw_single_notch(p_curr, p_next, p_notch, color, width)
+                
+                p_curr = p_notch
+                dist_to_next_notch = effective_speed
+            else:
+                dist_to_next_notch -= segment_len
+                current_idx += 1
+                p_curr = p_next
 
     def _order_targets_sector(self, order, system_name, hex_coord):
         """Helper method to check if an order targets the specified system and hex."""
@@ -492,7 +598,6 @@ class SectorViewRenderer:
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
                     
                     is_exit_point = (i == len(segment) - 1 and segment_index < len(path_segments) - 1)
-                    
                     if is_exit_point:
                         exit_color = WORMHOLE_JUMP_ORDER_COLOR
                         pygame.draw.circle(self.overlay_surface, exit_color, 
@@ -502,6 +607,11 @@ class SectorViewRenderer:
                             circle_size = 3 if not waypoint['is_sub_order'] else 2
                             pygame.draw.circle(self.overlay_surface, line_color, 
                                       (dest_pixel_point.x, dest_pixel_point.y), circle_size)
+                
+                # Draw turn notches for the segment
+                if external_unit.engines_component:
+                    effective_speed = external_unit.engines_component.speed * external_unit.xp_multiplier(XP_SPEED_BONUS)
+                    self._draw_path_turn_notches_for_segment(segment, False, None, effective_speed)
 
     def _draw_sector_view_order_lines(self, unit, unit_pixel_x, unit_pixel_y):
         """Draw order paths for a unit in the sector view."""
@@ -598,6 +708,11 @@ class SectorViewRenderer:
                         circle_size = 3 if not waypoint['is_sub_order'] else 2
                         pygame.draw.circle(self.overlay_surface, line_color, 
                                       (dest_pixel_point.x, dest_pixel_point.y), circle_size)
+
+                # Draw turn notches for this segment
+                if unit.engines_component:
+                    effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
+                    self._draw_path_turn_notches_for_segment(segment, connect_to_unit, unit.position, effective_speed)
 
     def _draw_nebula(self, nebula, pos_px):
         num_circles = 15
