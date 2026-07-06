@@ -562,6 +562,12 @@ class Game:
                     ))
                     logger.debug(f"Fired self-targeted ability {ability_type_str} for {len(selected_units)} unit(s).")
             self.sidebar_needs_update = True
+        elif action_type == 'select_individual_unit':
+            unit_id = action.get('unit_id')
+            unit = self.galaxy.get_unit_by_id(unit_id)
+            if unit:
+                self.selected_objects = [unit]
+                self.sidebar_needs_update = True
         elif action_type == 'ui_handled':
             pass
         else:
@@ -922,10 +928,12 @@ class Game:
             for obj in self.selected_objects:
                 if isinstance(obj, Unit):
                     data_for_gui.append({
-                        'type': 'label',
-                        'text': f"- {obj.name}",
-                        'object_id': '#sidebar_info_label',
-                        'height': 20
+                        'type': 'button',
+                        'text': f"{obj.name}",
+                        'object_id': '#sidebar_expand_button',
+                        'action_id': 'select_individual_unit',
+                        'target_data': obj.id,
+                        'height': 25
                     })
 
         elif len(self.selected_objects) == 1:

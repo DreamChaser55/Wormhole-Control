@@ -808,6 +808,11 @@ class GUI_Handler:
                         'requires_target_unit': target_data.get('requires_target_unit', False),
                         'requires_target_position': target_data.get('requires_target_position', False),
                     }
+                elif action_id == 'select_individual_unit':
+                    action_result = {
+                        'action': 'select_individual_unit',
+                        'unit_id': target_data
+                    }
 
                         # --- In-Game Menu Buttons ---
             elif self.menu_button and event.ui_element == self.menu_button:
