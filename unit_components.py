@@ -352,8 +352,23 @@ class Commander(UnitComponent):
         self.orders_queue = deque()
         self.stance = UnitStance.DO_NOTHING
 
+    def get_allowed_stances(self) -> list[UnitStance]:
+        """Gets the list of allowed stances for this unit based on its components."""
+        allowed = [UnitStance.DO_NOTHING, UnitStance.ATTACK_WEAPON_RANGE]
+        if self.unit.engines_component is not None:
+            allowed.append(UnitStance.ATTACK_SAME_SECTOR)
+            if self.unit.hyperdrive_component is not None:
+                allowed.append(UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE)
+                allowed.append(UnitStance.ATTACK_SAME_SYSTEM)
+        return allowed
+
     def process_stance(self) -> None:
         """Processes the unit's stance when it has no active or queued orders."""
+        allowed_stances = self.get_allowed_stances()
+        if self.stance not in allowed_stances:
+            logger.warning(f"Unit {self.unit.name} (id:{self.unit.id}) has stance {self.stance} which is not allowed. Resetting to DO_NOTHING.")
+            self.stance = UnitStance.DO_NOTHING
+
         if self.stance == UnitStance.DO_NOTHING:
             if self.unit.weapons_component:
                 self.unit.weapons_component.clear_target()
@@ -386,6 +401,9 @@ class Commander(UnitComponent):
 
     def is_target_valid_for_stance(self, target: 'Unit', galaxy_ref: 'Galaxy') -> bool:
         """Checks if the given target is still valid under the unit's current stance."""
+        if self.stance not in self.get_allowed_stances():
+            return False
+
         if target.current_hit_points <= 0 or target.owner == self.unit.owner:
             return False
 
@@ -482,7 +500,7 @@ class Commander(UnitComponent):
         
         is_owned = (self.unit.owner == game_state.players[game_state.current_player_index])
         if is_owned:
-            options_list = [s.display_name for s in UnitStance]
+            options_list = [s.display_name for s in self.get_allowed_stances()]
             data.append({
                 'type': 'drop_down_menu',
                 'options_list': options_list,

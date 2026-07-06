@@ -540,8 +540,12 @@ class Game:
                             matching_stance = stance
                             break
                     if matching_stance is not None:
-                        unit.commander_component.stance = matching_stance
-                        logger.debug(f"Unit {unit.name} (id:{unit.id}) stance set to {matching_stance.name}.")
+                        allowed_stances = unit.commander_component.get_allowed_stances()
+                        if matching_stance in allowed_stances:
+                            unit.commander_component.stance = matching_stance
+                            logger.debug(f"Unit {unit.name} (id:{unit.id}) stance set to {matching_stance.name}.")
+                        else:
+                            logger.warning(f"Unit {unit.name} (id:{unit.id}) stance {matching_stance.name} is not allowed.")
                     else:
                         logger.debug(f"Stance not found for display name: {stance_display_name}")
             self.sidebar_needs_update = True
@@ -550,13 +554,15 @@ class Game:
             unit = self.galaxy.get_unit_by_id(unit_id)
             if unit and unit.commander_component:
                 if unit.owner == self.players[self.current_player_index]:
-                    from unit_components import UnitStance
-                    current_stance = unit.commander_component.stance
-                    stances = list(UnitStance)
-                    current_idx = stances.index(current_stance)
-                    next_idx = (current_idx + 1) % len(stances)
-                    unit.commander_component.stance = stances[next_idx]
-                    logger.debug(f"Unit {unit.name} (id:{unit.id}) stance cycled to {unit.commander_component.stance.name}.")
+                    allowed_stances = unit.commander_component.get_allowed_stances()
+                    if allowed_stances:
+                        current_stance = unit.commander_component.stance
+                        if current_stance not in allowed_stances:
+                            current_stance = allowed_stances[0]
+                        current_idx = allowed_stances.index(current_stance)
+                        next_idx = (current_idx + 1) % len(allowed_stances)
+                        unit.commander_component.stance = allowed_stances[next_idx]
+                        logger.debug(f"Unit {unit.name} (id:{unit.id}) stance cycled to {unit.commander_component.stance.name}.")
             self.sidebar_needs_update = True
         elif action_type == 'rename_unit':
             new_name = action.get('new_name', '').strip()

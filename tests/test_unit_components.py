@@ -303,6 +303,9 @@ def test_commander_stances():
     weapons.add_turret(turret)
     friendly.add_component(weapons)
 
+    engines = Engines(friendly, speed=100.0)
+    friendly.add_component(engines)
+
     hyperdrive = Hyperdrive(friendly, drive_type=HyperdriveType.BASIC, jump_range=2)
     friendly.add_component(hyperdrive)
 
@@ -1025,6 +1028,8 @@ def test_commander_get_sidebar_data_stance_dropdown():
     friendly_unit.id = 100
     friendly_unit.owner = player_friendly
     friendly_unit.name = "Friendly Unit"
+    friendly_unit.add_component(Engines(friendly_unit, speed=100.0))
+    friendly_unit.add_component(Hyperdrive(friendly_unit, drive_type=HyperdriveType.BASIC, jump_range=2))
 
     # Enemy unit
     enemy_unit = MockUnit()
@@ -1072,6 +1077,50 @@ def test_commander_get_sidebar_data_stance_dropdown():
     static_stance_enemy = next((d for d in enemy_data if d.get('type') == 'label' and d.get('text') == UnitStance.ATTACK_WEAPON_RANGE.display_name), None)
     assert static_stance_enemy is not None
     assert static_stance_enemy['indent_level'] == 1
+
+
+def test_allowed_stances_restriction():
+    unit = MockUnit()
+    commander = Commander(unit)
+    unit.add_component(commander)
+
+    # 1. No engines, no hyperdrive -> only DO_NOTHING and ATTACK_WEAPON_RANGE
+    allowed = commander.get_allowed_stances()
+    assert UnitStance.DO_NOTHING in allowed
+    assert UnitStance.ATTACK_WEAPON_RANGE in allowed
+    assert UnitStance.ATTACK_SAME_SECTOR not in allowed
+    assert UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE not in allowed
+    assert UnitStance.ATTACK_SAME_SYSTEM not in allowed
+
+    # If we set an invalid stance, it should reset to DO_NOTHING on process_stance
+    commander.stance = UnitStance.ATTACK_SAME_SYSTEM
+    commander.process_stance()
+    assert commander.stance == UnitStance.DO_NOTHING
+
+    # 2. Engines present, no hyperdrive -> DO_NOTHING, ATTACK_WEAPON_RANGE, and ATTACK_SAME_SECTOR
+    engines = Engines(unit, speed=10.0)
+    unit.add_component(engines)
+    allowed = commander.get_allowed_stances()
+    assert UnitStance.DO_NOTHING in allowed
+    assert UnitStance.ATTACK_WEAPON_RANGE in allowed
+    assert UnitStance.ATTACK_SAME_SECTOR in allowed
+    assert UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE not in allowed
+    assert UnitStance.ATTACK_SAME_SYSTEM not in allowed
+
+    # Valid stance shouldn't reset
+    commander.stance = UnitStance.ATTACK_SAME_SECTOR
+    commander.process_stance()
+    assert commander.stance == UnitStance.ATTACK_SAME_SECTOR
+
+    # 3. Engines present, hyperdrive present -> all allowed
+    hyperdrive = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=2)
+    unit.add_component(hyperdrive)
+    allowed = commander.get_allowed_stances()
+    assert len(allowed) == len(UnitStance)
+
+    commander.stance = UnitStance.ATTACK_SAME_SYSTEM
+    commander.process_stance()
+    assert commander.stance == UnitStance.ATTACK_SAME_SYSTEM
 
 
 
