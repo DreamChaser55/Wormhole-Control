@@ -173,7 +173,7 @@ class AsteroidField(CelestialBody):
 class IceField(CelestialBody):
     """Represents a field of ice particles."""
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=150.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=200.0)
         self.name = f"Ice Field {self.id}"
 
 class Nebula(CelestialBody):
