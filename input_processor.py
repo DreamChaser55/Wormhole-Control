@@ -429,7 +429,7 @@ class InputProcessor:
                                         options.append(("Load Colonists", "load_colonists"))
                             if isinstance(target_object, (Asteroid, AsteroidField, Moon)) and any(getattr(a, 'mining_component', None) for a in actors):
                                 options.append(("Mine", "mine"))
-                                options.append(("Continuous Mine", "continuous_mine"))
+                                options.append(("Mine (continuously)", "continuous_mine"))
                         elif isinstance(target_object, Wormhole): options.append(("View Wormhole Info", "view_wormhole"))
                         elif isinstance(target_object, Unit): options.append(("View Unit Info", "view_unit"))
                         elif isinstance(target_object, Star): options.append(("View Star", "view_star"))
