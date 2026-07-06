@@ -5,7 +5,7 @@ from constants import (
     DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE,
     SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY,
     HEX_JUMP_ORDER_LINE_COLOR, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS,
-    STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR
+    STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR, TEXT_SCALE
 )
 from hexgrid_utils import get_hex_vertices, hex_to_pixel
 from entities import (
@@ -51,6 +51,26 @@ class SystemViewRenderer:
                         end_x = int(center_px.x + edge_radius * ux)
                         end_y = int(center_px.y + edge_radius * uy)
                         pygame.draw.line(self.screen, WORMHOLE_LINE_COLOR, (wh_px.x, wh_px.y), (end_x, end_y), 2)
+
+                        # Draw destination system name at the end of the line
+                        scale_val = self.screen.get_height() / 720.0
+                        font_size = max(1, int(12 * TEXT_SCALE))
+                        font = pygame.font.Font(None, font_size)
+                        text_surface = font.render(body.exit_system_name, True, WORMHOLE_LINE_COLOR)
+                        text_rect = text_surface.get_rect()
+
+                        padding = int(5 * scale_val)
+                        if ux > 0.3:
+                            text_rect.midleft = (end_x + padding, end_y)
+                        elif ux < -0.3:
+                            text_rect.midright = (end_x - padding, end_y)
+                        else:
+                            if uy > 0:
+                                text_rect.midtop = (end_x, end_y + padding)
+                            else:
+                                text_rect.midbottom = (end_x, end_y - padding)
+
+                        self.screen.blit(text_surface, text_rect)
 
         # 2. Draw Contents of Hexes (Stars, Planets, Units)
         for hex_coord, hex_obj in system.hexes.items():

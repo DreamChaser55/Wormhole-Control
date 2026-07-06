@@ -342,6 +342,7 @@ def test_system_view_wormhole_lines():
     
     renderer = SystemViewRenderer(game)
     renderer.screen = MagicMock()
+    renderer.screen.get_height.return_value = 720
     renderer.overlay_surface = MagicMock()
 
     # Setup StarSystem and Hex with a Wormhole
@@ -358,11 +359,20 @@ def test_system_view_wormhole_lines():
     system.hexes = {(3, 0): hex_obj}
     game.galaxy.systems = {"Sol": system}
     
-    # Mock hex_to_pixel, pygame.draw.line, pygame.draw.polygon, and pygame.draw.circle
+    # Mock hex_to_pixel, pygame.draw.line, pygame.draw.polygon, pygame.draw.circle, and pygame.font.Font
     with patch("rendering.system_renderer.hex_to_pixel") as mock_hex_to_pixel, \
          patch("rendering.system_renderer.pygame.draw.line") as mock_draw_line, \
          patch("rendering.system_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle:
+         patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.system_renderer.pygame.font.Font") as mock_font:
+         
+         # Setup mock font behavior
+         mock_font_instance = MagicMock()
+         mock_font.return_value = mock_font_instance
+         mock_text_surface = MagicMock()
+         mock_font_instance.render.return_value = mock_text_surface
+         mock_text_rect = MagicMock()
+         mock_text_surface.get_rect.return_value = mock_text_rect
          
          # Mock positions:
          # center (0,0) is at (500, 500)
@@ -390,3 +400,12 @@ def test_system_view_wormhole_lines():
          assert call_args[3][1] == 500
          # Verify width is 2
          assert call_args[4] == 2
+
+         # Verify font is created and text is rendered with destination name
+         mock_font.assert_called_once()
+         mock_font_instance.render.assert_called_once_with("Vega", True, WORMHOLE_LINE_COLOR)
+
+         # Verify the text rect is correctly aligned based on ux > 0.3 (should be midleft)
+         mock_text_surface.get_rect.assert_called_once()
+         # Verify screen.blit was called to draw the text
+         renderer.screen.blit.assert_called_once_with(mock_text_surface, mock_text_rect)
