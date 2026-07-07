@@ -517,6 +517,44 @@ class SectorViewRenderer:
                     'sequence_index': sequence_index,
                     'order_type': order.order_type
                 })
+        elif order.order_type == OrderType.PATROL:
+            wps = order.parameters.get("waypoints", [])
+            if not wps and "destination_position" in order.parameters:
+                wps = [{
+                    "system_name": order.parameters.get("destination_system_name"),
+                    "hex_coord": order.parameters.get("destination_hex_coord"),
+                    "position": order.parameters.get("destination_position")
+                }]
+            start_pos = getattr(order, "start_position", None)
+            start_sys = getattr(order, "start_system_name", None)
+            start_hex = getattr(order, "start_hex_coord", None)
+            if not start_pos:
+                start_pos = unit.position
+                start_sys = unit.in_system
+                start_hex = unit.in_hex
+
+            for wp in wps:
+                sequence_index = len(all_waypoints_sequence)
+                all_waypoints_sequence.append({
+                    'position': wp['position'],
+                    'system': wp['system_name'],
+                    'hex': wp['hex_coord'],
+                    'is_current': is_current,
+                    'is_sub_order': True,
+                    'sequence_index': sequence_index,
+                    'order_type': order.order_type
+                })
+            if start_pos:
+                sequence_index = len(all_waypoints_sequence)
+                all_waypoints_sequence.append({
+                    'position': start_pos,
+                    'system': start_sys,
+                    'hex': start_hex,
+                    'is_current': is_current,
+                    'is_sub_order': True,
+                    'sequence_index': sequence_index,
+                    'order_type': order.order_type
+                })
 
         for sub_order in list(order.sub_orders):
             self._collect_waypoints_from_order(

@@ -606,30 +606,75 @@ class PatrolOrder(Order):
         self.start_hex_coord = None
         self.start_position = None
         self.patrol_phase = "TO_TARGET" # "TO_TARGET" or "TO_START"
+        self.current_waypoint_index = 0
+
+        if "waypoints" not in self.parameters and "destination_position" in self.parameters:
+            self.parameters["waypoints"] = [{
+                "system_name": self.parameters["destination_system_name"],
+                "hex_coord": self.parameters["destination_hex_coord"],
+                "position": self.parameters["destination_position"]
+            }]
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
         self.start_system_name = self.unit.in_system
         self.start_hex_coord = self.unit.in_hex
         self.start_position = Position(self.unit.position.x, self.unit.position.y)
-        self.patrol_phase = "TO_TARGET"
-        self._spawn_move_to_target()
+        self.current_waypoint_index = 0
+        self._spawn_move_to_current_waypoint()
 
-    def _spawn_move_to_target(self) -> None:
-        move_params = {
-            "destination_system_name": self.parameters["destination_system_name"],
-            "destination_hex_coord": self.parameters["destination_hex_coord"],
-            "destination_position": self.parameters["destination_position"]
-        }
+    def _spawn_move_to_current_waypoint(self) -> None:
+        wps = self.parameters.get("waypoints", [])
+        if not wps:
+            self.status = OrderStatus.FAILED
+            return
+
+        num_wps = len(wps)
+        idx = self.current_waypoint_index
+        if idx < num_wps:
+            self.patrol_phase = "TO_TARGET"
+            wp = wps[idx]
+            move_params = {
+                "destination_system_name": wp["system_name"],
+                "destination_hex_coord": wp["hex_coord"],
+                "destination_position": wp["position"]
+            }
+        else:
+            self.patrol_phase = "TO_START"
+            move_params = {
+                "destination_system_name": self.start_system_name,
+                "destination_hex_coord": self.start_hex_coord,
+                "destination_position": self.start_position
+            }
         self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
 
-    def _spawn_move_to_start(self) -> None:
-        move_params = {
-            "destination_system_name": self.start_system_name,
-            "destination_hex_coord": self.start_hex_coord,
-            "destination_position": self.start_position
-        }
-        self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+    def add_waypoint(self, system_name: str, hex_coord: HexCoord, position: Position) -> None:
+        if "waypoints" not in self.parameters:
+            self.parameters["waypoints"] = []
+            if "destination_position" in self.parameters:
+                self.parameters["waypoints"].append({
+                    "system_name": self.parameters["destination_system_name"],
+                    "hex_coord": self.parameters["destination_hex_coord"],
+                    "position": self.parameters["destination_position"]
+                })
+
+        old_len = len(self.parameters["waypoints"])
+        self.parameters["waypoints"].append({
+            "system_name": system_name,
+            "hex_coord": hex_coord,
+            "position": position
+        })
+
+        if self.status == OrderStatus.IN_PROGRESS:
+            if getattr(self, "current_waypoint_index", 0) == old_len:
+                self.current_waypoint_index = old_len + 1
+
+    def get_state_data(self) -> Dict[str, Any]:
+        state_data = super().get_state_data()
+        state_data["current_waypoint_index"] = getattr(self, "current_waypoint_index", 0)
+        if "waypoints" in self.parameters:
+            state_data["parameters"]["waypoints"] = self.parameters["waypoints"]
+        return state_data
 
     def _find_nearby_enemy(self, galaxy_ref: 'Galaxy') -> Optional['Unit']:
         weapons = self.unit.weapons_component
@@ -706,11 +751,8 @@ class PatrolOrder(Order):
                     self.sub_orders.popleft()
                     if self.unit.weapons_component:
                         self.unit.weapons_component.clear_target()
-                    # Re-route to current phase destination
-                    if self.patrol_phase == "TO_TARGET":
-                        self._spawn_move_to_target()
-                    else:
-                        self._spawn_move_to_start()
+                    # Re-route to current waypoint destination
+                    self._spawn_move_to_current_waypoint()
                     has_attack_order = False
 
         if not has_attack_order:
@@ -740,14 +782,16 @@ class PatrolOrder(Order):
 
         # If we reach here and sub-orders are empty, it means the current movement leg has finished.
         # Transition to the next phase of the patrol loop.
-        if self.patrol_phase == "TO_TARGET":
-            self.patrol_phase = "TO_START"
-            self._spawn_move_to_start()
-            logger.debug(f"[{self.unit.name}] Patrol leg completed. Returning to start: {self.start_position}")
+        wps = self.parameters.get("waypoints", [])
+        num_wps = len(wps)
+        self.current_waypoint_index = (self.current_waypoint_index + 1) % (num_wps + 1)
+        self._spawn_move_to_current_waypoint()
+
+        idx = self.current_waypoint_index
+        if idx < num_wps:
+            logger.debug(f"[{self.unit.name}] Patrol leg completed. Heading to waypoint {idx}: {wps[idx]['position']}")
         else:
-            self.patrol_phase = "TO_TARGET"
-            self._spawn_move_to_target()
-            logger.debug(f"[{self.unit.name}] Patrol leg completed. Heading back to target: {self.parameters['destination_position']}")
+            logger.debug(f"[{self.unit.name}] Patrol leg completed. Returning to start: {self.start_position}")
 
 class AttackOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):

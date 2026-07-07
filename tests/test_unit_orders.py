@@ -817,6 +817,124 @@ def test_patrol_order_movement_loop():
     assert move_sub.parameters["destination_position"] == Position(100, 10)
 
 
+def test_patrol_order_multiple_waypoints():
+    unit = MockUnit()
+    engines = Engines(unit, speed=50.0)
+    unit.add_component(engines)
+
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(10, 10)
+
+    patrol_order = PatrolOrder(unit, {
+        "waypoints": [
+            {
+                "system_name": "Sol",
+                "hex_coord": (0, 0),
+                "position": Position(100, 10)
+            },
+            {
+                "system_name": "Sol",
+                "hex_coord": (0, 0),
+                "position": Position(200, 10)
+            }
+        ]
+    })
+
+    galaxy = MagicMock()
+    mock_hex = MagicMock()
+    mock_hex.get_all_inhibition_zones.return_value = []
+    mock_sys = MagicMock()
+    mock_sys.hexes = {(0, 0): mock_hex}
+    galaxy.systems = {"Sol": mock_sys}
+
+    patrol_order.execute(galaxy)
+
+    # Check initially moving to WP1 (index 0)
+    assert patrol_order.status == OrderStatus.IN_PROGRESS
+    assert patrol_order.current_waypoint_index == 0
+    assert patrol_order.patrol_phase == "TO_TARGET"
+    assert len(patrol_order.sub_orders) == 1
+    assert patrol_order.sub_orders[0].parameters["destination_position"] == Position(100, 10)
+
+    # Complete move to WP1
+    patrol_order.sub_orders[0].status = OrderStatus.COMPLETED
+    patrol_order.sub_orders[0].sub_orders.clear()
+    patrol_order.update(galaxy)
+
+    # Should transition to WP2 (index 1)
+    assert patrol_order.current_waypoint_index == 1
+    assert patrol_order.patrol_phase == "TO_TARGET"
+    assert len(patrol_order.sub_orders) == 1
+    assert patrol_order.sub_orders[0].parameters["destination_position"] == Position(200, 10)
+
+    # Complete move to WP2
+    patrol_order.sub_orders[0].status = OrderStatus.COMPLETED
+    patrol_order.sub_orders[0].sub_orders.clear()
+    patrol_order.update(galaxy)
+
+    # Should transition to Start position (index 2)
+    assert patrol_order.current_waypoint_index == 2
+    assert patrol_order.patrol_phase == "TO_START"
+    assert len(patrol_order.sub_orders) == 1
+    assert patrol_order.sub_orders[0].parameters["destination_position"] == Position(10, 10)
+
+    # Complete returning to start
+    patrol_order.sub_orders[0].status = OrderStatus.COMPLETED
+    patrol_order.sub_orders[0].sub_orders.clear()
+    patrol_order.update(galaxy)
+
+    # Should loop back to WP1 (index 0)
+    assert patrol_order.current_waypoint_index == 0
+    assert patrol_order.patrol_phase == "TO_TARGET"
+    assert len(patrol_order.sub_orders) == 1
+    assert patrol_order.sub_orders[0].parameters["destination_position"] == Position(100, 10)
+
+    # Test dynamic add_waypoint while moving to WP1 (index 0). Add WP3.
+    patrol_order.add_waypoint("Sol", (0, 0), Position(300, 10))
+    assert patrol_order.current_waypoint_index == 0
+    
+    # Complete move to WP1
+    patrol_order.sub_orders[0].status = OrderStatus.COMPLETED
+    patrol_order.sub_orders[0].sub_orders.clear()
+    patrol_order.update(galaxy)
+    
+    # Next should be WP2
+    assert patrol_order.current_waypoint_index == 1
+
+    # Complete move to WP2
+    patrol_order.sub_orders[0].status = OrderStatus.COMPLETED
+    patrol_order.sub_orders[0].sub_orders.clear()
+    patrol_order.update(galaxy)
+    
+    # Next should be WP3 (the new one)
+    assert patrol_order.current_waypoint_index == 2
+    assert patrol_order.sub_orders[0].parameters["destination_position"] == Position(300, 10)
+
+    # Complete move to WP3
+    patrol_order.sub_orders[0].status = OrderStatus.COMPLETED
+    patrol_order.sub_orders[0].sub_orders.clear()
+    patrol_order.update(galaxy)
+    
+    # Next should be Start (index 3)
+    assert patrol_order.current_waypoint_index == 3
+    assert patrol_order.sub_orders[0].parameters["destination_position"] == Position(10, 10)
+
+    # Test dynamic add_waypoint while moving to Start (current_waypoint_index is 3, which is len(waypoints))
+    # We add WP4. Length of waypoints becomes 4.
+    # Index should adjust to 4.
+    patrol_order.add_waypoint("Sol", (0, 0), Position(400, 10))
+    assert patrol_order.current_waypoint_index == 4
+
+    # Complete move to Start
+    patrol_order.sub_orders[0].status = OrderStatus.COMPLETED
+    patrol_order.sub_orders[0].sub_orders.clear()
+    patrol_order.update(galaxy)
+
+    # Should loop back to WP1 (index 0)
+    assert patrol_order.current_waypoint_index == 0
+
+
 def test_patrol_order_combat_engagement_and_resumption():
     unit = MockUnit()
     engines = Engines(unit, speed=50.0)

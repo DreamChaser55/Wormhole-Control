@@ -721,21 +721,35 @@ class Game:
             return [f"{toggle_inhibitor_type_styled} {action_styled}"]
 
         elif order_type == "PATROL":
-            dsys = parameters.get("destination_system_name", "N/A")
-            dhex = parameters.get("destination_hex_coord", "N/A")
-            dpos_param = parameters.get("destination_position", None)
-            dpos_str = f"({dpos_param.x:.1f}, {dpos_param.y:.1f})" if isinstance(dpos_param, Position) else "N/A"
-
             patrol_type_styled = f"<font color='{PATROL_TYPE_COLOR}'><b>🔄 Patrol:</b></font>"
-            dsys_styled = f"<font color='{INFO_COLOR}'><i>{dsys}</i></font>" if dsys != "N/A" else f"<font color='{INFO_COLOR}'>N/A</font>"
-            dhex_styled = f"<font color='{INFO_COLOR}'>{dhex}</font>"
-            dpos_styled = f"<font color='{INFO_COLOR}'>{dpos_str}</font>"
-            return [
-                patrol_type_styled,
-                f"  Sys: {dsys_styled}",
-                f"  Hex: {dhex_styled}",
-                f"  Pos: {dpos_styled}"
-            ]
+            waypoints = parameters.get("waypoints", [])
+            curr_idx = state_data.get("current_waypoint_index", 0)
+
+            if not waypoints and "destination_position" in parameters:
+                waypoints = [{
+                    "system_name": parameters.get("destination_system_name", "N/A"),
+                    "hex_coord": parameters.get("destination_hex_coord", "N/A"),
+                    "position": parameters.get("destination_position", None)
+                }]
+
+            lines = [patrol_type_styled]
+            for idx, wp in enumerate(waypoints):
+                wsys = wp.get("system_name", "N/A")
+                whex = wp.get("hex_coord", "N/A")
+                wpos = wp.get("position", None)
+                wpos_str = f"({wpos.x:.1f}, {wpos.y:.1f})" if isinstance(wpos, Position) else "N/A"
+
+                prefix = "&nbsp;&nbsp;"
+                if idx == curr_idx:
+                    prefix = "&nbsp;* "
+
+                lines.append(f"{prefix}WP {idx+1}: <font color='{INFO_COLOR}'><i>{wsys}</i></font>:{whex}:{wpos_str}")
+
+            prefix = "&nbsp;&nbsp;"
+            if curr_idx == len(waypoints):
+                prefix = "&nbsp;* "
+            lines.append(f"{prefix}WP Start (Return)")
+            return lines
 
         elif order_type == "ATTACK":
             target_unit_id = state_data.get("target_unit_id")
