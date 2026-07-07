@@ -409,3 +409,106 @@ def test_system_view_wormhole_lines():
          mock_text_surface.get_rect.assert_called_once()
          # Verify screen.blit was called to draw the text
          renderer.screen.blit.assert_called_once_with(mock_text_surface, mock_text_rect)
+
+
+def test_draw_sector_view_patrol_order_path():
+    # 1. Setup mock game, player, and renderer
+    game = MagicMock()
+    player1 = Player("Player 1", BLUE, is_human=True)
+    game.players = [player1]
+    game.current_player_index = 0  # Player 1's turn
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.selected_objects = []
+    game.sector_view_mouse_hover_object = None
+    game.is_dragging_selection_box = False
+
+    renderer = SectorViewRenderer(game)
+    renderer.screen = MagicMock()
+    renderer.overlay_surface = MagicMock()
+
+    # 2. Setup StarSystem and Hex
+    system = MagicMock()
+    game.galaxy.systems = {"Sol": system}
+    hex_obj = MagicMock()
+    system.hexes = {(0, 0): hex_obj}
+
+    # 3. Create Unit with Commander component and PatrolOrder
+    unit = Unit(player1, Position(10, 10), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
+    unit.max_hit_points = 0  # avoid healthbar rendering
+    
+    commander = MagicMock()
+    unit.components[Commander] = commander
+    
+    # Mock PatrolOrder
+    patrol_order = MagicMock()
+    patrol_order.order_type = OrderType.PATROL
+    patrol_order.parameters = {
+        "waypoints": [
+            {"system_name": "Sol", "hex_coord": (0, 0), "position": Position(100, 10)},
+            {"system_name": "Sol", "hex_coord": (0, 0), "position": Position(200, 10)}
+        ]
+    }
+    patrol_order.start_position = Position(10, 10)
+    patrol_order.start_system_name = "Sol"
+    patrol_order.start_hex_coord = (0, 0)
+    patrol_order.current_waypoint_index = 0
+    
+    # Add a MoveOrder sub-order (which should be skipped)
+    sub_move = MagicMock()
+    sub_move.order_type = OrderType.MOVE
+    sub_move.parameters = {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(100, 10)
+    }
+    sub_move.sub_orders = []
+    patrol_order.sub_orders = [sub_move]
+    
+    commander.current_order = patrol_order
+    commander.orders_queue = []
+    
+    hex_obj.celestial_bodies = []
+    hex_obj.units = [unit]
+
+    # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
+    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
+         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
+         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
+         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
+         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
+         patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
+
+        # CASE 1: current_waypoint_index = 0
+        patrol_order.current_waypoint_index = 0
+        renderer.draw_sector_view()
+        
+        # Drawn lines should start from unit (10, 10) to W1 (100, 10), then W1 -> W2 (200, 10), then W2 -> S (10, 10), then S -> W1 (100, 10).
+        line_calls = [call[0] for call in mock_draw_line.call_args_list]
+        draw_lines_coords = [(call[2], call[3]) for call in line_calls]
+        
+        # Verify the path is a closed loop starting at unit's current move target (100, 10)
+        # Expected lines: (Unit -> W1), (W1 -> W2), (W2 -> S), (S -> W1)
+        assert ((10.0, 10.0), (100.0, 10.0)) in draw_lines_coords
+        assert ((100.0, 10.0), (200.0, 10.0)) in draw_lines_coords
+        assert ((200.0, 10.0), (10.0, 10.0)) in draw_lines_coords
+        assert ((10.0, 10.0), (100.0, 10.0)) in draw_lines_coords
+        
+        # Reset mock
+        mock_draw_line.reset_mock()
+        
+        # CASE 2: current_waypoint_index = 1
+        patrol_order.current_waypoint_index = 1
+        renderer.draw_sector_view()
+        
+        line_calls = [call[0] for call in mock_draw_line.call_args_list]
+        draw_lines_coords = [(call[2], call[3]) for call in line_calls]
+        
+        # Expected lines: (Unit -> W2), (W2 -> S), (S -> W1), (W1 -> W2)
+        assert ((10.0, 10.0), (200.0, 10.0)) in draw_lines_coords
+        assert ((200.0, 10.0), (10.0, 10.0)) in draw_lines_coords
+        assert ((10.0, 10.0), (100.0, 10.0)) in draw_lines_coords
+        assert ((100.0, 10.0), (200.0, 10.0)) in draw_lines_coords

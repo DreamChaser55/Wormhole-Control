@@ -533,30 +533,49 @@ class SectorViewRenderer:
                 start_sys = unit.in_system
                 start_hex = unit.in_hex
 
+            # Construct the complete patrol cycle: waypoints list followed by the start position.
+            cycle = []
             for wp in wps:
-                sequence_index = len(all_waypoints_sequence)
-                all_waypoints_sequence.append({
+                cycle.append({
                     'position': wp['position'],
                     'system': wp['system_name'],
-                    'hex': wp['hex_coord'],
-                    'is_current': is_current,
-                    'is_sub_order': True,
-                    'sequence_index': sequence_index,
-                    'order_type': order.order_type
+                    'hex': wp['hex_coord']
                 })
             if start_pos:
-                sequence_index = len(all_waypoints_sequence)
-                all_waypoints_sequence.append({
+                cycle.append({
                     'position': start_pos,
                     'system': start_sys,
-                    'hex': start_hex,
-                    'is_current': is_current,
-                    'is_sub_order': True,
-                    'sequence_index': sequence_index,
-                    'order_type': order.order_type
+                    'hex': start_hex
                 })
 
+            if cycle:
+                # Reorder the cycle to start with the active/current waypoint index.
+                # This ensures the path flows from the unit's current position to the current leg target,
+                # and then continues in order to close the loop.
+                idx = getattr(order, "current_waypoint_index", 0)
+                if idx >= len(cycle) or idx < 0:
+                    idx = 0
+
+                # Form a closed loop starting at idx, going through the cycle, and ending back at idx.
+                reordered_cycle = cycle[idx:] + cycle[:idx] + [cycle[idx]]
+
+                for item in reordered_cycle:
+                    sequence_index = len(all_waypoints_sequence)
+                    all_waypoints_sequence.append({
+                        'position': item['position'],
+                        'system': item['system'],
+                        'hex': item['hex'],
+                        'is_current': is_current,
+                        'is_sub_order': True,
+                        'sequence_index': sequence_index,
+                        'order_type': order.order_type
+                    })
+
         for sub_order in list(order.sub_orders):
+            # Skip the MoveOrder sub-order of a PatrolOrder because the patrol path
+            # loop rendering already handles drawing the active move path to the current target.
+            if order.order_type == OrderType.PATROL and sub_order.order_type == OrderType.MOVE:
+                continue
             self._collect_waypoints_from_order(
                 sub_order,
                 unit,
@@ -686,7 +705,10 @@ class SectorViewRenderer:
                     
                 first_waypoint_in_segment = segment[0]
                 is_first_waypoint_overall = (first_waypoint_in_segment['sequence_index'] == 0)
-                connect_to_unit = unit_in_current_sector and is_first_waypoint_overall and segment_index == 0
+                connect_to_unit = unit_in_current_sector and (
+                    first_waypoint_in_segment.get('connect_to_unit', False) or
+                    (is_first_waypoint_overall and segment_index == 0)
+                )
                 
                 for i, waypoint in enumerate(segment):
                     dest_pixel_point = sector_coords_to_pixels(waypoint['position'])
