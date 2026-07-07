@@ -814,6 +814,92 @@ class AttackOrder(Order):
                 move_order = MoveOrder(self.unit, move_params, parent_order=self)
                 self.add_sub_order(move_order)
 
+    def update(self, galaxy_ref: 'Galaxy') -> None:
+        if self.status != OrderStatus.IN_PROGRESS:
+            super().update(galaxy_ref)
+            return
+
+        target_unit_id = self.parameters.get("target_unit_id")
+        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id else None
+
+        if not target_unit or target_unit.current_hit_points <= 0:
+            super().update(galaxy_ref)
+            return
+
+        weapons = self.unit.weapons_component
+        if not weapons or not weapons.turrets:
+            super().update(galaxy_ref)
+            return
+
+        min_turret_range = min(turret.range for turret in weapons.turrets)
+
+        in_the_same_system_and_hex = (self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex)
+        
+        in_range = False
+        if in_the_same_system_and_hex:
+            for turret in weapons.turrets:
+                if distance(self.unit.position, target_unit.position) < turret.range:
+                    in_range = True
+                    break
+
+        # Check if we have an active movement sub-order
+        has_movement_order = False
+        if self.sub_orders:
+            current_sub = self.sub_orders[0]
+            if current_sub.order_type == OrderType.MOVE:
+                has_movement_order = True
+                dest_system = current_sub.parameters.get("destination_system_name")
+                dest_hex = current_sub.parameters.get("destination_hex_coord")
+                dest_pos = current_sub.parameters.get("destination_position")
+
+                # If we are now in the same system and hex, and already within range, we should cancel the movement sub-order.
+                if in_the_same_system_and_hex and in_range:
+                    logger.debug(f"[{self.unit.name}] Target {target_unit.name} is in weapon range. Cancelling movement.")
+                    current_sub.cancel()
+                    self.sub_orders.popleft()
+                    if self.unit.engines_component:
+                        self.unit.engines_component.move_target = None
+                    if self.unit.hyperdrive_component:
+                        self.unit.hyperdrive_component.hex_jump_target = None
+                        self.unit.hyperdrive_component.wormhole_jump_target = None
+                    has_movement_order = False
+                else:
+                    # Otherwise, check if target has moved away from our movement destination parameters
+                    target_moved = False
+                    if dest_system != target_unit.in_system or dest_hex != target_unit.in_hex:
+                        target_moved = True
+                    elif dest_pos:
+                        current_offset = distance(dest_pos, target_unit.position)
+                        if abs(current_offset - (min_turret_range - 5.0)) > 15.0:
+                            target_moved = True
+
+                    if target_moved:
+                        logger.debug(f"[{self.unit.name}] Target {target_unit.name} moved. Recalculating path.")
+                        current_sub.cancel()
+                        self.sub_orders.popleft()
+                        if self.unit.engines_component:
+                            self.unit.engines_component.move_target = None
+                        if self.unit.hyperdrive_component:
+                            self.unit.hyperdrive_component.hex_jump_target = None
+                            self.unit.hyperdrive_component.wormhole_jump_target = None
+                        has_movement_order = False
+
+        # If we don't have a movement order, check if we need to move
+        if not has_movement_order:
+            if not in_the_same_system_and_hex or not in_range:
+                dest_pos = move_towards_position(self.unit.position, target_unit.position, min_turret_range - 5.0)
+                move_params = {
+                    "destination_system_name": target_unit.in_system,
+                    "destination_hex_coord": target_unit.in_hex,
+                    "destination_position": dest_pos
+                }
+                move_order = MoveOrder(self.unit, move_params, parent_order=self)
+                self.add_sub_order(move_order)
+
+        super().update(galaxy_ref)
+
+
+
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
             return
