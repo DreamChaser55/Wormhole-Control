@@ -365,6 +365,10 @@ class InputProcessor:
                                 options.append(("Move Here", "issue_move_order"))
                                 options.append(("Patrol Here", "issue_patrol_order"))
 
+                            ability_options = self.get_ability_context_options(actors, target_is_unit=False)
+                            if ability_options:
+                                options.append(("Use Ability", ability_options))
+
                             for actor in actors:
                                 if actor.constructor_component:
                                     build_options = []
@@ -378,43 +382,48 @@ class InputProcessor:
                                         options.append(("Construct", build_options))
                                     break # Only need to check one constructor unit
                         elif target_object is not None:
-                            if isinstance(target_object, Unit) and any(target_object.owner != a.owner for a in actors):
-                                if any(a.weapons_component for a in actors):
-                                    options.append(("Attack Hull", "attack_unit"))
-                                    if target_object.engines_component:
-                                        options.append(("Attack Engines", "attack_unit_Engines"))
-                                    if target_object.hyperdrive_component:
-                                        options.append(("Attack Hyperdrive", "attack_unit_Hyperdrive"))
-                                    if target_object.weapons_component:
-                                        options.append(("Attack Weapons", "attack_unit_Weapons"))
-                                    if target_object.inhibitor_component:
-                                        options.append(("Attack Inhibitor", "attack_unit_HyperspaceInhibitionFieldEmitter"))
-                            elif isinstance(target_object, Unit) and any(target_object.owner == a.owner for a in actors) and target_object not in actors:
-                                options.append(("Protect", "protect_unit"))
-                                target_is_damaged = (
-                                    target_object.current_hit_points < target_object.max_hit_points or
-                                    any(c.current_hit_points < c.max_hit_points for c in target_object.components.values())
-                                )
-                                if target_is_damaged and any(a.repair_component for a in actors):
-                                    options.append(("Repair", "repair_unit"))
-                                
-                                is_metal_refinery = bool(getattr(target_object, 'metal_refinery_component', None))
-                                is_crystal_refinery = bool(getattr(target_object, 'crystal_refinery_component', None))
-                                has_correct_cargo_miners = any(
-                                    getattr(a, 'mining_component', None) and (
-                                        (is_metal_refinery and a.mining_component.raw_metal_cargo > 0) or
-                                        (is_crystal_refinery and a.mining_component.raw_crystal_cargo > 0)
-                                    ) for a in actors
-                                )
-                                if (is_metal_refinery or is_crystal_refinery) and has_correct_cargo_miners:
-                                    options.append(("Unload Resources", "unload_resources"))
+                            if isinstance(target_object, Unit):
+                                if any(target_object.owner != a.owner for a in actors):
+                                    if any(a.weapons_component for a in actors):
+                                        options.append(("Attack Hull", "attack_unit"))
+                                        if target_object.engines_component:
+                                            options.append(("Attack Engines", "attack_unit_Engines"))
+                                        if target_object.hyperdrive_component:
+                                            options.append(("Attack Hyperdrive", "attack_unit_Hyperdrive"))
+                                        if target_object.weapons_component:
+                                            options.append(("Attack Weapons", "attack_unit_Weapons"))
+                                        if target_object.inhibitor_component:
+                                            options.append(("Attack Inhibitor", "attack_unit_HyperspaceInhibitionFieldEmitter"))
+                                elif any(target_object.owner == a.owner for a in actors) and target_object not in actors:
+                                    options.append(("Protect", "protect_unit"))
+                                    target_is_damaged = (
+                                        target_object.current_hit_points < target_object.max_hit_points or
+                                        any(c.current_hit_points < c.max_hit_points for c in target_object.components.values())
+                                    )
+                                    if target_is_damaged and any(a.repair_component for a in actors):
+                                        options.append(("Repair", "repair_unit"))
+                                    
+                                    is_metal_refinery = bool(getattr(target_object, 'metal_refinery_component', None))
+                                    is_crystal_refinery = bool(getattr(target_object, 'crystal_refinery_component', None))
+                                    has_correct_cargo_miners = any(
+                                        getattr(a, 'mining_component', None) and (
+                                            (is_metal_refinery and a.mining_component.raw_metal_cargo > 0) or
+                                            (is_crystal_refinery and a.mining_component.raw_crystal_cargo > 0)
+                                        ) for a in actors
+                                    )
+                                    if (is_metal_refinery or is_crystal_refinery) and has_correct_cargo_miners:
+                                        options.append(("Unload Resources", "unload_resources"))
 
-                                can_dock_at_carrier = (
-                                    (target_object.hangar_component and any(target_object.hangar_component.can_dock(a) for a in actors)) or
-                                    (target_object.strikecraft_bay_component and any(target_object.strikecraft_bay_component.can_dock(a) for a in actors))
-                                )
-                                if can_dock_at_carrier:
-                                    options.append(("Dock at Carrier", "dock_at_carrier"))
+                                    can_dock_at_carrier = (
+                                        (target_object.hangar_component and any(target_object.hangar_component.can_dock(a) for a in actors)) or
+                                        (target_object.strikecraft_bay_component and any(target_object.strikecraft_bay_component.can_dock(a) for a in actors))
+                                    )
+                                    if can_dock_at_carrier:
+                                        options.append(("Dock at Carrier", "dock_at_carrier"))
+
+                                ability_options = self.get_ability_context_options(actors, target_is_unit=True)
+                                if ability_options:
+                                    options.append(("Use Ability", ability_options))
 
                             elif isinstance(target_object, Wormhole):
                                 if any(a.hyperdrive_component and a.hyperdrive_component.drive_type == HyperdriveType.ADVANCED and a.in_system == target_object.in_system for a in actors):
@@ -628,9 +637,78 @@ class InputProcessor:
                         shift_pressed
                     ))
 
+            elif extracted_action_id.startswith("use_ability_"):
+                ability_type_str = extracted_action_id[len("use_ability_"):]
+                target_unit = target if isinstance(target, Unit) else None
+                target_position = target if isinstance(target, Position) else None
+                self.game.event_bus.publish(UseAbilityEvent(
+                    units=selected_units,
+                    ability_type_str=ability_type_str,
+                    target_unit=target_unit,
+                    target_position=target_position,
+                    target_system_name=self.game.current_system_name,
+                    target_hex_coord=self.game.current_sector_coord,
+                    shift_pressed=shift_pressed,
+                ))
+
             else:
                 logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")
             
             self.game.sidebar_needs_update = True
         else:
             logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")
+
+    def get_ability_context_options(self, actors: typing.List[Unit], target_is_unit: bool) -> typing.List[typing.Tuple[str, str]]:
+        current_player = self.game.players[self.game.current_player_index]
+        player_actors = [a for a in actors if a.owner == current_player]
+        if not player_actors:
+            return []
+
+        ability_map = {}
+        for actor in player_actors:
+            if not actor.ability_component or actor.ability_component.is_destroyed:
+                continue
+            for atype, instance in actor.ability_component.abilities.items():
+                defn = instance.definition
+                is_relevant = defn.requires_target_unit if target_is_unit else defn.requires_target_position
+
+                if is_relevant:
+                    ability_map.setdefault(atype, []).append((actor, instance))
+
+        if not ability_map:
+            return []
+
+        submenu_options = []
+        for atype in sorted(ability_map.keys(), key=lambda t: t.value):
+            actor_instances = ability_map[atype]
+            defn = actor_instances[0][1].definition
+            
+            if len(actor_instances) == 1:
+                actor, instance = actor_instances[0]
+                am_comp = actor.antimatter_component
+                has_enough_am = am_comp.current_amount >= defn.antimatter_cost if am_comp else True
+                
+                if instance.is_active:
+                    status = f"Active ({instance.duration_remaining}t)"
+                elif instance.cooldown_remaining > 0:
+                    status = f"Cooldown: {instance.cooldown_remaining}t"
+                elif not has_enough_am:
+                    status = f"Low AM ({int(am_comp.current_amount)}/{defn.antimatter_cost})"
+                else:
+                    status = "Ready"
+                
+                label = f"{defn.name} ({status})"
+            else:
+                ready_count = 0
+                total_count = len(actor_instances)
+                for actor, instance in actor_instances:
+                    am_comp = actor.antimatter_component
+                    has_enough_am = am_comp.current_amount >= defn.antimatter_cost if am_comp else True
+                    if instance.is_ready and has_enough_am:
+                        ready_count += 1
+                label = f"{defn.name} ({ready_count}/{total_count} Ready)"
+            
+            action_id = f"use_ability_{atype.value}"
+            submenu_options.append((label, action_id))
+
+        return submenu_options
