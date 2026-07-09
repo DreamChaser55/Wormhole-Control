@@ -1847,12 +1847,40 @@ class UseAbilityOrder(Order):
                     self.add_sub_order(UseAbilityOrder(self.unit, self.parameters, parent_order=self))
                 return
 
+        # --- Range check for position-targeted abilities ---
+        elif defn.requires_target_position and target_position is not None:
+            target_sys = self.parameters.get("target_system_name") or self.unit.in_system
+            target_hex = self.parameters.get("target_hex_coord") or self.unit.in_hex
+
+            in_same_hex = (self.unit.in_system == target_sys and
+                           self.unit.in_hex == target_hex)
+            in_range = in_same_hex and (distance(self.unit.position, target_position) <= defn.range)
+
+            if not in_range:
+                if not self.has_active_sub_orders():
+                    if in_same_hex:
+                        dest_pos = move_towards_position(self.unit.position, target_position, defn.range - 5.0)
+                    else:
+                        dest_pos = target_position
+                    
+                    move_params = {
+                        "destination_system_name": target_sys,
+                        "destination_hex_coord": target_hex,
+                        "destination_position": dest_pos,
+                    }
+                    self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+                    # Re-queue this ability order to fire once in range
+                    self.add_sub_order(UseAbilityOrder(self.unit, self.parameters, parent_order=self))
+                return
+
         # --- Activate the ability ---
         success = self.unit.ability_component.activate(
             ability_type=ability_type,
             galaxy=galaxy_ref,
             target_unit_id=target_unit_id,
             target_position=target_position,
+            target_system_name=self.parameters.get("target_system_name"),
+            target_hex_coord=self.parameters.get("target_hex_coord"),
         )
         if success:
             logger.debug(f"[{self.unit.name}] USE_ABILITY: {ability_type.name} activated successfully.")

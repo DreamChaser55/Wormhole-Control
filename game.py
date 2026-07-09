@@ -586,6 +586,9 @@ class Game:
             requires_pos = action.get('requires_target_position', False)
             selected_units = [u for u in self.selected_objects if isinstance(u, Unit)]
             if selected_units and ability_type_str:
+                keys = pygame.key.get_pressed()
+                shift_pressed = bool(keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT])
+                
                 if requires_unit or requires_pos:
                     # Enter targeting mode — next click will complete the activation
                     self.pending_ability = (ability_type_str, requires_unit, requires_pos)
@@ -595,8 +598,9 @@ class Game:
                     self.event_bus.publish(UseAbilityEvent(
                         units=selected_units,
                         ability_type_str=ability_type_str,
+                        shift_pressed=shift_pressed,
                     ))
-                    logger.debug(f"Fired self-targeted ability {ability_type_str} for {len(selected_units)} unit(s).")
+                    logger.debug(f"Fired self-targeted ability {ability_type_str} for {len(selected_units)} unit(s) (shift={shift_pressed}).")
             self.sidebar_needs_update = True
         elif action_type == 'select_individual_unit':
             unit_id = action.get('unit_id')

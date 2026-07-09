@@ -387,6 +387,50 @@ class SystemViewRenderer:
                     else:
                         final_pos = end_of_sub_orders_pos
                         final_sys = end_of_sub_orders_sys
+                elif order.order_type == OrderType.USE_ABILITY:
+                    target_unit_id = order.parameters.get("target_unit_id")
+                    target_position = order.parameters.get("target_position")
+                    target_sys = order.parameters.get("target_system_name")
+                    target_hex = order.parameters.get("target_hex_coord")
+                    
+                    if target_unit_id:
+                        target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
+                        if target_unit:
+                            all_hex_waypoints.append({
+                                'start_hex': end_of_sub_orders_pos,
+                                'start_system': end_of_sub_orders_sys,
+                                'end_hex': target_unit.in_hex,
+                                'end_system': target_unit.in_system,
+                                'is_current': is_current,
+                                'is_sub_order': False,
+                                'sequence_index': sequence_index,
+                                'is_wormhole_jump': end_of_sub_orders_sys != target_unit.in_system,
+                                'order_type': order.order_type
+                            })
+                            final_pos = target_unit.in_hex
+                            final_sys = target_unit.in_system
+                            sequence_index += 1
+                        else:
+                            final_pos = end_of_sub_orders_pos
+                            final_sys = end_of_sub_orders_sys
+                    elif target_position and target_sys and target_hex:
+                        all_hex_waypoints.append({
+                            'start_hex': end_of_sub_orders_pos,
+                            'start_system': end_of_sub_orders_sys,
+                            'end_hex': target_hex,
+                            'end_system': target_sys,
+                            'is_current': is_current,
+                            'is_sub_order': order.parent_order is not None,
+                            'sequence_index': sequence_index,
+                            'is_wormhole_jump': end_of_sub_orders_sys != target_sys,
+                            'order_type': order.order_type
+                        })
+                        final_pos = target_hex
+                        final_sys = target_sys
+                        sequence_index += 1
+                    else:
+                        final_pos = end_of_sub_orders_pos
+                        final_sys = end_of_sub_orders_sys
                 else:
                     final_pos = end_of_sub_orders_pos
                     final_sys = end_of_sub_orders_sys
@@ -571,6 +615,9 @@ class SystemViewRenderer:
                     
                     if jump.get('order_type') == OrderType.ATTACK:
                         line_color = RED
+                        line_width = 2
+                    elif jump.get('order_type') == OrderType.USE_ABILITY:
+                        line_color = (255, 105, 180)  # Hot Pink
                         line_width = 2
                     elif jump['is_current']:
                         line_width = 2

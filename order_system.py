@@ -278,6 +278,8 @@ class OrderSystem:
                 ability_params["target_unit_id"] = event.target_unit.id
             if event.target_position:
                 ability_params["target_position"] = event.target_position
+                ability_params["target_system_name"] = getattr(event, "target_system_name", None)
+                ability_params["target_hex_coord"] = getattr(event, "target_hex_coord", None)
             ability_order = UseAbilityOrder(unit, ability_params)
             if not event.shift_pressed:
                 unit.commander_component.clear_orders()

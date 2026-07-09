@@ -129,10 +129,14 @@ class UseAbilityEvent(Event):
         ability_type_str: str,
         target_unit: typing.Optional[typing.Any] = None,
         target_position: typing.Optional[typing.Any] = None,
+        target_system_name: typing.Optional[str] = None,
+        target_hex_coord: typing.Optional[HexCoord] = None,
         shift_pressed: bool = False,
     ):
         self.units = units
         self.ability_type_str = ability_type_str   # AbilityType.value string
         self.target_unit = target_unit             # Optional Unit for unit-targeted abilities
         self.target_position = target_position     # Optional Position for position-targeted abilities
+        self.target_system_name = target_system_name
+        self.target_hex_coord = target_hex_coord
         self.shift_pressed = shift_pressed

@@ -2230,6 +2230,8 @@ class AbilityComponent(UnitComponent):
         galaxy: 'Galaxy',
         target_unit_id: typing.Optional[int] = None,
         target_position: typing.Optional[Position] = None,
+        target_system_name: typing.Optional[str] = None,
+        target_hex_coord: typing.Optional[HexCoord] = None,
     ) -> bool:
         """
         Activates the specified ability.
@@ -2253,7 +2255,12 @@ class AbilityComponent(UnitComponent):
             if target_position is None:
                 logger.debug(f"[{self.unit.name}] Cluster Warhead requires a target position.")
                 return False
-            self._apply_cluster_warhead(galaxy, target_position)
+            self._apply_cluster_warhead(
+                galaxy,
+                target_position,
+                target_system_name=target_system_name,
+                target_hex_coord=target_hex_coord
+            )
 
         elif ability_type == AbilityType.DESIGNATE_TARGET:
             if target_unit_id is None:
@@ -2308,14 +2315,19 @@ class AbilityComponent(UnitComponent):
         self,
         galaxy: 'Galaxy',
         target_position: Position,
+        target_system_name: typing.Optional[str] = None,
+        target_hex_coord: typing.Optional[HexCoord] = None,
         splash_radius: float = 200.0,
         base_damage: int = 80,
     ) -> None:
         """Deals splash damage to all units at the target position within splash_radius."""
-        system = galaxy.systems.get(self.unit.in_system)
+        sys_name = target_system_name if target_system_name is not None else self.unit.in_system
+        hex_coord = target_hex_coord if target_hex_coord is not None else self.unit.in_hex
+
+        system = galaxy.systems.get(sys_name)
         if not system:
             return
-        hex_obj = system.hexes.get(self.unit.in_hex)
+        hex_obj = system.hexes.get(hex_coord)
         if not hex_obj:
             return
         for target_unit in list(hex_obj.units):

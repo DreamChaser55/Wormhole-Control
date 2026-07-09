@@ -246,6 +246,7 @@ class InputProcessor:
                         units=selected_units,
                         ability_type_str=ability_type_str,
                         target_unit=clicked_object,
+                        shift_pressed=shift_pressed,
                     ))
                     logger.debug(f"Ability {ability_type_str} targeted at unit {clicked_object.name}.")
                     self.game.pending_ability = None
@@ -258,6 +259,9 @@ class InputProcessor:
                         units=selected_units,
                         ability_type_str=ability_type_str,
                         target_position=clicked_sector_coord,
+                        target_system_name=self.game.current_system_name,
+                        target_hex_coord=self.game.current_sector_coord,
+                        shift_pressed=shift_pressed,
                     ))
                     logger.debug(f"Ability {ability_type_str} targeted at position {clicked_sector_coord}.")
                     self.game.pending_ability = None
