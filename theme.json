@@ -259,5 +259,16 @@
             "normal_text": "#E0E0FF",
             "focused_text": "#FFFFFF"
         }
+    },
+    "#turn_label": {
+        "colours": {
+            "dark_bg": "#00000000",
+            "normal_border": "#00000000"
+        },
+        "misc": {
+            "border_width": "0",
+            "shadow_width": "0",
+            "padding": "0,0"
+        }
     }
 }

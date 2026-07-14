@@ -1250,10 +1250,19 @@ class Game:
         if not self.players:
             return
         current_player = self.players[self.current_player_index]
-        self.gui.update_turn_label(f"{current_player.name}'s Turn")
+        
+        # Format the player's name with their player color
+        color = getattr(current_player, 'color', (255, 255, 255))
+        if color and len(color) >= 3:
+            color_hex = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
+        else:
+            color_hex = "#FFFFFF"
+
+        self.gui.update_turn_label(f"<font color='{color_hex}'>{current_player.name}</font>'s Turn")
         # Update color indicator panel's background
-        self.gui.update_player_color_indicator(Color(current_player.color)) # Convert tuple to pygame.Color
+        self.gui.update_player_color_indicator(Color(color)) # Convert tuple to pygame.Color
         self.gui.update_resource_display(current_player)
+
 
     def draw(self):
         """Delegates rendering to the Renderer instance."""

@@ -129,7 +129,7 @@ class GUI_Handler:
         self.back_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.view_mode_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.end_turn_button: typing.Optional[pygame_gui.elements.UIButton] = None
-        self.player_turn_label: typing.Optional[pygame_gui.elements.UILabel] = None
+        self.player_turn_label: typing.Optional[pygame_gui.elements.UITextBox] = None
         self.player_color_indicator: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.credits_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.metal_label: typing.Optional[pygame_gui.elements.UILabel] = None
@@ -513,11 +513,11 @@ class GUI_Handler:
                                         padding,
                                         turn_label_width,
                                         -1)
-        self.player_turn_label = pygame_gui.elements.UILabel(relative_rect=turn_label_rect,
-                                                            text="",
-                                                            manager=self.manager,
-                                                            container=self.right_top_bar_panel,
-                                                            object_id='#turn_label')
+        self.player_turn_label = pygame_gui.elements.UITextBox(html_text="",
+                                                              relative_rect=turn_label_rect,
+                                                              manager=self.manager,
+                                                              container=self.right_top_bar_panel,
+                                                              object_id='#turn_label')
 
         indicator_size = int(15 * min(self.scale_x, self.scale_y))
         indicator_rect = pygame.Rect(turn_label_rect.left - indicator_size - padding,
