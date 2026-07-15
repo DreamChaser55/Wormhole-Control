@@ -1258,7 +1258,7 @@ class Game:
         else:
             color_hex = "#FFFFFF"
 
-        self.gui.update_turn_label(f"<font color='{color_hex}'>{current_player.name}</font>'s Turn")
+        self.gui.update_turn_label(f"<font color='{color_hex}'>{current_player.name}'s Turn</font>")
         # Update color indicator panel's background
         self.gui.update_player_color_indicator(Color(color)) # Convert tuple to pygame.Color
         self.gui.update_resource_display(current_player)

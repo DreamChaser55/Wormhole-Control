@@ -19,7 +19,7 @@ def test_update_player_turn_display():
     game.update_player_turn_display()
     
     # Assert turn label is called with blue color hex code
-    game.gui.update_turn_label.assert_called_once_with("<font color='#0000ff'>Player 1</font>'s Turn")
+    game.gui.update_turn_label.assert_called_once_with("<font color='#0000ff'>Player 1's Turn</font>")
     # Assert player color indicator called
     game.gui.update_player_color_indicator.assert_called_once_with(Color(0, 0, 255))
     # Assert update_resource_display called
@@ -39,4 +39,4 @@ def test_update_player_turn_display_missing_color():
     game.update_player_turn_display()
     
     # Assert default white color is used
-    game.gui.update_turn_label.assert_called_once_with("<font color='#ffffff'>Mock No Color</font>'s Turn")
+    game.gui.update_turn_label.assert_called_once_with("<font color='#ffffff'>Mock No Color's Turn</font>")
