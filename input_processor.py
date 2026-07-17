@@ -3,6 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import pygame
+import pygame_gui
 import typing
 from pygame import Color
 
@@ -38,7 +39,13 @@ class InputProcessor:
 
         # Keyboard camera panning in sector view
         keys = pygame.key.get_pressed()
-        if self.game.view_mode == 'sector' and self.game.game_started:
+        is_typing = False
+        if hasattr(self.gui, 'is_any_text_entry_focused'):
+            val = self.gui.is_any_text_entry_focused()
+            if isinstance(val, bool):
+                is_typing = val
+
+        if self.game.view_mode == 'sector' and self.game.game_started and not is_typing:
             zoom = self.game.sector_zoom
             if not isinstance(zoom, (int, float)):
                 zoom = 1.0
@@ -68,6 +75,22 @@ class InputProcessor:
             if gui_action:
                 self.game.handle_gui_action(gui_action)
                 if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION]:
+                    continue
+
+            # If a text entry field has active focus, intercept KEYDOWN to block shortcuts and handle ESC
+            if event.type == pygame.KEYDOWN:
+                is_typing = False
+                if hasattr(self.gui, 'is_any_text_entry_focused'):
+                    val = self.gui.is_any_text_entry_focused()
+                    if isinstance(val, bool):
+                        is_typing = val
+                if is_typing:
+                    if event.key == pygame.K_ESCAPE:
+                        if hasattr(self.gui, 'manager') and hasattr(self.gui.manager, 'ui_group') and hasattr(self.gui.manager.ui_group, 'sprites'):
+                            for sprite in self.gui.manager.ui_group.sprites():
+                                if isinstance(sprite, (pygame_gui.elements.UITextEntryLine, pygame_gui.elements.UITextEntryBox)):
+                                    if sprite.is_focused:
+                                        sprite.unfocus()
                     continue
 
             # If the in-game menu is open, block all further game-world input processing for this event.

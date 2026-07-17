@@ -917,6 +917,14 @@ class GUI_Handler:
         if self.unit_editor_window and self.unit_editor_window.is_visible:
             self.unit_editor_window.draw(surface)
 
+    def is_any_text_entry_focused(self) -> bool:
+        """Check if any text entry element is currently focused/active."""
+        for sprite in self.manager.ui_group.sprites():
+            if isinstance(sprite, (pygame_gui.elements.UITextEntryLine, pygame_gui.elements.UITextEntryBox)):
+                if sprite.is_focused:
+                    return True
+        return False
+
     # --- Unit Editor helpers ---
 
     def open_unit_editor(self, template_manager) -> None:
