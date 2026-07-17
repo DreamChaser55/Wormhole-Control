@@ -90,7 +90,7 @@ class CelestialBody(GameObject):
 class Wormhole(CelestialBody):
     """Represents a wormhole connecting two systems."""
     def __init__(self, in_hex: HexCoord, in_system: str, exit_system_name: str, stability: int = 100, diameter: HullSize = HullSize.HUGE):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=500.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1500.0)
         self.exit_system_name = exit_system_name
         self.exit_wormhole_id: typing.Optional[int] = None
         self.stability = stability
@@ -100,14 +100,14 @@ class Wormhole(CelestialBody):
 class Star(CelestialBody):
     """Represents the central star of a system."""
     def __init__(self, in_system: str, star_type: StarType):
-        super().__init__(position=Position(0.0, 0.0), in_hex=(0, 0), in_system=in_system, inhibition_field_radius=900.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=(0, 0), in_system=in_system, inhibition_field_radius=2700.0)
         self.star_type = star_type
         self.name = f"Star {self.id}"
 
 class Planet(CelestialBody):
     """Represents a planet within a system."""
     def __init__(self, in_hex: HexCoord, in_system: str, planet_type: PlanetType):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=800.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=2400.0)
         self.name = f"Planet {self.id}"
         self.owner: Optional[Player] = None
         self.population: float = 0
@@ -125,7 +125,7 @@ class Planet(CelestialBody):
 class Moon(CelestialBody):
     """Represents a moon, which is colonisable and a source of Crystal."""
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1800.0)
         self.name = f"Moon {self.id}"
         self.owner: Optional[Player] = None
         self.population: float = 0
@@ -143,7 +143,7 @@ class Moon(CelestialBody):
 class Asteroid(CelestialBody):
     """Represents an asteroid, which is colonisable and a source of Metal."""
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=400.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1200.0)
         self.name = f"Asteroid {self.id}"
         self.owner: Optional[Player] = None
         self.population: float = 0
@@ -166,14 +166,14 @@ class DebrisField(CelestialBody):
 class AsteroidField(CelestialBody):
     """Represents a field of asteroids."""
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=300.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=900.0)
         self.name = f"Asteroid Field {self.id}"
         self.asteroid_count = 100 # Example value
 
 class IceField(CelestialBody):
     """Represents a field of ice particles."""
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=200.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
         self.name = f"Ice Field {self.id}"
 
 class Nebula(CelestialBody):
@@ -193,7 +193,7 @@ class Storm(CelestialBody):
 class Comet(CelestialBody):
     """Represents a comet."""
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=200.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
         self.name = f"Comet {self.id}"
 
 

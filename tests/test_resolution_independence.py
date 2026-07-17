@@ -19,9 +19,9 @@ def test_dynamic_gui_constants():
 
 def test_logical_radii():
     # Check that logical radii are set correctly in constants
-    assert PLANET_RADIUS == 125.0
-    assert WORMHOLE_RADIUS == 97.22
-    assert STAR_RADIUS == 166.67
+    assert PLANET_RADIUS == 375.0
+    assert WORMHOLE_RADIUS == 291.66
+    assert STAR_RADIUS == 500.01
 
 def test_coordinate_roundtrip():
     # Verify logical coordinates map to pixels and back without losing alignment

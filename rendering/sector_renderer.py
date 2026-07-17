@@ -10,7 +10,8 @@ from constants import (
     ICON_DOT_RADIUS, ICON_DOT_SPACING,
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
     MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, STORM_COLORS,
-    TEXT_SCALE, XP_SPEED_BONUS
+    TEXT_SCALE, XP_SPEED_BONUS,
+    MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS
 )
 from sector_utils import sector_coords_to_pixels
 from geometry import distance, Position
@@ -130,27 +131,27 @@ class SectorViewRenderer:
                     pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
             elif isinstance(obj, Moon):
                 obj_color = (200, 200, 200)
-                obj_radius_logical = 27.78
+                obj_radius_logical = MOON_RADIUS
                 if obj.owner:
                     pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                     pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
             elif isinstance(obj, Asteroid):
                 obj_color = (90, 60, 50)
-                obj_radius_logical = 16.67
+                obj_radius_logical = ASTEROID_RADIUS
                 if obj.owner:
                     pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                     pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
             elif isinstance(obj, AsteroidField):
                 self._draw_celestial_field(obj, obj_pixel_pos, (100, 100, 100))
-                obj_radius_logical = 100.0
+                obj_radius_logical = CELESTIAL_FIELD_RADIUS
                 should_draw_circle = False
             elif isinstance(obj, IceField):
                 self._draw_celestial_field(obj, obj_pixel_pos, (173, 216, 230), num_particles=20)
-                obj_radius_logical = 100.0
+                obj_radius_logical = CELESTIAL_FIELD_RADIUS
                 should_draw_circle = False
             elif isinstance(obj, DebrisField):
                 self._draw_celestial_field(obj, obj_pixel_pos, (112, 128, 144), num_particles=15)
-                obj_radius_logical = 100.0
+                obj_radius_logical = CELESTIAL_FIELD_RADIUS
                 should_draw_circle = False
             elif isinstance(obj, Nebula):
                 self._draw_nebula(obj, obj_pixel_pos)
@@ -160,7 +161,7 @@ class SectorViewRenderer:
                 should_draw_circle = False
             elif isinstance(obj, Comet):
                 obj_color = CYAN
-                obj_radius_logical = 16.67
+                obj_radius_logical = COMET_RADIUS
             elif isinstance(obj, Wormhole):
                 obj_radius_logical = WORMHOLE_RADIUS
                 obj_color = PURPLE
@@ -875,7 +876,7 @@ class SectorViewRenderer:
     def _draw_celestial_field(self, field, pos_px, base_color, num_particles=40):
         """Draws a celestial field with random objects (asteroids/ice bodies/debris)"""
         num_objects = num_particles
-        field_radius = 100  # Logical radius of the field
+        field_radius = CELESTIAL_FIELD_RADIUS  # Logical radius of the field
         time_ms = pygame.time.get_ticks()
         zoom = self.game.sector_zoom
         if not isinstance(zoom, (int, float)):

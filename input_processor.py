@@ -8,7 +8,8 @@ from pygame import Color
 
 from constants import (
     HEX_SIZE, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL,
-    SECTOR_OBJECT_CLICK_RADIUS_MULT, STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, HULL_BASE_ICON_SCALES, SECTOR_VIEW_BASE_ICON_SIZE
+    SECTOR_OBJECT_CLICK_RADIUS_MULT, STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, HULL_BASE_ICON_SCALES, SECTOR_VIEW_BASE_ICON_SIZE,
+    MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS
 )
 from utils import HexCoord
 from geometry import Vector, Position, distance_sq
@@ -244,13 +245,13 @@ class InputProcessor:
                             effective_icon_size = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
                             obj_radius_logical = effective_icon_size
                         elif isinstance(obj, Moon):
-                            obj_radius_logical = 27.78
+                            obj_radius_logical = MOON_RADIUS
                         elif isinstance(obj, Asteroid):
-                            obj_radius_logical = 16.67
+                            obj_radius_logical = ASTEROID_RADIUS
                         elif isinstance(obj, (AsteroidField, IceField, DebrisField)):
-                            obj_radius_logical = 100.0
+                            obj_radius_logical = CELESTIAL_FIELD_RADIUS
                         elif isinstance(obj, Comet):
-                            obj_radius_logical = 16.67
+                            obj_radius_logical = COMET_RADIUS
                         else:
                             obj_radius_logical = 13.89
                         
