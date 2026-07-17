@@ -249,7 +249,7 @@ class Game:
             for i, hull_size in enumerate(all_hull_sizes):
 
                 # -- Ship --
-                ship_pos = Position(-500.0 + i * 200.0, -100.0)
+                ship_pos = Position(-500.0 + i * 200.0, -1300.0)
                 ship_name = f"{player.name} {hull_size.name.capitalize()} Ship"
                 ship_unit = Unit(
                     owner=player,
@@ -289,7 +289,7 @@ class Game:
                 logger.debug(f"Added {ship_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
                 # -- Station --
-                station_pos = Position(-500.0 + i * 200.0, 100.0)
+                station_pos = Position(-500.0 + i * 200.0, -1100.0)
                 station_name = f"{player.name} {hull_size.name.capitalize()} Station"
                 station_unit = Unit(
                     owner=player,
@@ -326,7 +326,7 @@ class Game:
                 logger.debug(f"Added {station_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
             # -- Carrier Ship --
-            carrier_pos = Position(-500.0 + 5 * 200.0, 0.0)
+            carrier_pos = Position(-500.0 + 5 * 200.0, -1200.0)
             carrier_name = f"{player.name} Carrier"
             carrier_unit = Unit(
                 owner=player,
