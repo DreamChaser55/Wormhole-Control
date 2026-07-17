@@ -56,18 +56,22 @@ class InputProcessor:
                     try: return keys[k]
                     except (IndexError, KeyError, TypeError): return False
                 
+                dx, dy = 0.0, 0.0
                 if is_pressed(pygame.K_LEFT):
-                    pan_offset.x += pan_amount
+                    dx += pan_amount
                 if is_pressed(pygame.K_RIGHT):
-                    pan_offset.x -= pan_amount
+                    dx -= pan_amount
                 if is_pressed(pygame.K_UP):
-                    pan_offset.y += pan_amount
+                    dy += pan_amount
                 if is_pressed(pygame.K_DOWN):
-                    pan_offset.y -= pan_amount
-                # Keep leader pan in sync so scroll-wheel zoom uses the correct base
-                if hasattr(self.game, 'sector_target_pan_offset'):
-                    self.game.sector_target_pan_offset.x = pan_offset.x
-                    self.game.sector_target_pan_offset.y = pan_offset.y
+                    dy -= pan_amount
+                
+                if dx != 0.0 or dy != 0.0:
+                    pan_offset.x += dx
+                    pan_offset.y += dy
+                    if getattr(self.game, 'zoom_anchor_pixel', None) is not None:
+                        self.game.zoom_anchor_pixel.x += dx
+                        self.game.zoom_anchor_pixel.y += dy
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -207,10 +211,9 @@ class InputProcessor:
                     dy = mouse_pos.y - self.game.camera_drag_last_pos.y
                     self.game.sector_pan_offset.x += dx
                     self.game.sector_pan_offset.y += dy
-                    # Keep leader pan in sync so scroll-wheel zoom uses the correct base
-                    if hasattr(self.game, 'sector_target_pan_offset'):
-                        self.game.sector_target_pan_offset.x = self.game.sector_pan_offset.x
-                        self.game.sector_target_pan_offset.y = self.game.sector_pan_offset.y
+                    if getattr(self.game, 'zoom_anchor_pixel', None) is not None:
+                        self.game.zoom_anchor_pixel.x += dx
+                        self.game.zoom_anchor_pixel.y += dy
                     self.game.camera_drag_last_pos = mouse_pos
 
             elif event.type == pygame.MOUSEWHEEL:

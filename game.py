@@ -123,14 +123,17 @@ class Game:
         self.sector_pan_offset = Position(0, 0)
         # Leader state: updated instantly by input, follower lerps toward these
         self.sector_target_zoom = 1.0
-        self.sector_target_pan_offset = Position(0, 0)
+        # Active zoom anchor variables (used to lock zoom/pan together)
+        self.zoom_anchor_pixel = None
+        self.zoom_anchor_logical = None
 
     def reset_sector_camera(self):
         """Resets the sector camera zoom and pan offset. Snaps both leader and follower instantly."""
         self.sector_zoom = 1.0
         self.sector_pan_offset = Position(0, 0)
         self.sector_target_zoom = 1.0
-        self.sector_target_pan_offset = Position(0, 0)
+        self.zoom_anchor_pixel = None
+        self.zoom_anchor_logical = None
 
     def start_new_game(self):
         """Initializes a new game when the New Game button is clicked."""
@@ -635,16 +638,23 @@ class Game:
              logger.debug(f"Warning: Unhandled GUI action type: {action_type}")
 
     def update_sector_camera(self, dt: float):
-        """Smoothly interpolates the follower camera (sector_zoom, sector_pan_offset) toward
-        the leader camera (sector_target_zoom, sector_target_pan_offset) using framerate-independent
-        exponential decay. Both zoom and pan are lerped with the same factor so they stay
-        consistent at every intermediate frame (prevents anchor-point drift)."""
+        """Smoothly interpolates the follower camera sector_zoom toward sector_target_zoom
+        using framerate-independent exponential decay, and locks the sector_pan_offset to
+        the active zoom anchor to prevent anchor-point drift and jitter."""
         if not self.game_started or self.view_mode != 'sector':
             return
         t = 1.0 - math.exp(-CAMERA_SMOOTH_SPEED * dt)
         self.sector_zoom += (self.sector_target_zoom - self.sector_zoom) * t
-        self.sector_pan_offset.x += (self.sector_target_pan_offset.x - self.sector_pan_offset.x) * t
-        self.sector_pan_offset.y += (self.sector_target_pan_offset.y - self.sector_pan_offset.y) * t
+
+        if self.zoom_anchor_pixel is not None and self.zoom_anchor_logical is not None:
+            self.sector_pan_offset.x = self.zoom_anchor_pixel.x - self.zoom_anchor_logical.x * self.sector_zoom
+            self.sector_pan_offset.y = self.zoom_anchor_pixel.y - self.zoom_anchor_logical.y * self.sector_zoom
+
+            # Clear the anchor once the zoom animation is virtually complete
+            if abs(self.sector_zoom - self.sector_target_zoom) < 1e-4:
+                self.sector_zoom = self.sector_target_zoom
+                self.zoom_anchor_pixel = None
+                self.zoom_anchor_logical = None
 
     def update(self, time_delta: float):
         """Called every frame. Updates the UI. Game logic updates are done in TurnProcessor.process_turn(), which is called at the end of each turn."""
@@ -1320,15 +1330,17 @@ class Game:
                 new_zoom = 5.0
             
             if new_zoom != old_target_zoom:
-                # Update pan_offset to zoom to mouse pointer, applied on the leader (target) state.
-                # Equation: O_new = R_x - (R_x - O_old) * (Z_new / Z_old)
                 from constants import SECTOR_CIRCLE_CENTER_IN_PX
                 
                 rx = mouse_pos.x - SECTOR_CIRCLE_CENTER_IN_PX.x
                 ry = mouse_pos.y - SECTOR_CIRCLE_CENTER_IN_PX.y
                 
-                self.sector_target_pan_offset.x = rx - (rx - self.sector_pan_offset.x) * (new_zoom / self.sector_zoom)
-                self.sector_target_pan_offset.y = ry - (ry - self.sector_pan_offset.y) * (new_zoom / self.sector_zoom)
+                # Establish/update the zoom anchor logical coordinates based on the CURRENT follower camera view
+                lx = (rx - self.sector_pan_offset.x) / self.sector_zoom
+                ly = (ry - self.sector_pan_offset.y) / self.sector_zoom
+                
+                self.zoom_anchor_pixel = Position(rx, ry)
+                self.zoom_anchor_logical = Position(lx, ly)
                 
                 self.sector_target_zoom = new_zoom
 

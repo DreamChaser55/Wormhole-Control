@@ -13,7 +13,8 @@ class DummyGame:
         self.sector_zoom = 1.0
         self.sector_pan_offset = Position(0, 0)
         self.sector_target_zoom = 1.0
-        self.sector_target_pan_offset = Position(0, 0)
+        self.zoom_anchor_pixel = None
+        self.zoom_anchor_logical = None
         self.gui = MagicMock()
         self.is_running = True
         self.current_system_name = None
