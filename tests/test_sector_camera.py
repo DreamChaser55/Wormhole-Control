@@ -85,6 +85,7 @@ class DummyGame:
         self.is_dragging_camera = False
         self.camera_drag_last_pos = Position(0, 0)
         self.gui = MagicMock()
+        self.gui.is_mouse_over_gui_panels.return_value = False
 
 def test_input_processor_drag_pan():
     game = DummyGame()

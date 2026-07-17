@@ -526,16 +526,7 @@ class InputProcessor:
                             self.game.sidebar_needs_update = True
                             logger.debug("Selection cleared")
 
-            elif is_middle_click:
-                self.game.view_mode = 'system'
-                self.game.current_sector_coord = None
-                self.game.selected_objects.clear()
-                self.game.sidebar_needs_update = True
-                if self.game.current_system_name and self.game.galaxy.systems[self.game.current_system_name]:
-                    logger.debug(f"Entering system view: {self.game.galaxy.systems[self.game.current_system_name].name}")
-                else:
-                    logger.debug("Entering system view (current system name unknown or invalid)")
-                self.game.update_view_specific_labels()
+
 
     def handle_context_menu_action(self, action_id: str, target: typing.Any):
         """Performs the action selected from the context menu."""

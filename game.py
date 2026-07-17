@@ -1283,6 +1283,9 @@ class Game:
             mouse_pos_tuple = pygame.mouse.get_pos()
             mouse_pos = Position(mouse_pos_tuple[0], mouse_pos_tuple[1])
             
+            if self.gui.is_mouse_over_gui_panels(mouse_pos):
+                return
+            
             zoom_factor = 1.1 if scroll_y > 0 else 0.9
             old_zoom = self.sector_zoom
             new_zoom = old_zoom * zoom_factor

@@ -1331,3 +1331,20 @@ class GUI_Handler:
         if self.context_menu_panel and self.context_menu_panel.visible:
             return self.context_menu_panel.get_abs_rect().collidepoint(mouse_pos.to_tuple())
         return False
+
+    def is_mouse_over_gui_panels(self, mouse_pos: Position) -> bool:
+        """Checks if the mouse position is over any visible GUI panels."""
+        panels = [
+            self.left_top_bar_panel,
+            self.left_bottom_bar_panel,
+            self.right_top_bar_panel,
+            self.side_bar_info_panel,
+            self.context_menu_panel,
+            self.ingame_menu_panel
+        ]
+        mouse_tuple = mouse_pos.to_tuple()
+        for panel in panels:
+            if panel and panel.visible:
+                if panel.get_abs_rect().collidepoint(mouse_tuple):
+                    return True
+        return False
