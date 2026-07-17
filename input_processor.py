@@ -64,6 +64,10 @@ class InputProcessor:
                     pan_offset.y += pan_amount
                 if is_pressed(pygame.K_DOWN):
                     pan_offset.y -= pan_amount
+                # Keep leader pan in sync so scroll-wheel zoom uses the correct base
+                if hasattr(self.game, 'sector_target_pan_offset'):
+                    self.game.sector_target_pan_offset.x = pan_offset.x
+                    self.game.sector_target_pan_offset.y = pan_offset.y
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -203,6 +207,10 @@ class InputProcessor:
                     dy = mouse_pos.y - self.game.camera_drag_last_pos.y
                     self.game.sector_pan_offset.x += dx
                     self.game.sector_pan_offset.y += dy
+                    # Keep leader pan in sync so scroll-wheel zoom uses the correct base
+                    if hasattr(self.game, 'sector_target_pan_offset'):
+                        self.game.sector_target_pan_offset.x = self.game.sector_pan_offset.x
+                        self.game.sector_target_pan_offset.y = self.game.sector_pan_offset.y
                     self.game.camera_drag_last_pos = mouse_pos
 
             elif event.type == pygame.MOUSEWHEEL:

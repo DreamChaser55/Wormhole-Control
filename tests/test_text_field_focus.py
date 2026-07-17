@@ -12,6 +12,8 @@ class DummyGame:
         self.game_started = True
         self.sector_zoom = 1.0
         self.sector_pan_offset = Position(0, 0)
+        self.sector_target_zoom = 1.0
+        self.sector_target_pan_offset = Position(0, 0)
         self.gui = MagicMock()
         self.is_running = True
         self.current_system_name = None

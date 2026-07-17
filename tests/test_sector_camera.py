@@ -44,11 +44,17 @@ def test_game_camera_reset():
     # Mock behavior of reset_sector_camera directly since DummyGame doesn't inherit from Game
     game.sector_zoom = 1.5
     game.sector_pan_offset = Position(100, 200)
+    game.sector_target_zoom = 1.5
+    game.sector_target_pan_offset = Position(100, 200)
     
     Game.reset_sector_camera(game)
+    # Both follower and leader should snap to defaults
     assert game.sector_zoom == 1.0
     assert game.sector_pan_offset.x == 0
     assert game.sector_pan_offset.y == 0
+    assert game.sector_target_zoom == 1.0
+    assert game.sector_target_pan_offset.x == 0
+    assert game.sector_target_pan_offset.y == 0
 
 def test_zoom_to_mouse_pointer():
     game = DummyGame()
@@ -56,6 +62,8 @@ def test_zoom_to_mouse_pointer():
     game.game_started = True
     game.sector_zoom = 1.0
     game.sector_pan_offset = Position(0, 0)
+    game.sector_target_zoom = 1.0
+    game.sector_target_pan_offset = Position(0, 0)
     
     # Mock pygame.mouse.get_pos to return a point 100 pixels away from sector center
     from constants import SECTOR_CIRCLE_CENTER_IN_PX
@@ -66,15 +74,20 @@ def test_zoom_to_mouse_pointer():
         # Zoom in (scroll_y > 0)
         Game.handle_mouse_wheel(game, 1)
         
-        # New zoom should be 1.1
-        assert game.sector_zoom == 1.1
+        # handle_mouse_wheel now writes to the LEADER (target) state.
+        # The follower (sector_zoom) starts catching up on next update().
+        assert game.sector_target_zoom == 1.1
         
-        # Pan offset should shift to center zoom on mouse pointer
+        # Pan offset (target) should shift to center zoom on mouse pointer
         # rx = 100, ry = -100
         # O_new = R_x - (R_x - O_old) * (Z_new / Z_old)
         # O_new = 100 - (100 - 0) * 1.1 = -10
-        assert abs(game.sector_pan_offset.x - (-10.0)) < 1e-5
-        assert abs(game.sector_pan_offset.y - (10.0)) < 1e-5
+        assert abs(game.sector_target_pan_offset.x - (-10.0)) < 1e-5
+        assert abs(game.sector_target_pan_offset.y - (10.0)) < 1e-5
+        # Follower zoom and pan haven't moved yet — they lerp in update_sector_camera()
+        assert game.sector_zoom == 1.0
+        assert game.sector_pan_offset.x == 0
+        assert game.sector_pan_offset.y == 0
 
 class DummyGame:
     def __init__(self):
@@ -82,6 +95,8 @@ class DummyGame:
         self.game_started = True
         self.sector_zoom = 1.0
         self.sector_pan_offset = Position(0, 0)
+        self.sector_target_zoom = 1.0
+        self.sector_target_pan_offset = Position(0, 0)
         self.is_dragging_camera = False
         self.camera_drag_last_pos = Position(0, 0)
         self.gui = MagicMock()
@@ -131,3 +146,88 @@ def test_input_processor_drag_pan():
          
         ip.handle_input()
         assert game.is_dragging_camera is False
+
+def test_camera_smooth_interpolation():
+    """Verifies that update_sector_camera() correctly lerps follower zoom and pan toward leader zoom and pan."""
+    import math
+    from game import Game, CAMERA_SMOOTH_SPEED
+
+    game = DummyGame()
+    game.sector_zoom = 1.0         # follower starts at 1.0
+    game.sector_target_zoom = 2.0  # leader jumps instantly to 2.0
+    game.sector_pan_offset = Position(10.0, 20.0)
+    game.sector_target_pan_offset = Position(30.0, 40.0)
+
+    # Call update_sector_camera with a fixed dt of 1/60s (one frame at 60fps)
+    dt = 1.0 / 60.0
+    Game.update_sector_camera(game, dt)
+
+    expected_t = 1.0 - math.exp(-CAMERA_SMOOTH_SPEED * dt)
+    expected_zoom = 1.0 + (2.0 - 1.0) * expected_t
+    expected_pan_x = 10.0 + (30.0 - 10.0) * expected_t
+    expected_pan_y = 20.0 + (40.0 - 20.0) * expected_t
+
+    assert abs(game.sector_zoom - expected_zoom) < 1e-9
+    assert abs(game.sector_pan_offset.x - expected_pan_x) < 1e-9
+    assert abs(game.sector_pan_offset.y - expected_pan_y) < 1e-9
+
+    # After a large dt, follower should be very close to leader
+    game.sector_zoom = 1.0
+    game.sector_pan_offset = Position(10.0, 20.0)
+    Game.update_sector_camera(game, 10.0)  # 10 seconds worth of smoothing
+    assert abs(game.sector_zoom - 2.0) < 1e-4
+    assert abs(game.sector_pan_offset.x - 30.0) < 1e-4
+    assert abs(game.sector_pan_offset.y - 40.0) < 1e-4
+
+    # If leader == follower, no change should occur
+    game.sector_zoom = 2.0
+    game.sector_target_zoom = 2.0
+    game.sector_pan_offset = Position(30.0, 40.0)
+    game.sector_target_pan_offset = Position(30.0, 40.0)
+    Game.update_sector_camera(game, dt)
+    assert game.sector_zoom == 2.0
+    assert game.sector_pan_offset.x == 30.0
+    assert game.sector_pan_offset.y == 40.0
+
+def test_zoom_to_mouse_pointer_successive():
+    """Verifies that zoom to mouse cursor computes targets using the actual view camera,
+
+    preventing drift during multi-ticks.
+    """
+    game = DummyGame()
+    game.view_mode = 'sector'
+    game.game_started = True
+    game.sector_zoom = 1.0
+    game.sector_pan_offset = Position(0, 0)
+    game.sector_target_zoom = 1.0
+    game.sector_target_pan_offset = Position(0, 0)
+
+    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x + 100
+    mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y - 100
+
+    with patch('pygame.mouse.get_pos', return_value=(mouse_x, mouse_y)):
+        # First scroll tick
+        Game.handle_mouse_wheel(game, 1)
+        assert game.sector_target_zoom == 1.1
+        assert abs(game.sector_target_pan_offset.x - (-10.0)) < 1e-5
+        assert abs(game.sector_target_pan_offset.y - (10.0)) < 1e-5
+
+        # Partially update the camera (halfway zoom)
+        # sector_zoom moves to 1.05, sector_pan_offset moves to -5.0
+        game.sector_zoom = 1.05
+        game.sector_pan_offset = Position(-5.0, 5.0)
+
+        # Second scroll tick before camera catches up
+        Game.handle_mouse_wheel(game, 1)
+        # Target zoom should now be 1.1 * 1.1 = 1.21
+        assert abs(game.sector_target_zoom - 1.21) < 1e-5
+
+        # The new target pan offset must anchor from the CURRENT follower state (1.05, -5.0).
+        # Expected new target pan:
+        # O_target_new = rx - (rx - O_follower) * (new_zoom / Z_follower)
+        # O_target_new = 100 - (100 - (-5.0)) * (1.21 / 1.05)
+        # O_target_new = 100 - 105 * (1.21 / 1.05) = 100 - 121 = -21.0
+        assert abs(game.sector_target_pan_offset.x - (-21.0)) < 1e-5
+        assert abs(game.sector_target_pan_offset.y - (21.0)) < 1e-5
+

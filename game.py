@@ -47,6 +47,8 @@ from events import EventBus
 from order_system import OrderSystem
 from custom_unit_templates import CustomTemplateManager
 
+CAMERA_SMOOTH_SPEED = 12.0  # Exponential decay speed for zoom smoothing (~95% at 0.25s)
+
 # --- Game Class ---
 class Game:
     """Main game class, handles initialization, game loop, drawing, and input."""
@@ -116,13 +118,19 @@ class Game:
         self.custom_template_manager.load_from_file()
 
         # Sector View Camera variables
+        # Follower state: what the renderer and hit-testing actually use
         self.sector_zoom = 1.0
         self.sector_pan_offset = Position(0, 0)
+        # Leader state: updated instantly by input, follower lerps toward these
+        self.sector_target_zoom = 1.0
+        self.sector_target_pan_offset = Position(0, 0)
 
     def reset_sector_camera(self):
-        """Resets the sector camera zoom and pan offset."""
+        """Resets the sector camera zoom and pan offset. Snaps both leader and follower instantly."""
         self.sector_zoom = 1.0
         self.sector_pan_offset = Position(0, 0)
+        self.sector_target_zoom = 1.0
+        self.sector_target_pan_offset = Position(0, 0)
 
     def start_new_game(self):
         """Initializes a new game when the New Game button is clicked."""
@@ -626,8 +634,23 @@ class Game:
         else:
              logger.debug(f"Warning: Unhandled GUI action type: {action_type}")
 
+    def update_sector_camera(self, dt: float):
+        """Smoothly interpolates the follower camera (sector_zoom, sector_pan_offset) toward
+        the leader camera (sector_target_zoom, sector_target_pan_offset) using framerate-independent
+        exponential decay. Both zoom and pan are lerped with the same factor so they stay
+        consistent at every intermediate frame (prevents anchor-point drift)."""
+        if not self.game_started or self.view_mode != 'sector':
+            return
+        t = 1.0 - math.exp(-CAMERA_SMOOTH_SPEED * dt)
+        self.sector_zoom += (self.sector_target_zoom - self.sector_zoom) * t
+        self.sector_pan_offset.x += (self.sector_target_pan_offset.x - self.sector_pan_offset.x) * t
+        self.sector_pan_offset.y += (self.sector_target_pan_offset.y - self.sector_pan_offset.y) * t
+
     def update(self, time_delta: float):
         """Called every frame. Updates the UI. Game logic updates are done in TurnProcessor.process_turn(), which is called at the end of each turn."""
+        # Smooth sector camera zoom
+        self.update_sector_camera(time_delta)
+
         # Update the GUI Handler
         self.gui.update(time_delta)
 
@@ -1287,8 +1310,8 @@ class Game:
                 return
             
             zoom_factor = 1.1 if scroll_y > 0 else 0.9
-            old_zoom = self.sector_zoom
-            new_zoom = old_zoom * zoom_factor
+            old_target_zoom = self.sector_target_zoom
+            new_zoom = old_target_zoom * zoom_factor
             
             # Constrain new_zoom
             if new_zoom < 0.2:
@@ -1296,18 +1319,18 @@ class Game:
             elif new_zoom > 5.0:
                 new_zoom = 5.0
             
-            if new_zoom != old_zoom:
-                # Update pan_offset to zoom to mouse pointer
+            if new_zoom != old_target_zoom:
+                # Update pan_offset to zoom to mouse pointer, applied on the leader (target) state.
                 # Equation: O_new = R_x - (R_x - O_old) * (Z_new / Z_old)
                 from constants import SECTOR_CIRCLE_CENTER_IN_PX
                 
                 rx = mouse_pos.x - SECTOR_CIRCLE_CENTER_IN_PX.x
                 ry = mouse_pos.y - SECTOR_CIRCLE_CENTER_IN_PX.y
                 
-                self.sector_pan_offset.x = rx - (rx - self.sector_pan_offset.x) * (new_zoom / old_zoom)
-                self.sector_pan_offset.y = ry - (ry - self.sector_pan_offset.y) * (new_zoom / old_zoom)
+                self.sector_target_pan_offset.x = rx - (rx - self.sector_pan_offset.x) * (new_zoom / self.sector_zoom)
+                self.sector_target_pan_offset.y = ry - (ry - self.sector_pan_offset.y) * (new_zoom / self.sector_zoom)
                 
-                self.sector_zoom = new_zoom
+                self.sector_target_zoom = new_zoom
 
     def run(self):
         """Main game loop."""
