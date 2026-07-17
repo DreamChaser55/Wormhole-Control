@@ -35,18 +35,22 @@ def random_point_in_sector() -> Position:
     """Generates a random Position within a sector circle (in logical coordinates)."""
     return random_point_in_circle(SECTOR_CIRCLE_RADIUS_LOGICAL)
 
-def sector_coords_to_pixels(sector_pos: Position) -> Position:
+def sector_coords_to_pixels(sector_pos: Position, zoom: float = 1.0, pan_offset: Position = None) -> Position:
     """Converts logical sector coordinates (e.g., x,y from +-SECTOR_CIRCLE_RADIUS_LOGICAL) to screen pixel coordinates."""
-    pixel_x = int(SECTOR_CIRCLE_CENTER_IN_PX.x + sector_pos.x * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
-    pixel_y = int(SECTOR_CIRCLE_CENTER_IN_PX.y + sector_pos.y * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+    if pan_offset is None:
+        pan_offset = Position(0, 0)
+    pixel_x = int(SECTOR_CIRCLE_CENTER_IN_PX.x + pan_offset.x + sector_pos.x * (SECTOR_CIRCLE_RADIUS_IN_PX * zoom) / SECTOR_CIRCLE_RADIUS_LOGICAL)
+    pixel_y = int(SECTOR_CIRCLE_CENTER_IN_PX.y + pan_offset.y + sector_pos.y * (SECTOR_CIRCLE_RADIUS_IN_PX * zoom) / SECTOR_CIRCLE_RADIUS_LOGICAL)
     return Position(pixel_x, pixel_y)
 
-def pixels_to_sector_coords(pixel_pos: Position) -> Position:
+def pixels_to_sector_coords(pixel_pos: Position, zoom: float = 1.0, pan_offset: Position = None) -> Position:
     """Converts screen pixel coordinates to logical sector coordinates."""
+    if pan_offset is None:
+        pan_offset = Position(0, 0)
     # Convert pixel position to relative position from center
-    relative_x = pixel_pos.x - SECTOR_CIRCLE_CENTER_IN_PX.x
-    relative_y = pixel_pos.y - SECTOR_CIRCLE_CENTER_IN_PX.y
+    relative_x = pixel_pos.x - SECTOR_CIRCLE_CENTER_IN_PX.x - pan_offset.x
+    relative_y = pixel_pos.y - SECTOR_CIRCLE_CENTER_IN_PX.y - pan_offset.y
     # Scale back to logical radius
-    logical_x = (relative_x / SECTOR_CIRCLE_RADIUS_IN_PX) * SECTOR_CIRCLE_RADIUS_LOGICAL
-    logical_y = (relative_y / SECTOR_CIRCLE_RADIUS_IN_PX) * SECTOR_CIRCLE_RADIUS_LOGICAL
+    logical_x = (relative_x / (SECTOR_CIRCLE_RADIUS_IN_PX * zoom)) * SECTOR_CIRCLE_RADIUS_LOGICAL
+    logical_y = (relative_y / (SECTOR_CIRCLE_RADIUS_IN_PX * zoom)) * SECTOR_CIRCLE_RADIUS_LOGICAL
     return Position(logical_x, logical_y)

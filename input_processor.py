@@ -30,10 +30,32 @@ class InputProcessor:
         self.game = game_instance
         self.gui = game_instance.gui
 
-    def handle_input(self):
+    def handle_input(self, time_delta: float = 0.016):
         """Processes user input (keyboard, mouse, UI events)."""
         mouse_pos_tuple = pygame.mouse.get_pos()
         mouse_pos = Position(mouse_pos_tuple[0], mouse_pos_tuple[1])
+
+        # Keyboard camera panning in sector view
+        keys = pygame.key.get_pressed()
+        if self.game.view_mode == 'sector' and self.game.game_started:
+            zoom = self.game.sector_zoom
+            if not isinstance(zoom, (int, float)):
+                zoom = 1.0
+            pan_offset = self.game.sector_pan_offset
+            if isinstance(pan_offset, Position):
+                pan_amount = 500.0 * time_delta
+                def is_pressed(k):
+                    try: return keys[k]
+                    except (IndexError, KeyError, TypeError): return False
+                
+                if is_pressed(pygame.K_LEFT):
+                    pan_offset.x += pan_amount
+                if is_pressed(pygame.K_RIGHT):
+                    pan_offset.x -= pan_amount
+                if is_pressed(pygame.K_UP):
+                    pan_offset.y += pan_amount
+                if is_pressed(pygame.K_DOWN):
+                    pan_offset.y -= pan_amount
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -87,6 +109,9 @@ class InputProcessor:
                 if event.button == 1 and self.game.view_mode == 'sector' and not gui_action:
                     self.game.is_dragging_selection_box = True
                     self.game.selection_box_start_pos = clicked_point
+                elif event.button == 2 and self.game.view_mode == 'sector':
+                    self.game.is_dragging_camera = True
+                    self.game.camera_drag_last_pos = clicked_point
 
                 if not gui_action:
                     if not self.gui.is_mouse_over_context_menu(clicked_point):
@@ -102,7 +127,9 @@ class InputProcessor:
                             self.gui.close_context_menu()
 
             elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1 and self.game.is_dragging_selection_box:
+                if event.button == 2 and getattr(self.game, 'is_dragging_camera', False):
+                    self.game.is_dragging_camera = False
+                elif event.button == 1 and self.game.is_dragging_selection_box:
                     self.game.is_dragging_selection_box = False
                     start_pos = self.game.selection_box_start_pos
                     end_pos = mouse_pos
@@ -121,7 +148,7 @@ class InputProcessor:
                             hex_obj = current_system.hexes[self.game.current_sector_coord]
                             if hex_obj:
                                 for unit in hex_obj.units:
-                                    unit_pixel_pos = sector_coords_to_pixels(unit.position)
+                                    unit_pixel_pos = sector_coords_to_pixels(unit.position, self.game.sector_zoom, self.game.sector_pan_offset)
                                     if selection_rect.collidepoint(unit_pixel_pos.to_tuple()):
                                         selected_units_in_box.append(unit)
                         
@@ -145,6 +172,14 @@ class InputProcessor:
                             self.game.selected_objects.extend(selected_units_in_box)
                         
                         self.game.sidebar_needs_update = True
+
+            elif event.type == pygame.MOUSEMOTION:
+                if self.game.view_mode == 'sector' and getattr(self.game, 'is_dragging_camera', False):
+                    dx = mouse_pos.x - self.game.camera_drag_last_pos.x
+                    dy = mouse_pos.y - self.game.camera_drag_last_pos.y
+                    self.game.sector_pan_offset.x += dx
+                    self.game.sector_pan_offset.y += dy
+                    self.game.camera_drag_last_pos = mouse_pos
 
             elif event.type == pygame.MOUSEWHEEL:
                 self.game.handle_mouse_wheel(event.y)
@@ -183,6 +218,13 @@ class InputProcessor:
             if not self.game.current_system_name or self.game.current_sector_coord is None: return
             system = self.game.galaxy.systems[self.game.current_system_name]
             if system:
+                zoom = self.game.sector_zoom
+                if not isinstance(zoom, (int, float)):
+                    zoom = 1.0
+                pan_offset = self.game.sector_pan_offset
+                if not isinstance(pan_offset, Position):
+                    pan_offset = Position(0, 0)
+
                 min_dist_sq = float('inf')
                 hovered_obj = None
                 hex_obj = system.hexes[self.game.current_sector_coord]
@@ -190,7 +232,7 @@ class InputProcessor:
                     bodies = hex_obj.celestial_bodies
                     units = hex_obj.units
                     for obj in units + bodies:
-                        pixel_pos = sector_coords_to_pixels(obj.position)
+                        pixel_pos = sector_coords_to_pixels(obj.position, zoom, pan_offset)
                         obj_radius_logical = 0
                         if isinstance(obj, Star): obj_radius_logical = STAR_RADIUS
                         elif isinstance(obj, Planet): obj_radius_logical = PLANET_RADIUS
@@ -212,7 +254,7 @@ class InputProcessor:
                         else:
                             obj_radius_logical = 13.89
                         
-                        obj_radius = obj_radius_logical * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL
+                        obj_radius = obj_radius_logical * (SECTOR_CIRCLE_RADIUS_IN_PX * zoom) / SECTOR_CIRCLE_RADIUS_LOGICAL
                         actual_click_radius = obj_radius * SECTOR_OBJECT_CLICK_RADIUS_MULT
                         click_radius_sq = (max(actual_click_radius, 5.0))**2
                         if click_radius_sq < 5**2: click_radius_sq = 5**2
@@ -238,7 +280,7 @@ class InputProcessor:
 
             if self.game.view_mode == 'sector' and selected_units:
                 clicked_object = self.game.sector_view_mouse_hover_object
-                clicked_sector_coord = pixels_to_sector_coords(position)
+                clicked_sector_coord = pixels_to_sector_coords(position, self.game.sector_zoom, self.game.sector_pan_offset)
 
                 if requires_unit and isinstance(clicked_object, Unit):
                     # Complete unit-targeted ability
@@ -330,6 +372,7 @@ class InputProcessor:
                 elif is_middle_click:
                     self.game.view_mode = 'sector'
                     self.game.current_sector_coord = clicked_hex
+                    self.game.reset_sector_camera()
                     self.game.sidebar_needs_update = True
                     logger.debug(f"Entering sector view: Hex {clicked_hex} in System {self.game.current_system_name}")
                     self.game.update_view_specific_labels()
@@ -346,10 +389,22 @@ class InputProcessor:
                     self.game.update_view_specific_labels()
 
         elif self.game.view_mode == 'sector':
-            dist_from_center_sq = distance_sq(position, SECTOR_CIRCLE_CENTER_IN_PX)
-            if dist_from_center_sq <= SECTOR_CIRCLE_RADIUS_IN_PX**2:
+            zoom = self.game.sector_zoom
+            if not isinstance(zoom, (int, float)):
+                zoom = 1.0
+            pan_offset = self.game.sector_pan_offset
+            if not isinstance(pan_offset, Position):
+                pan_offset = Position(0, 0)
+
+            dynamic_center = Position(
+                SECTOR_CIRCLE_CENTER_IN_PX.x + pan_offset.x,
+                SECTOR_CIRCLE_CENTER_IN_PX.y + pan_offset.y
+            )
+            dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
+            dist_from_center_sq = distance_sq(position, dynamic_center)
+            if dist_from_center_sq <= dynamic_radius**2:
                 clicked_object = self.game.sector_view_mouse_hover_object
-                clicked_sector_coord = pixels_to_sector_coords(position)
+                clicked_sector_coord = pixels_to_sector_coords(position, zoom, pan_offset)
                 if is_right_click:
                     target = clicked_object if clicked_object else clicked_sector_coord
                     options = []

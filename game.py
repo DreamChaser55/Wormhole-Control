@@ -115,6 +115,15 @@ class Game:
         self.custom_template_manager = CustomTemplateManager()
         self.custom_template_manager.load_from_file()
 
+        # Sector View Camera variables
+        self.sector_zoom = 1.0
+        self.sector_pan_offset = Position(0, 0)
+
+    def reset_sector_camera(self):
+        """Resets the sector camera zoom and pan offset."""
+        self.sector_zoom = 1.0
+        self.sector_pan_offset = Position(0, 0)
+
     def start_new_game(self):
         """Initializes a new game when the New Game button is clicked."""
         logger.debug("Starting new game setup...")
@@ -343,9 +352,9 @@ class Game:
             target_system.add_unit(carrier_unit)
             logger.debug(f"Added {carrier_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
-    def handle_input(self):
+    def handle_input(self, time_delta: float):
         """Delegates input processing to the InputProcessor instance."""
-        self.input_processor.handle_input()
+        self.input_processor.handle_input(time_delta)
 
     def deselect_object(self, obj_to_deselect: typing.Any):
         """Removes a specific object from the selection."""
@@ -1270,7 +1279,32 @@ class Game:
 
     def handle_mouse_wheel(self, scroll_y: int):
         """Handles mouse wheel."""
-        pass
+        if self.view_mode == 'sector' and self.game_started:
+            mouse_pos_tuple = pygame.mouse.get_pos()
+            mouse_pos = Position(mouse_pos_tuple[0], mouse_pos_tuple[1])
+            
+            zoom_factor = 1.1 if scroll_y > 0 else 0.9
+            old_zoom = self.sector_zoom
+            new_zoom = old_zoom * zoom_factor
+            
+            # Constrain new_zoom
+            if new_zoom < 0.2:
+                new_zoom = 0.2
+            elif new_zoom > 5.0:
+                new_zoom = 5.0
+            
+            if new_zoom != old_zoom:
+                # Update pan_offset to zoom to mouse pointer
+                # Equation: O_new = R_x - (R_x - O_old) * (Z_new / Z_old)
+                from constants import SECTOR_CIRCLE_CENTER_IN_PX
+                
+                rx = mouse_pos.x - SECTOR_CIRCLE_CENTER_IN_PX.x
+                ry = mouse_pos.y - SECTOR_CIRCLE_CENTER_IN_PX.y
+                
+                self.sector_pan_offset.x = rx - (rx - self.sector_pan_offset.x) * (new_zoom / old_zoom)
+                self.sector_pan_offset.y = ry - (ry - self.sector_pan_offset.y) * (new_zoom / old_zoom)
+                
+                self.sector_zoom = new_zoom
 
     def run(self):
         """Main game loop."""
@@ -1282,7 +1316,7 @@ class Game:
         while self.is_running:
             time_delta = self.clock.tick(60) / 1000.0
 
-            self.handle_input()
+            self.handle_input(time_delta)
             self.update(time_delta)
             self.draw()
 
