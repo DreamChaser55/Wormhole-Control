@@ -29,6 +29,26 @@ class SectorViewRenderer:
         self.overlay_surface = game_instance.overlay_surface
         self._font_cache = {}
         self._circle_surface_cache = {}
+        self._nebula_master_surfaces = {}
+        self._storm_base_circle_surfaces = {}
+        self._last_cached_sector = None
+        self._inhibition_zone_master = None
+        self._inhibition_zone_cache = {}
+
+    def _get_inhibition_zone_surface(self, radius):
+        radius = max(1, (int(radius) + 1) // 2 * 2)
+        if radius in self._inhibition_zone_cache:
+            return self._inhibition_zone_cache[radius]
+
+        if self._inhibition_zone_master is None:
+            # Generate a high-resolution master red circle with alpha 50
+            master_radius = 512
+            self._inhibition_zone_master = pygame.Surface((master_radius * 2, master_radius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(self._inhibition_zone_master, (255, 0, 0, 50), (master_radius, master_radius), master_radius)
+
+        scaled_surface = pygame.transform.smoothscale(self._inhibition_zone_master, (radius * 2, radius * 2))
+        self._inhibition_zone_cache[radius] = scaled_surface
+        return scaled_surface
 
     def _is_circle_off_screen(self, center_px, radius_px):
         w, h = self.screen.get_size()
@@ -76,6 +96,13 @@ class SectorViewRenderer:
         system = self.game.galaxy.systems[self.game.current_system_name]
         if not system: return
 
+        # Clear cached surfaces if the sector has changed
+        current_sector_key = (self.game.current_system_name, self.game.current_sector_coord)
+        if current_sector_key != self._last_cached_sector:
+            self._nebula_master_surfaces.clear()
+            self._storm_base_circle_surfaces.clear()
+            self._last_cached_sector = current_sector_key
+
         zoom = self.game.sector_zoom
         if not isinstance(zoom, (int, float)):
             zoom = 1.0
@@ -117,7 +144,7 @@ class SectorViewRenderer:
                 if self._is_circle_off_screen((zone_pixel_center.x, zone_pixel_center.y), zone_pixel_radius):
                     continue
                 
-                circle_surface = self._get_cached_circle_surface(zone_pixel_radius, (255, 0, 0, 50))
+                circle_surface = self._get_inhibition_zone_surface(zone_pixel_radius)
                 if circle_surface:
                     self.screen.blit(circle_surface, (zone_pixel_center.x - zone_pixel_radius, zone_pixel_center.y - zone_pixel_radius))
 
@@ -873,46 +900,119 @@ class SectorViewRenderer:
                     effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
                     self._draw_path_turn_notches_for_segment(segment, connect_to_unit, unit.position, effective_speed)
 
-    def _draw_nebula(self, nebula, pos_px):
+    def _get_pre_rendered_nebula(self, nebula):
+        if nebula.id in self._nebula_master_surfaces:
+            return self._nebula_master_surfaces[nebula.id]
+
+        ref_zoom = 1.0
+        ref_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * ref_zoom
         num_circles = 15
         max_offset_logical = NEBULA_RADIUS / 2.0
         base_radius_logical = NEBULA_RADIUS
-        zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
-        dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
 
-        # Seed the random number generator for consistent nebula appearance
         random.seed(nebula.id)
+
+        circles = []
+        min_x, max_x = float('inf'), float('-inf')
+        min_y, max_y = float('inf'), float('-inf')
 
         for _ in range(num_circles):
             offset_x_logical = random.uniform(-max_offset_logical, max_offset_logical)
             offset_y_logical = random.uniform(-max_offset_logical, max_offset_logical)
-            
-            offset_x_px = offset_x_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-            offset_y_px = offset_y_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-            circle_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
+
+            offset_x_px = offset_x_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
+            offset_y_px = offset_y_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
 
             radius_variation = random.uniform(0.5, 1.2)
             circle_radius_logical = base_radius_logical * radius_variation
-            circle_radius_px = int(circle_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            circle_radius_px = int(circle_radius_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
 
             if circle_radius_px <= 0:
                 continue
 
-            if self._is_circle_off_screen(circle_pos, circle_radius_px):
-                continue
-
             alpha = random.randint(20, 50)
             color = NEBULA_COLORS[nebula.nebula_type]
-            color = (color[0], color[1], color[2], alpha)
+            color_key = (color[0], color[1], color[2], alpha)
 
-            circle_surface = self._get_cached_circle_surface(circle_radius_px, color)
-            if circle_surface:
-                self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_radius_px, circle_pos[1] - circle_radius_px))
-        
-        # Reset seed
+            circles.append((offset_x_px, offset_y_px, circle_radius_px, color_key))
+
+            min_x = min(min_x, offset_x_px - circle_radius_px)
+            max_x = max(max_x, offset_x_px + circle_radius_px)
+            min_y = min(min_y, offset_y_px - circle_radius_px)
+            max_y = max(max_y, offset_y_px + circle_radius_px)
+
         random.seed()
+
+        if not circles:
+            self._nebula_master_surfaces[nebula.id] = None
+            return None
+
+        # Add padding to prevent any edge clipping
+        width = int(max_x - min_x) + 4
+        height = int(max_y - min_y) + 4
+
+        center_x = -min_x + 2
+        center_y = -min_y + 2
+
+        master_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+
+        for offset_x, offset_y, radius, color in circles:
+            circle_surface = self._get_cached_circle_surface(radius, color)
+            if circle_surface:
+                cx = center_x + offset_x - radius
+                cy = center_y + offset_y - radius
+                master_surface.blit(circle_surface, (cx, cy))
+
+        self._nebula_master_surfaces[nebula.id] = {
+            'master': master_surface,
+            'center_x': center_x,
+            'center_y': center_y,
+            'scaled_surfaces': {}
+        }
+        return self._nebula_master_surfaces[nebula.id]
+
+    def _draw_nebula(self, nebula, pos_px):
+        zoom = self.game.sector_zoom
+        if not isinstance(zoom, (int, float)):
+            zoom = 1.0
+
+        pre_rendered = self._get_pre_rendered_nebula(nebula)
+        if not pre_rendered:
+            return
+
+        master_surface = pre_rendered['master']
+        center_x = pre_rendered['center_x']
+        center_y = pre_rendered['center_y']
+
+        # Quantize zoom to 0.05 step
+        quantized_zoom = round(zoom * 20) / 20.0
+
+        # Calculate dimensions at quantized zoom level
+        new_width = max(1, int(master_surface.get_width() * quantized_zoom))
+        new_height = max(1, int(master_surface.get_height() * quantized_zoom))
+
+        # Position calculation using quantized zoom to prevent visual sliding/jitter
+        new_center_x = center_x * quantized_zoom
+        new_center_y = center_y * quantized_zoom
+        blit_x = pos_px.x - new_center_x
+        blit_y = pos_px.y - new_center_y
+
+        # Frustum culling
+        w, h = self.screen.get_size()
+        if (blit_x + new_width < 0 or blit_x > w or
+            blit_y + new_height < 0 or blit_y > h):
+            return
+
+        # Scale caching
+        if abs(quantized_zoom - 1.0) < 1e-4:
+            scaled_surface = master_surface
+        elif quantized_zoom in pre_rendered['scaled_surfaces']:
+            scaled_surface = pre_rendered['scaled_surfaces'][quantized_zoom]
+        else:
+            scaled_surface = pygame.transform.smoothscale(master_surface, (new_width, new_height))
+            pre_rendered['scaled_surfaces'][quantized_zoom] = scaled_surface
+
+        self.overlay_surface.blit(scaled_surface, (blit_x, blit_y))
 
     def _draw_celestial_field(self, field, pos_px, base_color, num_particles=40):
         """Draws a celestial field with random objects (asteroids/ice bodies/debris)"""
@@ -951,56 +1051,110 @@ class SectorViewRenderer:
 
         random.seed()
 
-    def _draw_storm(self, storm, pos_px):
+    def _get_pre_rendered_storm_circles(self, storm):
+        if storm.id in self._storm_base_circle_surfaces:
+            return self._storm_base_circle_surfaces[storm.id]
+
         num_circles = 25
         base_radius_logical = STORM_RADIUS
-        time_ms = pygame.time.get_ticks()
+        ref_zoom = 1.0
+        ref_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * ref_zoom
+
+        random.seed(storm.id)
+
+        circles_data = []
+        for i in range(num_circles):
+            initial_angle = random.uniform(0, 360)
+            initial_radius_logical = random.uniform(base_radius_logical * 0.1, base_radius_logical * 0.9)
+            rotation_speed = random.uniform(-3.0, 3.0)
+            circle_base_radius_logical = base_radius_logical * random.uniform(0.2, 0.5)
+
+            ref_radius_px = int(circle_base_radius_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            if ref_radius_px <= 0:
+                ref_radius_px = 1
+
+            alpha = random.randint(30, 60)
+            color = STORM_COLORS[storm.storm_type]
+            color_key = (color[0], color[1], color[2], alpha)
+
+            circle_surface = self._get_cached_circle_surface(ref_radius_px, color_key)
+
+            circles_data.append({
+                'initial_angle': initial_angle,
+                'initial_radius_logical': initial_radius_logical,
+                'rotation_speed': rotation_speed,
+                'circle_base_radius_logical': circle_base_radius_logical,
+                'ref_radius_px': ref_radius_px,
+                'surface': circle_surface,
+                'color_key': color_key,
+                'scaled_surfaces': {}
+            })
+
+        random.seed()
+        self._storm_base_circle_surfaces[storm.id] = circles_data
+        return circles_data
+
+    def _draw_storm(self, storm, pos_px):
         zoom = self.game.sector_zoom
         if not isinstance(zoom, (int, float)):
             zoom = 1.0
         dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
+        time_ms = pygame.time.get_ticks()
 
-        # Seed the random number generator for consistent storm appearance
-        random.seed(storm.id)
+        # Quantize zoom
+        quantized_zoom = round(zoom * 20) / 20.0
+        quantized_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * quantized_zoom
 
-        for i in range(num_circles):
-            # Generate consistent random properties for each circle
-            initial_angle = random.uniform(0, 360)
-            initial_radius_logical = random.uniform(base_radius_logical * 0.1, base_radius_logical * 0.9)
-            rotation_speed = random.uniform(-3.0, 3.0)  # degrees per 100ms
-            circle_base_radius_logical = base_radius_logical * random.uniform(0.2, 0.5)
-            
-            circle_base_radius_px = int(circle_base_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            if circle_base_radius_px <= 0:
+        circles_data = self._get_pre_rendered_storm_circles(storm)
+
+        for data in circles_data:
+            initial_angle = data['initial_angle']
+            initial_radius_logical = data['initial_radius_logical']
+            rotation_speed = data['rotation_speed']
+            circle_base_radius_logical = data['circle_base_radius_logical']
+            ref_surface = data['surface']
+            ref_radius = data['ref_radius_px']
+            color = data['color_key']
+
+            if not ref_surface:
                 continue
-            
-            alpha = random.randint(30, 60)
-            color = STORM_COLORS[storm.storm_type]
-            color = (color[0], color[1], color[2], alpha)
 
-            # Animate the circle's position
+            # Calculate animated position (using actual zoom for animation speed consistency)
             current_angle_rad = math.radians(initial_angle + (time_ms / 100.0) * rotation_speed)
             offset_x_logical = initial_radius_logical * math.cos(current_angle_rad)
             offset_y_logical = initial_radius_logical * math.sin(current_angle_rad)
-            
+
             offset_x_px = offset_x_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
             offset_y_px = offset_y_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
             circle_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
 
+            # Target radius in pixels at quantized zoom
+            circle_base_radius_px = int(circle_base_radius_logical * quantized_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            if circle_base_radius_px <= 0:
+                continue
+
             if self._is_circle_off_screen(circle_pos, circle_base_radius_px):
                 continue
 
-            # Draw the circle
-            circle_surface = self._get_cached_circle_surface(circle_base_radius_px, color)
-            if circle_surface:
-                self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_base_radius_px, circle_pos[1] - circle_base_radius_px))
+            # Scale caching using quantized zoom
+            if abs(quantized_zoom - 1.0) < 1e-4:
+                scaled_surface = ref_surface
+            elif quantized_zoom in data['scaled_surfaces']:
+                scaled_surface = data['scaled_surfaces'][quantized_zoom]
+            else:
+                scaled_size = max(1, circle_base_radius_px * 2)
+                scaled_surface = pygame.transform.smoothscale(ref_surface, (scaled_size, scaled_size))
+                data['scaled_surfaces'][quantized_zoom] = scaled_surface
 
-        # Reset seed
+            self.overlay_surface.blit(scaled_surface, (circle_pos[0] - circle_base_radius_px, circle_pos[1] - circle_base_radius_px))
+
+        # Reset seed to keep behavior consistent
         random.seed()
 
         # Draw lightning flashes on top
         if random.random() < 0.05:
             num_bolts = random.randint(1, 3)
+            base_radius_logical = STORM_RADIUS
             base_radius_px = int(base_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             for _ in range(num_bolts):
                 angle = random.uniform(0, 2 * math.pi)
