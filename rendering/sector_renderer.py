@@ -27,6 +27,34 @@ class SectorViewRenderer:
         self.game = game_instance
         self.screen = game_instance.screen
         self.overlay_surface = game_instance.overlay_surface
+        self._font_cache = {}
+        self._circle_surface_cache = {}
+
+    def _is_circle_off_screen(self, center_px, radius_px):
+        w, h = self.screen.get_size()
+        return (center_px[0] + radius_px < 0 or
+                center_px[0] - radius_px > w or
+                center_px[1] + radius_px < 0 or
+                center_px[1] - radius_px > h)
+
+    def _get_cached_circle_surface(self, radius, color):
+        radius = int(radius)
+        if radius <= 0:
+            return None
+        # Convert color to tuple to make it hashable if it is a pygame.Color
+        color_key = (color[0], color[1], color[2], color[3] if len(color) > 3 else 255)
+        key = (radius, color_key)
+        if key in self._circle_surface_cache:
+            return self._circle_surface_cache[key]
+        
+        if len(self._circle_surface_cache) > 2000:
+            self._circle_surface_cache.clear()
+            
+        surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(surface, color, (radius, radius), radius)
+        self._circle_surface_cache[key] = surface
+        return surface
+
 
     def _coords_to_pixels(self, sector_pos):
         zoom = self.game.sector_zoom
@@ -82,10 +110,14 @@ class SectorViewRenderer:
                 zone_pixel_center = self._coords_to_pixels(zone.center)
                 zone_pixel_radius = int(zone.radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                 
-                circle_surface = pygame.Surface((zone_pixel_radius * 2, zone_pixel_radius * 2), pygame.SRCALPHA)
-                pygame.draw.circle(circle_surface, (255, 0, 0, 50), (zone_pixel_radius, zone_pixel_radius), zone_pixel_radius)
+                if zone_pixel_radius <= 0:
+                    continue
+                if self._is_circle_off_screen((zone_pixel_center.x, zone_pixel_center.y), zone_pixel_radius):
+                    continue
                 
-                self.screen.blit(circle_surface, (zone_pixel_center.x - zone_pixel_radius, zone_pixel_center.y - zone_pixel_radius))
+                circle_surface = self._get_cached_circle_surface(zone_pixel_radius, (255, 0, 0, 50))
+                if circle_surface:
+                    self.screen.blit(circle_surface, (zone_pixel_center.x - zone_pixel_radius, zone_pixel_center.y - zone_pixel_radius))
 
         # 3. Get Objects in the Current Hex
         hex_obj = system.hexes[self.game.current_sector_coord]
@@ -249,7 +281,9 @@ class SectorViewRenderer:
                         bottom_y = dot_bottom
                         
                 name_font_size = max(1, int(12 * TEXT_SCALE))
-                name_font = pygame.font.Font(None, name_font_size)
+                if name_font_size not in self._font_cache:
+                    self._font_cache[name_font_size] = pygame.font.Font(None, name_font_size)
+                name_font = self._font_cache[name_font_size]
                 name_surface = name_font.render(unit_obj.name, True, obj_color)
                 name_rect = name_surface.get_rect()
                 name_rect.midtop = (obj_pixel_pos.x, bottom_y + 4)
@@ -815,7 +849,7 @@ class SectorViewRenderer:
                         if not is_final_segment:
                             will_exit_sector = True
                         else:
-                            all_waypoints = self._collect_all_waypoints(unit)
+                            all_waypoints = all_waypoints_sequence
                             current_seq_index = waypoint['sequence_index']
                             for wp in all_waypoints:
                                 if wp['sequence_index'] == current_seq_index + 1:
@@ -861,14 +895,19 @@ class SectorViewRenderer:
             circle_radius_logical = base_radius_logical * radius_variation
             circle_radius_px = int(circle_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
 
+            if circle_radius_px <= 0:
+                continue
+
+            if self._is_circle_off_screen(circle_pos, circle_radius_px):
+                continue
+
             alpha = random.randint(20, 50)
             color = NEBULA_COLORS[nebula.nebula_type]
             color = (color[0], color[1], color[2], alpha)
 
-            # Create a separate surface for each circle to handle alpha blending correctly
-            circle_surface = pygame.Surface((circle_radius_px * 2, circle_radius_px * 2), pygame.SRCALPHA)
-            pygame.draw.circle(circle_surface, color, (circle_radius_px, circle_radius_px), circle_radius_px)
-            self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_radius_px, circle_pos[1] - circle_radius_px))
+            circle_surface = self._get_cached_circle_surface(circle_radius_px, color)
+            if circle_surface:
+                self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_radius_px, circle_pos[1] - circle_radius_px))
         
         # Reset seed
         random.seed()
@@ -930,6 +969,8 @@ class SectorViewRenderer:
             circle_base_radius_logical = base_radius_logical * random.uniform(0.2, 0.5)
             
             circle_base_radius_px = int(circle_base_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            if circle_base_radius_px <= 0:
+                continue
             
             alpha = random.randint(30, 60)
             color = STORM_COLORS[storm.storm_type]
@@ -944,10 +985,13 @@ class SectorViewRenderer:
             offset_y_px = offset_y_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
             circle_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
 
+            if self._is_circle_off_screen(circle_pos, circle_base_radius_px):
+                continue
+
             # Draw the circle
-            circle_surface = pygame.Surface((circle_base_radius_px * 2, circle_base_radius_px * 2), pygame.SRCALPHA)
-            pygame.draw.circle(circle_surface, color, (circle_base_radius_px, circle_base_radius_px), circle_base_radius_px)
-            self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_base_radius_px, circle_pos[1] - circle_base_radius_px))
+            circle_surface = self._get_cached_circle_surface(circle_base_radius_px, color)
+            if circle_surface:
+                self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_base_radius_px, circle_pos[1] - circle_base_radius_px))
 
         # Reset seed
         random.seed()

@@ -19,6 +19,32 @@ class SystemViewRenderer:
         self.game = game_instance
         self.screen = game_instance.screen
         self.overlay_surface = game_instance.overlay_surface
+        self._circle_surface_cache = {}
+
+    def _is_circle_off_screen(self, center_px, radius_px):
+        w, h = self.screen.get_size()
+        return (center_px[0] + radius_px < 0 or
+                center_px[0] - radius_px > w or
+                center_px[1] + radius_px < 0 or
+                center_px[1] - radius_px > h)
+
+    def _get_cached_circle_surface(self, radius, color):
+        radius = int(radius)
+        if radius <= 0:
+            return None
+        # Convert color to tuple to make it hashable if it is a pygame.Color
+        color_key = (color[0], color[1], color[2], color[3] if len(color) > 3 else 255)
+        key = (radius, color_key)
+        if key in self._circle_surface_cache:
+            return self._circle_surface_cache[key]
+        
+        if len(self._circle_surface_cache) > 2000:
+            self._circle_surface_cache.clear()
+            
+        surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(surface, color, (radius, radius), radius)
+        self._circle_surface_cache[key] = surface
+        return surface
 
     def draw_system_view(self):
         """Draws the hex grid for the current system."""
@@ -650,14 +676,19 @@ class SystemViewRenderer:
             radius_variation = random.uniform(0.5, 1.2)
             circle_radius = int(base_radius * radius_variation)
 
+            if circle_radius <= 0:
+                continue
+
+            if self._is_circle_off_screen(circle_pos, circle_radius):
+                continue
+
             alpha = random.randint(20, 50)
             color = NEBULA_COLORS[nebula.nebula_type]
             color = (color[0], color[1], color[2], alpha)
 
-            # Create a separate surface for each circle to handle alpha blending correctly
-            circle_surface = pygame.Surface((circle_radius * 2, circle_radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(circle_surface, color, (circle_radius, circle_radius), circle_radius)
-            self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_radius, circle_pos[1] - circle_radius))
+            circle_surface = self._get_cached_circle_surface(circle_radius, color)
+            if circle_surface:
+                self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_radius, circle_pos[1] - circle_radius))
         
         # Reset seed
         random.seed()
@@ -702,6 +733,9 @@ class SystemViewRenderer:
             initial_radius = random.uniform(base_radius * 0.1, base_radius * 0.9)
             rotation_speed = random.uniform(-3.0, 3.0)
             circle_base_radius = int(base_radius * random.uniform(0.2, 0.5))
+            if circle_base_radius < 1:
+                continue
+
             alpha = random.randint(30, 60)
             color = STORM_COLORS[storm.storm_type]
             color = (color[0], color[1], color[2], alpha)
@@ -711,11 +745,12 @@ class SystemViewRenderer:
             offset_y = initial_radius * math.sin(current_angle_rad)
             circle_pos = (pos_px.x + offset_x, pos_px.y + offset_y)
 
-            if circle_base_radius < 1: continue
+            if self._is_circle_off_screen(circle_pos, circle_base_radius):
+                continue
 
-            circle_surface = pygame.Surface((circle_base_radius * 2, circle_base_radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(circle_surface, color, (circle_base_radius, circle_base_radius), circle_base_radius)
-            self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_base_radius, circle_pos[1] - circle_base_radius))
+            circle_surface = self._get_cached_circle_surface(circle_base_radius, color)
+            if circle_surface:
+                self.overlay_surface.blit(circle_surface, (circle_pos[0] - circle_base_radius, circle_pos[1] - circle_base_radius))
 
         random.seed()
 
