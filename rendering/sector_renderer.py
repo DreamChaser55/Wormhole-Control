@@ -185,7 +185,39 @@ class SectorViewRenderer:
         self.overlay_surface.blit(scaled_surface, (scaled_left, scaled_top))
         return True
 
+    def _blit_uncached_circle(self, circle_pos, radius_px, color):
+        """Draw a large semi-transparent circle onto the overlay using the same
+        source-over alpha blending as the cached/scaled path, without caching a
+        huge texture.
+
+        Drawing directly onto ``overlay_surface`` with ``pygame.draw.circle``
+        *replaces* pixels instead of alpha-blending them, which both prevents
+        overlapping particles from accumulating alpha with each other and
+        erases any alpha already accumulated underneath by other (smaller,
+        blitted) particles. That mismatch is what made storm circles lose
+        their intended transparency once they grew large enough to hit this
+        fallback (i.e. when zoomed in). Rendering into a small temporary
+        per-pixel-alpha surface and then blitting it keeps the compositing
+        identical to the normal path while still only ever allocating an
+        on-screen-sized surface.
+        """
+        screen_width, screen_height = self.screen.get_size()
+        cx, cy = circle_pos
+
+        vis_left = max(0, int(math.floor(cx - radius_px)))
+        vis_top = max(0, int(math.floor(cy - radius_px)))
+        vis_right = min(screen_width, int(math.ceil(cx + radius_px)))
+        vis_bottom = min(screen_height, int(math.ceil(cy + radius_px)))
+        if vis_left >= vis_right or vis_top >= vis_bottom:
+            return
+
+        temp_surface = pygame.Surface((vis_right - vis_left, vis_bottom - vis_top), pygame.SRCALPHA)
+        local_center = (int(cx - vis_left), int(cy - vis_top))
+        pygame.draw.circle(temp_surface, color, local_center, radius_px)
+        self.overlay_surface.blit(temp_surface, (vis_left, vis_top))
+
     def _update_zoom_render_stats(self):
+
         self.zoom_render_stats = {
             'cache_hits': self._scaled_effect_surfaces.hits,
             'cache_misses': self._scaled_effect_surfaces.misses,
@@ -1220,15 +1252,16 @@ class SectorViewRenderer:
 
             if circle_base_radius_px * 2 > MAX_CACHED_STORM_DIAMETER:
                 # Storm particles move every frame, so caching large particles
-                # would evict the cache repeatedly. Draw them directly instead.
-                pygame.draw.circle(
-                    self.overlay_surface, color,
-                    (int(circle_pos[0]), int(circle_pos[1])), circle_base_radius_px
-                )
+                # would evict the cache repeatedly. Draw them into a small
+                # uncached surface and blend it in instead, so overlapping
+                # particles still accumulate alpha the same way the cached/
+                # scaled particles do (see _blit_uncached_circle).
+                self._blit_uncached_circle(circle_pos, circle_base_radius_px, color)
                 self.zoom_render_stats['direct_draw_fallbacks'] += 1
                 continue
 
             scale = (circle_base_radius_px * 2) / ref_surface.get_width()
+
             self._blit_visible_scaled_surface(
                 ref_surface,
                 (ref_surface.get_width() / 2, ref_surface.get_height() / 2),

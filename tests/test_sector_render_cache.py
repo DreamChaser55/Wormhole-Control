@@ -52,3 +52,44 @@ def test_effect_zoom_bucket_is_coarser_while_camera_is_moving():
     assert renderer._effect_zoom_bucket(1.04) == 1.0
     game.sector_target_zoom = 1.04
     assert renderer._effect_zoom_bucket(1.04) == 1.05
+
+
+def test_blit_uncached_circle_blends_instead_of_replacing():
+    """Regression test: large (uncached) storm circles must alpha-blend with
+    the overlay (like the cached/scaled path) instead of replacing pixels,
+    otherwise overlapping storm particles lose their intended transparency
+    once zoomed in far enough to hit this fallback."""
+    game = MagicMock()
+    renderer = SectorViewRenderer(game)
+    renderer.screen = pygame.Surface((320, 200))
+    renderer.overlay_surface = pygame.Surface((320, 200), pygame.SRCALPHA)
+
+    color = (255, 69, 0, 40)
+
+    # Draw the same semi-transparent circle twice at the same spot.
+    renderer._blit_uncached_circle((160, 100), 20, color)
+    alpha_after_one = renderer.overlay_surface.get_at((160, 100)).a
+
+    renderer._blit_uncached_circle((160, 100), 20, color)
+    alpha_after_two = renderer.overlay_surface.get_at((160, 100)).a
+
+    # A single draw should reproduce the source alpha...
+    assert alpha_after_one == 40
+    # ...but overlapping draws must accumulate alpha (source-over blending),
+    # not stay flat as pygame.draw.circle's replace semantics would produce.
+    assert alpha_after_two > alpha_after_one
+
+
+def test_blit_uncached_circle_only_allocates_onscreen_region():
+    game = MagicMock()
+    renderer = SectorViewRenderer(game)
+    renderer.screen = pygame.Surface((320, 200))
+    renderer.overlay_surface = pygame.Surface((320, 200), pygame.SRCALPHA)
+
+    # Circle centered off the right edge of the screen; only a sliver is visible.
+    renderer._blit_uncached_circle((310, 100), 400, (255, 69, 0, 40))
+
+    # Should not have thrown, and should have painted something on-screen.
+    assert renderer.overlay_surface.get_at((315, 100)).a > 0
+
+
