@@ -258,3 +258,51 @@ def test_zoom_to_mouse_pointer_moving_mouse():
         assert abs(game.zoom_anchor_pixel.x - 105.0) < 1e-5
 
 
+def test_zoom_out_clamped_to_min():
+    """Verifies that zoom-out is clamped to SECTOR_ZOOM_MIN."""
+    from constants import SECTOR_ZOOM_MIN
+    game = DummyGame()
+    game.view_mode = 'sector'
+    game.game_started = True
+    game.sector_zoom = SECTOR_ZOOM_MIN
+    game.sector_target_zoom = SECTOR_ZOOM_MIN
+    game.zoom_anchor_pixel = None
+    game.zoom_anchor_logical = None
+
+    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x
+    mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y
+
+    with patch('pygame.mouse.get_pos', return_value=(mouse_x, mouse_y)):
+        # Attempt to zoom out (scroll_y < 0)
+        Game.handle_mouse_wheel(game, -1)
+        
+        # Should stay at SECTOR_ZOOM_MIN
+        assert game.sector_target_zoom == SECTOR_ZOOM_MIN
+
+
+def test_zoom_in_clamped_to_max():
+    """Verifies that zoom-in is clamped to SECTOR_ZOOM_MAX."""
+    from constants import SECTOR_ZOOM_MAX
+    game = DummyGame()
+    game.view_mode = 'sector'
+    game.game_started = True
+    # Start at near-maximum zoom so next zoom-in exceeds it
+    game.sector_zoom = SECTOR_ZOOM_MAX
+    game.sector_target_zoom = SECTOR_ZOOM_MAX
+    game.zoom_anchor_pixel = None
+    game.zoom_anchor_logical = None
+
+    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x
+    mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y
+
+    with patch('pygame.mouse.get_pos', return_value=(mouse_x, mouse_y)):
+        # Attempt to zoom in (scroll_y > 0)
+        Game.handle_mouse_wheel(game, 1)
+        
+        # Should clamp to SECTOR_ZOOM_MAX
+        assert game.sector_target_zoom == SECTOR_ZOOM_MAX
+
+
+

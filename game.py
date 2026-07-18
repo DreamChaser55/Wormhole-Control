@@ -1323,14 +1323,16 @@ class Game:
             old_target_zoom = self.sector_target_zoom
             new_zoom = old_target_zoom * zoom_factor
             
+            from constants import SECTOR_ZOOM_MIN, SECTOR_ZOOM_MAX
             # Constrain new_zoom
-            if new_zoom < 0.2:
-                new_zoom = 0.2
-            elif new_zoom > 5.0:
-                new_zoom = 5.0
+            if new_zoom < SECTOR_ZOOM_MIN:
+                new_zoom = SECTOR_ZOOM_MIN
+            elif new_zoom > SECTOR_ZOOM_MAX:
+                new_zoom = SECTOR_ZOOM_MAX
             
             if new_zoom != old_target_zoom:
-                from constants import SECTOR_CIRCLE_CENTER_IN_PX
+                from constants import SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_ZOOM_MIN, SECTOR_ZOOM_MAX
+
                 
                 rx = mouse_pos.x - SECTOR_CIRCLE_CENTER_IN_PX.x
                 ry = mouse_pos.y - SECTOR_CIRCLE_CENTER_IN_PX.y

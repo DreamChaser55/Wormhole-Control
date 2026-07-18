@@ -64,6 +64,9 @@ HEX_SIZE = int(25 * (SCREEN_RES.y / 720.0)) # in pixels
 SECTOR_CIRCLE_CENTER_IN_PX = Position(SCREEN_RES.x // 2, SCREEN_RES.y // 2) # Center of sector view circle in pixels
 SECTOR_CIRCLE_RADIUS_IN_PX = SCREEN_RES.y // 2 # Radius for sector view circle in pixels
 SECTOR_CIRCLE_RADIUS_LOGICAL = 5000.0
+SECTOR_ZOOM_MIN = 0.8
+SECTOR_ZOOM_MAX = 15.0
+
 
 # Game Mechanics Constants
 DEFAULT_HYPERDRIVE_RECHARGE_DURATION: int = 3
