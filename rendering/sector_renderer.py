@@ -1179,19 +1179,38 @@ class SectorViewRenderer:
         target_zoom = getattr(self.game, 'sector_target_zoom', zoom)
         is_zooming = isinstance(target_zoom, (int, float)) and abs(target_zoom - zoom) > 1e-4
 
-        quantized_zoom = self._effect_zoom_bucket(zoom)
-        self._blit_visible_scaled_surface(
-            pre_rendered['master'],
-            (pre_rendered['center_x'], pre_rendered['center_y']),
-            (pos_px.x, pos_px.y),
-            quantized_zoom,
-            ('nebula', nebula.id, quantized_zoom),
-            # Nebula content is static, so a smooth (bilinear) scale is worth
-            # the cost while the camera is at rest and the result is cached.
-            # While actively zooming, fall back to a fast nearest-neighbour
-            # scale so cache churn from the changing zoom bucket stays cheap.
-            smooth=not is_zooming,
-        )
+        if is_zooming:
+            # While actively zooming, scale by the *true* (smoothly animating) zoom
+            # instead of a quantized bucket. The nebula's on-screen center
+            # (pos_px) is always computed from the true zoom, so scaling the
+            # blob itself by a bucketed zoom made its size/spread snap in
+            # discrete steps relative to that smoothly-moving center -- i.e.
+            # visible jitter/popping every time the zoom crossed a bucket
+            # boundary. Using the true zoom here keeps center and scale in
+            # lockstep. This path is intentionally uncached (the zoom value
+            # is different every frame anyway while animating), and uses a
+            # fast nearest-neighbour scale to keep it cheap.
+            self._blit_scaled_surface_once(
+                pre_rendered['master'],
+                (pre_rendered['center_x'], pre_rendered['center_y']),
+                (pos_px.x, pos_px.y),
+                zoom,
+                smooth=False,
+            )
+        else:
+            # At rest, quantize to a small grid of buckets so repeated frames
+            # at (almost) the same zoom share a cached, high-quality
+            # smooth-scaled texture instead of re-scaling every frame.
+            quantized_zoom = self._effect_zoom_bucket(zoom)
+            self._blit_visible_scaled_surface(
+                pre_rendered['master'],
+                (pre_rendered['center_x'], pre_rendered['center_y']),
+                (pos_px.x, pos_px.y),
+                quantized_zoom,
+                ('nebula', nebula.id, quantized_zoom),
+                smooth=True,
+            )
+
 
 
     def _draw_celestial_field(self, field, pos_px, base_color, num_particles=40):
