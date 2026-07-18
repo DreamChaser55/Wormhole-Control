@@ -1,5 +1,6 @@
 import pygame
 import math
+from collections import OrderedDict
 from constants import (
     NEBULA_COLORS, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX,
     SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR,
@@ -22,6 +23,56 @@ from entities import (
 )
 from rendering.drawing_utils import draw_shape
 
+MAX_CACHED_STORM_DIAMETER = 512
+
+
+class _BoundedSurfaceCache:
+    """An LRU cache that bounds both the number and size of cached textures."""
+
+    def __init__(self, max_bytes=96 * 1024 * 1024, max_item_bytes=16 * 1024 * 1024):
+        self.max_bytes = max_bytes
+        self.max_item_bytes = max_item_bytes
+        self._items = OrderedDict()
+        self.total_bytes = 0
+        self.hits = 0
+        self.misses = 0
+
+    @staticmethod
+    def _surface_bytes(surface):
+        return surface.get_width() * surface.get_height() * 4
+
+    def get(self, key):
+        surface = self._items.pop(key, None)
+        if surface is None:
+            self.misses += 1
+            return None
+        self.hits += 1
+        self._items[key] = surface
+        return surface
+
+    def put(self, key, surface):
+        surface_bytes = self._surface_bytes(surface)
+        if surface_bytes > self.max_item_bytes:
+            return surface
+
+        old_surface = self._items.pop(key, None)
+        if old_surface is not None:
+            self.total_bytes -= self._surface_bytes(old_surface)
+
+        while self._items and self.total_bytes + surface_bytes > self.max_bytes:
+            _, evicted_surface = self._items.popitem(last=False)
+            self.total_bytes -= self._surface_bytes(evicted_surface)
+
+        if self.total_bytes + surface_bytes <= self.max_bytes:
+            self._items[key] = surface
+            self.total_bytes += surface_bytes
+        return surface
+
+    def clear(self):
+        self._items.clear()
+        self.total_bytes = 0
+
+
 class SectorViewRenderer:
     def __init__(self, game_instance):
         self.game = game_instance
@@ -32,23 +83,14 @@ class SectorViewRenderer:
         self._nebula_master_surfaces = {}
         self._storm_base_circle_surfaces = {}
         self._last_cached_sector = None
-        self._inhibition_zone_master = None
-        self._inhibition_zone_cache = {}
-
-    def _get_inhibition_zone_surface(self, radius):
-        radius = max(1, (int(radius) + 1) // 2 * 2)
-        if radius in self._inhibition_zone_cache:
-            return self._inhibition_zone_cache[radius]
-
-        if self._inhibition_zone_master is None:
-            # Generate a high-resolution master red circle with alpha 50
-            master_radius = 512
-            self._inhibition_zone_master = pygame.Surface((master_radius * 2, master_radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(self._inhibition_zone_master, (255, 0, 0, 50), (master_radius, master_radius), master_radius)
-
-        scaled_surface = pygame.transform.smoothscale(self._inhibition_zone_master, (radius * 2, radius * 2))
-        self._inhibition_zone_cache[radius] = scaled_surface
-        return scaled_surface
+        self._scaled_effect_surfaces = _BoundedSurfaceCache()
+        self._inhibition_surface = None
+        self.zoom_render_stats = {
+            'cache_hits': 0,
+            'cache_misses': 0,
+            'cache_bytes': 0,
+            'direct_draw_fallbacks': 0,
+        }
 
     def _is_circle_off_screen(self, center_px, radius_px):
         w, h = self.screen.get_size()
@@ -90,6 +132,67 @@ class SectorViewRenderer:
         except TypeError:
             return sector_coords_to_pixels(sector_pos)
 
+    def _effect_zoom_bucket(self, zoom):
+        """Use fewer resampling steps while the camera is actively moving."""
+        target_zoom = getattr(self.game, 'sector_target_zoom', zoom)
+        is_zooming = (isinstance(target_zoom, (int, float)) and
+                      abs(target_zoom - zoom) > 1e-4)
+        step = 0.10 if is_zooming else 0.05
+        return round(zoom / step) * step
+
+    def _blit_visible_scaled_surface(self, source, source_center, destination_center,
+                                     scale, cache_prefix):
+        """Scale and cache only the portion of an effect visible on screen.
+
+        Scaling a full high-zoom nebula can otherwise create a many-hundred-MiB
+        intermediate texture even though only a viewport-sized part is visible.
+        """
+        screen_width, screen_height = self.screen.get_size()
+        source_width, source_height = source.get_size()
+        dest_left = destination_center[0] - source_center[0] * scale
+        dest_top = destination_center[1] - source_center[1] * scale
+        dest_right = dest_left + source_width * scale
+        dest_bottom = dest_top + source_height * scale
+
+        visible_left = max(0, int(math.floor(dest_left)))
+        visible_top = max(0, int(math.floor(dest_top)))
+        visible_right = min(screen_width, int(math.ceil(dest_right)))
+        visible_bottom = min(screen_height, int(math.ceil(dest_bottom)))
+        if visible_left >= visible_right or visible_top >= visible_bottom:
+            return False
+
+        source_left = max(0, int(math.floor((visible_left - dest_left) / scale)))
+        source_top = max(0, int(math.floor((visible_top - dest_top) / scale)))
+        source_right = min(source_width, int(math.ceil((visible_right - dest_left) / scale)))
+        source_bottom = min(source_height, int(math.ceil((visible_bottom - dest_top) / scale)))
+        if source_left >= source_right or source_top >= source_bottom:
+            return False
+
+        scaled_left = int(math.floor(dest_left + source_left * scale))
+        scaled_top = int(math.floor(dest_top + source_top * scale))
+        scaled_right = int(math.ceil(dest_left + source_right * scale))
+        scaled_bottom = int(math.ceil(dest_top + source_bottom * scale))
+        scaled_size = (max(1, scaled_right - scaled_left), max(1, scaled_bottom - scaled_top))
+        source_rect = (source_left, source_top, source_right - source_left, source_bottom - source_top)
+        cache_key = (*cache_prefix, source_rect, scaled_size)
+
+        scaled_surface = self._scaled_effect_surfaces.get(cache_key)
+        if scaled_surface is None:
+            source_region = source if source_rect == (0, 0, source_width, source_height) else source.subsurface(source_rect)
+            scaled_surface = pygame.transform.smoothscale(source_region, scaled_size)
+            self._scaled_effect_surfaces.put(cache_key, scaled_surface)
+
+        self.overlay_surface.blit(scaled_surface, (scaled_left, scaled_top))
+        return True
+
+    def _update_zoom_render_stats(self):
+        self.zoom_render_stats = {
+            'cache_hits': self._scaled_effect_surfaces.hits,
+            'cache_misses': self._scaled_effect_surfaces.misses,
+            'cache_bytes': self._scaled_effect_surfaces.total_bytes,
+            'direct_draw_fallbacks': self.zoom_render_stats['direct_draw_fallbacks'],
+        }
+
     def draw_sector_view(self):
         """Draws the detailed view of the current sector hex."""
         if not self.game.current_system_name or self.game.current_sector_coord is None: return
@@ -101,6 +204,7 @@ class SectorViewRenderer:
         if current_sector_key != self._last_cached_sector:
             self._nebula_master_surfaces.clear()
             self._storm_base_circle_surfaces.clear()
+            self._scaled_effect_surfaces.clear()
             self._last_cached_sector = current_sector_key
 
         zoom = self.game.sector_zoom
@@ -132,21 +236,32 @@ class SectorViewRenderer:
         )
         pygame.draw.circle(self.screen, SECTOR_BORDER_COLOR, boundary_center, int(dynamic_radius), 1)
 
-        # 2. Draw Inhibition Fields
+        # 2. Draw Inhibition Fields. Draw directly into a viewport-sized alpha
+        # surface instead of scaling and retaining a massive circle texture.
         hex_obj = system.hexes[self.game.current_sector_coord]
         if hex_obj:
+            screen_size = self.screen.get_size()
+            if self._inhibition_surface is None or self._inhibition_surface.get_size() != screen_size:
+                self._inhibition_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
+            self._inhibition_surface.fill((0, 0, 0, 0))
+            drew_inhibition_zone = False
             for zone in hex_obj.get_all_inhibition_zones():
                 zone_pixel_center = self._coords_to_pixels(zone.center)
                 zone_pixel_radius = int(zone.radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                
+
                 if zone_pixel_radius <= 0:
                     continue
                 if self._is_circle_off_screen((zone_pixel_center.x, zone_pixel_center.y), zone_pixel_radius):
                     continue
-                
-                circle_surface = self._get_inhibition_zone_surface(zone_pixel_radius)
-                if circle_surface:
-                    self.screen.blit(circle_surface, (zone_pixel_center.x - zone_pixel_radius, zone_pixel_center.y - zone_pixel_radius))
+
+                pygame.draw.circle(
+                    self._inhibition_surface, (255, 0, 0, 50),
+                    (int(zone_pixel_center.x), int(zone_pixel_center.y)), zone_pixel_radius
+                )
+                drew_inhibition_zone = True
+                self.zoom_render_stats['direct_draw_fallbacks'] += 1
+            if drew_inhibition_zone:
+                self.screen.blit(self._inhibition_surface, (0, 0))
 
         # 3. Get Objects in the Current Hex
         hex_obj = system.hexes[self.game.current_sector_coord]
@@ -472,6 +587,7 @@ class SectorViewRenderer:
                         external_units_with_orders_to_this_sector.append(candidate_unit)
 
         self._draw_sector_view_order_lines_from_other_sectors(external_units_with_orders_to_this_sector)
+        self._update_zoom_render_stats()
 
     def _get_waypoint_style(self, waypoint):
         if waypoint['order_type'] == OrderType.ATTACK:
@@ -967,7 +1083,6 @@ class SectorViewRenderer:
             'master': master_surface,
             'center_x': center_x,
             'center_y': center_y,
-            'scaled_surfaces': {}
         }
         return self._nebula_master_surfaces[nebula.id]
 
@@ -980,39 +1095,14 @@ class SectorViewRenderer:
         if not pre_rendered:
             return
 
-        master_surface = pre_rendered['master']
-        center_x = pre_rendered['center_x']
-        center_y = pre_rendered['center_y']
-
-        # Quantize zoom to 0.05 step
-        quantized_zoom = round(zoom * 20) / 20.0
-
-        # Calculate dimensions at quantized zoom level
-        new_width = max(1, int(master_surface.get_width() * quantized_zoom))
-        new_height = max(1, int(master_surface.get_height() * quantized_zoom))
-
-        # Position calculation using quantized zoom to prevent visual sliding/jitter
-        new_center_x = center_x * quantized_zoom
-        new_center_y = center_y * quantized_zoom
-        blit_x = pos_px.x - new_center_x
-        blit_y = pos_px.y - new_center_y
-
-        # Frustum culling
-        w, h = self.screen.get_size()
-        if (blit_x + new_width < 0 or blit_x > w or
-            blit_y + new_height < 0 or blit_y > h):
-            return
-
-        # Scale caching
-        if abs(quantized_zoom - 1.0) < 1e-4:
-            scaled_surface = master_surface
-        elif quantized_zoom in pre_rendered['scaled_surfaces']:
-            scaled_surface = pre_rendered['scaled_surfaces'][quantized_zoom]
-        else:
-            scaled_surface = pygame.transform.smoothscale(master_surface, (new_width, new_height))
-            pre_rendered['scaled_surfaces'][quantized_zoom] = scaled_surface
-
-        self.overlay_surface.blit(scaled_surface, (blit_x, blit_y))
+        quantized_zoom = self._effect_zoom_bucket(zoom)
+        self._blit_visible_scaled_surface(
+            pre_rendered['master'],
+            (pre_rendered['center_x'], pre_rendered['center_y']),
+            (pos_px.x, pos_px.y),
+            quantized_zoom,
+            ('nebula', nebula.id, quantized_zoom),
+        )
 
     def _draw_celestial_field(self, field, pos_px, base_color, num_particles=40):
         """Draws a celestial field with random objects (asteroids/ice bodies/debris)"""
@@ -1087,7 +1177,6 @@ class SectorViewRenderer:
                 'ref_radius_px': ref_radius_px,
                 'surface': circle_surface,
                 'color_key': color_key,
-                'scaled_surfaces': {}
             })
 
         random.seed()
@@ -1101,52 +1190,52 @@ class SectorViewRenderer:
         dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
         time_ms = pygame.time.get_ticks()
 
-        # Quantize zoom
-        quantized_zoom = round(zoom * 20) / 20.0
+        quantized_zoom = self._effect_zoom_bucket(zoom)
         quantized_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * quantized_zoom
-
         circles_data = self._get_pre_rendered_storm_circles(storm)
 
-        for data in circles_data:
+        for index, data in enumerate(circles_data):
             initial_angle = data['initial_angle']
             initial_radius_logical = data['initial_radius_logical']
             rotation_speed = data['rotation_speed']
             circle_base_radius_logical = data['circle_base_radius_logical']
             ref_surface = data['surface']
-            ref_radius = data['ref_radius_px']
             color = data['color_key']
 
             if not ref_surface:
                 continue
 
-            # Calculate animated position (using actual zoom for animation speed consistency)
+            # Calculate animated position using the actual zoom so animation speed
+            # remains unchanged while the scaled appearance uses a stable bucket.
             current_angle_rad = math.radians(initial_angle + (time_ms / 100.0) * rotation_speed)
             offset_x_logical = initial_radius_logical * math.cos(current_angle_rad)
             offset_y_logical = initial_radius_logical * math.sin(current_angle_rad)
-
             offset_x_px = offset_x_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
             offset_y_px = offset_y_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
             circle_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
 
-            # Target radius in pixels at quantized zoom
             circle_base_radius_px = int(circle_base_radius_logical * quantized_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            if circle_base_radius_px <= 0:
+            if circle_base_radius_px <= 0 or self._is_circle_off_screen(circle_pos, circle_base_radius_px):
                 continue
 
-            if self._is_circle_off_screen(circle_pos, circle_base_radius_px):
+            if circle_base_radius_px * 2 > MAX_CACHED_STORM_DIAMETER:
+                # Storm particles move every frame, so caching large particles
+                # would evict the cache repeatedly. Draw them directly instead.
+                pygame.draw.circle(
+                    self.overlay_surface, color,
+                    (int(circle_pos[0]), int(circle_pos[1])), circle_base_radius_px
+                )
+                self.zoom_render_stats['direct_draw_fallbacks'] += 1
                 continue
 
-            # Scale caching using quantized zoom
-            if abs(quantized_zoom - 1.0) < 1e-4:
-                scaled_surface = ref_surface
-            elif quantized_zoom in data['scaled_surfaces']:
-                scaled_surface = data['scaled_surfaces'][quantized_zoom]
-            else:
-                scaled_size = max(1, circle_base_radius_px * 2)
-                scaled_surface = pygame.transform.smoothscale(ref_surface, (scaled_size, scaled_size))
-                data['scaled_surfaces'][quantized_zoom] = scaled_surface
-
-            self.overlay_surface.blit(scaled_surface, (circle_pos[0] - circle_base_radius_px, circle_pos[1] - circle_base_radius_px))
+            scale = (circle_base_radius_px * 2) / ref_surface.get_width()
+            self._blit_visible_scaled_surface(
+                ref_surface,
+                (ref_surface.get_width() / 2, ref_surface.get_height() / 2),
+                circle_pos,
+                scale,
+                ('storm', storm.id, index, quantized_zoom),
+            )
 
         # Reset seed to keep behavior consistent
         random.seed()
