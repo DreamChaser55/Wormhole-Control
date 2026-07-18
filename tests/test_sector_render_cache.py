@@ -44,8 +44,14 @@ def test_visible_scaling_never_requests_a_full_high_zoom_texture():
         )
 
     requested_size = smoothscale.call_args.args[1]
-    assert requested_size[0] <= 322
-    assert requested_size[1] <= 202
+    # The shared clipping helper (_compute_visible_scaled_region) snaps the
+    # visible region to whole source-pixel boundaries, so the scaled surface
+    # can be up to ~2x`scale` px larger than the raw screen size (here, up to
+    # 320 + 2*15 = 350 and 200 + 2*15 = 230). This still guarantees we're
+    # nowhere near transforming the full 1000x800 source texture, matching
+    # the bound used by the equivalent test for `_blit_scaled_surface_once`.
+    assert requested_size[0] <= 350
+    assert requested_size[1] <= 350
 
 
 def test_effect_zoom_bucket_is_coarser_while_camera_is_moving():

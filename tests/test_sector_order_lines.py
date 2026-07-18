@@ -22,6 +22,7 @@ def test_draw_sector_view_draws_lines_for_all_turn_player_units():
 
     renderer = SectorViewRenderer(game)
     renderer.screen = MagicMock()
+    renderer.screen.get_size.return_value = (1920, 1080)
     renderer.overlay_surface = MagicMock()
 
     # 2. Setup StarSystem and Hex
@@ -212,6 +213,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets():
 
     renderer = SectorViewRenderer(game)
     renderer.screen = MagicMock()
+    renderer.screen.get_size.return_value = (1920, 1080)
     renderer.overlay_surface = MagicMock()
 
     # Setup StarSystem and Hex
@@ -280,6 +282,7 @@ def test_draw_sector_view_draws_turn_notches():
 
     renderer = SectorViewRenderer(game)
     renderer.screen = MagicMock()
+    renderer.screen.get_size.return_value = (1920, 1080)
     renderer.overlay_surface = MagicMock()
 
     # Setup StarSystem and Hex
@@ -425,6 +428,7 @@ def test_draw_sector_view_patrol_order_path():
 
     renderer = SectorViewRenderer(game)
     renderer.screen = MagicMock()
+    renderer.screen.get_size.return_value = (1920, 1080)
     renderer.overlay_surface = MagicMock()
 
     # 2. Setup StarSystem and Hex
