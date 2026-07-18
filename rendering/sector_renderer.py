@@ -38,7 +38,9 @@ class SectorViewRenderer:
                 center_px[1] - radius_px > h)
 
     def _get_cached_circle_surface(self, radius, color):
-        radius = int(radius)
+        # Round to the nearest 2 pixels so that adjacent zoom-animation steps
+        # share the same cache entry instead of generating a new Surface every frame.
+        radius = max(1, (int(radius) + 1) // 2 * 2)
         if radius <= 0:
             return None
         # Convert color to tuple to make it hashable if it is a pygame.Color
