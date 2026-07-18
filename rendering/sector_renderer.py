@@ -5,7 +5,7 @@ from constants import (
     NEBULA_COLORS, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX,
     SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR,
     STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS,
-    STORM_LIGHTNING_COLOR,
+    STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER,
     WHITE, YELLOW, CYAN, PURPLE, RED,
     HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE,
     ICON_DOT_RADIUS, ICON_DOT_SPACING,
@@ -14,6 +14,7 @@ from constants import (
     TEXT_SCALE, XP_SPEED_BONUS,
     MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS
 )
+
 from sector_utils import sector_coords_to_pixels
 from geometry import distance, Position
 import random
@@ -85,6 +86,7 @@ class SectorViewRenderer:
         self._last_cached_sector = None
         self._scaled_effect_surfaces = _BoundedSurfaceCache()
         self._inhibition_surface = None
+        self._storm_scratch_surface = None
         self.zoom_render_stats = {
             'cache_hits': 0,
             'cache_misses': 0,
@@ -140,12 +142,14 @@ class SectorViewRenderer:
         step = 0.10 if is_zooming else 0.05
         return round(zoom / step) * step
 
-    def _blit_visible_scaled_surface(self, source, source_center, destination_center,
-                                     scale, cache_prefix):
-        """Scale and cache only the portion of an effect visible on screen.
+    def _compute_visible_scaled_region(self, source, source_center, destination_center, scale):
+        """Shared clipping math used by both the cached and uncached scaling
+        paths: computes the on-screen destination rect actually visible, and
+        the corresponding source sub-rect, so callers never need to transform
+        more of ``source`` than what will actually be blitted.
 
-        Scaling a full high-zoom nebula can otherwise create a many-hundred-MiB
-        intermediate texture even though only a viewport-sized part is visible.
+        Returns ``None`` when nothing is visible, otherwise a tuple of
+        ``(source_rect, (scaled_left, scaled_top), scaled_size)``.
         """
         screen_width, screen_height = self.screen.get_size()
         source_width, source_height = source.get_size()
@@ -159,14 +163,14 @@ class SectorViewRenderer:
         visible_right = min(screen_width, int(math.ceil(dest_right)))
         visible_bottom = min(screen_height, int(math.ceil(dest_bottom)))
         if visible_left >= visible_right or visible_top >= visible_bottom:
-            return False
+            return None
 
         source_left = max(0, int(math.floor((visible_left - dest_left) / scale)))
         source_top = max(0, int(math.floor((visible_top - dest_top) / scale)))
         source_right = min(source_width, int(math.ceil((visible_right - dest_left) / scale)))
         source_bottom = min(source_height, int(math.ceil((visible_bottom - dest_top) / scale)))
         if source_left >= source_right or source_top >= source_bottom:
-            return False
+            return None
 
         scaled_left = int(math.floor(dest_left + source_left * scale))
         scaled_top = int(math.floor(dest_top + source_top * scale))
@@ -174,16 +178,61 @@ class SectorViewRenderer:
         scaled_bottom = int(math.ceil(dest_top + source_bottom * scale))
         scaled_size = (max(1, scaled_right - scaled_left), max(1, scaled_bottom - scaled_top))
         source_rect = (source_left, source_top, source_right - source_left, source_bottom - source_top)
-        cache_key = (*cache_prefix, source_rect, scaled_size)
+
+        return source_rect, (scaled_left, scaled_top), scaled_size
+
+    def _blit_visible_scaled_surface(self, source, source_center, destination_center,
+                                     scale, cache_prefix, smooth=True):
+        """Scale and cache only the portion of an effect visible on screen.
+
+        Scaling a full high-zoom nebula can otherwise create a many-hundred-MiB
+        intermediate texture even though only a viewport-sized part is visible.
+
+        ``smooth`` selects between ``pygame.transform.smoothscale`` (higher
+        quality, slower) and ``pygame.transform.scale`` (nearest-neighbour,
+        much faster). It is folded into the cache key so a fast-scaled frame
+        is never returned when a smooth one was requested, or vice versa.
+        """
+        region = self._compute_visible_scaled_region(source, source_center, destination_center, scale)
+        if region is None:
+            return False
+        source_rect, (scaled_left, scaled_top), scaled_size = region
+
+        cache_key = (*cache_prefix, source_rect, scaled_size, smooth)
 
         scaled_surface = self._scaled_effect_surfaces.get(cache_key)
         if scaled_surface is None:
+            source_width, source_height = source.get_size()
             source_region = source if source_rect == (0, 0, source_width, source_height) else source.subsurface(source_rect)
-            scaled_surface = pygame.transform.smoothscale(source_region, scaled_size)
+            transform_fn = pygame.transform.smoothscale if smooth else pygame.transform.scale
+            scaled_surface = transform_fn(source_region, scaled_size)
             self._scaled_effect_surfaces.put(cache_key, scaled_surface)
 
         self.overlay_surface.blit(scaled_surface, (scaled_left, scaled_top))
         return True
+
+    def _blit_scaled_surface_once(self, source, source_center, destination_center,
+                                   scale, smooth=False):
+        """Scale and blit the visible portion of ``source`` exactly once, with
+        no caching.
+
+        This is used for content that changes every frame (e.g. a storm's
+        composited particle canvas). Caching a scaled result that will never
+        be reused again next frame would just add bookkeeping overhead while
+        still returning nothing but cache misses.
+        """
+        region = self._compute_visible_scaled_region(source, source_center, destination_center, scale)
+        if region is None:
+            return False
+        source_rect, (scaled_left, scaled_top), scaled_size = region
+
+        source_width, source_height = source.get_size()
+        source_region = source if source_rect == (0, 0, source_width, source_height) else source.subsurface(source_rect)
+        transform_fn = pygame.transform.smoothscale if smooth else pygame.transform.scale
+        scaled_surface = transform_fn(source_region, scaled_size)
+        self.overlay_surface.blit(scaled_surface, (scaled_left, scaled_top))
+        return True
+
 
     def _blit_uncached_circle(self, circle_pos, radius_px, color):
         """Draw a large semi-transparent circle onto the overlay using the same
@@ -1127,6 +1176,9 @@ class SectorViewRenderer:
         if not pre_rendered:
             return
 
+        target_zoom = getattr(self.game, 'sector_target_zoom', zoom)
+        is_zooming = isinstance(target_zoom, (int, float)) and abs(target_zoom - zoom) > 1e-4
+
         quantized_zoom = self._effect_zoom_bucket(zoom)
         self._blit_visible_scaled_surface(
             pre_rendered['master'],
@@ -1134,7 +1186,13 @@ class SectorViewRenderer:
             (pos_px.x, pos_px.y),
             quantized_zoom,
             ('nebula', nebula.id, quantized_zoom),
+            # Nebula content is static, so a smooth (bilinear) scale is worth
+            # the cost while the camera is at rest and the result is cached.
+            # While actively zooming, fall back to a fast nearest-neighbour
+            # scale so cache churn from the changing zoom bucket stays cheap.
+            smooth=not is_zooming,
         )
+
 
     def _draw_celestial_field(self, field, pos_px, base_color, num_particles=40):
         """Draws a celestial field with random objects (asteroids/ice bodies/debris)"""
@@ -1174,46 +1232,70 @@ class SectorViewRenderer:
         random.seed()
 
     def _get_pre_rendered_storm_circles(self, storm):
+        """Precompute (and cache, per storm.id) the deterministic layout of a
+        storm's rotating particles in a small, fixed-resolution local
+        "compose" space, independent of screen size or zoom.
+
+        Every frame, ``_draw_storm`` positions these particles (by animating
+        their angle) into a shared scratch canvas sized to
+        ``STORM_COMPOSE_MAX_DIAMETER``, then scales the ENTIRE composed
+        canvas to the screen with a single transform call -- instead of the
+        old approach of individually smoothscaling (or, at high zoom,
+        rasterizing via an uncached ``pygame.draw.circle``) each of the 25
+        particles every frame.
+        """
         if storm.id in self._storm_base_circle_surfaces:
             return self._storm_base_circle_surfaces[storm.id]
 
         num_circles = 25
         base_radius_logical = STORM_RADIUS
-        ref_zoom = 1.0
-        ref_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * ref_zoom
 
         random.seed(storm.id)
 
-        circles_data = []
+        particles = []
+        max_bounding_logical = 0.0
         for i in range(num_circles):
             initial_angle = random.uniform(0, 360)
             initial_radius_logical = random.uniform(base_radius_logical * 0.1, base_radius_logical * 0.9)
             rotation_speed = random.uniform(-3.0, 3.0)
             circle_base_radius_logical = base_radius_logical * random.uniform(0.2, 0.5)
 
-            ref_radius_px = int(circle_base_radius_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            if ref_radius_px <= 0:
-                ref_radius_px = 1
-
             alpha = random.randint(30, 60)
             color = STORM_COLORS[storm.storm_type]
             color_key = (color[0], color[1], color[2], alpha)
 
-            circle_surface = self._get_cached_circle_surface(ref_radius_px, color_key)
-
-            circles_data.append({
+            particles.append({
                 'initial_angle': initial_angle,
                 'initial_radius_logical': initial_radius_logical,
                 'rotation_speed': rotation_speed,
                 'circle_base_radius_logical': circle_base_radius_logical,
-                'ref_radius_px': ref_radius_px,
-                'surface': circle_surface,
                 'color_key': color_key,
             })
+            max_bounding_logical = max(max_bounding_logical, initial_radius_logical + circle_base_radius_logical)
 
         random.seed()
-        self._storm_base_circle_surfaces[storm.id] = circles_data
-        return circles_data
+
+        if max_bounding_logical <= 0:
+            max_bounding_logical = base_radius_logical
+
+        canvas_diameter = float(STORM_COMPOSE_MAX_DIAMETER)
+        canvas_center_px = canvas_diameter / 2.0
+        padding_px = 4.0
+        # logical-units -> local-canvas-px conversion factor, chosen so the
+        # storm's full bounding radius fits inside the capped canvas.
+        s_compose = max(1e-6, (canvas_center_px - padding_px) / max_bounding_logical)
+
+        for particle in particles:
+            particle['local_radius_px'] = max(1, round(particle['circle_base_radius_logical'] * s_compose))
+
+        storm_data = {
+            'particles': particles,
+            'bounding_radius_logical': max_bounding_logical,
+            's_compose': s_compose,
+            'canvas_diameter': canvas_diameter,
+        }
+        self._storm_base_circle_surfaces[storm.id] = storm_data
+        return storm_data
 
     def _draw_storm(self, storm, pos_px):
         zoom = self.game.sector_zoom
@@ -1222,55 +1304,52 @@ class SectorViewRenderer:
         dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
         time_ms = pygame.time.get_ticks()
 
-        quantized_zoom = self._effect_zoom_bucket(zoom)
-        quantized_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * quantized_zoom
-        circles_data = self._get_pre_rendered_storm_circles(storm)
+        storm_data = self._get_pre_rendered_storm_circles(storm)
+        particles = storm_data['particles']
+        s_compose = storm_data['s_compose']
+        canvas_diameter = storm_data['canvas_diameter']
+        bounding_radius_logical = storm_data['bounding_radius_logical']
 
-        for index, data in enumerate(circles_data):
-            initial_angle = data['initial_angle']
-            initial_radius_logical = data['initial_radius_logical']
-            rotation_speed = data['rotation_speed']
-            circle_base_radius_logical = data['circle_base_radius_logical']
-            ref_surface = data['surface']
-            color = data['color_key']
+        bounding_radius_px = bounding_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
+        if bounding_radius_px > 0 and not self._is_circle_off_screen((pos_px.x, pos_px.y), bounding_radius_px):
+            canvas_size = (int(canvas_diameter), int(canvas_diameter))
+            if self._storm_scratch_surface is None or self._storm_scratch_surface.get_size() != canvas_size:
+                self._storm_scratch_surface = pygame.Surface(canvas_size, pygame.SRCALPHA)
+            scratch = self._storm_scratch_surface
+            scratch.fill((0, 0, 0, 0))
 
-            if not ref_surface:
-                continue
+            canvas_center_px = canvas_diameter / 2.0
+            for particle in particles:
+                current_angle_rad = math.radians(particle['initial_angle'] + (time_ms / 100.0) * particle['rotation_speed'])
+                offset_x_logical = particle['initial_radius_logical'] * math.cos(current_angle_rad)
+                offset_y_logical = particle['initial_radius_logical'] * math.sin(current_angle_rad)
 
-            # Calculate animated position using the actual zoom so animation speed
-            # remains unchanged while the scaled appearance uses a stable bucket.
-            current_angle_rad = math.radians(initial_angle + (time_ms / 100.0) * rotation_speed)
-            offset_x_logical = initial_radius_logical * math.cos(current_angle_rad)
-            offset_y_logical = initial_radius_logical * math.sin(current_angle_rad)
-            offset_x_px = offset_x_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-            offset_y_px = offset_y_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-            circle_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
+                local_x = canvas_center_px + offset_x_logical * s_compose
+                local_y = canvas_center_px + offset_y_logical * s_compose
+                local_radius_px = particle['local_radius_px']
 
-            circle_base_radius_px = int(circle_base_radius_logical * quantized_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            if circle_base_radius_px <= 0 or self._is_circle_off_screen(circle_pos, circle_base_radius_px):
-                continue
+                circle_surface = self._get_cached_circle_surface(local_radius_px, particle['color_key'])
+                if circle_surface is not None:
+                    scratch.blit(circle_surface, (local_x - local_radius_px, local_y - local_radius_px))
 
-            if circle_base_radius_px * 2 > MAX_CACHED_STORM_DIAMETER:
-                # Storm particles move every frame, so caching large particles
-                # would evict the cache repeatedly. Draw them into a small
-                # uncached surface and blend it in instead, so overlapping
-                # particles still accumulate alpha the same way the cached/
-                # scaled particles do (see _blit_uncached_circle).
-                self._blit_uncached_circle(circle_pos, circle_base_radius_px, color)
-                self.zoom_render_stats['direct_draw_fallbacks'] += 1
-                continue
+            # Scale the ENTIRE composed canvas to the screen in a single
+            # transform call. Positions and sizes were both derived from the
+            # same s_compose factor, so this one scale reproduces the same
+            # on-screen layout the old per-particle scaling produced.
+            target_zoom = getattr(self.game, 'sector_target_zoom', zoom)
+            is_zooming = isinstance(target_zoom, (int, float)) and abs(target_zoom - zoom) > 1e-4
+            final_scale = (dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL) / s_compose
 
-            scale = (circle_base_radius_px * 2) / ref_surface.get_width()
-
-            self._blit_visible_scaled_surface(
-                ref_surface,
-                (ref_surface.get_width() / 2, ref_surface.get_height() / 2),
-                circle_pos,
-                scale,
-                ('storm', storm.id, index, quantized_zoom),
+            self._blit_scaled_surface_once(
+                scratch,
+                (canvas_center_px, canvas_center_px),
+                (pos_px.x, pos_px.y),
+                final_scale,
+                smooth=not is_zooming,
             )
 
-        # Reset seed to keep behavior consistent
+        # Reset seed to keep behavior consistent (matches prior behavior,
+        # which reseeded here regardless of cache hit/miss).
         random.seed()
 
         # Draw lightning flashes on top
@@ -1284,3 +1363,5 @@ class SectorViewRenderer:
                 end_pos_x = pos_px.x + length_px * math.cos(angle)
                 end_pos_y = pos_px.y + length_px * math.sin(angle)
                 pygame.draw.line(self.overlay_surface, STORM_LIGHTNING_COLOR, (pos_px.x, pos_px.y), (end_pos_x, end_pos_y), 2)
+
+

@@ -67,6 +67,13 @@ SECTOR_CIRCLE_RADIUS_LOGICAL = 5000.0
 SECTOR_ZOOM_MIN = 0.8
 SECTOR_ZOOM_MAX = 15.0
 
+# Capped internal resolution (diameter, in px) used to composite a storm's
+# rotating particles before a single scale-to-screen blit. Bounding this
+# independent of screen size/zoom keeps per-frame compositing cost constant
+# even at very high zoom levels.
+STORM_COMPOSE_MAX_DIAMETER = 384
+
+
 
 # Game Mechanics Constants
 DEFAULT_HYPERDRIVE_RECHARGE_DURATION: int = 3
