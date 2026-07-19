@@ -7,6 +7,7 @@ from constants import (
 from rendering.galaxy_renderer import GalaxyViewRenderer
 from rendering.system_renderer import SystemViewRenderer
 from rendering.sector_renderer import SectorViewRenderer
+from rendering.main_menu_renderer import MainMenuRenderer
 
 class Renderer:
     def __init__(self, game_instance):
@@ -19,6 +20,7 @@ class Renderer:
         self.galaxy_renderer = GalaxyViewRenderer(game_instance)
         self.system_renderer = SystemViewRenderer(game_instance)
         self.sector_renderer = SectorViewRenderer(game_instance)
+        self.main_menu_renderer = MainMenuRenderer(game_instance)
 
     def draw(self):
         """Renders the current game state to the screen."""
@@ -44,7 +46,9 @@ class Renderer:
             self.system_renderer.draw_system_view()
         elif self.game.view_mode == 'sector' and self.game.game_started:
             self.sector_renderer.draw_sector_view()
-        
+        elif self.game.view_mode in ('main_menu', 'about'):
+            self.main_menu_renderer.draw()
+
         if self.game.view_mode not in ['main_menu', 'about']:
             self.screen.blit(self.overlay_surface, (0, 0))
 
