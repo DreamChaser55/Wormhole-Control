@@ -113,11 +113,13 @@ class UnitEditorWindow:
         self._editing_key: typing.Optional[str] = None  # key of design being edited
 
         # --- Panel geometry ---
-        panel_w = int(min(1760, screen_res.x * 0.95))
+        panel_w = int(screen_res.x * 0.75)
         panel_h = int(screen_res.y * 0.88)
         panel_x = (screen_res.x - panel_w) // 2
         panel_y = int(screen_res.y * 0.06)
         self._panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
+        self._abilities_y_start = 0
+
 
         pad = int(8 * (screen_res.y / 720.0))
         self._pad = pad
@@ -390,7 +392,7 @@ class UnitEditorWindow:
 
 
         # ----------------------------------------------------------------
-        # COLUMN 2 (Middle-Left): Components List (Toggles & Hyperdrive)
+        # COLUMN 2 (Middle-Left): Components & Abilities Checklist
         # ----------------------------------------------------------------
 
         comp_heading = pygame_gui.elements.UILabel(
@@ -437,134 +439,7 @@ class UnitEditorWindow:
             self._elements.append(cost_lbl)
 
         c2y += len(COMPONENT_ROWS) * (small_h + 3) + pad
-
-        # ---- Hyperdrive sub-options (Stacked) ----
-        hd_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
-            text="Hyperdrive Type:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._elements.append(hd_lbl)
-        c2y += small_h
-
-        self._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(
-            options_list=HYPERDRIVE_TYPES,
-            starting_option=self._comp.hyperdrive_type,
-            relative_rect=pygame.Rect(c2x, c2y, c2w, dd_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#hd_type_dropdown",
-        )
-        self._elements.append(self._hd_type_dropdown)
-        c2y += dd_h + 3
-
-        hd_range_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
-            text="Jump Range (hexes):",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._elements.append(hd_range_lbl)
-        c2y += small_h
-
-        self._hd_jump_range_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(c2x, c2y, c2w, entry_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_entry",
-        )
-        self._hd_jump_range_entry.set_text(str(self._comp.hyperdrive_jump_range))
-        self._elements.append(self._hd_jump_range_entry)
-        c2y += entry_h + pad
-
-        # ---- Engine speed sub-option ----
-        eng_speed_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
-            text="Engine Speed:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._elements.append(eng_speed_lbl)
-        c2y += small_h
-
-        self._engine_speed_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(c2x, c2y, c2w, entry_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_entry",
-        )
-        self._engine_speed_entry.set_text(str(int(self._comp.engine_speed)))
-        self._elements.append(self._engine_speed_entry)
-        c2y += entry_h + pad
-
-        # ---- Defenses sub-options ----
-        def_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
-            text="Defenses (Armor / Shields / PD):",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._elements.append(def_lbl)
-        c2y += small_h
-
-        def_label_w = int(c2w * 0.30)
-        def_entry_w = int((c2w - def_label_w * 3) // 3)
-
-        for stat_label, entry_ref, default_val in [
-            ("Armor", "_armor_entry", 0),
-            ("Shields", "_shields_entry", 0),
-            ("PD", "_pd_entry", 0),
-        ]:
-            stat_lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(c2x, c2y, def_label_w + def_entry_w, small_h),
-                text=f"{stat_label}:",
-                manager=self.manager,
-                container=self._panel,
-                object_id="#comp_cost_label",
-            )
-            self._elements.append(stat_lbl)
-            c2y += small_h
-
-            entry = pygame_gui.elements.UITextEntryLine(
-                relative_rect=pygame.Rect(c2x, c2y, c2w, entry_h),
-                manager=self.manager,
-                container=self._panel,
-                object_id="#turret_entry",
-            )
-            entry.set_text(str(default_val))
-            setattr(self, entry_ref, entry)
-            self._elements.append(entry)
-            c2y += entry_h + 3
-
-        c2y += pad
-
-        # ---- Wing Type sub-options ----
-        wt_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c2x, c2y, c2w, small_h),
-            text="Wing Type:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._elements.append(wt_lbl)
-        self._wt_lbl = wt_lbl
-        c2y += small_h
-
-        self._wt_dropdown = pygame_gui.elements.UIDropDownMenu(
-            options_list=["FIGHTER", "BOMBER"],
-            starting_option=self._comp.wing_type if hasattr(self._comp, "wing_type") else "FIGHTER",
-            relative_rect=pygame.Rect(c2x, c2y, c2w, dd_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#hd_type_dropdown",
-        )
-        self._elements.append(self._wt_dropdown)
-        c2y += dd_h + pad
+        self._abilities_y_start = c2y
 
 
         # ----------------------------------------------------------------
@@ -684,14 +559,152 @@ class UnitEditorWindow:
 
 
         # ----------------------------------------------------------------
-        # COLUMN 4 (Right): Abilities & Design Summary
+        # COLUMN 4 (Right): Component Details & Design Summary
         # ----------------------------------------------------------------
 
-        # Abilities list is rebuilt dynamically, but we calculate its space
-        # to position the summary header and textbox below it.
-        abilities_h = small_h + 2 + len(ABILITY_NAMES) * (small_h + 2) + pad
-        c4y += abilities_h
+        # Heading
+        details_hdr = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x, c4y, c4w, row_h),
+            text="Component Details",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#editor_section_label",
+        )
+        self._elements.append(details_hdr)
+        c4y += row_h + pad
 
+        # 1. Engine Speed & Wing Type side-by-side
+        col_w2 = (c4w - pad) // 2
+
+        # Engine speed labels/entries
+        eng_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x, c4y, col_w2, small_h),
+            text="Engine Speed:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(eng_lbl)
+
+        self._wt_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x + col_w2 + pad, c4y, col_w2, small_h),
+            text="Wing Type:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(self._wt_lbl)
+        c4y += small_h
+
+        self._engine_speed_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c4x, c4y, col_w2, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._engine_speed_entry.set_text(str(int(self._comp.engine_speed)))
+        self._elements.append(self._engine_speed_entry)
+
+        self._wt_dropdown = pygame_gui.elements.UIDropDownMenu(
+            options_list=["FIGHTER", "BOMBER"],
+            starting_option=self._comp.wing_type if hasattr(self._comp, "wing_type") else "FIGHTER",
+            relative_rect=pygame.Rect(c4x + col_w2 + pad, c4y, col_w2, dd_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#hd_type_dropdown",
+        )
+        self._elements.append(self._wt_dropdown)
+        c4y += entry_h + pad
+
+        # 2. Hyperdrive Type & Jump Range side-by-side
+        hd_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x, c4y, col_w2, small_h),
+            text="Hyperdrive Type:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(hd_lbl)
+
+        hd_range_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x + col_w2 + pad, c4y, col_w2, small_h),
+            text="Jump Range:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(hd_range_lbl)
+        c4y += small_h
+
+        self._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(
+            options_list=HYPERDRIVE_TYPES,
+            starting_option=self._comp.hyperdrive_type,
+            relative_rect=pygame.Rect(c4x, c4y, col_w2, dd_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#hd_type_dropdown",
+        )
+        self._elements.append(self._hd_type_dropdown)
+
+        self._hd_jump_range_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c4x + col_w2 + pad, c4y, col_w2, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._hd_jump_range_entry.set_text(str(self._comp.hyperdrive_jump_range))
+        self._elements.append(self._hd_jump_range_entry)
+        c4y += entry_h + pad
+
+        # 3. Defenses in 3 sub-columns
+        def_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x, c4y, c4w, small_h),
+            text="Defenses:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(def_lbl)
+        c4y += small_h
+
+        col_w3 = (c4w - pad * 2) // 3
+
+        for idx, (stat_label, entry_ref, default_val) in enumerate([
+            ("Armor", "_armor_entry", 0),
+            ("Shields", "_shields_entry", 0),
+            ("PD", "_pd_entry", 0),
+        ]):
+            x = c4x + idx * (col_w3 + pad)
+            stat_lbl = pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect(x, c4y, col_w3, small_h),
+                text=stat_label,
+                manager=self.manager,
+                container=self._panel,
+                object_id="#comp_cost_label",
+            )
+            self._elements.append(stat_lbl)
+
+        c4y += small_h
+
+        for idx, (stat_label, entry_ref, default_val) in enumerate([
+            ("Armor", "_armor_entry", 0),
+            ("Shields", "_shields_entry", 0),
+            ("PD", "_pd_entry", 0),
+        ]):
+            x = c4x + idx * (col_w3 + pad)
+            entry = pygame_gui.elements.UITextEntryLine(
+                relative_rect=pygame.Rect(x, c4y, col_w3, entry_h),
+                manager=self.manager,
+                container=self._panel,
+                object_id="#turret_entry",
+            )
+            entry.set_text(str(default_val))
+            setattr(self, entry_ref, entry)
+            self._elements.append(entry)
+
+        c4y += entry_h + pad
+
+        # 4. Summary Header & Text Box
         summary_hdr = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c4x, c4y, c4w, row_h),
             text="Design Summary:",
@@ -702,7 +715,6 @@ class UnitEditorWindow:
         self._elements.append(summary_hdr)
         c4y += row_h + 2
 
-        # Make the summary box take up the remaining vertical space of the panel
         summary_h = pr.h - c4y - pad * 2
         self._summary_box = pygame_gui.elements.UITextBox(
             html_text="",
@@ -1125,7 +1137,7 @@ class UnitEditorWindow:
         self._rebuild_abilities()
 
     def _rebuild_abilities(self) -> None:
-        """Rebuild the abilities list in Column 4."""
+        """Rebuild the abilities list in Column 2."""
         if hasattr(self, "_abil_hdr") and self._abil_hdr and self._abil_hdr.alive():
             self._abil_hdr.kill()
         self._abil_hdr = None
@@ -1140,16 +1152,13 @@ class UnitEditorWindow:
 
         scale_y = self.screen_res.y / 720.0
         small_h = int(22 * scale_y)
-        c4x = self._col4_x
-        c4w = self._col_w
-        pad = self._pad
-
-        separator_y = int(pad + 30 * scale_y)
-        ay = separator_y + pad
+        c2x = self._col2_x
+        c2w = self._col_w
+        ay = self._abilities_y_start
 
         # Heading
         self._abil_hdr = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c4x, ay, c4w, small_h),
+            relative_rect=pygame.Rect(c2x, ay, c2w, small_h),
             text="Abilities:",
             manager=self.manager,
             container=self._panel,
@@ -1160,7 +1169,7 @@ class UnitEditorWindow:
         # Abilities buttons in a single column
         for aname in ABILITY_NAMES:
             abtn = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(c4x, ay, c4w, small_h),
+                relative_rect=pygame.Rect(c2x, ay, c2w, small_h),
                 text=f"[ ] {aname}",
                 manager=self.manager,
                 container=self._panel,
