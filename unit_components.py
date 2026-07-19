@@ -722,6 +722,7 @@ class AbilityType(Enum):
     ION_BOLT = "ion_bolt"
     MISSILE_BATTERIES = "missile_batteries"
     REPAIR_CLOUD = "repair_cloud"
+    CAPTURE_UNIT = "capture_unit"
 
 
 @dataclasses.dataclass
@@ -805,6 +806,17 @@ ABILITY_DEFINITIONS: typing.Dict['AbilityType', 'AbilityDefinition'] = {
         requires_target_unit=False,
         requires_target_position=False,
         antimatter_cost=35,
+    ),
+    AbilityType.CAPTURE_UNIT: AbilityDefinition(
+        ability_type=AbilityType.CAPTURE_UNIT,
+        name="Capture Unit",
+        description="Captures an enemy unit within very short range (100 units). If the unit has engines, they must be disabled first.",
+        cooldown=10,
+        duration=0,
+        range=100.0,
+        requires_target_unit=True,
+        requires_target_position=False,
+        antimatter_cost=40,
     ),
 }
 
@@ -2295,6 +2307,39 @@ class AbilityComponent(UnitComponent):
         elif ability_type == AbilityType.REPAIR_CLOUD:
             # Healing applied each turn in update(); nothing immediate needed.
             logger.debug(f"[{self.unit.name}] Repair Cloud activated. Healing friendlies within {defn.range} units for {defn.duration} turns.")
+
+        elif ability_type == AbilityType.CAPTURE_UNIT:
+            if target_unit_id is None:
+                logger.debug(f"[{self.unit.name}] Capture Unit requires a target unit.")
+                return False
+            target_unit = galaxy.get_unit_by_id(target_unit_id)
+            if not target_unit:
+                logger.debug(f"[{self.unit.name}] Capture Unit: target unit {target_unit_id} not found.")
+                return False
+
+            if target_unit.owner == self.unit.owner:
+                logger.debug(f"[{self.unit.name}] Capture Unit: target unit {target_unit.name} is already friendly.")
+                return False
+
+            if target_unit.engines_component is not None:
+                engines_disabled = target_unit.engines_component.is_destroyed or target_unit.is_disabled
+                if not engines_disabled:
+                    logger.debug(f"[{self.unit.name}] Capture Unit failed: target {target_unit.name} engines are not disabled.")
+                    return False
+
+            # Transfer ownership
+            old_owner = target_unit.owner
+            target_unit.owner = self.unit.owner
+
+            # Reset targets and stance of the captured unit to prevent unwanted behaviors
+            if target_unit.commander_component:
+                target_unit.commander_component.clear_orders()
+                target_unit.commander_component.stance = UnitStance.DO_NOTHING
+
+            if target_unit.weapons_component:
+                target_unit.weapons_component.clear_target()
+
+            logger.debug(f"[{self.unit.name}] Captured unit {target_unit.name} (id:{target_unit.id}) from player {old_owner.id if old_owner else 'None'} to player {self.unit.owner.id}.")
 
         # --- Consume antimatter ---
         am_comp = self.unit.antimatter_component

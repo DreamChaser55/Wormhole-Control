@@ -234,3 +234,167 @@ def test_system_view_renderer_collect_waypoints_for_ability():
             renderer._draw_system_view_order_lines(system)
             # The line should be drawn to hex (0, 1)
             assert mock_draw_line.called
+
+
+def test_capture_unit_success_no_engines():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+    
+    game.galaxy.get_unit_by_id.return_value = target
+    
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+    
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+    
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.COMPLETED
+    assert target.owner == player_caster
+
+
+def test_capture_unit_success_disabled_engines():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+    
+    engines = Engines(target, speed=50.0)
+    engines.current_hit_points = 0 # Destroyed / Disabled engines
+    target.add_component(engines)
+    
+    game.galaxy.get_unit_by_id.return_value = target
+    
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+    
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+    
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.COMPLETED
+    assert target.owner == player_caster
+
+
+def test_capture_unit_success_disabled_unit():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+    
+    engines = Engines(target, speed=50.0)
+    target.add_component(engines)
+    target.is_disabled = True # Unit disabled (e.g. by Ion Bolt)
+    
+    game.galaxy.get_unit_by_id.return_value = target
+    
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+    
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+    
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.COMPLETED
+    assert target.owner == player_caster
+
+
+def test_capture_unit_fails_engines_active():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+    
+    engines = Engines(target, speed=50.0)
+    target.add_component(engines) # Active, healthy engines
+    
+    game.galaxy.get_unit_by_id.return_value = target
+    
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+    
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+    
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.FAILED
+    assert target.owner == player_target # Still owned by original owner
+
+
+def test_capture_unit_fails_already_friendly():
+    player = MockPlayer()
+    game = DummyGame()
+    caster = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+    
+    game.galaxy.get_unit_by_id.return_value = target
+    
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+    
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+    
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.FAILED
+
+
+def test_capture_unit_out_of_range():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(200, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+    
+    engines = Engines(caster, speed=50.0)
+    caster.add_component(engines)
+    
+    game.galaxy.get_unit_by_id.return_value = target
+    
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+    
+    # Range of CAPTURE_UNIT is 100.0, target is at 200.0 distance
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+    
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert len(order.sub_orders) == 2
+    assert order.sub_orders[0].order_type == OrderType.MOVE
+    assert order.sub_orders[1].order_type == OrderType.USE_ABILITY

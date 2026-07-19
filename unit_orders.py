@@ -1822,6 +1822,21 @@ class UseAbilityOrder(Order):
         target_unit_id = self.parameters.get("target_unit_id")
         target_position = self.parameters.get("target_position")
 
+        # --- Pre-validation for CAPTURE_UNIT ability ---
+        if ability_type == AbilityType.CAPTURE_UNIT and target_unit_id is not None:
+            target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
+            if target_unit:
+                if target_unit.owner == self.unit.owner:
+                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target unit {target_unit.name} is already friendly.")
+                    self.status = OrderStatus.FAILED
+                    return
+                if target_unit.engines_component is not None:
+                    engines_disabled = target_unit.engines_component.is_destroyed or target_unit.is_disabled
+                    if not engines_disabled:
+                        logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} engines are not disabled.")
+                        self.status = OrderStatus.FAILED
+                        return
+
         # --- Range check for unit-targeted abilities ---
         if defn.requires_target_unit and target_unit_id is not None:
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
