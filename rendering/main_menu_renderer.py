@@ -275,20 +275,33 @@ class MainMenuRenderer:
         # circle's bounds (offset + radius <= planet_radius) so nothing
         # spills outside the sphere outline, while the layering itself
         # produces a soft gradient terminator instead of one hard edge.
+        #
+        # NOTE: These lobes are first drawn onto a separate SRCALPHA
+        # surface and then *blitted* onto local_surf, rather than being
+        # drawn directly onto it. pygame.draw.circle() on an SRCALPHA
+        # surface overwrites destination pixels (including alpha) instead
+        # of blending them, which would otherwise punch semi-transparent
+        # holes through the opaque planet body (letting the background
+        # show through the shaded side). A normal blit performs proper
+        # source-over alpha blending, darkening the planet's colors while
+        # preserving its full opacity.
         shadow_offset = int(planet_radius * 0.28)
         shadow_max_radius = planet_radius * 0.68
         shadow_center = (center[0] + shadow_offset, center[1] + shadow_offset)
+        shadow_surf = pygame.Surface(local_surf.get_size(), pygame.SRCALPHA)
         for r_frac, alpha in ((1.0, 50), (0.78, 110), (0.56, 180), (0.38, 255)):
             pygame.draw.circle(
-                local_surf,
+                shadow_surf,
                 (*_PLANET_SHADOW_COLOR, alpha),
                 shadow_center,
                 max(1, int(shadow_max_radius * r_frac))
             )
+        local_surf.blit(shadow_surf, (0, 0))
 
         # Highlight glint on the "sunlit" side, composited additively on a
         # small overlay so it lightens the existing sphere colors instead of
         # flatly replacing them with a hard-edged patch.
+
         highlight_offset = int(planet_radius * 0.38)
         highlight_radius = max(3, int(planet_radius * 0.24))
         highlight_pos = (center[0] - highlight_offset, center[1] - highlight_offset)
