@@ -136,9 +136,9 @@ MOVE_ORDER_LINE_COLOR = (0, 255, 0, 150) # Semi-transparent green line for subli
 HEX_JUMP_ORDER_LINE_COLOR = (0, 255, 255, 150) # Semi-transparent cyan line for hex jump orders
 WORMHOLE_JUMP_ORDER_COLOR = (255, 80, 255, 150) # Semi-transparent light magenta line for wormhole jump orders
 WORMHOLE_LINE_COLOR = (180, 0, 255) # Bluish magenta for wormhole lines in galaxy view
-GALAXY_BG_COLOR = (3, 3, 6)
-SYSTEM_BG_COLOR = (6, 6, 12)
-SECTOR_BG_COLOR = (9, 9, 18)
+GALAXY_BG_COLOR = (2, 2, 4)
+SYSTEM_BG_COLOR = (4, 4, 8)
+SECTOR_BG_COLOR = (6, 6, 12)
 SECTOR_BORDER_COLOR = (60, 60, 80)
 
 # Check if enums are already defined to prevent breaking identity during reload
