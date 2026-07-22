@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 from geometry import Position, distance
 from entities import Unit, Player, OrderType
 from constants import HullSize, RED
-from unit_components import AbilityComponent, AbilityType, Engines, AntimatterStorage, Commander
+from unit_components import AbilityComponent, AbilityType, Engines, AntimatterStorage, Commander, Weapons, Defenses
 from unit_orders import UseAbilityOrder, OrderStatus, MoveOrder
 from tests.test_unit_components import MockPlayer
 from rendering.sector_renderer import SectorViewRenderer
@@ -398,3 +398,121 @@ def test_capture_unit_out_of_range():
     assert len(order.sub_orders) == 2
     assert order.sub_orders[0].order_type == OrderType.MOVE
     assert order.sub_orders[1].order_type == OrderType.USE_ABILITY
+
+
+def test_capture_unit_fails_weapons_active():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+
+    weapons = Weapons(target)
+    target.add_component(weapons) # Active weapons component
+    target.is_disabled = True # Unit disabled
+
+    game.galaxy.get_unit_by_id.return_value = target
+
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.FAILED
+    assert target.owner == player_target
+
+
+def test_capture_unit_success_weapons_destroyed():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+
+    weapons = Weapons(target)
+    weapons.current_hit_points = 0 # Destroyed weapons component
+    target.add_component(weapons)
+    target.is_disabled = True # Unit disabled
+
+    game.galaxy.get_unit_by_id.return_value = target
+
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.COMPLETED
+    assert target.owner == player_caster
+
+
+def test_capture_unit_fails_defenses_active():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+
+    defenses = Defenses(target, armor=20)
+    target.add_component(defenses) # Active defenses component
+    target.is_disabled = True # Unit disabled
+
+    game.galaxy.get_unit_by_id.return_value = target
+
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.FAILED
+    assert target.owner == player_target
+
+
+def test_capture_unit_success_defenses_destroyed():
+    player_caster = MockPlayer()
+    player_target = MockPlayer()
+    player_target.id = 2
+    game = DummyGame()
+    caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    target = Unit(owner=player_target, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
+    target.id = 999
+
+    defenses = Defenses(target, armor=20)
+    defenses.current_hit_points = 0 # Destroyed defenses component
+    target.add_component(defenses)
+    target.is_disabled = True # Unit disabled
+
+    game.galaxy.get_unit_by_id.return_value = target
+
+    ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
+    caster.add_component(ability_comp)
+    caster.antimatter_component.current_amount = 50.0
+
+    order = UseAbilityOrder(caster, {
+        "ability_type": "capture_unit",
+        "target_unit_id": target.id
+    })
+
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.COMPLETED
+    assert target.owner == player_caster

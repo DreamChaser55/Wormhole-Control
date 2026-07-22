@@ -810,7 +810,7 @@ ABILITY_DEFINITIONS: typing.Dict['AbilityType', 'AbilityDefinition'] = {
     AbilityType.CAPTURE_UNIT: AbilityDefinition(
         ability_type=AbilityType.CAPTURE_UNIT,
         name="Capture Unit",
-        description="Captures an enemy unit within very short range (100 units). If the unit has engines, they must be disabled first.",
+        description="Captures an enemy unit within very short range (100 units). Target unit must be disabled and defenseless (weapons and defenses destroyed or missing).",
         cooldown=10,
         duration=0,
         range=100.0,
@@ -2326,6 +2326,15 @@ class AbilityComponent(UnitComponent):
                 if not engines_disabled:
                     logger.debug(f"[{self.unit.name}] Capture Unit failed: target {target_unit.name} engines are not disabled.")
                     return False
+
+            if target_unit.weapons_component and not target_unit.weapons_component.is_destroyed:
+                logger.debug(f"[{self.unit.name}] Capture Unit failed: target {target_unit.name} weapons are active.")
+                return False
+
+            defenses = target_unit.get_component(Defenses)
+            if defenses and not defenses.is_destroyed:
+                logger.debug(f"[{self.unit.name}] Capture Unit failed: target {target_unit.name} defenses are active.")
+                return False
 
             # Transfer ownership
             old_owner = target_unit.owner

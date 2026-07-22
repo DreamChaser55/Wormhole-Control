@@ -1836,6 +1836,16 @@ class UseAbilityOrder(Order):
                         logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} engines are not disabled.")
                         self.status = OrderStatus.FAILED
                         return
+                from unit_components import Defenses
+                if target_unit.weapons_component and not target_unit.weapons_component.is_destroyed:
+                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} weapons are active.")
+                    self.status = OrderStatus.FAILED
+                    return
+                defenses = target_unit.get_component(Defenses)
+                if defenses and not defenses.is_destroyed:
+                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} defenses are active.")
+                    self.status = OrderStatus.FAILED
+                    return
 
         # --- Range check for unit-targeted abilities ---
         if defn.requires_target_unit and target_unit_id is not None:
