@@ -16,11 +16,12 @@ from unit_orders import (
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
     RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
-    UseAbilityOrder, ProtectOrder, ContinuousMineOrder
+    UseAbilityOrder, ProtectOrder, ContinuousMineOrder, TransferAntimatterOrder
 )
 from unit_components import (
     UnitComponent,
     AntimatterStorage,
+    AntimatterHarvester,
     Engines,
     Hyperdrive, HyperdriveType,
     Commander,
@@ -40,6 +41,7 @@ from unit_components import (
     StrikecraftBayComponent,
     StrikecraftWingComponent,
 )
+
 if TYPE_CHECKING:
     from galaxy import Galaxy
     from game import Game
@@ -261,8 +263,13 @@ class Unit(GameObject):
         return self.get_component(AntimatterStorage)
 
     @property
+    def harvester_component(self) -> typing.Optional[AntimatterHarvester]:
+        return self.get_component(AntimatterHarvester)
+
+    @property
     def engines_component(self) -> typing.Optional[Engines]:
         return self.get_component(Engines)
+
 
     @property
     def hyperdrive_component(self) -> typing.Optional[Hyperdrive]:
@@ -430,11 +437,16 @@ class Unit(GameObject):
         
         This method should be called on each turn processing cycle.
         """
-        # Regenerate antimatter
-        if self.antimatter_component:
-            self.antimatter_component.regenerate()
+        # Antimatter is no longer regenerated automatically for all units.
+        # Only units with an AntimatterHarvester component can replenish their
+        # own antimatter, and only while positioned near a star. All other
+        # units must receive antimatter via TransferAntimatterOrder from
+        # another unit's existing storage.
+        if self.harvester_component and self.in_galaxy:
+            self.harvester_component.update(self.in_galaxy)
 
         # --- Lifetime check for temporary units (e.g. Missile Platforms) ---
+
         if self.lifetime is not None:
             self.lifetime -= 1
             if self.lifetime <= 0:

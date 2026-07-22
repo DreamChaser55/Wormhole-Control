@@ -218,6 +218,29 @@
     "build_time": 6,
     "build_cost": 400
   },
+  "ANTIMATTER_HARVESTER": {
+    "name": "Antimatter Harvester",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 10,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_hull_cost": 10,
+    "has_antimatter_storage": true,
+    "antimatter_capacity": 200.0,
+    "antimatter_hull_cost": 10,
+    "has_antimatter_harvester": true,
+    "antimatter_harvest_rate": 15.0,
+    "antimatter_harvest_range": 800.0,
+    "antimatter_harvester_hull_cost": 15,
+    "has_weapon_bays": false,
+    "weapon_bays_hull_cost": 0,
+    "build_time": 8,
+    "build_cost": 600
+  },
+
   "METAL_REFINERY_STATION": {
     "name": "Metal Refinery Station",
     "hull_size": "MEDIUM",

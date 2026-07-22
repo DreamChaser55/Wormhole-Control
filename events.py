@@ -95,6 +95,15 @@ class RepairUnitEvent(Event):
         self.target_unit = target_unit
         self.shift_pressed = shift_pressed
 
+class TransferAntimatterEvent(Event):
+    """Fired when the player orders selected units to transfer antimatter from
+    their own storage to a friendly target unit's storage."""
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_unit = target_unit
+        self.shift_pressed = shift_pressed
+
+
 class MineEvent(Event):
     def __init__(self, units: list, target_body: typing.Any, shift_pressed: bool):
         self.units = units

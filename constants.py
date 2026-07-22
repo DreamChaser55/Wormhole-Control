@@ -89,6 +89,18 @@ ENGINE_ANTIMATTER_COST_PER_TURN: float = 5.0
 HYPERDRIVE_SYSTEM_JUMP_COST: float = 50.0
 HYPERDRIVE_HEX_JUMP_COST: float = 20.0
 
+# Antimatter Harvester component: only units with this component can generate
+# new antimatter, and only while positioned near a star.
+DEFAULT_ANTIMATTER_HARVEST_RATE: float = 10.0
+DEFAULT_ANTIMATTER_HARVEST_RANGE: float = 800.0
+ANTIMATTER_HARVESTER_HULL_COST: int = 15
+
+# Antimatter Transfer: units without a harvester must receive antimatter by
+# transferring it from another unit's existing storage.
+ANTIMATTER_TRANSFER_RATE: float = 25.0
+ANTIMATTER_TRANSFER_RANGE: float = 200.0
+
+
 
 # Experience point (XP) constants
 MAX_UNIT_XP: int = 1000               # Maximum XP a unit can accumulate

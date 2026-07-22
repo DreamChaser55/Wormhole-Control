@@ -106,6 +106,12 @@ Wormhole Control/
 - **Credits**: Primary currency for transactions
 - **Metal**: Harvested from asteroids, used for construction
 - **Crystal**: Harvested from moons, used for advanced technology
+- **Antimatter**: Powers sub-light engines, hyperdrive jumps, and special abilities.
+  Only units with the **Antimatter Harvester** component can generate new antimatter,
+  and only while stationed near a star. All other units must be resupplied by
+  transferring antimatter from another unit's existing storage (e.g. a harvester)
+  via the "Transfer Antimatter" order.
+
 
 ### Combat & Warfare
 - **Hull Points**: Unit durability based on hull size

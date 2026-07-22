@@ -31,7 +31,8 @@ from geometry import (
 from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
 from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent, StrikecraftBayComponent, StrikecraftWingComponent
+from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent, StrikecraftBayComponent, StrikecraftWingComponent, AntimatterHarvester
+
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
@@ -295,6 +296,11 @@ class Game:
                         repair_rate=15.0, repair_range=200.0,
                         credit_cost_per_hp=1.0, hull_cost=10
                     ))
+                    # Flagships are equipped with an Antimatter Harvester so each
+                    # player starts able to replenish antimatter near a star.
+                    # All other units must receive antimatter via transfer.
+                    ship_unit.add_component(AntimatterHarvester(ship_unit, hull_cost=15))
+
 
                 target_system.add_unit(ship_unit)
                 logger.debug(f"Added {ship_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
@@ -723,6 +729,8 @@ class Game:
         ABILITY_COLOR = "#FF69B4"    # Hot Pink for Use Ability order type
         MINE_COLOR = "#FFA500"       # Orange for Mine
         UNLOAD_COLOR = "#00FFFF"     # Cyan for Unload Resources
+        TRANSFER_ANTIMATTER_COLOR = "#7FFFD4"  # Aquamarine for Transfer Antimatter
+
 
         if order_type == "MOVE":
             dsys = parameters.get("destination_system_name", "N/A")
@@ -845,6 +853,22 @@ class Game:
             unload_type_styled = f"<font color='{UNLOAD_COLOR}'><b>Unload:</b></font>"
             target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
             return [f"{unload_type_styled} {target_styled}"]
+
+        elif order_type == "TRANSFER_ANTIMATTER":
+            target_name = state_data.get("target_name")
+            target_unit_id = state_data.get("target_unit_id")
+            lookup_success = state_data.get("lookup_success", False)
+
+            if lookup_success:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
+            elif target_unit_id:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
+            else:
+                target_unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Target</i></font>"
+
+            transfer_type_styled = f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>Transfer Antimatter:</b></font>"
+            return [f"{transfer_type_styled} {target_unit_name_styled}"]
+
 
         elif order_type == "CONSTRUCT":
             unit_template_name = parameters.get("unit_template_name", "Unknown Unit")

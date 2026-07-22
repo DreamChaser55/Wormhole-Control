@@ -21,8 +21,9 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
-    ContinuousMineEvent
+    ContinuousMineEvent, TransferAntimatterEvent
 )
+
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
 from galaxy_utils import logical_to_screen_galaxy
@@ -492,8 +493,18 @@ class InputProcessor:
                                     )
                                     if target_is_damaged and any(a.repair_component for a in actors):
                                         options.append(("Repair", "repair_unit"))
-                                    
+
+                                    has_antimatter_to_give = any(
+                                        a.antimatter_component and a.antimatter_component.current_amount > 0
+                                        for a in actors if a is not target_object
+                                    )
+                                    target_am_comp = getattr(target_object, 'antimatter_component', None)
+                                    target_has_space = target_am_comp is not None and target_am_comp.current_amount < target_am_comp.max_capacity
+                                    if has_antimatter_to_give and target_has_space:
+                                        options.append(("Transfer Antimatter", "transfer_antimatter"))
+
                                     is_metal_refinery = bool(getattr(target_object, 'metal_refinery_component', None))
+
                                     is_crystal_refinery = bool(getattr(target_object, 'crystal_refinery_component', None))
                                     has_correct_cargo_miners = any(
                                         getattr(a, 'mining_component', None) and (
@@ -667,6 +678,15 @@ class InputProcessor:
                         target,
                         shift_pressed
                     ))
+
+            elif extracted_action_id == "transfer_antimatter":
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(TransferAntimatterEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
 
             elif extracted_action_id == "protect_unit":
                 if isinstance(target, Unit):

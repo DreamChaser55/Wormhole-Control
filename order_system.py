@@ -4,13 +4,14 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent,
-    IssueProtectOrderEvent, ContinuousMineEvent
+    IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent
 )
 from entities import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
     MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
-    ContinuousMineOrder
+    ContinuousMineOrder, TransferAntimatterOrder
 )
+
 from sector_utils import random_point_in_sector
 from constants import HullSize
 from unit_orders import OrderType
@@ -41,6 +42,8 @@ class OrderSystem:
         self.event_bus.subscribe(DockEvent, self.handle_dock)
         self.event_bus.subscribe(UseAbilityEvent, self.handle_use_ability)
         self.event_bus.subscribe(IssueProtectOrderEvent, self.handle_issue_protect_order)
+        self.event_bus.subscribe(TransferAntimatterEvent, self.handle_transfer_antimatter)
+
 
     def handle_cancel_orders(self, event: CancelOrdersEvent):
         for unit in event.units:
@@ -286,3 +289,18 @@ class OrderSystem:
             unit.commander_component.add_order(ability_order)
             logger.debug(f"  Unit {unit.name} ordered to use ability {event.ability_type_str} via event.")
         self.game.sidebar_needs_update = True
+
+    def handle_transfer_antimatter(self, event: TransferAntimatterEvent):
+        """Creates TransferAntimatterOrders for selected units that have antimatter
+        to give, sending it to the friendly target unit's storage."""
+        for unit in event.units:
+            am_comp = getattr(unit, 'antimatter_component', None)
+            if am_comp and am_comp.current_amount > 0 and unit is not event.target_unit:
+                transfer_params = {"target_unit_id": event.target_unit.id}
+                transfer_order = TransferAntimatterOrder(unit, transfer_params)
+                if not event.shift_pressed:
+                    unit.commander_component.clear_orders()
+                unit.commander_component.add_order(transfer_order)
+                logger.debug(f"  Unit {unit.name} ordered to transfer antimatter to {event.target_unit.name} via event.")
+        self.game.sidebar_needs_update = True
+
