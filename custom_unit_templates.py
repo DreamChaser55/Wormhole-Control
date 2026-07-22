@@ -22,7 +22,7 @@ import os
 import dataclasses
 from typing import Dict, List, Optional, Any
 
-from constants import HullSize, HULL_CAPACITIES, HIT_POINTS
+from constants import HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +144,21 @@ def calc_engine_hull_cost(speed: float) -> int:
     return max(1, math.ceil(speed / SPEED_PER_HULL_POINT))
 
 
+def calc_antimatter_hull_cost(capacity: float) -> int:
+    """Compute the hull cost of an Antimatter Storage component from its capacity.
+
+    Formula: ceil(capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT), minimum 1.
+
+    Examples:
+        capacity=100 → 5
+        capacity=200 → 10
+        capacity=50  → 3
+    """
+    if capacity <= 0:
+        return 0
+    return max(1, math.ceil(capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT))
+
+
 def calc_turret_hull_cost(turret: 'TurretConfig') -> int:
     """Compute the hull cost of a single turret based on its stats.
 
@@ -254,6 +269,11 @@ class ComponentConfig:
     engine_speed: float = 100.0
     # hull cost is computed: see engine_hull_cost property
 
+    # Antimatter Storage
+    has_antimatter_storage: bool = False
+    antimatter_capacity: float = 100.0
+    # hull cost is computed: see antimatter_hull_cost property
+
     # Hyperdrive
     has_hyperdrive: bool = False
     hyperdrive_type: str = "BASIC"      # "BASIC" or "ADVANCED"
@@ -336,6 +356,13 @@ class ComponentConfig:
         return calc_engine_hull_cost(self.engine_speed)
 
     @property
+    def antimatter_hull_cost(self) -> int:
+        """Hull cost of Antimatter Storage, computed from antimatter_capacity."""
+        if not self.has_antimatter_storage:
+            return 0
+        return calc_antimatter_hull_cost(self.antimatter_capacity)
+
+    @property
     def weapon_bays_hull_cost(self) -> int:
         """Hull cost of Weapons, computed from turret list."""
         if not self.has_weapon_bays:
@@ -389,6 +416,7 @@ class CustomUnitTemplate:
         c = self.components
         total = 0
         if c.has_engine:                        total += c.engine_hull_cost
+        if c.has_antimatter_storage:            total += c.antimatter_hull_cost
         if c.has_hyperdrive:                    total += c.hyperdrive_hull_cost
         if c.has_weapon_bays:                   total += c.weapon_bays_hull_cost
         if c.has_defenses:                      total += c.defenses_hull_cost
@@ -481,9 +509,12 @@ class CustomUnitTemplate:
         # Jump range must be positive
         if c.has_hyperdrive and c.hyperdrive_jump_range < 1:
             errors.append("Hyperdrive jump range must be at least 1.")
+        # Antimatter capacity must be positive
+        if c.has_antimatter_storage and c.antimatter_capacity <= 0:
+            errors.append("Antimatter storage capacity must be positive.")
         # At least one meaningful component
         any_component = any([
-            c.has_engine, c.has_hyperdrive, c.has_weapon_bays,
+            c.has_engine, c.has_antimatter_storage, c.has_hyperdrive, c.has_weapon_bays,
             c.has_defenses,
             c.has_constructor_component, c.has_repair_component,
             c.has_colony_component, c.has_mining_component,
@@ -639,6 +670,11 @@ class CustomTemplateManager:
             "engine_speed": c.engine_speed,
             "engine_hull_cost": c.engine_hull_cost,  # computed
 
+            # --- Antimatter Storage ---
+            "has_antimatter_storage": c.has_antimatter_storage,
+            "antimatter_capacity": c.antimatter_capacity,
+            "antimatter_hull_cost": c.antimatter_hull_cost,  # computed
+
             # --- Hyperdrive ---
             "has_hyperdrive": c.has_hyperdrive,
             "hyperdrive_type": c.hyperdrive_type,
@@ -742,6 +778,9 @@ class CustomTemplateManager:
             # --- Dynamic components: load performance params only ---
             has_engine=d.get("has_engine", False),
             engine_speed=d.get("engine_speed", 100.0),
+
+            has_antimatter_storage=d.get("has_antimatter_storage", True),
+            antimatter_capacity=float(d.get("antimatter_capacity", 100.0)),
 
             has_hyperdrive=d.get("has_hyperdrive", False),
             hyperdrive_type=d.get("hyperdrive_type", "BASIC"),

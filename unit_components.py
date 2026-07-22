@@ -1941,6 +1941,16 @@ class Constructor(UnitComponent):
             template_name=template.get("name", template_name)
         )
 
+        if template.get("has_antimatter_storage", True):
+            from custom_unit_templates import calc_antimatter_hull_cost
+            cap = float(template.get("antimatter_capacity", DEFAULT_ANTIMATTER_CAPACITY))
+            cost = template.get("antimatter_hull_cost")
+            if cost is None:
+                cost = calc_antimatter_hull_cost(cap)
+            new_unit.add_component(AntimatterStorage(new_unit, max_capacity=cap, hull_cost=cost))
+        elif template.get("has_antimatter_storage") is False:
+            new_unit.remove_component(AntimatterStorage)
+
         if template.get("has_engine"):
             speed = template.get("engine_speed", 0)
             new_unit.add_component(Engines(new_unit, speed=speed, hull_cost=template.get("engine_hull_cost", 0)))

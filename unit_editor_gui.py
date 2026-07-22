@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5,  "is_dynamic": True},
+    {"key": "has_antimatter_storage",    "label": "Antimatter Storage", "cost_key": "antimatter_hull_cost",       "default_cost": 5,  "is_dynamic": True},
     {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 5,  "is_dynamic": True},
     {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10, "is_dynamic": True},
     {"key": "has_defenses",              "label": "Defenses",           "cost_key": "defenses_hull_cost",         "default_cost": 10, "is_dynamic": True},
@@ -105,7 +106,7 @@ class UnitEditorWindow:
 
         # Current design state
         self._hull_size: HullSize = HullSize.MEDIUM
-        self._comp: ComponentConfig = ComponentConfig()
+        self._comp: ComponentConfig = ComponentConfig(has_antimatter_storage=True)
         self._design_name: str = ""
         self._display_name: str = ""
         self._turrets: typing.List[TurretConfig] = []
@@ -157,8 +158,9 @@ class UnitEditorWindow:
         self._hd_type_dropdown: typing.Optional[pygame_gui.elements.UIDropDownMenu] = None
         self._hd_jump_range_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
 
-        # Engine speed entry
+        # Engine speed & Antimatter capacity entry
         self._engine_speed_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._am_capacity_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
 
         # Defenses sub-entries
         self._armor_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
@@ -573,10 +575,9 @@ class UnitEditorWindow:
         self._elements.append(details_hdr)
         c4y += row_h + pad
 
-        # 1. Engine Speed & Wing Type side-by-side
+        # 1. Engine Speed & Antimatter Storage Capacity side-by-side
         col_w2 = (c4w - pad) // 2
 
-        # Engine speed labels/entries
         eng_lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c4x, c4y, col_w2, small_h),
             text="Engine Speed:",
@@ -586,14 +587,14 @@ class UnitEditorWindow:
         )
         self._elements.append(eng_lbl)
 
-        self._wt_lbl = pygame_gui.elements.UILabel(
+        am_lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c4x + col_w2 + pad, c4y, col_w2, small_h),
-            text="Wing Type:",
+            text="Antimatter Cap:",
             manager=self.manager,
             container=self._panel,
             object_id="#comp_cost_label",
         )
-        self._elements.append(self._wt_lbl)
+        self._elements.append(am_lbl)
         c4y += small_h
 
         self._engine_speed_entry = pygame_gui.elements.UITextEntryLine(
@@ -604,6 +605,26 @@ class UnitEditorWindow:
         )
         self._engine_speed_entry.set_text(str(int(self._comp.engine_speed)))
         self._elements.append(self._engine_speed_entry)
+
+        self._am_capacity_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c4x + col_w2 + pad, c4y, col_w2, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._am_capacity_entry.set_text(str(int(self._comp.antimatter_capacity)))
+        self._elements.append(self._am_capacity_entry)
+        c4y += entry_h + pad
+
+        # Wing Type (only shown for STRIKECRAFT_WING)
+        self._wt_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x, c4y, col_w2, small_h),
+            text="Wing Type:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(self._wt_lbl)
 
         self._wt_dropdown = pygame_gui.elements.UIDropDownMenu(
             options_list=["FIGHTER", "BOMBER"],
@@ -839,6 +860,11 @@ class UnitEditorWindow:
                 self._sync_dynamic_costs()
                 self._update_summary()
                 return "ui_handled"
+            elif elem is self._am_capacity_entry:
+                self._read_antimatter_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
             elif elem in (self._armor_entry, self._shields_entry, self._pd_entry):
                 self._read_defense_params()
                 self._sync_dynamic_costs()
@@ -888,6 +914,14 @@ class UnitEditorWindow:
         except ValueError:
             pass
 
+    def _read_antimatter_params(self) -> None:
+        """Read antimatter capacity from the entry widget and write to _comp."""
+        try:
+            cap = float(self._am_capacity_entry.get_text()) if self._am_capacity_entry else 100.0
+            self._comp.antimatter_capacity = max(0.0, cap)
+        except ValueError:
+            pass
+
     def _read_hyperdrive_params(self) -> None:
         """Read hyperdrive jump range from the entry widget and write to _comp."""
         try:
@@ -934,11 +968,12 @@ class UnitEditorWindow:
         """Refresh the cost labels for dynamic components and the capacity label."""
         c = self._comp
         dynamic_values = {
-            "has_engine":     c.engine_hull_cost,
-            "has_hyperdrive": c.hyperdrive_hull_cost,
-            "has_weapon_bays": c.weapon_bays_hull_cost,
-            "has_defenses":   c.defenses_hull_cost,
-            "has_ability_component": c.ability_hull_cost,
+            "has_engine":             c.engine_hull_cost,
+            "has_antimatter_storage": c.antimatter_hull_cost,
+            "has_hyperdrive":         c.hyperdrive_hull_cost,
+            "has_weapon_bays":        c.weapon_bays_hull_cost,
+            "has_defenses":           c.defenses_hull_cost,
+            "has_ability_component":  c.ability_hull_cost,
         }
         for key, computed_cost in dynamic_values.items():
             lbl = self._comp_cost_labels.get(key)
@@ -1192,6 +1227,7 @@ class UnitEditorWindow:
 
         # Sync all input fields before saving
         self._read_engine_params()
+        self._read_antimatter_params()
         self._read_hyperdrive_params()
         self._read_defense_params()
         self._comp.turrets = self._turrets
@@ -1248,6 +1284,8 @@ class UnitEditorWindow:
         # Restore dynamic sub-option entry fields
         if self._engine_speed_entry:
             self._engine_speed_entry.set_text(str(int(self._comp.engine_speed)))
+        if self._am_capacity_entry:
+            self._am_capacity_entry.set_text(str(int(self._comp.antimatter_capacity)))
         if self._hd_jump_range_entry:
             self._hd_jump_range_entry.set_text(str(self._comp.hyperdrive_jump_range))
         if self._armor_entry:
@@ -1365,6 +1403,10 @@ class UnitEditorWindow:
         # Engine speed detail
         if c.has_engine:
             lines.append(f"    speed={c.engine_speed:.0f}")
+
+        # Antimatter capacity detail
+        if c.has_antimatter_storage:
+            lines.append(f"    antimatter_capacity={c.antimatter_capacity:.0f}")
 
         # Hyperdrive detail
         if c.has_hyperdrive:
