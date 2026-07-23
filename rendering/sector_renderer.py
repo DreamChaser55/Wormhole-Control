@@ -365,7 +365,7 @@ class SectorViewRenderer:
                     continue
 
                 pygame.draw.circle(
-                    self._inhibition_surface, (255, 0, 0, 50),
+                    self._inhibition_surface, (255, 0, 0, 25),
                     (int(zone_pixel_center.x), int(zone_pixel_center.y)), zone_pixel_radius
                 )
                 drew_inhibition_zone = True
