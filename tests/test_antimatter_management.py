@@ -93,7 +93,7 @@ def test_sublight_movement_fails_without_antimatter():
     unit.position = Position(0, 0)
     
     am_comp = AntimatterStorage(unit)
-    am_comp.current_amount = 2.0  # Less than ENGINE_ANTIMATTER_COST_PER_TURN (5.0)
+    am_comp.current_amount = 1.0  # Less than ENGINE_ANTIMATTER_COST_PER_TURN (2.0)
     
     engines = Engines(unit, speed=10.0)
     engines.move_target = Position(100.0, 0.0)
@@ -114,7 +114,7 @@ def test_sublight_movement_fails_without_antimatter():
     
     # Unit should NOT move, and antimatter should NOT be consumed
     assert unit.position.x == 0.0
-    assert am_comp.current_amount == 2.0
+    assert am_comp.current_amount == 1.0
 
 def test_hex_jump_consumes_antimatter():
     game = MagicMock()

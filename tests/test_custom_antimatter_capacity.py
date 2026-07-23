@@ -15,8 +15,8 @@ def test_calc_antimatter_hull_cost():
     assert calc_antimatter_hull_cost(-10) == 0
     assert calc_antimatter_hull_cost(100) == 5
     assert calc_antimatter_hull_cost(200) == 10
-    assert calc_antimatter_hull_cost(50) == 3
-    assert calc_antimatter_hull_cost(1) == 1
+    assert calc_antimatter_hull_cost(50) == 5
+    assert calc_antimatter_hull_cost(1) == 5
 
 
 def test_component_config_antimatter_hull_cost():
@@ -46,10 +46,10 @@ def test_custom_unit_template_total_hull_cost_and_validation():
     assert template.total_hull_cost == 5 + 8
     assert template.validate() == []
 
-    # Test invalid zero capacity
-    comp.antimatter_capacity = 0.0
+    # Test invalid capacity below 100.0
+    comp.antimatter_capacity = 50.0
     errors = template.validate()
-    assert any("Antimatter storage capacity must be positive" in e for e in errors)
+    assert any("Antimatter storage capacity must be at least 100.0" in e for e in errors)
 
 
 def test_custom_template_manager_serialization():

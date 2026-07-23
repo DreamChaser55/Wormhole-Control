@@ -23,7 +23,7 @@ import pygame
 import pygame_gui
 import typing
 
-from constants import HullSize, HULL_CAPACITIES, TEXT_SCALE
+from constants import HullSize, HULL_CAPACITIES, TEXT_SCALE, MIN_ANTIMATTER_CAPACITY
 from custom_unit_templates import (
     CustomUnitTemplate, ComponentConfig, TurretConfig,
     CustomTemplateManager, HULL_RESTRICTIONS, ADVANCED_HYPERDRIVE_MIN_HULL,
@@ -918,7 +918,7 @@ class UnitEditorWindow:
         """Read antimatter capacity from the entry widget and write to _comp."""
         try:
             cap = float(self._am_capacity_entry.get_text()) if self._am_capacity_entry else 100.0
-            self._comp.antimatter_capacity = max(0.0, cap)
+            self._comp.antimatter_capacity = max(MIN_ANTIMATTER_CAPACITY, cap)
         except ValueError:
             pass
 
