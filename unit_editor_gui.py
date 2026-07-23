@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5,  "is_dynamic": True},
     {"key": "has_antimatter_storage",    "label": "Antimatter Storage", "cost_key": "antimatter_hull_cost",       "default_cost": 5,  "is_dynamic": True},
+    {"key": "has_antimatter_harvester",  "label": "Antimatter Harvester", "cost_key": "antimatter_harvester_hull_cost", "default_cost": 15, "is_dynamic": False},
     {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 5,  "is_dynamic": True},
     {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10, "is_dynamic": True},
     {"key": "has_defenses",              "label": "Defenses",           "cost_key": "defenses_hull_cost",         "default_cost": 10, "is_dynamic": True},

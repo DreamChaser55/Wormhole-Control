@@ -292,7 +292,56 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
 
         self.assertEqual(config_keys, gui_keys)
 
+    def test_antimatter_harvester_custom_template(self):
+        from constants import HullSize, ANTIMATTER_HARVESTER_HULL_COST
+        from custom_unit_templates import ComponentConfig, CustomUnitTemplate
+        from unit_templates import UNIT_TEMPLATES
+
+        # Hull cost calculation includes harvester cost (15)
+        comp = ComponentConfig(has_antimatter_storage=True, has_antimatter_harvester=True)
+        template = CustomUnitTemplate(
+            design_name="HARVESTER_SHIP",
+            display_name="Harvester Ship",
+            hull_size=HullSize.LARGE,
+            components=comp,
+        )
+        self.assertEqual(template.validate(), [])
+        self.assertIn("has_antimatter_harvester", comp.__dataclass_fields__)
+        self.assertTrue(template.total_hull_cost >= ANTIMATTER_HARVESTER_HULL_COST)
+
+        # Restrictions: STRIKECRAFT_WING & TINY forbidden
+        tiny_template = CustomUnitTemplate(
+            design_name="TINY_HARVESTER",
+            display_name="Tiny Harvester",
+            hull_size=HullSize.TINY,
+            components=comp,
+        )
+        errors = tiny_template.validate()
+        self.assertTrue(any("has_antimatter_harvester" in e for e in errors))
+
+        # Persistence & Dict conversion using temporary data file
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
+        tmp.close()
+        try:
+            mgr = _make_manager(tmp.name)
+            save_errors = mgr.save_design(template)
+            self.assertEqual(save_errors, [])
+            retrieved = mgr.get_design("HARVESTER_SHIP")
+            self.assertIsNotNone(retrieved)
+            self.assertTrue(retrieved.components.has_antimatter_harvester)
+
+            # UNIT_TEMPLATES dict entry
+            unit_dict = UNIT_TEMPLATES.get("HARVESTER_SHIP")
+            self.assertIsNotNone(unit_dict)
+            self.assertTrue(unit_dict.get("has_antimatter_harvester"))
+            self.assertEqual(unit_dict.get("antimatter_harvester_hull_cost"), ANTIMATTER_HARVESTER_HULL_COST)
+            mgr.delete_design("HARVESTER_SHIP")
+        finally:
+            if os.path.exists(tmp.name):
+                os.remove(tmp.name)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

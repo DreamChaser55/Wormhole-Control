@@ -22,7 +22,7 @@ import os
 import dataclasses
 from typing import Dict, List, Optional, Any
 
-from constants import HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT, MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_HULL_COST
+from constants import HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT, MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_HULL_COST, ANTIMATTER_HARVESTER_HULL_COST
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_ability_component",
         "has_hyperdrive",
         "has_strikecraft_bay",
+        "has_antimatter_harvester",
     },
     HullSize.TINY: {
         "has_inhibitor",
@@ -55,6 +56,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_crystal_refinery_component",
         "has_ability_component",
         "has_strikecraft_bay",
+        "has_antimatter_harvester",
     },
     HullSize.SMALL: {
         "has_hangar",
@@ -275,6 +277,10 @@ class ComponentConfig:
     antimatter_capacity: float = 100.0
     # hull cost is computed: see antimatter_hull_cost property
 
+    # Antimatter Harvester
+    has_antimatter_harvester: bool = False
+    antimatter_harvester_hull_cost: int = ANTIMATTER_HARVESTER_HULL_COST
+
     # Hyperdrive
     has_hyperdrive: bool = False
     hyperdrive_type: str = "BASIC"      # "BASIC" or "ADVANCED"
@@ -418,6 +424,7 @@ class CustomUnitTemplate:
         total = 0
         if c.has_engine:                        total += c.engine_hull_cost
         if c.has_antimatter_storage:            total += c.antimatter_hull_cost
+        if c.has_antimatter_harvester:          total += c.antimatter_harvester_hull_cost
         if c.has_hyperdrive:                    total += c.hyperdrive_hull_cost
         if c.has_weapon_bays:                   total += c.weapon_bays_hull_cost
         if c.has_defenses:                      total += c.defenses_hull_cost
@@ -478,6 +485,7 @@ class CustomUnitTemplate:
             "has_metal_refinery_component": c.has_metal_refinery_component,
             "has_crystal_refinery_component": c.has_crystal_refinery_component,
             "has_ability_component": c.has_ability_component,
+            "has_antimatter_harvester": c.has_antimatter_harvester,
         }
         for flag, enabled in comp_flags.items():
             if enabled and flag in restricted:
@@ -515,7 +523,7 @@ class CustomUnitTemplate:
             errors.append(f"Antimatter storage capacity must be at least {MIN_ANTIMATTER_CAPACITY}.")
         # At least one meaningful component
         any_component = any([
-            c.has_engine, c.has_antimatter_storage, c.has_hyperdrive, c.has_weapon_bays,
+            c.has_engine, c.has_antimatter_storage, c.has_antimatter_harvester, c.has_hyperdrive, c.has_weapon_bays,
             c.has_defenses,
             c.has_constructor_component, c.has_repair_component,
             c.has_colony_component, c.has_mining_component,
@@ -676,6 +684,10 @@ class CustomTemplateManager:
             "antimatter_capacity": c.antimatter_capacity,
             "antimatter_hull_cost": c.antimatter_hull_cost,  # computed
 
+            # --- Antimatter Harvester ---
+            "has_antimatter_harvester": c.has_antimatter_harvester,
+            "antimatter_harvester_hull_cost": c.antimatter_harvester_hull_cost,
+
             # --- Hyperdrive ---
             "has_hyperdrive": c.has_hyperdrive,
             "hyperdrive_type": c.hyperdrive_type,
@@ -782,6 +794,9 @@ class CustomTemplateManager:
 
             has_antimatter_storage=d.get("has_antimatter_storage", True),
             antimatter_capacity=float(d.get("antimatter_capacity", 100.0)),
+
+            has_antimatter_harvester=d.get("has_antimatter_harvester", False),
+            antimatter_harvester_hull_cost=d.get("antimatter_harvester_hull_cost", ANTIMATTER_HARVESTER_HULL_COST),
 
             has_hyperdrive=d.get("has_hyperdrive", False),
             hyperdrive_type=d.get("hyperdrive_type", "BASIC"),
