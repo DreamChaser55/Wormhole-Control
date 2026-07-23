@@ -155,6 +155,9 @@ GALAXY_BG_COLOR = (2, 2, 4)
 SYSTEM_BG_COLOR = (4, 4, 8)
 SECTOR_BG_COLOR = (6, 6, 12)
 SECTOR_BORDER_COLOR = (60, 60, 80)
+SECTOR_GRID_COLOR = (30, 35, 45) # Faint grey grid color for sector view
+SECTOR_GRID_SPACING = 1000.0 # Logical distance between tactical grid lines
+
 
 # Check if enums are already defined to prevent breaking identity during reload
 import sys

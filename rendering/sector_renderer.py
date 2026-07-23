@@ -3,7 +3,7 @@ import math
 from collections import OrderedDict
 from constants import (
     NEBULA_COLORS, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX,
-    SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR,
+    SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR, SECTOR_GRID_COLOR, SECTOR_GRID_SPACING,
     STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS,
     STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER,
     WHITE, YELLOW, CYAN, PURPLE, RED,
@@ -274,6 +274,34 @@ class SectorViewRenderer:
             'direct_draw_fallbacks': self.zoom_render_stats['direct_draw_fallbacks'],
         }
 
+    def _draw_tactical_grid(self):
+        """Draws a faint grey tactical grid clipped to the circular sector boundary."""
+        radius = SECTOR_CIRCLE_RADIUS_LOGICAL
+        spacing = SECTOR_GRID_SPACING
+        if spacing <= 0:
+            return
+
+        step = int(spacing)
+        start_val = -int(radius) + step
+        end_val = int(radius)
+
+        for val in range(start_val, end_val, step):
+            # Vertical grid line at x = val
+            y_max_sq = radius * radius - val * val
+            if y_max_sq > 0:
+                y_max = math.sqrt(y_max_sq)
+                p1 = self._coords_to_pixels(Position(val, -y_max))
+                p2 = self._coords_to_pixels(Position(val, y_max))
+                pygame.draw.line(self.screen, SECTOR_GRID_COLOR, (p1.x, p1.y), (p2.x, p2.y), 1)
+
+            # Horizontal grid line at y = val
+            x_max_sq = radius * radius - val * val
+            if x_max_sq > 0:
+                x_max = math.sqrt(x_max_sq)
+                p1 = self._coords_to_pixels(Position(-x_max, val))
+                p2 = self._coords_to_pixels(Position(x_max, val))
+                pygame.draw.line(self.screen, SECTOR_GRID_COLOR, (p1.x, p1.y), (p2.x, p2.y), 1)
+
     def draw_sector_view(self):
         """Draws the detailed view of the current sector hex."""
         if not self.game.current_system_name or self.game.current_sector_coord is None: return
@@ -310,12 +338,13 @@ class SectorViewRenderer:
 
             pygame.draw.rect(self.overlay_surface, (0, 150, 255), selection_rect, 1)
 
-        # 1. Draw Sector Boundary
+        # 1. Draw Sector Boundary & Tactical Grid
         boundary_center = (
             int(SECTOR_CIRCLE_CENTER_IN_PX.x + self.game.sector_pan_offset.x),
             int(SECTOR_CIRCLE_CENTER_IN_PX.y + self.game.sector_pan_offset.y)
         )
         pygame.draw.circle(self.screen, SECTOR_BORDER_COLOR, boundary_center, int(dynamic_radius), 1)
+        self._draw_tactical_grid()
 
         # 2. Draw Inhibition Fields. Draw directly into a viewport-sized alpha
         # surface instead of scaling and retaining a massive circle texture.
