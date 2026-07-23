@@ -92,7 +92,7 @@ HYPERDRIVE_HEX_JUMP_COST: float = 20.0
 # Antimatter Harvester component: only units with this component can generate
 # new antimatter, and only while positioned near a star.
 DEFAULT_ANTIMATTER_HARVEST_RATE: float = 10.0
-DEFAULT_ANTIMATTER_HARVEST_RANGE: float = 800.0
+DEFAULT_ANTIMATTER_HARVEST_RANGE: float = 3000.0
 ANTIMATTER_HARVESTER_HULL_COST: int = 15
 
 # Antimatter Transfer: units without a harvester must receive antimatter by
