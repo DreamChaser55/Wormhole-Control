@@ -132,6 +132,7 @@ INFO_BOX_WIDTH = int(SCREEN_RES.x * (250 / 1280.0))
 TOP_BAR_HEIGHT = int(SCREEN_RES.y * (35 / 720.0))
 CONTEXT_MENU_WIDTH = int(SCREEN_RES.x * (180 / 1280.0))
 CONTEXT_MENU_ITEM_HEIGHT = int(SCREEN_RES.y * (25 / 720.0))
+SECTOR_GRID_SPACING = 1000.0 # Logical distance between tactical grid lines
 
 # Colors
 WHITE = (255, 255, 255)
@@ -156,7 +157,6 @@ SYSTEM_BG_COLOR = (4, 4, 8)
 SECTOR_BG_COLOR = (6, 6, 12)
 SECTOR_BORDER_COLOR = (60, 60, 80)
 SECTOR_GRID_COLOR = (30, 35, 45) # Faint grey grid color for sector view
-SECTOR_GRID_SPACING = 1000.0 # Logical distance between tactical grid lines
 
 
 # Check if enums are already defined to prevent breaking identity during reload
