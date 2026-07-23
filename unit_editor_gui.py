@@ -115,9 +115,9 @@ class UnitEditorWindow:
         self._editing_key: typing.Optional[str] = None  # key of design being edited
 
         # --- Panel geometry ---
-        panel_w = int(screen_res.x * 0.75)
+        panel_x = 20
+        panel_w = max(100, int(screen_res.x) - 40)
         panel_h = int(screen_res.y * 0.88)
-        panel_x = (screen_res.x - panel_w) // 2
         panel_y = int(screen_res.y * 0.06)
         self._panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
         self._abilities_y_start = 0
