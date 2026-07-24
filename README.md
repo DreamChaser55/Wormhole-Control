@@ -77,7 +77,7 @@ Wormhole Control/
 ├── input_processor.py   # Input handling and event processing
 ├── turn_processor.py    # Turn-based game logic processing
 ├── unit_components/     # Modular unit component package
-├── unit_orders.py       # Unit command and order system
+├── unit_orders/        # Unit command and order subpackage
 ├── unit_templates.py    # Predefined unit configurations
 ├── constants.py         # Game constants and configuration
 ├── geometry.py          # Mathematical utilities (vectors, positions)

@@ -322,7 +322,7 @@ def test_integration_multi_system_movement():
     })
     
     from unittest.mock import patch
-    with patch("unit_orders.find_intersystem_path", return_value=["Sol", "Vega", "Sirius"]):
+    with patch("unit_orders.movement.find_intersystem_path", return_value=["Sol", "Vega", "Sirius"]):
         commander.add_order(move_order)
     
     # We expect 5 sub-orders (including the final arrival waypoint check in Sirius)

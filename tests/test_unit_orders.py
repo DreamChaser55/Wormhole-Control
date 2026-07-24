@@ -284,7 +284,7 @@ def test_move_order_inter_system_routing():
 
     # Mock find_intersystem_path to return the path ["Sol", "Vega"]
     from unittest.mock import patch
-    with patch("unit_orders.find_intersystem_path", return_value=["Sol", "Vega"]), \
+    with patch("unit_orders.movement.find_intersystem_path", return_value=["Sol", "Vega"]), \
          patch.object(order, "find_wormhole_to_system", side_effect=lambda current, target, g, *args: wh_sol if current == "Sol" else None):
         
         order.execute(galaxy)
