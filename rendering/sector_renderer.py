@@ -688,8 +688,11 @@ class SectorViewRenderer:
                     2
                 )
 
-            # Draw weapon and sensor range circles for owned, selected units
-            if isinstance(obj, Unit) and obj in self.game.selected_objects:
+            # Draw weapon and sensor range circles only when a single
+            # friendly unit is selected -- multiple circles create clutter.
+            if (isinstance(obj, Unit)
+                    and len(self.game.selected_objects) == 1
+                    and obj in self.game.selected_objects):
                 current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
                 if current_turn_player and obj.owner == current_turn_player:
                     self._draw_unit_range_circles(obj, obj_pixel_pos, dynamic_radius)

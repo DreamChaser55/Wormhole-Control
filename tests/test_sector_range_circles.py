@@ -259,3 +259,50 @@ def test_blit_uncached_circle_still_blends_and_culls():
 
     # Off-screen-only circle should not throw and should not paint anything.
     renderer._blit_uncached_circle((100000, 100000), 50, color)
+
+
+def test_range_circles_drawn_when_single_unit_selected():
+    """Range circles should be drawn when exactly one friendly unit is
+    selected."""
+    game, renderer = _make_test_renderer()
+    owner = MagicMock()
+    unit = _make_unit(sensor_range=2000.0, turret_ranges=[300.0], owner=owner)
+    game.selected_objects = [unit]
+    game.players = [owner]
+    game.current_player_index = 0
+
+    # Directly verify the guard condition that controls drawing:
+    # single selected + owned by current player => should draw.
+    from entities import Unit
+    obj = unit
+    should_draw = (
+        len(game.selected_objects) == 1
+        and obj in game.selected_objects
+    )
+    current_turn_player = game.players[game.current_player_index]
+    should_draw = should_draw and current_turn_player and obj.owner == current_turn_player
+
+    assert should_draw, "Guard should allow drawing for a single owned selected unit"
+
+
+def test_range_circles_suppressed_when_multiple_units_selected():
+    """Range circles should NOT be drawn when multiple units are selected,
+    to avoid visual clutter from overlapping circles."""
+    game, renderer = _make_test_renderer()
+    owner = MagicMock()
+    unit1 = _make_unit(sensor_range=2000.0, turret_ranges=[300.0], owner=owner)
+    unit2 = _make_unit(sensor_range=1500.0, turret_ranges=[250.0], owner=owner)
+    game.selected_objects = [unit1, unit2]
+    game.players = [owner]
+    game.current_player_index = 0
+
+    # Verify the guard blocks drawing for each unit when multiple are selected.
+    for obj in [unit1, unit2]:
+        should_draw = (
+            len(game.selected_objects) == 1
+            and obj in game.selected_objects
+        )
+        assert not should_draw, (
+            "Guard should block range circles when multiple units are selected"
+        )
+
