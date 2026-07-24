@@ -88,11 +88,13 @@ class SectorViewRenderer:
         self._scaled_effect_surfaces = _BoundedSurfaceCache()
         self._inhibition_surface = None
         self._storm_scratch_surface = None
+        self._range_circle_surface = None
         self.zoom_render_stats = {
             'cache_hits': 0,
             'cache_misses': 0,
             'cache_bytes': 0,
             'direct_draw_fallbacks': 0,
+            'range_circle_fills': 0,
         }
 
     def _is_circle_off_screen(self, center_px, radius_px):
@@ -235,24 +237,41 @@ class SectorViewRenderer:
         return True
 
 
-    def _blit_uncached_circle(self, circle_pos, radius_px, color):
-        """Draw a large semi-transparent circle onto the overlay using the same
-        source-over alpha blending as the cached/scaled path, without caching a
-        huge texture.
+    def _circle_covers_viewport(self, center_px, radius_px):
+        """Return True if a circle of the given radius centered at
+        ``center_px`` fully encloses the entire screen (i.e. all four screen
+        corners lie within the circle).
 
-        Drawing directly onto ``overlay_surface`` with ``pygame.draw.circle``
-        *replaces* pixels instead of alpha-blending them, which both prevents
-        overlapping particles from accumulating alpha with each other and
-        erases any alpha already accumulated underneath by other (smaller,
-        blitted) particles. That mismatch is what made storm circles lose
-        their intended transparency once they grew large enough to hit this
-        fallback (i.e. when zoomed in). Rendering into a small temporary
-        per-pixel-alpha surface and then blitting it keeps the compositing
-        identical to the normal path while still only ever allocating an
-        on-screen-sized surface.
+        Since a disc is convex, all four corners lying inside it implies the
+        *entire* screen rectangle is interior to the circle, which in turn
+        means the circle's boundary (circumference) never actually crosses
+        the visible viewport at all.
         """
         screen_width, screen_height = self.screen.get_size()
-        cx, cy = circle_pos
+        cx, cy = center_px
+        radius_sq = radius_px * radius_px
+        for corner_x, corner_y in ((0, 0), (screen_width, 0), (0, screen_height), (screen_width, screen_height)):
+            if (corner_x - cx) ** 2 + (corner_y - cy) ** 2 > radius_sq:
+                return False
+        return True
+
+    def _fill_circle_clipped(self, center_px, radius_px, rgba):
+        """Alpha-blend a filled circle onto the overlay surface, allocating
+        and rasterizing only the on-screen portion touched by the circle, so
+        that cost is bounded by the visible screen area rather than by
+        ``radius_px ** 2``.
+
+        This is what keeps weapon/sensor range rings (and other large
+        semi-transparent circles) cheap even when the sector view is zoomed
+        in far enough that their true on-screen radius is thousands of
+        pixels: the naive approach of allocating a ``(2*radius_px)**2``
+        SRCALPHA surface and rasterizing a full circle onto it can otherwise
+        allocate hundreds of MB and rasterize tens of millions of pixels per
+        frame, the vast majority of which get clipped away on blit anyway.
+        """
+        screen_width, screen_height = self.screen.get_size()
+        cx, cy = center_px
+        radius_px = max(1, int(radius_px))
 
         vis_left = max(0, int(math.floor(cx - radius_px)))
         vis_top = max(0, int(math.floor(cy - radius_px)))
@@ -261,10 +280,73 @@ class SectorViewRenderer:
         if vis_left >= vis_right or vis_top >= vis_bottom:
             return
 
-        temp_surface = pygame.Surface((vis_right - vis_left, vis_bottom - vis_top), pygame.SRCALPHA)
-        local_center = (int(cx - vis_left), int(cy - vis_top))
-        pygame.draw.circle(temp_surface, color, local_center, radius_px)
-        self.overlay_surface.blit(temp_surface, (vis_left, vis_top))
+        if (self._range_circle_surface is None or
+                self._range_circle_surface.get_size() != (screen_width, screen_height)):
+            self._range_circle_surface = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
+        surf = self._range_circle_surface
+
+        rect = pygame.Rect(vis_left, vis_top, vis_right - vis_left, vis_bottom - vis_top)
+        surf.fill((0, 0, 0, 0), rect)
+
+        if self._circle_covers_viewport((cx, cy), radius_px):
+            # The whole visible rect is interior to the disc, so every pixel
+            # in `rect` would be filled by the circle anyway. Skip circle
+            # rasterization entirely (pygame.draw.circle's scanline loop
+            # otherwise still runs proportional to radius_px even when
+            # clipped) in favor of a flat rect fill bounded purely by screen
+            # size.
+            surf.fill(rgba, rect)
+        else:
+            # Manual scanline fill, bounded to the visible rows only, so cost
+            # is O(visible_height) regardless of how large radius_px is --
+            # unlike pygame.draw.circle (even with a surface clip rect set),
+            # whose scanline loop iterates the full 2*radius_px rows even
+            # when almost all of them fall outside the clip.
+            radius_sq = radius_px * radius_px
+            for y in range(vis_top, vis_bottom):
+                dy = y - cy
+                dx_sq = radius_sq - dy * dy
+                if dx_sq < 0:
+                    continue
+                dx = math.sqrt(dx_sq)
+                x_left = max(vis_left, int(math.floor(cx - dx)))
+                x_right = min(vis_right, int(math.ceil(cx + dx)))
+                if x_left < x_right:
+                    pygame.draw.line(surf, rgba, (x_left, y), (x_right - 1, y))
+
+        self.overlay_surface.blit(surf, rect.topleft, area=rect)
+        self.zoom_render_stats['range_circle_fills'] += 1
+
+    def _blit_uncached_circle(self, circle_pos, radius_px, color):
+        """Draw a large semi-transparent circle onto the overlay using the same
+        source-over alpha blending as the cached/scaled path, without
+        allocating a surface proportional to the circle's (possibly huge)
+        true radius.
+
+        Kept as a thin wrapper around ``_fill_circle_clipped`` (which
+        performs the actual viewport-bounded clipping/allocation) so existing
+        callers/tests keep working unchanged.
+        """
+        self._fill_circle_clipped(circle_pos, radius_px, color)
+
+    def _draw_range_ring(self, cx, cy, radius_px, fill_rgba, outline_rgb):
+        """Draw one weapon/sensor range ring: a thin translucent filled disc
+        plus a solid 1px outline, so it remains visible at any zoom level.
+
+        Per-frame cost is bounded by the visible screen area (see
+        ``_fill_circle_clipped``), not by the ring's true on-screen radius,
+        so this stays cheap even at maximum sector-view zoom with a unit
+        selected.
+        """
+        if radius_px <= 1 or self._is_circle_off_screen((cx, cy), radius_px):
+            return
+
+        self._fill_circle_clipped((cx, cy), radius_px, fill_rgba)
+
+        # If the disc fully covers the viewport, its circumference never
+        # actually crosses the visible screen -- skip drawing the outline too.
+        if not self._circle_covers_viewport((cx, cy), radius_px):
+            pygame.draw.circle(self.overlay_surface, outline_rgb, (cx, cy), radius_px, 1)
 
     def _update_zoom_render_stats(self):
 
@@ -273,6 +355,7 @@ class SectorViewRenderer:
             'cache_misses': self._scaled_effect_surfaces.misses,
             'cache_bytes': self._scaled_effect_surfaces.total_bytes,
             'direct_draw_fallbacks': self.zoom_render_stats['direct_draw_fallbacks'],
+            'range_circle_fills': self.zoom_render_stats['range_circle_fills'],
         }
 
     def _draw_tactical_grid(self):
@@ -722,9 +805,18 @@ class SectorViewRenderer:
         """Draw sensor and weapon range circles around a selected owned unit.
 
         Sensor short-range is drawn as a cyan ring; each distinct turret range
-        is drawn as a red/orange ring.  Both circles are composed of a thin
+        is drawn as a red/orange ring. Both circles are composed of a thin
         translucent filled disc and a solid 1-pixel outline so they remain
         visible at any zoom level.
+
+        Each ring is drawn via ``_draw_range_ring``, whose cost is bounded by
+        the visible screen area rather than by the ring's true on-screen
+        radius. Without this, a selected unit's range circles at high
+        sector-view zoom could allocate a many-hundred-MiB SRCALPHA surface
+        (proportional to radius_px**2) and rasterize tens of millions of
+        pixels per frame -- almost all of which get clipped away on blit
+        anyway -- which is what made zooming in with range circles visible so
+        much slower than with no unit selected.
         """
         cx, cy = int(pixel_pos.x), int(pixel_pos.y)
 
@@ -732,11 +824,7 @@ class SectorViewRenderer:
         sensors = unit.sensors_component
         if sensors and sensors.has_short_range:
             sr_px = int(sensors.short_range_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            if sr_px > 1 and not self._is_circle_off_screen((cx, cy), sr_px):
-                fill_surf = pygame.Surface((sr_px * 2, sr_px * 2), pygame.SRCALPHA)
-                pygame.draw.circle(fill_surf, (0, 200, 255, 18), (sr_px, sr_px), sr_px)
-                self.overlay_surface.blit(fill_surf, (cx - sr_px, cy - sr_px))
-                pygame.draw.circle(self.overlay_surface, (0, 200, 255), (cx, cy), sr_px, 1)
+            self._draw_range_ring(cx, cy, sr_px, (0, 200, 255, 18), (0, 200, 255))
 
         # --- Weapon range circle(s) (red/orange) ---
         weapons = unit.weapons_component
@@ -744,15 +832,10 @@ class SectorViewRenderer:
             drawn_ranges: set[int] = set()
             for turret in weapons.turrets:
                 rng_px = int(turret.range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                if rng_px in drawn_ranges or rng_px <= 1:
+                if rng_px in drawn_ranges:
                     continue
                 drawn_ranges.add(rng_px)
-                if self._is_circle_off_screen((cx, cy), rng_px):
-                    continue
-                fill_surf = pygame.Surface((rng_px * 2, rng_px * 2), pygame.SRCALPHA)
-                pygame.draw.circle(fill_surf, (255, 80, 40, 25), (rng_px, rng_px), rng_px)
-                self.overlay_surface.blit(fill_surf, (cx - rng_px, cy - rng_px))
-                pygame.draw.circle(self.overlay_surface, (255, 80, 40), (cx, cy), rng_px, 1)
+                self._draw_range_ring(cx, cy, rng_px, (255, 80, 40, 25), (255, 80, 40))
 
     def _get_waypoint_style(self, waypoint):
         if waypoint['order_type'] == OrderType.ATTACK:
