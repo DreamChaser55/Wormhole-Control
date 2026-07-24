@@ -605,6 +605,12 @@ class SectorViewRenderer:
                     2
                 )
 
+            # Draw weapon and sensor range circles for owned, selected units
+            if isinstance(obj, Unit) and obj in self.game.selected_objects:
+                current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
+                if current_turn_player and obj.owner == current_turn_player:
+                    self._draw_unit_range_circles(obj, obj_pixel_pos, dynamic_radius)
+
             if isinstance(obj, Unit):
                 unit_obj: Unit = obj
                 is_turn_player_unit = self.game.players and unit_obj.owner == self.game.players[self.game.current_player_index]
@@ -711,6 +717,42 @@ class SectorViewRenderer:
 
         self._draw_sector_view_order_lines_from_other_sectors(external_units_with_orders_to_this_sector)
         self._update_zoom_render_stats()
+
+    def _draw_unit_range_circles(self, unit: 'Unit', pixel_pos, dynamic_radius: float) -> None:
+        """Draw sensor and weapon range circles around a selected owned unit.
+
+        Sensor short-range is drawn as a cyan ring; each distinct turret range
+        is drawn as a red/orange ring.  Both circles are composed of a thin
+        translucent filled disc and a solid 1-pixel outline so they remain
+        visible at any zoom level.
+        """
+        cx, cy = int(pixel_pos.x), int(pixel_pos.y)
+
+        # --- Sensor short-range circle (cyan) ---
+        sensors = unit.sensors_component
+        if sensors and sensors.has_short_range:
+            sr_px = int(sensors.short_range_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            if sr_px > 1 and not self._is_circle_off_screen((cx, cy), sr_px):
+                fill_surf = pygame.Surface((sr_px * 2, sr_px * 2), pygame.SRCALPHA)
+                pygame.draw.circle(fill_surf, (0, 200, 255, 18), (sr_px, sr_px), sr_px)
+                self.overlay_surface.blit(fill_surf, (cx - sr_px, cy - sr_px))
+                pygame.draw.circle(self.overlay_surface, (0, 200, 255), (cx, cy), sr_px, 1)
+
+        # --- Weapon range circle(s) (red/orange) ---
+        weapons = unit.weapons_component
+        if weapons and weapons.turrets:
+            drawn_ranges: set[int] = set()
+            for turret in weapons.turrets:
+                rng_px = int(turret.range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                if rng_px in drawn_ranges or rng_px <= 1:
+                    continue
+                drawn_ranges.add(rng_px)
+                if self._is_circle_off_screen((cx, cy), rng_px):
+                    continue
+                fill_surf = pygame.Surface((rng_px * 2, rng_px * 2), pygame.SRCALPHA)
+                pygame.draw.circle(fill_surf, (255, 80, 40, 25), (rng_px, rng_px), rng_px)
+                self.overlay_surface.blit(fill_surf, (cx - rng_px, cy - rng_px))
+                pygame.draw.circle(self.overlay_surface, (255, 80, 40), (cx, cy), rng_px, 1)
 
     def _get_waypoint_style(self, waypoint):
         if waypoint['order_type'] == OrderType.ATTACK:
