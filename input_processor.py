@@ -181,9 +181,12 @@ class InputProcessor:
                             hex_obj = current_system.hexes[self.game.current_sector_coord]
                             if hex_obj:
                                 for unit in hex_obj.units:
+                                    if not self.game.is_unit_visible(unit):
+                                        continue
                                     unit_pixel_pos = sector_coords_to_pixels(unit.position, self.game.sector_zoom, self.game.sector_pan_offset)
                                     if selection_rect.collidepoint(unit_pixel_pos.to_tuple()):
                                         selected_units_in_box.append(unit)
+
                         
                         if shift_pressed:
                             # If shift is pressed, we either add to selection or deselect if all are already selected.
@@ -268,7 +271,10 @@ class InputProcessor:
                     bodies = hex_obj.celestial_bodies
                     units = hex_obj.units
                     for obj in units + bodies:
+                        if isinstance(obj, Unit) and not self.game.is_unit_visible(obj):
+                            continue
                         pixel_pos = sector_coords_to_pixels(obj.position, zoom, pan_offset)
+
                         obj_radius_logical = 0
                         if isinstance(obj, Star): obj_radius_logical = STAR_RADIUS
                         elif isinstance(obj, Planet): obj_radius_logical = PLANET_RADIUS

@@ -6,7 +6,7 @@ import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 from utils import HexCoord
 from geometry import Position, distance, Vector
-from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
+from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE
 import uuid
 import dataclasses
 from enum import Enum, auto
@@ -40,7 +40,9 @@ from unit_components import (
     AbilityType,
     StrikecraftBayComponent,
     StrikecraftWingComponent,
+    Sensors,
 )
+
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -245,6 +247,8 @@ class Unit(GameObject):
         self.add_component(Commander(unit=self))
         # Every unit has an antimatter storage component by default
         self.add_component(AntimatterStorage(unit=self))
+        # Every unit has baseline sensors by default (0 hull cost)
+        self.add_component(Sensors(unit=self, short_range_radius=DEFAULT_SENSOR_SHORT_RANGE, long_range_hexes=0, hull_cost=0))
 
     def add_component(self, component: UnitComponent) -> None:
         self.components[type(component)] = component
@@ -259,8 +263,13 @@ class Unit(GameObject):
             self._update_hull_usage()
 
     @property
+    def sensors_component(self) -> typing.Optional[Sensors]:
+        return self.get_component(Sensors)
+
+    @property
     def antimatter_component(self) -> typing.Optional[AntimatterStorage]:
         return self.get_component(AntimatterStorage)
+
 
     @property
     def harvester_component(self) -> typing.Optional[AntimatterHarvester]:

@@ -28,6 +28,7 @@ from .abilities import (
     AbilityComponent,
 )
 from .constructor import BuildableUnit, Constructor, UNIT_TEMPLATES
+from .sensors import Sensors
 
 __all__ = [
     "HyperdriveType",
@@ -62,5 +63,7 @@ __all__ = [
     "BuildableUnit",
     "Constructor",
     "UNIT_TEMPLATES",
+    "Sensors",
     "random",
 ]
+

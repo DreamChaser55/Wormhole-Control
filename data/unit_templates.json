@@ -9,9 +9,12 @@
     "has_hyperdrive": true,
     "hyperdrive_type": "ADVANCED",
     "hyperdrive_hull_cost": 20,
-    "has_scanner": true,
-    "scanner_hull_cost": 5,
+    "has_sensors": true,
+    "sensor_short_range": 3000.0,
+    "sensor_long_range_hexes": 1,
+    "sensors_hull_cost": 8,
     "has_weapon_bays": false,
+
     "weapon_bays_hull_cost": 0,
     "has_constructor_component": true,
     "constructor_hull_cost": 15,
@@ -125,9 +128,12 @@
     "engine_hull_cost": 0,
     "has_hyperdrive": false,
     "hyperdrive_hull_cost": 0,
-    "has_scanner": true,
-    "scanner_hull_cost": 10,
+    "has_sensors": true,
+    "sensor_short_range": 4000.0,
+    "sensor_long_range_hexes": 1,
+    "sensors_hull_cost": 9,
     "has_weapon_bays": true,
+
     "weapon_bays_hull_cost": 20,
     "turrets": [
       {
@@ -182,9 +188,12 @@
     "engine_hull_cost": 0,
     "has_hyperdrive": false,
     "hyperdrive_hull_cost": 0,
-    "has_scanner": true,
-    "scanner_hull_cost": 5,
+    "has_sensors": true,
+    "sensor_short_range": 3000.0,
+    "sensor_long_range_hexes": 1,
+    "sensors_hull_cost": 8,
     "has_weapon_bays": false,
+
     "weapon_bays_hull_cost": 0,
     "has_repair_component": true,
     "repair_rate": 30.0,
@@ -293,9 +302,12 @@
     "engine_hull_cost": 0,
     "has_hyperdrive": false,
     "hyperdrive_hull_cost": 0,
-    "has_scanner": true,
-    "scanner_hull_cost": 10,
+    "has_sensors": true,
+    "sensor_short_range": 4000.0,
+    "sensor_long_range_hexes": 1,
+    "sensors_hull_cost": 9,
     "has_weapon_bays": true,
+
     "weapon_bays_hull_cost": 20,
     "turrets": [
       {

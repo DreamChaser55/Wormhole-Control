@@ -5,8 +5,9 @@ from constants import (
     DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE,
     SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY,
     HEX_JUMP_ORDER_LINE_COLOR, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS,
-    STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR, TEXT_SCALE
+    STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR, TEXT_SCALE, FOG_PRESENCE_COLOR
 )
+
 from hexgrid_utils import get_hex_vertices, hex_to_pixel
 from entities import (
     Star, Planet, Wormhole, Unit, CelestialBody, OrderType, Moon, Asteroid, 
@@ -176,8 +177,11 @@ class SystemViewRenderer:
                     pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 2)
 
             # Draw units
-            unit_list = hex_obj.units
-            num_units_in_hex = len(unit_list)
+            visible_units = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
+            has_hidden_enemy = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
+            has_presence = self.game.hex_has_presence(self.game.current_system_name, hex_coord)
+
+            num_units_in_hex = len(visible_units)
 
             if num_units_in_hex > 0:
                 new_system_view_icon_base_size = 3.0 * scale_val
@@ -194,7 +198,7 @@ class SystemViewRenderer:
                 
                 block_start_y = hex_center_pixel.y - (total_block_visual_height / 2.0)
 
-                for i, unit in enumerate(unit_list):
+                for i, unit in enumerate(visible_units):
                     row_index = i // icons_per_row
                     col_index = i % icons_per_row
 
@@ -202,6 +206,7 @@ class SystemViewRenderer:
                     current_row_visual_width = (num_icons_in_this_row * icon_draw_width) + ((num_icons_in_this_row - 1) * icon_padding_x if num_icons_in_this_row > 0 else 0)
                     
                     row_start_x = hex_center_pixel.x - (current_row_visual_width / 2.0)
+
 
                     icon_center_x = row_start_x + (col_index * icon_slot_width) + (icon_draw_width / 2.0)
                     icon_center_y = block_start_y + (row_index * icon_slot_height) + (icon_draw_height / 2.0)
@@ -270,7 +275,14 @@ class SystemViewRenderer:
                         if unit in self.game.selected_objects:
                             pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, main_shape_points, 2)
 
+            if has_hidden_enemy and has_presence:
+                p_size = 6 * scale_val
+                cx, cy = hex_center_pixel.x, hex_center_pixel.y
+                diamond_pts = [(cx, cy - p_size), (cx + p_size, cy), (cx, cy + p_size), (cx - p_size, cy)]
+                pygame.draw.polygon(self.screen, FOG_PRESENCE_COLOR, diamond_pts)
+
         # 3. Highlight Hovered Hex
+
         if self.game.system_view_mouse_hover_hex:
             q, r = self.game.system_view_mouse_hover_hex
             hex_points_objects = get_hex_vertices(q, r)

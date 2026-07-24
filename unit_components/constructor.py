@@ -19,14 +19,16 @@ from .mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComp
 from .hangar import HangarComponent
 from .strikecraft import StrikecraftWingComponent, StrikecraftBayComponent
 from .abilities import AbilityComponent
+from .sensors import Sensors
 
 from utils import HexCoord
 from geometry import Position
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_HARVEST_RATE,
     DEFAULT_ANTIMATTER_HARVEST_RANGE, ANTIMATTER_HARVESTER_HULL_COST,
-    DEFAULT_JUMP_RANGE, HullSize
+    DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE
 )
+
 from unit_templates import UNIT_TEMPLATES
 
 if TYPE_CHECKING:
@@ -158,16 +160,21 @@ class Constructor(UnitComponent):
             logger.debug(f"Error: System '{system_name}' not found for unit creation.")
             return
 
+        hull_size_val = template["hull_size"]
+        if isinstance(hull_size_val, str):
+            hull_size_val = HullSize[hull_size_val.upper()]
+
         new_unit = Unit(
             owner=owner,
             name=template["name"],
-            hull_size=template["hull_size"],
+            hull_size=hull_size_val,
             game=self.unit.game,
             in_system=system_name,
             in_hex=hex_coord,
             position=position,
             template_name=template.get("name", template_name)
         )
+
 
         if template.get("has_antimatter_storage", True):
             from custom_unit_templates import calc_antimatter_hull_cost
@@ -340,7 +347,25 @@ class Constructor(UnitComponent):
                     hull_cost=template.get("ability_hull_cost", 10)
                 ))
 
+        # Sensors: prefer explicit new flags; fall back to legacy has_scanner.
+        has_sensors = template.get("has_sensors", template.get("has_scanner", False))
+        if has_sensors:
+            short_range = template.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)
+            long_range_hexes = template.get("sensor_long_range_hexes", 0)
+            hull_cost = template.get(
+                "sensors_hull_cost",
+                template.get("scanner_hull_cost", 0),
+            )
+            new_unit.remove_component(Sensors)
+            new_unit.add_component(Sensors(
+                new_unit,
+                short_range_radius=short_range,
+                long_range_hexes=long_range_hexes,
+                hull_cost=hull_cost,
+            ))
+
         system.add_unit(new_unit)
+
         logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
 
     def finish_construction(self, galaxy: 'Galaxy'):

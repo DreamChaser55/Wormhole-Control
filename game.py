@@ -47,6 +47,8 @@ from turn_processor import TurnProcessor
 from events import EventBus
 from order_system import OrderSystem
 from custom_unit_templates import CustomTemplateManager
+from visibility import VisibilityService, VisibilitySnapshot, is_unit_visible as vis_is_unit_visible, hex_has_presence as vis_hex_has_presence
+
 
 CAMERA_SMOOTH_SPEED = 12.0  # Exponential decay speed for zoom smoothing (~95% at 0.25s)
 
@@ -88,8 +90,13 @@ class Game:
         self.players: typing.List[Player] = []
         self.current_player_index = 0
 
+        # Visibility / Fog of War State
+        self.visibility: typing.Optional[VisibilitySnapshot] = None
+        self.visibility_dirty: bool = True
+
         # Alpha Surface for drawing overlays (highlights and order lines)
         self.overlay_surface = pygame.Surface(SCREEN_RES.to_tuple(), pygame.SRCALPHA)
+
 
         # Instantiate the Renderer
         self.renderer = Renderer(self)
@@ -662,8 +669,28 @@ class Game:
                 self.zoom_anchor_pixel = None
                 self.zoom_anchor_logical = None
 
+    def recompute_visibility(self):
+        """Recompute visibility snapshot for the current player."""
+        if self.game_started and self.galaxy and self.players:
+            viewer = self.players[self.current_player_index]
+            self.visibility = VisibilityService.compute(self.galaxy, viewer)
+        else:
+            self.visibility = None
+        self.visibility_dirty = False
+
+    def is_unit_visible(self, unit: Unit) -> bool:
+        """Return True if unit is friendly or a DETAILED enemy unit for current player."""
+        return vis_is_unit_visible(self.visibility, unit)
+
+    def hex_has_presence(self, system_name: str, hex_coord: HexCoord) -> bool:
+        """Return True if hex has undetailed enemy presence for current player."""
+        return vis_hex_has_presence(self.visibility, system_name, hex_coord)
+
     def update(self, time_delta: float):
         """Called every frame. Updates the UI. Game logic updates are done in TurnProcessor.process_turn(), which is called at the end of each turn."""
+        if self.game_started and (self.visibility_dirty or self.visibility is None):
+            self.recompute_visibility()
+
         # Smooth sector camera zoom
         self.update_sector_camera(time_delta)
 
@@ -686,13 +713,16 @@ class Game:
         if self.game_started and self.pending_ai_turn_end_time > 0:
             if pygame.time.get_ticks() >= self.pending_ai_turn_end_time:
                 self.pending_ai_turn_end_time = 0
+
                 self.end_turn()
 
 
     def end_turn(self):
         """Delegates end_turn processing to the TurnProcessor instance."""
         self.turn_manager.end_turn()
+        self.visibility_dirty = True
         self.sidebar_needs_update = True # Ensure sidebar refreshes after turn processing
+
 
     def update_view_specific_labels(self):
         """Updates UI labels that depend on the current view mode."""
@@ -1086,7 +1116,9 @@ class Game:
                 coords = hex_obj.coordinates()
                 system_name = self.galaxy.systems[hex_obj.in_system].name
                 data_for_gui.append({'type': 'label', 'text': f"Hex ({coords[0]}, {coords[1]}) in {system_name}", 'object_id': '#sidebar_title_label', 'height': 30})
-                if not hex_obj.celestial_bodies and not hex_obj.units:
+                visible_units = [u for u in hex_obj.units if self.is_unit_visible(u)]
+                has_presence = self.hex_has_presence(system_name, coords)
+                if not hex_obj.celestial_bodies and not visible_units and not has_presence:
                     data_for_gui.append({'type': 'label', 'text': "Contains: Nothing", 'object_id': '#sidebar_info_label', 'height': 25})
                 else:
                     if hex_obj.celestial_bodies:
@@ -1095,11 +1127,14 @@ class Game:
                             owner = getattr(b, 'owner', None)
                             style = f'#player_{owner.name.lower().replace(" ", "_")}_label' if owner else '#sidebar_info_label'
                             data_for_gui.append({'type': 'label', 'text': b.name, 'object_id': style, 'height': 20, 'indent_level': 1})
-                    if hex_obj.units:
+                    if visible_units:
                         data_for_gui.append({'type': 'label', 'text': "Units:", 'object_id': '#sidebar_info_label', 'height': 20})
-                        for u in hex_obj.units:
+                        for u in visible_units:
                             style = f'#player_{u.owner.name.lower().replace(" ", "_")}_label'
                             data_for_gui.append({'type': 'label', 'text': u.name, 'object_id': style, 'height': 20, 'indent_level': 1})
+                    if has_presence and not any(u.owner != self.players[self.current_player_index] for u in visible_units):
+                        data_for_gui.append({'type': 'label', 'text': "⚠ Enemy presence detected", 'object_id': '#sidebar_hit_points_critical_damage_label', 'height': 20})
+
 
             # --- Celestial Body Selection ---
             elif isinstance(selected_obj, CelestialBody):

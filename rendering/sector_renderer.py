@@ -6,7 +6,7 @@ from constants import (
     SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR, SECTOR_GRID_COLOR, SECTOR_GRID_SPACING,
     STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS,
     STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER,
-    WHITE, YELLOW, CYAN, PURPLE, RED,
+    WHITE, YELLOW, CYAN, PURPLE, RED, FOG_PRESENCE_COLOR,
     HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE,
     ICON_DOT_RADIUS, ICON_DOT_SPACING,
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
@@ -14,6 +14,7 @@ from constants import (
     TEXT_SCALE, XP_SPEED_BONUS,
     MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS
 )
+
 
 from sector_utils import sector_coords_to_pixels
 from geometry import distance, Position
@@ -377,11 +378,23 @@ class SectorViewRenderer:
         hex_obj = system.hexes[self.game.current_sector_coord]
         bodies_to_draw = []
         units_to_draw = []
+        has_presence_warning = False
         if hex_obj:
             bodies_to_draw = hex_obj.celestial_bodies
-            units_to_draw = hex_obj.units
+            units_to_draw = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
+            has_hidden = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
+            if has_hidden and self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
+                has_presence_warning = True
         
         all_objects_in_sector = bodies_to_draw + units_to_draw
+
+        if has_presence_warning:
+            font_size = max(14, int(16 * TEXT_SCALE))
+            hud_font = pygame.font.Font(None, font_size)
+            text_surface = hud_font.render("WARNING: Enemy presence detected in sector", True, FOG_PRESENCE_COLOR)
+            text_rect = text_surface.get_rect(center=(self.screen.get_width() // 2, 60))
+            self.screen.blit(text_surface, text_rect)
+
 
         for obj in all_objects_in_sector:
             obj_pixel_pos = self._coords_to_pixels(obj.position) 

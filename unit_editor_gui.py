@@ -58,7 +58,9 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_strikecraft_bay",       "label": "Strikecraft Bay",    "cost_key": "strikecraft_bay_hull_cost",  "default_cost": 15, "is_dynamic": False},
     {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20, "is_dynamic": False},
     {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10, "is_dynamic": True},
+    {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2,  "is_dynamic": True},
 ]
+
 
 HULL_SIZE_NAMES = [hs.name for hs in HullSize]
 
@@ -722,11 +724,49 @@ class UnitEditorWindow:
             )
             entry.set_text(str(default_val))
             setattr(self, entry_ref, entry)
-            self._elements.append(entry)
+        c4y += entry_h + pad
 
+        # 3.5 Sensors Short Range & Long Range
+        sr_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x, c4y, col_w2, small_h),
+            text="Short Range Radius:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(sr_lbl)
+
+        lr_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c4x + col_w2 + pad, c4y, col_w2, small_h),
+            text="Long Range Rings:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._elements.append(lr_lbl)
+        c4y += small_h
+
+        self._sensor_short_range_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c4x, c4y, col_w2, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._sensor_short_range_entry.set_text(str(int(self._comp.sensor_short_range)))
+        self._elements.append(self._sensor_short_range_entry)
+
+        self._sensor_long_range_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c4x + col_w2 + pad, c4y, col_w2, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._sensor_long_range_entry.set_text(str(self._comp.sensor_long_range_hexes))
+        self._elements.append(self._sensor_long_range_entry)
         c4y += entry_h + pad
 
         # 4. Summary Header & Text Box
+
         summary_hdr = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c4x, c4y, c4w, row_h),
             text="Design Summary:",
@@ -871,6 +911,11 @@ class UnitEditorWindow:
                 self._sync_dynamic_costs()
                 self._update_summary()
                 return "ui_handled"
+            elif elem in (getattr(self, '_sensor_short_range_entry', None), getattr(self, '_sensor_long_range_entry', None)):
+                self._read_sensor_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
 
         return None
 
@@ -946,6 +991,20 @@ class UnitEditorWindow:
         except ValueError:
             pass
 
+    def _read_sensor_params(self) -> None:
+        """Read short-range radius and long-range hexes from entry widgets and write to _comp."""
+        try:
+            sr = float(self._sensor_short_range_entry.get_text()) if getattr(self, '_sensor_short_range_entry', None) else DEFAULT_SENSOR_SHORT_RANGE
+            self._comp.sensor_short_range = max(0.0, sr)
+        except ValueError:
+            pass
+        try:
+            lr = int(self._sensor_long_range_entry.get_text()) if getattr(self, '_sensor_long_range_entry', None) else 0
+            self._comp.sensor_long_range_hexes = max(0, lr)
+        except ValueError:
+            pass
+
+
     # ------------------------------------------------------------------
     # Internal helpers — cost tracking
     # ------------------------------------------------------------------
@@ -975,7 +1034,9 @@ class UnitEditorWindow:
             "has_weapon_bays":        c.weapon_bays_hull_cost,
             "has_defenses":           c.defenses_hull_cost,
             "has_ability_component":  c.ability_hull_cost,
+            "has_sensors":            c.sensors_hull_cost,
         }
+
         for key, computed_cost in dynamic_values.items():
             lbl = self._comp_cost_labels.get(key)
             if lbl:
@@ -1231,8 +1292,10 @@ class UnitEditorWindow:
         self._read_antimatter_params()
         self._read_hyperdrive_params()
         self._read_defense_params()
+        self._read_sensor_params()
         self._comp.turrets = self._turrets
         self._comp.abilities = list(self._selected_abilities)
+
 
         template = CustomUnitTemplate(
             design_name=key,
@@ -1295,6 +1358,11 @@ class UnitEditorWindow:
             self._shields_entry.set_text(str(self._comp.shields))
         if self._pd_entry:
             self._pd_entry.set_text(str(self._comp.point_defense))
+        if getattr(self, '_sensor_short_range_entry', None):
+            self._sensor_short_range_entry.set_text(str(int(self._comp.sensor_short_range)))
+        if getattr(self, '_sensor_long_range_entry', None):
+            self._sensor_long_range_entry.set_text(str(self._comp.sensor_long_range_hexes))
+
 
         # Rebuild hull dropdown selection
         if self._hull_dropdown:

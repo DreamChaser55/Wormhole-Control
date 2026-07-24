@@ -102,6 +102,17 @@ ANTIMATTER_HARVESTER_HULL_COST: int = 15
 ANTIMATTER_TRANSFER_RATE: float = 25.0
 ANTIMATTER_TRANSFER_RANGE: float = 200.0
 
+# Sensors / Fog of War Constants
+DEFAULT_SENSOR_SHORT_RANGE: float = 2000.0     # logical units (sector radius = 5000)
+SENSOR_RANGE_PER_HULL_POINT: float = 1000.0    # hull points per unit of short-range radius
+SENSOR_LONG_RANGE_HULL_COST_PER_HEX: int = 5   # hull points per long-range ring
+DEFAULT_SENSOR_LONG_RANGE_HEXES: int = 1       # default ring count for a long-range upgrade
+
+# Fog visuals
+FOG_PRESENCE_COLOR = (200, 60, 60)             # generic enemy-presence marker color
+FOG_TINT_COLOR = (0, 0, 0, 60)                 # optional faint shading for non-detailed hexes (system view)
+
+
 
 
 # Experience point (XP) constants

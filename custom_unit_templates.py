@@ -22,9 +22,14 @@ import os
 import dataclasses
 from typing import Dict, List, Optional, Any
 
-from constants import HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT, MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_HULL_COST, ANTIMATTER_HARVESTER_HULL_COST
+from constants import (
+    HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT,
+    MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_HULL_COST, ANTIMATTER_HARVESTER_HULL_COST,
+    DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX
+)
 
 logger = logging.getLogger(__name__)
+
 
 # --------------------------------------------------------------------------
 # Hull-size restrictions
@@ -244,6 +249,16 @@ def calc_ability_hull_cost(abilities: List[str]) -> int:
     return ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY
 
 
+def calc_sensors_hull_cost(short_range_radius: float, long_range_hexes: int) -> int:
+    """Compute the hull cost of a Sensors component upgrade.
+
+    Formula: ceil(short_range_radius / SENSOR_RANGE_PER_HULL_POINT) + long_range_hexes * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
+    """
+    base = math.ceil(short_range_radius / SENSOR_RANGE_PER_HULL_POINT) if short_range_radius > 0 else 0
+    return base + max(0, long_range_hexes) * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
+
+
+
 # --------------------------------------------------------------------------
 # Turret definition
 # --------------------------------------------------------------------------
@@ -351,6 +366,11 @@ class ComponentConfig:
     has_ability_component: bool = False
     abilities: List[str] = dataclasses.field(default_factory=list)
 
+    # Sensors
+    has_sensors: bool = False
+    sensor_short_range: float = DEFAULT_SENSOR_SHORT_RANGE
+    sensor_long_range_hexes: int = 0
+
     # ------------------------------------------------------------------
     # Computed hull-cost properties for dynamic components
     # ------------------------------------------------------------------
@@ -397,6 +417,14 @@ class ComponentConfig:
             return 0
         return calc_ability_hull_cost(self.abilities)
 
+    @property
+    def sensors_hull_cost(self) -> int:
+        """Hull cost of Sensors, computed from short-range radius and long-range hexes."""
+        if not self.has_sensors:
+            return 0
+        return calc_sensors_hull_cost(self.sensor_short_range, self.sensor_long_range_hexes)
+
+
 
 # --------------------------------------------------------------------------
 # Custom unit template dataclass
@@ -438,7 +466,9 @@ class CustomUnitTemplate:
         if c.has_strikecraft_bay:               total += c.strikecraft_bay_hull_cost
         if c.has_inhibitor:                     total += c.inhibitor_hull_cost
         if c.has_ability_component:             total += c.ability_hull_cost
+        if c.has_sensors:                       total += c.sensors_hull_cost
         return total
+
 
     @property
     def is_over_capacity(self) -> bool:
@@ -529,7 +559,9 @@ class CustomUnitTemplate:
             c.has_colony_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
             c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
+            c.has_sensors,
         ])
+
         if not any_component:
             errors.append("At least one component must be enabled.")
         return errors
@@ -758,9 +790,15 @@ class CustomTemplateManager:
             "ability_hull_cost": c.ability_hull_cost,
             "abilities": c.abilities,
 
+            "has_sensors": c.has_sensors,
+            "sensor_short_range": c.sensor_short_range,
+            "sensor_long_range_hexes": c.sensor_long_range_hexes,
+            "sensors_hull_cost": c.sensors_hull_cost,
+
             "is_custom": True,  # marker so we know it's player-designed
         }
         return d
+
 
     def _dict_to_template(self, key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
         """Reconstruct a CustomUnitTemplate from its persisted dict form.
@@ -850,7 +888,12 @@ class CustomTemplateManager:
 
             has_ability_component=d.get("has_ability_component", False),
             abilities=d.get("abilities", []),
+
+            has_sensors=d.get("has_sensors", d.get("has_scanner", False)),
+            sensor_short_range=float(d.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)),
+            sensor_long_range_hexes=int(d.get("sensor_long_range_hexes", 0)),
         )
+
 
         return CustomUnitTemplate(
             design_name=key,
