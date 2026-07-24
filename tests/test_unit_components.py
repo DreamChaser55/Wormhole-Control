@@ -653,9 +653,9 @@ def test_ship_size_hyperdrive_restrictions_in_constructor():
     from constants import HullSize
     
     # Backup original
-    original_templates = unit_components.UNIT_TEMPLATES
+    original_templates = unit_components.constructor.UNIT_TEMPLATES
     try:
-        unit_components.UNIT_TEMPLATES = {
+        unit_components.constructor.UNIT_TEMPLATES = {
             "TINY_TEST": {
                 "name": "Tiny Test",
                 "hull_size": HullSize.TINY,
@@ -715,7 +715,7 @@ def test_ship_size_hyperdrive_restrictions_in_constructor():
         assert medium_unit.hyperdrive_component.drive_type == HyperdriveType.ADVANCED
 
     finally:
-        unit_components.UNIT_TEMPLATES = original_templates
+        unit_components.constructor.UNIT_TEMPLATES = original_templates
 
 
 def test_shipyard_refinery_options():
@@ -930,9 +930,9 @@ def test_unit_template_name_assignment():
     mock_system = MagicMock()
     galaxy.systems = {"Sol": mock_system}
 
-    original_templates = unit_components.UNIT_TEMPLATES
+    original_templates = unit_components.constructor.UNIT_TEMPLATES
     try:
-        unit_components.UNIT_TEMPLATES = {
+        unit_components.constructor.UNIT_TEMPLATES = {
             "TEST_TEMPLATE": {
                 "name": "Test Template Friendly Name",
                 "hull_size": HullSize.TINY,
@@ -969,7 +969,7 @@ def test_unit_template_name_assignment():
         assert wing.template_name == "Fighter Wing"
 
     finally:
-        unit_components.UNIT_TEMPLATES = original_templates
+        unit_components.constructor.UNIT_TEMPLATES = original_templates
 
 
 def test_unit_template_name_in_sidebar():
