@@ -278,6 +278,29 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         self.assertEqual(mgr.designs["TEST_CRUISER"].display_name, "Version 2")
         self.assertEqual(len(mgr.list_design_names()), 1)
 
+    def test_load_unnormalized_key_from_file(self):
+        # Write JSON with unnormalized key "Medium Sensor Ship"
+        raw_json = {
+            "Medium Sensor Ship": {
+                "name": "Medium Sensor Ship",
+                "hull_size": "MEDIUM",
+                "has_engine": True,
+                "engine_speed": 100.0,
+                "has_sensors": True
+            }
+        }
+        with open(self.data_file, "w", encoding="utf-8") as f:
+            json.dump(raw_json, f)
+
+        mgr = self._fresh_manager()
+        mgr.load_from_file()
+
+        # Key should be normalized to "MEDIUM_SENSOR_SHIP"
+        self.assertIn("MEDIUM_SENSOR_SHIP", mgr.designs)
+        self.assertIsNotNone(mgr.get_design("Medium Sensor Ship"))
+        self.assertIsNotNone(mgr.get_design("MEDIUM_SENSOR_SHIP"))
+        self.assertEqual(mgr.list_design_names(), ["MEDIUM_SENSOR_SHIP"])
+
 
 class TestUnitEditorGuiComponents(unittest.TestCase):
     """Verifies that all valid components are supported by the unit editor GUI."""

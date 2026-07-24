@@ -604,10 +604,12 @@ class CustomTemplateManager:
 
         for key, d in raw.items():
             try:
-                template = self._dict_to_template(key, d)
-                self.designs[key] = template
+                norm_key = key.strip().upper().replace(" ", "_")
+                template = self._dict_to_template(norm_key, d)
+                template.design_name = norm_key
+                self.designs[norm_key] = template
                 self._register_in_global(template)
-                logger.debug(f"[CustomTemplateManager] Loaded design '{key}'")
+                logger.debug(f"[CustomTemplateManager] Loaded design '{norm_key}'")
             except Exception as e:
                 logger.warning(f"[CustomTemplateManager] Failed to load design '{key}': {e}")
 

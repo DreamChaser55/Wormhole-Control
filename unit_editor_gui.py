@@ -18,6 +18,7 @@ Layout (four columns inside a full-height panel):
   └────────────────┴──────────────────┴──────────────────┴──────────────┘
 """
 
+import copy
 import logging
 import pygame
 import pygame_gui
@@ -1337,8 +1338,8 @@ class UnitEditorWindow:
             return
         self._editing_key = key
         self._hull_size = template.hull_size
-        self._comp = template.components
-        self._turrets = list(template.components.turrets)
+        self._comp = copy.deepcopy(template.components)
+        self._turrets = copy.deepcopy(template.components.turrets)
         self._selected_abilities = set(template.components.abilities)
         if self._name_entry:
             self._name_entry.set_text(template.design_name)
@@ -1414,6 +1415,7 @@ class UnitEditorWindow:
         self._update_capacity_label()
         self._update_summary()
         self._set_status(f"Loaded design '{key}'.", error=False)
+        self._refresh_load_dropdown()
 
     def _refresh_load_dropdown(self) -> None:
         """Rebuild the load dropdown list with current designs."""
