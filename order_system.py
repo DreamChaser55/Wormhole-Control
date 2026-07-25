@@ -4,12 +4,12 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent,
-    IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent
+    IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent
 )
 from entities import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
     MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
-    ContinuousMineOrder, TransferAntimatterOrder
+    ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder
 )
 
 from sector_utils import random_point_in_sector
@@ -43,6 +43,7 @@ class OrderSystem:
         self.event_bus.subscribe(UseAbilityEvent, self.handle_use_ability)
         self.event_bus.subscribe(IssueProtectOrderEvent, self.handle_issue_protect_order)
         self.event_bus.subscribe(TransferAntimatterEvent, self.handle_transfer_antimatter)
+        self.event_bus.subscribe(ContinuousResupplyEvent, self.handle_continuous_resupply)
 
 
     def handle_cancel_orders(self, event: CancelOrdersEvent):
@@ -303,4 +304,21 @@ class OrderSystem:
                 unit.commander_component.add_order(transfer_order)
                 logger.debug(f"  Unit {unit.name} ordered to transfer antimatter to {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
+
+    def handle_continuous_resupply(self, event: ContinuousResupplyEvent):
+        """Creates ContinuousResupplyOrders for selected units that have an
+        AntimatterHarvester component, targeting the given star body."""
+        for unit in event.units:
+            if getattr(unit, 'harvester_component', None):
+                resupply_params = {
+                    "target_id": event.target_body.id,
+                    "target_name": getattr(event.target_body, 'name', f"Star {event.target_body.id}"),
+                }
+                resupply_order = ContinuousResupplyOrder(unit, resupply_params)
+                if not event.shift_pressed:
+                    unit.commander_component.clear_orders()
+                unit.commander_component.add_order(resupply_order)
+                logger.debug(f"  Unit {unit.name} ordered to continuously resupply from star {event.target_body.name} via event.")
+        self.game.sidebar_needs_update = True
+
 

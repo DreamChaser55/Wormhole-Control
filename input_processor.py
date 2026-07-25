@@ -21,7 +21,7 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
-    ContinuousMineEvent, TransferAntimatterEvent
+    ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent
 )
 
 from galaxy import StarSystem, Hex
@@ -552,7 +552,10 @@ class InputProcessor:
                                 options.append(("Mine (continuously)", "continuous_mine"))
                         elif isinstance(target_object, Wormhole): options.append(("View Wormhole Info", "view_wormhole"))
                         elif isinstance(target_object, Unit): options.append(("View Unit Info", "view_unit"))
-                        elif isinstance(target_object, Star): options.append(("View Star", "view_star"))
+                        elif isinstance(target_object, Star):
+                            options.append(("View Star", "view_star"))
+                            if any(getattr(a, 'harvester_component', None) for a in actors):
+                                options.append(("Resupply (continuously)", "continuous_resupply"))
                     self.gui.open_context_menu(position, options, target)
 
                 elif is_left_click:
@@ -721,6 +724,15 @@ class InputProcessor:
             elif extracted_action_id == "continuous_mine":
                 if isinstance(target, (Asteroid, AsteroidField, Moon)):
                     self.game.event_bus.publish(ContinuousMineEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "continuous_resupply":
+                from entities import Star as StarEntity
+                if isinstance(target, StarEntity):
+                    self.game.event_bus.publish(ContinuousResupplyEvent(
                         selected_units,
                         target,
                         shift_pressed

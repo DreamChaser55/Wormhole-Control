@@ -104,6 +104,15 @@ class TransferAntimatterEvent(Event):
         self.shift_pressed = shift_pressed
 
 
+class ContinuousResupplyEvent(Event):
+    """Fired when the player orders a harvester unit to continuously harvest
+    antimatter at a star and resupply nearby friendly units."""
+    def __init__(self, units: list, target_body: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_body = target_body
+        self.shift_pressed = shift_pressed
+
+
 class MineEvent(Event):
     def __init__(self, units: list, target_body: typing.Any, shift_pressed: bool):
         self.units = units

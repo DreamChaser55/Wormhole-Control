@@ -7,7 +7,7 @@ from unit_components import (
     Turret, TurretType, TurretVariant, Weapons, ColonyComponent,
     Constructor, BuildableUnit, RepairComponent,
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
-    Defenses, AntimatterStorage
+    Defenses, AntimatterStorage, AntimatterHarvester
 )
 from unit_orders import Order, OrderStatus, OrderType
 
@@ -42,6 +42,8 @@ class MockUnit:
         self.current_hull_usage = 0
         # XP system
         self.experience_points = 0
+        # Default antimatter storage so tests can access antimatter_component without manual setup
+        self.add_component(AntimatterStorage(self))
         
     def add_component(self, component):
         self.components[type(component)] = component
@@ -73,6 +75,8 @@ class MockUnit:
     def metal_refinery_component(self): return self.get_component(MetalRefineryComponent)
     @property
     def crystal_refinery_component(self): return self.get_component(CrystalRefineryComponent)
+    @property
+    def harvester_component(self): return self.get_component(AntimatterHarvester)
 
     def take_damage(self, amount, damage_type=None):
         if damage_type:

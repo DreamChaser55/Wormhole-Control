@@ -6,7 +6,7 @@ from .inhibitor import ToggleInhibitorOrder
 from .colony import ColonizeOrder, LoadColonistsOrder
 from .construction import ConstructOrder
 from .repair import RepairOrder
-from .antimatter import TransferAntimatterOrder
+from .antimatter import TransferAntimatterOrder, ContinuousResupplyOrder
 from .mining import MineOrder, UnloadResourcesOrder, ContinuousMineOrder
 from .hangar import DockOrder, DeployUnitOrder, DeployAllWingsOrder
 from .abilities import UseAbilityOrder
@@ -26,6 +26,7 @@ __all__ = [
     "ConstructOrder",
     "RepairOrder",
     "TransferAntimatterOrder",
+    "ContinuousResupplyOrder",
     "MineOrder",
     "UnloadResourcesOrder",
     "ContinuousMineOrder",

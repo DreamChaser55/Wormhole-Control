@@ -165,3 +165,173 @@ class TransferAntimatterOrder(Order):
         if source_am.current_amount <= 0.0 or target_am.current_amount >= target_am.max_capacity:
             self.status = OrderStatus.COMPLETED
             logger.debug(f"TRANSFER_ANTIMATTER order completed: {self.unit.name} -> {target_unit.name}.")
+
+
+class ContinuousResupplyOrder(Order):
+    """Automates the harvest → transfer → return cycle for antimatter harvester units.
+
+    The harvester will:
+    1. Move to the target star and wait (passively harvesting) until its own
+       AntimatterStorage is full.
+    2. Find the closest friendly unit that has AntimatterStorage with available
+       space and issue a TransferAntimatterOrder to it.
+    3. Return to the star and repeat.
+
+    If no friendly unit needs antimatter the harvester idles patiently at the
+    star (order stays IN_PROGRESS) rather than failing, so it can react as
+    soon as demand arises.
+    """
+
+    def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
+        super().__init__(unit, OrderType.CONTINUOUS_RESUPPLY, parameters, parent_order)
+
+    # ------------------------------------------------------------------
+    # Sub-order factories
+    # ------------------------------------------------------------------
+
+    def _spawn_harvest_move(self, star: 'CelestialBody') -> None:
+        """Issue a MoveOrder to travel to (or remain at) the target star."""
+        move_params = {
+            "destination_system_name": star.in_system,
+            "destination_hex_coord": star.in_hex,
+            "destination_position": star.position,
+        }
+        self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+
+    def _spawn_transfer_order(self, target_unit_id) -> None:
+        transfer_params = {"target_unit_id": target_unit_id}
+        self.add_sub_order(TransferAntimatterOrder(self.unit, transfer_params, parent_order=self))
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _get_star(self, galaxy_ref: 'Galaxy') -> Optional['CelestialBody']:
+        """Return the target Star object, or None if not found."""
+        target_id = self.parameters.get("target_id")
+        if not target_id:
+            return None
+        return galaxy_ref.get_celestial_body_by_id(target_id)
+
+    def _is_at_star(self, star: 'CelestialBody') -> bool:
+        """True when the harvester is in the same system+hex as the star."""
+        return (self.unit.in_system == star.in_system and
+                self.unit.in_hex == star.in_hex)
+
+    def _storage_is_full(self) -> bool:
+        am = self.unit.antimatter_component
+        if not am:
+            return False
+        return am.current_amount >= am.max_capacity
+
+    def _find_closest_needy_unit(self, galaxy_ref: 'Galaxy') -> Optional['Unit']:
+        """Return the closest friendly unit that has AntimatterStorage with space,
+        excluding the harvester itself and units that are already full."""
+        from geometry import hex_distance
+        from pathfinding import find_intersystem_path
+
+        needy: list = []
+        for system in galaxy_ref.systems.values():
+            for hex_obj in system.hexes.values():
+                for u in hex_obj.units:
+                    if u is self.unit:
+                        continue
+                    if u.owner != self.unit.owner:
+                        continue
+                    am = getattr(u, 'antimatter_component', None)
+                    if am and am.current_amount < am.max_capacity:
+                        needy.append(u)
+
+        if not needy:
+            return None
+
+        def get_dist(candidate):
+            if self.unit.in_system == candidate.in_system:
+                if self.unit.in_hex == candidate.in_hex:
+                    from geometry import distance as geo_distance
+                    return geo_distance(self.unit.position, candidate.position)
+                else:
+                    return hex_distance(self.unit.in_hex, candidate.in_hex) * 10000.0
+            else:
+                path = find_intersystem_path(
+                    galaxy_ref.system_graph,
+                    self.unit.in_system,
+                    candidate.in_system,
+                    self.unit.hull_size
+                )
+                if path is None:
+                    return float('inf')
+                return (len(path) - 1) * 1_000_000.0 + hex_distance(self.unit.in_hex, candidate.in_hex) * 10000.0
+
+        return min(needy, key=get_dist)
+
+    def _decide_next_step(self, galaxy_ref: 'Galaxy') -> None:
+        """Choose whether to go harvest or go transfer, and spawn the sub-order."""
+        star = self._get_star(galaxy_ref)
+        if not star:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: target star not found, order failed.")
+            return
+
+        if self._storage_is_full():
+            # Try to find a unit that needs antimatter.
+            target_unit = self._find_closest_needy_unit(galaxy_ref)
+            if target_unit:
+                logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: storage full, heading to resupply {target_unit.name}.")
+                self._spawn_transfer_order(target_unit.id)
+            else:
+                # No needy units — move to (or stay at) the star and wait.
+                logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: storage full but no needy units found; idling at star.")
+                if not self._is_at_star(star):
+                    self._spawn_harvest_move(star)
+                # If already at the star, do nothing and let check_completion_conditions
+                # re-evaluate next turn.
+        else:
+            # Need to recharge — go to the star.
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: storage not full, heading to star to harvest.")
+            if not self._is_at_star(star):
+                self._spawn_harvest_move(star)
+            # Harvesting is handled passively by AntimatterHarvester.update() each turn.
+            # check_completion_conditions will detect when storage is full.
+
+    # ------------------------------------------------------------------
+    # Order interface
+    # ------------------------------------------------------------------
+
+    def execute(self, galaxy_ref: 'Galaxy') -> None:
+        super().execute(galaxy_ref)
+
+        if not self.unit.harvester_component:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: unit has no AntimatterHarvester component.")
+            return
+
+        if not self.unit.antimatter_component:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: unit has no AntimatterStorage component.")
+            return
+
+        target_id = self.parameters.get("target_id")
+        if not target_id:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: no target_id.")
+            return
+
+        star = self._get_star(galaxy_ref)
+        if not star:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: target star (id={target_id}) not found.")
+            return
+
+        self._decide_next_step(galaxy_ref)
+
+    def check_completion_conditions(self) -> None:
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        if self.sub_orders:
+            return
+
+        # No sub-orders pending — time to decide what to do next.
+        galaxy_ref = self.unit.game.galaxy
+        self._decide_next_step(galaxy_ref)
+
