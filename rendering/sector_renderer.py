@@ -23,7 +23,7 @@ from entities import (
     Star, Planet, Wormhole, Unit, OrderType, OrderStatus, Moon, Asteroid, 
     AsteroidField, IceField, Nebula, Storm, Comet, StarType, PlanetType, DebrisField
 )
-from rendering.drawing_utils import draw_shape
+from rendering.drawing_utils import draw_shape, draw_dotted_line
 
 MAX_CACHED_STORM_DIAMETER = 512
 
@@ -850,6 +850,10 @@ class SectorViewRenderer:
         elif waypoint['order_type'] == OrderType.USE_ABILITY:
             line_color = (255, 105, 180)  # Hot Pink
             line_width = 2
+        elif waypoint['order_type'] == OrderType.PATROL:
+            # Patrol lines are dotted to signal they are interruptible by nearby enemies.
+            line_color = (160, 200, 255)  # Soft blue-white, distinct from standard move
+            line_width = 2
         elif waypoint['is_current']:
             line_width = 2
             line_color = MOVE_ORDER_LINE_COLOR
@@ -1127,6 +1131,9 @@ class SectorViewRenderer:
                     elif waypoint['order_type'] == OrderType.PROTECT:
                         line_color = (255, 105, 180)
                         line_width = 2
+                    elif waypoint['order_type'] == OrderType.PATROL:
+                        line_color = (160, 200, 255)
+                        line_width = 2
                     elif waypoint['is_current']:
                         line_width = 2
                         line_color = MOVE_ORDER_LINE_COLOR
@@ -1142,9 +1149,14 @@ class SectorViewRenderer:
                                            (dest_pixel_point.x, dest_pixel_point.y), 3, 1)
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
                     else:
-                        pygame.draw.line(self.overlay_surface, line_color, 
-                                      (last_pixel_x, last_pixel_y), 
-                                      (dest_pixel_point.x, dest_pixel_point.y), line_width)
+                        if waypoint['order_type'] == OrderType.PATROL:
+                            draw_dotted_line(self.overlay_surface, line_color,
+                                             (last_pixel_x, last_pixel_y),
+                                             (dest_pixel_point.x, dest_pixel_point.y), line_width)
+                        else:
+                            pygame.draw.line(self.overlay_surface, line_color, 
+                                          (last_pixel_x, last_pixel_y), 
+                                          (dest_pixel_point.x, dest_pixel_point.y), line_width)
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
                     
                     is_exit_point = (i == len(segment) - 1 and segment_index < len(path_segments) - 1)
@@ -1212,6 +1224,9 @@ class SectorViewRenderer:
                     elif waypoint['order_type'] == OrderType.PROTECT:
                         line_color = (255, 105, 180)
                         line_width = 2
+                    elif waypoint['order_type'] == OrderType.PATROL:
+                        line_color = (160, 200, 255)
+                        line_width = 2
                     elif waypoint['is_current']:
                         line_width = 2
                         line_color = MOVE_ORDER_LINE_COLOR
@@ -1221,20 +1236,32 @@ class SectorViewRenderer:
                                      max(MOVE_ORDER_LINE_COLOR[1] - 40, 0), 
                                      max(MOVE_ORDER_LINE_COLOR[2] - 40, 0))
                     
+                    is_patrol = waypoint['order_type'] == OrderType.PATROL
+
                     if i == 0:
                         if connect_to_unit:
-                            pygame.draw.line(self.overlay_surface, line_color, 
-                                          (unit_pixel_x, unit_pixel_y), 
-                                          (dest_pixel_point.x, dest_pixel_point.y), line_width)
+                            if is_patrol:
+                                draw_dotted_line(self.overlay_surface, line_color,
+                                                 (unit_pixel_x, unit_pixel_y),
+                                                 (dest_pixel_point.x, dest_pixel_point.y), line_width)
+                            else:
+                                pygame.draw.line(self.overlay_surface, line_color, 
+                                              (unit_pixel_x, unit_pixel_y), 
+                                              (dest_pixel_point.x, dest_pixel_point.y), line_width)
                         if segment_index > 0:
                             entry_color = WORMHOLE_JUMP_ORDER_COLOR
                             pygame.draw.circle(self.overlay_surface, entry_color, 
                                            (dest_pixel_point.x, dest_pixel_point.y), 3, 1)
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
                     else:
-                        pygame.draw.line(self.overlay_surface, line_color, 
-                                      (last_pixel_x, last_pixel_y), 
-                                      (dest_pixel_point.x, dest_pixel_point.y), line_width)
+                        if is_patrol:
+                            draw_dotted_line(self.overlay_surface, line_color,
+                                             (last_pixel_x, last_pixel_y),
+                                             (dest_pixel_point.x, dest_pixel_point.y), line_width)
+                        else:
+                            pygame.draw.line(self.overlay_surface, line_color, 
+                                          (last_pixel_x, last_pixel_y), 
+                                          (dest_pixel_point.x, dest_pixel_point.y), line_width)
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
                     
                     is_last_in_segment = (i == len(segment) - 1)

@@ -475,7 +475,8 @@ def test_draw_sector_view_patrol_order_path():
     hex_obj.celestial_bodies = []
     hex_obj.units = [unit]
 
-    # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
+    # Patrol lines now go through draw_dotted_line (not pygame.draw.line directly).
+    # We patch draw_dotted_line in the sector_renderer module and inspect its start/end args.
     with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
          patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
          patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
@@ -483,36 +484,46 @@ def test_draw_sector_view_patrol_order_path():
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
          patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
          patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
+         patch("rendering.sector_renderer.draw_dotted_line") as mock_draw_dotted_line, \
          patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
          patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
+
+        def dotted_coords():
+            """Return (start, end) tuples from all draw_dotted_line calls."""
+            result = []
+            for c in mock_draw_dotted_line.call_args_list:
+                args = c[0]  # positional args: surface, color, start, end, ...
+                start = args[2]
+                end = args[3]
+                # Normalise Position objects to (x, y) tuples
+                s = (start.x, start.y) if hasattr(start, 'x') else (float(start[0]), float(start[1]))
+                e = (end.x, end.y) if hasattr(end, 'x') else (float(end[0]), float(end[1]))
+                result.append((s, e))
+            return result
 
         # CASE 1: current_waypoint_index = 0
         patrol_order.current_waypoint_index = 0
         renderer.draw_sector_view()
         
-        # Drawn lines should start from unit (10, 10) to W1 (100, 10), then W1 -> W2 (200, 10), then W2 -> S (10, 10), then S -> W1 (100, 10).
-        line_calls = [call[0] for call in mock_draw_line.call_args_list]
-        draw_lines_coords = [(call[2], call[3]) for call in line_calls]
-        
-        # Verify the path is a closed loop starting at unit's current move target (100, 10)
-        # Expected lines: (Unit -> W1), (W1 -> W2), (W2 -> S), (S -> W1)
-        assert ((10.0, 10.0), (100.0, 10.0)) in draw_lines_coords
-        assert ((100.0, 10.0), (200.0, 10.0)) in draw_lines_coords
-        assert ((200.0, 10.0), (10.0, 10.0)) in draw_lines_coords
-        assert ((10.0, 10.0), (100.0, 10.0)) in draw_lines_coords
+        # Patrol lines should trace the closed loop from the unit's current position:
+        # Unit (10,10) -> W1 (100,10) -> W2 (200,10) -> S (10,10) -> W1 (100,10)
+        # Each segment is drawn as a dotted line via draw_dotted_line.
+        coords = dotted_coords()
+        assert ((10.0, 10.0), (100.0, 10.0)) in coords
+        assert ((100.0, 10.0), (200.0, 10.0)) in coords
+        assert ((200.0, 10.0), (10.0, 10.0)) in coords
         
         # Reset mock
-        mock_draw_line.reset_mock()
+        mock_draw_dotted_line.reset_mock()
         
         # CASE 2: current_waypoint_index = 1
         patrol_order.current_waypoint_index = 1
         renderer.draw_sector_view()
         
-        line_calls = [call[0] for call in mock_draw_line.call_args_list]
-        draw_lines_coords = [(call[2], call[3]) for call in line_calls]
-        
-        # Expected lines: (Unit -> W2), (W2 -> S), (S -> W1), (W1 -> W2)
-        assert ((10.0, 10.0), (200.0, 10.0)) in draw_lines_coords
-        assert ((200.0, 10.0), (10.0, 10.0)) in draw_lines_coords
-        assert ((10.0, 10.0), (100.0, 10.0)) in draw_lines_coords
-        assert ((100.0, 10.0), (200.0, 10.0)) in draw_lines_coords
+        # Expected: Unit (10,10) -> W2 (200,10) -> S (10,10) -> W1 (100,10) -> W2 (200,10)
+        coords = dotted_coords()
+        assert ((10.0, 10.0), (200.0, 10.0)) in coords
+        assert ((200.0, 10.0), (10.0, 10.0)) in coords
+        assert ((10.0, 10.0), (100.0, 10.0)) in coords
+        assert ((100.0, 10.0), (200.0, 10.0)) in coords
+

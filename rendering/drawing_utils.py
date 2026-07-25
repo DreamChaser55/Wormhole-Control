@@ -1,6 +1,49 @@
 import pygame
+import math
 from pygame import Color
 from geometry import Position
+
+
+def draw_dotted_line(surface: pygame.Surface, color: Color, start, end, width: int = 1,
+                     dot_len: int = 6, gap_len: int = 12):
+    """Draw a dotted (dashed) line from start to end.
+
+    Args:
+        surface: Pygame surface to draw on.
+        color:   Line colour.
+        start:   (x, y) or Position-like start point.
+        end:     (x, y) or Position-like end point.
+        width:   Line width in pixels.
+        dot_len: Length of each drawn dash in pixels.
+        gap_len: Length of each gap between dashes in pixels.
+    """
+    sx = start[0] if not isinstance(start, Position) else start.x
+    sy = start[1] if not isinstance(start, Position) else start.y
+    ex = end[0] if not isinstance(end, Position) else end.x
+    ey = end[1] if not isinstance(end, Position) else end.y
+
+    dx = ex - sx
+    dy = ey - sy
+    total_len = math.sqrt(dx * dx + dy * dy)
+    if total_len == 0:
+        return
+
+    ux = dx / total_len
+    uy = dy / total_len
+
+    pos = 0.0
+    drawing = True  # start with a drawn segment
+    while pos < total_len:
+        segment = dot_len if drawing else gap_len
+        segment = min(segment, total_len - pos)
+        if drawing:
+            x1 = sx + ux * pos
+            y1 = sy + uy * pos
+            x2 = sx + ux * (pos + segment)
+            y2 = sy + uy * (pos + segment)
+            pygame.draw.line(surface, color, (x1, y1), (x2, y2), width)
+        pos += segment
+        drawing = not drawing
 
 def draw_shape(surface: pygame.Surface, shape_type: str, color: Color, center_pos: 'Position', radius: float):
     """Helper function to draw different shapes based on type."""
