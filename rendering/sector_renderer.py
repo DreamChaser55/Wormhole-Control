@@ -329,24 +329,21 @@ class SectorViewRenderer:
         """
         self._fill_circle_clipped(circle_pos, radius_px, color)
 
-    def _draw_range_ring(self, cx, cy, radius_px, fill_rgba, outline_rgb):
-        """Draw one weapon/sensor range ring: a thin translucent filled disc
-        plus a solid 1px outline, so it remains visible at any zoom level.
+    def _draw_range_ring(self, cx, cy, radius_px, outline_rgb):
+        """Draw one weapon/sensor range ring as a solid 2px outline circle.
 
-        Per-frame cost is bounded by the visible screen area (see
-        ``_fill_circle_clipped``), not by the ring's true on-screen radius,
-        so this stays cheap even at maximum sector-view zoom with a unit
-        selected.
+        The ring is drawn without a translucent fill so that what lies inside
+        the circle remains clearly visible. If the ring's circumference never
+        crosses the visible screen (i.e. the circle covers the entire
+        viewport), the outline draw is skipped as it would be invisible anyway.
         """
         if radius_px <= 1 or self._is_circle_off_screen((cx, cy), radius_px):
             return
 
-        self._fill_circle_clipped((cx, cy), radius_px, fill_rgba)
-
-        # If the disc fully covers the viewport, its circumference never
-        # actually crosses the visible screen -- skip drawing the outline too.
+        # If the circle covers the entire viewport its circumference is never
+        # on screen, so there is nothing to draw.
         if not self._circle_covers_viewport((cx, cy), radius_px):
-            pygame.draw.circle(self.overlay_surface, outline_rgb, (cx, cy), radius_px, 1)
+            pygame.draw.circle(self.overlay_surface, outline_rgb, (cx, cy), radius_px, 2)
 
     def _update_zoom_render_stats(self):
 
@@ -807,10 +804,9 @@ class SectorViewRenderer:
     def _draw_unit_range_circles(self, unit: 'Unit', pixel_pos, dynamic_radius: float) -> None:
         """Draw sensor and weapon range circles around a selected owned unit.
 
-        Sensor short-range is drawn as a cyan ring; each distinct turret range
-        is drawn as a red/orange ring. Both circles are composed of a thin
-        translucent filled disc and a solid 1-pixel outline so they remain
-        visible at any zoom level.
+        Sensor short-range is drawn as a cyan outline ring; each distinct
+        turret range is drawn as a red/orange outline ring. Rings are empty
+        (no fill) so the space inside them remains visible.
 
         Each ring is drawn via ``_draw_range_ring``, whose cost is bounded by
         the visible screen area rather than by the ring's true on-screen
@@ -827,7 +823,7 @@ class SectorViewRenderer:
         sensors = unit.sensors_component
         if sensors and sensors.has_short_range:
             sr_px = int(sensors.short_range_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            self._draw_range_ring(cx, cy, sr_px, (0, 200, 255, 18), (0, 200, 255))
+            self._draw_range_ring(cx, cy, sr_px, (0, 200, 255))
 
         # --- Weapon range circle(s) (red/orange) ---
         weapons = unit.weapons_component
@@ -838,7 +834,7 @@ class SectorViewRenderer:
                 if rng_px in drawn_ranges:
                     continue
                 drawn_ranges.add(rng_px)
-                self._draw_range_ring(cx, cy, rng_px, (255, 80, 40, 25), (255, 80, 40))
+                self._draw_range_ring(cx, cy, rng_px, (255, 80, 40))
 
     def _get_waypoint_style(self, waypoint):
         if waypoint['order_type'] == OrderType.ATTACK:

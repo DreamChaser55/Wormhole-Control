@@ -12,8 +12,8 @@ slowdown described in the bug report ("performance is poor when I zoom in
 These tests assert the new implementation (`_fill_circle_clipped` /
 `_draw_range_ring`, used by `_draw_unit_range_circles`) is bounded by the
 screen size regardless of the ring's true radius, still produces the
-expected visual result (alpha-blended fill + outline), still culls fully
-off-screen rings, and still de-duplicates identical turret ranges.
+expected visual result (outline only, no translucent fill), still culls
+fully off-screen rings, and still de-duplicates identical turret ranges.
 """
 from unittest.mock import MagicMock, patch
 
@@ -156,14 +156,14 @@ def test_fill_circle_clipped_blends_instead_of_replacing():
     assert alpha_after_two > alpha_after_one
 
 
-def test_draw_range_ring_draws_fill_and_outline():
+def test_draw_range_ring_draws_outline_only():
     game, renderer = _make_test_renderer()
 
-    renderer._draw_range_ring(160, 100, 30, (0, 200, 255, 18), (0, 200, 255))
+    renderer._draw_range_ring(160, 100, 30, (0, 200, 255))
 
-    # Fill should be visible near the center.
-    assert renderer.overlay_surface.get_at((160, 100)).a == 18
-    # Outline should be visible somewhere near the ring boundary
+    # The center pixel should have no fill (alpha == 0).
+    assert renderer.overlay_surface.get_at((160, 100)).a == 0
+    # The outline should be visible somewhere near the ring boundary
     # (approximately radius_px away from the center, along a scanned arc).
     boundary_alphas = [
         renderer.overlay_surface.get_at((160 + dx, 100)).a
@@ -179,7 +179,7 @@ def test_draw_range_ring_skips_outline_when_disc_covers_viewport():
     game, renderer = _make_test_renderer()
 
     with patch("rendering.sector_renderer.pygame.draw.circle", wraps=pygame.draw.circle) as draw_circle:
-        renderer._draw_range_ring(160, 100, 4320, (0, 200, 255, 18), (0, 200, 255))
+        renderer._draw_range_ring(160, 100, 4320, (0, 200, 255))
 
     # No outline circle call (the only pygame.draw.circle calls would come
     # from the outline branch, since the fill uses the scanline/rect path).
@@ -189,10 +189,10 @@ def test_draw_range_ring_skips_outline_when_disc_covers_viewport():
 def test_draw_range_ring_culls_fully_offscreen_ring():
     game, renderer = _make_test_renderer()
 
-    with patch.object(renderer, "_fill_circle_clipped") as fill_mock:
-        renderer._draw_range_ring(100000, 100000, 50, (0, 200, 255, 18), (0, 200, 255))
+    with patch("rendering.sector_renderer.pygame.draw.circle") as circle_mock:
+        renderer._draw_range_ring(100000, 100000, 50, (0, 200, 255))
 
-    fill_mock.assert_not_called()
+    circle_mock.assert_not_called()
 
 
 def test_draw_unit_range_circles_draws_sensor_and_weapon_rings():
