@@ -100,7 +100,7 @@ class OrderSystem:
     def handle_jump_interhex(self, event: JumpInterhexEvent):
         for unit in event.units:
             if unit.hyperdrive_component:
-                if event.target_hex != unit.in_hex:
+                if event.system_name != unit.in_system or event.target_hex != unit.in_hex:
                     move_params = {
                         "destination_system_name": event.system_name,
                         "destination_hex_coord": event.target_hex,

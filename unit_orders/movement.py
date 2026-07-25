@@ -81,7 +81,11 @@ class ReachWaypointOrder(Order):
             wormhole = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref, self.unit.hull_size)
             if not wormhole:
                 self.status = OrderStatus.FAILED
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {current_system} to {dest_system}).")
+                any_wh = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref, ship_size=None)
+                if any_wh:
+                    logger.warning(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED: Unit '{self.unit.name}' (size {self.unit.hull_size.name}) is too large for wormhole {any_wh.name} (max capacity: {any_wh.diameter.name}).")
+                else:
+                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {current_system} to {dest_system}).")
                 return
                 
             self.unit.hyperdrive_component.wormhole_jump_target = wormhole
@@ -307,8 +311,13 @@ class MoveOrder(Order):
                 path_to_destination = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system, self.unit.hull_size)
 
                 if not path_to_destination or len(path_to_destination) < 2:
+                    self.sub_orders.clear()
                     self.status = OrderStatus.FAILED
-                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (no path found from {current_system} to {dest_system} via pathfinding with find_intersystem_path).")
+                    unrestricted_path = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system, ship_size=None)
+                    if unrestricted_path and len(unrestricted_path) >= 2:
+                        logger.warning(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED: Unit '{self.unit.name}' (size {self.unit.hull_size.name}) is too large for wormhole(s) along route {unrestricted_path}.")
+                    else:
+                        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (no path found from {current_system} to {dest_system} via pathfinding with find_intersystem_path).")
                     return
 
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Path found via pathfinding with find_intersystem_path: {path_to_destination}")
@@ -323,12 +332,14 @@ class MoveOrder(Order):
 
                     wormhole_for_leg = self.find_wormhole_to_system(leg_origin_system, leg_destination_system, galaxy_ref, self.unit.hull_size)
                     if not wormhole_for_leg:
+                        self.sub_orders.clear()
                         self.status = OrderStatus.FAILED
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no wormhole for leg {leg_origin_system} -> {leg_destination_system}).")
                         return
 
                     exit_wormhole_for_leg = galaxy_ref.wormholes[wormhole_for_leg.exit_wormhole_id]
                     if not exit_wormhole_for_leg:
+                        self.sub_orders.clear()
                         self.status = OrderStatus.FAILED
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no exit for wormhole {wormhole_for_leg.id}).")
                         return

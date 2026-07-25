@@ -1611,6 +1611,78 @@ def test_attack_order_pursuit():
     assert len(order.sub_orders) == 0
 
 
+def test_handle_jump_interhex_same_hex_different_system():
+    from events import JumpInterhexEvent
+    from order_system import OrderSystem
+    from events import EventBus
+    
+    event_bus = EventBus()
+    game = MagicMock()
+    order_sys = OrderSystem(game, event_bus)
+    
+    unit = MockUnit()
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 5)
+    unit.add_component(Hyperdrive(unit))
+    mock_commander = MagicMock()
+    unit.components[Commander] = mock_commander
+    
+    # Event targeting same hex (0, 5) but in "Rigel" system
+    event = JumpInterhexEvent(
+        units=[unit],
+        system_name="Rigel",
+        target_hex=(0, 5),
+        shift_pressed=False
+    )
+    
+    order_sys.handle_jump_interhex(event)
+    mock_commander.add_order.assert_called_once()
+    added_order = mock_commander.add_order.call_args[0][0]
+    assert added_order.order_type == OrderType.MOVE
+    assert added_order.parameters["destination_system_name"] == "Rigel"
+    assert added_order.parameters["destination_hex_coord"] == (0, 5)
+
+
+def test_move_order_plan_route_clears_sub_orders_on_failure(caplog):
+    import logging
+    unit = MockUnit()
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 5)
+    unit.hull_size = HullSize.HUGE
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED)
+    unit.add_component(hd)
+    
+    order = MoveOrder(unit, {
+        "destination_system_name": "Rigel",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(0, 0)
+    })
+    
+    # Setup galaxy where Sol only connects to Vega via a MEDIUM wormhole (too small for HUGE unit)
+    mock_start_hex = MagicMock()
+    # Mock an inhibition zone to stage an escape sub-order early in plan_route
+    zone = Circle(Position(0, 0), 50.0)
+    mock_start_hex.get_all_inhibition_zones.return_value = [zone]
+    
+    galaxy = MagicMock()
+    galaxy.systems = {"Sol": MagicMock(), "Rigel": MagicMock()}
+    galaxy.systems["Sol"].hexes = {(0, 5): mock_start_hex}
+    
+    # Topology: Sol <-> Rigel but with MEDIUM diameter edge
+    galaxy.system_graph = {
+        "Sol": {"Rigel": HullSize.MEDIUM},
+        "Rigel": {"Sol": HullSize.MEDIUM}
+    }
+    
+    with caplog.at_level(logging.WARNING):
+        order.execute(galaxy)
+        
+    assert order.status == OrderStatus.FAILED
+    assert len(order.sub_orders) == 0  # Staged escape sub-order must be cleared!
+    assert "too large for wormhole" in caplog.text
+
+
+
 
 
 

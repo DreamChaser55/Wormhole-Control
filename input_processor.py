@@ -401,7 +401,7 @@ class InputProcessor:
                         if any(isinstance(actor, Unit) for actor in actors):
                             for actor in actors:
                                 if isinstance(actor, Unit) and actor.hyperdrive_component is not None:
-                                    if target_hex_coord in current_system.hexes and actor.in_hex != target_hex_coord:
+                                    if target_hex_coord in current_system.hexes and (actor.in_system != current_system.name or actor.in_hex != target_hex_coord):
                                         options.append(("Jump Into This Sector", "jump_interhex"))
                                         break
                     self.gui.open_context_menu(position, options, target)
