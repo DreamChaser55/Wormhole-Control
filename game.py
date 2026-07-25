@@ -1,13 +1,29 @@
 import logging
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[
-        logging.FileHandler("game.log", mode='w'),
-        logging.StreamHandler()
-    ]
-)
+def setup_logging(log_to_file: bool = False):
+    """Configure logging for the application.
+
+    When log_to_file is False (e.g. during module import / test execution),
+    logs are directed to standard output only and game.log is untouched.
+    When log_to_file is True (e.g. during main game launch), game.log is initialized in 'w' mode.
+    """
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    root_logger.addHandler(stream_handler)
+
+    if log_to_file:
+        file_handler = logging.FileHandler("game.log", mode='w')
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+
+setup_logging(log_to_file=False)
 logger = logging.getLogger(__name__)
 
 import os
@@ -1434,6 +1450,7 @@ class Game:
 
 # Application entry point
 if __name__ == '__main__':
+    setup_logging(log_to_file=True)
     logger.debug("Initializing Game...")
     game = Game()
     logger.debug("Starting Game Loop...")
