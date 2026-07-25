@@ -242,7 +242,6 @@
     "antimatter_hull_cost": 10,
     "has_antimatter_harvester": true,
     "antimatter_harvest_rate": 15.0,
-    "antimatter_harvest_range": 800.0,
     "antimatter_harvester_hull_cost": 15,
     "has_weapon_bays": false,
     "weapon_bays_hull_cost": 0,

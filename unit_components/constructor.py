@@ -25,7 +25,7 @@ from utils import HexCoord
 from geometry import Position
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_HARVEST_RATE,
-    DEFAULT_ANTIMATTER_HARVEST_RANGE, ANTIMATTER_HARVESTER_HULL_COST,
+    ANTIMATTER_HARVESTER_HULL_COST,
     DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE
 )
 
@@ -190,7 +190,6 @@ class Constructor(UnitComponent):
             new_unit.add_component(AntimatterHarvester(
                 new_unit,
                 harvest_rate=template.get("antimatter_harvest_rate", DEFAULT_ANTIMATTER_HARVEST_RATE),
-                harvest_range=template.get("antimatter_harvest_range", DEFAULT_ANTIMATTER_HARVEST_RANGE),
                 hull_cost=template.get("antimatter_harvester_hull_cost", ANTIMATTER_HARVESTER_HULL_COST)
             ))
 

@@ -97,10 +97,10 @@ class AntimatterHarvester(UnitComponent):
     DISPLAY_NAME: str = "Antimatter Harvester"
     SIDEBAR_ORDER: int = 1
 
-    def __init__(self, unit: 'Unit', harvest_rate: float = DEFAULT_ANTIMATTER_HARVEST_RATE, harvest_range: float = DEFAULT_ANTIMATTER_HARVEST_RANGE, hull_cost: int = ANTIMATTER_HARVESTER_HULL_COST):
+    def __init__(self, unit: 'Unit', harvest_rate: float = DEFAULT_ANTIMATTER_HARVEST_RATE, hull_cost: int = ANTIMATTER_HARVESTER_HULL_COST):
         super().__init__(unit, hull_cost=hull_cost)
         self.harvest_rate = harvest_rate
-        self.harvest_range = harvest_range
+        self.harvest_range: float = DEFAULT_ANTIMATTER_HARVEST_RANGE
         self.is_harvesting: bool = False  # Updated each turn: True if currently near a star and harvesting
 
     def find_nearby_star(self, galaxy: 'Galaxy') -> Optional['CelestialBody']:

@@ -6,7 +6,7 @@ from unit_components import AntimatterStorage, AntimatterHarvester
 from unit_orders import TransferAntimatterOrder, OrderStatus
 from constants import (
     HullSize, StarType,
-    DEFAULT_ANTIMATTER_HARVEST_RATE, DEFAULT_ANTIMATTER_HARVEST_RANGE,
+    DEFAULT_ANTIMATTER_HARVEST_RATE,
     ANTIMATTER_TRANSFER_RATE, ANTIMATTER_TRANSFER_RANGE,
 )
 from tests.test_unit_components import MockPlayer
@@ -44,7 +44,7 @@ def make_unit(owner, hull_size=HullSize.MEDIUM, position=None, in_hex=(0, 0), in
 def test_harvester_replenishes_near_star():
     player = MockPlayer()
     unit = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
-    harvester = AntimatterHarvester(unit, harvest_rate=DEFAULT_ANTIMATTER_HARVEST_RATE, harvest_range=DEFAULT_ANTIMATTER_HARVEST_RANGE)
+    harvester = AntimatterHarvester(unit, harvest_rate=DEFAULT_ANTIMATTER_HARVEST_RATE)
     unit.add_component(harvester)
 
     am_comp = unit.antimatter_component
