@@ -304,6 +304,8 @@ def test_integration_multi_system_movement():
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
     unit.position = Position(0, 0)
+    unit.antimatter_component.max_capacity = 200.0
+    unit.antimatter_component.current_amount = 200.0
     
     engines = Engines(unit, speed=100.0)
     hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5, recharge_duration=1)
