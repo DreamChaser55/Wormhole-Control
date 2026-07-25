@@ -23,12 +23,17 @@ class TurnProcessor:
 
     def end_turn(self):
         """Processes the end of the current player's turn."""
-        logger.debug(f"--- End of {self.game.players[self.game.current_player_index].name}'s Turn ---")
+        turn_num = getattr(self.game, 'turn_number', 1)
+        logger.debug(f"--- Turn {turn_num} - End of {self.game.players[self.game.current_player_index].name}'s Turn ---")
         self.process_turn()
 
         self.game.current_player_index = (self.game.current_player_index + 1) % len(self.game.players)
+        if hasattr(self.game, 'turn_number'):
+            self.game.turn_number += 1
+        new_turn_num = getattr(self.game, 'turn_number', 1)
+
         current_player_name = self.game.players[self.game.current_player_index].name
-        logger.debug(f"\n--- Start of {current_player_name}'s Turn ---")
+        logger.debug(f"\n--- Turn {new_turn_num} - Start of {current_player_name}'s Turn ---")
 
         self.game.update_player_turn_display()
         self.game.update_side_bar_content() # Update info box after changing turn
@@ -42,7 +47,8 @@ class TurnProcessor:
         """Processes actions that occur at the end of a turn (movement, jumps) and calls update() for all units in the current player's turn."""
         with ProfileTimer("Total turn processing"):
             current_player = self.game.players[self.game.current_player_index]
-            logger.debug(f"Processing turn for {current_player.name}...")
+            turn_num = getattr(self.game, 'turn_number', 1)
+            logger.debug(f"Processing Turn {turn_num} for {current_player.name}...")
             
             if not self.game.galaxy or not self.game.galaxy.systems:
                 logger.debug("Warning: Galaxy or systems not initialized in process_turn.")
@@ -68,7 +74,7 @@ class TurnProcessor:
             with ProfileTimer("Unit updates"):
                 self._process_unit_updates(current_player)
 
-            logger.debug(f"Finished turn processing for {current_player.name}.")
+            logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 
     def _process_movement(self, current_player):
         for system_name, system in self.game.galaxy.systems.items():

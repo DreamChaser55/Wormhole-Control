@@ -358,3 +358,24 @@ def test_game_get_player_upkeep():
     expected_upkeep = (10 + 25) * UPKEEP_COST_PER_HULL_POINT
     assert game.get_player_upkeep(player) == pytest.approx(expected_upkeep)
 
+
+def test_turn_number_increment():
+    game = MagicMock()
+    game.turn_number = 1
+    player1 = MockPlayer("Player 1")
+    player2 = MockPlayer("Player 2")
+    player1.is_human = True
+    player2.is_human = True
+    game.players = [player1, player2]
+    game.current_player_index = 0
+
+    tp = TurnProcessor(game)
+    with patch.object(tp, 'process_turn'):
+        tp.end_turn()
+        assert game.turn_number == 2
+        assert game.current_player_index == 1
+
+        tp.end_turn()
+        assert game.turn_number == 3
+        assert game.current_player_index == 0
+

@@ -120,6 +120,7 @@ class Game:
         self.galaxy = None
         self.players: typing.List[Player] = []
         self.current_player_index = 0
+        self.turn_number = 1
 
         # Visibility / Fog of War State
         self.visibility: typing.Optional[VisibilitySnapshot] = None
@@ -199,6 +200,7 @@ class Game:
         ]
 
         self.current_player_index = 0
+        self.turn_number = 1
 
         # Assign homeworlds and track their hex locations
         player_homeworld_hexes: typing.Dict[Player, HexCoord] = {}
@@ -229,6 +231,7 @@ class Game:
         self.game_started = True
         self.update_side_bar_content() # Update info box for initial state
         self.update_player_turn_display() # Update turn display for Player 1
+        logger.debug(f"--- Turn {self.turn_number} - Start of {self.players[self.current_player_index].name}'s Turn ---")
         logger.debug("New game setup complete.\n")
         return True
 
@@ -1390,7 +1393,8 @@ class Game:
         else:
             color_hex = "#FFFFFF"
 
-        self.gui.update_turn_label(f"<font color='{color_hex}'>{current_player.name}'s Turn</font>")
+        turn_num = getattr(self, 'turn_number', 1)
+        self.gui.update_turn_label(f"<font color='{color_hex}'>Turn {turn_num}: {current_player.name}'s Turn</font>")
         # Update color indicator panel's background
         self.gui.update_player_color_indicator(Color(color)) # Convert tuple to pygame.Color
         self.gui.update_resource_display(current_player)
