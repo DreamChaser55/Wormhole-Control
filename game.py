@@ -62,7 +62,7 @@ from geometry import (
 from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
 from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent, StrikecraftBayComponent, StrikecraftWingComponent, AntimatterHarvester
+from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent, StrikecraftBayComponent, StrikecraftWingComponent, AntimatterHarvester, instantiate_unit_from_template
 
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
@@ -239,19 +239,10 @@ class Game:
         """Sets up the starting units of all players.
 
         All units for a given player spawn in the same hex sector as their
-        homeworld planet, clustered with random positions for visual spread.
-
-        Each player receives the following units in the 'Sol' system:
-        - One ship per hull size (TINY–LARGE): Engines + Hyperdrive + Weapons
-        - One station per hull size (TINY–LARGE): Weapons (MEDIUM also gets Inhibitor)
-        - One Huge Ship (HUGE): Engines + Hyperdrive + Weapons + Constructor
-            (builds STATION_MK1, REPAIR_STATION_SMALL, SHIPYARD_MK1)
-            + ColonyComponent + RepairComponent
-        - One Huge Station (HUGE): Weapons + Constructor
-            (builds CONSTRUCTOR_MK1, BATTLESHIP_TINY, BATTLESHIP_SMALL,
-             BATTLESHIP_MEDIUM, REPAIR_SHIP_SMALL, METAL_REFINERY_STATION,
-             CRYSTAL_REFINERY_STATION)
-            + RepairComponent
+        homeworld planet, clustered with fixed offsets for visual spread.
+        Units are defined by templates in ``data/unit_templates.json`` with the
+        ``SPAWN_`` prefix and instantiated via
+        :func:`~unit_components.constructor.instantiate_unit_from_template`.
 
         Args:
             player_homeworld_hexes: Optional mapping of Player -> HexCoord indicating
@@ -277,14 +268,21 @@ class Game:
                 return
         logger.debug(f"Target system for starting units: {target_system.name}")
 
-        all_hull_sizes = [h for h in HullSize if h != HullSize.STRIKECRAFT_WING]
+        # (template_key, x_offset, y_offset)
+        # Ships and stations are paired column-by-column (index 0..4 for TINY..HUGE).
+        # The carrier sits in column 5 between the ship and station rows.
+        hull_names = ["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE"]
+        spawn_entries: typing.List[typing.Tuple[str, float, float]] = []
+        for i, hull in enumerate(hull_names):
+            x = -500.0 + i * 200.0
+            spawn_entries.append((f"SPAWN_SHIP_{hull}",    x, -1300.0))
+            spawn_entries.append((f"SPAWN_STATION_{hull}", x, -1100.0))
+        spawn_entries.append(("SPAWN_CARRIER", -500.0 + 5 * 200.0, -1200.0))
 
-        # Spawn units for all players
         for player in self.players:
             # Determine spawn hex: use homeworld hex if available, otherwise fallback
             spawn_hex = player_homeworld_hexes.get(player)
             if spawn_hex is None or spawn_hex not in target_system.hexes:
-                # Fallback: pick a random hex that doesn't contain a Star or Wormhole
                 fallback_hexes = [
                     coord for coord, h in target_system.hexes.items()
                     if not any(isinstance(body, (Star, Wormhole)) for body in h.celestial_bodies)
@@ -298,117 +296,23 @@ class Game:
 
             logger.debug(f"Spawning all units for {player.name} in hex {spawn_hex} of {target_system.name}")
 
-            # --- Spawn Ship & Station for every hull size ---
-            for i, hull_size in enumerate(all_hull_sizes):
-
-                # -- Ship --
-                ship_pos = Position(-500.0 + i * 200.0, -1300.0)
-                ship_name = f"{player.name} {hull_size.name.capitalize()} Ship"
-                ship_unit = Unit(
+            for template_key, x_off, y_off in spawn_entries:
+                instantiate_unit_from_template(
+                    template_name=template_key,
                     owner=player,
-                    position=ship_pos,
-                    in_hex=spawn_hex,
-                    in_system=target_system.name,
-                    name=ship_name,
-                    hull_size=hull_size,
-                    game=self
+                    system_name=target_system.name,
+                    hex_coord=spawn_hex,
+                    position=Position(x_off, y_off),
+                    galaxy=self.galaxy,
+                    game=self,
                 )
-                ship_unit.add_component(Engines(ship_unit, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
-                if hull_size == HullSize.TINY:
-                    ship_unit.add_component(Hyperdrive(ship_unit, drive_type=HyperdriveType.BASIC, hull_cost=5))
-                else:
-                    ship_unit.add_component(Hyperdrive(ship_unit, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
-                weapons = Weapons(ship_unit, hull_cost=10)
-                weapons.add_turret(Turret(
-                    turret_type=TurretType.MASS_DRIVER,
-                    damage=10, range=300, cooldown=2,
-                    parent_unit=ship_unit
-                ))
-                ship_unit.add_component(weapons)
-
-                # Huge Ships are multi-role flagships
-                if hull_size == HullSize.HUGE:
-                    ship_unit.add_component(Constructor(
-                        ship_unit, hull_cost=15
-                    ))
-                    ship_unit.add_component(ColonyComponent(ship_unit, hull_cost=0))
-                    ship_unit.add_component(RepairComponent(
-                        ship_unit,
-                        repair_rate=15.0, repair_range=200.0,
-                        credit_cost_per_hp=1.0, hull_cost=10
-                    ))
-                    # Flagships are equipped with an Antimatter Harvester so each
-                    # player starts able to replenish antimatter near a star.
-                    # All other units must receive antimatter via transfer.
-                    ship_unit.add_component(AntimatterHarvester(ship_unit, hull_cost=15))
-
-
-                target_system.add_unit(ship_unit)
-                logger.debug(f"Added {ship_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
-
-                # -- Station --
-                station_pos = Position(-500.0 + i * 200.0, -1100.0)
-                station_name = f"{player.name} {hull_size.name.capitalize()} Station"
-                station_unit = Unit(
-                    owner=player,
-                    position=station_pos,
-                    in_hex=spawn_hex,
-                    in_system=target_system.name,
-                    name=station_name,
-                    hull_size=hull_size,
-                    game=self
-                )
-                # MEDIUM stations get a hyperspace inhibition field emitter
-                if hull_size == HullSize.MEDIUM:
-                    station_unit.add_component(HyperspaceInhibitionFieldEmitter(station_unit, radius=100.0, hull_cost=20))
-                weapons = Weapons(station_unit, hull_cost=10)
-                weapons.add_turret(Turret(
-                    turret_type=TurretType.BEAM,
-                    damage=15, range=400, cooldown=3,
-                    parent_unit=station_unit
-                ))
-                station_unit.add_component(weapons)
-
-                # Huge Stations are capital shipyard/repair facilities
-                if hull_size == HullSize.HUGE:
-                    station_unit.add_component(Constructor(
-                        station_unit, hull_cost=30
-                    ))
-                    station_unit.add_component(RepairComponent(
-                        station_unit,
-                        repair_rate=30.0, repair_range=350.0,
-                        credit_cost_per_hp=1.0, hull_cost=20
-                    ))
-
-                target_system.add_unit(station_unit)
-                logger.debug(f"Added {station_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
-
-            # -- Carrier Ship --
-            carrier_pos = Position(-500.0 + 5 * 200.0, -1200.0)
-            carrier_name = f"{player.name} Carrier"
-            carrier_unit = Unit(
-                owner=player,
-                position=carrier_pos,
-                in_hex=spawn_hex,
-                in_system=target_system.name,
-                name=carrier_name,
-                hull_size=HullSize.LARGE,
-                game=self
-            )
-            carrier_unit.add_component(Engines(carrier_unit, speed=DEFAULT_SUBLIGHT_SHIP_SPEED, hull_cost=5))
-            carrier_unit.add_component(Hyperdrive(carrier_unit, drive_type=HyperdriveType.ADVANCED, hull_cost=10))
-            carrier_unit.add_component(StrikecraftBayComponent(carrier_unit, max_slots=4, hull_cost=20))
-            
-            weapons = Weapons(carrier_unit, hull_cost=10)
-            weapons.add_turret(Turret(
-                turret_type=TurretType.BEAM,
-                damage=10, range=300, cooldown=2,
-                parent_unit=carrier_unit
-            ))
-            carrier_unit.add_component(weapons)
-            
-            target_system.add_unit(carrier_unit)
-            logger.debug(f"Added {carrier_unit.name} to {target_system.name} at {spawn_hex} for {player.name}")
+                # Personalise the unit name to include the owning player's name.
+                # The unit was just appended as the last entry in the hex.
+                hex_obj = target_system.hexes.get(spawn_hex)
+                if hex_obj and hex_obj.units:
+                    spawned = hex_obj.units[-1]
+                    spawned.name = f"{player.name} {spawned.name}"
+                    logger.debug(f"Added {spawned.name} to {target_system.name} at {spawn_hex} for {player.name}")
 
     def handle_input(self, time_delta: float):
         """Delegates input processing to the InputProcessor instance."""

@@ -430,5 +430,293 @@
     "constructor_hull_cost": 0,
     "build_time": 15,
     "build_cost": 1600
+  },
+
+  "SPAWN_SHIP_TINY": {
+    "name": "Tiny Ship",
+    "hull_size": "TINY",
+    "hull_points": 20,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "BASIC",
+    "hyperdrive_hull_cost": 5,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "MASS_DRIVER",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 4,
+    "build_cost": 250
+  },
+  "SPAWN_SHIP_SMALL": {
+    "name": "Small Ship",
+    "hull_size": "SMALL",
+    "hull_points": 50,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_hull_cost": 10,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "MASS_DRIVER",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 6,
+    "build_cost": 450
+  },
+  "SPAWN_SHIP_MEDIUM": {
+    "name": "Medium Ship",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_hull_cost": 10,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "MASS_DRIVER",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 8,
+    "build_cost": 700
+  },
+  "SPAWN_SHIP_LARGE": {
+    "name": "Large Ship",
+    "hull_size": "LARGE",
+    "hull_points": 200,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_hull_cost": 10,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "MASS_DRIVER",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 10,
+    "build_cost": 1000
+  },
+  "SPAWN_SHIP_HUGE": {
+    "name": "Huge Ship",
+    "hull_size": "HUGE",
+    "hull_points": 400,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_hull_cost": 10,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "MASS_DRIVER",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      }
+    ],
+    "has_constructor_component": true,
+    "constructor_hull_cost": 15,
+    "has_colony_component": true,
+    "colony_hull_cost": 0,
+    "has_repair_component": true,
+    "repair_rate": 15.0,
+    "repair_range": 200.0,
+    "credit_cost_per_hp": 1.0,
+    "repair_hull_cost": 10,
+    "has_antimatter_harvester": true,
+    "antimatter_harvester_hull_cost": 15,
+    "build_time": 20,
+    "build_cost": 2500
+  },
+
+  "SPAWN_STATION_TINY": {
+    "name": "Tiny Station",
+    "hull_size": "TINY",
+    "hull_points": 20,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "BEAM",
+        "damage": 15,
+        "range": 400,
+        "cooldown": 3
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 4,
+    "build_cost": 200
+  },
+  "SPAWN_STATION_SMALL": {
+    "name": "Small Station",
+    "hull_size": "SMALL",
+    "hull_points": 50,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "BEAM",
+        "damage": 15,
+        "range": 400,
+        "cooldown": 3
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 5,
+    "build_cost": 300
+  },
+  "SPAWN_STATION_MEDIUM": {
+    "name": "Medium Station",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "BEAM",
+        "damage": 15,
+        "range": 400,
+        "cooldown": 3
+      }
+    ],
+    "has_inhibitor": true,
+    "inhibitor_radius": 100.0,
+    "inhibitor_hull_cost": 20,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 7,
+    "build_cost": 500
+  },
+  "SPAWN_STATION_LARGE": {
+    "name": "Large Station",
+    "hull_size": "LARGE",
+    "hull_points": 200,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "BEAM",
+        "damage": 15,
+        "range": 400,
+        "cooldown": 3
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 9,
+    "build_cost": 750
+  },
+  "SPAWN_STATION_HUGE": {
+    "name": "Huge Station",
+    "hull_size": "HUGE",
+    "hull_points": 400,
+    "has_engine": false,
+    "engine_hull_cost": 0,
+    "has_hyperdrive": false,
+    "hyperdrive_hull_cost": 0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "BEAM",
+        "damage": 15,
+        "range": 400,
+        "cooldown": 3
+      }
+    ],
+    "has_constructor_component": true,
+    "constructor_hull_cost": 30,
+    "has_repair_component": true,
+    "repair_rate": 30.0,
+    "repair_range": 350.0,
+    "credit_cost_per_hp": 1.0,
+    "repair_hull_cost": 20,
+    "build_time": 18,
+    "build_cost": 2000
+  },
+
+  "SPAWN_CARRIER": {
+    "name": "Carrier",
+    "hull_size": "LARGE",
+    "hull_points": 200,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_hull_cost": 10,
+    "has_strikecraft_bay": true,
+    "strikecraft_bay_slots": 4,
+    "strikecraft_bay_hull_cost": 20,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 10,
+    "turrets": [
+      {
+        "type": "BEAM",
+        "damage": 10,
+        "range": 300,
+        "cooldown": 2
+      }
+    ],
+    "has_constructor_component": false,
+    "constructor_hull_cost": 0,
+    "build_time": 15,
+    "build_cost": 1800
   }
 }

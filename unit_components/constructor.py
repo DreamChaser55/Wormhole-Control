@@ -38,6 +38,243 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def instantiate_unit_from_template(
+    template_name: str,
+    owner: 'Player',
+    system_name: str,
+    hex_coord: 'HexCoord',
+    position: 'Position',
+    galaxy: 'Galaxy',
+    game: 'Game',
+) -> None:
+    """Module-level helper that builds a :class:`~entities.Unit` from a
+    template entry in :data:`~unit_templates.UNIT_TEMPLATES` and adds it to
+    *galaxy*.
+
+    This is the canonical instantiation routine.  :meth:`Constructor.
+    create_unit_from_template` is a thin wrapper around this function so that
+    both the constructor component **and** :func:`~game.Game.spawn_units` can
+    share the same logic without code duplication.
+    """
+    from entities import Unit  # avoid circular import
+
+    template = UNIT_TEMPLATES.get(template_name)
+    if not template:
+        logger.debug(f"Error: Unit template '{template_name}' not found.")
+        return
+
+    system = galaxy.systems.get(system_name)
+    if not system:
+        logger.debug(f"Error: System '{system_name}' not found for unit creation.")
+        return
+
+    hull_size_val = template["hull_size"]
+    if isinstance(hull_size_val, str):
+        hull_size_val = HullSize[hull_size_val.upper()]
+
+    new_unit = Unit(
+        owner=owner,
+        name=template["name"],
+        hull_size=hull_size_val,
+        game=game,
+        in_system=system_name,
+        in_hex=hex_coord,
+        position=position,
+        template_name=template.get("name", template_name)
+    )
+
+    if template.get("has_antimatter_storage", True):
+        from custom_unit_templates import calc_antimatter_hull_cost
+        cap = float(template.get("antimatter_capacity", DEFAULT_ANTIMATTER_CAPACITY))
+        cost = template.get("antimatter_hull_cost")
+        if cost is None:
+            cost = calc_antimatter_hull_cost(cap)
+        new_unit.add_component(AntimatterStorage(new_unit, max_capacity=cap, hull_cost=cost))
+    elif template.get("has_antimatter_storage") is False:
+        new_unit.remove_component(AntimatterStorage)
+
+    if template.get("has_antimatter_harvester"):
+        new_unit.add_component(AntimatterHarvester(
+            new_unit,
+            harvest_rate=template.get("antimatter_harvest_rate", DEFAULT_ANTIMATTER_HARVEST_RATE),
+            hull_cost=template.get("antimatter_harvester_hull_cost", ANTIMATTER_HARVESTER_HULL_COST)
+        ))
+
+    if template.get("has_engine"):
+        speed = template.get("engine_speed", 0)
+        new_unit.add_component(Engines(new_unit, speed=speed, hull_cost=template.get("engine_hull_cost", 0)))
+
+    if template.get("has_hyperdrive"):
+        htype_raw = template.get("hyperdrive_type", HyperdriveType.BASIC)
+        if isinstance(htype_raw, str):
+            raw_upper = htype_raw.upper()
+            if raw_upper == "ADVANCED":
+                htype = HyperdriveType.ADVANCED
+            elif raw_upper == "BASIC":
+                htype = HyperdriveType.BASIC
+            else:
+                try:
+                    htype = HyperdriveType(htype_raw.lower())
+                except ValueError:
+                    htype = HyperdriveType.BASIC
+        else:
+            htype = htype_raw
+
+        hull_size = new_unit.hull_size
+        if hull_size == HullSize.TINY and htype == HyperdriveType.ADVANCED:
+            logger.warning(f"Warning: Attempted to add ADVANCED hyperdrive to TINY unit template '{template_name}'. Downgrading to BASIC.")
+            htype = HyperdriveType.BASIC
+
+        cost = template.get("hyperdrive_hull_cost")
+        if cost is None or cost == 0:
+            cost = 5 if htype == HyperdriveType.BASIC else 10
+        jump_range = template.get("hyperdrive_jump_range", DEFAULT_JUMP_RANGE)
+        new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=cost, jump_range=jump_range))
+
+    if template.get("has_weapon_bays"):
+        weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
+        for turret_def in template.get("turrets", []):
+            variant_str = turret_def.get("variant", "STANDARD")
+            try:
+                variant = TurretVariant[variant_str.upper()]
+            except (KeyError, ValueError, AttributeError):
+                variant = TurretVariant.STANDARD
+
+            turret = Turret(
+                turret_type=TurretType[turret_def["type"]],
+                damage=turret_def["damage"],
+                range=turret_def["range"],
+                cooldown=turret_def["cooldown"],
+                parent_unit=new_unit,
+                variant=variant
+            )
+            weapons_comp.add_turret(turret)
+        new_unit.add_component(weapons_comp)
+
+    if template.get("has_defenses"):
+        new_unit.add_component(Defenses(
+            new_unit,
+            armor=template.get("armor", 0),
+            shields=template.get("shields", 0),
+            point_defense=template.get("point_defense", 0),
+            hull_cost=template.get("defenses_hull_cost", 0)
+        ))
+
+    if template.get("has_constructor_component"):
+        new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0)))
+
+    if template.get("has_repair_component"):
+        new_unit.add_component(RepairComponent(
+            new_unit,
+            repair_rate=template.get("repair_rate", 10.0),
+            repair_range=template.get("repair_range", 200.0),
+            credit_cost_per_hp=template.get("credit_cost_per_hp", 1.0),
+            hull_cost=template.get("repair_hull_cost", 15)
+        ))
+
+    if template.get("has_mining_component"):
+        new_unit.add_component(MiningComponent(
+            new_unit,
+            mining_rate=template.get("mining_rate", 10.0),
+            mining_range=template.get("mining_range", 200.0),
+            max_cargo=template.get("max_mining_cargo", 100.0),
+            hull_cost=template.get("mining_hull_cost", 10)
+        ))
+
+    if template.get("has_metal_refinery_component"):
+        new_unit.add_component(MetalRefineryComponent(
+            new_unit,
+            unload_range=template.get("unload_range", 300.0),
+            hull_cost=template.get("metal_refinery_hull_cost", 20)
+        ))
+
+    if template.get("has_crystal_refinery_component"):
+        new_unit.add_component(CrystalRefineryComponent(
+            new_unit,
+            unload_range=template.get("unload_range", 300.0),
+            hull_cost=template.get("crystal_refinery_hull_cost", 20)
+        ))
+
+    if template.get("has_hangar"):
+        hull_size = new_unit.hull_size
+        if hull_size in (HullSize.TINY, HullSize.SMALL, HullSize.MEDIUM):
+            logger.warning(f"Warning: Attempted to add hangar to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
+        else:
+            new_unit.add_component(HangarComponent(
+                new_unit,
+                max_slots=template.get("hangar_slots", 0),
+                hull_cost=template.get("hangar_hull_cost", 0)
+            ))
+
+    if template.get("has_strikecraft_bay"):
+        hull_size = new_unit.hull_size
+        if hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL):
+            logger.warning(f"Warning: Attempted to add strikecraft bay to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
+        else:
+            new_unit.add_component(StrikecraftBayComponent(
+                new_unit,
+                max_slots=template.get("strikecraft_bay_slots", 0),
+                hull_cost=template.get("strikecraft_bay_hull_cost", 0)
+            ))
+
+    if new_unit.hull_size == HullSize.STRIKECRAFT_WING:
+        wing_type_str = template.get("wing_type", "FIGHTER")
+        try:
+            wing_type = WingType[wing_type_str.upper()]
+        except (KeyError, ValueError, AttributeError):
+            wing_type = WingType.FIGHTER
+        new_unit.add_component(StrikecraftWingComponent(new_unit, wing_type=wing_type))
+
+    if template.get("has_colony_component"):
+        new_unit.add_component(ColonyComponent(
+            new_unit,
+            hull_cost=template.get("colony_hull_cost", 10)
+        ))
+
+    if template.get("has_inhibitor"):
+        new_unit.add_component(HyperspaceInhibitionFieldEmitter(
+            new_unit,
+            radius=template.get("inhibitor_radius", 100.0),
+            hull_cost=template.get("inhibitor_hull_cost", 20)
+        ))
+
+    if template.get("has_ability_component"):
+        raw_ability_names = template.get("abilities", [])
+        ability_types = []
+        for aname in raw_ability_names:
+            try:
+                ability_types.append(AbilityType(aname))
+            except ValueError:
+                logger.warning(f"[instantiate_unit_from_template] Unknown ability '{aname}' in template '{template_name}'. Skipping.")
+        if ability_types:
+            new_unit.add_component(AbilityComponent(
+                new_unit,
+                ability_types=ability_types,
+                hull_cost=template.get("ability_hull_cost", 10)
+            ))
+
+    # Sensors: prefer explicit new flags; fall back to legacy has_scanner.
+    has_sensors = template.get("has_sensors", template.get("has_scanner", False))
+    if has_sensors:
+        short_range = template.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)
+        long_range_hexes = template.get("sensor_long_range_hexes", 0)
+        hull_cost = template.get(
+            "sensors_hull_cost",
+            template.get("scanner_hull_cost", 0),
+        )
+        new_unit.remove_component(Sensors)
+        new_unit.add_component(Sensors(
+            new_unit,
+            short_range_radius=short_range,
+            long_range_hexes=long_range_hexes,
+            hull_cost=hull_cost,
+        ))
+
+    system.add_unit(new_unit)
+    logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
+
+
 @dataclasses.dataclass
 class BuildableUnit:
     unit_template_name: str
@@ -147,225 +384,20 @@ class Constructor(UnitComponent):
                 self.finish_construction(galaxy)
 
     def create_unit_from_template(self, galaxy: 'Galaxy', template_name: str, owner: 'Player', system_name: str, hex_coord: 'HexCoord', position: 'Position'):
-        """Creates a new unit based on the template."""
-        from entities import Unit # Avoid circular import
+        """Creates a new unit based on the template.
 
-        template = UNIT_TEMPLATES.get(template_name)
-        if not template:
-            logger.debug(f"Error: Unit template '{template_name}' not found.")
-            return
-
-        system = galaxy.systems.get(system_name)
-        if not system:
-            logger.debug(f"Error: System '{system_name}' not found for unit creation.")
-            return
-
-        hull_size_val = template["hull_size"]
-        if isinstance(hull_size_val, str):
-            hull_size_val = HullSize[hull_size_val.upper()]
-
-        new_unit = Unit(
+        Delegates to the module-level :func:`instantiate_unit_from_template`
+        helper, passing ``self.unit.game`` as the game context.
+        """
+        instantiate_unit_from_template(
+            template_name=template_name,
             owner=owner,
-            name=template["name"],
-            hull_size=hull_size_val,
-            game=self.unit.game,
-            in_system=system_name,
-            in_hex=hex_coord,
+            system_name=system_name,
+            hex_coord=hex_coord,
             position=position,
-            template_name=template.get("name", template_name)
+            galaxy=galaxy,
+            game=self.unit.game,
         )
-
-
-        if template.get("has_antimatter_storage", True):
-            from custom_unit_templates import calc_antimatter_hull_cost
-            cap = float(template.get("antimatter_capacity", DEFAULT_ANTIMATTER_CAPACITY))
-            cost = template.get("antimatter_hull_cost")
-            if cost is None:
-                cost = calc_antimatter_hull_cost(cap)
-            new_unit.add_component(AntimatterStorage(new_unit, max_capacity=cap, hull_cost=cost))
-        elif template.get("has_antimatter_storage") is False:
-            new_unit.remove_component(AntimatterStorage)
-
-        if template.get("has_antimatter_harvester"):
-            new_unit.add_component(AntimatterHarvester(
-                new_unit,
-                harvest_rate=template.get("antimatter_harvest_rate", DEFAULT_ANTIMATTER_HARVEST_RATE),
-                hull_cost=template.get("antimatter_harvester_hull_cost", ANTIMATTER_HARVESTER_HULL_COST)
-            ))
-
-        if template.get("has_engine"):
-            speed = template.get("engine_speed", 0)
-            new_unit.add_component(Engines(new_unit, speed=speed, hull_cost=template.get("engine_hull_cost", 0)))
-
-        if template.get("has_hyperdrive"):
-            htype_raw = template.get("hyperdrive_type", HyperdriveType.BASIC)
-            if isinstance(htype_raw, str):
-                raw_upper = htype_raw.upper()
-                if raw_upper == "ADVANCED":
-                    htype = HyperdriveType.ADVANCED
-                elif raw_upper == "BASIC":
-                    htype = HyperdriveType.BASIC
-                else:
-                    try:
-                        htype = HyperdriveType(htype_raw.lower())
-                    except ValueError:
-                        htype = HyperdriveType.BASIC
-            else:
-                htype = htype_raw
-
-            hull_size = new_unit.hull_size
-            if hull_size == HullSize.TINY and htype == HyperdriveType.ADVANCED:
-                logger.warning(f"Warning: Attempted to add ADVANCED hyperdrive to TINY unit template '{template_name}'. Downgrading to BASIC.")
-                htype = HyperdriveType.BASIC
-
-            cost = template.get("hyperdrive_hull_cost")
-            if cost is None or cost == 0:
-                cost = 5 if htype == HyperdriveType.BASIC else 10
-            jump_range = template.get("hyperdrive_jump_range", DEFAULT_JUMP_RANGE)
-            new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=cost, jump_range=jump_range))
-
-        if template.get("has_weapon_bays"):
-            weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
-            for turret_def in template.get("turrets", []):
-                variant_str = turret_def.get("variant", "STANDARD")
-                try:
-                    variant = TurretVariant[variant_str.upper()]
-                except (KeyError, ValueError, AttributeError):
-                    variant = TurretVariant.STANDARD
-
-                turret = Turret(
-                    turret_type=TurretType[turret_def["type"]],
-                    damage=turret_def["damage"],
-                    range=turret_def["range"],
-                    cooldown=turret_def["cooldown"],
-                    parent_unit=new_unit,
-                    variant=variant
-                )
-                weapons_comp.add_turret(turret)
-            new_unit.add_component(weapons_comp)
-
-        if template.get("has_defenses"):
-            new_unit.add_component(Defenses(
-                new_unit,
-                armor=template.get("armor", 0),
-                shields=template.get("shields", 0),
-                point_defense=template.get("point_defense", 0),
-                hull_cost=template.get("defenses_hull_cost", 0)
-            ))
-
-        if template.get("has_constructor_component"):
-            new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0)))
-
-        if template.get("has_repair_component"):
-            new_unit.add_component(RepairComponent(
-                new_unit,
-                repair_rate=template.get("repair_rate", 10.0),
-                repair_range=template.get("repair_range", 200.0),
-                credit_cost_per_hp=template.get("credit_cost_per_hp", 1.0),
-                hull_cost=template.get("repair_hull_cost", 15)
-            ))
-
-        if template.get("has_mining_component"):
-            new_unit.add_component(MiningComponent(
-                new_unit,
-                mining_rate=template.get("mining_rate", 10.0),
-                mining_range=template.get("mining_range", 200.0),
-                max_cargo=template.get("max_mining_cargo", 100.0),
-                hull_cost=template.get("mining_hull_cost", 10)
-            ))
-
-        if template.get("has_metal_refinery_component"):
-            new_unit.add_component(MetalRefineryComponent(
-                new_unit,
-                unload_range=template.get("unload_range", 300.0),
-                hull_cost=template.get("metal_refinery_hull_cost", 20)
-            ))
-
-        if template.get("has_crystal_refinery_component"):
-            new_unit.add_component(CrystalRefineryComponent(
-                new_unit,
-                unload_range=template.get("unload_range", 300.0),
-                hull_cost=template.get("crystal_refinery_hull_cost", 20)
-            ))
-
-        if template.get("has_hangar"):
-            hull_size = new_unit.hull_size
-            if hull_size in (HullSize.TINY, HullSize.SMALL, HullSize.MEDIUM):
-                logger.warning(f"Warning: Attempted to add hangar to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
-            else:
-                new_unit.add_component(HangarComponent(
-                    new_unit,
-                    max_slots=template.get("hangar_slots", 0),
-                    hull_cost=template.get("hangar_hull_cost", 0)
-                ))
-
-        if template.get("has_strikecraft_bay"):
-            hull_size = new_unit.hull_size
-            if hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL):
-                logger.warning(f"Warning: Attempted to add strikecraft bay to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
-            else:
-                new_unit.add_component(StrikecraftBayComponent(
-                    new_unit,
-                    max_slots=template.get("strikecraft_bay_slots", 0),
-                    hull_cost=template.get("strikecraft_bay_hull_cost", 0)
-                ))
-
-        if new_unit.hull_size == HullSize.STRIKECRAFT_WING:
-            wing_type_str = template.get("wing_type", "FIGHTER")
-            try:
-                wing_type = WingType[wing_type_str.upper()]
-            except (KeyError, ValueError, AttributeError):
-                wing_type = WingType.FIGHTER
-            new_unit.add_component(StrikecraftWingComponent(new_unit, wing_type=wing_type))
-
-        if template.get("has_colony_component"):
-            new_unit.add_component(ColonyComponent(
-                new_unit,
-                hull_cost=template.get("colony_hull_cost", 10)
-            ))
-
-        if template.get("has_inhibitor"):
-            new_unit.add_component(HyperspaceInhibitionFieldEmitter(
-                new_unit,
-                radius=template.get("inhibitor_radius", 100.0),
-                hull_cost=template.get("inhibitor_hull_cost", 20)
-            ))
-
-        if template.get("has_ability_component"):
-            raw_ability_names = template.get("abilities", [])
-            ability_types = []
-            for aname in raw_ability_names:
-                try:
-                    ability_types.append(AbilityType(aname))
-                except ValueError:
-                    logger.warning(f"[create_unit_from_template] Unknown ability '{aname}' in template '{template_name}'. Skipping.")
-            if ability_types:
-                new_unit.add_component(AbilityComponent(
-                    new_unit,
-                    ability_types=ability_types,
-                    hull_cost=template.get("ability_hull_cost", 10)
-                ))
-
-        # Sensors: prefer explicit new flags; fall back to legacy has_scanner.
-        has_sensors = template.get("has_sensors", template.get("has_scanner", False))
-        if has_sensors:
-            short_range = template.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)
-            long_range_hexes = template.get("sensor_long_range_hexes", 0)
-            hull_cost = template.get(
-                "sensors_hull_cost",
-                template.get("scanner_hull_cost", 0),
-            )
-            new_unit.remove_component(Sensors)
-            new_unit.add_component(Sensors(
-                new_unit,
-                short_range_radius=short_range,
-                long_range_hexes=long_range_hexes,
-                hull_cost=hull_cost,
-            ))
-
-        system.add_unit(new_unit)
-
-        logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
 
     def finish_construction(self, galaxy: 'Galaxy'):
         """Finalizes the construction and creates the new unit."""

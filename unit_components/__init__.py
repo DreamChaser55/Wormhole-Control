@@ -27,7 +27,7 @@ from .abilities import (
     AbilityInstance,
     AbilityComponent,
 )
-from .constructor import BuildableUnit, Constructor, UNIT_TEMPLATES
+from .constructor import BuildableUnit, Constructor, UNIT_TEMPLATES, instantiate_unit_from_template
 from .sensors import Sensors
 
 __all__ = [
@@ -63,6 +63,7 @@ __all__ = [
     "BuildableUnit",
     "Constructor",
     "UNIT_TEMPLATES",
+    "instantiate_unit_from_template",
     "Sensors",
     "random",
 ]
