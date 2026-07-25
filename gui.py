@@ -508,8 +508,8 @@ class GUI_Handler:
                                                               container=self.right_top_bar_panel,
                                                               object_id='#end_turn_button')
 
-        turn_label_width = int(180 * self.scale_x)
-        turn_label_rect = pygame.Rect(end_turn_button_rect.left - turn_label_width - padding,
+        turn_label_width = int(230 * self.scale_x)
+        turn_label_rect = pygame.Rect(end_turn_button_rect.left - turn_label_width - padding * 2,
                                         padding,
                                         turn_label_width,
                                         -1)
