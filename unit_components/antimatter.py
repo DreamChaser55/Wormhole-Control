@@ -6,7 +6,7 @@ from .base import UnitComponent
 from geometry import distance
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_REGEN,
-    DEFAULT_ANTIMATTER_HARVEST_RATE, DEFAULT_ANTIMATTER_HARVEST_RANGE,
+    DEFAULT_ANTIMATTER_HARVEST_RATE, ANTIMATTER_HARVEST_RANGE,
     ANTIMATTER_HARVESTER_HULL_COST, MIN_ANTIMATTER_HULL_COST
 )
 
@@ -100,7 +100,7 @@ class AntimatterHarvester(UnitComponent):
     def __init__(self, unit: 'Unit', harvest_rate: float = DEFAULT_ANTIMATTER_HARVEST_RATE, hull_cost: int = ANTIMATTER_HARVESTER_HULL_COST):
         super().__init__(unit, hull_cost=hull_cost)
         self.harvest_rate = harvest_rate
-        self.harvest_range: float = DEFAULT_ANTIMATTER_HARVEST_RANGE
+        self.harvest_range: float = ANTIMATTER_HARVEST_RANGE
         self.is_harvesting: bool = False  # Updated each turn: True if currently near a star and harvesting
 
     def find_nearby_star(self, galaxy: 'Galaxy') -> Optional['CelestialBody']:
