@@ -50,12 +50,16 @@ class TransferAntimatterOrder(Order):
 
     def _do_transfer_tick(self, target_unit: 'Unit') -> None:
         """Performs a single turn's worth of antimatter transfer from this unit to the target."""
-        from constants import ANTIMATTER_TRANSFER_RATE
+        from constants import ANTIMATTER_TRANSFER_RATE, ANTIMATTER_HARVESTER_RETURN_THRESHOLD
         source_am = self.unit.antimatter_component
         target_am = target_unit.antimatter_component
         if not source_am or not target_am:
             return
-        amount_to_send = min(ANTIMATTER_TRANSFER_RATE, source_am.current_amount)
+        if getattr(self.unit, 'harvester_component', None):
+            available_am = max(0.0, source_am.current_amount - ANTIMATTER_HARVESTER_RETURN_THRESHOLD)
+        else:
+            available_am = source_am.current_amount
+        amount_to_send = min(ANTIMATTER_TRANSFER_RATE, available_am)
         if amount_to_send <= 0:
             return
         added = target_am.add(amount_to_send)
@@ -161,8 +165,11 @@ class TransferAntimatterOrder(Order):
             self.status = OrderStatus.COMPLETED
             return
 
-        # Complete once the source is fully depleted or the target is fully topped up.
-        if source_am.current_amount <= 0.0 or target_am.current_amount >= target_am.max_capacity:
+        from constants import ANTIMATTER_HARVESTER_RETURN_THRESHOLD
+        min_reserve = ANTIMATTER_HARVESTER_RETURN_THRESHOLD if getattr(self.unit, 'harvester_component', None) else 0.0
+
+        # Complete once the source drops to or below min reserve, or target is fully topped up.
+        if source_am.current_amount <= min_reserve or target_am.current_amount >= target_am.max_capacity:
             self.status = OrderStatus.COMPLETED
             logger.debug(f"TRANSFER_ANTIMATTER order completed: {self.unit.name} -> {target_unit.name}.")
 
@@ -273,26 +280,24 @@ class ContinuousResupplyOrder(Order):
             logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: target star not found, order failed.")
             return
 
-        if self._storage_is_full():
-            # Try to find a unit that needs antimatter.
-            target_unit = self._find_closest_needy_unit(galaxy_ref)
-            if target_unit:
-                logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: storage full, heading to resupply {target_unit.name}.")
-                self._spawn_transfer_order(target_unit.id)
-            else:
-                # No needy units — move to (or stay at) the star and wait.
-                logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: storage full but no needy units found; idling at star.")
-                if not self._is_at_star(star):
-                    self._spawn_harvest_move(star)
-                # If already at the star, do nothing and let check_completion_conditions
-                # re-evaluate next turn.
-        else:
-            # Need to recharge — go to the star.
-            logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: storage not full, heading to star to harvest.")
+        from constants import ANTIMATTER_HARVESTER_RETURN_THRESHOLD
+        am = self.unit.antimatter_component
+        current_reserve = am.current_amount if am else 0.0
+
+        if current_reserve <= ANTIMATTER_HARVESTER_RETURN_THRESHOLD:
+            logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: reserve low ({current_reserve:.1f} <= {ANTIMATTER_HARVESTER_RETURN_THRESHOLD}), heading to star to harvest.")
             if not self._is_at_star(star):
                 self._spawn_harvest_move(star)
-            # Harvesting is handled passively by AntimatterHarvester.update() each turn.
-            # check_completion_conditions will detect when storage is full.
+        else:
+            can_supply = self._storage_is_full() if self._is_at_star(star) else True
+            target_unit = self._find_closest_needy_unit(galaxy_ref) if can_supply else None
+            if target_unit:
+                logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: heading to resupply {target_unit.name}.")
+                self._spawn_transfer_order(target_unit.id)
+            else:
+                logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: no needy units found or filling up at star; heading to/idling at star.")
+                if not self._is_at_star(star):
+                    self._spawn_harvest_move(star)
 
     # ------------------------------------------------------------------
     # Order interface

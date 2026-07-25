@@ -194,3 +194,54 @@ def test_transfer_antimatter_order_completes_when_target_full():
     order.update(galaxy)
 
     assert order.status == OrderStatus.COMPLETED
+
+
+def test_harvester_transfer_stops_at_60_reserve():
+    player = MockPlayer()
+    source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
+    target = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
+
+    # Add harvester component to source unit
+    harvester = AntimatterHarvester(source)
+    source.add_component(harvester)
+
+    source.antimatter_component.current_amount = 70.0
+    target.antimatter_component.current_amount = 0.0
+
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    source.game.galaxy = galaxy
+    source.in_galaxy = galaxy
+
+    order = TransferAntimatterOrder(source, {"target_unit_id": target.id})
+    order.execute(galaxy)
+    order.update(galaxy)
+
+    # Should transfer only 10.0 (70 - 60) and hit reserve threshold of 60.0
+    assert target.antimatter_component.current_amount == 10.0
+    assert source.antimatter_component.current_amount == 60.0
+    assert order.status == OrderStatus.COMPLETED
+
+
+def test_non_harvester_transfer_can_deplete_to_zero():
+    player = MockPlayer()
+    source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
+    target = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
+
+    source.antimatter_component.current_amount = 20.0
+    target.antimatter_component.current_amount = 0.0
+
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    source.game.galaxy = galaxy
+    source.in_galaxy = galaxy
+
+    order = TransferAntimatterOrder(source, {"target_unit_id": target.id})
+    order.execute(galaxy)
+    order.update(galaxy)
+
+    # Non-harvester unit can transfer below 60 down to 0
+    assert target.antimatter_component.current_amount == 20.0
+    assert source.antimatter_component.current_amount == 0.0
+    assert order.status == OrderStatus.COMPLETED
+

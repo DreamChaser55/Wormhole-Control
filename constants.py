@@ -96,6 +96,7 @@ HYPERDRIVE_HEX_JUMP_COST: float = 20.0
 DEFAULT_ANTIMATTER_HARVEST_RATE: float = 10.0
 ANTIMATTER_HARVEST_RANGE: float = 3000.0
 ANTIMATTER_HARVESTER_HULL_COST: int = 15
+ANTIMATTER_HARVESTER_RETURN_THRESHOLD: float = 60.0
 
 # Antimatter Transfer: units without a harvester must receive antimatter by
 # transferring it from another unit's existing storage.

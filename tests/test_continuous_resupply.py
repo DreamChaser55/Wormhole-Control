@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from unit_components import AntimatterStorage, AntimatterHarvester, Commander
@@ -109,6 +109,23 @@ def test_continuous_resupply_no_needy_units():
 
     assert order.status == OrderStatus.IN_PROGRESS
     assert len(order.sub_orders) == 0
+
+
+def test_continuous_resupply_returns_to_star_when_reserve_hits_60():
+    player = MockPlayer()
+    star = _make_star(in_hex=(0, 0))
+    # Harvester is away from star hex (e.g. in hex (2, 2)) after completing transfer, reserve = 60.0
+    harvester = _make_harvester_unit(player, in_hex=(2, 2), am_current=60.0)
+    galaxy = _make_galaxy([harvester], star=star)
+    harvester.game.galaxy = galaxy
+
+    order = ContinuousResupplyOrder(harvester, {"target_id": star.id, "target_name": star.name})
+    order.execute(galaxy)
+
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert len(order.sub_orders) == 1
+    assert order.sub_orders[0].order_type == OrderType.MOVE
+
 
 
 def test_continuous_resupply_requires_harvester():
