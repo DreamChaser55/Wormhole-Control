@@ -209,6 +209,15 @@ class TestCalcHyperdriveCost:
     def test_result_always_int(self):
         assert isinstance(calc_hyperdrive_hull_cost("ADVANCED", 7), int)
 
+    def test_hyperdrive_hull_cost_scales_with_hull_size(self):
+        # BASIC, range 5 has base raw cost of 3 + ceil(5/5) = 4
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.STRIKECRAFT_WING) == 2  # ceil(4 * 0.4) = 2
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.TINY) == 3             # ceil(4 * 0.6) = 3
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.SMALL) == 4            # ceil(4 * 0.8) = 4
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.MEDIUM) == 4           # ceil(4 * 1.0) = 4
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.LARGE) == 6            # ceil(4 * 1.5) = 6
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.HUGE) == 8             # ceil(4 * 2.0) = 8
+
 
 # ---------------------------------------------------------------------------
 # calc_ability_hull_cost
@@ -308,7 +317,15 @@ class TestCustomUnitTemplateHullCost:
 
     def test_hyperdrive_only(self):
         t = self._make(has_hyperdrive=True, hyperdrive_type="BASIC", hyperdrive_jump_range=5)
-        assert t.total_hull_cost == calc_hyperdrive_hull_cost("BASIC", 5)
+        assert t.total_hull_cost == calc_hyperdrive_hull_cost("BASIC", 5, HullSize.MEDIUM)
+
+    def test_hyperdrive_hull_cost_scales_with_template_hull_size(self):
+        comp = ComponentConfig(has_hyperdrive=True, hyperdrive_type="BASIC", hyperdrive_jump_range=5)
+        t_small = CustomUnitTemplate("S", "Small", HullSize.SMALL, comp)
+        t_huge = CustomUnitTemplate("H", "Huge", HullSize.HUGE, comp)
+        assert t_small.hyperdrive_hull_cost == 4
+        assert t_huge.hyperdrive_hull_cost == 8
+        assert t_huge.total_hull_cost > t_small.total_hull_cost
 
     def test_ability_only(self):
         t = self._make(has_ability_component=True, abilities=["ion_bolt"])

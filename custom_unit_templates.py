@@ -136,6 +136,15 @@ HYPERDRIVE_BASE_COST: Dict[str, int] = {
 }
 HYPERDRIVE_RANGE_PER_POINT: float = 5.0   # jump range units per hull point
 
+HYPERDRIVE_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
+    HullSize.STRIKECRAFT_WING: 0.4,
+    HullSize.TINY: 0.6,
+    HullSize.SMALL: 0.8,
+    HullSize.MEDIUM: 1.0,
+    HullSize.LARGE: 1.5,
+    HullSize.HUGE: 2.0,
+}
+
 # Abilities: base cost + cost per selected ability
 ABILITY_BASE_COST: int = 10
 ABILITY_COST_PER_ABILITY: int = 5
@@ -238,20 +247,34 @@ def calc_defenses_hull_cost(armor: int, shields: int, point_defense: int) -> int
     return max(1, math.ceil(total / DEFENSE_PER_HULL_POINT))
 
 
-def calc_hyperdrive_hull_cost(drive_type: str, jump_range: int) -> int:
+def calc_hyperdrive_hull_cost(
+    drive_type: str,
+    jump_range: int,
+    hull_size: Optional[HullSize] = HullSize.MEDIUM,
+) -> int:
     """Compute the hull cost of a Hyperdrive component.
 
-    Formula: HYPERDRIVE_BASE_COST[drive_type] + ceil(jump_range / RANGE_PER_POINT),
+    Formula: ceil((HYPERDRIVE_BASE_COST[drive_type] + max(0, jump_range) / RANGE_PER_POINT) * multiplier),
     minimum 1.
 
-    Examples:
-        BASIC,    range=5  → 3 + 1 = 4
-        ADVANCED, range=5  → 7 + 1 = 8
-        BASIC,    range=10 → 3 + 2 = 5
+    Examples (MEDIUM baseline):
+        BASIC,    range=5  → ceil((3 + 1) * 1.0) = 4
+        ADVANCED, range=5  → ceil((7 + 1) * 1.0) = 8
+        BASIC,    range=10 → ceil((3 + 2) * 1.0) = 5
+
+    Examples for BASIC, range=5 across hull sizes:
+        STRIKECRAFT_WING (0.4x) → 2
+        TINY (0.6x)             → 3
+        SMALL (0.8x)            → 4
+        MEDIUM (1.0x)           → 4
+        LARGE (1.5x)            → 6
+        HUGE (2.0x)             → 8
     """
     base = HYPERDRIVE_BASE_COST.get(drive_type.upper(), HYPERDRIVE_BASE_COST["BASIC"])
-    range_cost = math.ceil(max(0, jump_range) / HYPERDRIVE_RANGE_PER_POINT)
-    return max(1, base + range_cost)
+    range_cost = max(0, jump_range) / HYPERDRIVE_RANGE_PER_POINT
+    raw_cost = base + range_cost
+    multiplier = HYPERDRIVE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
+    return max(1, math.ceil(raw_cost * multiplier))
 
 
 def calc_ability_hull_cost(abilities: List[str]) -> int:
@@ -424,10 +447,16 @@ class ComponentConfig:
 
     @property
     def hyperdrive_hull_cost(self) -> int:
-        """Hull cost of Hyperdrive, computed from type and jump_range."""
+        """Hull cost of Hyperdrive, computed from type and jump_range (baseline MEDIUM size)."""
         if not self.has_hyperdrive:
             return 0
-        return calc_hyperdrive_hull_cost(self.hyperdrive_type, self.hyperdrive_jump_range)
+        return calc_hyperdrive_hull_cost(self.hyperdrive_type, self.hyperdrive_jump_range, HullSize.MEDIUM)
+
+    def get_hyperdrive_hull_cost(self, hull_size: Optional[HullSize] = None) -> int:
+        """Hull cost of Hyperdrive, computed from type, jump_range and given hull_size."""
+        if not self.has_hyperdrive:
+            return 0
+        return calc_hyperdrive_hull_cost(self.hyperdrive_type, self.hyperdrive_jump_range, hull_size)
 
     @property
     def ability_hull_cost(self) -> int:
@@ -468,6 +497,13 @@ class CustomUnitTemplate:
         return calc_engine_hull_cost(self.components.engine_speed, self.hull_size)
 
     @property
+    def hyperdrive_hull_cost(self) -> int:
+        """Hull cost of Hyperdrive, computed from type, jump_range, and hull_size."""
+        if not self.components.has_hyperdrive:
+            return 0
+        return calc_hyperdrive_hull_cost(self.components.hyperdrive_type, self.components.hyperdrive_jump_range, self.hull_size)
+
+    @property
     def total_hull_cost(self) -> int:
         """Sum of hull costs for all enabled components.
 
@@ -479,7 +515,7 @@ class CustomUnitTemplate:
         if c.has_engine:                        total += self.engine_hull_cost
         if c.has_antimatter_storage:            total += c.antimatter_hull_cost
         if c.has_antimatter_harvester:          total += c.antimatter_harvester_hull_cost
-        if c.has_hyperdrive:                    total += c.hyperdrive_hull_cost
+        if c.has_hyperdrive:                    total += self.hyperdrive_hull_cost
         if c.has_weapon_bays:                   total += c.weapon_bays_hull_cost
         if c.has_defenses:                      total += c.defenses_hull_cost
         if c.has_constructor_component:         total += c.constructor_hull_cost
@@ -737,7 +773,7 @@ class CustomTemplateManager:
             # --- Engines ---
             "has_engine": c.has_engine,
             "engine_speed": c.engine_speed,
-            "engine_hull_cost": c.engine_hull_cost,  # computed
+            "engine_hull_cost": template.engine_hull_cost,  # computed with hull_size
 
             # --- Antimatter Storage ---
             "has_antimatter_storage": c.has_antimatter_storage,
@@ -752,7 +788,7 @@ class CustomTemplateManager:
             "has_hyperdrive": c.has_hyperdrive,
             "hyperdrive_type": c.hyperdrive_type,
             "hyperdrive_jump_range": c.hyperdrive_jump_range,
-            "hyperdrive_hull_cost": c.hyperdrive_hull_cost,  # computed
+            "hyperdrive_hull_cost": template.hyperdrive_hull_cost,  # computed with hull_size
 
             # --- Weapons ---
             "has_weapon_bays": c.has_weapon_bays,

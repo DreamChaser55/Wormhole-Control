@@ -1024,6 +1024,8 @@ class UnitEditorWindow:
             if getattr(c, key, False):
                 if key == "has_engine":
                     total += c.get_engine_hull_cost(self._hull_size)
+                elif key == "has_hyperdrive":
+                    total += c.get_hyperdrive_hull_cost(self._hull_size)
                 else:
                     total += getattr(c, row["cost_key"], row["default_cost"])
         return total
@@ -1034,7 +1036,7 @@ class UnitEditorWindow:
         dynamic_values = {
             "has_engine":             c.get_engine_hull_cost(self._hull_size),
             "has_antimatter_storage": c.antimatter_hull_cost,
-            "has_hyperdrive":         c.hyperdrive_hull_cost,
+            "has_hyperdrive":         c.get_hyperdrive_hull_cost(self._hull_size),
             "has_weapon_bays":        c.weapon_bays_hull_cost,
             "has_defenses":           c.defenses_hull_cost,
             "has_ability_component":  c.ability_hull_cost,
