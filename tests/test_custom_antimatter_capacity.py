@@ -49,10 +49,40 @@ def test_custom_unit_template_total_hull_cost_and_validation():
     assert template.total_hull_cost == 5 + 8
     assert template.validate() == []
 
-    # Test invalid capacity below 100.0
+    # Test invalid capacity below 100.0 for MEDIUM hull
     comp.antimatter_capacity = 50.0
     errors = template.validate()
-    assert any("Antimatter storage capacity must be at least 100.0" in e for e in errors)
+    assert any("Antimatter storage capacity must be at least 100.0 for MEDIUM hull." in e for e in errors)
+
+
+def test_hull_dependent_min_antimatter_capacity():
+    from constants import get_min_antimatter_capacity, MIN_ANTIMATTER_CAPACITY_BY_HULL
+
+    assert get_min_antimatter_capacity(HullSize.STRIKECRAFT_WING) == 40.0
+    assert get_min_antimatter_capacity(HullSize.TINY) == 60.0
+    assert get_min_antimatter_capacity(HullSize.SMALL) == 80.0
+    assert get_min_antimatter_capacity(HullSize.MEDIUM) == 100.0
+    assert get_min_antimatter_capacity(HullSize.LARGE) == 150.0
+    assert get_min_antimatter_capacity(HullSize.HUGE) == 200.0
+    assert get_min_antimatter_capacity(None) == 100.0
+
+    # Validation test on HUGE hull size (min cap 200.0)
+    huge_comp = ComponentConfig(has_engine=True, engine_speed=100.0, has_antimatter_storage=True, antimatter_capacity=150.0)
+    huge_template = CustomUnitTemplate(design_name="HUGE_TEST", display_name="Huge Test", hull_size=HullSize.HUGE, components=huge_comp)
+    errors = huge_template.validate()
+    assert any("Antimatter storage capacity must be at least 200.0 for HUGE hull." in e for e in errors)
+
+    huge_comp.antimatter_capacity = 200.0
+    assert huge_template.validate() == []
+
+    # Validation test on TINY hull size (min cap 60.0)
+    tiny_comp = ComponentConfig(has_engine=True, engine_speed=100.0, has_antimatter_storage=True, antimatter_capacity=50.0)
+    tiny_template = CustomUnitTemplate(design_name="TINY_TEST", display_name="Tiny Test", hull_size=HullSize.TINY, components=tiny_comp)
+    errors = tiny_template.validate()
+    assert any("Antimatter storage capacity must be at least 60.0 for TINY hull." in e for e in errors)
+
+    tiny_comp.antimatter_capacity = 60.0
+    assert tiny_template.validate() == []
 
 
 def test_custom_template_manager_serialization():

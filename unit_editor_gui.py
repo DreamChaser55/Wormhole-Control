@@ -24,7 +24,7 @@ import pygame
 import pygame_gui
 import typing
 
-from constants import HullSize, HULL_CAPACITIES, TEXT_SCALE, MIN_ANTIMATTER_CAPACITY
+from constants import HullSize, HULL_CAPACITIES, TEXT_SCALE, MIN_ANTIMATTER_CAPACITY, get_min_antimatter_capacity
 from custom_unit_templates import (
     CustomUnitTemplate, ComponentConfig, TurretConfig,
     CustomTemplateManager, HULL_RESTRICTIONS, ADVANCED_HYPERDRIVE_MIN_HULL,
@@ -964,8 +964,9 @@ class UnitEditorWindow:
     def _read_antimatter_params(self) -> None:
         """Read antimatter capacity from the entry widget and write to _comp."""
         try:
-            cap = float(self._am_capacity_entry.get_text()) if self._am_capacity_entry else 100.0
-            self._comp.antimatter_capacity = max(MIN_ANTIMATTER_CAPACITY, cap)
+            min_cap = get_min_antimatter_capacity(self._hull_size)
+            cap = float(self._am_capacity_entry.get_text()) if self._am_capacity_entry else min_cap
+            self._comp.antimatter_capacity = max(min_cap, cap)
         except ValueError:
             pass
 
@@ -1156,6 +1157,13 @@ class UnitEditorWindow:
                 self._wt_dropdown.disable()
                 self._wt_lbl.hide()
                 self._wt_dropdown.hide()
+
+        # Minimum antimatter capacity restriction for current hull size
+        min_am_cap = get_min_antimatter_capacity(self._hull_size)
+        if self._comp.has_antimatter_storage and self._comp.antimatter_capacity < min_am_cap:
+            self._comp.antimatter_capacity = min_am_cap
+            if self._am_capacity_entry:
+                self._am_capacity_entry.set_text(str(int(min_am_cap)))
 
         self._update_component_toggle_labels()
         self._sync_dynamic_costs()

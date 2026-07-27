@@ -321,7 +321,7 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
         from unit_templates import UNIT_TEMPLATES
 
         # Hull cost calculation includes harvester cost (15)
-        comp = ComponentConfig(has_antimatter_storage=True, has_antimatter_harvester=True)
+        comp = ComponentConfig(has_antimatter_storage=True, antimatter_capacity=150.0, has_antimatter_harvester=True)
         template = CustomUnitTemplate(
             design_name="HARVESTER_SHIP",
             display_name="Harvester Ship",

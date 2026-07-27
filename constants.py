@@ -14,6 +14,8 @@ if os.name == 'nt':
         except Exception:
             pass
 
+from typing import Dict, Optional
+
 from geometry import Vector, Position
 from enum import Enum, auto
 
@@ -293,3 +295,24 @@ HULL_DOT_COUNTS = {
 SECTOR_VIEW_BASE_ICON_SIZE = 22.22
 ICON_DOT_RADIUS = 4.17
 ICON_DOT_SPACING = 11.11
+
+
+MIN_ANTIMATTER_CAPACITY_BY_HULL: Dict[HullSize, float] = {
+    HullSize.STRIKECRAFT_WING: 40.0,
+    HullSize.TINY: 60.0,
+    HullSize.SMALL: 80.0,
+    HullSize.MEDIUM: 100.0,
+    HullSize.LARGE: 150.0,
+    HullSize.HUGE: 200.0,
+}
+
+
+def get_min_antimatter_capacity(hull_size: Optional[HullSize] = None) -> float:
+    """Return the minimum antimatter storage capacity for a given hull size.
+
+    If hull_size is None, returns the baseline MIN_ANTIMATTER_CAPACITY (100.0).
+    """
+    if hull_size is None:
+        return MIN_ANTIMATTER_CAPACITY
+    return MIN_ANTIMATTER_CAPACITY_BY_HULL.get(hull_size, MIN_ANTIMATTER_CAPACITY)
+

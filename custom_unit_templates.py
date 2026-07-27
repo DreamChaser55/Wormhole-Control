@@ -24,7 +24,8 @@ from typing import Dict, List, Optional, Any
 
 from constants import (
     HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT,
-    MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_HULL_COST, ANTIMATTER_HARVESTER_HULL_COST,
+    MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_CAPACITY_BY_HULL, get_min_antimatter_capacity,
+    MIN_ANTIMATTER_HULL_COST, ANTIMATTER_HARVESTER_HULL_COST,
     DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX
 )
 
@@ -610,9 +611,10 @@ class CustomUnitTemplate:
         # Jump range must be positive
         if c.has_hyperdrive and c.hyperdrive_jump_range < 1:
             errors.append("Hyperdrive jump range must be at least 1.")
-        # Antimatter capacity must be at least MIN_ANTIMATTER_CAPACITY
-        if c.has_antimatter_storage and c.antimatter_capacity < MIN_ANTIMATTER_CAPACITY:
-            errors.append(f"Antimatter storage capacity must be at least {MIN_ANTIMATTER_CAPACITY}.")
+        # Antimatter capacity must be at least min cap for hull size
+        min_am_cap = get_min_antimatter_capacity(self.hull_size)
+        if c.has_antimatter_storage and c.antimatter_capacity < min_am_cap:
+            errors.append(f"Antimatter storage capacity must be at least {min_am_cap} for {self.hull_size.name} hull.")
         # At least one meaningful component
         any_component = any([
             c.has_engine, c.has_antimatter_storage, c.has_antimatter_harvester, c.has_hyperdrive, c.has_weapon_bays,
