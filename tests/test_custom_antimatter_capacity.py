@@ -18,8 +18,8 @@ def test_calc_antimatter_hull_cost():
     assert calc_antimatter_hull_cost(-10) == 0
     assert calc_antimatter_hull_cost(100) == 5
     assert calc_antimatter_hull_cost(200) == 10
-    assert calc_antimatter_hull_cost(50) == 5
-    assert calc_antimatter_hull_cost(1) == 5
+    assert calc_antimatter_hull_cost(50) == 3
+    assert calc_antimatter_hull_cost(1) == 1
 
 
 def test_component_config_antimatter_hull_cost():

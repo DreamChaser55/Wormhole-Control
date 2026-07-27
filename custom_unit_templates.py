@@ -25,7 +25,7 @@ from typing import Dict, List, Optional, Any
 from constants import (
     HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT,
     MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_CAPACITY_BY_HULL, get_min_antimatter_capacity,
-    MIN_ANTIMATTER_HULL_COST, ANTIMATTER_HARVESTER_HULL_COST,
+    ANTIMATTER_HARVESTER_HULL_COST,
     DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX
 )
 
@@ -177,17 +177,16 @@ def calc_engine_hull_cost(speed: float, hull_size: Optional[HullSize] = HullSize
 def calc_antimatter_hull_cost(capacity: float) -> int:
     """Compute the hull cost of an Antimatter Storage component from its capacity.
 
-    Formula: max(MIN_ANTIMATTER_HULL_COST, ceil(capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT))
-    for positive capacity, minimum 5.
+    Formula: ceil(capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT) for positive capacity.
 
     Examples:
         capacity=100 → 5
         capacity=200 → 10
-        capacity=50  → 5
+        capacity=40  → 2
     """
     if capacity <= 0:
         return 0
-    return max(MIN_ANTIMATTER_HULL_COST, math.ceil(capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT))
+    return math.ceil(capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT)
 
 
 def calc_turret_hull_cost(turret: 'TurretConfig') -> int:

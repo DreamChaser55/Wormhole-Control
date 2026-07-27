@@ -7,7 +7,7 @@ from geometry import distance
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_REGEN,
     DEFAULT_ANTIMATTER_HARVEST_RATE, ANTIMATTER_HARVEST_RANGE,
-    ANTIMATTER_HARVESTER_HULL_COST, MIN_ANTIMATTER_HULL_COST
+    ANTIMATTER_HARVESTER_HULL_COST
 )
 
 if TYPE_CHECKING:
@@ -27,11 +27,9 @@ class AntimatterStorage(UnitComponent):
     regen_rate: float = DEFAULT_ANTIMATTER_REGEN
 
     def __init__(self, unit: 'Unit', max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY, regen_rate: float = DEFAULT_ANTIMATTER_REGEN, hull_cost: int = 0):
-        if hull_cost == 0 and max_capacity > 0:
+        if hull_cost == 0:
             from custom_unit_templates import calc_antimatter_hull_cost
             hull_cost = calc_antimatter_hull_cost(max_capacity)
-        elif hull_cost == 0:
-            hull_cost = MIN_ANTIMATTER_HULL_COST
         super().__init__(unit, hull_cost=hull_cost)
         self.max_capacity = max_capacity
         self.regen_rate = regen_rate
