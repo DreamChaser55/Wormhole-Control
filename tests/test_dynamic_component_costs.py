@@ -38,32 +38,41 @@ from constants import HullSize
 
 class TestCalcEngineHullCost:
     def test_speed_100_gives_5(self):
-        """Default speed 100 should yield hull cost 5 (matching old default)."""
-        assert calc_engine_hull_cost(100.0) == 5
+        """Default speed 100 should yield hull cost 5 on MEDIUM baseline hull."""
+        assert calc_engine_hull_cost(100.0, HullSize.MEDIUM) == 5
 
     def test_speed_200_gives_10(self):
-        assert calc_engine_hull_cost(200.0) == 10
+        assert calc_engine_hull_cost(200.0, HullSize.MEDIUM) == 10
 
     def test_speed_50_gives_3(self):
         # ceil(50 / 20) = ceil(2.5) = 3
-        assert calc_engine_hull_cost(50.0) == 3
+        assert calc_engine_hull_cost(50.0, HullSize.MEDIUM) == 3
 
     def test_speed_1_gives_minimum_1(self):
-        assert calc_engine_hull_cost(1.0) == 1
+        assert calc_engine_hull_cost(1.0, HullSize.MEDIUM) == 1
 
     def test_speed_0_gives_0(self):
         """Zero speed = no thrust = no hull cost."""
-        assert calc_engine_hull_cost(0.0) == 0
+        assert calc_engine_hull_cost(0.0, HullSize.MEDIUM) == 0
 
     def test_speed_negative_gives_0(self):
-        assert calc_engine_hull_cost(-10.0) == 0
+        assert calc_engine_hull_cost(-10.0, HullSize.MEDIUM) == 0
 
     def test_speed_exactly_on_boundary(self):
         """Speed exactly divisible by SPEED_PER_HULL_POINT."""
-        assert calc_engine_hull_cost(SPEED_PER_HULL_POINT) == 1
+        assert calc_engine_hull_cost(SPEED_PER_HULL_POINT, HullSize.MEDIUM) == 1
 
     def test_result_always_int(self):
-        assert isinstance(calc_engine_hull_cost(137.5), int)
+        assert isinstance(calc_engine_hull_cost(137.5, HullSize.MEDIUM), int)
+
+    def test_hull_size_multipliers_for_speed_100(self):
+        """Verify speed 100 scales according to hull size multipliers."""
+        assert calc_engine_hull_cost(100.0, HullSize.STRIKECRAFT_WING) == 2  # ceil(5 * 0.4) = 2
+        assert calc_engine_hull_cost(100.0, HullSize.TINY) == 3             # ceil(5 * 0.6) = 3
+        assert calc_engine_hull_cost(100.0, HullSize.SMALL) == 4            # ceil(5 * 0.8) = 4
+        assert calc_engine_hull_cost(100.0, HullSize.MEDIUM) == 5           # ceil(5 * 1.0) = 5
+        assert calc_engine_hull_cost(100.0, HullSize.LARGE) == 8            # ceil(5 * 1.5) = 8
+        assert calc_engine_hull_cost(100.0, HullSize.HUGE) == 10           # ceil(5 * 2.0) = 10
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +296,15 @@ class TestCustomUnitTemplateHullCost:
 
     def test_engine_only(self):
         t = self._make(has_engine=True, engine_speed=100.0)
-        assert t.total_hull_cost == calc_engine_hull_cost(100.0)
+        assert t.total_hull_cost == calc_engine_hull_cost(100.0, HullSize.MEDIUM)
+
+    def test_engine_hull_cost_scales_with_template_hull_size(self):
+        comp = ComponentConfig(has_engine=True, engine_speed=100.0)
+        t_small = CustomUnitTemplate("S", "Small", HullSize.SMALL, comp)
+        t_huge = CustomUnitTemplate("H", "Huge", HullSize.HUGE, comp)
+        assert t_small.engine_hull_cost == 4
+        assert t_huge.engine_hull_cost == 10
+        assert t_huge.total_hull_cost > t_small.total_hull_cost
 
     def test_hyperdrive_only(self):
         t = self._make(has_hyperdrive=True, hyperdrive_type="BASIC", hyperdrive_jump_range=5)

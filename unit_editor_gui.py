@@ -1022,14 +1022,17 @@ class UnitEditorWindow:
         for row in COMPONENT_ROWS:
             key = row["key"]
             if getattr(c, key, False):
-                total += getattr(c, row["cost_key"], row["default_cost"])
+                if key == "has_engine":
+                    total += c.get_engine_hull_cost(self._hull_size)
+                else:
+                    total += getattr(c, row["cost_key"], row["default_cost"])
         return total
 
     def _sync_dynamic_costs(self) -> None:
         """Refresh the cost labels for dynamic components and the capacity label."""
         c = self._comp
         dynamic_values = {
-            "has_engine":             c.engine_hull_cost,
+            "has_engine":             c.get_engine_hull_cost(self._hull_size),
             "has_antimatter_storage": c.antimatter_hull_cost,
             "has_hyperdrive":         c.hyperdrive_hull_cost,
             "has_weapon_bays":        c.weapon_bays_hull_cost,

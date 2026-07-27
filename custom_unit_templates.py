@@ -106,9 +106,18 @@ COMPONENT_COST_PER_HULL_POINT = 30  # credits per hull capacity point used
 # Dynamic hull-cost tuning constants
 # --------------------------------------------------------------------------
 
-# Engines: 1 hull point per SPEED_PER_HULL_POINT units of speed.
-# Speed 100 → hull cost 5.
+# Engines: 1 hull point per SPEED_PER_HULL_POINT units of speed (at baseline MEDIUM size).
+# Speed 100 on MEDIUM → hull cost 5.
 SPEED_PER_HULL_POINT: float = 20.0
+
+ENGINE_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
+    HullSize.STRIKECRAFT_WING: 0.4,
+    HullSize.TINY: 0.6,
+    HullSize.SMALL: 0.8,
+    HullSize.MEDIUM: 1.0,
+    HullSize.LARGE: 1.5,
+    HullSize.HUGE: 2.0,
+}
 
 # Weapons: per-turret formula components
 BASE_TURRET_COST: float = 1.0          # flat per turret
@@ -136,19 +145,23 @@ ABILITY_COST_PER_ABILITY: int = 5
 # Dynamic hull-cost calculation functions
 # --------------------------------------------------------------------------
 
-def calc_engine_hull_cost(speed: float) -> int:
-    """Compute the hull cost of an Engines component from its speed.
+def calc_engine_hull_cost(speed: float, hull_size: Optional[HullSize] = HullSize.MEDIUM) -> int:
+    """Compute the hull cost of an Engines component from its speed and unit hull size.
 
-    Formula: ceil(speed / SPEED_PER_HULL_POINT), minimum 1.
+    Formula: ceil((speed / SPEED_PER_HULL_POINT) * multiplier), minimum 1 when speed > 0.
 
-    Examples:
-        speed=100 → 5
-        speed=200 → 10
-        speed=50  → 3
+    Examples for speed=100:
+        STRIKECRAFT_WING (0.4x) → 2
+        TINY (0.6x)             → 3
+        SMALL (0.8x)            → 4
+        MEDIUM (1.0x baseline)  → 5
+        LARGE (1.5x)            → 8
+        HUGE (2.0x)             → 10
     """
     if speed <= 0:
         return 0
-    return max(1, math.ceil(speed / SPEED_PER_HULL_POINT))
+    multiplier = ENGINE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
+    return max(1, math.ceil((speed / SPEED_PER_HULL_POINT) * multiplier))
 
 
 def calc_antimatter_hull_cost(capacity: float) -> int:
@@ -377,10 +390,16 @@ class ComponentConfig:
 
     @property
     def engine_hull_cost(self) -> int:
-        """Hull cost of Engines, computed from engine_speed."""
+        """Hull cost of Engines, computed from engine_speed (baseline MEDIUM size)."""
         if not self.has_engine:
             return 0
-        return calc_engine_hull_cost(self.engine_speed)
+        return calc_engine_hull_cost(self.engine_speed, HullSize.MEDIUM)
+
+    def get_engine_hull_cost(self, hull_size: Optional[HullSize] = None) -> int:
+        """Hull cost of Engines, computed from engine_speed and given hull_size."""
+        if not self.has_engine:
+            return 0
+        return calc_engine_hull_cost(self.engine_speed, hull_size)
 
     @property
     def antimatter_hull_cost(self) -> int:
@@ -442,6 +461,13 @@ class CustomUnitTemplate:
         return HULL_CAPACITIES[self.hull_size]
 
     @property
+    def engine_hull_cost(self) -> int:
+        """Hull cost of Engines, computed from engine_speed and hull_size."""
+        if not self.components.has_engine:
+            return 0
+        return calc_engine_hull_cost(self.components.engine_speed, self.hull_size)
+
+    @property
     def total_hull_cost(self) -> int:
         """Sum of hull costs for all enabled components.
 
@@ -450,7 +476,7 @@ class CustomUnitTemplate:
         """
         c = self.components
         total = 0
-        if c.has_engine:                        total += c.engine_hull_cost
+        if c.has_engine:                        total += self.engine_hull_cost
         if c.has_antimatter_storage:            total += c.antimatter_hull_cost
         if c.has_antimatter_harvester:          total += c.antimatter_harvester_hull_cost
         if c.has_hyperdrive:                    total += c.hyperdrive_hull_cost
