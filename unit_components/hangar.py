@@ -22,7 +22,7 @@ class HangarComponent(UnitComponent):
     max_slots: int = 0
     docked_units: list['Unit'] = dataclasses.field(default_factory=list)
 
-    def __init__(self, unit: 'Unit', max_slots: int = 0, hull_cost: int = 0):
+    def __init__(self, unit: 'Unit', max_slots: int = 0, hull_cost: float = 0.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.max_slots = max_slots
         self.docked_units = []

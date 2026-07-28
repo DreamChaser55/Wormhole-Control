@@ -26,7 +26,7 @@ class Engines(UnitComponent):
     speed: float = 0.0
     move_target: typing.Optional[Position] = None
 
-    def __init__(self, unit: 'Unit', speed: float = 0.0, hull_cost: int = 5):
+    def __init__(self, unit: 'Unit', speed: float = 0.0, hull_cost: float = 5.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.speed = speed
         self.move_target = None
@@ -56,9 +56,9 @@ class Hyperdrive(UnitComponent):
     recharge_time_remaining: int = 0
     RECHARGE_DURATION: int = DEFAULT_HYPERDRIVE_RECHARGE_DURATION
 
-    def __init__(self, unit: 'Unit', drive_type: HyperdriveType = HyperdriveType.BASIC, hull_cost: Optional[int] = None, recharge_duration: int = DEFAULT_HYPERDRIVE_RECHARGE_DURATION, jump_range: int = DEFAULT_JUMP_RANGE):
+    def __init__(self, unit: 'Unit', drive_type: HyperdriveType = HyperdriveType.BASIC, hull_cost: Optional[float] = None, recharge_duration: int = DEFAULT_HYPERDRIVE_RECHARGE_DURATION, jump_range: int = DEFAULT_JUMP_RANGE):
         if hull_cost is None:
-            hull_cost = 5 if drive_type == HyperdriveType.BASIC else 10
+            hull_cost = 5.0 if drive_type == HyperdriveType.BASIC else 10.0
         super().__init__(unit, hull_cost=hull_cost)
         self.drive_type = drive_type
         self.jump_range = jump_range

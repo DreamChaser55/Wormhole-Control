@@ -25,7 +25,7 @@ class StrikecraftWingComponent(UnitComponent):
     SIDEBAR_ORDER: int = 13
     mother_carrier: typing.Optional['Unit'] = None
 
-    def __init__(self, unit: 'Unit', wing_type: WingType = WingType.FIGHTER, hull_cost: int = 0):
+    def __init__(self, unit: 'Unit', wing_type: WingType = WingType.FIGHTER, hull_cost: float = 0.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.mother_carrier = None
         self.wing_type: WingType = wing_type
@@ -61,7 +61,7 @@ class StrikecraftBayComponent(UnitComponent):
     replenish_progress: int = 0
     build_wing_type: WingType = WingType.FIGHTER
 
-    def __init__(self, unit: 'Unit', max_slots: int = 0, hull_cost: int = 0):
+    def __init__(self, unit: 'Unit', max_slots: int = 0, hull_cost: float = 0.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.max_slots = max_slots
         self.docked_units = []

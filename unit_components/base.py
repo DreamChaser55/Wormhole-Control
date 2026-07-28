@@ -9,10 +9,10 @@ class UnitComponent:
     DISPLAY_NAME: str = "Component"
     SIDEBAR_ORDER: int = 100
 
-    def __init__(self, unit: 'Unit', hull_cost: int = 0):
+    def __init__(self, unit: 'Unit', hull_cost: float = 0.0):
         self.unit: 'Unit' = unit
-        self.hull_cost: int = hull_cost
-        self.max_hit_points: int = max(10, hull_cost * 10)
+        self.hull_cost: float = float(hull_cost)
+        self.max_hit_points: int = max(10, int(round(float(hull_cost) * 10)))
         self.current_hit_points: int = self.max_hit_points
 
     @property

@@ -43,23 +43,23 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 COMPONENT_ROWS: typing.List[typing.Dict] = [
-    {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5,  "is_dynamic": True},
-    {"key": "has_antimatter_storage",    "label": "Antimatter Storage", "cost_key": "antimatter_hull_cost",       "default_cost": 5,  "is_dynamic": True},
-    {"key": "has_antimatter_harvester",  "label": "Antimatter Harvester", "cost_key": "antimatter_harvester_hull_cost", "default_cost": 15, "is_dynamic": False},
-    {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 5,  "is_dynamic": True},
-    {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10, "is_dynamic": True},
-    {"key": "has_defenses",              "label": "Defenses",           "cost_key": "defenses_hull_cost",         "default_cost": 10, "is_dynamic": True},
-    {"key": "has_constructor_component", "label": "Constructor",        "cost_key": "constructor_hull_cost",      "default_cost": 15, "is_dynamic": False},
-    {"key": "has_repair_component",      "label": "Repair",             "cost_key": "repair_hull_cost",           "default_cost": 15, "is_dynamic": False},
-    {"key": "has_colony_component",      "label": "Colony",             "cost_key": "colony_hull_cost",           "default_cost": 10, "is_dynamic": False},
-    {"key": "has_mining_component",      "label": "Mining",             "cost_key": "mining_hull_cost",           "default_cost": 10, "is_dynamic": False},
-    {"key": "has_metal_refinery_component", "label": "Metal Refinery",  "cost_key": "metal_refinery_hull_cost",   "default_cost": 20, "is_dynamic": False},
-    {"key": "has_crystal_refinery_component", "label": "Crystal Refinery", "cost_key": "crystal_refinery_hull_cost", "default_cost": 20, "is_dynamic": False},
-    {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20, "is_dynamic": False},
-    {"key": "has_strikecraft_bay",       "label": "Strikecraft Bay",    "cost_key": "strikecraft_bay_hull_cost",  "default_cost": 15, "is_dynamic": False},
-    {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20, "is_dynamic": False},
-    {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10, "is_dynamic": True},
-    {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2,  "is_dynamic": True},
+    {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5.0,  "is_dynamic": True},
+    {"key": "has_antimatter_storage",    "label": "Antimatter Storage", "cost_key": "antimatter_hull_cost",       "default_cost": 5.0,  "is_dynamic": True},
+    {"key": "has_antimatter_harvester",  "label": "Antimatter Harvester", "cost_key": "antimatter_harvester_hull_cost", "default_cost": 15.0, "is_dynamic": False},
+    {"key": "has_hyperdrive",            "label": "Hyperdrive",         "cost_key": "hyperdrive_hull_cost",       "default_cost": 5.0,  "is_dynamic": True},
+    {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10.0, "is_dynamic": True},
+    {"key": "has_defenses",              "label": "Defenses",           "cost_key": "defenses_hull_cost",         "default_cost": 10.0, "is_dynamic": True},
+    {"key": "has_constructor_component", "label": "Constructor",        "cost_key": "constructor_hull_cost",      "default_cost": 15.0, "is_dynamic": False},
+    {"key": "has_repair_component",      "label": "Repair",             "cost_key": "repair_hull_cost",           "default_cost": 15.0, "is_dynamic": False},
+    {"key": "has_colony_component",      "label": "Colony",             "cost_key": "colony_hull_cost",           "default_cost": 10.0, "is_dynamic": False},
+    {"key": "has_mining_component",      "label": "Mining",             "cost_key": "mining_hull_cost",           "default_cost": 10.0, "is_dynamic": False},
+    {"key": "has_metal_refinery_component", "label": "Metal Refinery",  "cost_key": "metal_refinery_hull_cost",   "default_cost": 20.0, "is_dynamic": False},
+    {"key": "has_crystal_refinery_component", "label": "Crystal Refinery", "cost_key": "crystal_refinery_hull_cost", "default_cost": 20.0, "is_dynamic": False},
+    {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20.0, "is_dynamic": False},
+    {"key": "has_strikecraft_bay",       "label": "Strikecraft Bay",    "cost_key": "strikecraft_bay_hull_cost",  "default_cost": 15.0, "is_dynamic": False},
+    {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20.0, "is_dynamic": False},
+    {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
+    {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2.0,  "is_dynamic": True},
 ]
 
 
@@ -1018,7 +1018,7 @@ class UnitEditorWindow:
         the calc_* functions via ComponentConfig properties.  Fixed
         components use their stored hull cost fields.
         """
-        total = 0
+        total = 0.0
         c = self._comp
         for row in COMPONENT_ROWS:
             key = row["key"]
@@ -1047,14 +1047,14 @@ class UnitEditorWindow:
         for key, computed_cost in dynamic_values.items():
             lbl = self._comp_cost_labels.get(key)
             if lbl:
-                lbl.set_text(str(computed_cost))
+                lbl.set_text(f"{computed_cost:g}")
 
         self._update_capacity_label()
 
     def _capacity_text(self) -> str:
         capacity = HULL_CAPACITIES[self._hull_size]
         used = self._current_hull_used()
-        return f"Hull Capacity: {used} / {capacity}"
+        return f"Hull Capacity: {used:g} / {capacity:g}"
 
     def _toggle_component(self, key: str) -> None:
         current = getattr(self._comp, key, False)
@@ -1461,15 +1461,15 @@ class UnitEditorWindow:
         from constants import HIT_POINTS
         from custom_unit_templates import HULL_BASE_COST, HULL_BASE_BUILD_TIME, COMPONENT_COST_PER_HULL_POINT
         hp = HIT_POINTS[self._hull_size]
-        build_cost = HULL_BASE_COST[self._hull_size] + used * COMPONENT_COST_PER_HULL_POINT
+        build_cost = HULL_BASE_COST[self._hull_size] + int(round(used * COMPONENT_COST_PER_HULL_POINT))
         base_bt = HULL_BASE_BUILD_TIME[self._hull_size]
-        extra_bt = max(0, round((used / max(1, capacity)) * base_bt))
+        extra_bt = max(0, round((used / max(1.0, capacity)) * base_bt))
         build_time = base_bt + extra_bt
 
         cap_color = "#FF4444" if over else "#88FF88"
         lines = [
             f"<b>Hull:</b> {self._hull_size.name}   <b>HP:</b> {hp}",
-            f"<b>Hull capacity:</b> <font color='{cap_color}'>{used} / {capacity}</font>",
+            f"<b>Hull capacity:</b> <font color='{cap_color}'>{used:g} / {capacity:g}</font>",
             f"<b>Build cost:</b> {build_cost} credits",
             f"<b>Build time:</b> {build_time} turns",
             "",

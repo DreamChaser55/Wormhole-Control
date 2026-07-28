@@ -92,7 +92,7 @@ class Weapons(UnitComponent):
     SIDEBAR_ORDER: int = 1
     turrets: list[Turret] = dataclasses.field(default_factory=list)
 
-    def __init__(self, unit: 'Unit', hull_cost: int = 0):
+    def __init__(self, unit: 'Unit', hull_cost: float = 0.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.turrets = []
 

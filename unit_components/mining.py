@@ -23,7 +23,7 @@ class MiningComponent(UnitComponent):
     max_cargo: float = 100.0
     mining_target: Optional['CelestialBody'] = None
 
-    def __init__(self, unit: 'Unit', mining_rate: float = 10.0, mining_range: float = 200.0, max_cargo: float = 100.0, hull_cost: int = 10):
+    def __init__(self, unit: 'Unit', mining_rate: float = 10.0, mining_range: float = 200.0, max_cargo: float = 100.0, hull_cost: float = 10.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.mining_rate = mining_rate
         self.mining_range = mining_range
@@ -113,7 +113,7 @@ class MetalRefineryComponent(UnitComponent):
     SIDEBAR_ORDER: int = 8
     unload_range: float = 300.0
 
-    def __init__(self, unit: 'Unit', unload_range: float = 300.0, hull_cost: int = 20):
+    def __init__(self, unit: 'Unit', unload_range: float = 300.0, hull_cost: float = 20.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.unload_range = unload_range
 
@@ -136,7 +136,7 @@ class CrystalRefineryComponent(UnitComponent):
     SIDEBAR_ORDER: int = 9
     unload_range: float = 300.0
 
-    def __init__(self, unit: 'Unit', unload_range: float = 300.0, hull_cost: int = 20):
+    def __init__(self, unit: 'Unit', unload_range: float = 300.0, hull_cost: float = 20.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.unload_range = unload_range
 

@@ -17,7 +17,7 @@ class ColonyComponent(UnitComponent):
     population_cargo: int = 0
     max_cargo: int = 100
 
-    def __init__(self, unit: 'Unit', hull_cost: int = 10):
+    def __init__(self, unit: 'Unit', hull_cost: float = 10.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.population_cargo = 0
         self.max_cargo = 100

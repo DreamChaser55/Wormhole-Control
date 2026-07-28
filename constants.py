@@ -96,7 +96,7 @@ HYPERDRIVE_HEX_JUMP_COST: float = 20.0
 # new antimatter, and only while positioned near a star.
 DEFAULT_ANTIMATTER_HARVEST_RATE: float = 10.0
 ANTIMATTER_HARVEST_RANGE: float = 3000.0
-ANTIMATTER_HARVESTER_HULL_COST: int = 15
+ANTIMATTER_HARVESTER_HULL_COST: float = 15.0
 ANTIMATTER_HARVESTER_RETURN_THRESHOLD: float = 60.0
 
 # Antimatter Transfer: units without a harvester must receive antimatter by
@@ -107,7 +107,7 @@ ANTIMATTER_TRANSFER_RANGE: float = 200.0
 # Sensors / Fog of War Constants
 DEFAULT_SENSOR_SHORT_RANGE: float = 2000.0     # logical units (sector radius = 5000)
 SENSOR_RANGE_PER_HULL_POINT: float = 1000.0    # hull points per unit of short-range radius
-SENSOR_LONG_RANGE_HULL_COST_PER_HEX: int = 5   # hull points per long-range ring
+SENSOR_LONG_RANGE_HULL_COST_PER_HEX: float = 5.0   # hull points per long-range ring
 DEFAULT_SENSOR_LONG_RANGE_HEXES: int = 1       # default ring count for a long-range upgrade
 
 # Fog visuals
@@ -255,13 +255,13 @@ STORM_COLORS = {
 STORM_LIGHTNING_COLOR = (255, 255, 224, 150) # Light Yellow for lightning
 
 
-HULL_CAPACITIES = {
-    HullSize.STRIKECRAFT_WING: 5,
-    HullSize.TINY: 10,
-    HullSize.SMALL: 25,
-    HullSize.MEDIUM: 50,
-    HullSize.LARGE: 100,
-    HullSize.HUGE: 200,
+HULL_CAPACITIES: Dict[HullSize, float] = {
+    HullSize.STRIKECRAFT_WING: 5.0,
+    HullSize.TINY: 10.0,
+    HullSize.SMALL: 25.0,
+    HullSize.MEDIUM: 50.0,
+    HullSize.LARGE: 100.0,
+    HullSize.HUGE: 200.0,
 }
 
 HIT_POINTS = {

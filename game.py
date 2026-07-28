@@ -1176,7 +1176,7 @@ class Game:
                 data_for_gui.append({'type': 'label', 'text': f"Hex: {hex_pos_str}", 'object_id': '#sidebar_info_label', 'height': 20})
                 data_for_gui.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
         
-                data_for_gui.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage}/{unit.hull_capacity}", 'object_id': '#sidebar_info_label', 'height': 25})
+                data_for_gui.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage:g}/{unit.hull_capacity:g}", 'object_id': '#sidebar_info_label', 'height': 25})
                 upkeep_per_turn = unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
                 data_for_gui.append({'type': 'label', 'text': f"Upkeep: {upkeep_per_turn:.2f} cr/turn", 'object_id': '#sidebar_info_label', 'height': 20})
                 

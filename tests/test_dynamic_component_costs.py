@@ -44,35 +44,34 @@ class TestCalcEngineHullCost:
     def test_speed_200_gives_10(self):
         assert calc_engine_hull_cost(200.0, HullSize.MEDIUM) == 10
 
-    def test_speed_50_gives_3(self):
-        # ceil(50 / 20) = ceil(2.5) = 3
-        assert calc_engine_hull_cost(50.0, HullSize.MEDIUM) == 3
+    def test_speed_50_gives_2_point_5(self):
+        assert calc_engine_hull_cost(50.0, HullSize.MEDIUM) == 2.5
 
-    def test_speed_1_gives_minimum_1(self):
-        assert calc_engine_hull_cost(1.0, HullSize.MEDIUM) == 1
+    def test_speed_1_gives_fractional(self):
+        assert calc_engine_hull_cost(1.0, HullSize.MEDIUM) == 0.05
 
     def test_speed_0_gives_0(self):
         """Zero speed = no thrust = no hull cost."""
-        assert calc_engine_hull_cost(0.0, HullSize.MEDIUM) == 0
+        assert calc_engine_hull_cost(0.0, HullSize.MEDIUM) == 0.0
 
     def test_speed_negative_gives_0(self):
-        assert calc_engine_hull_cost(-10.0, HullSize.MEDIUM) == 0
+        assert calc_engine_hull_cost(-10.0, HullSize.MEDIUM) == 0.0
 
     def test_speed_exactly_on_boundary(self):
         """Speed exactly divisible by SPEED_PER_HULL_POINT."""
-        assert calc_engine_hull_cost(SPEED_PER_HULL_POINT, HullSize.MEDIUM) == 1
+        assert calc_engine_hull_cost(SPEED_PER_HULL_POINT, HullSize.MEDIUM) == 1.0
 
-    def test_result_always_int(self):
-        assert isinstance(calc_engine_hull_cost(137.5, HullSize.MEDIUM), int)
+    def test_result_always_float(self):
+        assert isinstance(calc_engine_hull_cost(137.5, HullSize.MEDIUM), float)
 
     def test_hull_size_multipliers_for_speed_100(self):
         """Verify speed 100 scales according to hull size multipliers."""
-        assert calc_engine_hull_cost(100.0, HullSize.STRIKECRAFT_WING) == 2  # ceil(5 * 0.4) = 2
-        assert calc_engine_hull_cost(100.0, HullSize.TINY) == 3             # ceil(5 * 0.6) = 3
-        assert calc_engine_hull_cost(100.0, HullSize.SMALL) == 4            # ceil(5 * 0.8) = 4
-        assert calc_engine_hull_cost(100.0, HullSize.MEDIUM) == 5           # ceil(5 * 1.0) = 5
-        assert calc_engine_hull_cost(100.0, HullSize.LARGE) == 8            # ceil(5 * 1.5) = 8
-        assert calc_engine_hull_cost(100.0, HullSize.HUGE) == 10           # ceil(5 * 2.0) = 10
+        assert calc_engine_hull_cost(100.0, HullSize.STRIKECRAFT_WING) == 2.0  # 5 * 0.4 = 2.0
+        assert calc_engine_hull_cost(100.0, HullSize.TINY) == 3.0             # 5 * 0.6 = 3.0
+        assert calc_engine_hull_cost(100.0, HullSize.SMALL) == 4.0            # 5 * 0.8 = 4.0
+        assert calc_engine_hull_cost(100.0, HullSize.MEDIUM) == 5.0           # 5 * 1.0 = 5.0
+        assert calc_engine_hull_cost(100.0, HullSize.LARGE) == 7.5            # 5 * 1.5 = 7.5
+        assert calc_engine_hull_cost(100.0, HullSize.HUGE) == 10.0           # 5 * 2.0 = 10.0
 
 
 # ---------------------------------------------------------------------------
@@ -84,14 +83,13 @@ class TestCalcTurretHullCost:
         return TurretConfig(turret_type="MASS_DRIVER", damage=dmg, range=rng, cooldown=cd, variant=variant)
 
     def test_typical_mass_driver_standard(self):
-        """Mass driver: dmg=10, rng=300, cd=2, STANDARD → ceil(1 + 2 + 3 + 1) = 7."""
+        """Mass driver: dmg=10, rng=300, cd=2, STANDARD → 1 + 2 + 3 + 1 = 7.0."""
         t = self._standard(10, 300, 2)
-        assert calc_turret_hull_cost(t) == 7
+        assert calc_turret_hull_cost(t) == 7.0
 
-    def test_minimum_is_1(self):
-        """Even a trivially weak turret costs at least 1."""
+    def test_minimum_is_positive(self):
         t = self._standard(0.01, 0.01, 99)
-        assert calc_turret_hull_cost(t) >= 1
+        assert calc_turret_hull_cost(t) > 0.0
 
     def test_high_damage_increases_cost(self):
         t_low = self._standard(10, 300, 2)
@@ -115,8 +113,8 @@ class TestCalcTurretHullCost:
         t_lr = self._standard(10, 300, 2, "LONG_RANGE")
         assert calc_turret_hull_cost(t_lr) > calc_turret_hull_cost(t_std)
 
-    def test_result_always_int(self):
-        assert isinstance(calc_turret_hull_cost(self._standard(10, 300, 2)), int)
+    def test_result_always_float(self):
+        assert isinstance(calc_turret_hull_cost(self._standard(10, 300, 2)), float)
 
 
 # ---------------------------------------------------------------------------
@@ -151,26 +149,26 @@ class TestCalcWeaponsHullCost:
 
 class TestCalcDefensesHullCost:
     def test_all_zeros_returns_0(self):
-        assert calc_defenses_hull_cost(0, 0, 0) == 0
+        assert calc_defenses_hull_cost(0, 0, 0) == 0.0
 
     def test_equal_spread_5_5_5(self):
-        """armor=5 + shields=5 + pd=5 = 15 total → ceil(15 / 3) = 5."""
-        assert calc_defenses_hull_cost(5, 5, 5) == 5
+        """armor=5 + shields=5 + pd=5 = 15 total → 15 / 3 = 5.0."""
+        assert calc_defenses_hull_cost(5, 5, 5) == 5.0
 
     def test_equal_spread_10_10_10(self):
-        """30 total → ceil(30 / 3) = 10."""
-        assert calc_defenses_hull_cost(10, 10, 10) == 10
+        """30 total → 30 / 3 = 10.0."""
+        assert calc_defenses_hull_cost(10, 10, 10) == 10.0
 
-    def test_minimum_is_1_when_any_nonzero(self):
-        assert calc_defenses_hull_cost(1, 0, 0) == 1
+    def test_nonzero_when_any_nonzero(self):
+        assert calc_defenses_hull_cost(1, 0, 0) == 1 / 3.0
 
     def test_more_total_higher_cost(self):
         low = calc_defenses_hull_cost(2, 2, 2)
         high = calc_defenses_hull_cost(20, 20, 20)
         assert high > low
 
-    def test_result_always_int(self):
-        assert isinstance(calc_defenses_hull_cost(7, 3, 5), int)
+    def test_result_always_float(self):
+        assert isinstance(calc_defenses_hull_cost(7, 3, 5), float)
 
 
 # ---------------------------------------------------------------------------
@@ -179,20 +177,20 @@ class TestCalcDefensesHullCost:
 
 class TestCalcHyperdriveCost:
     def test_basic_range5(self):
-        """BASIC + range 5 → 3 + ceil(5/5) = 3 + 1 = 4."""
-        assert calc_hyperdrive_hull_cost("BASIC", 5) == 4
+        """BASIC + range 5 → 3 + 5/5 = 3 + 1 = 4.0."""
+        assert calc_hyperdrive_hull_cost("BASIC", 5) == 4.0
 
     def test_advanced_range5(self):
-        """ADVANCED + range 5 → 7 + 1 = 8."""
-        assert calc_hyperdrive_hull_cost("ADVANCED", 5) == 8
+        """ADVANCED + range 5 → 7 + 1 = 8.0."""
+        assert calc_hyperdrive_hull_cost("ADVANCED", 5) == 8.0
 
     def test_basic_range10(self):
-        """BASIC + range 10 → 3 + ceil(10/5) = 3 + 2 = 5."""
-        assert calc_hyperdrive_hull_cost("BASIC", 10) == 5
+        """BASIC + range 10 → 3 + 10/5 = 3 + 2 = 5.0."""
+        assert calc_hyperdrive_hull_cost("BASIC", 10) == 5.0
 
     def test_advanced_range10(self):
-        """ADVANCED + range 10 → 7 + 2 = 9."""
-        assert calc_hyperdrive_hull_cost("ADVANCED", 10) == 9
+        """ADVANCED + range 10 → 7 + 2 = 9.0."""
+        assert calc_hyperdrive_hull_cost("ADVANCED", 10) == 9.0
 
     def test_longer_range_costs_more(self):
         assert calc_hyperdrive_hull_cost("BASIC", 20) > calc_hyperdrive_hull_cost("BASIC", 5)
@@ -204,19 +202,19 @@ class TestCalcHyperdriveCost:
         assert calc_hyperdrive_hull_cost("basic", 5) == calc_hyperdrive_hull_cost("BASIC", 5)
 
     def test_minimum_is_1(self):
-        assert calc_hyperdrive_hull_cost("BASIC", 0) >= 1
+        assert calc_hyperdrive_hull_cost("BASIC", 0) >= 1.0
 
-    def test_result_always_int(self):
-        assert isinstance(calc_hyperdrive_hull_cost("ADVANCED", 7), int)
+    def test_result_always_float(self):
+        assert isinstance(calc_hyperdrive_hull_cost("ADVANCED", 7), float)
 
     def test_hyperdrive_hull_cost_scales_with_hull_size(self):
-        # BASIC, range 5 has base raw cost of 3 + ceil(5/5) = 4
-        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.STRIKECRAFT_WING) == 2  # ceil(4 * 0.4) = 2
-        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.TINY) == 3             # ceil(4 * 0.6) = 3
-        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.SMALL) == 4            # ceil(4 * 0.8) = 4
-        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.MEDIUM) == 4           # ceil(4 * 1.0) = 4
-        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.LARGE) == 6            # ceil(4 * 1.5) = 6
-        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.HUGE) == 8             # ceil(4 * 2.0) = 8
+        # BASIC, range 5 has base raw cost of 3 + (5/5) = 4.0
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.STRIKECRAFT_WING) == 1.6  # 4 * 0.4 = 1.6
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.TINY) == 2.4             # 4 * 0.6 = 2.4
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.SMALL) == 3.2            # 4 * 0.8 = 3.2
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.MEDIUM) == 4.0           # 4 * 1.0 = 4.0
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.LARGE) == 6.0            # 4 * 1.5 = 6.0
+        assert calc_hyperdrive_hull_cost("BASIC", 5, HullSize.HUGE) == 8.0             # 4 * 2.0 = 8.0
 
 
 # ---------------------------------------------------------------------------
@@ -234,8 +232,8 @@ class TestCalcAbilityCost:
         assert calc_ability_hull_cost(["ion_bolt", "cluster_warhead", "repair_cloud"]) == \
                ABILITY_BASE_COST + 3 * ABILITY_COST_PER_ABILITY
 
-    def test_result_always_int(self):
-        assert isinstance(calc_ability_hull_cost(["ion_bolt"]), int)
+    def test_result_always_float(self):
+        assert isinstance(calc_ability_hull_cost(["ion_bolt"]), float)
 
 
 # ---------------------------------------------------------------------------
@@ -311,8 +309,8 @@ class TestCustomUnitTemplateHullCost:
         comp = ComponentConfig(has_engine=True, engine_speed=100.0)
         t_small = CustomUnitTemplate("S", "Small", HullSize.SMALL, comp)
         t_huge = CustomUnitTemplate("H", "Huge", HullSize.HUGE, comp)
-        assert t_small.engine_hull_cost == 4
-        assert t_huge.engine_hull_cost == 10
+        assert t_small.engine_hull_cost == 4.0
+        assert t_huge.engine_hull_cost == 10.0
         assert t_huge.total_hull_cost > t_small.total_hull_cost
 
     def test_hyperdrive_only(self):
@@ -323,8 +321,8 @@ class TestCustomUnitTemplateHullCost:
         comp = ComponentConfig(has_hyperdrive=True, hyperdrive_type="BASIC", hyperdrive_jump_range=5)
         t_small = CustomUnitTemplate("S", "Small", HullSize.SMALL, comp)
         t_huge = CustomUnitTemplate("H", "Huge", HullSize.HUGE, comp)
-        assert t_small.hyperdrive_hull_cost == 4
-        assert t_huge.hyperdrive_hull_cost == 8
+        assert t_small.hyperdrive_hull_cost == 3.2
+        assert t_huge.hyperdrive_hull_cost == 8.0
         assert t_huge.total_hull_cost > t_small.total_hull_cost
 
     def test_ability_only(self):

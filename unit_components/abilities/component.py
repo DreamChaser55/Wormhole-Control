@@ -29,7 +29,7 @@ class AbilityComponent(UnitComponent):
     SIDEBAR_ORDER: int = 14
     abilities: Dict[AbilityType, AbilityInstance] = dataclasses.field(default_factory=dict)
 
-    def __init__(self, unit: 'Unit', ability_types: List[AbilityType], hull_cost: int = 10):
+    def __init__(self, unit: 'Unit', ability_types: List[AbilityType], hull_cost: float = 10.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.abilities: Dict[AbilityType, AbilityInstance] = {}
         for atype in ability_types:

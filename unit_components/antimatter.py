@@ -26,8 +26,8 @@ class AntimatterStorage(UnitComponent):
     current_amount: float = DEFAULT_ANTIMATTER_CAPACITY
     regen_rate: float = DEFAULT_ANTIMATTER_REGEN
 
-    def __init__(self, unit: 'Unit', max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY, regen_rate: float = DEFAULT_ANTIMATTER_REGEN, hull_cost: int = 0):
-        if hull_cost == 0:
+    def __init__(self, unit: 'Unit', max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY, regen_rate: float = DEFAULT_ANTIMATTER_REGEN, hull_cost: float = 0.0):
+        if hull_cost == 0.0:
             from custom_unit_templates import calc_antimatter_hull_cost
             hull_cost = calc_antimatter_hull_cost(max_capacity)
         super().__init__(unit, hull_cost=hull_cost)
@@ -95,7 +95,7 @@ class AntimatterHarvester(UnitComponent):
     DISPLAY_NAME: str = "Antimatter Harvester"
     SIDEBAR_ORDER: int = 1
 
-    def __init__(self, unit: 'Unit', harvest_rate: float = DEFAULT_ANTIMATTER_HARVEST_RATE, hull_cost: int = ANTIMATTER_HARVESTER_HULL_COST):
+    def __init__(self, unit: 'Unit', harvest_rate: float = DEFAULT_ANTIMATTER_HARVEST_RATE, hull_cost: float = ANTIMATTER_HARVESTER_HULL_COST):
         super().__init__(unit, hull_cost=hull_cost)
         self.harvest_rate = harvest_rate
         self.harvest_range: float = ANTIMATTER_HARVEST_RANGE

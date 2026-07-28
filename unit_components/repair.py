@@ -21,7 +21,7 @@ class RepairComponent(UnitComponent):
     credit_cost_per_hp: float = 1.0
     target: Optional['Unit'] = None
 
-    def __init__(self, unit: 'Unit', repair_rate: float = 10.0, repair_range: float = 200.0, credit_cost_per_hp: float = 1.0, hull_cost: int = 15):
+    def __init__(self, unit: 'Unit', repair_rate: float = 10.0, repair_range: float = 200.0, credit_cost_per_hp: float = 1.0, hull_cost: float = 15.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.repair_rate = repair_rate
         self.repair_range = repair_range

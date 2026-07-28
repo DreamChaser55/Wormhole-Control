@@ -18,7 +18,7 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
     radius: float = 50.0
     is_active: bool = False
 
-    def __init__(self, unit: 'Unit', radius: float = 50.0, hull_cost: int = 20):
+    def __init__(self, unit: 'Unit', radius: float = 50.0, hull_cost: float = 20.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.radius = radius
         self.is_active = False

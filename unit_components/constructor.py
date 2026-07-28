@@ -128,7 +128,7 @@ def instantiate_unit_from_template(
 
         cost = template.get("hyperdrive_hull_cost")
         if cost is None or cost == 0:
-            cost = 5 if htype == HyperdriveType.BASIC else 10
+            cost = 5.0 if htype == HyperdriveType.BASIC else 10.0
         jump_range = template.get("hyperdrive_jump_range", DEFAULT_JUMP_RANGE)
         new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=cost, jump_range=jump_range))
 
@@ -170,7 +170,7 @@ def instantiate_unit_from_template(
             repair_rate=template.get("repair_rate", 10.0),
             repair_range=template.get("repair_range", 200.0),
             credit_cost_per_hp=template.get("credit_cost_per_hp", 1.0),
-            hull_cost=template.get("repair_hull_cost", 15)
+            hull_cost=template.get("repair_hull_cost", 15.0)
         ))
 
     if template.get("has_mining_component"):
@@ -179,21 +179,21 @@ def instantiate_unit_from_template(
             mining_rate=template.get("mining_rate", 10.0),
             mining_range=template.get("mining_range", 200.0),
             max_cargo=template.get("max_mining_cargo", 100.0),
-            hull_cost=template.get("mining_hull_cost", 10)
+            hull_cost=template.get("mining_hull_cost", 10.0)
         ))
 
     if template.get("has_metal_refinery_component"):
         new_unit.add_component(MetalRefineryComponent(
             new_unit,
             unload_range=template.get("unload_range", 300.0),
-            hull_cost=template.get("metal_refinery_hull_cost", 20)
+            hull_cost=template.get("metal_refinery_hull_cost", 20.0)
         ))
 
     if template.get("has_crystal_refinery_component"):
         new_unit.add_component(CrystalRefineryComponent(
             new_unit,
             unload_range=template.get("unload_range", 300.0),
-            hull_cost=template.get("crystal_refinery_hull_cost", 20)
+            hull_cost=template.get("crystal_refinery_hull_cost", 20.0)
         ))
 
     if template.get("has_hangar"):
@@ -229,14 +229,14 @@ def instantiate_unit_from_template(
     if template.get("has_colony_component"):
         new_unit.add_component(ColonyComponent(
             new_unit,
-            hull_cost=template.get("colony_hull_cost", 10)
+            hull_cost=template.get("colony_hull_cost", 10.0)
         ))
 
     if template.get("has_inhibitor"):
         new_unit.add_component(HyperspaceInhibitionFieldEmitter(
             new_unit,
             radius=template.get("inhibitor_radius", 100.0),
-            hull_cost=template.get("inhibitor_hull_cost", 20)
+            hull_cost=template.get("inhibitor_hull_cost", 20.0)
         ))
 
     if template.get("has_ability_component"):
@@ -251,7 +251,7 @@ def instantiate_unit_from_template(
             new_unit.add_component(AbilityComponent(
                 new_unit,
                 ability_types=ability_types,
-                hull_cost=template.get("ability_hull_cost", 10)
+                hull_cost=template.get("ability_hull_cost", 10.0)
             ))
 
     # Sensors: prefer explicit new flags; fall back to legacy has_scanner.
@@ -293,7 +293,7 @@ class Constructor(UnitComponent):
     construction_progress: int = 0
     time_to_build: int = 0
 
-    def __init__(self, unit: 'Unit', hull_cost: int = 0, buildable_unit_names: typing.Optional[list[str]] = None):
+    def __init__(self, unit: 'Unit', hull_cost: float = 15.0, buildable_unit_names: typing.Optional[list[str]] = None):
         super().__init__(unit, hull_cost)
         self.current_construction_target = None
         self.construction_progress = 0

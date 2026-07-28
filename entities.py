@@ -217,8 +217,8 @@ class Unit(GameObject):
         self.in_galaxy: Optional['Galaxy'] = game.galaxy if game else None
 
         self.hull_size: HullSize = hull_size
-        self.hull_capacity: int = HULL_CAPACITIES[self.hull_size] # consumed by components with hull_cost
-        self.current_hull_usage: int = 0
+        self.hull_capacity: float = HULL_CAPACITIES[self.hull_size] # consumed by components with hull_cost
+        self.current_hull_usage: float = 0.0
 
         self.max_hit_points: int = HIT_POINTS[self.hull_size]
         self.current_hit_points: int = self.max_hit_points

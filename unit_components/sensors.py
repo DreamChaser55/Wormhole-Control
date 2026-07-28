@@ -11,7 +11,7 @@ class Sensors(UnitComponent):
     DISPLAY_NAME: str = "Sensors"
     SIDEBAR_ORDER: int = 6
 
-    def __init__(self, unit: 'Unit', short_range_radius: float = DEFAULT_SENSOR_SHORT_RANGE, long_range_hexes: int = 0, hull_cost: int = 0):
+    def __init__(self, unit: 'Unit', short_range_radius: float = DEFAULT_SENSOR_SHORT_RANGE, long_range_hexes: int = 0, hull_cost: float = 0.0):
         super().__init__(unit, hull_cost)
         self.short_range_radius: float = short_range_radius
         self.long_range_hexes: int = long_range_hexes

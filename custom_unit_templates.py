@@ -155,41 +155,28 @@ ABILITY_COST_PER_ABILITY: int = 5
 # Dynamic hull-cost calculation functions
 # --------------------------------------------------------------------------
 
-def calc_engine_hull_cost(speed: float, hull_size: Optional[HullSize] = HullSize.MEDIUM) -> int:
+def calc_engine_hull_cost(speed: float, hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
     """Compute the hull cost of an Engines component from its speed and unit hull size.
 
-    Formula: ceil((speed / SPEED_PER_HULL_POINT) * multiplier), minimum 1 when speed > 0.
-
-    Examples for speed=100:
-        STRIKECRAFT_WING (0.4x) → 2
-        TINY (0.6x)             → 3
-        SMALL (0.8x)            → 4
-        MEDIUM (1.0x baseline)  → 5
-        LARGE (1.5x)            → 8
-        HUGE (2.0x)             → 10
+    Formula: (speed / SPEED_PER_HULL_POINT) * multiplier, minimum 0.0 when speed <= 0.
     """
     if speed <= 0:
-        return 0
+        return 0.0
     multiplier = ENGINE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
-    return max(1, math.ceil((speed / SPEED_PER_HULL_POINT) * multiplier))
+    return (speed / SPEED_PER_HULL_POINT) * multiplier
 
 
-def calc_antimatter_hull_cost(capacity: float) -> int:
+def calc_antimatter_hull_cost(capacity: float) -> float:
     """Compute the hull cost of an Antimatter Storage component from its capacity.
 
-    Formula: ceil(capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT) for positive capacity.
-
-    Examples:
-        capacity=100 → 5
-        capacity=200 → 10
-        capacity=40  → 2
+    Formula: capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT for positive capacity.
     """
     if capacity <= 0:
-        return 0
-    return math.ceil(capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT)
+        return 0.0
+    return capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT
 
 
-def calc_turret_hull_cost(turret: 'TurretConfig') -> int:
+def calc_turret_hull_cost(turret: 'TurretConfig') -> float:
     """Compute the hull cost of a single turret based on its stats.
 
     Formula:
@@ -197,10 +184,6 @@ def calc_turret_hull_cost(turret: 'TurretConfig') -> int:
         + damage / DMG_PER_POINT
         + range / RANGE_PER_POINT
         + COOLDOWN_BONUS / max(1, cooldown)
-
-    Note: Long-Range turrets already triple their effective range and cooldown
-    in Turret.__post_init__, so the stored config values are pre-variant.
-    We apply the variant multiplier here to price LONG_RANGE accordingly.
     """
     effective_range = turret.range
     effective_cooldown = max(1, turret.cooldown)
@@ -215,82 +198,60 @@ def calc_turret_hull_cost(turret: 'TurretConfig') -> int:
         + effective_range / RANGE_PER_POINT
         + COOLDOWN_BONUS / effective_cooldown
     )
-    return max(1, math.ceil(cost))
+    return float(cost)
 
 
-def calc_weapons_hull_cost(turrets: List['TurretConfig']) -> int:
+def calc_weapons_hull_cost(turrets: List['TurretConfig']) -> float:
     """Compute the total hull cost of a Weapons component from its turrets.
 
-    Returns 0 if no turrets are configured (0 hull used, but component still
-    may be toggled on — the UI should enforce at least 1 turret if weapons
-    are enabled).
+    Returns 0.0 if no turrets are configured.
     """
     if not turrets:
-        return 0
+        return 0.0
     return sum(calc_turret_hull_cost(t) for t in turrets)
 
 
-def calc_defenses_hull_cost(armor: int, shields: int, point_defense: int) -> int:
+def calc_defenses_hull_cost(armor: int, shields: int, point_defense: int) -> float:
     """Compute the hull cost of a Defenses component from its stats.
 
-    Formula: ceil((armor + shields + point_defense) / DEFENSE_PER_HULL_POINT),
-    minimum 1.
-
-    Examples:
-        armor=5, shields=5, pd=5 → 5
-        armor=10, shields=10, pd=10 → 10
-        all zeros → 0 (not enabled)
+    Formula: (armor + shields + point_defense) / DEFENSE_PER_HULL_POINT.
     """
     total = armor + shields + point_defense
     if total <= 0:
-        return 0
-    return max(1, math.ceil(total / DEFENSE_PER_HULL_POINT))
+        return 0.0
+    return total / DEFENSE_PER_HULL_POINT
 
 
 def calc_hyperdrive_hull_cost(
     drive_type: str,
     jump_range: int,
     hull_size: Optional[HullSize] = HullSize.MEDIUM,
-) -> int:
+) -> float:
     """Compute the hull cost of a Hyperdrive component.
 
-    Formula: ceil((HYPERDRIVE_BASE_COST[drive_type] + max(0, jump_range) / RANGE_PER_POINT) * multiplier),
-    minimum 1.
-
-    Examples (MEDIUM baseline):
-        BASIC,    range=5  → ceil((3 + 1) * 1.0) = 4
-        ADVANCED, range=5  → ceil((7 + 1) * 1.0) = 8
-        BASIC,    range=10 → ceil((3 + 2) * 1.0) = 5
-
-    Examples for BASIC, range=5 across hull sizes:
-        STRIKECRAFT_WING (0.4x) → 2
-        TINY (0.6x)             → 3
-        SMALL (0.8x)            → 4
-        MEDIUM (1.0x)           → 4
-        LARGE (1.5x)            → 6
-        HUGE (2.0x)             → 8
+    Formula: (HYPERDRIVE_BASE_COST[drive_type] + max(0, jump_range) / RANGE_PER_POINT) * multiplier.
     """
     base = HYPERDRIVE_BASE_COST.get(drive_type.upper(), HYPERDRIVE_BASE_COST["BASIC"])
     range_cost = max(0, jump_range) / HYPERDRIVE_RANGE_PER_POINT
     raw_cost = base + range_cost
     multiplier = HYPERDRIVE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
-    return max(1, math.ceil(raw_cost * multiplier))
+    return raw_cost * multiplier
 
 
-def calc_ability_hull_cost(abilities: List[str]) -> int:
+def calc_ability_hull_cost(abilities: List[str]) -> float:
     """Compute the hull cost of an Ability component from its list of selected abilities.
 
     Formula: ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY
     """
-    return ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY
+    return float(ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY)
 
 
-def calc_sensors_hull_cost(short_range_radius: float, long_range_hexes: int) -> int:
+def calc_sensors_hull_cost(short_range_radius: float, long_range_hexes: int) -> float:
     """Compute the hull cost of a Sensors component upgrade.
 
-    Formula: ceil(short_range_radius / SENSOR_RANGE_PER_HULL_POINT) + long_range_hexes * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
+    Formula: (short_range_radius / SENSOR_RANGE_PER_HULL_POINT) + long_range_hexes * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
     """
-    base = math.ceil(short_range_radius / SENSOR_RANGE_PER_HULL_POINT) if short_range_radius > 0 else 0
+    base = (short_range_radius / SENSOR_RANGE_PER_HULL_POINT) if short_range_radius > 0 else 0.0
     return base + max(0, long_range_hexes) * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
 
 
@@ -330,7 +291,7 @@ class ComponentConfig:
 
     # Antimatter Harvester
     has_antimatter_harvester: bool = False
-    antimatter_harvester_hull_cost: int = ANTIMATTER_HARVESTER_HULL_COST
+    antimatter_harvester_hull_cost: float = ANTIMATTER_HARVESTER_HULL_COST
 
     # Hyperdrive
     has_hyperdrive: bool = False
@@ -352,43 +313,43 @@ class ComponentConfig:
 
     # Constructor
     has_constructor_component: bool = False
-    constructor_hull_cost: int = 15
+    constructor_hull_cost: float = 15.0
 
     # Repair
     has_repair_component: bool = False
     repair_rate: float = 10.0
     repair_range: float = 200.0
     credit_cost_per_hp: float = 1.0
-    repair_hull_cost: int = 15
+    repair_hull_cost: float = 15.0
 
     # Colony
     has_colony_component: bool = False
-    colony_hull_cost: int = 10
+    colony_hull_cost: float = 10.0
 
     # Mining
     has_mining_component: bool = False
     mining_rate: float = 10.0
     mining_range: float = 200.0
     max_mining_cargo: float = 100.0
-    mining_hull_cost: int = 10
+    mining_hull_cost: float = 10.0
 
     # Metal refinery
     has_metal_refinery_component: bool = False
-    metal_refinery_hull_cost: int = 20
+    metal_refinery_hull_cost: float = 20.0
 
     # Crystal refinery
     has_crystal_refinery_component: bool = False
-    crystal_refinery_hull_cost: int = 20
+    crystal_refinery_hull_cost: float = 20.0
 
     # Hangar
     has_hangar: bool = False
     hangar_slots: int = 2
-    hangar_hull_cost: int = 20
+    hangar_hull_cost: float = 20.0
 
     # Strikecraft Bay
     has_strikecraft_bay: bool = False
     strikecraft_bay_slots: int = 2
-    strikecraft_bay_hull_cost: int = 15
+    strikecraft_bay_hull_cost: float = 15.0
 
     # Wing Type (Fighter vs Bomber) - only for Strikecraft hulls
     wing_type: str = "FIGHTER"
@@ -396,7 +357,7 @@ class ComponentConfig:
     # Hyperspace inhibitor
     has_inhibitor: bool = False
     inhibitor_radius: float = 100.0
-    inhibitor_hull_cost: int = 20
+    inhibitor_hull_cost: float = 20.0
 
     # Abilities
     has_ability_component: bool = False
@@ -412,64 +373,64 @@ class ComponentConfig:
     # ------------------------------------------------------------------
 
     @property
-    def engine_hull_cost(self) -> int:
+    def engine_hull_cost(self) -> float:
         """Hull cost of Engines, computed from engine_speed (baseline MEDIUM size)."""
         if not self.has_engine:
-            return 0
+            return 0.0
         return calc_engine_hull_cost(self.engine_speed, HullSize.MEDIUM)
 
-    def get_engine_hull_cost(self, hull_size: Optional[HullSize] = None) -> int:
+    def get_engine_hull_cost(self, hull_size: Optional[HullSize] = None) -> float:
         """Hull cost of Engines, computed from engine_speed and given hull_size."""
         if not self.has_engine:
-            return 0
+            return 0.0
         return calc_engine_hull_cost(self.engine_speed, hull_size)
 
     @property
-    def antimatter_hull_cost(self) -> int:
+    def antimatter_hull_cost(self) -> float:
         """Hull cost of Antimatter Storage, computed from antimatter_capacity."""
         if not self.has_antimatter_storage:
-            return 0
+            return 0.0
         return calc_antimatter_hull_cost(self.antimatter_capacity)
 
     @property
-    def weapon_bays_hull_cost(self) -> int:
+    def weapon_bays_hull_cost(self) -> float:
         """Hull cost of Weapons, computed from turret list."""
         if not self.has_weapon_bays:
-            return 0
+            return 0.0
         return calc_weapons_hull_cost(self.turrets)
 
     @property
-    def defenses_hull_cost(self) -> int:
+    def defenses_hull_cost(self) -> float:
         """Hull cost of Defenses, computed from armor/shields/point_defense."""
         if not self.has_defenses:
-            return 0
+            return 0.0
         return calc_defenses_hull_cost(self.armor, self.shields, self.point_defense)
 
     @property
-    def hyperdrive_hull_cost(self) -> int:
+    def hyperdrive_hull_cost(self) -> float:
         """Hull cost of Hyperdrive, computed from type and jump_range (baseline MEDIUM size)."""
         if not self.has_hyperdrive:
-            return 0
+            return 0.0
         return calc_hyperdrive_hull_cost(self.hyperdrive_type, self.hyperdrive_jump_range, HullSize.MEDIUM)
 
-    def get_hyperdrive_hull_cost(self, hull_size: Optional[HullSize] = None) -> int:
+    def get_hyperdrive_hull_cost(self, hull_size: Optional[HullSize] = None) -> float:
         """Hull cost of Hyperdrive, computed from type, jump_range and given hull_size."""
         if not self.has_hyperdrive:
-            return 0
+            return 0.0
         return calc_hyperdrive_hull_cost(self.hyperdrive_type, self.hyperdrive_jump_range, hull_size)
 
     @property
-    def ability_hull_cost(self) -> int:
+    def ability_hull_cost(self) -> float:
         """Hull cost of Abilities, computed from the number of abilities."""
         if not self.has_ability_component:
-            return 0
+            return 0.0
         return calc_ability_hull_cost(self.abilities)
 
     @property
-    def sensors_hull_cost(self) -> int:
+    def sensors_hull_cost(self) -> float:
         """Hull cost of Sensors, computed from short-range radius and long-range hexes."""
         if not self.has_sensors:
-            return 0
+            return 0.0
         return calc_sensors_hull_cost(self.sensor_short_range, self.sensor_long_range_hexes)
 
 
@@ -486,32 +447,32 @@ class CustomUnitTemplate:
     components: ComponentConfig = dataclasses.field(default_factory=ComponentConfig)
 
     @property
-    def hull_capacity(self) -> int:
+    def hull_capacity(self) -> float:
         return HULL_CAPACITIES[self.hull_size]
 
     @property
-    def engine_hull_cost(self) -> int:
+    def engine_hull_cost(self) -> float:
         """Hull cost of Engines, computed from engine_speed and hull_size."""
         if not self.components.has_engine:
-            return 0
+            return 0.0
         return calc_engine_hull_cost(self.components.engine_speed, self.hull_size)
 
     @property
-    def hyperdrive_hull_cost(self) -> int:
+    def hyperdrive_hull_cost(self) -> float:
         """Hull cost of Hyperdrive, computed from type, jump_range, and hull_size."""
         if not self.components.has_hyperdrive:
-            return 0
+            return 0.0
         return calc_hyperdrive_hull_cost(self.components.hyperdrive_type, self.components.hyperdrive_jump_range, self.hull_size)
 
     @property
-    def total_hull_cost(self) -> int:
+    def total_hull_cost(self) -> float:
         """Sum of hull costs for all enabled components.
 
         Dynamic components (Engines, Weapons, Defenses, Hyperdrive) use
         their computed properties; fixed components use their stored values.
         """
         c = self.components
-        total = 0
+        total = 0.0
         if c.has_engine:                        total += self.engine_hull_cost
         if c.has_antimatter_storage:            total += c.antimatter_hull_cost
         if c.has_antimatter_harvester:          total += c.antimatter_harvester_hull_cost
@@ -539,13 +500,13 @@ class CustomUnitTemplate:
     @property
     def build_cost(self) -> int:
         """Calculated credit cost: base hull cost + component hull-point cost."""
-        return HULL_BASE_COST[self.hull_size] + self.total_hull_cost * COMPONENT_COST_PER_HULL_POINT
+        return HULL_BASE_COST[self.hull_size] + int(round(self.total_hull_cost * COMPONENT_COST_PER_HULL_POINT))
 
     @property
     def build_time(self) -> int:
         """Calculated build time proportional to hull size + component load."""
         base = HULL_BASE_BUILD_TIME[self.hull_size]
-        capacity = max(1, self.hull_capacity)
+        capacity = max(1.0, self.hull_capacity)
         extra = max(0, round((self.total_hull_cost / capacity) * base))
         return base + extra
 
@@ -561,7 +522,7 @@ class CustomUnitTemplate:
             errors.append("Display name cannot be empty.")
         if self.is_over_capacity:
             errors.append(
-                f"Hull over capacity: {self.total_hull_cost} / {self.hull_capacity} used."
+                f"Hull over capacity: {self.total_hull_cost:g} / {self.hull_capacity:g} used."
             )
         # Check hull-size restrictions
         restricted = HULL_RESTRICTIONS.get(self.hull_size, set())

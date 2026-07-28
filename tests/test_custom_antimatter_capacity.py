@@ -18,8 +18,8 @@ def test_calc_antimatter_hull_cost():
     assert calc_antimatter_hull_cost(-10) == 0
     assert calc_antimatter_hull_cost(100) == 5
     assert calc_antimatter_hull_cost(200) == 10
-    assert calc_antimatter_hull_cost(50) == 3
-    assert calc_antimatter_hull_cost(1) == 1
+    assert calc_antimatter_hull_cost(50) == 2.5
+    assert calc_antimatter_hull_cost(1) == 0.05
 
 
 def test_component_config_antimatter_hull_cost():
@@ -46,7 +46,7 @@ def test_custom_unit_template_total_hull_cost_and_validation():
         hull_size=HullSize.MEDIUM,  # capacity 50
         components=comp,
     )
-    assert template.total_hull_cost == 5 + 8
+    assert template.total_hull_cost == 5.0 + 7.5
     assert template.validate() == []
 
     # Test invalid capacity below 100.0 for MEDIUM hull
@@ -185,7 +185,7 @@ def test_create_unit_from_template_custom_antimatter():
         am_comp = u.antimatter_component
         assert am_comp is not None
         assert am_comp.max_capacity == 250.0
-        assert am_comp.hull_cost == 13
+        assert am_comp.hull_cost == 12.5
     finally:
         ctm._DATA_FILE = orig_data_file
         os.unlink(tmp.name)

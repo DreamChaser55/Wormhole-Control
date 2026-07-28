@@ -25,7 +25,7 @@ class Defenses(UnitComponent):
     shields: int = 0
     point_defense: int = 0
 
-    def __init__(self, unit: 'Unit', armor: int = 0, shields: int = 0, point_defense: int = 0, hull_cost: int = 0):
+    def __init__(self, unit: 'Unit', armor: int = 0, shields: int = 0, point_defense: int = 0, hull_cost: float = 0.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.armor = armor
         self.shields = shields
