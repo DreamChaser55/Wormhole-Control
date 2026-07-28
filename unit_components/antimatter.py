@@ -132,9 +132,17 @@ class AntimatterHarvester(UnitComponent):
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
-        data.append({'type': 'label', 'text': f"Harvest Rate: {self.harvest_rate:.1f}/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+        galaxy = game_state.galaxy if game_state else None
+        nearby_star = self.find_nearby_star(galaxy)
+        data.append({'type': 'label', 'text': f"Base Harvest Rate: {self.harvest_rate:.1f}/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+        if self.is_harvesting and nearby_star:
+            multiplier = getattr(nearby_star, 'harvest_multiplier', 1.0)
+            effective_rate = self.harvest_rate * multiplier
+            data.append({'type': 'label', 'text': f"Effective Rate: {effective_rate:.1f}/turn ({multiplier:.1f}x star mult)", 'object_id': '#sidebar_info_label', 'height': 20})
+            status_text = f"Harvesting (near {nearby_star.name})"
+        else:
+            status_text = "Idle (no star in range)"
         data.append({'type': 'label', 'text': f"Harvest Range: {self.harvest_range:.0f}", 'object_id': '#sidebar_info_label', 'height': 20})
-        status_text = "Harvesting (near star)" if self.is_harvesting else "Idle (no star in range)"
         data.append({'type': 'label', 'text': f"Status: {status_text}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
@@ -142,10 +150,19 @@ class AntimatterHarvester(UnitComponent):
         data = super().get_basic_sidebar_data(game_state)
         if self.is_destroyed:
             return data
-        status_text = "Harvesting" if self.is_harvesting else "Idle"
+        galaxy = game_state.galaxy if game_state else None
+        nearby_star = self.find_nearby_star(galaxy)
+        if self.is_harvesting and nearby_star:
+            multiplier = getattr(nearby_star, 'harvest_multiplier', 1.0)
+            effective_rate = self.harvest_rate * multiplier
+            rate_text = f"{effective_rate:.1f}/t eff. [{self.harvest_rate:.1f} base]"
+            status_text = "Harvesting"
+        else:
+            rate_text = f"{self.harvest_rate:.1f}/t base"
+            status_text = "Idle"
         data.append({
             'type': 'label',
-            'text': f"• AM Harvester: {status_text} ({self.harvest_rate:.1f}/t)",
+            'text': f"• AM Harvester: {status_text} ({rate_text})",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1
@@ -170,6 +187,8 @@ class AntimatterHarvester(UnitComponent):
             return
 
         self.is_harvesting = True
-        added = am_comp.add(self.harvest_rate)
+        multiplier = getattr(nearby_star, 'harvest_multiplier', 1.0)
+        effective_rate = self.harvest_rate * multiplier
+        added = am_comp.add(effective_rate)
         if added > 0:
-            logger.debug(f"[{self.unit.name}] Harvested {added:.1f} antimatter near {nearby_star.name}. Current: {am_comp.current_amount:.1f}/{am_comp.max_capacity:.1f}")
+            logger.debug(f"[{self.unit.name}] Harvested {added:.1f} antimatter (base {self.harvest_rate:.1f} x {multiplier:.1f}x) near {nearby_star.name}. Current: {am_comp.current_amount:.1f}/{am_comp.max_capacity:.1f}")

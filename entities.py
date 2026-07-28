@@ -6,7 +6,7 @@ import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 from utils import HexCoord
 from geometry import Position, distance, Vector
-from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE
+from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS
 import uuid
 import dataclasses
 from enum import Enum, auto
@@ -108,6 +108,11 @@ class Star(CelestialBody):
         super().__init__(position=Position(0.0, 0.0), in_hex=(0, 0), in_system=in_system, inhibition_field_radius=2700.0)
         self.star_type = star_type
         self.name = f"Star {self.id}"
+
+    @property
+    def harvest_multiplier(self) -> float:
+        """Returns the antimatter harvest rate multiplier based on star type."""
+        return STAR_HARVEST_MULTIPLIERS.get(self.star_type, 1.0)
 
 class Planet(CelestialBody):
     """Represents a planet within a system."""

@@ -207,6 +207,20 @@ else:
         PROTOSTAR = auto()
         BROWN_DWARF = auto()
 
+STAR_HARVEST_MULTIPLIERS: Dict[StarType, float] = {
+    StarType.PULSAR: 2.5,
+    StarType.BLUE_GIANT: 2.0,
+    StarType.NEUTRON_STAR: 1.8,
+    StarType.YELLOW_GIANT: 1.5,
+    StarType.RED_GIANT: 1.3,
+    StarType.G_TYPE: 1.0,
+    StarType.WHITE_DWARF: 0.8,
+    StarType.PROTOSTAR: 0.7,
+    StarType.RED_DWARF: 0.5,
+    StarType.BROWN_DWARF: 0.3,
+    StarType.BLACK_HOLE: 0.1,
+}
+
 if _existing and hasattr(_existing, 'PlanetType'):
     PlanetType = _existing.PlanetType
 else:

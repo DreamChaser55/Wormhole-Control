@@ -1103,6 +1103,8 @@ class Game:
                 # Type-specific info
                 if isinstance(body, Star):
                     data_for_gui.append({'type': 'label', 'text': f"Type: {body.star_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
+                    mult = getattr(body, 'harvest_multiplier', 1.0)
+                    data_for_gui.append({'type': 'label', 'text': f"AM Harvest Multiplier: {mult:.1f}x", 'object_id': '#sidebar_info_label', 'height': 20})
                 
                 elif isinstance(body, Planet):
                     data_for_gui.append({'type': 'label', 'text': f"Type: {body.planet_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
