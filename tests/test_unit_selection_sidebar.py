@@ -139,11 +139,13 @@ def test_single_unit_sidebar_tabs_basic_info():
     mock_game.gui.update_side_bar_content.assert_called_once()
     data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
 
-    # Verify tab buttons exist
+    # Verify tab buttons exist and are marked side_by_side
     tab_buttons = [d for d in data_list if d.get("type") == "button" and d.get("action_id") == "switch_unit_sidebar_tab"]
     assert len(tab_buttons) == 2
     assert tab_buttons[0]["target_data"] == "basic_info"
+    assert tab_buttons[0].get("side_by_side") is True
     assert tab_buttons[1]["target_data"] == "components"
+    assert tab_buttons[1].get("side_by_side") is True
 
     # Verify Component Overview header is present in Basic Info tab
     headers = [d for d in data_list if d.get("type") == "label" and d.get("text") == "Component Overview:"]

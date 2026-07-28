@@ -1186,7 +1186,8 @@ class Game:
                     'object_id': '#sidebar_tab_button_active' if active_tab == 'basic_info' else '#sidebar_tab_button',
                     'action_id': 'switch_unit_sidebar_tab',
                     'target_data': 'basic_info',
-                    'height': 25
+                    'height': 25,
+                    'side_by_side': True
                 })
                 data_for_gui.append({
                     'type': 'button',
@@ -1194,7 +1195,8 @@ class Game:
                     'object_id': '#sidebar_tab_button_active' if active_tab == 'components' else '#sidebar_tab_button',
                     'action_id': 'switch_unit_sidebar_tab',
                     'target_data': 'components',
-                    'height': 25
+                    'height': 25,
+                    'side_by_side': True
                 })
 
                 if active_tab == 'basic_info':

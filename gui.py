@@ -1127,157 +1127,176 @@ class GUI_Handler:
 
         current_y_offset = 5
         element_padding = 3
+        gap = 4
         base_container_rect = self.side_bar_info_panel.get_container().get_rect()
         base_container_width = base_container_rect.width if base_container_rect else INFO_BOX_WIDTH
         indent_size = 15
 
+        # Group items into rows (consecutive side_by_side items form a row)
+        rows: typing.List[typing.List[dict]] = []
+        current_row: typing.List[dict] = []
         for item_data in data_list:
-            item_type = item_data.get('type')
-            text = item_data.get('text', '')
-            object_id_str = item_data.get('object_id', None)
-            class_id_str = item_data.get('class_id', None)
-            height_from_data = int(item_data.get('height', 25) * TEXT_SCALE)
-            item_indent_level = item_data.get('indent_level', 0)
+            if item_data.get('side_by_side', False):
+                current_row.append(item_data)
+            else:
+                if current_row:
+                    rows.append(current_row)
+                    current_row = []
+                rows.append([item_data])
+        if current_row:
+            rows.append(current_row)
 
-            actual_element_total_height = 0
+        for row in rows:
+            row_count = len(row)
+            row_max_height = 0
 
-            target_container_for_element = self.side_bar_info_panel.get_container()
-            current_element_y = current_y_offset
-            current_element_x = 5 + (item_indent_level * indent_size)
-            current_element_width = base_container_width - (item_indent_level * indent_size) - (5 * 2)
-            
-            if current_element_width <= 0: current_element_width = 1
-            
-            obj_id = None
-            if object_id_str:
-                obj_id = pygame_gui.core.ObjectID(object_id=object_id_str, class_id=class_id_str)
-            elif class_id_str:
-                obj_id = pygame_gui.core.ObjectID(class_id=class_id_str)
+            # Determine layout parameters for elements in this row
+            first_item_indent = row[0].get('indent_level', 0)
+            start_x = 5 + (first_item_indent * indent_size)
+            total_row_width = base_container_width - (first_item_indent * indent_size) - 10
+            available_width = total_row_width - ((row_count - 1) * gap)
+            item_width = max(1, available_width // row_count)
 
-            obj_id = None
-            if object_id_str:
-                obj_id = pygame_gui.core.ObjectID(object_id=object_id_str, class_id=class_id_str)
-            elif class_id_str:
-                obj_id = pygame_gui.core.ObjectID(class_id=class_id_str)
+            for col_idx, item_data in enumerate(row):
+                item_type = item_data.get('type')
+                text = item_data.get('text', '')
+                object_id_str = item_data.get('object_id', None)
+                class_id_str = item_data.get('class_id', None)
+                height_from_data = int(item_data.get('height', 25) * TEXT_SCALE)
 
-            if item_type == 'label':
-                font = self.manager.get_theme().get_font(obj_id)
-                lines, line_height = self.wrap_text_to_lines(text, current_element_width, font)
+                actual_element_total_height = 0
+                target_container_for_element = self.side_bar_info_panel.get_container()
+                current_element_y = current_y_offset
+                current_element_x = start_x + col_idx * (item_width + gap)
+                current_element_width = item_width
+
+                obj_id = None
+                if object_id_str:
+                    obj_id = pygame_gui.core.ObjectID(object_id=object_id_str, class_id=class_id_str)
+                elif class_id_str:
+                    obj_id = pygame_gui.core.ObjectID(class_id=class_id_str)
+
+                if item_type == 'label':
+                    font = self.manager.get_theme().get_font(obj_id)
+                    lines, line_height = self.wrap_text_to_lines(text, current_element_width, font)
+                    
+                    total_height = 0
+                    for i, line in enumerate(lines):
+                        label_rect = pygame.Rect(current_element_x, current_element_y + total_height, current_element_width, -1)
+                        label = pygame_gui.elements.UILabel(
+                            relative_rect=label_rect,
+                            text=line,
+                            manager=self.manager,
+                            container=target_container_for_element,
+                            object_id=obj_id
+                        )
+                        self.side_bar_dynamic_elements.append(label)
+                        total_height += label.get_relative_rect().height
+                    
+                    actual_element_total_height = total_height
                 
-                total_height = 0
-                for i, line in enumerate(lines):
-                    label_rect = pygame.Rect(current_element_x, current_element_y + total_height, current_element_width, -1)
-                    label = pygame_gui.elements.UILabel(
-                        relative_rect=label_rect,
-                        text=line,
+                elif item_type == 'text_box':
+                    html_text = item_data.get('html_text', '')
+                    text_box_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
+                    text_box = pygame_gui.elements.UITextBox(
+                        html_text=html_text,
+                        relative_rect=text_box_rect,
                         manager=self.manager,
                         container=target_container_for_element,
                         object_id=obj_id
                     )
-                    self.side_bar_dynamic_elements.append(label)
-                    total_height += label.get_relative_rect().height
+                    self.side_bar_dynamic_elements.append(text_box)
+                    actual_element_total_height = height_from_data
+
+                elif item_type == 'button':
+                    action_id = item_data.get('action_id', '')
+                    target_data = item_data.get('target_data', None)
+                    
+                    button_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, -1)
+                    button = pygame_gui.elements.UIButton(
+                        relative_rect=button_rect,
+                        text=text,
+                        manager=self.manager,
+                        container=target_container_for_element, # Use determined target container
+                        object_id=obj_id,
+                    )
+                    self.dynamic_button_actions[button] = {'action_id': action_id, 'target_data': target_data}
+                    self.side_bar_dynamic_elements.append(button)
+                    actual_element_total_height = button.get_relative_rect().height # Button height
                 
-                actual_element_total_height = total_height
-            
-            elif item_type == 'text_box':
-                html_text = item_data.get('html_text', '')
-                text_box_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
-                text_box = pygame_gui.elements.UITextBox(
-                    html_text=html_text,
-                    relative_rect=text_box_rect,
-                    manager=self.manager,
-                    container=target_container_for_element,
-                    object_id=obj_id
-                )
-                self.side_bar_dynamic_elements.append(text_box)
-                actual_element_total_height = height_from_data
+                elif item_type == 'inhibitor_button':
+                    is_active = item_data.get('is_active', False)
+                    button_text = "Deactivate Inhibitor" if is_active else "Activate Inhibitor"
+                    button_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, -1)
+                    button = pygame_gui.elements.UIButton(
+                        relative_rect=button_rect,
+                        text=button_text,
+                        manager=self.manager,
+                        container=target_container_for_element,
+                        object_id='#toggle_inhibitor_button'
+                    )
+                    self.side_bar_dynamic_elements.append(button)
+                    actual_element_total_height = button.get_relative_rect().height
 
-            elif item_type == 'button':
-                action_id = item_data.get('action_id', '')
-                target_data = item_data.get('target_data', None)
-                
-                button_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, -1)
-                button = pygame_gui.elements.UIButton(
-                    relative_rect=button_rect,
-                    text=text,
-                    manager=self.manager,
-                    container=target_container_for_element, # Use determined target container
-                    object_id=obj_id,
-                )
-                self.dynamic_button_actions[button] = {'action_id': action_id, 'target_data': target_data}
-                self.side_bar_dynamic_elements.append(button)
-                actual_element_total_height = button.get_relative_rect().height # Button height
-            
-            elif item_type == 'inhibitor_button':
-                is_active = item_data.get('is_active', False)
-                button_text = "Deactivate Inhibitor" if is_active else "Activate Inhibitor"
-                button_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, -1)
-                button = pygame_gui.elements.UIButton(
-                    relative_rect=button_rect,
-                    text=button_text,
-                    manager=self.manager,
-                    container=target_container_for_element,
-                    object_id='#toggle_inhibitor_button'
-                )
-                self.side_bar_dynamic_elements.append(button)
-                actual_element_total_height = button.get_relative_rect().height
+                elif item_type == 'progress_bar':
+                    progress = item_data.get('progress', 0)
+                    total = item_data.get('total', 100)
+                    progress_bar_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
+                    progress_bar = pygame_gui.elements.UIProgressBar(
+                        relative_rect=progress_bar_rect,
+                        manager=self.manager,
+                        container=target_container_for_element,
+                        object_id='#constructor_progress_bar'
+                    )
+                    if total > 0:
+                        percent = (progress / total) * 100.0
+                    else:
+                        percent = 100.0
+                    progress_bar.set_current_progress(percent)
+                    self.side_bar_dynamic_elements.append(progress_bar)
+                    actual_element_total_height = height_from_data
 
-            elif item_type == 'progress_bar':
-                progress = item_data.get('progress', 0)
-                total = item_data.get('total', 100)
-                progress_bar_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
-                progress_bar = pygame_gui.elements.UIProgressBar(
-                    relative_rect=progress_bar_rect,
-                    manager=self.manager,
-                    container=target_container_for_element,
-                    object_id='#constructor_progress_bar'
-                )
-                if total > 0:
-                    percent = (progress / total) * 100.0
-                else:
-                    percent = 100.0
-                progress_bar.set_current_progress(percent)
-                self.side_bar_dynamic_elements.append(progress_bar)
-                actual_element_total_height = height_from_data
+                elif item_type == 'drop_down_menu':
+                    options_list = item_data.get('options_list', [])
+                    starting_option = item_data.get('starting_option', '')
+                    action_id = item_data.get('action_id', '')
+                    target_data = item_data.get('target_data', None)
+                    dropdown_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
+                    dropdown = pygame_gui.elements.UIDropDownMenu(
+                        options_list=options_list,
+                        starting_option=starting_option,
+                        relative_rect=dropdown_rect,
+                        manager=self.manager,
+                        container=target_container_for_element,
+                        object_id=obj_id
+                    )
+                    if action_id:
+                        self.dynamic_dropdown_actions[dropdown] = {'action_id': action_id, 'target_data': target_data}
+                    self.side_bar_dynamic_elements.append(dropdown)
+                    actual_element_total_height = height_from_data
 
-            elif item_type == 'drop_down_menu':
-                options_list = item_data.get('options_list', [])
-                starting_option = item_data.get('starting_option', '')
-                action_id = item_data.get('action_id', '')
-                target_data = item_data.get('target_data', None)
-                dropdown_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
-                dropdown = pygame_gui.elements.UIDropDownMenu(
-                    options_list=options_list,
-                    starting_option=starting_option,
-                    relative_rect=dropdown_rect,
-                    manager=self.manager,
-                    container=target_container_for_element,
-                    object_id=obj_id
-                )
-                if action_id:
-                    self.dynamic_dropdown_actions[dropdown] = {'action_id': action_id, 'target_data': target_data}
-                self.side_bar_dynamic_elements.append(dropdown)
-                actual_element_total_height = height_from_data
+                elif item_type == 'text_entry_line':
+                    initial_text = item_data.get('initial_text', '')
+                    entry_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
+                    entry = pygame_gui.elements.UITextEntryLine(
+                        relative_rect=entry_rect,
+                        manager=self.manager,
+                        container=target_container_for_element,
+                        object_id=obj_id
+                    )
+                    max_length = item_data.get('max_length', 0)
+                    if max_length > 0:
+                        entry.set_text_length_limit(max_length)
+                    entry.set_text(initial_text)
+                    self.unit_name_entry = entry
+                    self.side_bar_dynamic_elements.append(entry)
+                    actual_element_total_height = height_from_data
 
-            elif item_type == 'text_entry_line':
-                initial_text = item_data.get('initial_text', '')
-                entry_rect = pygame.Rect(current_element_x, current_element_y, current_element_width, height_from_data)
-                entry = pygame_gui.elements.UITextEntryLine(
-                    relative_rect=entry_rect,
-                    manager=self.manager,
-                    container=target_container_for_element,
-                    object_id=obj_id
-                )
-                max_length = item_data.get('max_length', 0)
-                if max_length > 0:
-                    entry.set_text_length_limit(max_length)
-                entry.set_text(initial_text)
-                self.unit_name_entry = entry
-                self.side_bar_dynamic_elements.append(entry)
-                actual_element_total_height = height_from_data
+                if actual_element_total_height > row_max_height:
+                    row_max_height = actual_element_total_height
 
-            if actual_element_total_height > 0:
-                current_y_offset += actual_element_total_height + element_padding
+            if row_max_height > 0:
+                current_y_offset += row_max_height + element_padding
             else:
                 current_y_offset += element_padding
 
