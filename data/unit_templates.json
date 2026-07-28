@@ -172,8 +172,8 @@
     "build_time": 10,
     "build_cost": 600
   },
-  "CARRIER_LARGE": {
-    "name": "Large Carrier",
+  "HANGAR_SHIP_LARGE": {
+    "name": "Large Hangar Ship",
     "hull_size": "LARGE",
     "hull_points": 200,
     "has_engine": true,
@@ -535,7 +535,7 @@
   },
 
   "SPAWN_CARRIER": {
-    "name": "Carrier",
+    "name": "Strikecraft Carrier",
     "hull_size": "LARGE",
     "hull_points": 200,
     "has_engine": true,
