@@ -36,6 +36,21 @@ class RepairComponent(UnitComponent):
         data.append({'type': 'label', 'text': f"Repair Target: {target_name}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        tgt_str = f" Target: {self.target.name}" if self.target else " Idle"
+        data.append({
+            'type': 'label',
+            'text': f"• Repair System: {self.repair_rate:.0f} HP/t ({tgt_str})",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
+
     def set_target(self, target_unit: 'Unit') -> None:
         self.target = target_unit
 

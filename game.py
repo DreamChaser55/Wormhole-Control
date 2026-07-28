@@ -148,6 +148,8 @@ class Game:
         self.sidebar_needs_update: bool = True
         self.pending_ai_turn_end_time: int = 0
         self.selected_component_name: typing.Optional[str] = None
+        self.selected_unit_tab: str = 'basic_info'
+
 
         # Pending ability activation state (when targeting mode is active)
         # Holds (ability_type_str, requires_target_unit, requires_target_position)
@@ -550,6 +552,10 @@ class Game:
         elif action_type == 'component_selected':
             self.selected_component_name = action.get('component_name')
             self.sidebar_needs_update = True
+        elif action_type == 'switch_unit_sidebar_tab':
+            self.selected_unit_tab = action.get('tab_name', 'basic_info')
+            self.sidebar_needs_update = True
+
         elif action_type == 'use_ability':
             # A sidebar ability button was clicked
             ability_type_str = action.get('ability_type_str')
@@ -1168,68 +1174,110 @@ class Game:
             
                 owner_name_style_id = f'#player_{unit.owner.name.lower().replace(" ", "_")}_label' # e.g. #player_player_1_label
                 data_for_gui.append({'type': 'label', 'text': f"Owner: {unit.owner.name}", 'object_id': owner_name_style_id, 'height': 25})
+
+                # --- Tab Buttons ---
+                active_tab = getattr(self, 'selected_unit_tab', 'basic_info')
+                basic_label = "[ Basic Info ]" if active_tab == 'basic_info' else "Basic Info"
+                comp_label = "[ Components ]" if active_tab == 'components' else "Components"
+
+                data_for_gui.append({
+                    'type': 'button',
+                    'text': basic_label,
+                    'object_id': '#sidebar_tab_button_active' if active_tab == 'basic_info' else '#sidebar_tab_button',
+                    'action_id': 'switch_unit_sidebar_tab',
+                    'target_data': 'basic_info',
+                    'height': 25
+                })
+                data_for_gui.append({
+                    'type': 'button',
+                    'text': comp_label,
+                    'object_id': '#sidebar_tab_button_active' if active_tab == 'components' else '#sidebar_tab_button',
+                    'action_id': 'switch_unit_sidebar_tab',
+                    'target_data': 'components',
+                    'height': 25
+                })
+
+                if active_tab == 'basic_info':
+                    data_for_gui.append({'type': 'label', 'text': f"System: {unit.in_system or 'None'}", 'object_id': '#sidebar_info_label', 'height': 20})
+                    hex_pos_str = "N/A"
+                    if unit.in_system and unit.in_system in self.galaxy.systems:
+                        hex_pos_str = str(unit.in_hex)
+                    data_for_gui.append({'type': 'label', 'text': f"Hex: {hex_pos_str}", 'object_id': '#sidebar_info_label', 'height': 20})
+                    data_for_gui.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
             
-                data_for_gui.append({'type': 'label', 'text': f"System: {unit.in_system or 'None'}", 'object_id': '#sidebar_info_label', 'height': 20})
-                hex_pos_str = "N/A"
-                if unit.in_system and unit.in_system in self.galaxy.systems:
-                    hex_pos_str = str(unit.in_hex)
-                data_for_gui.append({'type': 'label', 'text': f"Hex: {hex_pos_str}", 'object_id': '#sidebar_info_label', 'height': 20})
-                data_for_gui.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
-        
-                data_for_gui.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage:g}/{unit.hull_capacity:g}", 'object_id': '#sidebar_info_label', 'height': 25})
-                upkeep_per_turn = unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
-                data_for_gui.append({'type': 'label', 'text': f"Upkeep: {upkeep_per_turn:.2f} cr/turn", 'object_id': '#sidebar_info_label', 'height': 20})
-                
-                # Determine HP label color style based on damage
-                hp_percentage = unit.current_hit_points / unit.max_hit_points
-                if hp_percentage > 0.75:
-                    hp_style_id = '#sidebar_hit_points_ok_label'
-                elif hp_percentage > 0.40:
-                    hp_style_id = '#sidebar_hit_points_light_damage_label'
-                elif hp_percentage > 0.15:
-                    hp_style_id = '#sidebar_hit_points_heavy_damage_label'
-                else:
-                    hp_style_id = '#sidebar_hit_points_critical_damage_label'
+                    data_for_gui.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage:g}/{unit.hull_capacity:g}", 'object_id': '#sidebar_info_label', 'height': 25})
+                    upkeep_per_turn = unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
+                    data_for_gui.append({'type': 'label', 'text': f"Upkeep: {upkeep_per_turn:.2f} cr/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+                    
+                    hp_percentage = unit.current_hit_points / unit.max_hit_points
+                    if hp_percentage > 0.75:
+                        hp_style_id = '#sidebar_hit_points_ok_label'
+                    elif hp_percentage > 0.40:
+                        hp_style_id = '#sidebar_hit_points_light_damage_label'
+                    elif hp_percentage > 0.15:
+                        hp_style_id = '#sidebar_hit_points_heavy_damage_label'
+                    else:
+                        hp_style_id = '#sidebar_hit_points_critical_damage_label'
 
-                data_for_gui.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hp_style_id, 'height': 25})
+                    data_for_gui.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hp_style_id, 'height': 25})
 
-                # XP display row
-                xp = unit.experience_points
-                xp_text = f"Experience: {xp} / {MAX_UNIT_XP}"
-                if xp >= MAX_UNIT_XP:
-                    xp_text += " [Veteran]"
-                data_for_gui.append({'type': 'label', 'text': xp_text, 'object_id': '#sidebar_info_label', 'height': 20})
+                    xp = unit.experience_points
+                    xp_text = f"Experience: {xp} / {MAX_UNIT_XP}"
+                    if xp >= MAX_UNIT_XP:
+                        xp_text += " [Veteran]"
+                    data_for_gui.append({'type': 'label', 'text': xp_text, 'object_id': '#sidebar_info_label', 'height': 20})
 
-                # Gather available components dynamically
-                installed_components = list(unit.components.values())
-                installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
+                    # Summaries from all installed components
+                    data_for_gui.append({'type': 'label', 'text': "Component Overview:", 'object_id': '#sidebar_section_header_label', 'height': 25})
+                    installed_components = list(unit.components.values())
+                    installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
+                    for comp in installed_components:
+                        data_for_gui.extend(comp.get_basic_sidebar_data(self))
 
-                components_map = {c.DISPLAY_NAME: c for c in installed_components}
-                dropdown_options = list(components_map.keys())
+                else: # 'components' tab
+                    hp_percentage = unit.current_hit_points / unit.max_hit_points
+                    if hp_percentage > 0.75:
+                        hp_style_id = '#sidebar_hit_points_ok_label'
+                    elif hp_percentage > 0.40:
+                        hp_style_id = '#sidebar_hit_points_light_damage_label'
+                    elif hp_percentage > 0.15:
+                        hp_style_id = '#sidebar_hit_points_heavy_damage_label'
+                    else:
+                        hp_style_id = '#sidebar_hit_points_critical_damage_label'
 
-                if dropdown_options:
-                    if self.selected_component_name not in dropdown_options:
-                        if "Commander" in dropdown_options:
-                            self.selected_component_name = "Commander"
-                        else:
-                            self.selected_component_name = dropdown_options[0]
-                    starting_option = self.selected_component_name
-                else:
-                    self.selected_component_name = None
-                    starting_option = None
+                    data_for_gui.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hp_style_id, 'height': 20})
 
-                if dropdown_options and starting_option:
-                    data_for_gui.append({
-                        'type': 'drop_down_menu',
-                        'options_list': dropdown_options,
-                        'starting_option': starting_option,
-                        'height': 30
-                    })
+                    data_for_gui.append({'type': 'label', 'text': "Select Component:", 'object_id': '#sidebar_section_header_label', 'height': 25})
 
-                # Render detailed info for the selected component dynamically
-                selected_comp = components_map.get(self.selected_component_name)
-                if selected_comp:
-                    data_for_gui.extend(selected_comp.get_sidebar_data(self))
+                    installed_components = list(unit.components.values())
+                    installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
+
+                    components_map = {c.DISPLAY_NAME: c for c in installed_components}
+                    dropdown_options = list(components_map.keys())
+
+                    if dropdown_options:
+                        if self.selected_component_name not in dropdown_options:
+                            if "Commander" in dropdown_options:
+                                self.selected_component_name = "Commander"
+                            else:
+                                self.selected_component_name = dropdown_options[0]
+                        starting_option = self.selected_component_name
+                    else:
+                        self.selected_component_name = None
+                        starting_option = None
+
+                    if dropdown_options and starting_option:
+                        data_for_gui.append({
+                            'type': 'drop_down_menu',
+                            'options_list': dropdown_options,
+                            'starting_option': starting_option,
+                            'height': 30
+                        })
+
+                    selected_comp = components_map.get(self.selected_component_name)
+                    if selected_comp:
+                        data_for_gui.extend(selected_comp.get_sidebar_data(self))
+
 
         # --- Default / Unknown ---
         else:

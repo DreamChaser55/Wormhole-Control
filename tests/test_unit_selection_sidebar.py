@@ -107,3 +107,90 @@ def test_handle_gui_action_deselect_individual_unit_shift():
     # Verify deselect_object was called on mock_game with unit1
     mock_game.deselect_object.assert_called_once_with(unit1)
     assert mock_game.sidebar_needs_update is True
+
+def test_single_unit_sidebar_tabs_basic_info():
+    mock_game = MagicMock()
+    mock_game.galaxy = MagicMock()
+    mock_game.sidebar_needs_update = True
+    mock_game.selected_unit_tab = 'basic_info'
+    mock_game.selected_component_name = None
+    mock_game.gui = MagicMock()
+    
+    player = MagicMock()
+    player.name = "Player 1"
+    
+    unit = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Battleship Alpha",
+        hull_size=HullSize.LARGE,
+        game=mock_game
+    )
+    unit.id = 201
+
+    mock_game.selected_objects = [unit]
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
+
+    # Call update_side_bar_content
+    Game.update_side_bar_content(mock_game)
+    mock_game.gui.update_side_bar_content.assert_called_once()
+    data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
+
+    # Verify tab buttons exist
+    tab_buttons = [d for d in data_list if d.get("type") == "button" and d.get("action_id") == "switch_unit_sidebar_tab"]
+    assert len(tab_buttons) == 2
+    assert tab_buttons[0]["target_data"] == "basic_info"
+    assert tab_buttons[1]["target_data"] == "components"
+
+    # Verify Component Overview header is present in Basic Info tab
+    headers = [d for d in data_list if d.get("type") == "label" and d.get("text") == "Component Overview:"]
+    assert len(headers) == 1
+
+def test_single_unit_sidebar_tabs_switch_to_components():
+    mock_game = MagicMock()
+    mock_game.galaxy = MagicMock()
+    mock_game.sidebar_needs_update = True
+    mock_game.selected_unit_tab = 'basic_info'
+    mock_game.selected_component_name = None
+    mock_game.gui = MagicMock()
+    
+    player = MagicMock()
+    player.name = "Player 1"
+    
+    unit = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Cruiser Beta",
+        hull_size=HullSize.MEDIUM,
+        game=mock_game
+    )
+    unit.id = 202
+
+    mock_game.selected_objects = [unit]
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
+
+    # Switch tab to components via handle_gui_action
+    action = {
+        'action': 'switch_unit_sidebar_tab',
+        'tab_name': 'components'
+    }
+    Game.handle_gui_action(mock_game, action)
+    assert mock_game.selected_unit_tab == 'components'
+    assert mock_game.sidebar_needs_update is True
+
+    # Call update_side_bar_content in components tab
+    Game.update_side_bar_content(mock_game)
+    data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
+
+    # Verify component selection dropdown menu is present
+    comp_dropdowns = [d for d in data_list if d.get("type") == "drop_down_menu" and d.get("action_id") is None]
+    assert len(comp_dropdowns) == 1
+    assert "Commander" in comp_dropdowns[0]["options_list"]
+
+

@@ -822,6 +822,12 @@ class GUI_Handler:
                         'unit_id': target_data,
                         'shift_pressed': shift_pressed
                     }
+                elif action_id == 'switch_unit_sidebar_tab':
+                    action_result = {
+                        'action': 'switch_unit_sidebar_tab',
+                        'tab_name': target_data
+                    }
+
 
                         # --- In-Game Menu Buttons ---
             elif self.menu_button and event.ui_element == self.menu_button:

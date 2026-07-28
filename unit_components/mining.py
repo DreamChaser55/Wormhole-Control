@@ -51,6 +51,23 @@ class MiningComponent(UnitComponent):
             data.append({'type': 'label', 'text': f"Mining Target: {self.mining_target.name}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        metal = int(self.raw_metal_cargo)
+        crystal = int(self.raw_crystal_cargo)
+        max_c = int(self.max_cargo)
+        data.append({
+            'type': 'label',
+            'text': f"• Mining Cargo: {metal} Metal, {crystal} Crystal / {max_c}",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
+
     def set_target(self, target: 'CelestialBody') -> None:
         self.mining_target = target
 
@@ -122,6 +139,19 @@ class MetalRefineryComponent(UnitComponent):
         data.append({'type': 'label', 'text': "Metal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        data.append({
+            'type': 'label',
+            'text': "• Metal Refinery: Active",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
     def accept_resources(self, amount: float) -> None:
         if self.is_destroyed:
             return
@@ -143,6 +173,19 @@ class CrystalRefineryComponent(UnitComponent):
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
         data.append({'type': 'label', 'text': "Crystal Refinery Active", 'object_id': '#sidebar_info_label', 'height': 20})
+        return data
+
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        data.append({
+            'type': 'label',
+            'text': "• Crystal Refinery: Active",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
         return data
 
     def accept_resources(self, amount: float) -> None:

@@ -157,6 +157,44 @@ class Weapons(UnitComponent):
             })
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+
+        if not self.turrets:
+            data.append({
+                'type': 'label',
+                'text': "• Weapons: None",
+                'object_id': '#sidebar_info_label',
+                'height': 18,
+                'indent_level': 1
+            })
+            return data
+
+        xp_dmg_mult = self.unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
+        data.append({
+            'type': 'label',
+            'text': f"• Weapons ({len(self.turrets)} Turrets):",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        for i, turret in enumerate(self.turrets, 1):
+            variant_str = turret.variant.name.replace('_', ' ').title()
+            type_str = turret.turret_type.name.replace('_', ' ').title()
+            eff_dmg = turret.damage * xp_dmg_mult
+            cd_str = f" [CD: {turret.current_cooldown}t]" if turret.current_cooldown > 0 else ""
+            data.append({
+                'type': 'label',
+                'text': f"Turret {i}: {variant_str} {type_str} (Dmg {eff_dmg:.1f}, Rng {int(turret.range)}){cd_str}",
+                'object_id': '#sidebar_info_label',
+                'height': 18,
+                'indent_level': 2
+            })
+        return data
+
+
     def add_turret(self, turret: Turret) -> None:
         """
         Adds a pre-configured turret to the unit.

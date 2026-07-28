@@ -31,3 +31,19 @@ class Sensors(UnitComponent):
         data.append({'type': 'label', 'text': sr_text, 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': lr_text, 'object_id': '#sidebar_info_label', 'height': 20})
         return data
+
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        sr = int(self.short_range_radius) if self.has_short_range else 0
+        lr = self.long_range_hexes if self.has_long_range else 0
+        data.append({
+            'type': 'label',
+            'text': f"• Sensors: Short Rng {sr} | Long Rng {lr} hexes",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+

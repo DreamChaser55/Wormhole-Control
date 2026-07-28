@@ -49,6 +49,21 @@ class HangarComponent(UnitComponent):
                 })
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        used_slots = self.get_used_slots()
+        data.append({
+            'type': 'label',
+            'text': f"• Hangar: {used_slots}/{self.max_slots} slots ({len(self.docked_units)} ships docked)",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
+
     def get_used_slots(self) -> int:
         slots = 0
         for u in self.docked_units:

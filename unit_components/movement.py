@@ -43,6 +43,20 @@ class Engines(UnitComponent):
         data.append({'type': 'label', 'text': speed_text, 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        effective_speed = self.speed * self.unit.xp_multiplier(XP_SPEED_BONUS)
+        data.append({
+            'type': 'label',
+            'text': f"• Engines: Speed {effective_speed:.1f}",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
 @dataclasses.dataclass
 class Hyperdrive(UnitComponent):
     """Hyperdrive for faster-than-light travel - inter-sector (basic) or inter-system through wormholes (advanced). """
@@ -93,6 +107,26 @@ class Hyperdrive(UnitComponent):
             range_text = f"Jump Range: {self.jump_range}"
         data.append({'type': 'label', 'text': range_text, 'object_id': '#sidebar_info_label', 'height': 20})
         return data
+
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        status_str = "Ready"
+        if self.jump_status == JumpStatus.CHARGING:
+            status_str = f"Charging ({self.recharge_time_remaining}t)"
+        elif self.jump_status == JumpStatus.JUMPING:
+            status_str = "Jumping"
+        effective_range = int(self.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
+        data.append({
+            'type': 'label',
+            'text': f"• Hyperdrive: {self.drive_type.value} ({status_str}, Rng {effective_range})",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
 
     def start_recharge(self) -> None:
         """Initiates the hyperdrive recharge sequence."""

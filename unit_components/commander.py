@@ -170,8 +170,25 @@ class Commander(UnitComponent):
         eligible_targets.sort(key=lambda x: x[0])
         return eligible_targets[0][1]
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        orders_count = self.get_active_orders_count()
+        curr_name = self.current_order.order_type.name.replace('_', ' ').title() if self.current_order else "None"
+        data.append({
+            'type': 'label',
+            'text': f"• Commander: Stance [{self.stance.display_name}] | Order: {curr_name} ({orders_count} active)",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+
         data = []
+
         
         # Display Unit Stance
         data.append({

@@ -32,6 +32,21 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         })
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        status_str = "Active" if self.is_active else "Inactive"
+        data.append({
+            'type': 'label',
+            'text': f"• Inhibitor: {status_str} (Radius {int(self.radius)})",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
+
     def turn_on(self) -> None:
         """Activates the inhibition field. (Validation logic will be handled by the order)."""
         if self.is_destroyed:

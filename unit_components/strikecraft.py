@@ -45,6 +45,20 @@ class StrikecraftWingComponent(UnitComponent):
         data.append({'type': 'label', 'text': f"Mother Carrier: {mother_name}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        role_str = "Fighter" if self.wing_type == WingType.FIGHTER else "Bomber"
+        data.append({
+            'type': 'label',
+            'text': f"• Strikecraft Wing ({role_str}): {self.active_fighters}/4 active",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
 
 class StrikecraftBayComponent(UnitComponent):
     """A component that allows a unit to store, transport, and automatically construct/replenish strikecraft wings."""
@@ -97,6 +111,7 @@ class StrikecraftBayComponent(UnitComponent):
 
         # Docked Wings
         data.append({'type': 'label', 'text': "Docked Strikecraft Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
+
         if self.docked_units and is_owner:
             data.append({
                 'type': 'button',
@@ -146,6 +161,23 @@ class StrikecraftBayComponent(UnitComponent):
                         'height': 25
                     })
         return data
+
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        used_slots = self.get_used_slots()
+        docked_cnt = len(self.docked_units)
+        launched_cnt = len(self.launched_units)
+        data.append({
+            'type': 'label',
+            'text': f"• Strikecraft Bay: {used_slots}/{self.max_slots} wings ({docked_cnt} docked, {launched_cnt} launched)",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
 
     def get_used_slots(self) -> int:
         return len(self.docked_units) + len(self.launched_units)

@@ -26,7 +26,7 @@ class UnitComponent:
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         """
         Returns a list of UI element definitions (labels, progress bars, buttons)
-        to render in the sidebar when this component is selected.
+        to render in the sidebar when this component is selected in Components panel.
         """
         status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"
         return [
@@ -37,3 +37,19 @@ class UnitComponent:
                 'height': 28
             }
         ]
+
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        """
+        Returns a list of concise UI element definitions for the Basic Info panel.
+        Can be overridden by subclasses to highlight key component stats.
+        """
+        if self.is_destroyed:
+            return [{
+                'type': 'label',
+                'text': f"• {self.DISPLAY_NAME}: Destroyed",
+                'object_id': '#sidebar_hit_points_critical_damage_label',
+                'height': 18,
+                'indent_level': 1
+            }]
+        return []
+

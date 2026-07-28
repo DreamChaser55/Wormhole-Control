@@ -27,6 +27,20 @@ class ColonyComponent(UnitComponent):
         data.append({'type': 'label', 'text': f"Population Cargo: {self.population_cargo} / {self.max_cargo}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        data.append({
+            'type': 'label',
+            'text': f"• Colony Module: Pop {self.population_cargo}/{self.max_cargo}",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
+
     def load_population(self, planet: 'Planet', amount: int) -> bool:
         if self.is_destroyed:
             logger.debug(f"Error: Cannot load population, {self.unit.name}'s ColonyComponent is destroyed.")

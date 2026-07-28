@@ -82,6 +82,19 @@ class AntimatterStorage(UnitComponent):
         data.append({'type': 'label', 'text': f"Antimatter: {status}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        data.append({
+            'type': 'label',
+            'text': f"• Antimatter Storage: {self.current_amount:.1f}/{self.max_capacity:.1f}",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
 
 class AntimatterHarvester(UnitComponent):
     """Component that lets a unit generate new antimatter for its own storage.
@@ -124,6 +137,21 @@ class AntimatterHarvester(UnitComponent):
         status_text = "Harvesting (near star)" if self.is_harvesting else "Idle (no star in range)"
         data.append({'type': 'label', 'text': f"Status: {status_text}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
+
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        status_text = "Harvesting" if self.is_harvesting else "Idle"
+        data.append({
+            'type': 'label',
+            'text': f"• AM Harvester: {status_text} ({self.harvest_rate:.1f}/t)",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
 
     def update(self, galaxy: 'Galaxy') -> None:
         """Refills the unit's own AntimatterStorage while near a star. Called each turn."""

@@ -316,6 +316,26 @@ class Constructor(UnitComponent):
             data.append({'type': 'label', 'text': "Status: Idle", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        if self.current_construction_target:
+            target_name = self.current_construction_target[0]
+            pct = int((self.construction_progress / self.time_to_build) * 100) if self.time_to_build > 0 else 100
+            status_str = f"Constructing {target_name} ({pct}%)"
+        else:
+            status_str = "Idle"
+        data.append({
+            'type': 'label',
+            'text': f"• Constructor: {status_str}",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
+
     @property
     def buildable_units(self) -> list[BuildableUnit]:
         """Dynamically retrieve all buildable units based on UNIT_TEMPLATES."""

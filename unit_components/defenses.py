@@ -47,6 +47,20 @@ class Defenses(UnitComponent):
         data.append({'type': 'label', 'text': f"Point Defense: {fmt(self.point_defense)}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
+    def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        data = super().get_basic_sidebar_data(game_state)
+        if self.is_destroyed:
+            return data
+        data.append({
+            'type': 'label',
+            'text': f"• Defenses: Armor {self.armor} | Shields {self.shields} | PD {self.point_defense}",
+            'object_id': '#sidebar_info_label',
+            'height': 18,
+            'indent_level': 1
+        })
+        return data
+
+
     def calculate_mitigation(self, incoming_damage: int, damage_type: Optional[TurretType]) -> int:
         if self.is_destroyed or damage_type is None:
             return 0
