@@ -103,8 +103,8 @@ class MiningComponent(UnitComponent):
         available_space = self.max_cargo - total_cargo
         amount_to_mine = min(self.mining_rate, available_space)
 
-        from entities import Asteroid, AsteroidField, Comet
-        if isinstance(self.mining_target, (Asteroid, AsteroidField)):
+        from entities import MetalAsteroid, AsteroidField, Comet
+        if isinstance(self.mining_target, (MetalAsteroid, AsteroidField)):
             # Infinite yield: we extract mining_rate without depleting the asteroid
             self.raw_metal_cargo += amount_to_mine
             logger.debug(f"{self.unit.name} mined {amount_to_mine} raw metal from {self.mining_target.name}. Cargo: {self.raw_metal_cargo}/{self.max_cargo}")

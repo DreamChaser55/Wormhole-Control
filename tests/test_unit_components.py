@@ -587,8 +587,8 @@ def test_mining_component():
     unit = MockUnit()
     mining = MiningComponent(unit, mining_rate=10.0, max_cargo=50.0)
     
-    from entities import Asteroid, AsteroidField, Moon
-    asteroid = Asteroid(in_hex=(0,0), in_system="Sol")
+    from entities import MetalAsteroid, AsteroidField, Moon
+    asteroid = MetalAsteroid(in_hex=(0,0), in_system="Sol")
     asteroid.position = Position(10, 0) # within 200 range
     
     # Not targeting
@@ -596,7 +596,7 @@ def test_mining_component():
     mining.update(mock_galaxy)
     assert mining.raw_metal_cargo == 0
     
-    # Target asteroid
+    # Target metal asteroid
     mining.set_target(asteroid)
     mining.update(mock_galaxy)
     assert mining.raw_metal_cargo == 10.0
@@ -635,6 +635,45 @@ def test_mining_component():
     mining.set_target(comet)
     mining.update(mock_galaxy)
     assert mining.raw_crystal_cargo == 10.0
+
+def test_colonizable_vs_metal_asteroid():
+    from entities import ColonizableAsteroid, MetalAsteroid
+    from unit_components import ColonyComponent
+
+    unit = MockUnit()
+    unit.owner = MockPlayer()
+
+    col_asteroid = ColonizableAsteroid(in_hex=(0,0), in_system="Sol")
+    metal_asteroid = MetalAsteroid(in_hex=(0,0), in_system="Sol")
+
+    # Colonizable asteroid properties
+    assert hasattr(col_asteroid, 'population')
+    assert col_asteroid.owner is None
+    assert col_asteroid.population == 0
+    assert not hasattr(col_asteroid, 'metal_yield')
+
+    # Colonization
+    colony = ColonyComponent(unit)
+    colony.population_cargo = 10
+    assert colony.unload_population(col_asteroid, 10) is True
+    assert col_asteroid.owner == unit.owner
+    assert col_asteroid.population == 10
+
+    # Mining attempt on ColonizableAsteroid should yield nothing
+    mining = MiningComponent(unit, mining_rate=10.0, max_cargo=50.0)
+    mining.set_target(col_asteroid)
+    mining.update(MagicMock())
+    assert mining.raw_metal_cargo == 0.0
+
+    # Metal asteroid properties
+    assert hasattr(metal_asteroid, 'metal_yield')
+    assert not hasattr(metal_asteroid, 'population')
+    assert not hasattr(metal_asteroid, 'owner')
+
+    # Mining attempt on MetalAsteroid should yield metal
+    mining.set_target(metal_asteroid)
+    mining.update(MagicMock())
+    assert mining.raw_metal_cargo == 10.0
 
 def test_refinery_components():
     unit = MockUnit()

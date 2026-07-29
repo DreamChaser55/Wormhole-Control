@@ -4,7 +4,7 @@ from geometry import Position
 from unit_components import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent, Commander
 from tests.test_unit_components import MockUnit, MockPlayer
 from unit_orders import OrderType, OrderStatus, ContinuousMineOrder, MineOrder, UnloadResourcesOrder
-from entities import Asteroid, Comet
+from entities import MetalAsteroid, Comet
 from constants import HullSize
 
 def test_continuous_mining_flow():
@@ -24,7 +24,7 @@ def test_continuous_mining_flow():
     unit.add_component(mining_comp)
 
     # Setup asteroid
-    asteroid = Asteroid((0, 0), "Sol")
+    asteroid = MetalAsteroid((0, 0), "Sol")
     asteroid.position = Position(50, 0)
     asteroid.id = 999
     
@@ -154,7 +154,7 @@ def test_continuous_mining_no_refinery():
     mining_comp = MiningComponent(unit, max_cargo=100.0)
     unit.add_component(mining_comp)
 
-    asteroid = Asteroid((0, 0), "Sol")
+    asteroid = MetalAsteroid((0, 0), "Sol")
     asteroid.id = 999
 
     galaxy = MagicMock()

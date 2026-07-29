@@ -21,7 +21,7 @@ from sector_utils import sector_coords_to_pixels
 from geometry import distance, Position
 import random
 from entities import (
-    Star, Planet, Wormhole, Unit, OrderType, OrderStatus, Moon, Asteroid, 
+    Star, Planet, Wormhole, Unit, OrderType, OrderStatus, Moon, ColonizableAsteroid, MetalAsteroid, 
     AsteroidField, IceField, Nebula, Storm, Comet, StarType, PlanetType, DebrisField
 )
 from rendering.drawing_utils import draw_shape, draw_dotted_line
@@ -509,12 +509,15 @@ class SectorViewRenderer:
                 if obj.owner:
                     pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                     pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
-            elif isinstance(obj, Asteroid):
+            elif isinstance(obj, ColonizableAsteroid):
                 obj_color = (90, 60, 50)
                 obj_radius_logical = ASTEROID_RADIUS
                 if obj.owner:
                     pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                     pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
+            elif isinstance(obj, MetalAsteroid):
+                obj_color = (140, 140, 160)
+                obj_radius_logical = ASTEROID_RADIUS
             elif isinstance(obj, AsteroidField):
                 self._draw_celestial_field(obj, obj_pixel_pos, (100, 100, 100))
                 obj_radius_logical = CELESTIAL_FIELD_RADIUS

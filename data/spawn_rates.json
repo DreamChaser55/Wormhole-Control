@@ -1,7 +1,8 @@
 {
   "Planet": 0.4,
   "Moon": 0.15,
-  "Asteroid": 0.15,
+  "ColonizableAsteroid": 0.075,
+  "MetalAsteroid": 0.075,
   "AsteroidField": 0.05,
   "IceField": 0.05,
   "Nebula": 0.05,

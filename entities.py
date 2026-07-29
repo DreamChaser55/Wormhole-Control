@@ -149,22 +149,29 @@ class Moon(CelestialBody):
                 self.population = self.max_population
 
 
-class Asteroid(CelestialBody):
-    """Represents an asteroid, which is colonisable and a source of Metal."""
+class ColonizableAsteroid(CelestialBody):
+    """Represents a colonisable asteroid with population growth."""
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1200.0)
-        self.name = f"Asteroid {self.id}"
+        self.name = f"Colonizable Asteroid {self.id}"
         self.owner: Optional[Player] = None
         self.population: float = 0
         self.max_population: float = 20.0
         self.population_growth_rate: float = 0.005
-        self.metal_yield: float = 10.0
 
     def update_population(self):
         if self.owner and self.population < self.max_population:
             self.population += self.population * self.population_growth_rate
             if self.population > self.max_population:
                 self.population = self.max_population
+
+class MetalAsteroid(CelestialBody):
+    """Represents a metal asteroid, which is a source of Metal."""
+    def __init__(self, in_hex: HexCoord, in_system: str):
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1200.0)
+        self.name = f"Metal Asteroid {self.id}"
+        self.metal_yield: float = 10.0
+
 
 class DebrisField(CelestialBody):
     """Represents a field of debris."""

@@ -11,7 +11,7 @@ from constants import (
 
 from hexgrid_utils import get_hex_vertices, hex_to_pixel
 from entities import (
-    Star, Planet, Wormhole, Unit, CelestialBody, OrderType, Moon, Asteroid, 
+    Star, Planet, Wormhole, Unit, CelestialBody, OrderType, Moon, ColonizableAsteroid, MetalAsteroid, 
     AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
 )
 from galaxy import Hex
@@ -136,11 +136,14 @@ class SystemViewRenderer:
                     body_radius = int(2 * scale_val)
                     if body.owner:
                         pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val), 1)
-                elif isinstance(body, Asteroid):
+                elif isinstance(body, ColonizableAsteroid):
                     body_color = (90, 60, 50)
                     body_radius = int(2 * scale_val)
                     if body.owner:
                         pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val), 1)
+                elif isinstance(body, MetalAsteroid):
+                    body_color = (140, 140, 160)
+                    body_radius = int(2 * scale_val)
                 elif isinstance(body, AsteroidField):
                     self._draw_celestial_field(body, hex_center_pixel, (100, 100, 100))
                     should_draw_circle = False

@@ -9,7 +9,7 @@ import typing
 from utils import HexCoord, ProfileTimer
 from geometry import Vector, Position, distance, hex_distance, Circle, is_point_in_circle
 from sector_utils import move_towards_position
-from entities import Unit, Wormhole, Planet, Moon, Asteroid
+from entities import Unit, Wormhole, Planet, Moon, ColonizableAsteroid
 from unit_components import JumpStatus, Commander
 from constants import (
     UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS,
@@ -360,14 +360,14 @@ class TurnProcessor:
     def _process_population_growth(self):
         for system in self.game.galaxy.systems.values():
             for hexcoord, body in system.get_all_celestial_bodies():
-                if isinstance(body, (Planet, Moon, Asteroid)):
+                if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
                     body.update_population()
 
     def _process_resource_generation(self, current_player):
         total_credits_generated = 0
         for system in self.game.galaxy.systems.values():
             for hexcoord, body in system.get_all_celestial_bodies():
-                if isinstance(body, (Planet, Moon, Asteroid)) and body.owner == current_player:
+                if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and body.owner == current_player:
                     credits_generated = body.population * TAX_RATE
                     current_player.credits += credits_generated
                     total_credits_generated += credits_generated

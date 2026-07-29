@@ -9,14 +9,15 @@ from dataclasses import dataclass, field
 from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3
 from utils import HexCoord
 from geometry import distance_sq, Vector, Position, Circle, hex_distance
-from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField
+from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField
 import json
 import os
 
 CLASS_MAPPING = {
     "Planet": Planet,
     "Moon": Moon,
-    "Asteroid": Asteroid,
+    "ColonizableAsteroid": ColonizableAsteroid,
+    "MetalAsteroid": MetalAsteroid,
     "AsteroidField": AsteroidField,
     "IceField": IceField,
     "Nebula": Nebula,

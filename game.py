@@ -61,7 +61,7 @@ from geometry import (
 )
 from hexgrid_utils import hex_to_pixel, pixel_to_hex, get_hex_vertices
 from sector_utils import move_towards_position, sector_coords_to_pixels, pixels_to_sector_coords, random_point_in_sector
-from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, Asteroid, HullSize
+from entities import Player, GameObject, CelestialBody, Unit, Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, HullSize
 from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus, Turret, TurretType, Weapons, HyperspaceInhibitionFieldEmitter, Constructor, ColonyComponent, RepairComponent, HangarComponent, StrikecraftBayComponent, StrikecraftWingComponent, AntimatterHarvester, instantiate_unit_from_template
 
 from events import (
@@ -1117,10 +1117,12 @@ class Game:
                     data_for_gui.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': '#sidebar_info_label', 'height': 25})
                     data_for_gui.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
 
-                elif isinstance(body, Asteroid):
+                elif isinstance(body, ColonizableAsteroid):
                     owner_name = body.owner.name if body.owner else "Uninhabited"
                     data_for_gui.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': '#sidebar_info_label', 'height': 25})
                     data_for_gui.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
+
+                elif isinstance(body, MetalAsteroid):
                     data_for_gui.append({'type': 'label', 'text': f"Metal Yield: {body.metal_yield}", 'object_id': '#sidebar_info_label', 'height': 25})
 
                 elif isinstance(body, Wormhole):
@@ -1316,13 +1318,13 @@ class Game:
 
     def get_player_income(self, player: Player) -> float:
         """Calculates total credit income per turn for the player."""
-        from entities import Planet, Moon, Asteroid
+        from entities import Planet, Moon, ColonizableAsteroid
         from constants import TAX_RATE
         total_income = 0.0
         if self.galaxy:
             for system in self.galaxy.systems.values():
                 for hexcoord, body in system.get_all_celestial_bodies():
-                    if isinstance(body, (Planet, Moon, Asteroid)) and body.owner == player:
+                    if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and body.owner == player:
                         total_income += body.population * TAX_RATE
         return total_income
 
