@@ -364,6 +364,46 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
                 os.remove(tmp.name)
 
 
+class TestUnitEditorWindowSelection(unittest.TestCase):
+    """Unit tests for UnitEditorWindow component selection & dynamic details UI."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ["SDL_VIDEODRIVER"] = "dummy"
+        import pygame
+        pygame.init()
+        pygame.display.set_mode((1280, 720))
+
+    def test_component_selection(self):
+        import pygame
+        import pygame_gui
+        from unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+
+        # Default selected component is "has_engine"
+        self.assertEqual(win._selected_component_key, "has_engine")
+        self.assertIn("has_engine", win._comp_select_btns)
+        self.assertEqual(win._comp_select_btns["has_engine"].text, "▶▶▶")
+
+        # Select "has_hyperdrive" via _select_component
+        win._select_component("has_hyperdrive")
+        self.assertEqual(win._selected_component_key, "has_hyperdrive")
+        self.assertEqual(win._details_hdr.text, "Details: Hyperdrive")
+        self.assertEqual(win._comp_select_btns["has_hyperdrive"].text, "▶▶▶")
+        self.assertEqual(win._comp_select_btns["has_engine"].text, ">>>")
+
+        # Select "has_weapon_bays"
+        win._select_component("has_weapon_bays")
+        self.assertEqual(win._selected_component_key, "has_weapon_bays")
+        self.assertEqual(win._details_hdr.text, "Details: Weapons")
+
+        win.kill()
+
+
 if __name__ == "__main__":
     unittest.main()
 
