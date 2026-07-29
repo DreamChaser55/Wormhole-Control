@@ -14,7 +14,7 @@ if os.name == 'nt':
         except Exception:
             pass
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from geometry import Vector, Position
 from enum import Enum, auto
@@ -219,6 +219,20 @@ STAR_HARVEST_MULTIPLIERS: Dict[StarType, float] = {
     StarType.RED_DWARF: 0.5,
     StarType.BROWN_DWARF: 0.3,
     StarType.BLACK_HOLE: 0.1,
+}
+
+STAR_COLORS: Dict[StarType, Tuple[int, int, int]] = {
+    StarType.G_TYPE: (255, 235, 120),
+    StarType.RED_DWARF: (255, 127, 80),
+    StarType.WHITE_DWARF: (240, 248, 255),
+    StarType.NEUTRON_STAR: (200, 245, 255),
+    StarType.PULSAR: (225, 110, 255),
+    StarType.BLACK_HOLE: (75, 35, 100),
+    StarType.RED_GIANT: (235, 50, 35),
+    StarType.YELLOW_GIANT: (255, 195, 0),
+    StarType.BLUE_GIANT: (173, 216, 255),
+    StarType.PROTOSTAR: (255, 140, 0),
+    StarType.BROWN_DWARF: (160, 82, 45),
 }
 
 if _existing and hasattr(_existing, 'PlanetType'):

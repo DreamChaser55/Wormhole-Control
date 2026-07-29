@@ -5,7 +5,8 @@ from constants import (
     DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE,
     SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY,
     HEX_JUMP_ORDER_LINE_COLOR, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS,
-    STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR, TEXT_SCALE, FOG_PRESENCE_COLOR
+    STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR, TEXT_SCALE, FOG_PRESENCE_COLOR,
+    STAR_COLORS
 )
 
 from hexgrid_utils import get_hex_vertices, hex_to_pixel
@@ -112,13 +113,7 @@ class SystemViewRenderer:
                 should_draw_circle = True
 
                 if isinstance(body, Star):
-                    star_color_map = {
-                        StarType.BLUE_GIANT: (173, 216, 255),
-                        StarType.YELLOW_GIANT: YELLOW,
-                        StarType.RED_DWARF: (255, 127, 80),
-                        StarType.NEUTRON_STAR: WHITE,
-                    }
-                    body_color = star_color_map.get(body.star_type, YELLOW)
+                    body_color = STAR_COLORS.get(body.star_type, YELLOW)
                     body_radius = int(8 * scale_val)
                 elif isinstance(body, Planet):
                     planet_color_map = {

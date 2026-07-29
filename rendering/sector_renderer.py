@@ -12,7 +12,8 @@ from constants import (
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
     MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, STORM_COLORS,
     TEXT_SCALE, XP_SPEED_BONUS,
-    MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS
+    MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS,
+    STAR_COLORS
 )
 
 
@@ -483,13 +484,7 @@ class SectorViewRenderer:
 
             should_draw_circle = True
             if isinstance(obj, Star):
-                star_color_map = {
-                    StarType.BLUE_GIANT: (173, 216, 255),
-                    StarType.YELLOW_GIANT: YELLOW,
-                    StarType.RED_DWARF: (255, 127, 80),
-                    StarType.NEUTRON_STAR: WHITE,
-                }
-                obj_color = star_color_map.get(obj.star_type, YELLOW)
+                obj_color = STAR_COLORS.get(obj.star_type, YELLOW)
                 obj_radius_logical = STAR_RADIUS
             elif isinstance(obj, Planet):
                 planet_color_map = {
