@@ -105,7 +105,7 @@ class GUI_Handler:
             
             # Preload DejaVu Sans fonts if registered
             if 'dejavu_sans' in font_dict.known_font_paths:
-                for size, is_bold in [(18, False), (16, False), (14, True)]:
+                for size, is_bold in [(15, False), (14, False), (14, True), (12, True), (12, False)]:
                     scaled_size = max(1, int(size * TEXT_SCALE))
                     f_id = font_dict.create_font_id(font_size=scaled_size, font_name='dejavu_sans', bold=is_bold, italic=False, antialiased=True)
                     if not font_dict.check_font_preloaded(f_id):
@@ -113,9 +113,9 @@ class GUI_Handler:
 
             # Preload Noto Emoji font if registered
             if 'noto_emoji' in font_dict.known_font_paths:
-                noto_14_reg_id = font_dict.create_font_id(font_size=max(1, int(14 * TEXT_SCALE)), font_name='noto_emoji', bold=False, italic=False, antialiased=True)
-                if not font_dict.check_font_preloaded(noto_14_reg_id):
-                    font_dict.preload_font(font_size=max(1, int(14 * TEXT_SCALE)), font_name='noto_emoji', bold=False, italic=False, antialiased=True)
+                noto_12_reg_id = font_dict.create_font_id(font_size=max(1, int(12 * TEXT_SCALE)), font_name='noto_emoji', bold=False, italic=False, antialiased=True)
+                if not font_dict.check_font_preloaded(noto_12_reg_id):
+                    font_dict.preload_font(font_size=max(1, int(12 * TEXT_SCALE)), font_name='noto_emoji', bold=False, italic=False, antialiased=True)
 
         if self.manager:
            self.manager.set_visual_debug_mode(True)

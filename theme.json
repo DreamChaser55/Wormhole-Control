@@ -14,7 +14,7 @@
     "defaults": {
         "font": {
             "name": "dejavu_sans",
-            "size": "14"
+            "size": "12"
         },
         "colours": {
             "normal_text": "#FFFFFF"
@@ -23,25 +23,25 @@
     "button": {
         "font": {
             "name": "dejavu_sans",
-            "size": "14"
+            "size": "12"
         }
     },
     "label": {
         "font": {
             "name": "dejavu_sans",
-            "size": "14"
+            "size": "12"
         }
     },
     "#resource_label": {
         "font": {
             "name": "dejavu_sans",
-            "size": "12"
+            "size": "11"
         }
     },
     "text_box": {
         "font": {
             "name": "dejavu_sans",
-            "size": "14"
+            "size": "12"
         }
     },
     "#side_bar_info_panel": {
@@ -97,7 +97,7 @@
     "#sidebar_title_label": {
         "font": {
             "name": "dejavu_sans",
-            "size": "16",
+            "size": "14",
             "bold": "1"
         },
         "colours": {
@@ -107,7 +107,7 @@
     "#sidebar_section_header_label": {
         "font": {
             "name": "dejavu_sans",
-            "size": "16",
+            "size": "14",
             "bold": "1"
         },
         "colours": {
@@ -117,7 +117,7 @@
     "#sidebar_info_label": {
         "font": {
             "name": "dejavu_sans",
-            "size": "14"
+            "size": "12"
         },
         "colours": {
             "normal_text": "#A0A0B0"
@@ -171,7 +171,7 @@
     "#sidebar_component_header_label": {
         "font": {
             "name": "dejavu_sans",
-            "size": "14",
+            "size": "12",
             "bold": "1"
         },
         "colours": {
@@ -216,7 +216,7 @@
     "#sidebar_expand_button": {
         "font": {
             "name": "dejavu_sans",
-            "size": "14"
+            "size": "12"
         },
         "colours": {
             "normal_text": "#B0B0D0",
@@ -230,7 +230,7 @@
     "#order_text_box": {
         "font": {
             "name": "dejavu_sans",
-            "size": "12"
+            "size": "11"
         },
         "colours": {
             "normal_text": "#B0B0C0" 
@@ -244,32 +244,32 @@
     "#constructor_progress_bar": {
         "font": {
             "name": "dejavu_sans",
-            "size": "14",
+            "size": "12",
             "bold": "1"
         }
     },
     "#editor_name_entry": {
         "font": {
             "name": "dejavu_sans",
-            "size": "18"
+            "size": "15"
         }
     },
     "#editor_display_entry": {
         "font": {
             "name": "dejavu_sans",
-            "size": "18"
+            "size": "15"
         }
     },
     "#turret_entry": {
         "font": {
             "name": "dejavu_sans",
-            "size": "18"
+            "size": "15"
         }
     },
     "#unit_name_entry": {
         "font": {
             "name": "dejavu_sans",
-            "size": "16",
+            "size": "14",
             "bold": "1"
         },
         "colours": {
@@ -291,7 +291,7 @@
     "#comp_toggle_button": {
         "font": {
             "name": "dejavu_sans",
-            "size": "12"
+            "size": "11"
         },
         "misc": {
             "text_horiz_alignment": "left",
@@ -301,7 +301,7 @@
     "#comp_cost_label": {
         "font": {
             "name": "dejavu_sans",
-            "size": "12"
+            "size": "11"
         },
         "misc": {
             "text_horiz_alignment": "center",
@@ -311,7 +311,7 @@
     "#comp_select_button": {
         "font": {
             "name": "dejavu_sans",
-            "size": "12"
+            "size": "11"
         },
         "misc": {
             "text_horiz_alignment": "center",

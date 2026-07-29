@@ -57,7 +57,7 @@ class GalaxyViewRenderer:
             pygame.draw.circle(self.screen, color, pos_tuple, radius)
 
             # Draw system name
-            font_size = max(1, int(14 * TEXT_SCALE))
+            font_size = max(1, int(12 * TEXT_SCALE))
             font = pygame.font.Font(None, font_size)
             text_surface = font.render(system.name, True, color)
             text_rect = text_surface.get_rect()

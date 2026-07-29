@@ -82,7 +82,7 @@ class SystemViewRenderer:
 
                         # Draw destination system name at the end of the line
                         scale_val = self.screen.get_height() / 720.0
-                        font_size = max(1, int(12 * TEXT_SCALE))
+                        font_size = max(1, int(10 * TEXT_SCALE))
                         font = pygame.font.Font(None, font_size)
                         text_surface = font.render(body.exit_system_name, True, WORMHOLE_LINE_COLOR)
                         text_rect = text_surface.get_rect()

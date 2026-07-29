@@ -470,7 +470,7 @@ class SectorViewRenderer:
         all_objects_in_sector = bodies_to_draw + units_to_draw
 
         if has_presence_warning:
-            font_size = max(14, int(16 * TEXT_SCALE))
+            font_size = max(12, int(14 * TEXT_SCALE))
             hud_font = pygame.font.Font(None, font_size)
             text_surface = hud_font.render("WARNING: Enemy presence detected in sector", True, FOG_PRESENCE_COLOR)
             text_rect = text_surface.get_rect(center=(self.screen.get_width() // 2, 60))
@@ -622,7 +622,7 @@ class SectorViewRenderer:
                     if dot_bottom > bottom_y:
                         bottom_y = dot_bottom
                         
-                name_font_size = max(1, int(12 * TEXT_SCALE))
+                name_font_size = max(1, int(10 * TEXT_SCALE))
                 if name_font_size not in self._font_cache:
                     self._font_cache[name_font_size] = pygame.font.Font(None, name_font_size)
                 name_font = self._font_cache[name_font_size]
