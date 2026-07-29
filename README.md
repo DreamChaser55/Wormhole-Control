@@ -25,8 +25,8 @@
 ### Celestial Objects
 - **Stars**: Various types (G-Type, Red Dwarf, White Dwarf, Neutron Star, Pulsar, Black Hole, etc.)
 - **Planets**: Nine planet types (Terran, Desert, Volcanic, Ice, Gas Giant, etc.)
-- **Colonizable Bodies**: Planets, Moons (Crystal source), Asteroids (Metal source)
-- **Space Phenomena**: Nebulae, Storms, Comets, Asteroid Fields, Debris Fields
+- **Colonizable Bodies**: Planets, Moons, Asteroids (Metal source)
+- **Space Phenomena**: Nebulae, Storms, Comets (Crystal source), Asteroid Fields, Debris Fields
 
 ### Advanced Systems
 - **Complex Orders System**: Queue multiple commands for units
@@ -106,7 +106,7 @@ Wormhole Control/
 ### Resource Economy
 - **Credits**: Primary currency for transactions
 - **Metal**: Harvested from asteroids, used for construction
-- **Crystal**: Harvested from moons, used for advanced technology
+- **Crystal**: Harvested from comets, used for advanced technology
 - **Antimatter**: Powers sub-light engines, hyperdrive jumps, and special abilities.
   Only units with the **Antimatter Harvester** component can generate new antimatter,
   and only while stationed near a star. All other units must be resupplied by

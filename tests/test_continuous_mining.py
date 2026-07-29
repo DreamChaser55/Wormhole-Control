@@ -4,7 +4,7 @@ from geometry import Position
 from unit_components import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent, Commander
 from tests.test_unit_components import MockUnit, MockPlayer
 from unit_orders import OrderType, OrderStatus, ContinuousMineOrder, MineOrder, UnloadResourcesOrder
-from entities import Asteroid, Moon
+from entities import Asteroid, Comet
 from constants import HullSize
 
 def test_continuous_mining_flow():
@@ -97,12 +97,12 @@ def test_continuous_mining_refinery_types():
     mining_comp = MiningComponent(unit, max_cargo=100.0)
     unit.add_component(mining_comp)
 
-    moon = Moon((0, 0), "Sol")
-    moon.position = Position(50, 0)
-    moon.id = 888
+    comet = Comet((0, 0), "Sol")
+    comet.position = Position(50, 0)
+    comet.id = 888
 
     galaxy = MagicMock()
-    galaxy.get_celestial_body_by_id.side_effect = lambda bid: moon if bid == 888 else None
+    galaxy.get_celestial_body_by_id.side_effect = lambda bid: comet if bid == 888 else None
 
     # Setup a metal refinery and a crystal refinery
     ref_metal = MockUnit()

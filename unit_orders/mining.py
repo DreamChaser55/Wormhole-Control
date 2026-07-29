@@ -205,11 +205,11 @@ class ContinuousMineOrder(Order):
         has_crystal = mining_comp.raw_crystal_cargo > 0
 
         target = galaxy_ref.get_celestial_body_by_id(self.parameters.get("target_id"))
-        from entities import Asteroid, AsteroidField, Moon
+        from entities import Asteroid, AsteroidField, Comet
         if not has_metal and not has_crystal and target:
             if isinstance(target, (Asteroid, AsteroidField)):
                 has_metal = True
-            elif isinstance(target, Moon):
+            elif isinstance(target, Comet):
                 has_crystal = True
 
         friendly_refineries = []

@@ -537,7 +537,7 @@ class InputProcessor:
                                     options.append(("Jump Wormhole", "jump_wormhole"))
                     
                     if target_object is not None:
-                        if isinstance(target_object, (Planet, Moon, Asteroid, AsteroidField)):
+                        if isinstance(target_object, (Planet, Moon, Asteroid, AsteroidField, Comet)):
                             if isinstance(target_object, Planet):
                                 options.append(("View Planet", "view_planet"))
                             if len(self.game.selected_objects) == 1 and isinstance(self.game.selected_objects[0], Unit):
@@ -547,7 +547,7 @@ class InputProcessor:
                                         options.append(("Colonize", "colonize"))
                                     if unit.colony_component and target_object.owner == unit.owner and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
                                         options.append(("Load Colonists", "load_colonists"))
-                            if isinstance(target_object, (Asteroid, AsteroidField, Moon)) and any(getattr(a, 'mining_component', None) for a in actors):
+                            if isinstance(target_object, (Asteroid, AsteroidField, Comet)) and any(getattr(a, 'mining_component', None) for a in actors):
                                 options.append(("Mine", "mine"))
                                 options.append(("Mine (continuously)", "continuous_mine"))
                         elif isinstance(target_object, Wormhole): options.append(("View Wormhole Info", "view_wormhole"))
@@ -714,7 +714,7 @@ class InputProcessor:
                     ))
 
             elif extracted_action_id == "mine":
-                if isinstance(target, (Asteroid, AsteroidField, Moon)):
+                if isinstance(target, (Asteroid, AsteroidField, Comet)):
                     self.game.event_bus.publish(MineEvent(
                         selected_units,
                         target,
@@ -722,7 +722,7 @@ class InputProcessor:
                     ))
 
             elif extracted_action_id == "continuous_mine":
-                if isinstance(target, (Asteroid, AsteroidField, Moon)):
+                if isinstance(target, (Asteroid, AsteroidField, Comet)):
                     self.game.event_bus.publish(ContinuousMineEvent(
                         selected_units,
                         target,

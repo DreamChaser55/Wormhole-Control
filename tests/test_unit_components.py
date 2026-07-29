@@ -628,6 +628,14 @@ def test_mining_component():
     mining.update(mock_galaxy)
     assert mining.raw_metal_cargo == 10.0
 
+    # Target comet (crystal mining)
+    from entities import Comet
+    comet = Comet(in_hex=(0,0), in_system="Sol")
+    comet.position = Position(0, 0)
+    mining.set_target(comet)
+    mining.update(mock_galaxy)
+    assert mining.raw_crystal_cargo == 10.0
+
 def test_refinery_components():
     unit = MockUnit()
     unit.owner.metal = 100

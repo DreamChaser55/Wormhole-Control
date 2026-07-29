@@ -133,7 +133,7 @@ class Planet(CelestialBody):
 
 
 class Moon(CelestialBody):
-    """Represents a moon, which is colonisable and a source of Crystal."""
+    """Represents a moon, which is colonisable."""
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1800.0)
         self.name = f"Moon {self.id}"
@@ -141,7 +141,6 @@ class Moon(CelestialBody):
         self.population: float = 0
         self.max_population: float = 50.0
         self.population_growth_rate: float = 0.01
-        self.crystal_yield: float = 10.0
 
     def update_population(self):
         if self.owner and self.population < self.max_population:
@@ -201,10 +200,11 @@ class Storm(CelestialBody):
         self.storm_type = storm_type
 
 class Comet(CelestialBody):
-    """Represents a comet."""
+    """Represents a comet, which is a source of Crystal."""
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
         self.name = f"Comet {self.id}"
+        self.crystal_yield: float = 10.0
 
 
 # --- GameObject-derived Class: Unit ---

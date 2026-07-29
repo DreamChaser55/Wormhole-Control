@@ -1116,7 +1116,6 @@ class Game:
                     owner_name = body.owner.name if body.owner else "Uninhabited"
                     data_for_gui.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': '#sidebar_info_label', 'height': 25})
                     data_for_gui.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
-                    data_for_gui.append({'type': 'label', 'text': f"Crystal Yield: {body.crystal_yield}", 'object_id': '#sidebar_info_label', 'height': 25})
 
                 elif isinstance(body, Asteroid):
                     owner_name = body.owner.name if body.owner else "Uninhabited"
@@ -1152,6 +1151,7 @@ class Game:
 
                 elif isinstance(body, Comet):
                     data_for_gui.append({'type': 'label', 'text': "A celestial body of ice and rock.", 'object_id': '#sidebar_info_label', 'height': 20})
+                    data_for_gui.append({'type': 'label', 'text': f"Crystal Yield: {body.crystal_yield}", 'object_id': '#sidebar_info_label', 'height': 25})
             elif isinstance(selected_obj, Unit):
                 unit: Unit = selected_obj
                 current_player = self.players[self.current_player_index]
