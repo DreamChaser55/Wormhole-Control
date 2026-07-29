@@ -165,21 +165,32 @@ def instantiate_unit_from_template(
         new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0)))
 
     if template.get("has_repair_component"):
+        r_rate = template.get("repair_rate", 10.0)
+        r_cost = template.get("repair_hull_cost")
+        if r_cost is None:
+            from custom_unit_templates import calc_repair_hull_cost
+            r_cost = calc_repair_hull_cost(r_rate)
         new_unit.add_component(RepairComponent(
             new_unit,
-            repair_rate=template.get("repair_rate", 10.0),
+            repair_rate=r_rate,
             repair_range=template.get("repair_range", 200.0),
             credit_cost_per_hp=template.get("credit_cost_per_hp", 1.0),
-            hull_cost=template.get("repair_hull_cost", 15.0)
+            hull_cost=r_cost
         ))
 
     if template.get("has_mining_component"):
+        m_rate = template.get("mining_rate", 10.0)
+        m_cargo = template.get("max_mining_cargo", 100.0)
+        m_cost = template.get("mining_hull_cost")
+        if m_cost is None:
+            from custom_unit_templates import calc_mining_hull_cost
+            m_cost = calc_mining_hull_cost(m_rate, m_cargo)
         new_unit.add_component(MiningComponent(
             new_unit,
-            mining_rate=template.get("mining_rate", 10.0),
+            mining_rate=m_rate,
             mining_range=template.get("mining_range", 200.0),
-            max_cargo=template.get("max_mining_cargo", 100.0),
-            hull_cost=template.get("mining_hull_cost", 10.0)
+            max_cargo=m_cargo,
+            hull_cost=m_cost
         ))
 
     if template.get("has_metal_refinery_component"):
@@ -201,10 +212,15 @@ def instantiate_unit_from_template(
         if hull_size in (HullSize.TINY, HullSize.SMALL, HullSize.MEDIUM):
             logger.warning(f"Warning: Attempted to add hangar to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
         else:
+            h_slots = template.get("hangar_slots", 0)
+            h_cost = template.get("hangar_hull_cost")
+            if h_cost is None:
+                from custom_unit_templates import calc_hangar_hull_cost
+                h_cost = calc_hangar_hull_cost(h_slots)
             new_unit.add_component(HangarComponent(
                 new_unit,
-                max_slots=template.get("hangar_slots", 0),
-                hull_cost=template.get("hangar_hull_cost", 0)
+                max_slots=h_slots,
+                hull_cost=h_cost
             ))
 
     if template.get("has_strikecraft_bay"):
@@ -212,10 +228,15 @@ def instantiate_unit_from_template(
         if hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL):
             logger.warning(f"Warning: Attempted to add strikecraft bay to forbidden hull size {hull_size.name} in template '{template_name}'. Skipping.")
         else:
+            sb_slots = template.get("strikecraft_bay_slots", 0)
+            sb_cost = template.get("strikecraft_bay_hull_cost")
+            if sb_cost is None:
+                from custom_unit_templates import calc_strikecraft_bay_hull_cost
+                sb_cost = calc_strikecraft_bay_hull_cost(sb_slots)
             new_unit.add_component(StrikecraftBayComponent(
                 new_unit,
-                max_slots=template.get("strikecraft_bay_slots", 0),
-                hull_cost=template.get("strikecraft_bay_hull_cost", 0)
+                max_slots=sb_slots,
+                hull_cost=sb_cost
             ))
 
     if new_unit.hull_size == HullSize.STRIKECRAFT_WING:
@@ -233,10 +254,15 @@ def instantiate_unit_from_template(
         ))
 
     if template.get("has_inhibitor"):
+        inh_radius = template.get("inhibitor_radius", 100.0)
+        inh_cost = template.get("inhibitor_hull_cost")
+        if inh_cost is None:
+            from custom_unit_templates import calc_inhibitor_hull_cost
+            inh_cost = calc_inhibitor_hull_cost(inh_radius)
         new_unit.add_component(HyperspaceInhibitionFieldEmitter(
             new_unit,
-            radius=template.get("inhibitor_radius", 100.0),
-            hull_cost=template.get("inhibitor_hull_cost", 20.0)
+            radius=inh_radius,
+            hull_cost=inh_cost
         ))
 
     if template.get("has_ability_component"):

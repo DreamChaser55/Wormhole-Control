@@ -26,7 +26,11 @@ from constants import (
     HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT,
     MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_CAPACITY_BY_HULL, get_min_antimatter_capacity,
     ANTIMATTER_HARVESTER_HULL_COST,
-    DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX
+    DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX,
+    HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS, HANGAR_HULL_COST_PER_SLOT,
+    STRIKECRAFT_BAY_HULL_COST_PER_SLOT, REPAIR_RATE_PER_HULL_POINT,
+    MINING_RATE_PER_HULL_POINT, MINING_CARGO_PER_HULL_POINT, INHIBITOR_RADIUS_PER_HULL_POINT,
+    HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST
 )
 
 logger = logging.getLogger(__name__)
@@ -255,6 +259,53 @@ def calc_sensors_hull_cost(short_range_radius: float, long_range_hexes: int) -> 
     return base + max(0, long_range_hexes) * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
 
 
+def calc_hangar_hull_cost(slots: int) -> float:
+    """Compute the hull cost of a Hangar component from hangar_slots."""
+    if slots <= 0:
+        return 0.0
+    return float(slots * HANGAR_HULL_COST_PER_SLOT)
+
+
+def calc_strikecraft_bay_hull_cost(slots: int) -> float:
+    """Compute the hull cost of a Strikecraft Bay component from strikecraft_bay_slots."""
+    if slots <= 0:
+        return 0.0
+    return float(slots * STRIKECRAFT_BAY_HULL_COST_PER_SLOT)
+
+
+def calc_repair_hull_cost(repair_rate: float) -> float:
+    """Compute the hull cost of a Repair component from repair_rate."""
+    if repair_rate <= 0:
+        return 0.0
+    return float(repair_rate / REPAIR_RATE_PER_HULL_POINT)
+
+
+def calc_mining_hull_cost(mining_rate: float, max_cargo: float) -> float:
+    """Compute the hull cost of a Mining component from mining_rate and max_mining_cargo."""
+    rate_cost = (mining_rate / MINING_RATE_PER_HULL_POINT) if mining_rate > 0 else 0.0
+    cargo_cost = (max_cargo / MINING_CARGO_PER_HULL_POINT) if max_cargo > 0 else 0.0
+    return float(rate_cost + cargo_cost)
+
+
+def calc_inhibitor_hull_cost(radius: float) -> float:
+    """Compute the hull cost of a Hyperspace Inhibitor component from inhibitor_radius."""
+    if radius <= 0:
+        return 0.0
+    return float(radius / INHIBITOR_RADIUS_PER_HULL_POINT)
+
+
+def get_hyperdrive_system_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
+    """Compute hyperdrive antimatter cost for a system jump based on hull size."""
+    multiplier = HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
+    return float(HYPERDRIVE_SYSTEM_JUMP_COST * multiplier)
+
+
+def get_hyperdrive_hex_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
+    """Compute hyperdrive antimatter cost for a hex jump based on hull size."""
+    multiplier = HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
+    return float(HYPERDRIVE_HEX_JUMP_COST * multiplier)
+
+
 
 # --------------------------------------------------------------------------
 # Turret definition
@@ -320,7 +371,7 @@ class ComponentConfig:
     repair_rate: float = 10.0
     repair_range: float = 200.0
     credit_cost_per_hp: float = 1.0
-    repair_hull_cost: float = 15.0
+    # hull cost is computed: see repair_hull_cost property
 
     # Colony
     has_colony_component: bool = False
@@ -331,7 +382,7 @@ class ComponentConfig:
     mining_rate: float = 10.0
     mining_range: float = 200.0
     max_mining_cargo: float = 100.0
-    mining_hull_cost: float = 10.0
+    # hull cost is computed: see mining_hull_cost property
 
     # Metal refinery
     has_metal_refinery_component: bool = False
@@ -344,12 +395,12 @@ class ComponentConfig:
     # Hangar
     has_hangar: bool = False
     hangar_slots: int = 2
-    hangar_hull_cost: float = 20.0
+    # hull cost is computed: see hangar_hull_cost property
 
     # Strikecraft Bay
     has_strikecraft_bay: bool = False
     strikecraft_bay_slots: int = 2
-    strikecraft_bay_hull_cost: float = 15.0
+    # hull cost is computed: see strikecraft_bay_hull_cost property
 
     # Wing Type (Fighter vs Bomber) - only for Strikecraft hulls
     wing_type: str = "FIGHTER"
@@ -357,7 +408,7 @@ class ComponentConfig:
     # Hyperspace inhibitor
     has_inhibitor: bool = False
     inhibitor_radius: float = 100.0
-    inhibitor_hull_cost: float = 20.0
+    # hull cost is computed: see inhibitor_hull_cost property
 
     # Abilities
     has_ability_component: bool = False
@@ -432,6 +483,41 @@ class ComponentConfig:
         if not self.has_sensors:
             return 0.0
         return calc_sensors_hull_cost(self.sensor_short_range, self.sensor_long_range_hexes)
+
+    @property
+    def repair_hull_cost(self) -> float:
+        """Hull cost of Repair, computed from repair_rate."""
+        if not self.has_repair_component:
+            return 0.0
+        return calc_repair_hull_cost(self.repair_rate)
+
+    @property
+    def mining_hull_cost(self) -> float:
+        """Hull cost of Mining, computed from mining_rate and max_mining_cargo."""
+        if not self.has_mining_component:
+            return 0.0
+        return calc_mining_hull_cost(self.mining_rate, self.max_mining_cargo)
+
+    @property
+    def hangar_hull_cost(self) -> float:
+        """Hull cost of Hangar, computed from hangar_slots."""
+        if not self.has_hangar:
+            return 0.0
+        return calc_hangar_hull_cost(self.hangar_slots)
+
+    @property
+    def strikecraft_bay_hull_cost(self) -> float:
+        """Hull cost of Strikecraft Bay, computed from strikecraft_bay_slots."""
+        if not self.has_strikecraft_bay:
+            return 0.0
+        return calc_strikecraft_bay_hull_cost(self.strikecraft_bay_slots)
+
+    @property
+    def inhibitor_hull_cost(self) -> float:
+        """Hull cost of Inhibitor, computed from inhibitor_radius."""
+        if not self.has_inhibitor:
+            return 0.0
+        return calc_inhibitor_hull_cost(self.inhibitor_radius)
 
 
 
@@ -882,7 +968,6 @@ class CustomTemplateManager:
             repair_rate=d.get("repair_rate", 10.0),
             repair_range=d.get("repair_range", 200.0),
             credit_cost_per_hp=d.get("credit_cost_per_hp", 1.0),
-            repair_hull_cost=d.get("repair_hull_cost", 15),
 
             has_colony_component=d.get("has_colony_component", False),
             colony_hull_cost=d.get("colony_hull_cost", 10),
@@ -891,7 +976,6 @@ class CustomTemplateManager:
             mining_rate=d.get("mining_rate", 10.0),
             mining_range=d.get("mining_range", 200.0),
             max_mining_cargo=d.get("max_mining_cargo", 100.0),
-            mining_hull_cost=d.get("mining_hull_cost", 10),
 
             has_metal_refinery_component=d.get("has_metal_refinery_component", False),
             metal_refinery_hull_cost=d.get("metal_refinery_hull_cost", 20),
@@ -901,16 +985,13 @@ class CustomTemplateManager:
 
             has_hangar=d.get("has_hangar", False),
             hangar_slots=d.get("hangar_slots", 2),
-            hangar_hull_cost=d.get("hangar_hull_cost", 20),
 
             has_strikecraft_bay=d.get("has_strikecraft_bay", False) or d.get("has_fighter_bay", False),
             strikecraft_bay_slots=d.get("strikecraft_bay_slots", d.get("fighter_bay_slots", 2)),
-            strikecraft_bay_hull_cost=d.get("strikecraft_bay_hull_cost", d.get("fighter_bay_hull_cost", 15)),
             wing_type=d.get("wing_type", "FIGHTER"),
 
             has_inhibitor=d.get("has_inhibitor", False),
             inhibitor_radius=d.get("inhibitor_radius", 100.0),
-            inhibitor_hull_cost=d.get("inhibitor_hull_cost", 20),
 
             has_ability_component=d.get("has_ability_component", False),
             abilities=d.get("abilities", []),

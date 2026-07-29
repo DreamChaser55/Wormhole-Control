@@ -50,14 +50,14 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_weapon_bays",           "label": "Weapons",            "cost_key": "weapon_bays_hull_cost",      "default_cost": 10.0, "is_dynamic": True},
     {"key": "has_defenses",              "label": "Defenses",           "cost_key": "defenses_hull_cost",         "default_cost": 10.0, "is_dynamic": True},
     {"key": "has_constructor_component", "label": "Constructor",        "cost_key": "constructor_hull_cost",      "default_cost": 15.0, "is_dynamic": False},
-    {"key": "has_repair_component",      "label": "Repair",             "cost_key": "repair_hull_cost",           "default_cost": 15.0, "is_dynamic": False},
+    {"key": "has_repair_component",      "label": "Repair",             "cost_key": "repair_hull_cost",           "default_cost": 15.0, "is_dynamic": True},
     {"key": "has_colony_component",      "label": "Colony",             "cost_key": "colony_hull_cost",           "default_cost": 10.0, "is_dynamic": False},
-    {"key": "has_mining_component",      "label": "Mining",             "cost_key": "mining_hull_cost",           "default_cost": 10.0, "is_dynamic": False},
+    {"key": "has_mining_component",      "label": "Mining",             "cost_key": "mining_hull_cost",           "default_cost": 10.0, "is_dynamic": True},
     {"key": "has_metal_refinery_component", "label": "Metal Refinery",  "cost_key": "metal_refinery_hull_cost",   "default_cost": 20.0, "is_dynamic": False},
     {"key": "has_crystal_refinery_component", "label": "Crystal Refinery", "cost_key": "crystal_refinery_hull_cost", "default_cost": 20.0, "is_dynamic": False},
-    {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20.0, "is_dynamic": False},
-    {"key": "has_strikecraft_bay",       "label": "Strikecraft Bay",    "cost_key": "strikecraft_bay_hull_cost",  "default_cost": 15.0, "is_dynamic": False},
-    {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20.0, "is_dynamic": False},
+    {"key": "has_hangar",                "label": "Hangar",             "cost_key": "hangar_hull_cost",           "default_cost": 20.0, "is_dynamic": True},
+    {"key": "has_strikecraft_bay",       "label": "Strikecraft Bay",    "cost_key": "strikecraft_bay_hull_cost",  "default_cost": 15.0, "is_dynamic": True},
+    {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20.0, "is_dynamic": True},
     {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
     {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2.0,  "is_dynamic": True},
 ]
@@ -1042,6 +1042,11 @@ class UnitEditorWindow:
             "has_defenses":           c.defenses_hull_cost,
             "has_ability_component":  c.ability_hull_cost,
             "has_sensors":            c.sensors_hull_cost,
+            "has_repair_component":   c.repair_hull_cost,
+            "has_mining_component":   c.mining_hull_cost,
+            "has_hangar":             c.hangar_hull_cost,
+            "has_strikecraft_bay":    c.strikecraft_bay_hull_cost,
+            "has_inhibitor":          c.inhibitor_hull_cost,
         }
 
         for key, computed_cost in dynamic_values.items():
@@ -1477,9 +1482,16 @@ class UnitEditorWindow:
 
         comps = []
         for row in COMPONENT_ROWS:
-            if getattr(c, row["key"], False):
-                cost = getattr(c, row["cost_key"], row["default_cost"])
-                comps.append(f"  • {row['label']} ({cost} hull)")
+            key = row["key"]
+            if getattr(c, key, False):
+                if key == "has_engine":
+                    cost = c.get_engine_hull_cost(self._hull_size)
+                elif key == "has_hyperdrive":
+                    cost = c.get_hyperdrive_hull_cost(self._hull_size)
+                else:
+                    cost = getattr(c, row["cost_key"], row["default_cost"])
+                cost_str = f"{cost:g}" if isinstance(cost, float) else str(cost)
+                comps.append(f"  • {row['label']} ({cost_str} hull)")
         if comps:
             lines.append("<b>Components:</b>")
             lines.extend(comps)

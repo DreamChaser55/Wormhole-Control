@@ -92,6 +92,14 @@ ENGINE_ANTIMATTER_COST_PER_TURN: float = 2.0
 HYPERDRIVE_SYSTEM_JUMP_COST: float = 50.0
 HYPERDRIVE_HEX_JUMP_COST: float = 20.0
 
+# Dynamic Component Tuning Constants
+HANGAR_HULL_COST_PER_SLOT: float = 10.0
+STRIKECRAFT_BAY_HULL_COST_PER_SLOT: float = 7.5
+REPAIR_RATE_PER_HULL_POINT: float = 0.667
+MINING_RATE_PER_HULL_POINT: float = 2.0
+MINING_CARGO_PER_HULL_POINT: float = 20.0
+INHIBITOR_RADIUS_PER_HULL_POINT: float = 5.0
+
 # Antimatter Harvester component: only units with this component can generate
 # new antimatter, and only while positioned near a star.
 DEFAULT_ANTIMATTER_HARVEST_RATE: float = 10.0
@@ -290,6 +298,15 @@ HULL_CAPACITIES: Dict[HullSize, float] = {
     HullSize.MEDIUM: 50.0,
     HullSize.LARGE: 100.0,
     HullSize.HUGE: 200.0,
+}
+
+HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
+    HullSize.STRIKECRAFT_WING: 0.4,
+    HullSize.TINY: 0.6,
+    HullSize.SMALL: 0.8,
+    HullSize.MEDIUM: 1.0,
+    HullSize.LARGE: 1.5,
+    HullSize.HUGE: 2.0,
 }
 
 HIT_POINTS = {

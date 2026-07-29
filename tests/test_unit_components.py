@@ -35,7 +35,7 @@ class MockUnit:
         self.current_hit_points = 100
         self.max_hit_points = 100
         self.game = MagicMock()
-        self.hull_size = HullSize.HUGE
+        self.hull_size = HullSize.MEDIUM
         self.is_disabled = False
         self.damage_amplification = 0.0
         self.is_temporary = False

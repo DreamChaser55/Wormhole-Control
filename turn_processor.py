@@ -204,15 +204,17 @@ class TurnProcessor:
                     
                     if can_jump and arrival_hex and target_system and exit_wormhole_obj_for_exec:
                         # Check/consume antimatter for system jump
+                        from custom_unit_templates import get_hyperdrive_system_jump_cost
+                        sys_jump_cost = get_hyperdrive_system_jump_cost(unit.hull_size)
                         am_comp = unit.antimatter_component
-                        if am_comp and am_comp.current_amount < HYPERDRIVE_SYSTEM_JUMP_COST:
-                            logger.debug(f"   {unit.name} system jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{HYPERDRIVE_SYSTEM_JUMP_COST:.1f}).")
+                        if am_comp and am_comp.current_amount < sys_jump_cost:
+                            logger.debug(f"   {unit.name} system jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{sys_jump_cost:.1f}).")
                             hd_comp.jump_status = JumpStatus.ERROR
                             hd_comp.wormhole_jump_target = None
                             continue
 
                         if am_comp:
-                            am_comp.consume(HYPERDRIVE_SYSTEM_JUMP_COST)
+                            am_comp.consume(sys_jump_cost)
 
                         unit.position = exit_wormhole_obj_for_exec.position 
                         moved = self.game.galaxy.move_unit_between_systems(
@@ -334,9 +336,11 @@ class TurnProcessor:
                         
                     unit.position = target_pos
                     # Check/consume antimatter for hex jump
+                    from custom_unit_templates import get_hyperdrive_hex_jump_cost
+                    hex_jump_cost = get_hyperdrive_hex_jump_cost(unit.hull_size)
                     am_comp = unit.antimatter_component
-                    if am_comp and am_comp.current_amount < HYPERDRIVE_HEX_JUMP_COST:
-                        logger.debug(f"   {unit.name} hex jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{HYPERDRIVE_HEX_JUMP_COST:.1f}).")
+                    if am_comp and am_comp.current_amount < hex_jump_cost:
+                        logger.debug(f"   {unit.name} hex jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{hex_jump_cost:.1f}).")
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.hex_jump_target = None
                         continue
@@ -344,7 +348,7 @@ class TurnProcessor:
                     moved = origin_system.move_unit_between_hexes(unit=unit, destination_hex=target_hex)
                     if moved:
                         if am_comp:
-                            am_comp.consume(HYPERDRIVE_HEX_JUMP_COST)
+                            am_comp.consume(hex_jump_cost)
                         logger.debug(f"   {unit.name}(id:{unit.id}) completed hex jump to {target_hex}:{target_pos} in {origin_system.name} system.")
                         hd_comp.start_recharge() # Clears targets and sets status to CHARGING
                     else:
