@@ -235,7 +235,7 @@ class UnitEditorWindow:
         # Title
         title = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(pad, pad, pr.w - pad * 2, int(28 * scale_y)),
-            text="⚙  UNIT DESIGNER",
+            text="⚒  UNIT DESIGNER",
             manager=self.manager,
             container=self._panel,
             object_id="#unit_editor_title",
@@ -388,7 +388,7 @@ class UnitEditorWindow:
         # Save Button
         self._save_button = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(c1x, c1y, c1w, btn_h),
-            text="💾  Save Design",
+            text="✔  Save Design",
             manager=self.manager,
             container=self._panel,
             object_id="#editor_save_button",
@@ -399,7 +399,7 @@ class UnitEditorWindow:
         # Delete Button
         self._delete_button = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(c1x, c1y, c1w, btn_h),
-            text="🗑  Delete Design",
+            text="✖  Delete Design",
             manager=self.manager,
             container=self._panel,
             object_id="#editor_delete_button",
@@ -1618,7 +1618,7 @@ class UnitEditorWindow:
             return None
         deleted = self.template_manager.delete_design(key)
         if deleted:
-            self._set_status(f"✔ Design '{key}' deleted.", error=False)
+            self._set_status(f"✖ Design '{key}' deleted.", error=False)
             self._editing_key = None
             self._refresh_load_dropdown()
             return "design_deleted"

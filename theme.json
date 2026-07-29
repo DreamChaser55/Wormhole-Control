@@ -1,47 +1,19 @@
 {
-    "fonts": [
-        {
-            "name": "arial",
-            "point_size": 18,
-            "antialiased": "1"
+    "fonts": {
+        "dejavu_sans": {
+            "regular_path": "fonts/dejavu-sans/DejaVuSans.ttf",
+            "bold_path": "fonts/dejavu-sans/DejaVuSans-Bold.ttf",
+            "italic_path": "fonts/dejavu-sans/DejaVuSans-Oblique.ttf",
+            "bold_italic_path": "fonts/dejavu-sans/DejaVuSans-BoldOblique.ttf"
         },
-        {
-            "name": "arial",
-            "point_size": 16,
-            "antialiased": "1"
-        },
-        {
-            "name": "arial",
-            "point_size": 16,
-            "style": "bold",
-            "antialiased": "1"
-        },
-        {
-            "name": "arial",
-            "point_size": 14,
-            "antialiased": "1"
-        },
-        {
-            "name": "arial",
-            "point_size": 14,
-            "style": "bold",
-            "antialiased": "1"
-        },
-        {
-            "name": "arial",
-            "point_size": 14,
-            "style": "italic",
-            "antialiased": "1"
-        },
-        {
-            "name": "arial",
-            "point_size": 12,
-            "antialiased": "1"
+        "noto_emoji": {
+            "regular_path": "fonts/noto-emoji/NotoEmoji-Regular.ttf",
+            "bold_path": "fonts/noto-emoji/NotoEmoji-Bold.ttf"
         }
-    ],
+    },
     "defaults": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "14"
         },
         "colours": {
@@ -50,25 +22,25 @@
     },
     "button": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "14"
         }
     },
     "label": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "14"
         }
     },
     "#resource_label": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "12"
         }
     },
     "text_box": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "14"
         }
     },
@@ -124,7 +96,7 @@
     },
     "#sidebar_title_label": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "16",
             "bold": "1"
         },
@@ -134,7 +106,7 @@
     },
     "#sidebar_section_header_label": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "16",
             "bold": "1"
         },
@@ -144,7 +116,7 @@
     },
     "#sidebar_info_label": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "14"
         },
         "colours": {
@@ -198,7 +170,7 @@
     },
     "#sidebar_component_header_label": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "14",
             "bold": "1"
         },
@@ -243,7 +215,7 @@
     },
     "#sidebar_expand_button": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "14"
         },
         "colours": {
@@ -257,7 +229,7 @@
     },
     "#order_text_box": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "12"
         },
         "colours": {
@@ -271,32 +243,32 @@
     },
     "#constructor_progress_bar": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "14",
             "bold": "1"
         }
     },
     "#editor_name_entry": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "18"
         }
     },
     "#editor_display_entry": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "18"
         }
     },
     "#turret_entry": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "18"
         }
     },
     "#unit_name_entry": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "16",
             "bold": "1"
         },
@@ -318,7 +290,7 @@
     },
     "#comp_toggle_button": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "12"
         },
         "misc": {
@@ -328,7 +300,7 @@
     },
     "#comp_cost_label": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "12"
         },
         "misc": {
@@ -338,7 +310,7 @@
     },
     "#comp_select_button": {
         "font": {
-            "name": "arial",
+            "name": "dejavu_sans",
             "size": "12"
         },
         "misc": {
