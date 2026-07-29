@@ -61,7 +61,7 @@ class MiningComponent(UnitComponent):
         data.append({
             'type': 'label',
             'text': f"• Mining Cargo: {metal} Metal, {crystal} Crystal / {max_c}",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
         })
@@ -146,7 +146,7 @@ class MetalRefineryComponent(UnitComponent):
         data.append({
             'type': 'label',
             'text': "• Metal Refining: Active",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_status_active_label',
             'height': 18,
             'indent_level': 1
         })
@@ -182,7 +182,7 @@ class CrystalRefineryComponent(UnitComponent):
         data.append({
             'type': 'label',
             'text': "• Crystal Refining: Active",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_status_active_label',
             'height': 18,
             'indent_level': 1
         })

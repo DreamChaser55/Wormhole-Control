@@ -196,3 +196,51 @@ def test_single_unit_sidebar_tabs_switch_to_components():
     assert "Commander" in comp_dropdowns[0]["options_list"]
 
 
+def test_component_overview_colored_labels():
+    """Verify that component overview items return appropriate colored label object IDs based on state."""
+    mock_game = MagicMock()
+    mock_game.galaxy = MagicMock()
+    player = MagicMock()
+
+    unit = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Test Cruiser",
+        hull_size=HullSize.MEDIUM,
+        game=mock_game
+    )
+
+    # Check Engine (Speed readout)
+    engine = unit.components.get("Engine")
+    if engine:
+        basic_data = engine.get_basic_sidebar_data(mock_game)
+        assert len(basic_data) == 1
+        assert basic_data[0]['object_id'] == '#sidebar_value_label'
+
+    # Check Hyperdrive (Ready vs Charging)
+    hyperdrive = unit.components.get("Hyperdrive")
+    if hyperdrive:
+        from unit_components.movement import JumpStatus
+        hyperdrive.jump_status = JumpStatus.READY
+        data_ready = hyperdrive.get_basic_sidebar_data(mock_game)
+        assert data_ready[0]['object_id'] == '#sidebar_status_active_label'
+
+        hyperdrive.jump_status = JumpStatus.CHARGING
+        hyperdrive.recharge_time_remaining = 2
+        data_charging = hyperdrive.get_basic_sidebar_data(mock_game)
+        assert data_charging[0]['object_id'] == '#sidebar_status_charging_label'
+
+    # Check Constructor (Idle vs Constructing)
+    from unit_components.constructor import Constructor
+    constructor = Constructor(unit)
+    idle_data = constructor.get_basic_sidebar_data(mock_game)
+    assert idle_data[0]['object_id'] == '#sidebar_status_idle_label'
+
+    constructor.current_construction_target = ("Scout", "Scout Ship", 10.0, 2)
+    active_data = constructor.get_basic_sidebar_data(mock_game)
+    assert active_data[0]['object_id'] == '#sidebar_status_active_label'
+
+
+

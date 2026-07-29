@@ -196,6 +196,51 @@
             "text_horiz_alignment": "left"
         }
     },
+    "#sidebar_component_header_label": {
+        "font": {
+            "name": "arial",
+            "size": "14",
+            "bold": "1"
+        },
+        "colours": {
+            "normal_text": "#C0E0FF"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_status_active_label": {
+        "colours": {
+            "normal_text": "#50E550"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_status_idle_label": {
+        "colours": {
+            "normal_text": "#858598"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_status_charging_label": {
+        "colours": {
+            "normal_text": "#FFD700"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_value_label": {
+        "colours": {
+            "normal_text": "#70D0FF"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
     "#sidebar_expand_button": {
         "font": {
             "name": "arial",

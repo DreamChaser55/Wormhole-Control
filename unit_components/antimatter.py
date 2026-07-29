@@ -89,7 +89,7 @@ class AntimatterStorage(UnitComponent):
         data.append({
             'type': 'label',
             'text': f"• Antimatter: {self.current_amount:.1f}/{self.max_capacity:.1f}",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
         })
@@ -157,13 +157,15 @@ class AntimatterHarvester(UnitComponent):
             effective_rate = self.harvest_rate * multiplier
             rate_text = f"{effective_rate:.1f}/t eff. [{self.harvest_rate:.1f} base]"
             status_text = "Harvesting"
+            obj_id = '#sidebar_status_active_label'
         else:
             rate_text = f"{self.harvest_rate:.1f}/t base"
             status_text = "Idle"
+            obj_id = '#sidebar_status_idle_label'
         data.append({
             'type': 'label',
             'text': f"• AM Harvest: {status_text} ({rate_text})",
-            'object_id': '#sidebar_info_label',
+            'object_id': obj_id,
             'height': 18,
             'indent_level': 1
         })

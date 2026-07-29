@@ -166,7 +166,7 @@ class Weapons(UnitComponent):
             data.append({
                 'type': 'label',
                 'text': "• Turrets: None",
-                'object_id': '#sidebar_info_label',
+                'object_id': '#sidebar_status_idle_label',
                 'height': 18,
                 'indent_level': 1
             })
@@ -176,7 +176,7 @@ class Weapons(UnitComponent):
         data.append({
             'type': 'label',
             'text': f"• Turrets ({len(self.turrets)}):",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_component_header_label',
             'height': 18,
             'indent_level': 1
         })
@@ -185,10 +185,11 @@ class Weapons(UnitComponent):
             type_str = turret.turret_type.name.replace('_', ' ').title()
             eff_dmg = turret.damage * xp_dmg_mult
             cd_str = f" [CD: {turret.current_cooldown}t]" if turret.current_cooldown > 0 else ""
+            turret_obj_id = '#sidebar_status_charging_label' if turret.current_cooldown > 0 else '#sidebar_value_label'
             data.append({
                 'type': 'label',
                 'text': f"Turret {i}: {variant_str} {type_str} (Dmg {eff_dmg:.1f}, Rng {int(turret.range)}){cd_str}",
-                'object_id': '#sidebar_info_label',
+                'object_id': turret_obj_id,
                 'height': 18,
                 'indent_level': 2
             })

@@ -57,7 +57,7 @@ class HangarComponent(UnitComponent):
         data.append({
             'type': 'label',
             'text': f"• Docked Ships: {len(self.docked_units)} ({used_slots}/{self.max_slots} slots)",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
         })

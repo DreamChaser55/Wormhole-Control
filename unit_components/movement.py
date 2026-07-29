@@ -51,7 +51,7 @@ class Engines(UnitComponent):
         data.append({
             'type': 'label',
             'text': f"• Speed: {effective_speed:.1f}",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
         })
@@ -113,15 +113,18 @@ class Hyperdrive(UnitComponent):
         if self.is_destroyed:
             return data
         status_str = "Ready"
+        obj_id = '#sidebar_status_active_label'
         if self.jump_status == JumpStatus.CHARGING:
             status_str = f"Charging ({self.recharge_time_remaining}t)"
+            obj_id = '#sidebar_status_charging_label'
         elif self.jump_status == JumpStatus.JUMPING:
             status_str = "Jumping"
+            obj_id = '#sidebar_status_active_label'
         effective_range = int(self.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
         data.append({
             'type': 'label',
             'text': f"• FTL Jump: {self.drive_type.value} ({status_str}, Rng {effective_range})",
-            'object_id': '#sidebar_info_label',
+            'object_id': obj_id,
             'height': 18,
             'indent_level': 1
         })

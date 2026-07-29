@@ -176,10 +176,11 @@ class Commander(UnitComponent):
             return data
         orders_count = self.get_active_orders_count()
         curr_name = self.current_order.order_type.name.replace('_', ' ').title() if self.current_order else "None"
+        obj_id = '#sidebar_status_active_label' if orders_count > 0 else '#sidebar_value_label'
         data.append({
             'type': 'label',
             'text': f"• Stance: [{self.stance.display_name}] | Order: {curr_name} ({orders_count} active)",
-            'object_id': '#sidebar_info_label',
+            'object_id': obj_id,
             'height': 18,
             'indent_level': 1
         })

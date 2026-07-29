@@ -54,7 +54,7 @@ class Defenses(UnitComponent):
         data.append({
             'type': 'label',
             'text': f"• Armor {self.armor} | Shields {self.shields} | PD {self.point_defense}",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
         })

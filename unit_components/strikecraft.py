@@ -50,10 +50,11 @@ class StrikecraftWingComponent(UnitComponent):
         if self.is_destroyed:
             return data
         role_str = "Fighter" if self.wing_type == WingType.FIGHTER else "Bomber"
+        obj_id = '#sidebar_status_active_label' if self.active_fighters > 0 else '#sidebar_status_idle_label'
         data.append({
             'type': 'label',
             'text': f"• Strikecraft ({role_str}): {self.active_fighters}/4 active",
-            'object_id': '#sidebar_info_label',
+            'object_id': obj_id,
             'height': 18,
             'indent_level': 1
         })
@@ -172,7 +173,7 @@ class StrikecraftBayComponent(UnitComponent):
         data.append({
             'type': 'label',
             'text': f"• Strikecraft Wings: {used_slots}/{self.max_slots} ({docked_cnt} docked, {launched_cnt} launched)",
-            'object_id': '#sidebar_info_label',
+            'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
         })

@@ -42,10 +42,11 @@ class RepairComponent(UnitComponent):
         if self.is_destroyed:
             return data
         tgt_str = f" Target: {self.target.name}" if self.target else " Idle"
+        obj_id = '#sidebar_status_active_label' if self.target else '#sidebar_status_idle_label'
         data.append({
             'type': 'label',
             'text': f"• Repair Rate: {self.repair_rate:.0f} HP/t ({tgt_str})",
-            'object_id': '#sidebar_info_label',
+            'object_id': obj_id,
             'height': 18,
             'indent_level': 1
         })

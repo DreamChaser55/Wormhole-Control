@@ -350,12 +350,14 @@ class Constructor(UnitComponent):
             target_name = self.current_construction_target[0]
             pct = int((self.construction_progress / self.time_to_build) * 100) if self.time_to_build > 0 else 100
             status_str = f"Constructing {target_name} ({pct}%)"
+            obj_id = '#sidebar_status_active_label'
         else:
             status_str = "Idle"
+            obj_id = '#sidebar_status_idle_label'
         data.append({
             'type': 'label',
             'text': f"• Construction: {status_str}",
-            'object_id': '#sidebar_info_label',
+            'object_id': obj_id,
             'height': 18,
             'indent_level': 1
         })
