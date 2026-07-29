@@ -4,6 +4,7 @@ import dataclasses
 
 from .base import UnitComponent
 from geometry import distance
+from constants import REPAIR_CREDIT_COST_PER_HP
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -18,10 +19,10 @@ class RepairComponent(UnitComponent):
     SIDEBAR_ORDER: int = 10
     repair_rate: float = 10.0
     repair_range: float = 200.0
-    credit_cost_per_hp: float = 1.0
+    credit_cost_per_hp: float = REPAIR_CREDIT_COST_PER_HP
     target: Optional['Unit'] = None
 
-    def __init__(self, unit: 'Unit', repair_rate: float = 10.0, repair_range: float = 200.0, credit_cost_per_hp: float = 1.0, hull_cost: float = 15.0):
+    def __init__(self, unit: 'Unit', repair_rate: float = 10.0, repair_range: float = 200.0, credit_cost_per_hp: float = REPAIR_CREDIT_COST_PER_HP, hull_cost: float = 15.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.repair_rate = repair_rate
         self.repair_range = repair_range

@@ -178,7 +178,6 @@ class UnitEditorWindow:
         # Repair sub-entries
         self._repair_rate_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._repair_range_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
-        self._repair_credit_cost_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
 
         # Mining sub-entries
         self._mining_rate_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
@@ -795,25 +794,9 @@ class UnitEditorWindow:
         )
         self._repair_range_entry.set_text(str(int(self._comp.repair_range)))
 
-        y_rep += small_h + entry_h + pad
-        lbl_rcost = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y_rep, c3w, small_h),
-            text="Credit Cost / HP:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._repair_credit_cost_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(c3x, y_rep + small_h + 2, c3w, entry_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_entry",
-        )
-        self._repair_credit_cost_entry.set_text(str(self._comp.credit_cost_per_hp))
         self._details_groups["has_repair_component"].extend([
             lbl_rr, self._repair_rate_entry,
             lbl_rrange, self._repair_range_entry,
-            lbl_rcost, self._repair_credit_cost_entry,
         ])
 
         # --- 9. Mining Component ---
@@ -1122,7 +1105,7 @@ class UnitEditorWindow:
                 self._sync_dynamic_costs()
                 self._update_summary()
                 return "ui_handled"
-            elif elem in (getattr(self, '_repair_rate_entry', None), getattr(self, '_repair_range_entry', None), getattr(self, '_repair_credit_cost_entry', None)):
+            elif elem in (getattr(self, '_repair_rate_entry', None), getattr(self, '_repair_range_entry', None)):
                 self._read_repair_params()
                 self._sync_dynamic_costs()
                 self._update_summary()
@@ -1246,11 +1229,6 @@ class UnitEditorWindow:
         try:
             rrange = float(self._repair_range_entry.get_text()) if getattr(self, '_repair_range_entry', None) else 200.0
             self._comp.repair_range = max(0.0, rrange)
-        except ValueError:
-            pass
-        try:
-            rcost = float(self._repair_credit_cost_entry.get_text()) if getattr(self, '_repair_credit_cost_entry', None) else 1.0
-            self._comp.credit_cost_per_hp = max(0.0, rcost)
         except ValueError:
             pass
 
@@ -1682,8 +1660,6 @@ class UnitEditorWindow:
             self._repair_rate_entry.set_text(str(int(self._comp.repair_rate)))
         if getattr(self, '_repair_range_entry', None):
             self._repair_range_entry.set_text(str(int(self._comp.repair_range)))
-        if getattr(self, '_repair_credit_cost_entry', None):
-            self._repair_credit_cost_entry.set_text(str(self._comp.credit_cost_per_hp))
         if getattr(self, '_mining_rate_entry', None):
             self._mining_rate_entry.set_text(str(int(self._comp.mining_rate)))
         if getattr(self, '_mining_range_entry', None):

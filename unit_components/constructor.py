@@ -26,7 +26,7 @@ from geometry import Position
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_HARVEST_RATE,
     ANTIMATTER_HARVESTER_HULL_COST,
-    DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE
+    DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE, REPAIR_CREDIT_COST_PER_HP
 )
 
 from unit_templates import UNIT_TEMPLATES
@@ -174,7 +174,7 @@ def instantiate_unit_from_template(
             new_unit,
             repair_rate=r_rate,
             repair_range=template.get("repair_range", 200.0),
-            credit_cost_per_hp=template.get("credit_cost_per_hp", 1.0),
+            credit_cost_per_hp=template.get("credit_cost_per_hp", REPAIR_CREDIT_COST_PER_HP),
             hull_cost=r_cost
         ))
 

@@ -28,7 +28,7 @@ from constants import (
     ANTIMATTER_HARVESTER_HULL_COST,
     DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX,
     HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS, HANGAR_HULL_COST_PER_SLOT,
-    STRIKECRAFT_BAY_HULL_COST_PER_SLOT, REPAIR_RATE_PER_HULL_POINT,
+    STRIKECRAFT_BAY_HULL_COST_PER_SLOT, REPAIR_RATE_PER_HULL_POINT, REPAIR_CREDIT_COST_PER_HP,
     MINING_RATE_PER_HULL_POINT, MINING_CARGO_PER_HULL_POINT, INHIBITOR_RADIUS_PER_HULL_POINT,
     HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST
 )
@@ -370,7 +370,7 @@ class ComponentConfig:
     has_repair_component: bool = False
     repair_rate: float = 10.0
     repair_range: float = 200.0
-    credit_cost_per_hp: float = 1.0
+    credit_cost_per_hp: float = REPAIR_CREDIT_COST_PER_HP
     # hull cost is computed: see repair_hull_cost property
 
     # Colony
@@ -967,7 +967,7 @@ class CustomTemplateManager:
             has_repair_component=d.get("has_repair_component", False),
             repair_rate=d.get("repair_rate", 10.0),
             repair_range=d.get("repair_range", 200.0),
-            credit_cost_per_hp=d.get("credit_cost_per_hp", 1.0),
+            credit_cost_per_hp=d.get("credit_cost_per_hp", REPAIR_CREDIT_COST_PER_HP),
 
             has_colony_component=d.get("has_colony_component", False),
             colony_hull_cost=d.get("colony_hull_cost", 10),

@@ -428,11 +428,9 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         # Test parameter reading from modified entries
         win._repair_rate_entry.set_text("25")
         win._repair_range_entry.set_text("300")
-        win._repair_credit_cost_entry.set_text("2.5")
         win._read_repair_params()
         self.assertEqual(win._comp.repair_rate, 25.0)
         self.assertEqual(win._comp.repair_range, 300.0)
-        self.assertEqual(win._comp.credit_cost_per_hp, 2.5)
 
         win._mining_rate_entry.set_text("15")
         win._mining_range_entry.set_text("250")
