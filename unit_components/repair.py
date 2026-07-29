@@ -44,7 +44,7 @@ class RepairComponent(UnitComponent):
         tgt_str = f" Target: {self.target.name}" if self.target else " Idle"
         data.append({
             'type': 'label',
-            'text': f"• Repair System: {self.repair_rate:.0f} HP/t ({tgt_str})",
+            'text': f"• Repair Rate: {self.repair_rate:.0f} HP/t ({tgt_str})",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1

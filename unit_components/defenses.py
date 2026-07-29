@@ -53,7 +53,7 @@ class Defenses(UnitComponent):
             return data
         data.append({
             'type': 'label',
-            'text': f"• Defenses: Armor {self.armor} | Shields {self.shields} | PD {self.point_defense}",
+            'text': f"• Armor {self.armor} | Shields {self.shields} | PD {self.point_defense}",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1

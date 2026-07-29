@@ -50,7 +50,7 @@ class Engines(UnitComponent):
         effective_speed = self.speed * self.unit.xp_multiplier(XP_SPEED_BONUS)
         data.append({
             'type': 'label',
-            'text': f"• Engines: Speed {effective_speed:.1f}",
+            'text': f"• Speed: {effective_speed:.1f}",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1
@@ -120,7 +120,7 @@ class Hyperdrive(UnitComponent):
         effective_range = int(self.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
         data.append({
             'type': 'label',
-            'text': f"• Hyperdrive: {self.drive_type.value} ({status_str}, Rng {effective_range})",
+            'text': f"• FTL Jump: {self.drive_type.value} ({status_str}, Rng {effective_range})",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1

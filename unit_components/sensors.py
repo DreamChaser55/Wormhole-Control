@@ -40,7 +40,7 @@ class Sensors(UnitComponent):
         lr = self.long_range_hexes if self.has_long_range else 0
         data.append({
             'type': 'label',
-            'text': f"• Sensors: Short Rng {sr} | Long Rng {lr} hexes",
+            'text': f"• Sensor Range: Short {sr} | Long {lr} hexes",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1

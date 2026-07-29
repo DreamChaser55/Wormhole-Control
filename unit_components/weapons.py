@@ -165,7 +165,7 @@ class Weapons(UnitComponent):
         if not self.turrets:
             data.append({
                 'type': 'label',
-                'text': "• Weapons: None",
+                'text': "• Turrets: None",
                 'object_id': '#sidebar_info_label',
                 'height': 18,
                 'indent_level': 1
@@ -175,7 +175,7 @@ class Weapons(UnitComponent):
         xp_dmg_mult = self.unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
         data.append({
             'type': 'label',
-            'text': f"• Weapons ({len(self.turrets)} Turrets):",
+            'text': f"• Turrets ({len(self.turrets)}):",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1

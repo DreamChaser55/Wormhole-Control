@@ -46,7 +46,7 @@ class UnitComponent:
         if self.is_destroyed:
             return [{
                 'type': 'label',
-                'text': f"• {self.DISPLAY_NAME}: Destroyed",
+                'text': f"• Destroyed Component: {self.DISPLAY_NAME}",
                 'object_id': '#sidebar_hit_points_critical_damage_label',
                 'height': 18,
                 'indent_level': 1

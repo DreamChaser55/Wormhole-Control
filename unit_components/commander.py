@@ -178,7 +178,7 @@ class Commander(UnitComponent):
         curr_name = self.current_order.order_type.name.replace('_', ' ').title() if self.current_order else "None"
         data.append({
             'type': 'label',
-            'text': f"• Commander: Stance [{self.stance.display_name}] | Order: {curr_name} ({orders_count} active)",
+            'text': f"• Stance: [{self.stance.display_name}] | Order: {curr_name} ({orders_count} active)",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1

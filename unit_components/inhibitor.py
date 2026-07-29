@@ -39,7 +39,7 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         status_str = "Active" if self.is_active else "Inactive"
         data.append({
             'type': 'label',
-            'text': f"• Inhibitor: {status_str} (Radius {int(self.radius)})",
+            'text': f"• FTL Inhibition: {status_str} (Radius {int(self.radius)})",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1

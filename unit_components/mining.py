@@ -145,7 +145,7 @@ class MetalRefineryComponent(UnitComponent):
             return data
         data.append({
             'type': 'label',
-            'text': "• Metal Refinery: Active",
+            'text': "• Metal Refining: Active",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1
@@ -181,7 +181,7 @@ class CrystalRefineryComponent(UnitComponent):
             return data
         data.append({
             'type': 'label',
-            'text': "• Crystal Refinery: Active",
+            'text': "• Crystal Refining: Active",
             'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1
