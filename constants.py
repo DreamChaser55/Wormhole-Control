@@ -122,6 +122,7 @@ DEFAULT_SENSOR_LONG_RANGE_HEXES: int = 1       # default ring count for a long-r
 # Fog visuals
 FOG_PRESENCE_COLOR = (200, 60, 60)             # generic enemy-presence marker color
 FOG_TINT_COLOR = (0, 0, 0, 60)                 # optional faint shading for non-detailed hexes (system view)
+FOG_OF_WAR_COLOR = (40, 40, 50, 55)            # semi-transparent grey fog for out-of-sensor-range areas (sector view)
 
 
 

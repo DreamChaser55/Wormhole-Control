@@ -6,7 +6,7 @@ from constants import (
     SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR, SECTOR_GRID_COLOR, SECTOR_GRID_SPACING,
     STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS,
     STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER,
-    WHITE, YELLOW, CYAN, PURPLE, RED, FOG_PRESENCE_COLOR,
+    WHITE, YELLOW, CYAN, PURPLE, RED, FOG_PRESENCE_COLOR, FOG_OF_WAR_COLOR,
     HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE,
     ICON_DOT_RADIUS, ICON_DOT_SPACING,
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
@@ -88,6 +88,7 @@ class SectorViewRenderer:
         self._last_cached_sector = None
         self._scaled_effect_surfaces = _BoundedSurfaceCache()
         self._inhibition_surface = None
+        self._fog_of_war_surface = None
         self._storm_scratch_surface = None
         self._range_circle_surface = None
         self.zoom_render_stats = {
@@ -396,6 +397,7 @@ class SectorViewRenderer:
             self._nebula_master_surfaces.clear()
             self._storm_base_circle_surfaces.clear()
             self._scaled_effect_surfaces.clear()
+            self._fog_of_war_surface = None
             self._last_cached_sector = current_sector_key
 
         zoom = self.game.sector_zoom
@@ -427,6 +429,11 @@ class SectorViewRenderer:
         )
         pygame.draw.circle(self.screen, SECTOR_BORDER_COLOR, boundary_center, int(dynamic_radius), 1)
         self._draw_tactical_grid()
+
+        # 1b. Fog of War overlay (grey fog over areas outside friendly sensor range)
+        hex_obj = system.hexes.get(self.game.current_sector_coord)
+        if hex_obj:
+            self._draw_fog_of_war(hex_obj, dynamic_radius)
 
         # 2. Draw Inhibition Fields. Draw directly into a viewport-sized alpha
         # surface instead of scaling and retaining a massive circle texture.
@@ -798,6 +805,102 @@ class SectorViewRenderer:
 
         self._draw_sector_view_order_lines_from_other_sectors(external_units_with_orders_to_this_sector)
         self._update_zoom_render_stats()
+
+    def _draw_fog_of_war(self, hex_obj, dynamic_radius: float) -> None:
+        """Draw a C&C-style grey fog of war over the sector view.
+
+        The sector boundary disc is filled with a semi-transparent grey fog
+        (FOG_OF_WAR_COLOR). Then, for every friendly unit in the current hex
+        whose sensors are intact, a fully transparent circle is punched out of
+        the fog at the unit's position, with radius equal to the unit's sensor
+        short_range_radius. Areas inside a sensor circle appear at full
+        brightness; areas outside remain dimmed.
+
+        All circle fills are viewport-bounded (identical to the approach used
+        by ``_fill_circle_clipped``) so cost is proportional to the visible
+        screen area rather than to ``radius_px ** 2``.
+        """
+        screen_width, screen_height = self.screen.get_size()
+        screen_size = (screen_width, screen_height)
+
+        # Allocate or reuse the fog surface
+        if self._fog_of_war_surface is None or self._fog_of_war_surface.get_size() != screen_size:
+            self._fog_of_war_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
+
+        fog_surf = self._fog_of_war_surface
+        fog_surf.fill((0, 0, 0, 0))  # start fully transparent
+
+        # --- Step 1: Fill the sector boundary disc with fog ---
+        sector_center_px = (int(SECTOR_CIRCLE_CENTER_IN_PX.x + self.game.sector_pan_offset.x),
+                            int(SECTOR_CIRCLE_CENTER_IN_PX.y + self.game.sector_pan_offset.y))
+        sector_radius_px = max(1, int(dynamic_radius))
+        cx, cy = sector_center_px
+        r = sector_radius_px
+
+        vis_left   = max(0, cx - r)
+        vis_top    = max(0, cy - r)
+        vis_right  = min(screen_width, cx + r)
+        vis_bottom = min(screen_height, cy + r)
+
+        if vis_left < vis_right and vis_top < vis_bottom:
+            if self._circle_covers_viewport((cx, cy), r):
+                # Entire viewport is inside the sector disc
+                fog_surf.fill(FOG_OF_WAR_COLOR, (vis_left, vis_top, vis_right - vis_left, vis_bottom - vis_top))
+            else:
+                r_sq = r * r
+                for y in range(vis_top, vis_bottom):
+                    dy = y - cy
+                    dx_sq = r_sq - dy * dy
+                    if dx_sq < 0:
+                        continue
+                    dx = math.sqrt(dx_sq)
+                    x_left  = max(vis_left,  int(math.floor(cx - dx)))
+                    x_right = min(vis_right, int(math.ceil(cx + dx)))
+                    if x_left < x_right:
+                        pygame.draw.line(fog_surf, FOG_OF_WAR_COLOR, (x_left, y), (x_right - 1, y))
+
+        # --- Step 2: Punch out sensor-range cutouts for every friendly unit ---
+        current_player = (self.game.players[self.game.current_player_index]
+                          if self.game.players else None)
+        if current_player:
+            for unit in hex_obj.units:
+                if unit.owner != current_player:
+                    continue
+                sensors = unit.sensors_component
+                if sensors is None or sensors.is_destroyed or not sensors.has_short_range:
+                    continue
+
+                unit_px = self._coords_to_pixels(unit.position)
+                sr_px = int(sensors.short_range_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                if sr_px <= 0:
+                    continue
+
+                ucx, ucy = int(unit_px.x), int(unit_px.y)
+                ul  = max(0, ucx - sr_px)
+                ut  = max(0, ucy - sr_px)
+                ur  = min(screen_width, ucx + sr_px)
+                ub  = min(screen_height, ucy + sr_px)
+
+                if ul >= ur or ut >= ub:
+                    continue
+
+                TRANSPARENT = (0, 0, 0, 0)
+                if self._circle_covers_viewport((ucx, ucy), sr_px):
+                    fog_surf.fill(TRANSPARENT, (ul, ut, ur - ul, ub - ut))
+                else:
+                    sr_sq = sr_px * sr_px
+                    for y in range(ut, ub):
+                        dy = y - ucy
+                        dx_sq = sr_sq - dy * dy
+                        if dx_sq < 0:
+                            continue
+                        dx = math.sqrt(dx_sq)
+                        x_left  = max(ul, int(math.floor(ucx - dx)))
+                        x_right = min(ur, int(math.ceil(ucx + dx)))
+                        if x_left < x_right:
+                            pygame.draw.line(fog_surf, TRANSPARENT, (x_left, y), (x_right - 1, y))
+
+        self.screen.blit(fog_surf, (0, 0))
 
     def _draw_unit_range_circles(self, unit: 'Unit', pixel_pos, dynamic_radius: float) -> None:
         """Draw sensor and weapon range circles around a selected owned unit.

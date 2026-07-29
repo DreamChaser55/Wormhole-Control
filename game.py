@@ -231,6 +231,9 @@ class Game:
         # Change view mode and set up game UI
         self.view_mode = 'galaxy'
         self.game_started = True
+        self.visibility = None
+        self.visibility_dirty = True
+        self.recompute_visibility()
         self.update_side_bar_content() # Update info box for initial state
         self.update_player_turn_display() # Update turn display for Player 1
         logger.debug(f"--- Turn {self.turn_number} - Start of {self.players[self.current_player_index].name}'s Turn ---")
