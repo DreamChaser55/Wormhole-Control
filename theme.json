@@ -315,5 +315,35 @@
             "shadow_width": "0",
             "padding": "0,0"
         }
+    },
+    "#comp_toggle_button": {
+        "font": {
+            "name": "arial",
+            "size": "12"
+        },
+        "misc": {
+            "text_horiz_alignment": "left",
+            "padding": "3,0"
+        }
+    },
+    "#comp_cost_label": {
+        "font": {
+            "name": "arial",
+            "size": "12"
+        },
+        "misc": {
+            "text_horiz_alignment": "center",
+            "padding": "0,0"
+        }
+    },
+    "#comp_select_button": {
+        "font": {
+            "name": "arial",
+            "size": "12"
+        },
+        "misc": {
+            "text_horiz_alignment": "center",
+            "padding": "0,0"
+        }
     }
 }

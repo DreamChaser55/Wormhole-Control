@@ -258,7 +258,7 @@ class UnitEditorWindow:
 
         # Heights & spacing constants
         row_h = int(26 * scale_y)
-        small_h = int(22 * scale_y)
+        small_h = max(24, int(24 * TEXT_SCALE))
         dd_h = int(28 * scale_y)
         entry_h = int(32 * scale_y)
         btn_h = int(32 * scale_y)
@@ -433,9 +433,10 @@ class UnitEditorWindow:
         self._elements.append(comp_heading)
         c2y += row_h + 2
 
-        btn_w = c2w - 65
-        cost_w = 24
-        select_w = 35
+        cost_w = max(40, int(40 * TEXT_SCALE))
+        select_w = max(38, int(38 * TEXT_SCALE))
+        gap = max(2, int(2 * TEXT_SCALE))
+        btn_w = c2w - cost_w - select_w - (gap * 2)
 
         for idx, row in enumerate(COMPONENT_ROWS):
             cx = c2x
@@ -456,7 +457,7 @@ class UnitEditorWindow:
             self._elements.append(btn)
 
             cost_lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(cx + btn_w + 2, cy, cost_w, small_h),
+                relative_rect=pygame.Rect(cx + btn_w + gap, cy, cost_w, small_h),
                 text=cost_display,
                 manager=self.manager,
                 container=self._panel,
@@ -466,7 +467,7 @@ class UnitEditorWindow:
             self._elements.append(cost_lbl)
 
             sel_btn = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(cx + btn_w + cost_w + 4, cy, select_w, small_h),
+                relative_rect=pygame.Rect(cx + btn_w + gap + cost_w + gap, cy, select_w, small_h),
                 text="▶▶▶" if key == self._selected_component_key else ">>>",
                 manager=self.manager,
                 container=self._panel,
