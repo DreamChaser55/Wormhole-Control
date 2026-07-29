@@ -175,6 +175,25 @@ class UnitEditorWindow:
         self._shields_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._pd_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
 
+        # Repair sub-entries
+        self._repair_rate_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._repair_range_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._repair_credit_cost_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+
+        # Mining sub-entries
+        self._mining_rate_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._mining_range_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._mining_max_cargo_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+
+        # Hangar sub-entries
+        self._hangar_slots_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+
+        # Strikecraft Bay sub-entries
+        self._strikecraft_bay_slots_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+
+        # Inhibitor Field sub-entries
+        self._inhibitor_radius_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
+
         # Ability checkboxes (UIButton toggles)
         self._ability_buttons: typing.Dict[str, pygame_gui.elements.UIButton] = {}
         self._abil_hdr: typing.Optional[pygame_gui.elements.UILabel] = None
@@ -723,9 +742,171 @@ class UnitEditorWindow:
             container=self._panel,
             object_id="#hd_type_dropdown",
         )
-        self._details_groups["has_strikecraft_bay"].extend([self._wt_lbl, self._wt_dropdown])
+        y_sc += small_h + dd_h + pad
+        lbl_scs = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_sc, c3w, small_h),
+            text="Bay Slots:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._strikecraft_bay_slots_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_sc + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._strikecraft_bay_slots_entry.set_text(str(int(self._comp.strikecraft_bay_slots)))
+        self._details_groups["has_strikecraft_bay"].extend([
+            self._wt_lbl, self._wt_dropdown,
+            lbl_scs, self._strikecraft_bay_slots_entry,
+        ])
 
-        # --- 8. Abilities ---
+        # --- 8. Repair Component ---
+        y_rep = c3y_base
+        lbl_rr = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_rep, c3w, small_h),
+            text="Repair Rate:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._repair_rate_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_rep + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._repair_rate_entry.set_text(str(int(self._comp.repair_rate)))
+
+        y_rep += small_h + entry_h + pad
+        lbl_rrange = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_rep, c3w, small_h),
+            text="Repair Range:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._repair_range_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_rep + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._repair_range_entry.set_text(str(int(self._comp.repair_range)))
+
+        y_rep += small_h + entry_h + pad
+        lbl_rcost = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_rep, c3w, small_h),
+            text="Credit Cost / HP:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._repair_credit_cost_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_rep + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._repair_credit_cost_entry.set_text(str(self._comp.credit_cost_per_hp))
+        self._details_groups["has_repair_component"].extend([
+            lbl_rr, self._repair_rate_entry,
+            lbl_rrange, self._repair_range_entry,
+            lbl_rcost, self._repair_credit_cost_entry,
+        ])
+
+        # --- 9. Mining Component ---
+        y_min = c3y_base
+        lbl_mr = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_min, c3w, small_h),
+            text="Mining Rate:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._mining_rate_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._mining_rate_entry.set_text(str(int(self._comp.mining_rate)))
+
+        y_min += small_h + entry_h + pad
+        lbl_mrange = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_min, c3w, small_h),
+            text="Mining Range:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._mining_range_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._mining_range_entry.set_text(str(int(self._comp.mining_range)))
+
+        y_min += small_h + entry_h + pad
+        lbl_mcargo = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_min, c3w, small_h),
+            text="Max Cargo:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._mining_max_cargo_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._mining_max_cargo_entry.set_text(str(int(self._comp.max_mining_cargo)))
+        self._details_groups["has_mining_component"].extend([
+            lbl_mr, self._mining_rate_entry,
+            lbl_mrange, self._mining_range_entry,
+            lbl_mcargo, self._mining_max_cargo_entry,
+        ])
+
+        # --- 10. Hangar ---
+        y_h = c3y_base
+        lbl_hs = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_h, c3w, small_h),
+            text="Hangar Slots:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._hangar_slots_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_h + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._hangar_slots_entry.set_text(str(int(self._comp.hangar_slots)))
+        self._details_groups["has_hangar"].extend([lbl_hs, self._hangar_slots_entry])
+
+        # --- 11. Inhibitor Field ---
+        y_inh = c3y_base
+        lbl_inhr = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_inh, c3w, small_h),
+            text="Inhibitor Radius:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._inhibitor_radius_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_inh + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._inhibitor_radius_entry.set_text(str(int(self._comp.inhibitor_radius)))
+        self._details_groups["has_inhibitor"].extend([lbl_inhr, self._inhibitor_radius_entry])
+
+        # --- 12. Abilities ---
         y_ab = c3y_base
         abil_hdr = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c3x, y_ab, c3w, small_h),
@@ -750,17 +931,13 @@ class UnitEditorWindow:
             y_ab += small_h + 3
         self._details_groups["has_ability_component"].extend(ab_widgets)
 
-        # --- 9. Fixed & Info-only Components ---
+        # --- 13. Fixed & Info-only Components ---
         DESCRIPTIONS = {
             "has_antimatter_harvester": "Antimatter Harvester<br><br>Generates antimatter resource automatically over time for hyperdrive jumps and abilities.",
             "has_constructor_component": "Constructor Component<br><br>Enables construction of orbital structures, starbases, and warp gates.",
-            "has_repair_component": "Repair Component<br><br>Repairs damaged hull and armor of nearby friendly ships.",
             "has_colony_component": "Colony Component<br><br>Enables colonizing uncolonized habitable planets.",
-            "has_mining_component": "Mining Component<br><br>Extracts raw minerals and resources from asteroid fields.",
             "has_metal_refinery_component": "Metal Refinery<br><br>Processes raw ore into refined metal alloys.",
             "has_crystal_refinery_component": "Crystal Refinery<br><br>Refines raw crystal into energy matrix components.",
-            "has_hangar": "Hangar<br><br>Launches and supports strike craft squadrons and repair drones.",
-            "has_inhibitor": "Inhibitor Field<br><br>Projects a gravitational interdiction field preventing enemy warp jumps.",
         }
 
         for comp_key, desc in DESCRIPTIONS.items():
@@ -945,6 +1122,31 @@ class UnitEditorWindow:
                 self._sync_dynamic_costs()
                 self._update_summary()
                 return "ui_handled"
+            elif elem in (getattr(self, '_repair_rate_entry', None), getattr(self, '_repair_range_entry', None), getattr(self, '_repair_credit_cost_entry', None)):
+                self._read_repair_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
+            elif elem in (getattr(self, '_mining_rate_entry', None), getattr(self, '_mining_range_entry', None), getattr(self, '_mining_max_cargo_entry', None)):
+                self._read_mining_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
+            elif elem is getattr(self, '_hangar_slots_entry', None):
+                self._read_hangar_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
+            elif elem is getattr(self, '_strikecraft_bay_slots_entry', None):
+                self._read_strikecraft_bay_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
+            elif elem is getattr(self, '_inhibitor_radius_entry', None):
+                self._read_inhibitor_params()
+                self._sync_dynamic_costs()
+                self._update_summary()
+                return "ui_handled"
 
         return None
 
@@ -1031,6 +1233,66 @@ class UnitEditorWindow:
         try:
             lr = int(self._sensor_long_range_entry.get_text()) if getattr(self, '_sensor_long_range_entry', None) else 0
             self._comp.sensor_long_range_hexes = max(0, lr)
+        except ValueError:
+            pass
+
+    def _read_repair_params(self) -> None:
+        """Read repair parameters from entry widgets and write to _comp."""
+        try:
+            rr = float(self._repair_rate_entry.get_text()) if getattr(self, '_repair_rate_entry', None) else 10.0
+            self._comp.repair_rate = max(0.0, rr)
+        except ValueError:
+            pass
+        try:
+            rrange = float(self._repair_range_entry.get_text()) if getattr(self, '_repair_range_entry', None) else 200.0
+            self._comp.repair_range = max(0.0, rrange)
+        except ValueError:
+            pass
+        try:
+            rcost = float(self._repair_credit_cost_entry.get_text()) if getattr(self, '_repair_credit_cost_entry', None) else 1.0
+            self._comp.credit_cost_per_hp = max(0.0, rcost)
+        except ValueError:
+            pass
+
+    def _read_mining_params(self) -> None:
+        """Read mining parameters from entry widgets and write to _comp."""
+        try:
+            mr = float(self._mining_rate_entry.get_text()) if getattr(self, '_mining_rate_entry', None) else 10.0
+            self._comp.mining_rate = max(0.0, mr)
+        except ValueError:
+            pass
+        try:
+            mrange = float(self._mining_range_entry.get_text()) if getattr(self, '_mining_range_entry', None) else 200.0
+            self._comp.mining_range = max(0.0, mrange)
+        except ValueError:
+            pass
+        try:
+            mcargo = float(self._mining_max_cargo_entry.get_text()) if getattr(self, '_mining_max_cargo_entry', None) else 100.0
+            self._comp.max_mining_cargo = max(0.0, mcargo)
+        except ValueError:
+            pass
+
+    def _read_hangar_params(self) -> None:
+        """Read hangar slots from entry widget and write to _comp."""
+        try:
+            slots = int(self._hangar_slots_entry.get_text()) if getattr(self, '_hangar_slots_entry', None) else 2
+            self._comp.hangar_slots = max(1, slots)
+        except ValueError:
+            pass
+
+    def _read_strikecraft_bay_params(self) -> None:
+        """Read strikecraft bay slots from entry widget and write to _comp."""
+        try:
+            slots = int(self._strikecraft_bay_slots_entry.get_text()) if getattr(self, '_strikecraft_bay_slots_entry', None) else 2
+            self._comp.strikecraft_bay_slots = max(1, slots)
+        except ValueError:
+            pass
+
+    def _read_inhibitor_params(self) -> None:
+        """Read inhibitor radius from entry widget and write to _comp."""
+        try:
+            radius = float(self._inhibitor_radius_entry.get_text()) if getattr(self, '_inhibitor_radius_entry', None) else 100.0
+            self._comp.inhibitor_radius = max(0.0, radius)
         except ValueError:
             pass
 
@@ -1342,6 +1604,11 @@ class UnitEditorWindow:
         self._read_hyperdrive_params()
         self._read_defense_params()
         self._read_sensor_params()
+        self._read_repair_params()
+        self._read_mining_params()
+        self._read_hangar_params()
+        self._read_strikecraft_bay_params()
+        self._read_inhibitor_params()
         self._comp.turrets = self._turrets
         self._comp.abilities = list(self._selected_abilities)
 
@@ -1411,6 +1678,24 @@ class UnitEditorWindow:
             self._sensor_short_range_entry.set_text(str(int(self._comp.sensor_short_range)))
         if getattr(self, '_sensor_long_range_entry', None):
             self._sensor_long_range_entry.set_text(str(self._comp.sensor_long_range_hexes))
+        if getattr(self, '_repair_rate_entry', None):
+            self._repair_rate_entry.set_text(str(int(self._comp.repair_rate)))
+        if getattr(self, '_repair_range_entry', None):
+            self._repair_range_entry.set_text(str(int(self._comp.repair_range)))
+        if getattr(self, '_repair_credit_cost_entry', None):
+            self._repair_credit_cost_entry.set_text(str(self._comp.credit_cost_per_hp))
+        if getattr(self, '_mining_rate_entry', None):
+            self._mining_rate_entry.set_text(str(int(self._comp.mining_rate)))
+        if getattr(self, '_mining_range_entry', None):
+            self._mining_range_entry.set_text(str(int(self._comp.mining_range)))
+        if getattr(self, '_mining_max_cargo_entry', None):
+            self._mining_max_cargo_entry.set_text(str(int(self._comp.max_mining_cargo)))
+        if getattr(self, '_hangar_slots_entry', None):
+            self._hangar_slots_entry.set_text(str(int(self._comp.hangar_slots)))
+        if getattr(self, '_strikecraft_bay_slots_entry', None):
+            self._strikecraft_bay_slots_entry.set_text(str(int(self._comp.strikecraft_bay_slots)))
+        if getattr(self, '_inhibitor_radius_entry', None):
+            self._inhibitor_radius_entry.set_text(str(int(self._comp.inhibitor_radius)))
 
 
         # Rebuild hull dropdown selection

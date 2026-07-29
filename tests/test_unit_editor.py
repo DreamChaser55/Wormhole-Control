@@ -403,6 +403,59 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         win.kill()
 
+    def test_configurable_parameter_widgets(self):
+        import pygame
+        import pygame_gui
+        from unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+
+        # Verify entry widgets exist and contain default text
+        self.assertIsNotNone(win._repair_rate_entry)
+        self.assertEqual(win._repair_rate_entry.get_text(), "10")
+        self.assertIsNotNone(win._mining_rate_entry)
+        self.assertEqual(win._mining_rate_entry.get_text(), "10")
+        self.assertIsNotNone(win._hangar_slots_entry)
+        self.assertEqual(win._hangar_slots_entry.get_text(), "2")
+        self.assertIsNotNone(win._strikecraft_bay_slots_entry)
+        self.assertEqual(win._strikecraft_bay_slots_entry.get_text(), "2")
+        self.assertIsNotNone(win._inhibitor_radius_entry)
+        self.assertEqual(win._inhibitor_radius_entry.get_text(), "100")
+
+        # Test parameter reading from modified entries
+        win._repair_rate_entry.set_text("25")
+        win._repair_range_entry.set_text("300")
+        win._repair_credit_cost_entry.set_text("2.5")
+        win._read_repair_params()
+        self.assertEqual(win._comp.repair_rate, 25.0)
+        self.assertEqual(win._comp.repair_range, 300.0)
+        self.assertEqual(win._comp.credit_cost_per_hp, 2.5)
+
+        win._mining_rate_entry.set_text("15")
+        win._mining_range_entry.set_text("250")
+        win._mining_max_cargo_entry.set_text("200")
+        win._read_mining_params()
+        self.assertEqual(win._comp.mining_rate, 15.0)
+        self.assertEqual(win._comp.mining_range, 250.0)
+        self.assertEqual(win._comp.max_mining_cargo, 200.0)
+
+        win._hangar_slots_entry.set_text("4")
+        win._read_hangar_params()
+        self.assertEqual(win._comp.hangar_slots, 4)
+
+        win._strikecraft_bay_slots_entry.set_text("3")
+        win._read_strikecraft_bay_params()
+        self.assertEqual(win._comp.strikecraft_bay_slots, 3)
+
+        win._inhibitor_radius_entry.set_text("150")
+        win._read_inhibitor_params()
+        self.assertEqual(win._comp.inhibitor_radius, 150.0)
+
+        win.kill()
+
 
 if __name__ == "__main__":
     unittest.main()
