@@ -27,6 +27,7 @@ from entities import (
 from rendering.drawing_utils import draw_shape, draw_dotted_line
 
 MAX_CACHED_STORM_DIAMETER = 512
+MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
 
 
 class _BoundedSurfaceCache:
@@ -89,6 +90,8 @@ class SectorViewRenderer:
         self._scaled_effect_surfaces = _BoundedSurfaceCache()
         self._inhibition_surface = None
         self._fog_of_war_surface = None
+        self._fog_cache_key = None
+        self._fog_blit_rect = None
         self._storm_scratch_surface = None
         self._range_circle_surface = None
         self.zoom_render_stats = {
@@ -97,6 +100,9 @@ class SectorViewRenderer:
             'cache_bytes': 0,
             'direct_draw_fallbacks': 0,
             'range_circle_fills': 0,
+            'fog_rebuilds': 0,
+            'fog_cache_hits': 0,
+            'fog_full_reveal': 0,
         }
 
     def _is_circle_off_screen(self, center_px, radius_px):
@@ -239,22 +245,68 @@ class SectorViewRenderer:
         return True
 
 
-    def _circle_covers_viewport(self, center_px, radius_px):
+    def _circle_covers_rect(self, center_px, radius_px, rect) -> bool:
         """Return True if a circle of the given radius centered at
-        ``center_px`` fully encloses the entire screen (i.e. all four screen
+        ``center_px`` fully encloses the given rectangle ``rect`` (i.e. all four
         corners lie within the circle).
-
-        Since a disc is convex, all four corners lying inside it implies the
-        *entire* screen rectangle is interior to the circle, which in turn
-        means the circle's boundary (circumference) never actually crosses
-        the visible viewport at all.
         """
-        screen_width, screen_height = self.screen.get_size()
         cx, cy = center_px
         radius_sq = radius_px * radius_px
-        for corner_x, corner_y in ((0, 0), (screen_width, 0), (0, screen_height), (screen_width, screen_height)):
+        try:
+            left, top, right, bottom = rect.left, rect.top, rect.right, rect.bottom
+            left, top, right, bottom = int(left), int(top), int(right), int(bottom)
+        except (AttributeError, TypeError, ValueError):
+            try:
+                left, top, right, bottom = int(rect[0]), int(rect[1]), int(rect[0] + rect[2]), int(rect[1] + rect[3])
+            except (IndexError, TypeError, ValueError):
+                return False
+
+        corners = (
+            (left, top),
+            (right, top),
+            (left, bottom),
+            (right, bottom),
+        )
+        for corner_x, corner_y in corners:
             if (corner_x - cx) ** 2 + (corner_y - cy) ** 2 > radius_sq:
                 return False
+        return True
+
+    def _circle_covers_viewport(self, center_px, radius_px):
+        """Return True if a circle of the given radius centered at
+        ``center_px`` fully encloses the entire screen.
+        """
+        try:
+            w, h = self.screen.get_size()
+            w, h = int(w), int(h)
+        except (TypeError, ValueError):
+            w, h = 1920, 1080
+        return self._circle_covers_rect(center_px, radius_px, pygame.Rect(0, 0, w, h))
+
+    def _fill_circle_on_surface(self, surface, center_px, radius_px, rgba, clip_rect) -> bool:
+        """Rasterize a filled circle onto `surface` with replace semantics,
+        bounded to `clip_rect`. Returns True if anything was painted.
+
+        - cull:      circle bbox ∩ clip_rect empty            -> return False
+        - fast path: circle covers clip_rect entirely          -> surface.fill(rgba, vis_rect); return True
+        - normal:    set_clip(vis_rect) + pygame.draw.circle   -> restore clip; return True
+        """
+        cx, cy = center_px
+        radius_px = max(1, min(int(radius_px), MAX_SAFE_CIRCLE_RADIUS_PX))
+
+        circle_bbox = pygame.Rect(cx - radius_px, cy - radius_px, 2 * radius_px, 2 * radius_px)
+        vis_rect = circle_bbox.clip(clip_rect)
+        if vis_rect.width <= 0 or vis_rect.height <= 0:
+            return False
+
+        if self._circle_covers_rect((cx, cy), radius_px, vis_rect):
+            surface.fill(rgba, vis_rect)
+            return True
+
+        old_clip = surface.get_clip()
+        surface.set_clip(vis_rect)
+        pygame.draw.circle(surface, rgba, (cx, cy), radius_px)
+        surface.set_clip(old_clip)
         return True
 
     def _fill_circle_clipped(self, center_px, radius_px, rgba):
@@ -262,24 +314,14 @@ class SectorViewRenderer:
         and rasterizing only the on-screen portion touched by the circle, so
         that cost is bounded by the visible screen area rather than by
         ``radius_px ** 2``.
-
-        This is what keeps weapon/sensor range rings (and other large
-        semi-transparent circles) cheap even when the sector view is zoomed
-        in far enough that their true on-screen radius is thousands of
-        pixels: the naive approach of allocating a ``(2*radius_px)**2``
-        SRCALPHA surface and rasterizing a full circle onto it can otherwise
-        allocate hundreds of MB and rasterize tens of millions of pixels per
-        frame, the vast majority of which get clipped away on blit anyway.
         """
         screen_width, screen_height = self.screen.get_size()
         cx, cy = center_px
-        radius_px = max(1, int(radius_px))
+        radius_px = max(1, min(int(radius_px), MAX_SAFE_CIRCLE_RADIUS_PX))
 
-        vis_left = max(0, int(math.floor(cx - radius_px)))
-        vis_top = max(0, int(math.floor(cy - radius_px)))
-        vis_right = min(screen_width, int(math.ceil(cx + radius_px)))
-        vis_bottom = min(screen_height, int(math.ceil(cy + radius_px)))
-        if vis_left >= vis_right or vis_top >= vis_bottom:
+        circle_bbox = pygame.Rect(cx - radius_px, cy - radius_px, 2 * radius_px, 2 * radius_px)
+        rect = circle_bbox.clip(self.screen.get_rect())
+        if rect.width <= 0 or rect.height <= 0:
             return
 
         if (self._range_circle_surface is None or
@@ -287,34 +329,8 @@ class SectorViewRenderer:
             self._range_circle_surface = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         surf = self._range_circle_surface
 
-        rect = pygame.Rect(vis_left, vis_top, vis_right - vis_left, vis_bottom - vis_top)
         surf.fill((0, 0, 0, 0), rect)
-
-        if self._circle_covers_viewport((cx, cy), radius_px):
-            # The whole visible rect is interior to the disc, so every pixel
-            # in `rect` would be filled by the circle anyway. Skip circle
-            # rasterization entirely (pygame.draw.circle's scanline loop
-            # otherwise still runs proportional to radius_px even when
-            # clipped) in favor of a flat rect fill bounded purely by screen
-            # size.
-            surf.fill(rgba, rect)
-        else:
-            # Manual scanline fill, bounded to the visible rows only, so cost
-            # is O(visible_height) regardless of how large radius_px is --
-            # unlike pygame.draw.circle (even with a surface clip rect set),
-            # whose scanline loop iterates the full 2*radius_px rows even
-            # when almost all of them fall outside the clip.
-            radius_sq = radius_px * radius_px
-            for y in range(vis_top, vis_bottom):
-                dy = y - cy
-                dx_sq = radius_sq - dy * dy
-                if dx_sq < 0:
-                    continue
-                dx = math.sqrt(dx_sq)
-                x_left = max(vis_left, int(math.floor(cx - dx)))
-                x_right = min(vis_right, int(math.ceil(cx + dx)))
-                if x_left < x_right:
-                    pygame.draw.line(surf, rgba, (x_left, y), (x_right - 1, y))
+        self._fill_circle_on_surface(surf, (cx, cy), radius_px, rgba, rect)
 
         self.overlay_surface.blit(surf, rect.topleft, area=rect)
         self.zoom_render_stats['range_circle_fills'] += 1
@@ -353,8 +369,11 @@ class SectorViewRenderer:
             'cache_hits': self._scaled_effect_surfaces.hits,
             'cache_misses': self._scaled_effect_surfaces.misses,
             'cache_bytes': self._scaled_effect_surfaces.total_bytes,
-            'direct_draw_fallbacks': self.zoom_render_stats['direct_draw_fallbacks'],
-            'range_circle_fills': self.zoom_render_stats['range_circle_fills'],
+            'direct_draw_fallbacks': self.zoom_render_stats.get('direct_draw_fallbacks', 0),
+            'range_circle_fills': self.zoom_render_stats.get('range_circle_fills', 0),
+            'fog_rebuilds': self.zoom_render_stats.get('fog_rebuilds', 0),
+            'fog_cache_hits': self.zoom_render_stats.get('fog_cache_hits', 0),
+            'fog_full_reveal': self.zoom_render_stats.get('fog_full_reveal', 0),
         }
 
     def _draw_tactical_grid(self):
@@ -398,6 +417,8 @@ class SectorViewRenderer:
             self._storm_base_circle_surfaces.clear()
             self._scaled_effect_surfaces.clear()
             self._fog_of_war_surface = None
+            self._fog_cache_key = None
+            self._fog_blit_rect = None
             self._last_cached_sector = current_sector_key
 
         zoom = self.game.sector_zoom
@@ -816,91 +837,115 @@ class SectorViewRenderer:
         short_range_radius. Areas inside a sensor circle appear at full
         brightness; areas outside remain dimmed.
 
-        All circle fills are viewport-bounded (identical to the approach used
-        by ``_fill_circle_clipped``) so cost is proportional to the visible
-        screen area rather than to ``radius_px ** 2``.
+        Rasterization uses C-level clipped circle drawing (`_fill_circle_on_surface`)
+        with containment culling, short-circuit skip for fully-revealed viewports,
+        and frame-to-frame caching across static frames.
         """
         screen_width, screen_height = self.screen.get_size()
         screen_size = (screen_width, screen_height)
+        screen_rect = pygame.Rect(0, 0, screen_width, screen_height)
 
         # Allocate or reuse the fog surface
         if self._fog_of_war_surface is None or self._fog_of_war_surface.get_size() != screen_size:
             self._fog_of_war_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
+            self._fog_cache_key = None
+            self._fog_blit_rect = None
 
-        fog_surf = self._fog_of_war_surface
-        fog_surf.fill((0, 0, 0, 0))  # start fully transparent
-
-        # --- Step 1: Fill the sector boundary disc with fog ---
         sector_center_px = (int(SECTOR_CIRCLE_CENTER_IN_PX.x + self.game.sector_pan_offset.x),
                             int(SECTOR_CIRCLE_CENTER_IN_PX.y + self.game.sector_pan_offset.y))
-        sector_radius_px = max(1, int(dynamic_radius))
+        sector_radius_px = max(1, min(int(dynamic_radius), MAX_SAFE_CIRCLE_RADIUS_PX))
         cx, cy = sector_center_px
         r = sector_radius_px
 
-        vis_left   = max(0, cx - r)
-        vis_top    = max(0, cy - r)
-        vis_right  = min(screen_width, cx + r)
-        vis_bottom = min(screen_height, cy + r)
+        disc_bbox = pygame.Rect(cx - r, cy - r, 2 * r, 2 * r)
+        fog_rect = screen_rect.clip(disc_bbox)
 
-        if vis_left < vis_right and vis_top < vis_bottom:
-            if self._circle_covers_viewport((cx, cy), r):
-                # Entire viewport is inside the sector disc
-                fog_surf.fill(FOG_OF_WAR_COLOR, (vis_left, vis_top, vis_right - vis_left, vis_bottom - vis_top))
-            else:
-                r_sq = r * r
-                for y in range(vis_top, vis_bottom):
-                    dy = y - cy
-                    dx_sq = r_sq - dy * dy
-                    if dx_sq < 0:
-                        continue
-                    dx = math.sqrt(dx_sq)
-                    x_left  = max(vis_left,  int(math.floor(cx - dx)))
-                    x_right = min(vis_right, int(math.ceil(cx + dx)))
-                    if x_left < x_right:
-                        pygame.draw.line(fog_surf, FOG_OF_WAR_COLOR, (x_left, y), (x_right - 1, y))
+        if fog_rect.width <= 0 or fog_rect.height <= 0:
+            self._fog_cache_key = None
+            self._fog_blit_rect = None
+            return
 
-        # --- Step 2: Punch out sensor-range cutouts for every friendly unit ---
+        # Collect cut-outs for friendly intact units
+        cutouts = []
         current_player = (self.game.players[self.game.current_player_index]
-                          if self.game.players else None)
+                          if self.game.players and 0 <= self.game.current_player_index < len(self.game.players)
+                          else None)
+
         if current_player:
             for unit in hex_obj.units:
                 if unit.owner != current_player:
                     continue
                 sensors = unit.sensors_component
-                if sensors is None or sensors.is_destroyed or not sensors.has_short_range:
+                if sensors is None or getattr(sensors, 'is_destroyed', False) or not getattr(sensors, 'has_short_range', False):
+                    continue
+
+                short_range = getattr(sensors, 'short_range_radius', 0.0)
+                if short_range <= 0:
                     continue
 
                 unit_px = self._coords_to_pixels(unit.position)
-                sr_px = int(sensors.short_range_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                if sr_px <= 0:
-                    continue
-
+                sr_px = max(1, min(int(short_range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL), MAX_SAFE_CIRCLE_RADIUS_PX))
                 ucx, ucy = int(unit_px.x), int(unit_px.y)
-                ul  = max(0, ucx - sr_px)
-                ut  = max(0, ucy - sr_px)
-                ur  = min(screen_width, ucx + sr_px)
-                ub  = min(screen_height, ucy + sr_px)
+                unit_bbox = pygame.Rect(ucx - sr_px, ucy - sr_px, 2 * sr_px, 2 * sr_px)
+                if unit_bbox.colliderect(fog_rect):
+                    cutouts.append((ucx, ucy, sr_px))
 
-                if ul >= ur or ut >= ub:
-                    continue
+        key = (
+            screen_size,
+            self._last_cached_sector,
+            round(dynamic_radius, 1),
+            round(self.game.sector_pan_offset.x, 1),
+            round(self.game.sector_pan_offset.y, 1),
+            id(current_player),
+            tuple((round(ucx, 1), round(ucy, 1), sr_px) for ucx, ucy, sr_px in cutouts)
+        )
 
-                TRANSPARENT = (0, 0, 0, 0)
-                if self._circle_covers_viewport((ucx, ucy), sr_px):
-                    fog_surf.fill(TRANSPARENT, (ul, ut, ur - ul, ub - ut))
-                else:
-                    sr_sq = sr_px * sr_px
-                    for y in range(ut, ub):
-                        dy = y - ucy
-                        dx_sq = sr_sq - dy * dy
-                        if dx_sq < 0:
-                            continue
-                        dx = math.sqrt(dx_sq)
-                        x_left  = max(ul, int(math.floor(ucx - dx)))
-                        x_right = min(ur, int(math.ceil(ucx + dx)))
-                        if x_left < x_right:
-                            pygame.draw.line(fog_surf, TRANSPARENT, (x_left, y), (x_right - 1, y))
+        if key == self._fog_cache_key:
+            self.zoom_render_stats['fog_cache_hits'] += 1
+            if self._fog_blit_rect is not None:
+                self.screen.blit(self._fog_of_war_surface, self._fog_blit_rect.topleft, area=self._fog_blit_rect)
+            return
 
-        self.screen.blit(fog_surf, (0, 0))
+        # Cache miss: clear previous region to avoid stale pixels
+        clear_rect = fog_rect.union(self._fog_blit_rect) if self._fog_blit_rect else fog_rect
+        self._fog_of_war_surface.fill((0, 0, 0, 0), clear_rect.clip(screen_rect))
+
+        # Fully-revealed short-circuit: if any cutout covers fog_rect entirely
+        for ucx, ucy, sr_px in cutouts:
+            if self._circle_covers_rect((ucx, ucy), sr_px, fog_rect):
+                self.zoom_render_stats['fog_rebuilds'] += 1
+                self.zoom_render_stats['fog_full_reveal'] += 1
+                self._fog_cache_key = key
+                self._fog_blit_rect = None
+                return
+
+        # Containment culling: sort cutouts by radius descending
+        cutouts.sort(key=lambda c: c[2], reverse=True)
+        culled_cutouts = []
+        for ucx, ucy, sr_px in cutouts:
+            contained = False
+            for acx, acy, ar_px in culled_cutouts:
+                if ar_px >= sr_px:
+                    max_dist = ar_px - sr_px
+                    if (ucx - acx) ** 2 + (ucy - acy) ** 2 <= max_dist * max_dist:
+                        contained = True
+                        break
+            if not contained:
+                culled_cutouts.append((ucx, ucy, sr_px))
+
+        fog_surf = self._fog_of_war_surface
+
+        # Rasterize sector boundary disc
+        self._fill_circle_on_surface(fog_surf, (cx, cy), r, FOG_OF_WAR_COLOR, fog_rect)
+
+        # Punch out sensor cut-outs
+        for ucx, ucy, sr_px in culled_cutouts:
+            self._fill_circle_on_surface(fog_surf, (ucx, ucy), sr_px, (0, 0, 0, 0), fog_rect)
+
+        self.screen.blit(fog_surf, fog_rect.topleft, area=fog_rect)
+        self.zoom_render_stats['fog_rebuilds'] += 1
+        self._fog_cache_key = key
+        self._fog_blit_rect = fog_rect
 
     def _draw_unit_range_circles(self, unit: 'Unit', pixel_pos, dynamic_radius: float) -> None:
         """Draw sensor and weapon range circles around a selected owned unit.

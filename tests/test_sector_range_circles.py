@@ -114,15 +114,15 @@ def test_fill_circle_clipped_covering_viewport_uses_rect_fill_not_scanline_loop(
     assert renderer.overlay_surface.get_at((319, 199)).a == 18
 
 
-def test_fill_circle_clipped_partial_coverage_uses_scanline_fill():
+def test_fill_circle_clipped_partial_coverage_uses_clipped_circle():
     """When the circle does not cover the whole viewport, pixels should
-    still be correctly filled via the scanline path (draw.line calls)."""
+    still be correctly filled via the clipped draw.circle path."""
     game, renderer = _make_test_renderer()
 
-    with patch("rendering.sector_renderer.pygame.draw.line", wraps=pygame.draw.line) as draw_line:
+    with patch("rendering.sector_renderer.pygame.draw.circle", wraps=pygame.draw.circle) as draw_circle:
         renderer._fill_circle_clipped((160, 100), 30, (0, 200, 255, 18))
 
-    assert draw_line.call_count > 0
+    assert draw_circle.call_count > 0
     # The center pixel should have been filled with the expected alpha.
     assert renderer.overlay_surface.get_at((160, 100)).a == 18
 
