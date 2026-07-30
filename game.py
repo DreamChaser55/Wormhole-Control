@@ -592,6 +592,22 @@ class Game:
                 else:
                     self.selected_objects = [unit]
                 self.sidebar_needs_update = True
+        elif action_type == 'stop_unit':
+            unit_id = action.get('unit_id')
+            unit = self.galaxy.get_unit_by_id(unit_id) if (self.galaxy and unit_id is not None) else None
+            current_player = self.players[self.current_player_index]
+            if unit and unit.owner == current_player:
+                self.event_bus.publish(CancelOrdersEvent([unit]))
+            self.sidebar_needs_update = True
+        elif action_type == 'stop_selected_units':
+            current_player = self.players[self.current_player_index]
+            units_to_stop = [
+                u for u in self.selected_objects
+                if isinstance(u, Unit) and u.owner == current_player and u.commander_component and u.commander_component.get_active_orders_count() > 0
+            ]
+            if units_to_stop:
+                self.event_bus.publish(CancelOrdersEvent(units_to_stop))
+            self.sidebar_needs_update = True
         elif action_type == 'ui_handled':
             pass
         else:
@@ -1033,6 +1049,20 @@ class Game:
                 'object_id': '#sidebar_title_label',
                 'height': 30
             })
+            current_player = self.players[self.current_player_index]
+            has_orders_to_stop = any(
+                isinstance(obj, Unit) and obj.owner == current_player and obj.commander_component and obj.commander_component.get_active_orders_count() > 0
+                for obj in self.selected_objects
+            )
+            if has_orders_to_stop:
+                data_for_gui.append({
+                    'type': 'button',
+                    'text': "Stop Selected Units",
+                    'object_id': '#sidebar_expand_button',
+                    'action_id': 'stop_selected_units',
+                    'target_data': None,
+                    'height': 25
+                })
             for obj in self.selected_objects:
                 if isinstance(obj, Unit):
                     data_for_gui.append({

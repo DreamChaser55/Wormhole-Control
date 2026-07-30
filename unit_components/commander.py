@@ -184,6 +184,17 @@ class Commander(UnitComponent):
             'height': 18,
             'indent_level': 1
         })
+        is_owned = (self.unit.owner == game_state.players[game_state.current_player_index])
+        if is_owned and orders_count > 0:
+            data.append({
+                'type': 'button',
+                'text': "Stop Unit",
+                'object_id': '#sidebar_expand_button',
+                'action_id': 'stop_unit',
+                'target_data': self.unit.id,
+                'height': 25,
+                'indent_level': 1
+            })
         return data
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
@@ -229,6 +240,17 @@ class Commander(UnitComponent):
             'height': 5,
             'indent_level': 0
         })
+
+        if is_owned and self.get_active_orders_count() > 0:
+            data.append({
+                'type': 'button',
+                'text': "Stop Unit",
+                'object_id': '#sidebar_expand_button',
+                'action_id': 'stop_unit',
+                'target_data': self.unit.id,
+                'height': 25,
+                'indent_level': 0
+            })
 
         # Display Current Order (always visible if exists)
         current_order = self.current_order

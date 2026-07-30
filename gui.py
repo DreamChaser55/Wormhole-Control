@@ -838,6 +838,15 @@ class GUI_Handler:
                         'action': 'switch_unit_sidebar_tab',
                         'tab_name': target_data
                     }
+                elif action_id == 'stop_unit':
+                    action_result = {
+                        'action': 'stop_unit',
+                        'unit_id': target_data
+                    }
+                elif action_id == 'stop_selected_units':
+                    action_result = {
+                        'action': 'stop_selected_units'
+                    }
 
 
                         # --- In-Game Menu Buttons ---

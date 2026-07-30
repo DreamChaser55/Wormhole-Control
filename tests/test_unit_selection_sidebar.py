@@ -243,4 +243,156 @@ def test_component_overview_colored_labels():
     assert active_data[0]['object_id'] == '#sidebar_status_active_label'
 
 
+def test_stop_unit_button_visibility():
+    mock_game = MagicMock()
+    mock_game.galaxy = MagicMock()
+    mock_game.sidebar_needs_update = True
+    mock_game.selected_objects = []
+    mock_game.gui = MagicMock()
+
+    player = MagicMock()
+    player.name = "Player 1"
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
+    mock_game.selected_unit_tab = 'basic_info'
+
+    unit = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Test Ship",
+        hull_size=HullSize.MEDIUM,
+        game=mock_game
+    )
+    unit.id = 301
+    mock_game.selected_objects = [unit]
+
+    # Case 1: 0 active orders -> Stop Unit button should NOT be present
+    assert unit.commander_component.get_active_orders_count() == 0
+    Game.update_side_bar_content(mock_game)
+    data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
+    stop_buttons = [d for d in data_list if d.get("type") == "button" and d.get("action_id") == "stop_unit"]
+    assert len(stop_buttons) == 0
+
+    # Case 2: Add order -> Stop Unit button SHOULD be present
+    from unit_orders import MoveOrder
+    order = MoveOrder(unit, {"destination_system_name": "Sol", "destination_hex_coord": (0, 0), "destination_position": Position(10, 10)})
+    unit.commander_component.add_order(order)
+    assert unit.commander_component.get_active_orders_count() > 0
+
+    mock_game.sidebar_needs_update = True
+    Game.update_side_bar_content(mock_game)
+    data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
+    stop_buttons = [d for d in data_list if d.get("type") == "button" and d.get("action_id") == "stop_unit"]
+    assert len(stop_buttons) == 1
+    assert stop_buttons[0]["target_data"] == 301
+
+
+def test_handle_gui_action_stop_unit():
+    mock_game = MagicMock()
+    mock_game.galaxy = MagicMock()
+    mock_game.sidebar_needs_update = False
+
+    player = MagicMock()
+    player.name = "Player 1"
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
+
+    unit = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Test Ship",
+        hull_size=HullSize.MEDIUM,
+        game=mock_game
+    )
+    unit.id = 302
+    mock_game.galaxy.get_unit_by_id.side_effect = lambda uid: unit if uid == 302 else None
+
+    from unit_orders import MoveOrder
+    order = MoveOrder(unit, {"destination_system_name": "Sol", "destination_hex_coord": (0, 0), "destination_position": Position(10, 10)})
+    unit.commander_component.add_order(order)
+    assert unit.commander_component.current_order is not None
+
+    action = {
+        'action': 'stop_unit',
+        'unit_id': 302
+    }
+    Game.handle_gui_action(mock_game, action)
+
+    # Verify event_bus published CancelOrdersEvent
+    mock_game.event_bus.publish.assert_called_once()
+    published_event = mock_game.event_bus.publish.call_args[0][0]
+    from events import CancelOrdersEvent
+    assert isinstance(published_event, CancelOrdersEvent)
+    assert published_event.units == [unit]
+    assert mock_game.sidebar_needs_update is True
+
+
+def test_stop_selected_units_multi_selection():
+    mock_game = MagicMock()
+    mock_game.galaxy = MagicMock()
+    mock_game.sidebar_needs_update = True
+    mock_game.gui = MagicMock()
+
+    player = MagicMock()
+    player.name = "Player 1"
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
+
+    unit1 = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Ship A",
+        hull_size=HullSize.MEDIUM,
+        game=mock_game
+    )
+    unit1.id = 401
+
+    unit2 = Unit(
+        owner=player,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Ship B",
+        hull_size=HullSize.MEDIUM,
+        game=mock_game
+    )
+    unit2.id = 402
+
+    mock_game.selected_objects = [unit1, unit2]
+
+    # Initially 0 orders -> No Stop Selected Units button
+    Game.update_side_bar_content(mock_game)
+    data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
+    stop_multi = [d for d in data_list if d.get("type") == "button" and d.get("action_id") == "stop_selected_units"]
+    assert len(stop_multi) == 0
+
+    # Add order to unit1 -> Stop Selected Units button appears
+    from unit_orders import MoveOrder
+    order = MoveOrder(unit1, {"destination_system_name": "Sol", "destination_hex_coord": (0, 0), "destination_position": Position(10, 10)})
+    unit1.commander_component.add_order(order)
+
+    mock_game.sidebar_needs_update = True
+    Game.update_side_bar_content(mock_game)
+    data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
+    stop_multi = [d for d in data_list if d.get("type") == "button" and d.get("action_id") == "stop_selected_units"]
+    assert len(stop_multi) == 1
+
+    # Trigger stop_selected_units
+    action = {'action': 'stop_selected_units'}
+    Game.handle_gui_action(mock_game, action)
+
+    mock_game.event_bus.publish.assert_called_once()
+    published_event = mock_game.event_bus.publish.call_args[0][0]
+    from events import CancelOrdersEvent
+    assert isinstance(published_event, CancelOrdersEvent)
+    assert published_event.units == [unit1]
+
+
+
 
