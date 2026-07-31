@@ -377,6 +377,10 @@ class Game:
             pass  # No constructor refresh needed on delete
         elif action_type == 'save_game':
             self.save_game()
+        elif action_type == 'load_game_file':
+            filepath = action.get('filepath')
+            if filepath:
+                self.load_game(filepath)
         elif action_type == 'quit_to_main_menu':
             self.quit_to_main_menu()
         elif action_type == 'navigate_back':
@@ -1455,8 +1459,25 @@ class Game:
         pygame.quit()
         sys.exit()
 
-    def save_game(self):
-        logger.debug("Save game action triggered (not implemented yet).")
+    def save_game(self, filename: typing.Optional[str] = None) -> str:
+        import save_manager
+        filepath = save_manager.save_game_to_file(self, filename)
+        logger.debug(f"Game state saved to {filepath}")
+        return filepath
+
+    def load_game(self, filepath: str) -> bool:
+        import save_manager
+        logger.debug(f"Loading game state from {filepath}...")
+        success = save_manager.load_game_from_file(self, filepath)
+        if success:
+            self.gui.show_game_ui()
+            self.update_view_specific_labels()
+            self.update_side_bar_content()
+            self.update_player_turn_display()
+            logger.debug("Game state loaded successfully.")
+        else:
+            logger.error(f"Failed to load game state from {filepath}")
+        return success
 
     def quit_to_main_menu(self):
         logger.debug("Quitting to main menu...")

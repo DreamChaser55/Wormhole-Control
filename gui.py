@@ -124,6 +124,7 @@ class GUI_Handler:
         # Main Menu
         self.main_menu_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.new_game_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.load_game_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.about_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.quit_button: typing.Optional[pygame_gui.elements.UIButton] = None
 
@@ -132,6 +133,13 @@ class GUI_Handler:
         self.about_title: typing.Optional[pygame_gui.elements.UILabel] = None
         self.about_text: typing.Optional[pygame_gui.elements.UITextBox] = None
         self.about_screen_back_button: typing.Optional[pygame_gui.elements.UIButton] = None
+
+        # Load Save Dialog Window
+        self.load_save_window: typing.Optional[pygame_gui.elements.UIWindow] = None
+        self.load_save_selection_list: typing.Optional[pygame_gui.elements.UISelectionList] = None
+        self.load_save_confirm_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.load_save_cancel_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.save_file_paths: typing.Dict[str, str] = {}
 
         # In-Game UI
         self.left_top_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
@@ -169,6 +177,7 @@ class GUI_Handler:
         self.menu_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.resume_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.save_game_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.ingame_load_game_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.quit_to_menu_button: typing.Optional[pygame_gui.elements.UIButton] = None
 
         # Unit Editor
@@ -198,15 +207,21 @@ class GUI_Handler:
             self.unit_editor_window.kill()
             self.unit_editor_window = None
 
-        self.new_game_button = self.about_button = self.quit_button = None
+        if self.load_save_window:
+            self.load_save_window.kill()
+            self.load_save_window = None
+
+        self.new_game_button = self.load_game_button = self.about_button = self.quit_button = None
         self.about_title = self.about_text = self.about_screen_back_button = None
+        self.load_save_selection_list = self.load_save_confirm_button = self.load_save_cancel_button = None
+        self.save_file_paths = {}
         self.back_button = self.view_mode_label = self.end_turn_button = self.player_turn_label = self.player_color_indicator = None
         self.credits_label = self.metal_label = self.crystal_label = None
         self.context_menu_buttons = []
         self.context_menu_target = None
         self.context_menu_options = []
 
-        self.menu_button = self.resume_button = self.save_game_button = self.quit_to_menu_button = None
+        self.menu_button = self.resume_button = self.save_game_button = self.ingame_load_game_button = self.quit_to_menu_button = None
         self.unit_editor_button = None
 
         self.manager.clear_and_reset()
@@ -279,7 +294,7 @@ class GUI_Handler:
         self.clear_and_reset()
 
         menu_width = int(300 * self.scale_x)
-        menu_height = int(300 * self.scale_y)
+        menu_height = int(360 * self.scale_y)
         menu_x = (self.screen_res.x - menu_width) // 2
         menu_y = (self.screen_res.y - menu_height) // 2
 
@@ -310,8 +325,16 @@ class GUI_Handler:
             object_id='#new_game_button'
         )
 
-        self.about_button = pygame_gui.elements.UIButton(
+        self.load_game_button = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect((button_x, int(130 * self.scale_y)), (button_width, button_height)),
+            text='Load Game',
+            manager=self.manager,
+            container=self.main_menu_panel,
+            object_id='#load_game_button'
+        )
+
+        self.about_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((button_x, int(190 * self.scale_y)), (button_width, button_height)),
             text='About',
             manager=self.manager,
             container=self.main_menu_panel,
@@ -319,7 +342,7 @@ class GUI_Handler:
         )
 
         self.quit_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((button_x, int(190 * self.scale_y)), (button_width, button_height)),
+            relative_rect=pygame.Rect((button_x, int(250 * self.scale_y)), (button_width, button_height)),
             text='Quit',
             manager=self.manager,
             container=self.main_menu_panel,
@@ -569,7 +592,7 @@ class GUI_Handler:
 
     def setup_ingame_menu(self):
         """Initializes the Pygame GUI elements for the in-game menu interface."""
-        num_buttons = 4
+        num_buttons = 5
         button_height = int(40 * self.scale_y)  # Used only for panel height estimation
         button_width = int(200 * self.scale_x)
         internal_padding = int(15 * self.scale_y)
@@ -639,6 +662,22 @@ class GUI_Handler:
         )
         current_y += button_height + internal_padding
 
+        # Load Game Button
+        button_rel_rect = pygame.Rect(
+            (panel_width - button_width) // 2,
+            current_y,
+            button_width,
+            -1
+        )
+        self.ingame_load_game_button = pygame_gui.elements.UIButton(
+            relative_rect=button_rel_rect,
+            text='Load Game',
+            manager=self.manager,
+            container=self.ingame_menu_panel,
+            object_id='#ingame_load_game_button'
+        )
+        current_y += button_height + internal_padding
+
         # Quit to Main Menu Button
         button_rel_rect = pygame.Rect(
             (panel_width - button_width) // 2,
@@ -652,6 +691,69 @@ class GUI_Handler:
             manager=self.manager,
             container=self.ingame_menu_panel,
             object_id='#quit_to_menu_button'
+        )
+
+    def show_load_game_dialog(self):
+        """Displays a dialog window listing available save files to load."""
+        import save_manager
+        saves = save_manager.list_save_files()
+
+        window_width = int(520 * self.scale_x)
+        window_height = int(420 * self.scale_y)
+        window_rect = pygame.Rect(
+            (self.screen_res.x - window_width) // 2,
+            (self.screen_res.y - window_height) // 2,
+            window_width,
+            window_height
+        )
+
+        if self.load_save_window and self.load_save_window.alive():
+            self.load_save_window.kill()
+
+        self.load_save_window = pygame_gui.elements.UIWindow(
+            rect=window_rect,
+            manager=self.manager,
+            window_display_title="Load Saved Game",
+            object_id='#load_game_window'
+        )
+
+        item_list = []
+        self.save_file_paths = {}
+        for s in saves:
+            display_text = f"{s['filename']} (Turn {s['turn_number']} - {s['current_system']})"
+            item_list.append(display_text)
+            self.save_file_paths[display_text] = s['filepath']
+
+        if not item_list:
+            item_list = ["No saved games found."]
+
+        list_rect = pygame.Rect(int(10 * self.scale_x), int(10 * self.scale_y), window_width - int(45 * self.scale_x), int(290 * self.scale_y))
+        self.load_save_selection_list = pygame_gui.elements.UISelectionList(
+            relative_rect=list_rect,
+            item_list=item_list,
+            manager=self.manager,
+            container=self.load_save_window,
+            object_id='#save_selection_list'
+        )
+
+        btn_w = int(120 * self.scale_x)
+        btn_h = int(35 * self.scale_y)
+        btn_y = int(315 * self.scale_y)
+
+        self.load_save_confirm_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((window_width // 2 - btn_w - 10, btn_y), (btn_w, btn_h)),
+            text='Load',
+            manager=self.manager,
+            container=self.load_save_window,
+            object_id='#load_confirm_button'
+        )
+
+        self.load_save_cancel_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((window_width // 2 + 10, btn_y), (btn_w, btn_h)),
+            text='Cancel',
+            manager=self.manager,
+            container=self.load_save_window,
+            object_id='#load_cancel_button'
         )
 
     def process_event(self, event: pygame.event.Event) -> typing.Optional[dict]:
@@ -674,12 +776,30 @@ class GUI_Handler:
             if self.new_game_button and event.ui_element == self.new_game_button:
                 logger.debug("New Game button pressed (GUI)")
                 action_result = {'action': 'new_game'}
+            elif self.load_game_button and event.ui_element == self.load_game_button:
+                logger.debug("Load Game button pressed (Main Menu GUI)")
+                self.show_load_game_dialog()
             elif self.about_button and event.ui_element == self.about_button:
                 logger.debug("About button pressed (GUI)")
                 self.show_about_screen()
             elif self.quit_button and event.ui_element == self.quit_button:
                 logger.debug("Quit button pressed (GUI)")
                 action_result = {'action': 'quit'}
+
+            # --- Load Save Dialog Buttons ---
+            elif self.load_save_cancel_button and event.ui_element == self.load_save_cancel_button:
+                if self.load_save_window:
+                    self.load_save_window.kill()
+                    self.load_save_window = None
+            elif self.load_save_confirm_button and event.ui_element == self.load_save_confirm_button:
+                if self.load_save_selection_list:
+                    selected = self.load_save_selection_list.get_single_selection()
+                    if selected and selected in self.save_file_paths:
+                        filepath = self.save_file_paths[selected]
+                        if self.load_save_window:
+                            self.load_save_window.kill()
+                            self.load_save_window = None
+                        action_result = {'action': 'load_game_file', 'filepath': filepath}
 
             # --- About Screen Buttons ---
             elif self.about_screen_back_button and event.ui_element == self.about_screen_back_button:
@@ -859,6 +979,9 @@ class GUI_Handler:
             elif self.save_game_button and event.ui_element == self.save_game_button:
                 logger.debug("Save Game button pressed (GUI)")
                 action_result = {'action': 'save_game'}
+            elif self.ingame_load_game_button and event.ui_element == self.ingame_load_game_button:
+                logger.debug("Load Game button pressed (In-Game GUI)")
+                self.show_load_game_dialog()
             elif self.quit_to_menu_button and event.ui_element == self.quit_to_menu_button:
                 logger.debug("Quit to Main Menu button pressed (GUI)")
                 action_result = {'action': 'quit_to_main_menu'}
