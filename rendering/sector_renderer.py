@@ -585,8 +585,9 @@ class SectorViewRenderer:
                 is_anti_strikecraft = (getattr(obj, 'minefield_type', None) == MinefieldType.ANTI_STRIKECRAFT)
                 if is_anti_strikecraft:
                     pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
-                    if pixel_radius > 4:
-                        pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius - 3, 1)
+                    inner_radius = int(pixel_radius * 0.65)
+                    if inner_radius > 2:
+                        pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), inner_radius, 1)
                 else:
                     pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
 

@@ -183,8 +183,10 @@ class SystemViewRenderer:
                 mf_color = mf.owner.color if mf.owner else RED
                 r = int(14 * scale_val)
                 pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), r, 1)
-                if getattr(mf, 'minefield_type', None) == MinefieldType.ANTI_STRIKECRAFT and r > 3:
-                    pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), r - 3, 1)
+                if getattr(mf, 'minefield_type', None) == MinefieldType.ANTI_STRIKECRAFT:
+                    inner_r = int(r * 0.65)
+                    if inner_r > 2:
+                        pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), inner_r, 1)
 
             # Draw units
             visible_units = [u for u in hex_obj.units if self.game.is_unit_visible(u)]

@@ -35,6 +35,12 @@ class MockGame:
         if obj in self.selected_objects:
             self.selected_objects.remove(obj)
 
+    def is_minefield_visible(self, mf):
+        return True
+
+    def is_unit_visible(self, u):
+        return True
+
 
 def test_minelayer_component_and_resource_cost():
     game = MockGame()
@@ -295,6 +301,40 @@ def test_minefield_subtypes_serialization():
     types = {mf.minefield_type for mf in restored_mfs}
     assert MinefieldType.ANTI_SHIP in types
     assert MinefieldType.ANTI_STRIKECRAFT in types
+
+
+def test_anti_strikecraft_minefield_concentric_circles_rendering():
+    import pygame
+    from unittest.mock import MagicMock, patch
+    from rendering.system_renderer import SystemViewRenderer
+    from unit_components import MinefieldType
+
+    game = MockGame()
+    p1 = game.players[0]
+    game.visibility = None # Spectator mode: all minefields visible
+    game.screen = pygame.Surface((800, 600))
+    game.overlay_surface = pygame.Surface((800, 600))
+    game.camera_offset_x = 0
+    game.camera_offset_y = 0
+    game.zoom_level = 1.0
+    game.hex_has_presence = MagicMock(return_value=False)
+    game.system_view_mouse_hover_hex = None
+
+    mf_sc = Minefield(owner=p1, position=Position(100.0, 100.0), in_hex=(0, 0), in_system="Sol", minefield_type=MinefieldType.ANTI_STRIKECRAFT)
+    game.galaxy.systems["Sol"].hexes[(0, 0)].add_minefield(mf_sc)
+
+    renderer = SystemViewRenderer(game)
+    with patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle:
+        renderer.draw_system_view()
+        # Find circle calls for minefield rendering
+        circle_calls = [call for call in mock_draw_circle.call_args_list if call.args[1] == p1.color]
+        assert len(circle_calls) == 2
+        outer_r = circle_calls[0].args[3]
+        inner_r = circle_calls[1].args[3]
+        # Inner radius should be scaled proportionally (0.65 of outer radius), giving distinct spacing
+        assert inner_r == int(outer_r * 0.65)
+        assert outer_r - inner_r >= 4
+
 
 
 
