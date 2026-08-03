@@ -338,6 +338,15 @@ class Galaxy:
                         return unit
         return None
 
+    def get_minefield_by_id(self, mf_id: int) -> typing.Optional['Minefield']:
+        """Finds a minefield anywhere in the galaxy by its ID."""
+        for system in self.systems.values():
+            for hex_obj in system.hexes.values():
+                for mf in getattr(hex_obj, 'minefields', []):
+                    if mf.id == mf_id:
+                        return mf
+        return None
+
     def remove_unit(self, unit: Unit) -> bool:
         """Removes a unit from the galaxy."""
         if unit.in_system and unit.in_system in self.systems:

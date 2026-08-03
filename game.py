@@ -69,7 +69,7 @@ from events import (
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent
 )
-from entities import Order, AsteroidField, DebrisField, IceField, Nebula, Storm, Comet, Moon
+from entities import Order, AsteroidField, DebrisField, IceField, Nebula, Storm, Comet, Moon, Minefield
 from galaxy import Galaxy, StarSystem, Hex
 from gui import GUI_Handler
 from renderer import Renderer
@@ -609,6 +609,12 @@ class Game:
                 else:
                     self.selected_objects = [unit]
                 self.sidebar_needs_update = True
+        elif action_type == 'select_minefield':
+            mf_id = action.get('minefield_id')
+            mf = self.galaxy.get_minefield_by_id(mf_id) if (self.galaxy and mf_id is not None) else None
+            if mf:
+                self.selected_objects = [mf]
+                self.sidebar_needs_update = True
         elif action_type == 'stop_unit':
             unit_id = action.get('unit_id')
             unit = self.galaxy.get_unit_by_id(unit_id) if (self.galaxy and unit_id is not None) else None
@@ -1137,6 +1143,25 @@ class Game:
                         for u in visible_units:
                             style = f'#player_{u.owner.name.lower().replace(" ", "_")}_label'
                             data_for_gui.append({'type': 'label', 'text': u.name, 'object_id': style, 'height': 20, 'indent_level': 1})
+                    # Minefields (only shown on owner's turn)
+                    current_player = self.players[self.current_player_index]
+                    friendly_minefields = [
+                        mf for mf in getattr(hex_obj, 'minefields', [])
+                        if mf.owner == current_player
+                    ]
+                    if friendly_minefields:
+                        data_for_gui.append({'type': 'label', 'text': "Minefields:", 'object_id': '#sidebar_info_label', 'height': 20})
+                        for mf in friendly_minefields:
+                            mf_style = f'#player_{current_player.name.lower().replace(" ", "_")}_label'
+                            data_for_gui.append({
+                                'type': 'button',
+                                'text': f"{mf.name} ({mf.mines_remaining} mines)",
+                                'object_id': '#sidebar_expand_button',
+                                'action_id': 'select_minefield',
+                                'target_data': mf.id,
+                                'height': 20,
+                                'indent_level': 1
+                            })
                     if has_presence and not any(u.owner != self.players[self.current_player_index] for u in visible_units):
                         data_for_gui.append({'type': 'label', 'text': "⚠ Enemy presence detected", 'object_id': '#sidebar_hit_points_critical_damage_label', 'height': 20})
 
@@ -1208,6 +1233,15 @@ class Game:
                 elif isinstance(body, Comet):
                     data_for_gui.append({'type': 'label', 'text': "A celestial body of ice and rock.", 'object_id': '#sidebar_info_label', 'height': 20})
                     data_for_gui.append({'type': 'label', 'text': f"Crystal Yield: {body.crystal_yield}", 'object_id': '#sidebar_info_label', 'height': 25})
+            elif isinstance(selected_obj, Minefield):
+                mf: Minefield = selected_obj
+                owner_name = mf.owner.name if mf.owner else "Unknown"
+                owner_style = f'#player_{owner_name.lower().replace(" ", "_")}_label'
+                data_for_gui.append({'type': 'label', 'text': f"Minefield: {mf.name}", 'object_id': '#sidebar_title_label', 'height': 30})
+                data_for_gui.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_style, 'height': 25})
+                data_for_gui.append({'type': 'label', 'text': f"Mines Remaining: {mf.mines_remaining}", 'object_id': '#sidebar_info_label', 'height': 25})
+                data_for_gui.append({'type': 'label', 'text': f"Mine Damage: {mf.mine_damage:.0f}", 'object_id': '#sidebar_info_label', 'height': 25})
+                data_for_gui.append({'type': 'label', 'text': f"Detonation Radius: {mf.detonation_radius:.0f}", 'object_id': '#sidebar_info_label', 'height': 25})
             elif isinstance(selected_obj, Unit):
                 unit: Unit = selected_obj
                 current_player = self.players[self.current_player_index]

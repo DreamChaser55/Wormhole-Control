@@ -962,6 +962,11 @@ class GUI_Handler:
                         'unit_id': target_data,
                         'shift_pressed': shift_pressed
                     }
+                elif action_id == 'select_minefield':
+                    action_result = {
+                        'action': 'select_minefield',
+                        'minefield_id': target_data,
+                    }
                 elif action_id == 'switch_unit_sidebar_tab':
                     action_result = {
                         'action': 'switch_unit_sidebar_tab',

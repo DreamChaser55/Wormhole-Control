@@ -582,7 +582,16 @@ class SectorViewRenderer:
                 obj_radius_logical = obj.detonation_radius
                 pixel_radius = max(5, int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
                 pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
-                pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), 4)
+                # Draw one dot per remaining mine, horizontally centred
+                n_dots = max(0, obj.mines_remaining)
+                if n_dots > 0:
+                    icon_dot_radius_px = max(2, int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
+                    icon_dot_spacing_px = max(5, int(ICON_DOT_SPACING * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
+                    total_width = (n_dots - 1) * icon_dot_spacing_px
+                    start_x = obj_pixel_pos.x - total_width / 2
+                    for di in range(n_dots):
+                        dot_x = int(start_x + di * icon_dot_spacing_px)
+                        pygame.draw.circle(self.screen, obj_color, (dot_x, int(obj_pixel_pos.y)), icon_dot_radius_px)
                 should_draw_circle = False
 
  
