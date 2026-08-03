@@ -18,7 +18,7 @@ from constants import (
 )
 from entities import (
     Player, GameObject, CelestialBody, Star, Planet, Moon, ColonizableAsteroid,
-    MetalAsteroid, AsteroidField, IceField, DebrisField, Nebula, Storm, Comet, Wormhole, Unit
+    MetalAsteroid, AsteroidField, IceField, DebrisField, Nebula, Storm, Comet, Wormhole, Unit, Minefield
 )
 from galaxy import Galaxy, StarSystem, Hex
 from unit_components import (
@@ -27,7 +27,7 @@ from unit_components import (
     ColonyComponent, Constructor, RepairComponent, MiningComponent,
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
-    instantiate_unit_from_template
+    MinelayerComponent, instantiate_unit_from_template
 )
 from unit_orders import (
     Order, OrderStatus, OrderType,
@@ -35,10 +35,11 @@ from unit_orders import (
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
     RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
     UseAbilityOrder, ProtectOrder, ContinuousMineOrder, TransferAntimatterOrder,
-    ContinuousResupplyOrder
+    ContinuousResupplyOrder, LayMinefieldOrder
 )
 
 logger = logging.getLogger(__name__)
+
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -78,7 +79,9 @@ ORDER_CLASSES = {
     "CONTINUOUS_MINE": ContinuousMineOrder,
     "TRANSFER_ANTIMATTER": TransferAntimatterOrder,
     "CONTINUOUS_RESUPPLY": ContinuousResupplyOrder,
+    "LAY_MINEFIELD": LayMinefieldOrder,
 }
+
 
 
 def _ensure_saves_dir():
@@ -231,14 +234,29 @@ def serialize_unit(unit: Unit) -> dict:
     }
 
 
+def serialize_minefield(minefield: Minefield) -> dict:
+    return {
+        "id": minefield.id,
+        "owner_id": minefield.owner.id if minefield.owner else None,
+        "in_hex": list(minefield.in_hex),
+        "in_system": minefield.in_system,
+        "position": [minefield.position.x, minefield.position.y],
+        "mines_remaining": minefield.mines_remaining,
+        "mine_damage": minefield.mine_damage,
+        "detonation_radius": minefield.detonation_radius,
+    }
+
+
 def serialize_hex(hex_obj: Hex) -> dict:
     return {
         "q": hex_obj.q,
         "r": hex_obj.r,
         "in_system": hex_obj.in_system,
         "celestial_bodies": [serialize_celestial_body(b) for b in hex_obj.celestial_bodies],
-        "units": [serialize_unit(u) for u in hex_obj.units]
+        "units": [serialize_unit(u) for u in hex_obj.units],
+        "minefields": [serialize_minefield(mf) for mf in getattr(hex_obj, "minefields", [])]
     }
+
 
 
 def serialize_star_system(system: StarSystem) -> dict:
@@ -588,6 +606,26 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
     return unit
 
 
+def deserialize_minefield(data: dict, players_by_id: Dict[int, Player]) -> Minefield:
+    owner_id = data.get("owner_id")
+    owner = players_by_id.get(owner_id) if owner_id is not None else players_by_id.get(0)
+    in_hex = tuple(data.get("in_hex", (0, 0)))
+    in_system = data.get("in_system", "")
+    position = Position(data["position"][0], data["position"][1])
+
+    minefield = Minefield(
+        owner=owner,
+        position=position,
+        in_hex=in_hex,
+        in_system=in_system,
+        mines_remaining=data.get("mines_remaining", 5),
+        mine_damage=data.get("mine_damage", 40.0),
+        detonation_radius=data.get("detonation_radius", 250.0)
+    )
+    minefield.id = data.get("id", minefield.id)
+    return minefield
+
+
 def deserialize_hex(data: dict, players_by_id: Dict[int, Player], game: Any) -> Hex:
     q = data["q"]
     r = data["r"]
@@ -602,7 +640,12 @@ def deserialize_hex(data: dict, players_by_id: Dict[int, Player], game: Any) -> 
         unit = deserialize_unit(unit_data, players_by_id, game)
         hex_obj.add_unit(unit)
 
+    for mf_data in data.get("minefields", []):
+        mf = deserialize_minefield(mf_data, players_by_id)
+        hex_obj.add_minefield(mf)
+
     return hex_obj
+
 
 
 def deserialize_star_system(data: dict, players_by_id: Dict[int, Player], game: Any) -> StarSystem:

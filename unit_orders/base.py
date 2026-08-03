@@ -44,6 +44,8 @@ class OrderType(Enum):
     CONTINUOUS_MINE = auto() # Cycles between mining and unloading at closest refinery
     TRANSFER_ANTIMATTER = auto() # Transfer antimatter from this unit's storage to a friendly target unit
     CONTINUOUS_RESUPPLY = auto() # Harvester cycles between charging at a star and resupplying the closest friendly unit that needs antimatter
+    LAY_MINEFIELD = auto()       # Lay a minefield at the unit's current position
+
 
 
 class Order:

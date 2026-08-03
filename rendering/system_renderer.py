@@ -12,9 +12,11 @@ from constants import (
 from hexgrid_utils import get_hex_vertices, hex_to_pixel
 from entities import (
     Star, Planet, Wormhole, Unit, CelestialBody, OrderType, Moon, ColonizableAsteroid, MetalAsteroid, 
-    AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
+    AsteroidField, IceField, Nebula, Storm, Comet, DebrisField, Minefield
 )
+from visibility import is_minefield_visible
 from galaxy import Hex
+
 
 class SystemViewRenderer:
     def __init__(self, game_instance):
@@ -174,10 +176,18 @@ class SystemViewRenderer:
                 if body in self.game.selected_objects:
                     pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 2)
 
+            # Draw Minefields
+            snapshot = getattr(self.game, 'visibility_snapshot', None)
+            visible_mfs = [mf for mf in getattr(hex_obj, 'minefields', []) if is_minefield_visible(snapshot, mf)]
+            for mf in visible_mfs:
+                mf_color = mf.owner.color if mf.owner else RED
+                pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), int(14 * scale_val), 1)
+
             # Draw units
             visible_units = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
             has_hidden_enemy = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
             has_presence = self.game.hex_has_presence(self.game.current_system_name, hex_coord)
+
 
             num_units_in_hex = len(visible_units)
 

@@ -60,7 +60,9 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_inhibitor",             "label": "Inhibitor Field",    "cost_key": "inhibitor_hull_cost",        "default_cost": 20.0, "is_dynamic": True},
     {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
     {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2.0,  "is_dynamic": True},
+    {"key": "has_minelayer_component",   "label": "Minelayer",          "cost_key": "minelayer_hull_cost",        "default_cost": 15.0, "is_dynamic": False},
 ]
+
 
 
 HULL_SIZE_NAMES = [hs.name for hs in HullSize]

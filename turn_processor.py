@@ -62,8 +62,12 @@ class TurnProcessor:
             with ProfileTimer("Movement processing"):
                 self._process_movement(current_player)
 
+            with ProfileTimer("Minefield detonations"):
+                self._process_minefield_detonations()
+
             with ProfileTimer("Population growth"):
                 self._process_population_growth()
+
 
             with ProfileTimer("Resource generation"):
                 self._process_resource_generation(current_player)
@@ -404,4 +408,43 @@ class TurnProcessor:
                 for unit, _ in all_units_in_system_for_final_update:
                     if unit.owner == current_player:
                         unit.update()
+
+    def _process_minefield_detonations(self):
+        """Checks all units across all systems for contact with enemy minefields."""
+        if not self.game.galaxy:
+            return
+
+        for system_name, system in self.game.galaxy.systems.items():
+            for hex_coord, hex_obj in system.hexes.items():
+                minefields = getattr(hex_obj, 'minefields', None)
+                units = getattr(hex_obj, 'units', None)
+                if not minefields or not units:
+                    continue
+
+                minefields_to_remove = []
+                for minefield in list(minefields):
+                    if minefield.mines_remaining <= 0:
+                        minefields_to_remove.append(minefield)
+                        continue
+
+                    for unit in list(units):
+
+                        if unit.owner == minefield.owner:
+                            continue
+                        if unit.current_hit_points <= 0:
+                            continue
+
+                        if distance(unit.position, minefield.position) <= minefield.detonation_radius:
+                            minefield.detonate_against(unit)
+                            if minefield.mines_remaining <= 0:
+                                minefields_to_remove.append(minefield)
+                                break
+
+                for mf in minefields_to_remove:
+                    if hasattr(hex_obj, 'remove_minefield'):
+                        hex_obj.remove_minefield(mf)
+                    elif isinstance(minefields, list) and mf in minefields:
+                        minefields.remove(mf)
+
+
 

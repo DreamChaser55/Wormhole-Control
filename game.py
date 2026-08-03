@@ -507,7 +507,20 @@ class Game:
                     for order in orders_to_add:
                         unit.commander_component.add_order(order)
                         logger.debug(f"Added UnloadResourcesOrder to unit {unit.name} queue targeting refinery ID {order.parameters['target_unit_id']}.")
+        elif action_type == 'lay_minefield':
+            unit_id = action.get('unit_id')
+            shift_pressed = action.get('shift_pressed', False)
+            unit = self.galaxy.get_unit_by_id(unit_id)
+            if unit:
+                from events import LayMinefieldEvent
+                self.event_bus.publish(LayMinefieldEvent(
+                    units=[unit],
+                    shift_pressed=shift_pressed
+                ))
+                logger.debug(f"GUI: Lay Minefield button pressed for unit {unit.name} (id:{unit.id}).")
+            self.sidebar_needs_update = True
         elif action_type == 'set_stance':
+
             unit_id = action.get('unit_id')
             stance_display_name = action.get('stance_display_name')
             unit = self.galaxy.get_unit_by_id(unit_id)

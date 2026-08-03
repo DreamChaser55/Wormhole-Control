@@ -4,12 +4,13 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent,
-    IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent
+    IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent,
+    LayMinefieldEvent
 )
-from entities import (
+from unit_orders import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
     MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
-    ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder
+    ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder, LayMinefieldOrder
 )
 
 from sector_utils import random_point_in_sector
@@ -44,6 +45,8 @@ class OrderSystem:
         self.event_bus.subscribe(IssueProtectOrderEvent, self.handle_issue_protect_order)
         self.event_bus.subscribe(TransferAntimatterEvent, self.handle_transfer_antimatter)
         self.event_bus.subscribe(ContinuousResupplyEvent, self.handle_continuous_resupply)
+        self.event_bus.subscribe(LayMinefieldEvent, self.handle_lay_minefield)
+
 
 
     def handle_cancel_orders(self, event: CancelOrdersEvent):
@@ -320,5 +323,18 @@ class OrderSystem:
                 unit.commander_component.add_order(resupply_order)
                 logger.debug(f"  Unit {unit.name} ordered to continuously resupply from star {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
+
+    def handle_lay_minefield(self, event: LayMinefieldEvent):
+        """Creates LayMinefieldOrders for selected units with MinelayerComponent."""
+        for unit in event.units:
+            if getattr(unit, 'minelayer_component', None) is not None or (hasattr(unit, 'components') and any(c.__class__.__name__ == 'MinelayerComponent' for c in unit.components.values())):
+                lay_order = LayMinefieldOrder(unit)
+                if not event.shift_pressed:
+                    unit.commander_component.clear_orders()
+                unit.commander_component.add_order(lay_order)
+                logger.debug(f"  Unit {unit.name} ordered to lay minefield via event.")
+        self.game.sidebar_needs_update = True
+
+
 
 

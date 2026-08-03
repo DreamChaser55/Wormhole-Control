@@ -899,6 +899,15 @@ class GUI_Handler:
                         'unit_id': target_data,
                         'shift_pressed': shift_pressed
                     }
+                elif action_id == 'lay_minefield':
+                    keys = pygame.key.get_pressed()
+                    shift_pressed = bool(keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT])
+                    action_result = {
+                        'action': 'lay_minefield',
+                        'unit_id': target_data,
+                        'shift_pressed': shift_pressed
+                    }
+
                 elif action_id == 'toggle_orders_queue':
                     section_key = f"{target_data}_orders_queue"
                     current_state_before_toggle = self.is_section_expanded(section_key)

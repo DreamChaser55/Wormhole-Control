@@ -101,6 +101,16 @@ MINING_RATE_PER_HULL_POINT: float = 2.0
 MINING_CARGO_PER_HULL_POINT: float = 20.0
 INHIBITOR_RADIUS_PER_HULL_POINT: float = 5.0
 
+# Minefield Constants
+MINEFIELD_CREDIT_COST: float = 250.0
+MINEFIELD_ANTIMATTER_COST: float = 20.0
+MAX_MINEFIELDS_PER_HEX: int = 3
+MINEFIELD_DEFAULT_DAMAGE: float = 40.0
+MINEFIELD_DEFAULT_MINES: int = 5
+MINEFIELD_DETONATION_RADIUS: float = 250.0
+MINELAYER_HULL_COST: float = 15.0
+
+
 # Antimatter Harvester component: only units with this component can generate
 # new antimatter, and only while positioned near a star.
 DEFAULT_ANTIMATTER_HARVEST_RATE: float = 10.0

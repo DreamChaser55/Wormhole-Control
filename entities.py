@@ -6,7 +6,7 @@ import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 from utils import HexCoord
 from geometry import Position, distance, Vector
-from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS
+from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS, MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS
 import uuid
 import dataclasses
 from enum import Enum, auto
@@ -214,7 +214,48 @@ class Comet(CelestialBody):
         self.crystal_yield: float = 10.0
 
 
+# --- GameObject-derived Class: Minefield ---
+
+class Minefield(GameObject):
+    """Represents a deployed minefield hazard in a hex."""
+    def __init__(self, owner: Player, position: Position, in_hex: HexCoord, in_system: str,
+                 mines_remaining: int = int(MINEFIELD_DEFAULT_MINES),
+                 mine_damage: float = MINEFIELD_DEFAULT_DAMAGE,
+                 detonation_radius: float = MINEFIELD_DETONATION_RADIUS):
+        super().__init__(position, in_hex, in_system)
+        self.owner = owner
+        self.name = f"Minefield {self.id}"
+        self.mines_remaining = mines_remaining
+        self.mine_damage = mine_damage
+        self.detonation_radius = detonation_radius
+
+    def detonate_against(self, unit: 'Unit') -> float:
+        """Detonates a mine against an enemy unit, applying net damage and reducing mine count."""
+        if self.mines_remaining <= 0:
+            return 0.0
+
+        defenses = unit.get_component(Defenses)
+        armor = defenses.armor if defenses else 0
+        shields = defenses.shields if defenses else 0
+
+        mitigation = (armor * 0.5) + (shields * 0.25)
+        effective_damage = max(10.0, self.mine_damage - mitigation)
+
+        if getattr(unit, 'damage_reduction', 0) > 0:
+            effective_damage *= (1.0 - min(0.9, unit.damage_reduction))
+        if getattr(unit, 'damage_amplification', 0) > 0:
+            effective_damage *= (1.0 + unit.damage_amplification)
+
+        damage_int = int(round(effective_damage))
+        unit.current_hit_points = max(0, unit.current_hit_points - damage_int)
+        self.mines_remaining -= 1
+
+        logger.debug(f"{self.name} (Owner: {self.owner.name}) detonated against {unit.name}! Dealt {damage_int} damage. Mines remaining: {self.mines_remaining}")
+        return damage_int
+
+
 # --- GameObject-derived Class: Unit ---
+
 
 class Unit(GameObject):
     """Represents a generic unit in the game, composed of various components."""

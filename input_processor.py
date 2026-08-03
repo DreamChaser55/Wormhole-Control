@@ -21,8 +21,9 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
-    ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent
+    ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent, LayMinefieldEvent
 )
+
 
 from galaxy import StarSystem, Hex
 from unit_components import HyperdriveType
@@ -745,6 +746,13 @@ class InputProcessor:
                         target,
                         shift_pressed
                     ))
+
+            elif extracted_action_id == "lay_minefield":
+                self.game.event_bus.publish(LayMinefieldEvent(
+                    selected_units,
+                    shift_pressed
+                ))
+
 
             elif extracted_action_id.startswith("construct_"):
                 unit_template_name = extracted_action_id.split("construct_")[1]

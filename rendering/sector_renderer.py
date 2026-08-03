@@ -22,9 +22,11 @@ from geometry import distance, Position
 import random
 from entities import (
     Star, Planet, Wormhole, Unit, OrderType, OrderStatus, Moon, ColonizableAsteroid, MetalAsteroid, 
-    AsteroidField, IceField, Nebula, Storm, Comet, StarType, PlanetType, DebrisField
+    AsteroidField, IceField, Nebula, Storm, Comet, StarType, PlanetType, DebrisField, Minefield
 )
+from visibility import is_minefield_visible
 from rendering.drawing_utils import draw_shape, draw_dotted_line
+
 
 MAX_CACHED_STORM_DIAMETER = 512
 MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
@@ -487,15 +489,18 @@ class SectorViewRenderer:
         hex_obj = system.hexes[self.game.current_sector_coord]
         bodies_to_draw = []
         units_to_draw = []
+        minefields_to_draw = []
         has_presence_warning = False
+        snapshot = getattr(self.game, 'visibility_snapshot', None)
         if hex_obj:
             bodies_to_draw = hex_obj.celestial_bodies
             units_to_draw = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
+            minefields_to_draw = [mf for mf in getattr(hex_obj, 'minefields', []) if is_minefield_visible(snapshot, mf)]
             has_hidden = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
             if has_hidden and self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
                 has_presence_warning = True
         
-        all_objects_in_sector = bodies_to_draw + units_to_draw
+        all_objects_in_sector = bodies_to_draw + units_to_draw + minefields_to_draw
 
         if has_presence_warning:
             font_size = max(12, int(14 * TEXT_SCALE))
@@ -573,6 +578,14 @@ class SectorViewRenderer:
                 if obj.stability < 100:
                     pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                     pygame.draw.circle(self.screen, RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
+            elif isinstance(obj, Minefield):
+                obj_color = obj.owner.color if obj.owner else RED
+                obj_radius_logical = obj.detonation_radius
+                pixel_radius = max(5, int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
+                pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
+                pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), 4)
+                should_draw_circle = False
+
  
             if should_draw_circle and not isinstance(obj, Unit):
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)

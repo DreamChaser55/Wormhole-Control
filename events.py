@@ -158,3 +158,11 @@ class UseAbilityEvent(Event):
         self.target_system_name = target_system_name
         self.target_hex_coord = target_hex_coord
         self.shift_pressed = shift_pressed
+
+
+class LayMinefieldEvent(Event):
+    """Fired when the player orders selected units to lay a minefield."""
+    def __init__(self, units: list, shift_pressed: bool = False):
+        self.units = units
+        self.shift_pressed = shift_pressed
+

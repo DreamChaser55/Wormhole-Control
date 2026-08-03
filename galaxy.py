@@ -6,10 +6,10 @@ import typing
 import math
 import random
 from dataclasses import dataclass, field
-from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3
+from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3, MAX_MINEFIELDS_PER_HEX
 from utils import HexCoord
 from geometry import distance_sq, Vector, Position, Circle, hex_distance
-from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField
+from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField, Minefield
 import json
 import os
 
@@ -66,6 +66,7 @@ class Hex:
     in_system: str
     celestial_bodies: typing.List['CelestialBody'] = field(default_factory=list)
     units: typing.List['Unit'] = field(default_factory=list)
+    minefields: typing.List['Minefield'] = field(default_factory=list)
     
     # Inhibition field attributes
     boundary_circle: Circle = field(init=False)
@@ -110,9 +111,22 @@ class Hex:
         if unit in self.units:
             self.units.remove(unit)
 
+    def can_add_minefield(self) -> bool:
+        return len(self.minefields) < MAX_MINEFIELDS_PER_HEX
+
+    def add_minefield(self, minefield: 'Minefield') -> bool:
+        if len(self.minefields) < MAX_MINEFIELDS_PER_HEX:
+            self.minefields.append(minefield)
+            return True
+        return False
+
+    def remove_minefield(self, minefield: 'Minefield'):
+        if minefield in self.minefields:
+            self.minefields.remove(minefield)
+
     def is_empty(self) -> bool:
-        """Check if the hex contains any celestial bodies or units."""
-        return not self.celestial_bodies and not self.units
+        """Check if the hex contains any celestial bodies, units, or minefields."""
+        return not self.celestial_bodies and not self.units and not self.minefields
 
 # --- Star System Class ---
 class StarSystem:

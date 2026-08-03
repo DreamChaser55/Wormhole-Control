@@ -20,14 +20,16 @@ from .hangar import HangarComponent
 from .strikecraft import StrikecraftWingComponent, StrikecraftBayComponent
 from .abilities import AbilityComponent
 from .sensors import Sensors
+from .minelayer import MinelayerComponent
 
 from utils import HexCoord
 from geometry import Position
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_HARVEST_RATE,
-    ANTIMATTER_HARVESTER_HULL_COST,
+    ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
     DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE, REPAIR_CREDIT_COST_PER_HP
 )
+
 
 from unit_templates import UNIT_TEMPLATES
 
@@ -297,7 +299,14 @@ def instantiate_unit_from_template(
             hull_cost=hull_cost,
         ))
 
+    if template.get("has_minelayer_component"):
+        new_unit.add_component(MinelayerComponent(
+            new_unit,
+            hull_cost=template.get("minelayer_hull_cost", MINELAYER_HULL_COST)
+        ))
+
     system.add_unit(new_unit)
+
     logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
 
 

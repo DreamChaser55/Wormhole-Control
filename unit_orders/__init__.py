@@ -10,6 +10,7 @@ from .antimatter import TransferAntimatterOrder, ContinuousResupplyOrder
 from .mining import MineOrder, UnloadResourcesOrder, ContinuousMineOrder
 from .hangar import DockOrder, DeployUnitOrder, DeployAllWingsOrder
 from .abilities import UseAbilityOrder
+from .minelayer import LayMinefieldOrder
 
 __all__ = [
     "OrderStatus",
@@ -34,4 +35,6 @@ __all__ = [
     "DeployUnitOrder",
     "DeployAllWingsOrder",
     "UseAbilityOrder",
+    "LayMinefieldOrder",
 ]
+

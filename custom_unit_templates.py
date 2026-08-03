@@ -25,7 +25,7 @@ from typing import Dict, List, Optional, Any
 from constants import (
     HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT,
     MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_CAPACITY_BY_HULL, get_min_antimatter_capacity,
-    ANTIMATTER_HARVESTER_HULL_COST,
+    ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
     DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX,
     HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS, HANGAR_HULL_COST_PER_SLOT,
     STRIKECRAFT_BAY_HULL_COST_PER_SLOT, REPAIR_RATE_PER_HULL_POINT, REPAIR_CREDIT_COST_PER_HP,
@@ -55,6 +55,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_hyperdrive",
         "has_strikecraft_bay",
         "has_antimatter_harvester",
+        "has_minelayer_component",
     },
     HullSize.TINY: {
         "has_inhibitor",
@@ -67,7 +68,9 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_ability_component",
         "has_strikecraft_bay",
         "has_antimatter_harvester",
+        "has_minelayer_component",
     },
+
     HullSize.SMALL: {
         "has_hangar",
         "has_inhibitor",
@@ -419,6 +422,11 @@ class ComponentConfig:
     sensor_short_range: float = DEFAULT_SENSOR_SHORT_RANGE
     sensor_long_range_hexes: int = 0
 
+    # Minelayer
+    has_minelayer_component: bool = False
+    minelayer_hull_cost: float = MINELAYER_HULL_COST
+
+
     # ------------------------------------------------------------------
     # Computed hull-cost properties for dynamic components
     # ------------------------------------------------------------------
@@ -576,6 +584,7 @@ class CustomUnitTemplate:
         if c.has_inhibitor:                     total += c.inhibitor_hull_cost
         if c.has_ability_component:             total += c.ability_hull_cost
         if c.has_sensors:                       total += c.sensors_hull_cost
+        if c.has_minelayer_component:           total += c.minelayer_hull_cost
         return total
 
 
@@ -625,6 +634,7 @@ class CustomUnitTemplate:
             "has_crystal_refinery_component": c.has_crystal_refinery_component,
             "has_ability_component": c.has_ability_component,
             "has_antimatter_harvester": c.has_antimatter_harvester,
+            "has_minelayer_component": c.has_minelayer_component,
         }
         for flag, enabled in comp_flags.items():
             if enabled and flag in restricted:
@@ -669,8 +679,9 @@ class CustomUnitTemplate:
             c.has_colony_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
             c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
-            c.has_sensors,
+            c.has_sensors, c.has_minelayer_component,
         ])
+
 
         if not any_component:
             errors.append("At least one component must be enabled.")
@@ -907,6 +918,9 @@ class CustomTemplateManager:
             "sensor_long_range_hexes": c.sensor_long_range_hexes,
             "sensors_hull_cost": c.sensors_hull_cost,
 
+            "has_minelayer_component": c.has_minelayer_component,
+            "minelayer_hull_cost": c.minelayer_hull_cost,
+
             "is_custom": True,  # marker so we know it's player-designed
         }
         return d
@@ -999,6 +1013,9 @@ class CustomTemplateManager:
             has_sensors=d.get("has_sensors", d.get("has_scanner", False)),
             sensor_short_range=float(d.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)),
             sensor_long_range_hexes=int(d.get("sensor_long_range_hexes", 0)),
+
+            has_minelayer_component=d.get("has_minelayer_component", False),
+            minelayer_hull_cost=float(d.get("minelayer_hull_cost", MINELAYER_HULL_COST)),
         )
 
 
@@ -1008,3 +1025,4 @@ class CustomTemplateManager:
             hull_size=hull_size,
             components=comp,
         )
+
