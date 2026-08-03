@@ -97,3 +97,29 @@ def test_wormhole_directional_outskirt_placement():
     hex_x_b = SQRT3 * q_b + (SQRT3 / 2.0) * r_b
     assert hex_x_b < 0, f"Expected hex on the left side, got {hex_b} with x={hex_x_b}"
 
+
+def test_comet_outskirt_spawning_distribution():
+    from entities import Comet
+    from geometry import hex_distance
+    import math
+
+    outskirt_count = 0
+    total_comets = 0
+
+    # Generate multiple galaxies/systems to sample comet positions
+    for _ in range(30):
+        galaxy = Galaxy(num_systems=10)
+        for system in galaxy.systems.values():
+            outskirts_threshold = max(2, math.ceil(system.radius * 0.65))
+            for hex_coord, body in system.get_all_celestial_bodies():
+                if isinstance(body, Comet):
+                    dist = hex_distance(hex_coord, (0, 0))
+                    total_comets += 1
+                    if dist >= outskirts_threshold:
+                        outskirt_count += 1
+
+    assert total_comets > 0, "Expected at least some comets to be generated across 300 star systems"
+    outskirt_ratio = outskirt_count / total_comets
+    # Verify that at least 75% of comets spawn on system outskirts
+    assert outskirt_ratio >= 0.75, f"Expected high comet outskirt ratio, got {outskirt_ratio:.2f} ({outskirt_count}/{total_comets})"
+

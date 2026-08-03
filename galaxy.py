@@ -55,6 +55,7 @@ GALAXY_PADDING = 50.0 # Logical distance from edge for system placement
 MIN_SYSTEM_DISTANCE = 50.0
 MAX_SYSTEM_DISTANCE = 350.0
 SECOND_NEAREST_WORMHOLE_PROB = 1/3 # Probability of connecting a system to the second nearest system
+COMET_OUTSKIRTS_BIAS = 0.85 # Preference probability to spawn comets on system outskirts
 
 # --- Hex Class ---
 @dataclass
@@ -154,11 +155,29 @@ class StarSystem:
         # Decide how many bodies to spawn in this system
         num_bodies_to_spawn = random.randint(4, len(available_hexes) // 2)
 
-        for i in range(min(num_bodies_to_spawn, len(available_hexes))):
-            hex_to_spawn_in = available_hexes[i]
+        # Calculate outskirts threshold based on system radius
+        outskirts_threshold = max(2, math.ceil(self.radius * 0.65))
+
+        for _ in range(min(num_bodies_to_spawn, len(available_hexes))):
+            if not available_hexes:
+                break
 
             # Choose a body type based on weights loaded from configuration
             chosen_body_class = random.choices(BODY_TYPES_TO_SPAWN, weights=SPAWN_WEIGHTS, k=1)[0]
+
+            # Select hex for spawning (Comets prefer outer hexes)
+            hex_to_spawn_in = None
+            if chosen_body_class == Comet:
+                outskirt_candidates = [
+                    h for h in available_hexes if hex_distance(h.coordinates(), (0, 0)) >= outskirts_threshold
+                ]
+                if outskirt_candidates and random.random() < COMET_OUTSKIRTS_BIAS:
+                    hex_to_spawn_in = random.choice(outskirt_candidates)
+
+            if hex_to_spawn_in is None:
+                hex_to_spawn_in = available_hexes[0]
+
+            available_hexes.remove(hex_to_spawn_in)
 
             body = None
             if chosen_body_class == Planet:
