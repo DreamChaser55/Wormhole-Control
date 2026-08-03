@@ -42,6 +42,7 @@ from unit_components import (
     StrikecraftBayComponent,
     StrikecraftWingComponent,
     Sensors,
+    MinefieldType,
 )
 
 
@@ -221,13 +222,33 @@ class Minefield(GameObject):
     def __init__(self, owner: Player, position: Position, in_hex: HexCoord, in_system: str,
                  mines_remaining: int = int(MINEFIELD_DEFAULT_MINES),
                  mine_damage: float = MINEFIELD_DEFAULT_DAMAGE,
-                 detonation_radius: float = MINEFIELD_DETONATION_RADIUS):
+                 detonation_radius: float = MINEFIELD_DETONATION_RADIUS,
+                 minefield_type: typing.Union[MinefieldType, str] = MinefieldType.ANTI_SHIP):
         super().__init__(position, in_hex, in_system)
         self.owner = owner
-        self.name = f"Minefield {self.id}"
+        if isinstance(minefield_type, str):
+            try:
+                self.minefield_type = MinefieldType(minefield_type)
+            except ValueError:
+                self.minefield_type = MinefieldType.ANTI_SHIP
+        else:
+            self.minefield_type = minefield_type
+        self.name = f"{self.minefield_type.display_name} Minefield {self.id}"
         self.mines_remaining = mines_remaining
         self.mine_damage = mine_damage
         self.detonation_radius = detonation_radius
+
+    def can_target(self, unit: 'Unit') -> bool:
+        """Return True if unit is a valid target for this minefield type."""
+        if self.owner and unit.owner == self.owner:
+            return False
+        if unit.current_hit_points <= 0:
+            return False
+        if self.minefield_type == MinefieldType.ANTI_SHIP:
+            return unit.hull_size != HullSize.STRIKECRAFT_WING
+        elif self.minefield_type == MinefieldType.ANTI_STRIKECRAFT:
+            return unit.hull_size == HullSize.STRIKECRAFT_WING
+        return True
 
     def detonate_against(self, unit: 'Unit') -> float:
         """Detonates a mine against an enemy unit, applying net damage and reducing mine count."""

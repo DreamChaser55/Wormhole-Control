@@ -430,10 +430,7 @@ class TurnProcessor:
                         continue
 
                     for unit in list(units):
-
-                        if unit.owner == minefield.owner:
-                            continue
-                        if unit.current_hit_points <= 0:
+                        if not minefield.can_target(unit):
                             continue
 
                         if distance(unit.position, minefield.position) <= minefield.detonation_radius:

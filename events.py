@@ -162,7 +162,15 @@ class UseAbilityEvent(Event):
 
 class LayMinefieldEvent(Event):
     """Fired when the player orders selected units to lay a minefield."""
-    def __init__(self, units: list, shift_pressed: bool = False):
+    def __init__(self, units: list, minefield_type: typing.Any = "anti_ship", shift_pressed: bool = False):
         self.units = units
+        from unit_components import MinefieldType
+        if isinstance(minefield_type, str):
+            try:
+                self.minefield_type = MinefieldType(minefield_type)
+            except ValueError:
+                self.minefield_type = MinefieldType.ANTI_SHIP
+        else:
+            self.minefield_type = minefield_type
         self.shift_pressed = shift_pressed
 

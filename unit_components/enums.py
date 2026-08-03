@@ -53,3 +53,17 @@ class AbilityType(Enum):
     MISSILE_BATTERIES = "missile_batteries"
     REPAIR_CLOUD = "repair_cloud"
     CAPTURE_UNIT = "capture_unit"
+
+
+class MinefieldType(Enum):
+    ANTI_SHIP = "anti_ship"
+    ANTI_STRIKECRAFT = "anti_strikecraft"
+
+    @property
+    def display_name(self) -> str:
+        if self == MinefieldType.ANTI_SHIP:
+            return "Anti-Ship"
+        elif self == MinefieldType.ANTI_STRIKECRAFT:
+            return "Anti-Strikecraft"
+        return self.name.replace("_", " ").title()
+

@@ -507,17 +507,19 @@ class Game:
                     for order in orders_to_add:
                         unit.commander_component.add_order(order)
                         logger.debug(f"Added UnloadResourcesOrder to unit {unit.name} queue targeting refinery ID {order.parameters['target_unit_id']}.")
-        elif action_type == 'lay_minefield':
+        elif action_type in ('lay_minefield', 'lay_minefield_anti_ship', 'lay_minefield_anti_strikecraft'):
             unit_id = action.get('unit_id')
             shift_pressed = action.get('shift_pressed', False)
+            mtype = action.get('minefield_type', 'anti_strikecraft' if action_type == 'lay_minefield_anti_strikecraft' else 'anti_ship')
             unit = self.galaxy.get_unit_by_id(unit_id)
             if unit:
                 from events import LayMinefieldEvent
                 self.event_bus.publish(LayMinefieldEvent(
                     units=[unit],
+                    minefield_type=mtype,
                     shift_pressed=shift_pressed
                 ))
-                logger.debug(f"GUI: Lay Minefield button pressed for unit {unit.name} (id:{unit.id}).")
+                logger.debug(f"GUI: Lay Minefield ({mtype}) button pressed for unit {unit.name} (id:{unit.id}).")
             self.sidebar_needs_update = True
         elif action_type == 'set_stance':
 
@@ -1289,6 +1291,7 @@ class Game:
                 owner_style = f'#player_{owner_name.lower().replace(" ", "_")}_label'
                 data_for_gui.append({'type': 'label', 'text': f"Minefield: {mf.name}", 'object_id': '#sidebar_title_label', 'height': 30})
                 data_for_gui.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_style, 'height': 25})
+                data_for_gui.append({'type': 'label', 'text': f"Type: {mf.minefield_type.display_name}", 'object_id': '#sidebar_info_label', 'height': 25})
                 data_for_gui.append({'type': 'label', 'text': f"Mines Remaining: {mf.mines_remaining}", 'object_id': '#sidebar_info_label', 'height': 25})
                 data_for_gui.append({'type': 'label', 'text': f"Mine Damage: {mf.mine_damage:.0f}", 'object_id': '#sidebar_info_label', 'height': 25})
                 data_for_gui.append({'type': 'label', 'text': f"Detonation Radius: {mf.detonation_radius:.0f}", 'object_id': '#sidebar_info_label', 'height': 25})

@@ -244,6 +244,7 @@ def serialize_minefield(minefield: Minefield) -> dict:
         "mines_remaining": minefield.mines_remaining,
         "mine_damage": minefield.mine_damage,
         "detonation_radius": minefield.detonation_radius,
+        "minefield_type": minefield.minefield_type.value,
     }
 
 
@@ -612,6 +613,7 @@ def deserialize_minefield(data: dict, players_by_id: Dict[int, Player]) -> Minef
     in_hex = tuple(data.get("in_hex", (0, 0)))
     in_system = data.get("in_system", "")
     position = Position(data["position"][0], data["position"][1])
+    minefield_type = data.get("minefield_type", "anti_ship")
 
     minefield = Minefield(
         owner=owner,
@@ -620,7 +622,8 @@ def deserialize_minefield(data: dict, players_by_id: Dict[int, Player]) -> Minef
         in_system=in_system,
         mines_remaining=data.get("mines_remaining", 5),
         mine_damage=data.get("mine_damage", 40.0),
-        detonation_radius=data.get("detonation_radius", 250.0)
+        detonation_radius=data.get("detonation_radius", 250.0),
+        minefield_type=minefield_type
     )
     minefield.id = data.get("id", minefield.id)
     return minefield

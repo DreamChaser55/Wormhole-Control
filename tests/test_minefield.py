@@ -29,16 +29,21 @@ class MockGame:
         self.current_system_name = "Sol"
         self.current_sector_coord = (0, 0)
         self.visibility_snapshot = None
+        self.selected_objects = []
+
+    def deselect_object(self, obj):
+        if obj in self.selected_objects:
+            self.selected_objects.remove(obj)
 
 
 def test_minelayer_component_and_resource_cost():
     game = MockGame()
     player1 = game.players[0]
-    player1.credits = 1000.0
+    player1.credits = 3000.0
     system = game.galaxy.systems["Sol"]
 
     unit = Unit(owner=player1, position=Position(100.0, 100.0), in_hex=(0, 0), in_system="Sol", name="Minelayer Ship", hull_size=HullSize.MEDIUM, game=game)
-    unit.antimatter_component.current_amount = 100.0
+    unit.antimatter_component.current_amount = 300.0
     
     minelayer = MinelayerComponent(unit)
     unit.add_component(minelayer)
@@ -52,22 +57,23 @@ def test_minelayer_component_and_resource_cost():
     assert mf1 is not None
     assert isinstance(mf1, Minefield)
     assert len(system.hexes[(0, 0)].minefields) == 1
-    assert player1.credits == 1000.0 - MINEFIELD_CREDIT_COST
-    assert unit.antimatter_component.current_amount == 100.0 - MINEFIELD_ANTIMATTER_COST
+    assert player1.credits == 3000.0 - MINEFIELD_CREDIT_COST
+    assert unit.antimatter_component.current_amount == 300.0 - MINEFIELD_ANTIMATTER_COST
 
-    # Lay 2 more to hit max hex limit
+    # Lay until limit (MAX_MINEFIELDS_PER_HEX = 4)
     mf2 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(110.0, 100.0))
     mf3 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(120.0, 100.0))
-    assert mf2 is not None and mf3 is not None
-    assert len(system.hexes[(0, 0)].minefields) == 3
+    mf4 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(130.0, 100.0))
+    assert mf2 is not None and mf3 is not None and mf4 is not None
+    assert len(system.hexes[(0, 0)].minefields) == 4
 
-    # Attempting to lay a 4th minefield should be rejected due to MAX_MINEFIELDS_PER_HEX = 3
+    # Attempting to lay a 5th minefield should be rejected due to MAX_MINEFIELDS_PER_HEX = 4
     can_lay, reason = minelayer.can_lay_mine(game.galaxy, "Sol", (0, 0))
     assert can_lay is False
     assert "limit" in reason.lower()
 
-    mf4 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(130.0, 100.0))
-    assert mf4 is None
+    mf5 = minelayer.deploy_mine(game.galaxy, "Sol", (0, 0), Position(140.0, 100.0))
+    assert mf5 is None
 
 
 def test_lay_minefield_order():
@@ -191,6 +197,105 @@ def test_gui_lay_minefield_action():
     # Verify order was queued and executed for unit, creating a minefield
     assert len(game.galaxy.systems["Sol"].hexes[(0, 0)].minefields) == 1
     assert p1.credits == 1000.0 - MINEFIELD_CREDIT_COST
+
+
+def test_minefield_subtypes_targeting():
+    from unit_components import MinefieldType
+    game = MockGame()
+    p1, p2 = game.players[0], game.players[1]
+    tp = TurnProcessor(game)
+    system = game.galaxy.systems["Sol"]
+
+    # 1. Anti-ship minefield
+    anti_ship_mf = Minefield(
+        owner=p1, position=Position(100.0, 100.0), in_hex=(0, 0), in_system="Sol",
+        mines_remaining=2, mine_damage=40.0, detonation_radius=250.0,
+        minefield_type=MinefieldType.ANTI_SHIP
+    )
+    system.hexes[(0, 0)].add_minefield(anti_ship_mf)
+
+    # Place enemy strikecraft wing near anti-ship minefield
+    strikecraft_wing = Unit(
+        owner=p2, position=Position(110.0, 100.0), in_hex=(0, 0), in_system="Sol",
+        name="Enemy Fighter Wing", hull_size=HullSize.STRIKECRAFT_WING, game=game
+    )
+    system.hexes[(0, 0)].add_unit(strikecraft_wing)
+
+    # Process detonations -> Anti-ship minefield MUST IGNORE strikecraft wing
+    tp._process_minefield_detonations()
+    assert strikecraft_wing.current_hit_points == strikecraft_wing.max_hit_points
+    assert anti_ship_mf.mines_remaining == 2
+
+    # Place enemy cruiser near anti-ship minefield
+    cruiser = Unit(
+        owner=p2, position=Position(110.0, 100.0), in_hex=(0, 0), in_system="Sol",
+        name="Enemy Cruiser", hull_size=HullSize.MEDIUM, game=game
+    )
+    system.hexes[(0, 0)].add_unit(cruiser)
+
+    # Process detonations -> Anti-ship minefield MUST ATTACK cruiser
+    tp._process_minefield_detonations()
+    assert cruiser.current_hit_points < cruiser.max_hit_points
+    assert anti_ship_mf.mines_remaining == 1
+
+    # Clear hex
+    system.hexes[(0, 0)].minefields.clear()
+    system.hexes[(0, 0)].units.clear()
+
+    # 2. Anti-strikecraft minefield
+    anti_sc_mf = Minefield(
+        owner=p1, position=Position(200.0, 200.0), in_hex=(1, 1), in_system="Sol",
+        mines_remaining=2, mine_damage=40.0, detonation_radius=250.0,
+        minefield_type=MinefieldType.ANTI_STRIKECRAFT
+    )
+    system.hexes[(1, 1)].add_minefield(anti_sc_mf)
+
+    # Place enemy cruiser near anti-strikecraft minefield
+    cruiser2 = Unit(
+        owner=p2, position=Position(210.0, 200.0), in_hex=(1, 1), in_system="Sol",
+        name="Enemy Battleship", hull_size=HullSize.LARGE, game=game
+    )
+    system.hexes[(1, 1)].add_unit(cruiser2)
+
+    # Process detonations -> Anti-strikecraft minefield MUST IGNORE cruiser
+    tp._process_minefield_detonations()
+    assert cruiser2.current_hit_points == cruiser2.max_hit_points
+    assert anti_sc_mf.mines_remaining == 2
+
+    # Place enemy strikecraft near anti-strikecraft minefield
+    sc_wing2 = Unit(
+        owner=p2, position=Position(210.0, 200.0), in_hex=(1, 1), in_system="Sol",
+        name="Enemy Bomber Wing", hull_size=HullSize.STRIKECRAFT_WING, game=game
+    )
+    system.hexes[(1, 1)].add_unit(sc_wing2)
+
+    # Process detonations -> Anti-strikecraft minefield MUST ATTACK strikecraft
+    tp._process_minefield_detonations()
+    assert sc_wing2.current_hit_points < sc_wing2.max_hit_points
+    assert anti_sc_mf.mines_remaining == 1
+
+
+def test_minefield_subtypes_serialization():
+    from unit_components import MinefieldType
+    game = MockGame()
+    p1 = game.players[0]
+
+    system = game.galaxy.systems["Sol"]
+    mf_ship = Minefield(owner=p1, position=Position(150.0, 200.0), in_hex=(1, 1), in_system="Sol", minefield_type=MinefieldType.ANTI_SHIP)
+    mf_sc = Minefield(owner=p1, position=Position(160.0, 200.0), in_hex=(1, 1), in_system="Sol", minefield_type=MinefieldType.ANTI_STRIKECRAFT)
+    system.hexes[(1, 1)].add_minefield(mf_ship)
+    system.hexes[(1, 1)].add_minefield(mf_sc)
+
+    state_dict = save_manager.serialize_game_state(game)
+    players_by_id = {p.id: p for p in game.players}
+    restored_galaxy = save_manager.deserialize_galaxy(state_dict["galaxy"], players_by_id, game)
+
+    restored_mfs = restored_galaxy.systems["Sol"].hexes[(1, 1)].minefields
+    assert len(restored_mfs) == 2
+    types = {mf.minefield_type for mf in restored_mfs}
+    assert MinefieldType.ANTI_SHIP in types
+    assert MinefieldType.ANTI_STRIKECRAFT in types
+
 
 
 

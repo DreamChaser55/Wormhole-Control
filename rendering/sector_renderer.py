@@ -581,7 +581,15 @@ class SectorViewRenderer:
                 obj_color = obj.owner.color if obj.owner else RED
                 obj_radius_logical = obj.detonation_radius
                 pixel_radius = max(5, int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
-                pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
+                from unit_components import MinefieldType
+                is_anti_strikecraft = (getattr(obj, 'minefield_type', None) == MinefieldType.ANTI_STRIKECRAFT)
+                if is_anti_strikecraft:
+                    pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
+                    if pixel_radius > 4:
+                        pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius - 3, 1)
+                else:
+                    pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
+
                 # Draw one dot per remaining mine, horizontally centred
                 n_dots = max(0, obj.mines_remaining)
                 if n_dots > 0:
@@ -591,7 +599,17 @@ class SectorViewRenderer:
                     start_x = obj_pixel_pos.x - total_width / 2
                     for di in range(n_dots):
                         dot_x = int(start_x + di * icon_dot_spacing_px)
-                        pygame.draw.circle(self.screen, obj_color, (dot_x, int(obj_pixel_pos.y)), icon_dot_radius_px)
+                        if is_anti_strikecraft:
+                            d_sz = max(2, icon_dot_radius_px)
+                            pts = [
+                                (dot_x, int(obj_pixel_pos.y) - d_sz),
+                                (dot_x + d_sz, int(obj_pixel_pos.y)),
+                                (dot_x, int(obj_pixel_pos.y) + d_sz),
+                                (dot_x - d_sz, int(obj_pixel_pos.y))
+                            ]
+                            pygame.draw.polygon(self.screen, obj_color, pts)
+                        else:
+                            pygame.draw.circle(self.screen, obj_color, (dot_x, int(obj_pixel_pos.y)), icon_dot_radius_px)
                 should_draw_circle = False
 
  

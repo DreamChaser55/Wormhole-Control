@@ -178,9 +178,13 @@ class SystemViewRenderer:
 
             # Draw Minefields
             visible_mfs = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
+            from unit_components import MinefieldType
             for mf in visible_mfs:
                 mf_color = mf.owner.color if mf.owner else RED
-                pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), int(14 * scale_val), 1)
+                r = int(14 * scale_val)
+                pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), r, 1)
+                if getattr(mf, 'minefield_type', None) == MinefieldType.ANTI_STRIKECRAFT and r > 3:
+                    pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), r - 3, 1)
 
             # Draw units
             visible_units = [u for u in hex_obj.units if self.game.is_unit_visible(u)]

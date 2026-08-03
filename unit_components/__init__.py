@@ -8,6 +8,7 @@ from .enums import (
     TurretVariant,
     WingType,
     AbilityType,
+    MinefieldType,
 )
 from .base import UnitComponent
 from .antimatter import AntimatterStorage, AntimatterHarvester
@@ -39,6 +40,7 @@ __all__ = [
     "TurretVariant",
     "WingType",
     "AbilityType",
+    "MinefieldType",
     "UnitComponent",
     "AntimatterStorage",
     "AntimatterHarvester",

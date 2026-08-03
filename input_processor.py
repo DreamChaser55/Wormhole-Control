@@ -747,10 +747,12 @@ class InputProcessor:
                         shift_pressed
                     ))
 
-            elif extracted_action_id == "lay_minefield":
+            elif extracted_action_id in ("lay_minefield", "lay_minefield_anti_ship", "lay_minefield_anti_strikecraft"):
+                mtype = "anti_strikecraft" if extracted_action_id == "lay_minefield_anti_strikecraft" else "anti_ship"
                 self.game.event_bus.publish(LayMinefieldEvent(
                     selected_units,
-                    shift_pressed
+                    minefield_type=mtype,
+                    shift_pressed=shift_pressed
                 ))
 
 

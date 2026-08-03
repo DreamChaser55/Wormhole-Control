@@ -326,13 +326,14 @@ class OrderSystem:
 
     def handle_lay_minefield(self, event: LayMinefieldEvent):
         """Creates LayMinefieldOrders for selected units with MinelayerComponent."""
+        mtype = getattr(event, 'minefield_type', 'anti_ship')
         for unit in event.units:
             if getattr(unit, 'minelayer_component', None) is not None or (hasattr(unit, 'components') and any(c.__class__.__name__ == 'MinelayerComponent' for c in unit.components.values())):
-                lay_order = LayMinefieldOrder(unit)
+                lay_order = LayMinefieldOrder(unit, minefield_type=mtype)
                 if not event.shift_pressed:
                     unit.commander_component.clear_orders()
                 unit.commander_component.add_order(lay_order)
-                logger.debug(f"  Unit {unit.name} ordered to lay minefield via event.")
+                logger.debug(f"  Unit {unit.name} ordered to lay {mtype} minefield via event.")
         self.game.sidebar_needs_update = True
 
 

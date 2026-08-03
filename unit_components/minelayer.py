@@ -3,6 +3,7 @@ from typing import Optional, Tuple, TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
+from .enums import MinefieldType
 from constants import MINEFIELD_CREDIT_COST, MINEFIELD_ANTIMATTER_COST, MINELAYER_HULL_COST, MAX_MINEFIELDS_PER_HEX
 
 if TYPE_CHECKING:
@@ -34,9 +35,17 @@ class MinelayerComponent(UnitComponent):
         })
         data.append({
             'type': 'button',
-            'text': "Lay Minefield",
+            'text': "Lay Anti-Ship Minefield",
             'object_id': '#sidebar_expand_button',
-            'action_id': 'lay_minefield',
+            'action_id': 'lay_minefield_anti_ship',
+            'target_data': self.unit.id,
+            'height': 25
+        })
+        data.append({
+            'type': 'button',
+            'text': "Lay Anti-Strikecraft Minefield",
+            'object_id': '#sidebar_expand_button',
+            'action_id': 'lay_minefield_anti_strikecraft',
             'target_data': self.unit.id,
             'height': 25
         })
@@ -83,7 +92,7 @@ class MinelayerComponent(UnitComponent):
 
         return True, "Ready to lay minefield."
 
-    def deploy_mine(self, galaxy: 'Galaxy', system_name: str, hex_coord: 'HexCoord', position: 'Position') -> Optional['Minefield']:
+    def deploy_mine(self, galaxy: 'Galaxy', system_name: str, hex_coord: 'HexCoord', position: 'Position', minefield_type: typing.Union[MinefieldType, str] = MinefieldType.ANTI_SHIP) -> Optional['Minefield']:
         can_lay, reason = self.can_lay_mine(galaxy, system_name, hex_coord)
         if not can_lay:
             logger.debug(f"Cannot lay minefield: {reason}")
@@ -103,7 +112,8 @@ class MinelayerComponent(UnitComponent):
             owner=self.unit.owner,
             position=position,
             in_hex=hex_coord,
-            in_system=system_name
+            in_system=system_name,
+            minefield_type=minefield_type
         )
         hex_obj.add_minefield(minefield)
         logger.debug(f"{self.unit.name} deployed {minefield.name} in {system_name}:{hex_coord} at pos {position}")

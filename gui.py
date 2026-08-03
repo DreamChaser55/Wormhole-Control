@@ -899,11 +899,13 @@ class GUI_Handler:
                         'unit_id': target_data,
                         'shift_pressed': shift_pressed
                     }
-                elif action_id == 'lay_minefield':
+                elif action_id in ('lay_minefield', 'lay_minefield_anti_ship', 'lay_minefield_anti_strikecraft'):
                     keys = pygame.key.get_pressed()
                     shift_pressed = bool(keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT])
+                    mtype = 'anti_strikecraft' if action_id == 'lay_minefield_anti_strikecraft' else 'anti_ship'
                     action_result = {
-                        'action': 'lay_minefield',
+                        'action': action_id,
+                        'minefield_type': mtype,
                         'unit_id': target_data,
                         'shift_pressed': shift_pressed
                     }
