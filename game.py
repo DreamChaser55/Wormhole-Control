@@ -78,7 +78,7 @@ from turn_processor import TurnProcessor
 from events import EventBus
 from order_system import OrderSystem
 from custom_unit_templates import CustomTemplateManager
-from visibility import VisibilityService, VisibilitySnapshot, is_unit_visible as vis_is_unit_visible, hex_has_presence as vis_hex_has_presence
+from visibility import VisibilityService, VisibilitySnapshot, is_unit_visible as vis_is_unit_visible, hex_has_presence as vis_hex_has_presence, is_minefield_visible as vis_is_minefield_visible
 
 
 CAMERA_SMOOTH_SPEED = 12.0  # Exponential decay speed for zoom smoothing (~95% at 0.25s)
@@ -665,6 +665,10 @@ class Game:
     def hex_has_presence(self, system_name: str, hex_coord: HexCoord) -> bool:
         """Return True if hex has undetailed enemy presence for current player."""
         return vis_hex_has_presence(self.visibility, system_name, hex_coord)
+
+    def is_minefield_visible(self, minefield: typing.Any) -> bool:
+        """Return True if friendly minefield or viewer is None (spectator)."""
+        return vis_is_minefield_visible(self.visibility, minefield)
 
     def update(self, time_delta: float):
         """Called every frame. Updates the UI. Game logic updates are done in TurnProcessor.process_turn(), which is called at the end of each turn."""

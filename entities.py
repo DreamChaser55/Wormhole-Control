@@ -251,6 +251,8 @@ class Minefield(GameObject):
         self.mines_remaining -= 1
 
         logger.debug(f"{self.name} (Owner: {self.owner.name}) detonated against {unit.name}! Dealt {damage_int} damage. Mines remaining: {self.mines_remaining}")
+        if unit.current_hit_points <= 0:
+            unit.destroy()
         return damage_int
 
 
@@ -416,7 +418,8 @@ class Unit(GameObject):
             self.current_hit_points = 0
         logger.debug(f"Unit '{self.name}' takes {amount} damage. Current HP: {self.current_hit_points}/{self.max_hit_points}")
 
-        if self.current_hit_points == 0:
+        if self.current_hit_points <= 0:
+            self.current_hit_points = 0
             self.destroy()
 
     def take_component_damage(self, component_type: type, amount: int, damage_type: Optional[TurretType] = None) -> int:
@@ -480,11 +483,15 @@ class Unit(GameObject):
         if self.strikecraft_bay_component:
             for docked_unit in list(self.strikecraft_bay_component.docked_units):
                 docked_unit.destroy()
-        # Here you would add logic to remove the unit from the game,
-        # e.g., by notifying the galaxy or a unit manager.
-        if self.in_galaxy:
-            self.in_galaxy.remove_unit(self)
-        self.game.deselect_object(self)
+        galaxy = self.in_galaxy or (self.game.galaxy if self.game else None)
+        if galaxy:
+            galaxy.remove_unit(self)
+        if self.game:
+            self.game.deselect_object(self)
+            if getattr(self.game, 'sector_view_mouse_hover_object', None) == self:
+                self.game.sector_view_mouse_hover_object = None
+            if getattr(self.game, 'hovered_object', None) == self:
+                self.game.hovered_object = None
 
     def _update_hull_usage(self) -> None:
         """Recalculates and updates the current hull usage based on installed components."""

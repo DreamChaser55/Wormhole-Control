@@ -64,6 +64,7 @@ class TurnProcessor:
 
             with ProfileTimer("Minefield detonations"):
                 self._process_minefield_detonations()
+                self._cleanup_dead_units()
 
             with ProfileTimer("Population growth"):
                 self._process_population_growth()
@@ -77,6 +78,7 @@ class TurnProcessor:
 
             with ProfileTimer("Unit updates"):
                 self._process_unit_updates(current_player)
+                self._cleanup_dead_units()
 
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 
@@ -445,6 +447,15 @@ class TurnProcessor:
                         hex_obj.remove_minefield(mf)
                     elif isinstance(minefields, list) and mf in minefields:
                         minefields.remove(mf)
+
+    def _cleanup_dead_units(self):
+        """Sweeps all systems and destroys any units with 0 or less hit points."""
+        if not self.game.galaxy:
+            return
+        for system in self.game.galaxy.systems.values():
+            for unit, _ in system.get_all_units():
+                if unit.current_hit_points <= 0:
+                    unit.destroy()
 
 
 

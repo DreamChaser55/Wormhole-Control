@@ -491,11 +491,10 @@ class SectorViewRenderer:
         units_to_draw = []
         minefields_to_draw = []
         has_presence_warning = False
-        snapshot = getattr(self.game, 'visibility_snapshot', None)
         if hex_obj:
             bodies_to_draw = hex_obj.celestial_bodies
             units_to_draw = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
-            minefields_to_draw = [mf for mf in getattr(hex_obj, 'minefields', []) if is_minefield_visible(snapshot, mf)]
+            minefields_to_draw = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
             has_hidden = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
             if has_hidden and self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
                 has_presence_warning = True

@@ -177,8 +177,7 @@ class SystemViewRenderer:
                     pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 2)
 
             # Draw Minefields
-            snapshot = getattr(self.game, 'visibility_snapshot', None)
-            visible_mfs = [mf for mf in getattr(hex_obj, 'minefields', []) if is_minefield_visible(snapshot, mf)]
+            visible_mfs = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
             for mf in visible_mfs:
                 mf_color = mf.owner.color if mf.owner else RED
                 pygame.draw.circle(self.screen, mf_color, (int(hex_center_pixel.x), int(hex_center_pixel.y)), int(14 * scale_val), 1)

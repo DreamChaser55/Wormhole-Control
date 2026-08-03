@@ -240,14 +240,19 @@ class StarSystem:
              logger.debug(f"Warning: Attempted to add unit to invalid hex {hex_coord} in system {self.name}")
 
     def remove_unit(self, unit_to_remove: Unit) -> bool:
-         """Removes a specific unit object from the system's hex. Returns True if successful."""
-         hex_coord = unit_to_remove.in_hex
-         if hex_coord in self.hexes:
-              if unit_to_remove in self.hexes[hex_coord].units:
-                   self.hexes[hex_coord].remove_unit(unit_to_remove)
-                   unit_to_remove.in_system = None
-                   return True
-         return False
+        """Removes a specific unit object from the system's hex. Returns True if successful."""
+        hex_coord = unit_to_remove.in_hex
+        if hex_coord in self.hexes and unit_to_remove in self.hexes[hex_coord].units:
+            self.hexes[hex_coord].remove_unit(unit_to_remove)
+            unit_to_remove.in_system = None
+            return True
+        # Fallback: check all hexes in system in case in_hex is outdated
+        for h_coord, hex_obj in self.hexes.items():
+            if unit_to_remove in hex_obj.units:
+                hex_obj.remove_unit(unit_to_remove)
+                unit_to_remove.in_system = None
+                return True
+        return False
 
     def get_units_in_hex(self, hex_coord: HexCoord) -> typing.List[Unit]:
         """Returns a list of units in the specified hex."""
@@ -333,13 +338,17 @@ class Galaxy:
                         return unit
         return None
 
-    def remove_unit(self, unit: Unit):
+    def remove_unit(self, unit: Unit) -> bool:
         """Removes a unit from the galaxy."""
         if unit.in_system and unit.in_system in self.systems:
-            system = self.systems[unit.in_system]
-            system.remove_unit(unit)
-        else:
-            logger.debug(f"Warning: Could not remove unit {unit.id} - system '{unit.in_system}' not found.")
+            if self.systems[unit.in_system].remove_unit(unit):
+                return True
+        # Fallback: search all systems if system reference was missing or wrong
+        for system in self.systems.values():
+            if system.remove_unit(unit):
+                return True
+        logger.debug(f"Warning: Could not remove unit {unit.id} from galaxy.")
+        return False
 
     # --- Incremental Galaxy Generation Method  ---
     def generate_galaxy(self, num_systems: int):
