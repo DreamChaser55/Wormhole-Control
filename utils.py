@@ -89,3 +89,18 @@ class ProfileTimer:
             self.timer.stop()
             logger.debug(f"  [Profile] {self.name} took: {self.timer}")
 
+
+def color_to_hex(color) -> str:
+    """Converts an (R, G, B) or (R, G, B, A) tuple or pygame.Color object to a hex string '#RRGGBB'."""
+    if color is None:
+        return "#A0A0B0"
+    try:
+        if hasattr(color, 'r') and isinstance(color.r, int) and isinstance(color.g, int) and isinstance(color.b, int):
+            return f"#{color.r:02x}{color.g:02x}{color.b:02x}"
+        if isinstance(color, (tuple, list)) and len(color) >= 3:
+            return f"#{int(color[0]):02x}{int(color[1]):02x}{int(color[2]):02x}"
+    except Exception:
+        pass
+    return "#A0A0B0"
+
+

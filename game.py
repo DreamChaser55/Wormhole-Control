@@ -55,7 +55,7 @@ from constants import (
     DEFAULT_SUBLIGHT_SHIP_SPEED, RED, BLUE, YELLOW, DEBUG, PROFILE,
     FULLSCREEN, UPKEEP_COST_PER_HULL_POINT, MAX_UNIT_XP
 )
-from utils import HexCoord, Timer
+from utils import HexCoord, Timer, color_to_hex
 from geometry import (
     Position, Vector, distance_sq, distance
 )
@@ -615,6 +615,12 @@ class Game:
             if mf:
                 self.selected_objects = [mf]
                 self.sidebar_needs_update = True
+        elif action_type == 'select_celestial_body':
+            body_id = action.get('body_id') if action.get('body_id') is not None else action.get('target_data')
+            body = self.galaxy.get_celestial_body_by_id(body_id) if (self.galaxy and body_id is not None) else None
+            if body:
+                self.selected_objects = [body]
+                self.sidebar_needs_update = True
         elif action_type == 'stop_unit':
             unit_id = action.get('unit_id')
             unit = self.galaxy.get_unit_by_id(unit_id) if (self.galaxy and unit_id is not None) else None
@@ -1062,6 +1068,26 @@ class Game:
 
         data_for_gui = []
 
+        if self.players and hasattr(self.gui, 'manager') and self.gui.manager:
+            theme_dict = {}
+            for p in self.players:
+                obj_id = f'#player_{p.name.lower().replace(" ", "_")}_button'
+                hex_col = color_to_hex(p.color)
+                theme_dict[obj_id] = {
+                    "colours": {
+                        "normal_text": hex_col,
+                        "hovered_text": hex_col,
+                        "active_text": hex_col
+                    },
+                    "misc": {
+                        "text_horiz_alignment": "left"
+                    }
+                }
+            try:
+                self.gui.manager.get_theme().load_theme(theme_dict)
+            except Exception as e:
+                logger.debug(f"Error loading player button themes: {e}")
+
         if not self.selected_objects:
             data_for_gui.append({
                 'type': 'label',
@@ -1092,10 +1118,13 @@ class Game:
                 })
             for obj in self.selected_objects:
                 if isinstance(obj, Unit):
+                    owner = getattr(obj, 'owner', None)
+                    obj_style = f'#player_{owner.name.lower().replace(" ", "_")}_button' if owner else '#sidebar_neutral_button'
                     data_for_gui.append({
                         'type': 'button',
-                        'text': f"{obj.name}",
-                        'object_id': '#sidebar_expand_button',
+                        'text': obj.name,
+                        'object_id': obj_style,
+                        'class_id': '#sidebar_expand_button',
                         'action_id': 'select_individual_unit',
                         'target_data': obj.id,
                         'height': 25
@@ -1136,13 +1165,32 @@ class Game:
                         data_for_gui.append({'type': 'label', 'text': "Bodies:", 'object_id': '#sidebar_info_label', 'height': 20})
                         for b in hex_obj.celestial_bodies:
                             owner = getattr(b, 'owner', None)
-                            style = f'#player_{owner.name.lower().replace(" ", "_")}_label' if owner else '#sidebar_info_label'
-                            data_for_gui.append({'type': 'label', 'text': b.name, 'object_id': style, 'height': 20, 'indent_level': 1})
+                            obj_style = f'#player_{owner.name.lower().replace(" ", "_")}_button' if owner else '#sidebar_neutral_button'
+                            data_for_gui.append({
+                                'type': 'button',
+                                'text': b.name,
+                                'object_id': obj_style,
+                                'class_id': '#sidebar_expand_button',
+                                'action_id': 'select_celestial_body',
+                                'target_data': b.id,
+                                'height': 20,
+                                'indent_level': 1
+                            })
                     if visible_units:
                         data_for_gui.append({'type': 'label', 'text': "Units:", 'object_id': '#sidebar_info_label', 'height': 20})
                         for u in visible_units:
-                            style = f'#player_{u.owner.name.lower().replace(" ", "_")}_label'
-                            data_for_gui.append({'type': 'label', 'text': u.name, 'object_id': style, 'height': 20, 'indent_level': 1})
+                            owner = getattr(u, 'owner', None)
+                            obj_style = f'#player_{owner.name.lower().replace(" ", "_")}_button' if owner else '#sidebar_neutral_button'
+                            data_for_gui.append({
+                                'type': 'button',
+                                'text': u.name,
+                                'object_id': obj_style,
+                                'class_id': '#sidebar_expand_button',
+                                'action_id': 'select_individual_unit',
+                                'target_data': u.id,
+                                'height': 20,
+                                'indent_level': 1
+                            })
                     # Minefields (only shown on owner's turn)
                     current_player = self.players[self.current_player_index]
                     friendly_minefields = [
@@ -1152,11 +1200,13 @@ class Game:
                     if friendly_minefields:
                         data_for_gui.append({'type': 'label', 'text': "Minefields:", 'object_id': '#sidebar_info_label', 'height': 20})
                         for mf in friendly_minefields:
-                            mf_style = f'#player_{current_player.name.lower().replace(" ", "_")}_label'
+                            owner = getattr(mf, 'owner', None)
+                            obj_style = f'#player_{owner.name.lower().replace(" ", "_")}_button' if owner else '#sidebar_neutral_button'
                             data_for_gui.append({
                                 'type': 'button',
                                 'text': f"{mf.name} ({mf.mines_remaining} mines)",
-                                'object_id': '#sidebar_expand_button',
+                                'object_id': obj_style,
+                                'class_id': '#sidebar_expand_button',
                                 'action_id': 'select_minefield',
                                 'target_data': mf.id,
                                 'height': 20,

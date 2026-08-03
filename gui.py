@@ -967,6 +967,11 @@ class GUI_Handler:
                         'action': 'select_minefield',
                         'minefield_id': target_data,
                     }
+                elif action_id == 'select_celestial_body':
+                    action_result = {
+                        'action': 'select_celestial_body',
+                        'body_id': target_data,
+                    }
                 elif action_id == 'switch_unit_sidebar_tab':
                     action_result = {
                         'action': 'switch_unit_sidebar_tab',

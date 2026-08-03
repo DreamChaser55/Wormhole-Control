@@ -132,14 +132,50 @@
             "text_horiz_alignment": "left"
         }
     },
+    "#player_player_1_button": { 
+        "colours": { 
+            "normal_text": "#4080FF",
+            "hovered_text": "#80B0FF"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
     "#player_player_2_label": { 
         "colours": { "normal_text": "#FF0000"},
         "misc": {
             "text_horiz_alignment": "left"
         }
     },
+    "#player_player_2_button": { 
+        "colours": { 
+            "normal_text": "#FF5555",
+            "hovered_text": "#FF8888"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
     "#player_player_3_label": { 
         "colours": { "normal_text": "#FFFF00"},
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#player_player_3_button": { 
+        "colours": { 
+            "normal_text": "#FFFF55",
+            "hovered_text": "#FFFF88"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
+    },
+    "#sidebar_neutral_button": {
+        "colours": { 
+            "normal_text": "#A0A0B0",
+            "hovered_text": "#D0D0E0"
+        },
         "misc": {
             "text_horiz_alignment": "left"
         }
