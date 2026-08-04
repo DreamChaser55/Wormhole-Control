@@ -23,6 +23,7 @@ class RepairCloudAbility(AbilityInstance):
         requires_target_unit=False,
         requires_target_position=False,
         antimatter_cost=35,
+        required_components=["has_repair_component"],
     )
 
     def on_activate(

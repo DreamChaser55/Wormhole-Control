@@ -26,6 +26,7 @@ class MissileBatteriesAbility(AbilityInstance):
         requires_target_unit=False,
         requires_target_position=False,
         antimatter_cost=40,
+        required_components=["has_weapon_bays"],
     )
 
     def on_activate(

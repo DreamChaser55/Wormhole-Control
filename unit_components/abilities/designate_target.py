@@ -23,6 +23,7 @@ class DesignateTargetAbility(AbilityInstance):
         requires_target_unit=True,
         requires_target_position=False,
         antimatter_cost=15,
+        required_components=["has_sensors"],
     )
 
     def on_activate(

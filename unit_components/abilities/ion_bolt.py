@@ -23,6 +23,7 @@ class IonBoltAbility(AbilityInstance):
         requires_target_unit=True,
         requires_target_position=False,
         antimatter_cost=25,
+        required_components=["has_weapon_bays"],
     )
 
     def on_activate(

@@ -25,6 +25,8 @@ class AbilityDefinition:
     requires_target_unit: bool       # True if the ability needs a unit to be selected
     requires_target_position: bool   # True if the ability needs a position click
     antimatter_cost: int = 0         # Cost in antimatter to activate this ability
+    required_components: List[str] = dataclasses.field(default_factory=list)  # Component flags required on the unit design to equip this ability
+
 
 
 class AbilityInstance:

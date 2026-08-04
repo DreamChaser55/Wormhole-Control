@@ -28,6 +28,7 @@ from constants import HullSize, HULL_CAPACITIES, TEXT_SCALE, MIN_ANTIMATTER_CAPA
 from custom_unit_templates import (
     CustomUnitTemplate, ComponentConfig, TurretConfig,
     CustomTemplateManager, HULL_RESTRICTIONS, ADVANCED_HYPERDRIVE_MIN_HULL,
+    ABILITY_REQUIRED_COMPONENTS,
     calc_engine_hull_cost, calc_weapons_hull_cost, calc_defenses_hull_cost,
     calc_hyperdrive_hull_cost,
 )
@@ -1342,11 +1343,20 @@ class UnitEditorWindow:
                 return
         setattr(self._comp, key, not current)
         self._update_component_toggle_labels()
+        self._update_ability_toggle_labels()
         self._sync_dynamic_costs()
         self._update_capacity_label()
         self._update_summary()
 
     def _toggle_ability(self, aname: str) -> None:
+        req_keys = ABILITY_REQUIRED_COMPONENTS.get(aname, [])
+        comp_labels = {row["key"]: row["label"] for row in COMPONENT_ROWS}
+        missing = [k for k in req_keys if not getattr(self._comp, k, False)]
+        if missing and aname not in self._selected_abilities:
+            req_names = ", ".join(comp_labels.get(k, k) for k in missing)
+            self._set_status(f"⚠ '{aname.replace('_', ' ').title()}' requires component: {req_names}.", error=True)
+            return
+
         if aname in self._selected_abilities:
             self._selected_abilities.remove(aname)
         else:
@@ -1368,9 +1378,22 @@ class UnitEditorWindow:
                 btn.set_text(f"[x] {label}" if enabled else f"[ ] {label}")
 
     def _update_ability_toggle_labels(self) -> None:
+        c = self._comp
+        comp_labels = {row["key"]: row["label"] for row in COMPONENT_ROWS}
         for aname, btn in self._ability_buttons.items():
-            selected = aname in self._selected_abilities
-            btn.set_text(f"[x] {aname}" if selected else f"[ ] {aname}")
+            req_keys = ABILITY_REQUIRED_COMPONENTS.get(aname, [])
+            missing = [k for k in req_keys if not getattr(c, k, False)]
+            if missing:
+                if aname in self._selected_abilities:
+                    self._selected_abilities.remove(aname)
+                    self._comp.abilities = list(self._selected_abilities)
+                req_names = ", ".join(comp_labels.get(k, k) for k in missing)
+                btn.set_text(f"[ ] {aname} (Req: {req_names})")
+                btn.disable()
+            else:
+                btn.enable()
+                selected = aname in self._selected_abilities
+                btn.set_text(f"[x] {aname}" if selected else f"[ ] {aname}")
 
     def _update_capacity_label(self) -> None:
         if self._capacity_label:

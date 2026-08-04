@@ -454,8 +454,39 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         win.kill()
 
+    def test_ability_requires_component_validation_fails(self):
+        """Validation fails if an ability is equipped without its required component."""
+        t = CustomUnitTemplate("TEST_ABILITY_FAIL", "Test Ability Fail", HullSize.MEDIUM)
+        t.components.has_engine = True
+        t.components.has_ability_component = True
+        t.components.abilities = ["adaptive_forcefield"]  # Requires has_defenses
+        t.components.has_defenses = False
+        errors = t.validate()
+        self.assertTrue(any("Adaptive Forcefield" in e and "has_defenses" in e for e in errors))
+
+    def test_ability_requires_component_validation_passes(self):
+        """Validation passes if an ability is equipped with its required component."""
+        t = CustomUnitTemplate("TEST_ABILITY_PASS", "Test Ability Pass", HullSize.MEDIUM)
+        t.components.has_engine = True
+        t.components.has_ability_component = True
+        t.components.abilities = ["adaptive_forcefield"]  # Requires has_defenses
+        t.components.has_defenses = True
+        t.components.armor = 5
+        errors = t.validate()
+        self.assertFalse(any("Adaptive Forcefield" in e for e in errors))
+
+    def test_capture_unit_requires_no_component(self):
+        """Capture Unit ability requires no extra components."""
+        t = CustomUnitTemplate("TEST_CAPTURE_UNIT", "Test Capture Unit", HullSize.MEDIUM)
+        t.components.has_engine = True
+        t.components.has_ability_component = True
+        t.components.abilities = ["capture_unit"]
+        errors = t.validate()
+        self.assertFalse(any("Capture Unit" in e for e in errors))
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

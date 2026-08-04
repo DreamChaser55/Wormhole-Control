@@ -86,6 +86,32 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
 # Advanced hyperdrive is unavailable on TINY hulls (existing game rule).
 ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.SMALL
 
+# Helper to fetch component requirements for abilities dynamically from single-source ABILITY_DEFINITIONS
+def get_ability_required_components(ability_key: str) -> List[str]:
+    """Return required component flags for an ability key, sourced from ABILITY_DEFINITIONS."""
+    from unit_components import ABILITY_DEFINITIONS, AbilityType
+    try:
+        atype = AbilityType(ability_key)
+        defn = ABILITY_DEFINITIONS.get(atype)
+        return defn.required_components if defn else []
+    except (ValueError, KeyError):
+        return []
+
+# Dynamically generated dictionary mapping ability key -> required component flags
+class _AbilityRequirementsDict(dict):
+    def __getitem__(self, key: str) -> List[str]:
+        return get_ability_required_components(key)
+    def get(self, key: str, default=None) -> List[str]:
+        from unit_components import AbilityType
+        reqs = get_ability_required_components(key)
+        if reqs or any(a.value == key for a in AbilityType):
+            return reqs
+        return default if default is not None else []
+
+ABILITY_REQUIRED_COMPONENTS = _AbilityRequirementsDict()
+
+
+
 # --------------------------------------------------------------------------
 # Hull-size cost multipliers (used in build cost calculation)
 # --------------------------------------------------------------------------
@@ -671,6 +697,16 @@ class CustomUnitTemplate:
         min_am_cap = get_min_antimatter_capacity(self.hull_size)
         if c.has_antimatter_storage and c.antimatter_capacity < min_am_cap:
             errors.append(f"Antimatter storage capacity must be at least {min_am_cap} for {self.hull_size.name} hull.")
+
+        # Ability component requirements
+        if c.has_ability_component and c.abilities:
+            for ab_key in c.abilities:
+                reqs = ABILITY_REQUIRED_COMPONENTS.get(ab_key, [])
+                for req_comp in reqs:
+                    if not getattr(c, req_comp, False):
+                        ab_name = ab_key.replace('_', ' ').title()
+                        errors.append(f"Ability '{ab_name}' requires component '{req_comp}'.")
+
         # At least one meaningful component
         any_component = any([
             c.has_engine, c.has_antimatter_storage, c.has_antimatter_harvester, c.has_hyperdrive, c.has_weapon_bays,

@@ -23,6 +23,7 @@ class ClusterWarheadAbility(AbilityInstance):
         requires_target_unit=False,
         requires_target_position=True,
         antimatter_cost=30,
+        required_components=["has_weapon_bays"],
     )
 
     SPLASH_RADIUS: float = 200.0

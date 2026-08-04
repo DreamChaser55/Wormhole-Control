@@ -16,6 +16,7 @@ from .movement import Engines, Hyperdrive
 from .weapons import Turret, Weapons
 from .defenses import Defenses
 from .inhibitor import HyperspaceInhibitionFieldEmitter
+from .minelayer import MinelayerComponent
 from .commander import Commander
 from .repair import RepairComponent
 from .colony import ColonyComponent

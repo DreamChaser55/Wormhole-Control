@@ -23,6 +23,7 @@ class AdaptiveForcefieldAbility(AbilityInstance):
         requires_target_unit=False,
         requires_target_position=False,
         antimatter_cost=20,
+        required_components=["has_defenses"],
     )
 
     def on_activate(
