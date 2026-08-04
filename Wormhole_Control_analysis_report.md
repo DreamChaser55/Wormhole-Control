@@ -36,11 +36,6 @@ Several files have grown excessively large, combining rendering, state handling,
   - *Example*: `# Add component to dict`, `# Loop through list of units`, `# Set variable to True`.
   - *Recommendation*: Remove redundant line comments; retain comments that document mathematical formulas, game rules, or non-obvious design choices.
 
-### 3.2 Missing Function Docstrings
-While major classes have docstrings, several internal helper functions and event handlers lack top-level docstrings outlining their purpose, arguments, and return types.
-- **`game.py`**: Helper methods like `_handle_left_click`, `_handle_right_click`, `update_side_bar_content`, and camera smoothing handlers lack standard Google/Sphinx style docstrings.
-- **`unit_editor_gui.py`**: Internal UI builder methods (`_build_col1_config`, `_build_col2_components`, `_sync_widgets_from_template`) lack explicit argument and return value documentation.
-
 ---
 
 ## 4. Element Naming Analysis
@@ -82,11 +77,10 @@ While major classes have docstrings, several internal helper functions and event
 
 ```mermaid
 flowchart TD
-    A[Add Missing Top-Level Docstrings] --> B[Refactor Monolithic Sector Renderer]
+    A[Refactor Monolithic Sector Renderer]
 ```
 
-1. **Docstrings & Code Quality**:
-   - Standardize top-level docstrings for internal methods across `game.py`, `gui.py`, and `unit_editor_gui.py`.
-2. **Refactoring & Polish**:
+
+1. **Refactoring & Polish**:
    - Modularize `sector_renderer.py` into dedicated sub-renderers.
 

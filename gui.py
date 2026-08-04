@@ -21,7 +21,15 @@ if typing.TYPE_CHECKING:
 
 
 def _editor_action_to_gui_action(editor_action: str) -> typing.Optional[dict]:
-    """Convert a UnitEditorWindow action string to a GUI action dict."""
+    """Converts a UnitEditorWindow action identifier into a standard GUI action payload dictionary.
+
+    Args:
+        editor_action (str): Action string received from the unit editor window
+            (e.g., 'close', 'design_saved', 'design_deleted').
+
+    Returns:
+        typing.Optional[dict]: GUI action dictionary if recognized, or None if unhandled.
+    """
     if editor_action == 'close':
         return {'action': 'toggle_unit_editor'}
     elif editor_action == 'design_saved':
@@ -265,13 +273,14 @@ class GUI_Handler:
         self.update_back_button_visibility()
 
     def toggle_ingame_menu(self):
+        """Toggles the visibility state of the in-game pause menu."""
         if not self.ingame_menu_panel or not self.ingame_menu_panel.visible:
             self.show_ingame_menu()
         else:
             self.hide_ingame_menu()
 
     def show_ingame_menu(self):
-        # Configures and shows the In-Game Menu UI.
+        """Displays the in-game pause menu and disables background game buttons."""
         if not self.ingame_menu_panel:
             self.setup_ingame_menu()
         if self.ingame_menu_panel: self.ingame_menu_panel.show()
@@ -279,12 +288,17 @@ class GUI_Handler:
         if self.back_button: self.back_button.disable()
 
     def hide_ingame_menu(self):
-        # Hides the In-Game Menu UI.
+        """Hides the in-game pause menu and re-enables HUD buttons."""
         if self.ingame_menu_panel: self.ingame_menu_panel.hide()
         if self.end_turn_button: self.end_turn_button.enable()
         if self.back_button: self.back_button.enable()
 
     def is_ingame_menu_open(self) -> bool:
+        """Determines whether the in-game menu is currently open.
+
+        Returns:
+            bool: True if the in-game menu panel is instantiated and visible.
+        """
         return self.ingame_menu_panel is not None and self.ingame_menu_panel.visible
 
     # --- Setup Methods --- 
@@ -1070,14 +1084,22 @@ class GUI_Handler:
              return None
 
     def update(self, time_delta: float):
-        """Updates the GUI Manager."""
+        """Updates UI manager animations, timers, and layout states.
+
+        Args:
+            time_delta (float): Time elapsed since the last frame in seconds.
+        """
         self.manager.update(time_delta)
         # Forward update to unit editor so its internal widgets animate/update
         if self.unit_editor_window and self.unit_editor_window.is_visible:
             pass  # UIManager handles child widget updates automatically
 
     def draw(self, surface: pygame.Surface):
-        """Draws the UI elements onto the provided surface."""
+        """Renders all managed UI elements and custom overlays onto the target Pygame surface.
+
+        Args:
+            surface (pygame.Surface): Display surface to render GUI components on.
+        """
         if self.galaxy_generation_rect and self.game_instance.view_mode == 'galaxy':
             pygame.draw.rect(surface, self.galaxy_border_color, self.galaxy_generation_rect, 2)
         
@@ -1088,7 +1110,11 @@ class GUI_Handler:
             self.unit_editor_window.draw(surface)
 
     def is_any_text_entry_focused(self) -> bool:
-        """Check if any text entry element is currently focused/active."""
+        """Checks if any text entry element (input field) currently has active keyboard focus.
+
+        Returns:
+            bool: True if a text entry field is focused, False otherwise.
+        """
         for sprite in self.manager.ui_group.sprites():
             if isinstance(sprite, (pygame_gui.elements.UITextEntryLine, pygame_gui.elements.UITextEntryBox)):
                 if sprite.is_focused:
@@ -1098,7 +1124,11 @@ class GUI_Handler:
     # --- Unit Editor helpers ---
 
     def open_unit_editor(self, template_manager) -> None:
-        """Create (if needed) and show the Unit Editor window."""
+        """Instantiates (if necessary) and displays the Unit Editor window overlay.
+
+        Args:
+            template_manager: CustomTemplateManager instance storing custom unit designs.
+        """
         if self.unit_editor_window is None:
             from unit_editor_gui import UnitEditorWindow
             self.unit_editor_window = UnitEditorWindow(
@@ -1110,23 +1140,34 @@ class GUI_Handler:
         self.hide_ingame_menu()
 
     def close_unit_editor(self) -> None:
-        """Hide the Unit Editor window."""
+        """Hides the Unit Editor window overlay."""
         if self.unit_editor_window:
             self.unit_editor_window.hide()
 
     def is_unit_editor_open(self) -> bool:
-        """Return True if the unit editor is currently visible."""
+        """Checks if the Unit Editor window is currently visible.
+
+        Returns:
+            bool: True if the unit editor window exists and is visible.
+        """
         return self.unit_editor_window is not None and self.unit_editor_window.is_visible
 
     def process_unit_editor_event(self, event: pygame.event.Event) -> typing.Optional[str]:
-        """Forward a pygame event to the unit editor and return any action string."""
+        """Forwards Pygame events to the active Unit Editor window.
+
+        Args:
+            event (pygame.event.Event): Pygame event to process.
+
+        Returns:
+            typing.Optional[str]: Action code returned by unit editor, or None if no action triggered.
+        """
         if self.unit_editor_window:
             return self.unit_editor_window.process_event(event)
         return None
 
     # --- UI Update Methods ---
     def update_back_button_visibility(self):
-        """Shows/hides the back button based on game view mode."""
+        """Toggles back button visibility depending on active view mode (hidden on galaxy view)."""
         if self.back_button:
             if self.game_instance.view_mode in ['system', 'sector']:
                 self.back_button.show()
@@ -1134,18 +1175,30 @@ class GUI_Handler:
                 self.back_button.hide()
 
     def update_view_mode_label(self, text: str):
-        """Updates the text of the view mode label."""
+        """Updates header text label displaying current camera view mode.
+
+        Args:
+            text (str): Display string to set on the view mode label.
+        """
         if self.view_mode_label:
             self.view_mode_label.set_text(text)
         self.update_back_button_visibility()
 
     def update_turn_label(self, text: str):
-        """Updates the text of the player turn label."""
+        """Updates header text label displaying current turn number and active player name.
+
+        Args:
+            text (str): HTML-formatted turn display string.
+        """
         if self.player_turn_label:
             self.player_turn_label.set_text(text)
 
     def update_player_color_indicator(self, color: Color):
-        """Updates the background color of the player indicator panel."""
+        """Sets background color of player indicator badge on top HUD bar.
+
+        Args:
+            color (Color): Pygame Color representing active player.
+        """
         if self.player_color_indicator:
             try:
                 valid_color = Color(color)
@@ -1155,7 +1208,11 @@ class GUI_Handler:
                  logger.debug(f"Error setting player indicator color ({color}): {e}")
 
     def update_resource_display(self, player: 'Player'):
-        """Updates the resource labels with the current player's values."""
+        """Updates credits, metal, and crystal resource readouts and income tooltips for a player.
+
+        Args:
+            player (Player): Active player entity whose resources to render.
+        """
         if self.credits_label:
             self.credits_label.set_text(f"Credits: {player.credits:.0f}")
             
@@ -1465,10 +1522,12 @@ class GUI_Handler:
                 current_y_offset += element_padding
 
     def open_context_menu(self, position: Position, options: typing.List[ContextMenuOption], target: typing.Any):
-        """Creates and displays a context menu at the given position.
-        
-        Options can be flat (label, action_id) or submenu parents (label, [(label, action_id), ...]).
-        Submenu parent items are rendered with a ▸ suffix indicator.
+        """Creates and presents a right-click context menu at specified screen coordinates.
+
+        Args:
+            position (Position): Screen position where context menu should open.
+            options (typing.List[ContextMenuOption]): List of menu option definitions.
+            target (typing.Any): Game entity or coordinate targeted by the context menu.
         """
         self.close_context_menu()
 
@@ -1512,7 +1571,7 @@ class GUI_Handler:
             button_y += CONTEXT_MENU_ITEM_HEIGHT + 2
 
     def close_context_menu(self):
-        """Closes the currently open context menu."""
+        """Closes and cleans up any currently active context menu panel."""
         if self.context_menu_panel:
             self.context_menu_panel.kill()
             self.context_menu_panel = None
@@ -1524,13 +1583,27 @@ class GUI_Handler:
         self.context_menu_parent_position = None
 
     def is_mouse_over_context_menu(self, mouse_pos: Position) -> bool:
-        """Checks if the mouse position is over the context menu panel."""
+        """Determines if mouse coordinates lie within the open context menu bounds.
+
+        Args:
+            mouse_pos (Position): Mouse screen coordinates to test.
+
+        Returns:
+            bool: True if mouse collides with open context menu panel.
+        """
         if self.context_menu_panel and self.context_menu_panel.visible:
             return self.context_menu_panel.get_abs_rect().collidepoint(mouse_pos.to_tuple())
         return False
 
     def is_mouse_over_gui_panels(self, mouse_pos: Position) -> bool:
-        """Checks if the mouse position is over any visible GUI panels."""
+        """Determines if mouse coordinates collide with any visible top-level GUI panels.
+
+        Args:
+            mouse_pos (Position): Mouse screen coordinates to test.
+
+        Returns:
+            bool: True if mouse position collides with any visible HUD or panel element.
+        """
         panels = [
             self.left_top_bar_panel,
             self.left_bottom_bar_panel,

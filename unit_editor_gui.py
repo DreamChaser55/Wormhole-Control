@@ -80,6 +80,16 @@ HYPERDRIVE_TYPES = ["BASIC", "ADVANCED"]
 # ---------------------------------------------------------------------------
 
 def _lerp_color(a: pygame.Color, b: pygame.Color, t: float) -> pygame.Color:
+    """Linearly interpolates between two Pygame colors.
+
+    Args:
+        a (pygame.Color): Starting color at t=0.0.
+        b (pygame.Color): Target color at t=1.0.
+        t (float): Interpolation factor clamped between 0.0 and 1.0.
+
+    Returns:
+        pygame.Color: Resulting interpolated RGBA color.
+    """
     return pygame.Color(
         int(a.r + (b.r - a.r) * t),
         int(a.g + (b.g - a.g) * t),
@@ -222,7 +232,7 @@ class UnitEditorWindow:
     # ------------------------------------------------------------------
 
     def _build_ui(self) -> None:
-        """Create all child widgets inside the panel."""
+        """Creates and lays out all child widgets inside the main unit designer panel."""
         pad = self._pad
         pr = self._panel_rect
         scale_y = self.screen_res.y / 720.0
@@ -246,7 +256,7 @@ class UnitEditorWindow:
         )
         self._elements.append(title)
 
-        # Close button (top-right corner)
+        # Close button
         close_w = int(80 * (self.screen_res.x / 1280.0))
         close_h = int(24 * scale_y)
         self._close_button = pygame_gui.elements.UIButton(
@@ -260,28 +270,32 @@ class UnitEditorWindow:
 
         separator_y = int(pad + 30 * scale_y)
 
-        # Heights & spacing constants
+        # Heights & spacing
         row_h = int(26 * scale_y)
         small_h = max(24, int(24 * TEXT_SCALE))
         dd_h = int(28 * scale_y)
         entry_h = int(32 * scale_y)
         btn_h = int(32 * scale_y)
 
-        # Column coordinates & heights setup
-        c1x, c1w = self._col1_x, self._col_w
-        c2x, c2w = self._col2_x, self._col_w
-        c3x, c3w = self._col3_x, self._col_w
-        c4x, c4w = self._col4_x, self._col_w
+        c1x, c2x, c3x, c4x = self._col1_x, self._col2_x, self._col3_x, self._col4_x
+        c1y = c2y = c3y = c4y = separator_y + pad
 
-        c1y = separator_y + pad
-        c2y = separator_y + pad
-        c3y = separator_y + pad
-        c4y = separator_y + pad
+        # Build columns
+        self._build_col1_config(c1x, c1y, self._col_w, row_h, dd_h, entry_h, btn_h, pad, scale_y)
+        self._build_col2_components(c2x, c2y, self._col_w, row_h, small_h, pad)
+        self._build_col3_details(c3x, c3y, self._col_w, row_h, small_h, dd_h, entry_h, btn_h, pad, scale_y)
+        self._build_col4_summary(c4x, c4y, self._col_w, row_h, pad, pr)
 
-        # ----------------------------------------------------------------
-        # COLUMN 1 (Left): Configuration & Files (Basic info, Save/Load/Delete)
-        # ----------------------------------------------------------------
+        # Initial refresh
+        self._update_component_toggle_labels()
+        self._update_summary()
+        self._apply_hull_restrictions()
+        self._refresh_component_details()
 
+    def _build_col1_config(
+        self, c1x: int, c1y: int, c1w: int, row_h: int, dd_h: int, entry_h: int, btn_h: int, pad: int, scale_y: float
+    ) -> int:
+        """Builds Column 1 configuration UI controls (Hull selection, design keys, file management)."""
         # Hull Size dropdown
         hull_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c1x, c1y, c1w, row_h),
@@ -315,20 +329,15 @@ class UnitEditorWindow:
         self._elements.append(self._capacity_label)
         c1y += row_h + 2
 
-        # Capacity bar visual (drawn manually — just record its screen rect)
+        # Capacity bar visual
         bar_h = int(10 * scale_y)
-        self._cap_bar_rect = pygame.Rect(
-            pr.x + c1x,
-            pr.y + c1y,
-            c1w,
-            bar_h,
-        )
+        self._cap_bar_rect = pygame.Rect(self._panel_rect.x + c1x, self._panel_rect.y + c1y, c1w, bar_h)
         c1y += bar_h + pad
 
         # Design Key
         name_lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c1x, c1y, c1w, row_h),
-            text="Design Key (unique, no spaces):",
+            text="Design Key (unique):",
             manager=self.manager,
             container=self._panel,
             object_id="#editor_section_label",
@@ -377,9 +386,8 @@ class UnitEditorWindow:
         c1y += row_h + 2
 
         existing = self.template_manager.list_design_names()
-        load_options = ["— select —"] + existing
         self._load_dd = pygame_gui.elements.UIDropDownMenu(
-            options_list=load_options,
+            options_list=["— select —"] + existing,
             starting_option="— select —",
             relative_rect=pygame.Rect(c1x, c1y, c1w, dd_h),
             manager=self.manager,
@@ -420,13 +428,12 @@ class UnitEditorWindow:
             object_id="#editor_status_label",
         )
         self._elements.append(self._status_label)
-        c1y += row_h + pad
+        return c1y
 
-
-        # ----------------------------------------------------------------
-        # COLUMN 2 (Middle-Left): Components Checklist & Selection
-        # ----------------------------------------------------------------
-
+    def _build_col2_components(
+        self, c2x: int, c2y: int, c2w: int, row_h: int, small_h: int, pad: int
+    ) -> int:
+        """Builds Column 2 component selection UI controls (Toggles, selection arrows, cost labels)."""
         comp_heading = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c2x, c2y, c2w, row_h),
             text="Components (hull cost)",
@@ -446,9 +453,7 @@ class UnitEditorWindow:
             cx = c2x
             cy = c2y + idx * (small_h + 3)
 
-            key = row["key"]
-            label = row["label"]
-            cost_display = "~" if row["is_dynamic"] else str(row["default_cost"])
+            key, label, cost_display = row["key"], row["label"], ("~" if row["is_dynamic"] else str(row["default_cost"]))
 
             btn = pygame_gui.elements.UIButton(
                 relative_rect=pygame.Rect(cx, cy, btn_w, small_h),
@@ -460,8 +465,9 @@ class UnitEditorWindow:
             self._comp_toggles[key] = btn
             self._elements.append(btn)
 
+            cx += btn_w + gap
             cost_lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(cx + btn_w + gap, cy, cost_w, small_h),
+                relative_rect=pygame.Rect(cx, cy, cost_w, small_h),
                 text=cost_display,
                 manager=self.manager,
                 container=self._panel,
@@ -470,9 +476,10 @@ class UnitEditorWindow:
             self._comp_cost_labels[key] = cost_lbl
             self._elements.append(cost_lbl)
 
+            cx += cost_w + gap
             sel_btn = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(cx + btn_w + gap + cost_w + gap, cy, select_w, small_h),
-                text="▶▶▶" if key == self._selected_component_key else ">>>",
+                relative_rect=pygame.Rect(cx, cy, select_w, small_h),
+                text="▶▶▶" if key == "has_engine" else ">>>",
                 manager=self.manager,
                 container=self._panel,
                 object_id="#comp_select_button",
@@ -482,11 +489,12 @@ class UnitEditorWindow:
 
         c2y += len(COMPONENT_ROWS) * (small_h + 3) + pad
         self._abilities_y_start = c2y
+        return c2y
 
-        # ----------------------------------------------------------------
-        # COLUMN 3 (Middle-Right): Component Details (Dynamic View)
-        # ----------------------------------------------------------------
-
+    def _build_col3_details(
+        self, c3x: int, c3y: int, c3w: int, row_h: int, small_h: int, dd_h: int, entry_h: int, btn_h: int, pad: int, scale_y: float
+    ) -> int:
+        """Builds Column 3 dynamic component detail controls (sub-option fields, turret list, ability toggles)."""
         self._details_hdr = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c3x, c3y, c3w, row_h),
             text="Component Details",
@@ -496,238 +504,81 @@ class UnitEditorWindow:
         )
         self._elements.append(self._details_hdr)
         c3y_base = c3y + row_h + pad
-
+        y = c3y_base
         self._details_groups = {row["key"]: [] for row in COMPONENT_ROWS}
 
         # --- 1. Engines ---
-        y = c3y_base
-        lbl_eng = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y, c3w, small_h),
-            text="Engine Speed:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._engine_speed_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(c3x, y + small_h + 2, c3w, entry_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_entry",
-        )
+        lbl_eng = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y, c3w, small_h), text="Engine Speed:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._engine_speed_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y + small_h + 2, c3w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
         self._engine_speed_entry.set_text(str(int(self._comp.engine_speed)))
         self._details_groups["has_engine"].extend([lbl_eng, self._engine_speed_entry])
 
         # --- 2. Antimatter Storage ---
-        lbl_am = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y, c3w, small_h),
-            text="Antimatter Capacity:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._am_capacity_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(c3x, y + small_h + 2, c3w, entry_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_entry",
-        )
+        lbl_am = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y, c3w, small_h), text="Antimatter Capacity:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._am_capacity_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y + small_h + 2, c3w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
         self._am_capacity_entry.set_text(str(int(self._comp.antimatter_capacity)))
         self._details_groups["has_antimatter_storage"].extend([lbl_am, self._am_capacity_entry])
 
         # --- 3. Hyperdrive ---
-        lbl_hd1 = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y, c3w, small_h),
-            text="Hyperdrive Type:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(
-            options_list=HYPERDRIVE_TYPES,
-            starting_option=self._comp.hyperdrive_type,
-            relative_rect=pygame.Rect(c3x, y + small_h + 2, c3w, dd_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#hd_type_dropdown",
-        )
-        y_hd = y + small_h + dd_h + pad
-        lbl_hd2 = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y_hd, c3w, small_h),
-            text="Jump Range:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._hd_jump_range_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(c3x, y_hd + small_h + 2, c3w, entry_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_entry",
-        )
+        lbl_hd1 = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y, c3w, small_h), text="Hyperdrive Type:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(options_list=HYPERDRIVE_TYPES, starting_option=self._comp.hyperdrive_type, relative_rect=pygame.Rect(c3x, y + small_h + 2, c3w, dd_h), manager=self.manager, container=self._panel, object_id="#hd_type_dropdown")
+        lbl_hd2 = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y + small_h + 2 + dd_h + pad, c3w, small_h), text="Jump Range (hexes):", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._hd_jump_range_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y + (small_h + 2) * 2 + dd_h + pad, c3w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
         self._hd_jump_range_entry.set_text(str(self._comp.hyperdrive_jump_range))
         self._details_groups["has_hyperdrive"].extend([lbl_hd1, self._hd_type_dropdown, lbl_hd2, self._hd_jump_range_entry])
 
-        # --- 4. Weapons (Turrets Configuration) ---
-        y_w = c3y_base
-        ttype_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y_w, c3w, small_h),
-            text="Turret Type:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        y_w += small_h
-        self._turret_type_dd = pygame_gui.elements.UIDropDownMenu(
-            options_list=TURRET_TYPES,
-            starting_option=TURRET_TYPES[0],
-            relative_rect=pygame.Rect(c3x, y_w, c3w, dd_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_type_dropdown",
-        )
-        y_w += dd_h + pad
-
-        tvar_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y_w, c3w, small_h),
-            text="Variant:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        y_w += small_h
-        self._turret_variant_dd = pygame_gui.elements.UIDropDownMenu(
-            options_list=TURRET_VARIANTS,
-            starting_option=TURRET_VARIANTS[0],
-            relative_rect=pygame.Rect(c3x, y_w, c3w, dd_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_variant_dropdown",
-        )
-        y_w += dd_h + pad
-
-        label_w = int(c3w * 0.40)
-        entry_w = c3w - label_w
-        weapon_widgets = [ttype_lbl, self._turret_type_dd, tvar_lbl, self._turret_variant_dd]
-
-        for label_text, placeholder, entry_ref in [
-            ("Damage:", "15", "_turret_dmg_entry"),
-            ("Range:", "300", "_turret_range_entry"),
-            ("Cooldown:", "2", "_turret_cd_entry"),
-        ]:
-            row_lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(c3x, y_w, label_w, entry_h),
-                text=label_text,
-                manager=self.manager,
-                container=self._panel,
-                object_id="#comp_cost_label",
-            )
-            entry = pygame_gui.elements.UITextEntryLine(
-                relative_rect=pygame.Rect(c3x + label_w, y_w, entry_w, entry_h),
-                manager=self.manager,
-                container=self._panel,
-                object_id="#turret_entry",
-            )
-            entry.set_text(placeholder)
-            setattr(self, entry_ref, entry)
-            weapon_widgets.extend([row_lbl, entry])
-            y_w += entry_h + int(4 * scale_y)
-
-        y_w += pad
-        self._add_turret_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(c3x, y_w, c3w, btn_h),
-            text="+ Add Turret",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#add_turret_button",
-        )
-        weapon_widgets.append(self._add_turret_button)
-        y_w += btn_h + pad
-
-        active_hdr = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y_w, c3w, small_h),
-            text="Active Turrets:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        weapon_widgets.append(active_hdr)
-        y_w += small_h + 2
-
-        self._turret_list_y_start = y_w
-        self._turret_list_lx = c3x
-        self._turret_list_lw = c3w
-        self._details_groups["has_weapon_bays"].extend(weapon_widgets)
+        # --- 4. Weapon Bays ---
+        lbl_wep = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y, c3w, small_h), text="Add Turret:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        y += small_h + 2
+        lbl_ttype = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y, c3w, small_h), text="Turret Type:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._turret_type_dd = pygame_gui.elements.UIDropDownMenu(options_list=TURRET_TYPES, starting_option=TURRET_TYPES[0], relative_rect=pygame.Rect(c3x, y + small_h + 2, c3w, dd_h), manager=self.manager, container=self._panel, object_id="#turret_type_dropdown")
+        y += small_h + 2 + dd_h + pad
+        lbl_variant = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y, c3w, small_h), text="Variant:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._turret_variant_dd = pygame_gui.elements.UIDropDownMenu(options_list=TURRET_VARIANTS, starting_option="STANDARD", relative_rect=pygame.Rect(c3x, y + small_h + 2, c3w, dd_h), manager=self.manager, container=self._panel, object_id="#turret_variant_dropdown")
+        y += small_h + 2 + dd_h + pad
+        half_w = (c3w - pad) // 2
+        lbl_dmg = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y, half_w, small_h), text="Dmg:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        lbl_rng = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x + half_w + pad, y, half_w, small_h), text="Range:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        y += small_h + 2
+        self._turret_dmg_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y, half_w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
+        self._turret_dmg_entry.set_text("10")
+        self._turret_range_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x + half_w + pad, y, half_w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
+        self._turret_range_entry.set_text("300")
+        y += entry_h + pad
+        lbl_cd = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y, half_w, small_h), text="Cooldown (turns):", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        y += small_h + 2
+        self._turret_cd_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y, half_w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
+        self._turret_cd_entry.set_text("2")
+        self._add_turret_btn = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(c3x + half_w + pad, y, half_w, btn_h), text="+ Add Turret", manager=self.manager, container=self._panel, object_id="#editor_add_turret_button")
+        y += max(entry_h, btn_h) + pad
+        self._turret_list_lx, self._turret_list_lw, self._turret_list_y_start = c3x, c3w, y
+        self._details_groups["has_weapon_bays"].extend([lbl_wep, lbl_ttype, self._turret_type_dd, lbl_variant, self._turret_variant_dd, lbl_dmg, lbl_rng, self._turret_dmg_entry, self._turret_range_entry, lbl_cd, self._turret_cd_entry, self._add_turret_btn])
 
         # --- 5. Defenses ---
-        y_d = c3y_base
-        def_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y_d, c3w, small_h),
-            text="Defenses Ratings:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        y_d += small_h + pad
-        def_widgets = [def_lbl]
-
-        for stat_label, entry_ref in [
-            ("Armor:", "_armor_entry"),
-            ("Shields:", "_shields_entry"),
-            ("Point Def:", "_pd_entry"),
-        ]:
-            lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(c3x, y_d, label_w, entry_h),
-                text=stat_label,
-                manager=self.manager,
-                container=self._panel,
-                object_id="#comp_cost_label",
-            )
-            entry = pygame_gui.elements.UITextEntryLine(
-                relative_rect=pygame.Rect(c3x + label_w, y_d, entry_w, entry_h),
-                manager=self.manager,
-                container=self._panel,
-                object_id="#turret_entry",
-            )
-            entry.set_text("0")
-            setattr(self, entry_ref, entry)
-            def_widgets.extend([lbl, entry])
-            y_d += entry_h + int(4 * scale_y)
-
-        self._details_groups["has_defenses"].extend(def_widgets)
+        y_def = c3y_base
+        lbl_arm = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y_def, c3w, small_h), text="Armor HP:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._armor_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
+        self._armor_entry.set_text(str(self._comp.armor))
+        y_def += small_h + 2 + entry_h + pad
+        lbl_sh = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y_def, c3w, small_h), text="Shield HP:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._shields_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
+        self._shields_entry.set_text(str(self._comp.shields))
+        y_def += small_h + 2 + entry_h + pad
+        lbl_pd = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y_def, c3w, small_h), text="Point Defense Rating:", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._pd_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
+        self._pd_entry.set_text(str(self._comp.point_defense))
+        self._details_groups["has_defenses"].extend([lbl_arm, self._armor_entry, lbl_sh, self._shields_entry, lbl_pd, self._pd_entry])
 
         # --- 6. Sensors ---
-        y_s = c3y_base
-        sr_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y_s, c3w, small_h),
-            text="Short Range Radius:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._sensor_short_range_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(c3x, y_s + small_h + 2, c3w, entry_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_entry",
-        )
+        y_sen = c3y_base
+        lbl_sr = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y_sen, c3w, small_h), text="Short-Range Radius (px):", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._sensor_short_range_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y_sen + small_h + 2, c3w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
         self._sensor_short_range_entry.set_text(str(int(self._comp.sensor_short_range)))
-
-        y_s += small_h + entry_h + pad
-        lr_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(c3x, y_s, c3w, small_h),
-            text="Long Range Hexes:",
-            manager=self.manager,
-            container=self._panel,
-            object_id="#comp_cost_label",
-        )
-        self._sensor_long_range_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(c3x, y_s + small_h + 2, c3w, entry_h),
-            manager=self.manager,
-            container=self._panel,
-            object_id="#turret_entry",
-        )
-        self._sensor_long_range_entry.set_text(str(self._comp.sensor_long_range_hexes))
-        self._details_groups["has_sensors"].extend([sr_lbl, self._sensor_short_range_entry, lr_lbl, self._sensor_long_range_entry])
+        y_sen += small_h + 2 + entry_h + pad
+        lbl_lr = pygame_gui.elements.UILabel(relative_rect=pygame.Rect(c3x, y_sen, c3w, small_h), text="Long-Range (hexes):", manager=self.manager, container=self._panel, object_id="#comp_cost_label")
+        self._sensor_long_range_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y_sen + small_h + 2, c3w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
+        self._sensor_long_range_entry.set_text(str(int(self._comp.sensor_long_range_hexes)))
+        self._details_groups["has_sensors"].extend([lbl_sr, self._sensor_short_range_entry, lbl_lr, self._sensor_long_range_entry])
 
         # --- 7. Strikecraft Bay ---
         y_sc = c3y_base
@@ -963,10 +814,21 @@ class UnitEditorWindow:
                 if elem not in self._elements:
                     self._elements.append(elem)
 
-        # ----------------------------------------------------------------
-        # COLUMN 4 (Right): Design Summary
-        # ----------------------------------------------------------------
+        return c3y_base
 
+    def _build_col4_summary(
+        self, c4x: int, c4y: int, c4w: int, row_h: int, pad: int, pr: pygame.Rect
+    ) -> None:
+        """Builds Column 4 design summary text box and layout container.
+
+        Args:
+            c4x (int): Horizontal X offset for column 4.
+            c4y (int): Vertical Y offset for column 4 start.
+            c4w (int): Column width.
+            row_h (int): Standard row height.
+            pad (int): Layout padding in pixels.
+            pr (pygame.Rect): Outer panel rectangle bounds.
+        """
         summary_hdr = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(c4x, c4y, c4w, row_h),
             text="Design Summary",
@@ -986,12 +848,6 @@ class UnitEditorWindow:
             object_id="#editor_summary_box",
         )
         self._elements.append(self._summary_box)
-
-        # Initial refresh
-        self._update_component_toggle_labels()
-        self._update_summary()
-        self._apply_hull_restrictions()
-        self._refresh_component_details()
 
     # ------------------------------------------------------------------
     # Show / Hide
@@ -1190,7 +1046,7 @@ class UnitEditorWindow:
     # ------------------------------------------------------------------
 
     def _read_engine_params(self) -> None:
-        """Read engine speed from the entry widget and write to _comp."""
+        """Reads engine speed from UI input field and updates component configuration."""
         try:
             speed = float(self._engine_speed_entry.get_text()) if self._engine_speed_entry else 100.0
             self._comp.engine_speed = max(0.0, speed)
@@ -1198,7 +1054,7 @@ class UnitEditorWindow:
             pass
 
     def _read_antimatter_params(self) -> None:
-        """Read antimatter capacity from the entry widget and write to _comp."""
+        """Reads antimatter capacity from UI input field and updates component configuration."""
         try:
             min_cap = get_min_antimatter_capacity(self._hull_size)
             cap = float(self._am_capacity_entry.get_text()) if self._am_capacity_entry else min_cap
@@ -1207,7 +1063,7 @@ class UnitEditorWindow:
             pass
 
     def _read_hyperdrive_params(self) -> None:
-        """Read hyperdrive jump range from the entry widget and write to _comp."""
+        """Reads hyperdrive jump range from UI input field and updates component configuration."""
         try:
             jr = int(self._hd_jump_range_entry.get_text()) if self._hd_jump_range_entry else 5
             self._comp.hyperdrive_jump_range = max(1, jr)
@@ -1215,7 +1071,7 @@ class UnitEditorWindow:
             pass
 
     def _read_defense_params(self) -> None:
-        """Read armor/shields/point_defense from entry widgets and write to _comp."""
+        """Reads armor, shields, and point defense from UI input fields and updates component configuration."""
         try:
             self._comp.armor = max(0, int(self._armor_entry.get_text())) if self._armor_entry else 0
         except ValueError:
@@ -1230,7 +1086,7 @@ class UnitEditorWindow:
             pass
 
     def _read_sensor_params(self) -> None:
-        """Read short-range radius and long-range hexes from entry widgets and write to _comp."""
+        """Reads short/long range sensor values from UI input fields and updates component configuration."""
         try:
             sr = float(self._sensor_short_range_entry.get_text()) if getattr(self, '_sensor_short_range_entry', None) else DEFAULT_SENSOR_SHORT_RANGE
             self._comp.sensor_short_range = max(0.0, sr)
@@ -1243,7 +1099,7 @@ class UnitEditorWindow:
             pass
 
     def _read_repair_params(self) -> None:
-        """Read repair parameters from entry widgets and write to _comp."""
+        """Reads repair rate and range parameters from UI input fields and updates component configuration."""
         try:
             rr = float(self._repair_rate_entry.get_text()) if getattr(self, '_repair_rate_entry', None) else 10.0
             self._comp.repair_rate = max(0.0, rr)
@@ -1256,7 +1112,7 @@ class UnitEditorWindow:
             pass
 
     def _read_mining_params(self) -> None:
-        """Read mining parameters from entry widgets and write to _comp."""
+        """Reads mining rate, range, and cargo capacity from UI input fields and updates component configuration."""
         try:
             mr = float(self._mining_rate_entry.get_text()) if getattr(self, '_mining_rate_entry', None) else 10.0
             self._comp.mining_rate = max(0.0, mr)
@@ -1274,7 +1130,7 @@ class UnitEditorWindow:
             pass
 
     def _read_hangar_params(self) -> None:
-        """Read hangar slots from entry widget and write to _comp."""
+        """Reads hangar slots count from UI input field and updates component configuration."""
         try:
             slots = int(self._hangar_slots_entry.get_text()) if getattr(self, '_hangar_slots_entry', None) else 2
             self._comp.hangar_slots = max(1, slots)
@@ -1282,7 +1138,7 @@ class UnitEditorWindow:
             pass
 
     def _read_strikecraft_bay_params(self) -> None:
-        """Read strikecraft bay slots from entry widget and write to _comp."""
+        """Reads strikecraft bay slots count from UI input field and updates component configuration."""
         try:
             slots = int(self._strikecraft_bay_slots_entry.get_text()) if getattr(self, '_strikecraft_bay_slots_entry', None) else 2
             self._comp.strikecraft_bay_slots = max(1, slots)
@@ -1290,7 +1146,7 @@ class UnitEditorWindow:
             pass
 
     def _read_inhibitor_params(self) -> None:
-        """Read inhibitor radius from entry widget and write to _comp."""
+        """Reads inhibitor radius from UI input field and updates component configuration."""
         try:
             radius = float(self._inhibitor_radius_entry.get_text()) if getattr(self, '_inhibitor_radius_entry', None) else 100.0
             self._comp.inhibitor_radius = max(0.0, radius)
@@ -1298,7 +1154,7 @@ class UnitEditorWindow:
             pass
 
     def _read_marines_params(self) -> None:
-        """Read marines count from entry widget and write to _comp."""
+        """Reads marines count from UI input field and updates component configuration."""
         try:
             count = int(self._marines_count_entry.get_text()) if getattr(self, '_marines_count_entry', None) else 10
             self._comp.marines_count = max(1, count)
@@ -1311,11 +1167,10 @@ class UnitEditorWindow:
     # ------------------------------------------------------------------
 
     def _current_hull_used(self) -> int:
-        """Compute total hull cost of enabled components.
+        """Computes total hull points consumed by active/enabled components.
 
-        Dynamic components (Engines, Weapons, Defenses, Hyperdrive) use
-        the calc_* functions via ComponentConfig properties.  Fixed
-        components use their stored hull cost fields.
+        Returns:
+            int: Sum of static and dynamically computed hull costs across all active components.
         """
         total = 0.0
         c = self._comp
@@ -1331,7 +1186,7 @@ class UnitEditorWindow:
         return total
 
     def _sync_dynamic_costs(self) -> None:
-        """Refresh the cost labels for dynamic components and the capacity label."""
+        """Refreshes displayed hull cost labels for dynamic components and updates capacity indicators."""
         c = self._comp
         dynamic_values = {
             "has_engine":             c.get_engine_hull_cost(self._hull_size),
@@ -1357,11 +1212,21 @@ class UnitEditorWindow:
         self._update_capacity_label()
 
     def _capacity_text(self) -> str:
+        """Generates formatted display string comparing current used hull capacity to total max capacity.
+
+        Returns:
+            str: Capacity summary text (e.g. 'Hull Capacity: 45 / 100').
+        """
         capacity = HULL_CAPACITIES[self._hull_size]
         used = self._current_hull_used()
         return f"Hull Capacity: {used:g} / {capacity:g}"
 
     def _toggle_component(self, key: str) -> None:
+        """Toggles enabling or disabling a component while verifying hull size restrictions.
+
+        Args:
+            key (str): Attribute key corresponding to the target component (e.g., 'has_engine').
+        """
         current = getattr(self._comp, key, False)
         # Check restrictions before enabling
         if not current:
@@ -1377,6 +1242,11 @@ class UnitEditorWindow:
         self._update_summary()
 
     def _toggle_ability(self, aname: str) -> None:
+        """Toggles selection of a special ability after verifying required component prerequisites.
+
+        Args:
+            aname (str): Name identifier of the ability to toggle.
+        """
         req_keys = ABILITY_REQUIRED_COMPONENTS.get(aname, [])
         comp_labels = {row["key"]: row["label"] for row in COMPONENT_ROWS}
         missing = [k for k in req_keys if not getattr(self._comp, k, False)]
@@ -1664,6 +1534,11 @@ class UnitEditorWindow:
         return "design_saved"
 
     def _do_delete(self) -> typing.Optional[str]:
+        """Deletes the active unit design template.
+
+        Returns:
+            typing.Optional[str]: 'design_deleted' if successful, or None if deletion failed.
+        """
         key = self._editing_key
         if not key:
             key = self._name_entry.get_text().strip() if self._name_entry else ""
@@ -1680,11 +1555,13 @@ class UnitEditorWindow:
             self._set_status(f"⚠ Design '{key}' not found.", error=True)
             return None
 
-    def _load_design(self, key: str) -> None:
-        template = self.template_manager.get_design(key)
-        if not template:
-            return
-        self._editing_key = key
+    def _sync_widgets_from_template(self, template: CustomUnitTemplate) -> None:
+        """Synchronizes all UI text fields, dropdown menus, and toggle controls to match a unit template.
+
+        Args:
+            template (CustomUnitTemplate): Design template containing component configuration.
+        """
+        self._editing_key = template.design_name
         self._hull_size = template.hull_size
         self._comp = copy.deepcopy(template.components)
         self._turrets = copy.deepcopy(template.components.turrets)
@@ -1710,7 +1587,7 @@ class UnitEditorWindow:
         if getattr(self, '_sensor_short_range_entry', None):
             self._sensor_short_range_entry.set_text(str(int(self._comp.sensor_short_range)))
         if getattr(self, '_sensor_long_range_entry', None):
-            self._sensor_long_range_entry.set_text(str(self._comp.sensor_long_range_hexes))
+            self._sensor_long_range_entry.set_text(str(int(self._comp.sensor_long_range_hexes)))
         if getattr(self, '_repair_rate_entry', None):
             self._repair_rate_entry.set_text(str(int(self._comp.repair_rate)))
         if getattr(self, '_repair_range_entry', None):
@@ -1729,7 +1606,6 @@ class UnitEditorWindow:
             self._inhibitor_radius_entry.set_text(str(int(self._comp.inhibitor_radius)))
         if getattr(self, '_marines_count_entry', None):
             self._marines_count_entry.set_text(str(int(self._comp.marines_count)))
-
 
         # Rebuild hull dropdown selection
         if self._hull_dropdown:
@@ -1781,6 +1657,17 @@ class UnitEditorWindow:
         self._update_capacity_label()
         self._refresh_component_details()
         self._update_summary()
+
+    def _load_design(self, key: str) -> None:
+        """Loads a unit design template into the editor controls.
+
+        Args:
+            key (str): Unique design name identifier to load.
+        """
+        template = self.template_manager.get_design(key)
+        if not template:
+            return
+        self._sync_widgets_from_template(template)
         self._set_status(f"Loaded design '{key}'.", error=False)
         self._refresh_load_dropdown()
 

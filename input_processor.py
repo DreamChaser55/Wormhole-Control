@@ -228,7 +228,11 @@ class InputProcessor:
 
 
     def update_hover_states(self, mouse_pos: 'Position'):
-        """Update hover status based on current view mode and mouse position."""
+        """Updates entity hover state tracking across galaxy, system, and sector views.
+
+        Args:
+            mouse_pos (Position): Current mouse screen coordinates.
+        """
         self.game.galaxy_view_mouse_hover_system_name = None
         self.game.system_view_mouse_hover_hex = None
         self.game.sector_view_mouse_hover_object = None
@@ -309,7 +313,15 @@ class InputProcessor:
                 self.game.sector_view_mouse_hover_object = hovered_obj
 
     def handle_mouse_click(self, button: int, position: 'Position'):
-        """Handles mouse clicks that are not on UI elements."""
+        """Handles mouse click events that occur over the main game canvas (outside UI elements).
+
+        Dispatches clicks based on mouse button (1=Left, 2=Middle, 3=Right), modifier keys,
+        active view mode (galaxy/system/sector), and pending ability targeting states.
+
+        Args:
+            button (int): Pygame mouse button identifier (1=Left, 2=Middle, 3=Right).
+            position (Position): Screen coordinates of the click event.
+        """
         is_left_click = (button == 1)
         is_right_click = (button == 3)
         is_middle_click = (button == 2)
@@ -585,7 +597,12 @@ class InputProcessor:
 
 
     def handle_context_menu_action(self, action_id: str, target: typing.Any):
-        """Performs the action selected from the context menu."""
+        """Executes the action selected by the user from a right-click context menu.
+
+        Args:
+            action_id (str): Identifier of the chosen menu command (e.g., 'move', 'attack', 'patrol').
+            target (typing.Any): Target object or coordinate associated with the context menu.
+        """
         current_player = self.game.players[self.game.current_player_index]
         shift_pressed = pygame.key.get_mods() & pygame.KMOD_SHIFT
 
@@ -788,6 +805,15 @@ class InputProcessor:
             logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")
 
     def get_ability_context_options(self, actors: typing.List[Unit], target_is_unit: bool) -> typing.List[typing.Tuple[str, str]]:
+        """Retrieves available unit special abilities applicable to a right-click context target.
+
+        Args:
+            actors (typing.List[Unit]): Selected units attempting to perform an ability.
+            target_is_unit (bool): True if target is another unit, False if target is a position.
+
+        Returns:
+            typing.List[typing.Tuple[str, str]]: List of (action_id, display_label) tuples for valid abilities.
+        """
         current_player = self.game.players[self.game.current_player_index]
         player_actors = [a for a in actors if a.owner == current_player]
         if not player_actors:

@@ -170,7 +170,11 @@ class Game:
         self.zoom_anchor_logical = None
 
     def reset_sector_camera(self):
-        """Resets the sector camera zoom and pan offset. Snaps both leader and follower instantly."""
+        """Resets the sector camera zoom and pan offset.
+
+        Snaps both leader and follower camera state instantly to default zoom (1.0)
+        and clears any active zoom anchor point.
+        """
         self.sector_zoom = 1.0
         self.sector_pan_offset = Position(0, 0)
         self.sector_target_zoom = 1.0
@@ -333,7 +337,12 @@ class Game:
 
     # --- GUI Action Handling ---
     def handle_gui_action(self, action: typing.Dict[str, typing.Any]):
-        """Handles actions triggered by GUI interactions."""
+        """Handles action events triggered by user interactions with GUI controls.
+
+        Args:
+            action (typing.Dict[str, typing.Any]): Dictionary containing action details,
+                including the 'action' string key and optional targets or parameters.
+        """
         action_type = action['action']
         action_id = action.get('action_id')
         target = action.get('target')
@@ -645,9 +654,15 @@ class Game:
              logger.debug(f"Warning: Unhandled GUI action type: {action_type}")
 
     def update_sector_camera(self, dt: float):
-        """Smoothly interpolates the follower camera sector_zoom toward sector_target_zoom
-        using framerate-independent exponential decay, and locks the sector_pan_offset to
-        the active zoom anchor to prevent anchor-point drift and jitter."""
+        """Smoothly interpolates the sector camera zoom and pan offset.
+
+        Uses framerate-independent exponential decay to transition ``sector_zoom`` toward
+        ``sector_target_zoom`` and locks ``sector_pan_offset`` to the active zoom anchor to prevent
+        anchor-point drift and visual jitter.
+
+        Args:
+            dt (float): Elapsed time since last frame in seconds.
+        """
         if not self.game_started or self.view_mode != 'sector':
             return
         t = 1.0 - math.exp(-CAMERA_SMOOTH_SPEED * dt)
@@ -664,7 +679,7 @@ class Game:
                 self.zoom_anchor_logical = None
 
     def recompute_visibility(self):
-        """Recompute visibility snapshot for the current player."""
+        """Recomputes the fog-of-war visibility snapshot for the active human/spectator player."""
         if self.game_started and self.galaxy and self.players:
             viewer = self.players[self.current_player_index]
             self.visibility = VisibilityService.compute(self.galaxy, viewer)
@@ -673,15 +688,37 @@ class Game:
         self.visibility_dirty = False
 
     def is_unit_visible(self, unit: Unit) -> bool:
-        """Return True if unit is friendly or a DETAILED enemy unit for current player."""
+        """Determines whether a given unit is visible to the active player.
+
+        Args:
+            unit (Unit): Target unit object to check visibility for.
+
+        Returns:
+            bool: True if friendly or within detailed sensor/visibility range of active player.
+        """
         return vis_is_unit_visible(self.visibility, unit)
 
     def hex_has_presence(self, system_name: str, hex_coord: HexCoord) -> bool:
-        """Return True if hex has undetailed enemy presence for current player."""
+        """Determines if a hex has undetailed enemy presence for the active player.
+
+        Args:
+            system_name (str): System containing the target hex.
+            hex_coord (HexCoord): Hex coordinate to evaluate.
+
+        Returns:
+            bool: True if an undetailed sensor signature exists in the hex.
+        """
         return vis_hex_has_presence(self.visibility, system_name, hex_coord)
 
     def is_minefield_visible(self, minefield: typing.Any) -> bool:
-        """Return True if friendly minefield or viewer is None (spectator)."""
+        """Determines whether a minefield is visible to the current player.
+
+        Args:
+            minefield (typing.Any): Minefield entity to check.
+
+        Returns:
+            bool: True if minefield belongs to current player or if spectator mode is active.
+        """
         return vis_is_minefield_visible(self.visibility, minefield)
 
     def update(self, time_delta: float):
@@ -734,7 +771,14 @@ class Game:
             self.gui.update_view_mode_label(f"View: {self.view_mode.capitalize()}")
 
     def _format_order_state_data(self, state_data: dict) -> list:
-        """Formats the raw order state data into a list of HTML-styled strings for display."""
+        """Formats raw order state parameters into HTML-styled text strings for sidebar display.
+
+        Args:
+            state_data (dict): Dictionary describing the order type, parameters, and progress state.
+
+        Returns:
+            list: List of HTML-formatted strings describing key order properties.
+        """
         order_type = state_data.get("order_type")
         status = state_data.get("status")
         parameters = state_data.get("parameters", {})
@@ -1056,7 +1100,7 @@ class Game:
         return html_output_for_this_order_and_children
 
     def update_side_bar_content(self):
-        """Updates the side bar info panel by constructing a list of data dictionaries."""
+        """Constructs and updates the sidebar data payload based on current selections and view mode."""
         
         if not self.sidebar_needs_update:
             return
@@ -1458,7 +1502,14 @@ class Game:
             logger.debug(f"  [Profile] Sidebar update took: {sidebar_timer}")
 
     def get_player_income(self, player: Player) -> float:
-        """Calculates total credit income per turn for the player."""
+        """Calculates total credit income per turn generated by a player's colonies.
+
+        Args:
+            player (Player): Player whose income is being computed.
+
+        Returns:
+            float: Total credits generated per turn across all owned planets and celestial bodies.
+        """
         from entities import Planet, Moon, ColonizableAsteroid
         from constants import TAX_RATE
         total_income = 0.0
@@ -1470,7 +1521,14 @@ class Game:
         return total_income
 
     def get_player_upkeep(self, player: Player) -> float:
-        """Calculates total unit upkeep cost per turn for the player."""
+        """Calculates total credit upkeep cost per turn for a player's active fleet.
+
+        Args:
+            player (Player): Player whose upkeep is being computed.
+
+        Returns:
+            float: Total upkeep cost per turn based on hull sizes of active units.
+        """
         from constants import UPKEEP_COST_PER_HULL_POINT, HullSize
         total_upkeep = 0.0
         if self.galaxy:
@@ -1486,8 +1544,7 @@ class Game:
         return total_upkeep
 
     def update_player_turn_display(self):
-
-        """Updates the turn label and player color indicator."""
+        """Updates turn header text, player color indicators, and resource status HUD elements."""
         if not self.players:
             return
         current_player = self.players[self.current_player_index]
@@ -1511,7 +1568,11 @@ class Game:
         self.renderer.draw()
 
     def handle_mouse_wheel(self, scroll_y: int):
-        """Handles mouse wheel."""
+        """Processes mouse scroll wheel input for smooth sector camera zooming.
+
+        Args:
+            scroll_y (int): Mouse wheel scroll delta (+1 for zoom in, -1 for zoom out).
+        """
         if self.view_mode == 'sector' and self.game_started:
             mouse_pos_tuple = pygame.mouse.get_pos()
             mouse_pos = Position(mouse_pos_tuple[0], mouse_pos_tuple[1])
@@ -1564,12 +1625,28 @@ class Game:
         sys.exit()
 
     def save_game(self, filename: typing.Optional[str] = None) -> str:
+        """Saves current game state to a file.
+
+        Args:
+            filename (typing.Optional[str]): Optional custom save file name or path.
+
+        Returns:
+            str: Absolute or relative filepath where the save file was created.
+        """
         import save_manager
         filepath = save_manager.save_game_to_file(self, filename)
         logger.debug(f"Game state saved to {filepath}")
         return filepath
 
     def load_game(self, filepath: str) -> bool:
+        """Loads game state from a save file and refreshes all GUI displays.
+
+        Args:
+            filepath (str): Path to the save file.
+
+        Returns:
+            bool: True if game state was loaded successfully, False otherwise.
+        """
         import save_manager
         logger.debug(f"Loading game state from {filepath}...")
         success = save_manager.load_game_from_file(self, filepath)
@@ -1584,6 +1661,7 @@ class Game:
         return success
 
     def quit_to_main_menu(self):
+        """Resets active game state and returns the UI to the main menu."""
         logger.debug("Quitting to main menu...")
         self.game_started = False
         self.view_mode = 'main_menu'
