@@ -403,6 +403,29 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         win.kill()
 
+    def test_add_turret_button_event(self):
+        import pygame
+        import pygame_gui
+        from unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win.show()
+
+        # Ensure Add Turret button exists
+        self.assertIsNotNone(win._add_turret_button)
+        initial_turret_count = len(win._turrets)
+
+        # Simulate clicking the Add Turret button
+        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": win._add_turret_button})
+        result = win.process_event(event)
+
+        self.assertEqual(result, "ui_handled")
+        self.assertEqual(len(win._turrets), initial_turret_count + 1)
+        win.kill()
+
     def test_configurable_parameter_widgets(self):
         import pygame
         import pygame_gui

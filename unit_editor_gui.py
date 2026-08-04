@@ -549,10 +549,10 @@ class UnitEditorWindow:
         y += small_h + 2
         self._turret_cd_entry = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect(c3x, y, half_w, entry_h), manager=self.manager, container=self._panel, object_id="#turret_entry")
         self._turret_cd_entry.set_text("2")
-        self._add_turret_btn = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(c3x + half_w + pad, y, half_w, btn_h), text="+ Add Turret", manager=self.manager, container=self._panel, object_id="#editor_add_turret_button")
+        self._add_turret_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(c3x + half_w + pad, y, half_w, btn_h), text="+ Add Turret", manager=self.manager, container=self._panel, object_id="#editor_add_turret_button")
         y += max(entry_h, btn_h) + pad
         self._turret_list_lx, self._turret_list_lw, self._turret_list_y_start = c3x, c3w, y
-        self._details_groups["has_weapon_bays"].extend([lbl_wep, lbl_ttype, self._turret_type_dd, lbl_variant, self._turret_variant_dd, lbl_dmg, lbl_rng, self._turret_dmg_entry, self._turret_range_entry, lbl_cd, self._turret_cd_entry, self._add_turret_btn])
+        self._details_groups["has_weapon_bays"].extend([lbl_wep, lbl_ttype, self._turret_type_dd, lbl_variant, self._turret_variant_dd, lbl_dmg, lbl_rng, self._turret_dmg_entry, self._turret_range_entry, lbl_cd, self._turret_cd_entry, self._add_turret_button])
 
         # --- 5. Defenses ---
         y_def = c3y_base
