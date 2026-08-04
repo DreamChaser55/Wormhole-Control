@@ -27,7 +27,7 @@ from unit_components import (
     ColonyComponent, Constructor, RepairComponent, MiningComponent,
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
-    MinelayerComponent, instantiate_unit_from_template
+    MinelayerComponent, MarinesComponent, instantiate_unit_from_template
 )
 from unit_orders import (
     Order, OrderStatus, OrderType,
@@ -510,6 +510,13 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
     if template.get("has_colony_component"):
         new_unit.add_component(ColonyComponent(new_unit))
 
+    if template.get("has_marines_component"):
+        new_unit.add_component(MarinesComponent(
+            new_unit,
+            marines_count=template.get("marines_count", 10),
+            hull_cost=template.get("marines_hull_cost", 0.0)
+        ))
+
     return new_unit
 
 
@@ -600,6 +607,10 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
             wing_type_str = comp_fields.get("wing_type", "FIGHTER")
             if hasattr(WingType, wing_type_str):
                 unit.strikecraft_wing_component.wing_type = WingType[wing_type_str]
+        elif comp_name == "MarinesComponent":
+            marines_comp = unit.get_component(MarinesComponent)
+            if marines_comp:
+                marines_comp.marines_count = comp_fields.get("marines_count", marines_comp.marines_count)
 
     # Note: Commander orders will be restored after all units are in place so references can be mapped.
     unit._saved_orders_data = data.get("orders", [])

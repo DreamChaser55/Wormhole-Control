@@ -21,6 +21,7 @@ from .strikecraft import StrikecraftWingComponent, StrikecraftBayComponent
 from .abilities import AbilityComponent
 from .sensors import Sensors
 from .minelayer import MinelayerComponent
+from .marines import MarinesComponent
 
 from utils import HexCoord
 from geometry import Position
@@ -303,6 +304,18 @@ def instantiate_unit_from_template(
         new_unit.add_component(MinelayerComponent(
             new_unit,
             hull_cost=template.get("minelayer_hull_cost", MINELAYER_HULL_COST)
+        ))
+
+    if template.get("has_marines_component"):
+        m_count = template.get("marines_count", 10)
+        m_cost = template.get("marines_hull_cost")
+        if m_cost is None:
+            from custom_unit_templates import calc_marines_hull_cost
+            m_cost = calc_marines_hull_cost(m_count)
+        new_unit.add_component(MarinesComponent(
+            new_unit,
+            marines_count=m_count,
+            hull_cost=m_cost
         ))
 
     system.add_unit(new_unit)

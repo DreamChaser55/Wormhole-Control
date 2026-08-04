@@ -475,12 +475,17 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         errors = t.validate()
         self.assertFalse(any("Adaptive Forcefield" in e for e in errors))
 
-    def test_capture_unit_requires_no_component(self):
-        """Capture Unit ability requires no extra components."""
+    def test_capture_unit_requires_marines_component(self):
+        """Capture Unit ability requires has_marines_component."""
         t = CustomUnitTemplate("TEST_CAPTURE_UNIT", "Test Capture Unit", HullSize.MEDIUM)
         t.components.has_engine = True
         t.components.has_ability_component = True
         t.components.abilities = ["capture_unit"]
+        errors = t.validate()
+        self.assertTrue(any("Capture Unit" in e and "has_marines_component" in e for e in errors))
+
+        t.components.has_marines_component = True
+        t.components.marines_count = 10
         errors = t.validate()
         self.assertFalse(any("Capture Unit" in e for e in errors))
 

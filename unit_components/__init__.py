@@ -32,6 +32,7 @@ from .abilities import (
 from .constructor import BuildableUnit, Constructor, UNIT_TEMPLATES, instantiate_unit_from_template
 from .sensors import Sensors
 from .minelayer import MinelayerComponent
+from .marines import MarinesComponent
 
 __all__ = [
     "HyperdriveType",
@@ -70,6 +71,7 @@ __all__ = [
     "instantiate_unit_from_template",
     "Sensors",
     "MinelayerComponent",
+    "MarinesComponent",
     "random",
 ]
 

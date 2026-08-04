@@ -56,6 +56,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_strikecraft_bay",
         "has_antimatter_harvester",
         "has_minelayer_component",
+        "has_marines_component",
     },
     HullSize.TINY: {
         "has_inhibitor",
@@ -182,6 +183,9 @@ HYPERDRIVE_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
 # Abilities: base cost + cost per selected ability
 ABILITY_BASE_COST: int = 10
 ABILITY_COST_PER_ABILITY: int = 5
+
+# Marines: hull cost per marine
+MARINES_HULL_COST_PER_MARINE: float = 1.0
 
 
 # --------------------------------------------------------------------------
@@ -323,6 +327,13 @@ def calc_inhibitor_hull_cost(radius: float) -> float:
     return float(radius / INHIBITOR_RADIUS_PER_HULL_POINT)
 
 
+def calc_marines_hull_cost(marines_count: int) -> float:
+    """Compute the hull cost of a Marines component from marines_count."""
+    if marines_count <= 0:
+        return 0.0
+    return float(marines_count * MARINES_HULL_COST_PER_MARINE)
+
+
 def get_hyperdrive_system_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
     """Compute hyperdrive antimatter cost for a system jump based on hull size."""
     multiplier = HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
@@ -452,6 +463,10 @@ class ComponentConfig:
     has_minelayer_component: bool = False
     minelayer_hull_cost: float = MINELAYER_HULL_COST
 
+    # Marines
+    has_marines_component: bool = False
+    marines_count: int = 10
+
 
     # ------------------------------------------------------------------
     # Computed hull-cost properties for dynamic components
@@ -553,6 +568,13 @@ class ComponentConfig:
             return 0.0
         return calc_inhibitor_hull_cost(self.inhibitor_radius)
 
+    @property
+    def marines_hull_cost(self) -> float:
+        """Hull cost of Marines, computed from marines_count."""
+        if not self.has_marines_component:
+            return 0.0
+        return calc_marines_hull_cost(self.marines_count)
+
 
 
 # --------------------------------------------------------------------------
@@ -611,6 +633,7 @@ class CustomUnitTemplate:
         if c.has_ability_component:             total += c.ability_hull_cost
         if c.has_sensors:                       total += c.sensors_hull_cost
         if c.has_minelayer_component:           total += c.minelayer_hull_cost
+        if c.has_marines_component:             total += c.marines_hull_cost
         return total
 
 
@@ -661,12 +684,16 @@ class CustomUnitTemplate:
             "has_ability_component": c.has_ability_component,
             "has_antimatter_harvester": c.has_antimatter_harvester,
             "has_minelayer_component": c.has_minelayer_component,
+            "has_marines_component": c.has_marines_component,
         }
         for flag, enabled in comp_flags.items():
             if enabled and flag in restricted:
                 errors.append(
                     f"Component '{flag}' is not allowed on {self.hull_size.name} hull."
                 )
+
+        if c.has_marines_component and c.marines_count < 1:
+            errors.append("Marines count must be at least 1.")
 
         # Validate Strikecraft Wing wing_type and turret variants
         if self.hull_size == HullSize.STRIKECRAFT_WING:
@@ -715,7 +742,7 @@ class CustomUnitTemplate:
             c.has_colony_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
             c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
-            c.has_sensors, c.has_minelayer_component,
+            c.has_sensors, c.has_minelayer_component, c.has_marines_component,
         ])
 
 
@@ -957,6 +984,10 @@ class CustomTemplateManager:
             "has_minelayer_component": c.has_minelayer_component,
             "minelayer_hull_cost": c.minelayer_hull_cost,
 
+            "has_marines_component": c.has_marines_component,
+            "marines_count": c.marines_count,
+            "marines_hull_cost": c.marines_hull_cost,
+
             "is_custom": True,  # marker so we know it's player-designed
         }
         return d
@@ -1052,6 +1083,9 @@ class CustomTemplateManager:
 
             has_minelayer_component=d.get("has_minelayer_component", False),
             minelayer_hull_cost=float(d.get("minelayer_hull_cost", MINELAYER_HULL_COST)),
+
+            has_marines_component=d.get("has_marines_component", False),
+            marines_count=int(d.get("marines_count", 10)),
         )
 
 

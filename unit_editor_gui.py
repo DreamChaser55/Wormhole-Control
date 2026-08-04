@@ -62,6 +62,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_ability_component",     "label": "Abilities",          "cost_key": "ability_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
     {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2.0,  "is_dynamic": True},
     {"key": "has_minelayer_component",   "label": "Minelayer",          "cost_key": "minelayer_hull_cost",        "default_cost": 15.0, "is_dynamic": False},
+    {"key": "has_marines_component",     "label": "Marines",            "cost_key": "marines_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
 ]
 
 
@@ -893,6 +894,24 @@ class UnitEditorWindow:
         self._inhibitor_radius_entry.set_text(str(int(self._comp.inhibitor_radius)))
         self._details_groups["has_inhibitor"].extend([lbl_inhr, self._inhibitor_radius_entry])
 
+        # --- Marines ---
+        y_mar = c3y_base
+        lbl_mar = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(c3x, y_mar, c3w, small_h),
+            text="Marines Count:",
+            manager=self.manager,
+            container=self._panel,
+            object_id="#comp_cost_label",
+        )
+        self._marines_count_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(c3x, y_mar + small_h + 2, c3w, entry_h),
+            manager=self.manager,
+            container=self._panel,
+            object_id="#turret_entry",
+        )
+        self._marines_count_entry.set_text(str(int(self._comp.marines_count)))
+        self._details_groups["has_marines_component"].extend([lbl_mar, self._marines_count_entry])
+
         # --- 12. Abilities ---
         y_ab = c3y_base
         abil_hdr = pygame_gui.elements.UILabel(
@@ -1278,6 +1297,14 @@ class UnitEditorWindow:
         except ValueError:
             pass
 
+    def _read_marines_params(self) -> None:
+        """Read marines count from entry widget and write to _comp."""
+        try:
+            count = int(self._marines_count_entry.get_text()) if getattr(self, '_marines_count_entry', None) else 10
+            self._comp.marines_count = max(1, count)
+        except ValueError:
+            pass
+
 
     # ------------------------------------------------------------------
     # Internal helpers — cost tracking
@@ -1319,6 +1346,7 @@ class UnitEditorWindow:
             "has_hangar":             c.hangar_hull_cost,
             "has_strikecraft_bay":    c.strikecraft_bay_hull_cost,
             "has_inhibitor":          c.inhibitor_hull_cost,
+            "has_marines_component":  c.marines_hull_cost,
         }
 
         for key, computed_cost in dynamic_values.items():
@@ -1613,6 +1641,7 @@ class UnitEditorWindow:
         self._read_hangar_params()
         self._read_strikecraft_bay_params()
         self._read_inhibitor_params()
+        self._read_marines_params()
         self._comp.turrets = self._turrets
         self._comp.abilities = list(self._selected_abilities)
 
@@ -1698,6 +1727,8 @@ class UnitEditorWindow:
             self._strikecraft_bay_slots_entry.set_text(str(int(self._comp.strikecraft_bay_slots)))
         if getattr(self, '_inhibitor_radius_entry', None):
             self._inhibitor_radius_entry.set_text(str(int(self._comp.inhibitor_radius)))
+        if getattr(self, '_marines_count_entry', None):
+            self._marines_count_entry.set_text(str(int(self._comp.marines_count)))
 
 
         # Rebuild hull dropdown selection
@@ -1829,6 +1860,10 @@ class UnitEditorWindow:
         # Defenses detail
         if c.has_defenses:
             lines.append(f"    armor={c.armor}  shields={c.shields}  PD={c.point_defense}")
+
+        # Marines detail
+        if c.has_marines_component:
+            lines.append(f"    marines_count={c.marines_count}")
 
         if self._turrets:
             lines.append("")
