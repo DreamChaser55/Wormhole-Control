@@ -4,6 +4,7 @@ import dataclasses
 
 from .base import UnitComponent
 from geometry import distance
+from constants import MINING_RATE_PER_HULL_POINT, MINING_CARGO_PER_HULL_POINT
 
 if TYPE_CHECKING:
     from entities import Unit, CelestialBody
@@ -31,6 +32,13 @@ class MiningComponent(UnitComponent):
         self.raw_crystal_cargo = 0.0
         self.max_cargo = max_cargo
         self.mining_target = None
+
+    @staticmethod
+    def calc_hull_cost(mining_rate: float, max_cargo: float) -> float:
+        """Compute the hull cost of a Mining component from mining_rate and max_mining_cargo."""
+        rate_cost = (mining_rate / MINING_RATE_PER_HULL_POINT) if mining_rate > 0 else 0.0
+        cargo_cost = (max_cargo / MINING_CARGO_PER_HULL_POINT) if max_cargo > 0 else 0.0
+        return float(rate_cost + cargo_cost)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

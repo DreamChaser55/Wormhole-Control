@@ -17,6 +17,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+BASE_TURRET_COST: float = 1.0          # flat per turret
+DMG_PER_POINT: float = 5.0             # hull points per unit of damage
+RANGE_PER_POINT: float = 100.0         # hull points per unit of range
+COOLDOWN_BONUS: float = 2.0            # hull points granted by short cooldown
+
+
 @dataclasses.dataclass
 class Turret:
     """
@@ -95,6 +101,31 @@ class Weapons(UnitComponent):
     def __init__(self, unit: 'Unit', hull_cost: float = 0.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.turrets = []
+
+    @staticmethod
+    def calc_turret_hull_cost(turret: typing.Any) -> float:
+        """Compute the hull cost of a single turret based on its stats."""
+        effective_range = turret.range
+        effective_cooldown = max(1, turret.cooldown)
+
+        if getattr(turret, "variant", "").upper() == "LONG_RANGE":
+            effective_range *= 3.0
+            effective_cooldown *= 3
+
+        cost = (
+            BASE_TURRET_COST
+            + turret.damage / DMG_PER_POINT
+            + effective_range / RANGE_PER_POINT
+            + COOLDOWN_BONUS / effective_cooldown
+        )
+        return float(cost)
+
+    @staticmethod
+    def calc_hull_cost(turrets: typing.List[typing.Any]) -> float:
+        """Compute the total hull cost of a Weapons component from its turrets."""
+        if not turrets:
+            return 0.0
+        return sum(Weapons.calc_turret_hull_cost(t) for t in turrets)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

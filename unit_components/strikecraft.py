@@ -10,7 +10,7 @@ from .enums import WingType, TurretType, TurretVariant
 from .movement import Engines
 from .weapons import Weapons, Turret
 from geometry import Position
-from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL
+from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL, STRIKECRAFT_BAY_HULL_COST_PER_SLOT
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -86,6 +86,13 @@ class StrikecraftBayComponent(UnitComponent):
         self.replenishing_unit = None
         self.replenish_progress = 0
         self.build_wing_type = WingType.FIGHTER
+
+    @staticmethod
+    def calc_hull_cost(slots: int) -> float:
+        """Compute the hull cost of a Strikecraft Bay component from strikecraft_bay_slots."""
+        if slots <= 0:
+            return 0.0
+        return float(slots * STRIKECRAFT_BAY_HULL_COST_PER_SLOT)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

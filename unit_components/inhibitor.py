@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
+from constants import INHIBITOR_RADIUS_PER_HULL_POINT
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -22,6 +23,13 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         super().__init__(unit, hull_cost=hull_cost)
         self.radius = radius
         self.is_active = False
+
+    @staticmethod
+    def calc_hull_cost(radius: float) -> float:
+        """Compute the hull cost of a Hyperspace Inhibitor component from inhibitor_radius."""
+        if radius <= 0:
+            return 0.0
+        return float(radius / INHIBITOR_RADIUS_PER_HULL_POINT)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

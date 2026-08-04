@@ -135,125 +135,54 @@ COMPONENT_COST_PER_HULL_POINT = 30  # credits per hull capacity point used
 
 
 # --------------------------------------------------------------------------
-# Dynamic hull-cost tuning constants
+# Dynamic hull-cost tuning constants & Component imports
 # --------------------------------------------------------------------------
-
-# Engines: 1 hull point per SPEED_PER_HULL_POINT units of speed (at baseline MEDIUM size).
-# Speed 100 on MEDIUM → hull cost 5.
-SPEED_PER_HULL_POINT: float = 20.0
-
-ENGINE_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
-    HullSize.STRIKECRAFT_WING: 0.4,
-    HullSize.TINY: 0.6,
-    HullSize.SMALL: 0.8,
-    HullSize.MEDIUM: 1.0,
-    HullSize.LARGE: 1.5,
-    HullSize.HUGE: 2.0,
-}
-
-# Weapons: per-turret formula components
-BASE_TURRET_COST: float = 1.0          # flat per turret
-DMG_PER_POINT: float = 5.0             # hull points per unit of damage
-RANGE_PER_POINT: float = 100.0         # hull points per unit of range
-COOLDOWN_BONUS: float = 2.0            # hull points granted by short cooldown
-
-# Defenses: 1 hull point per DEFENSE_PER_HULL_POINT total defense rating.
-# armor=5 + shields=5 + pd=5 → hull cost 5.
-DEFENSE_PER_HULL_POINT: float = 3.0
-
-# Hyperdrive: base costs per drive type + cost per jump range unit.
-HYPERDRIVE_BASE_COST: Dict[str, int] = {
-    "BASIC": 3,
-    "ADVANCED": 7,
-}
-HYPERDRIVE_RANGE_PER_POINT: float = 5.0   # jump range units per hull point
-
-HYPERDRIVE_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
-    HullSize.STRIKECRAFT_WING: 0.4,
-    HullSize.TINY: 0.6,
-    HullSize.SMALL: 0.8,
-    HullSize.MEDIUM: 1.0,
-    HullSize.LARGE: 1.5,
-    HullSize.HUGE: 2.0,
-}
-
-# Abilities: base cost + cost per selected ability
-ABILITY_BASE_COST: int = 10
-ABILITY_COST_PER_ABILITY: int = 5
-
-# Marines: hull cost per marine
-MARINES_HULL_COST_PER_MARINE: float = 1.0
+from unit_components.movement import (
+    Engines, Hyperdrive, SPEED_PER_HULL_POINT, ENGINE_HULL_SIZE_MULTIPLIERS,
+    HYPERDRIVE_BASE_COST, HYPERDRIVE_RANGE_PER_POINT, HYPERDRIVE_HULL_SIZE_MULTIPLIERS
+)
+from unit_components.weapons import (
+    Weapons, BASE_TURRET_COST, DMG_PER_POINT, RANGE_PER_POINT, COOLDOWN_BONUS
+)
+from unit_components.defenses import Defenses, DEFENSE_PER_HULL_POINT
+from unit_components.antimatter import AntimatterStorage
+from unit_components.sensors import Sensors
+from unit_components.hangar import HangarComponent
+from unit_components.strikecraft import StrikecraftBayComponent
+from unit_components.repair import RepairComponent
+from unit_components.mining import MiningComponent
+from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
+from unit_components.marines import MarinesComponent, MARINES_HULL_COST_PER_MARINE
+from unit_components.abilities.component import AbilityComponent, ABILITY_BASE_COST, ABILITY_COST_PER_ABILITY
 
 
 # --------------------------------------------------------------------------
-# Dynamic hull-cost calculation functions
+# Dynamic hull-cost calculation functions (delegated to component classes)
 # --------------------------------------------------------------------------
 
 def calc_engine_hull_cost(speed: float, hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
-    """Compute the hull cost of an Engines component from its speed and unit hull size.
-
-    Formula: (speed / SPEED_PER_HULL_POINT) * multiplier, minimum 0.0 when speed <= 0.
-    """
-    if speed <= 0:
-        return 0.0
-    multiplier = ENGINE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
-    return (speed / SPEED_PER_HULL_POINT) * multiplier
+    """Compute the hull cost of an Engines component from its speed and unit hull size."""
+    return Engines.calc_hull_cost(speed, hull_size)
 
 
 def calc_antimatter_hull_cost(capacity: float) -> float:
-    """Compute the hull cost of an Antimatter Storage component from its capacity.
-
-    Formula: capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT for positive capacity.
-    """
-    if capacity <= 0:
-        return 0.0
-    return capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT
+    """Compute the hull cost of an Antimatter Storage component from its capacity."""
+    return AntimatterStorage.calc_hull_cost(capacity)
 
 
 def calc_turret_hull_cost(turret: 'TurretConfig') -> float:
-    """Compute the hull cost of a single turret based on its stats.
-
-    Formula:
-        BASE_TURRET_COST
-        + damage / DMG_PER_POINT
-        + range / RANGE_PER_POINT
-        + COOLDOWN_BONUS / max(1, cooldown)
-    """
-    effective_range = turret.range
-    effective_cooldown = max(1, turret.cooldown)
-
-    if turret.variant.upper() == "LONG_RANGE":
-        effective_range *= 3.0
-        effective_cooldown *= 3
-
-    cost = (
-        BASE_TURRET_COST
-        + turret.damage / DMG_PER_POINT
-        + effective_range / RANGE_PER_POINT
-        + COOLDOWN_BONUS / effective_cooldown
-    )
-    return float(cost)
+    """Compute the hull cost of a single turret based on its stats."""
+    return Weapons.calc_turret_hull_cost(turret)
 
 
 def calc_weapons_hull_cost(turrets: List['TurretConfig']) -> float:
-    """Compute the total hull cost of a Weapons component from its turrets.
-
-    Returns 0.0 if no turrets are configured.
-    """
-    if not turrets:
-        return 0.0
-    return sum(calc_turret_hull_cost(t) for t in turrets)
+    """Compute the total hull cost of a Weapons component from its turrets."""
+    return Weapons.calc_hull_cost(turrets)
 
 
 def calc_defenses_hull_cost(armor: int, shields: int, point_defense: int) -> float:
-    """Compute the hull cost of a Defenses component from its stats.
-
-    Formula: (armor + shields + point_defense) / DEFENSE_PER_HULL_POINT.
-    """
-    total = armor + shields + point_defense
-    if total <= 0:
-        return 0.0
-    return total / DEFENSE_PER_HULL_POINT
+    """Compute the hull cost of a Defenses component from its stats."""
+    return Defenses.calc_hull_cost(armor, shields, point_defense)
 
 
 def calc_hyperdrive_hull_cost(
@@ -261,74 +190,48 @@ def calc_hyperdrive_hull_cost(
     jump_range: int,
     hull_size: Optional[HullSize] = HullSize.MEDIUM,
 ) -> float:
-    """Compute the hull cost of a Hyperdrive component.
-
-    Formula: (HYPERDRIVE_BASE_COST[drive_type] + max(0, jump_range) / RANGE_PER_POINT) * multiplier.
-    """
-    base = HYPERDRIVE_BASE_COST.get(drive_type.upper(), HYPERDRIVE_BASE_COST["BASIC"])
-    range_cost = max(0, jump_range) / HYPERDRIVE_RANGE_PER_POINT
-    raw_cost = base + range_cost
-    multiplier = HYPERDRIVE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
-    return raw_cost * multiplier
+    """Compute the hull cost of a Hyperdrive component."""
+    return Hyperdrive.calc_hull_cost(drive_type, jump_range, hull_size)
 
 
 def calc_ability_hull_cost(abilities: List[str]) -> float:
-    """Compute the hull cost of an Ability component from its list of selected abilities.
-
-    Formula: ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY
-    """
-    return float(ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY)
+    """Compute the hull cost of an Ability component from its list of selected abilities."""
+    return AbilityComponent.calc_hull_cost(abilities)
 
 
 def calc_sensors_hull_cost(short_range_radius: float, long_range_hexes: int) -> float:
-    """Compute the hull cost of a Sensors component upgrade.
-
-    Formula: (short_range_radius / SENSOR_RANGE_PER_HULL_POINT) + long_range_hexes * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
-    """
-    base = (short_range_radius / SENSOR_RANGE_PER_HULL_POINT) if short_range_radius > 0 else 0.0
-    return base + max(0, long_range_hexes) * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
+    """Compute the hull cost of a Sensors component upgrade."""
+    return Sensors.calc_hull_cost(short_range_radius, long_range_hexes)
 
 
 def calc_hangar_hull_cost(slots: int) -> float:
     """Compute the hull cost of a Hangar component from hangar_slots."""
-    if slots <= 0:
-        return 0.0
-    return float(slots * HANGAR_HULL_COST_PER_SLOT)
+    return HangarComponent.calc_hull_cost(slots)
 
 
 def calc_strikecraft_bay_hull_cost(slots: int) -> float:
     """Compute the hull cost of a Strikecraft Bay component from strikecraft_bay_slots."""
-    if slots <= 0:
-        return 0.0
-    return float(slots * STRIKECRAFT_BAY_HULL_COST_PER_SLOT)
+    return StrikecraftBayComponent.calc_hull_cost(slots)
 
 
 def calc_repair_hull_cost(repair_rate: float) -> float:
     """Compute the hull cost of a Repair component from repair_rate."""
-    if repair_rate <= 0:
-        return 0.0
-    return float(repair_rate / REPAIR_RATE_PER_HULL_POINT)
+    return RepairComponent.calc_hull_cost(repair_rate)
 
 
 def calc_mining_hull_cost(mining_rate: float, max_cargo: float) -> float:
     """Compute the hull cost of a Mining component from mining_rate and max_mining_cargo."""
-    rate_cost = (mining_rate / MINING_RATE_PER_HULL_POINT) if mining_rate > 0 else 0.0
-    cargo_cost = (max_cargo / MINING_CARGO_PER_HULL_POINT) if max_cargo > 0 else 0.0
-    return float(rate_cost + cargo_cost)
+    return MiningComponent.calc_hull_cost(mining_rate, max_cargo)
 
 
 def calc_inhibitor_hull_cost(radius: float) -> float:
     """Compute the hull cost of a Hyperspace Inhibitor component from inhibitor_radius."""
-    if radius <= 0:
-        return 0.0
-    return float(radius / INHIBITOR_RADIUS_PER_HULL_POINT)
+    return HyperspaceInhibitionFieldEmitter.calc_hull_cost(radius)
 
 
 def calc_marines_hull_cost(marines_count: int) -> float:
     """Compute the hull cost of a Marines component from marines_count."""
-    if marines_count <= 0:
-        return 0.0
-    return float(marines_count * MARINES_HULL_COST_PER_MARINE)
+    return MarinesComponent.calc_hull_cost(marines_count)
 
 
 def get_hyperdrive_system_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:

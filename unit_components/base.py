@@ -53,3 +53,9 @@ class UnitComponent:
             }]
         return []
 
+    @staticmethod
+    def calc_hull_cost(*args, **kwargs) -> float:
+        """Compute the dynamic hull cost of the component from its design parameters."""
+        return 0.0
+
+

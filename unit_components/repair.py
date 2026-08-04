@@ -4,7 +4,7 @@ import dataclasses
 
 from .base import UnitComponent
 from geometry import distance
-from constants import REPAIR_CREDIT_COST_PER_HP
+from constants import REPAIR_CREDIT_COST_PER_HP, REPAIR_RATE_PER_HULL_POINT
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -28,6 +28,13 @@ class RepairComponent(UnitComponent):
         self.repair_range = repair_range
         self.credit_cost_per_hp = credit_cost_per_hp
         self.target = None
+
+    @staticmethod
+    def calc_hull_cost(repair_rate: float) -> float:
+        """Compute the hull cost of a Repair component from repair_rate."""
+        if repair_rate <= 0:
+            return 0.0
+        return float(repair_rate / REPAIR_RATE_PER_HULL_POINT)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

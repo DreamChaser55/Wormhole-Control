@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+ABILITY_BASE_COST: int = 10
+ABILITY_COST_PER_ABILITY: int = 5
+
 
 class AbilityComponent(UnitComponent):
     """
@@ -38,6 +41,11 @@ class AbilityComponent(UnitComponent):
                 self.abilities[atype] = cls()
             else:
                 logger.warning(f"[AbilityComponent] Unknown ability type: {atype}")
+
+    @staticmethod
+    def calc_hull_cost(abilities: List[str]) -> float:
+        """Compute the hull cost of an Ability component from its list of selected abilities."""
+        return float(ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"

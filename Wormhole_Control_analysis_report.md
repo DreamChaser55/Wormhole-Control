@@ -24,7 +24,6 @@ Several files have grown excessively large, combining rendering, state handling,
 4. [gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/gui.py) (~77 KB, ~1,800 lines): Combines top bar, sidebar, context menu, and build menu elements.
 
 ### 2.2 Logic Duplication
-- **Dynamic Component Cost Calculations**: Component hull cost formulas (Engines, Weapons, Defenses, Hyperdrive, Sensors, Repairs, Mining) are currently implemented in standalone functions inside [custom_unit_templates.py](file:///d:/Programming/Github_repos/Wormhole-Control/custom_unit_templates.py). Moving cost calculation logic into the component classes themselves (`UnitComponent.calc_hull_cost()`) would enforce single-responsibility and eliminate duplicate checks in template generation.
 - **Coordinate Conversion Clamping**: Sector-to-pixel coordinate conversion and bounding calculations are duplicated between `sector_utils.py`, `geometry.py`, and `input_processor.py`.
 
 ---
@@ -68,8 +67,6 @@ While major classes have docstrings, several internal helper functions and event
      - `SectorCelestialRenderer` (planets, stars, nebulae, storms)
      - `SectorEntityRenderer` (ships, stations, minefields)
      - `SectorOverlayRenderer` (selection brackets, order path lines, sensor range circles)
-2. **Encapsulated Component Costs**:
-   - Move dynamic hull cost logic directly onto component classes (`Component.calculate_cost()`).
 
 ### 5.2 Performance Optimizations
 1. **Spatial Hash / Quadtree for Sector View**:
@@ -89,12 +86,11 @@ While major classes have docstrings, several internal helper functions and event
 
 ```mermaid
 flowchart TD
-    A[Add Missing Top-Level Docstrings] --> B[Encapsulate Component Costs onto Component Classes]
-    B --> C[Refactor Monolithic Sector Renderer]
+    A[Add Missing Top-Level Docstrings] --> B[Refactor Monolithic Sector Renderer]
 ```
 
 1. **Docstrings & Code Quality**:
    - Standardize top-level docstrings for internal methods across `game.py`, `gui.py`, and `unit_editor_gui.py`.
 2. **Refactoring & Polish**:
-   - Encapsulate cost calculation functions onto component classes (`UnitComponent.calc_hull_cost()`).
    - Modularize `sector_renderer.py` into dedicated sub-renderers.
+

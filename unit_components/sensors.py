@@ -1,6 +1,10 @@
 from typing import TYPE_CHECKING
 from .base import UnitComponent
-from constants import DEFAULT_SENSOR_SHORT_RANGE
+from constants import (
+    DEFAULT_SENSOR_SHORT_RANGE,
+    SENSOR_RANGE_PER_HULL_POINT,
+    SENSOR_LONG_RANGE_HULL_COST_PER_HEX
+)
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -15,6 +19,12 @@ class Sensors(UnitComponent):
         super().__init__(unit, hull_cost)
         self.short_range_radius: float = short_range_radius
         self.long_range_hexes: int = long_range_hexes
+
+    @staticmethod
+    def calc_hull_cost(short_range_radius: float, long_range_hexes: int) -> float:
+        """Compute the hull cost of a Sensors component upgrade."""
+        base = (short_range_radius / SENSOR_RANGE_PER_HULL_POINT) if short_range_radius > 0 else 0.0
+        return base + max(0, long_range_hexes) * SENSOR_LONG_RANGE_HULL_COST_PER_HEX
 
     @property
     def has_short_range(self) -> bool:

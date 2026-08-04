@@ -380,3 +380,64 @@ class TestValidation:
         t = CustomUnitTemplate("X", "X", HullSize.SMALL, comp)
         errors = t.validate()
         assert not any("jump range" in e.lower() for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Direct Component Class calc_hull_cost Methods
+# ---------------------------------------------------------------------------
+
+class TestComponentClassCostMethods:
+    def test_engines_calc_hull_cost(self):
+        from unit_components.movement import Engines
+        assert Engines.calc_hull_cost(100.0, HullSize.MEDIUM) == 5.0
+
+    def test_hyperdrive_calc_hull_cost(self):
+        from unit_components.movement import Hyperdrive
+        assert Hyperdrive.calc_hull_cost("BASIC", 0, HullSize.MEDIUM) == 3.0
+
+    def test_weapons_calc_hull_cost(self):
+        from unit_components.weapons import Weapons
+        t = TurretConfig("MASS_DRIVER", 10.0, 500.0, 2)
+        assert Weapons.calc_turret_hull_cost(t) > 0.0
+        assert Weapons.calc_hull_cost([t]) == Weapons.calc_turret_hull_cost(t)
+
+    def test_defenses_calc_hull_cost(self):
+        from unit_components.defenses import Defenses
+        assert Defenses.calc_hull_cost(5, 5, 5) == 5.0
+
+    def test_antimatter_calc_hull_cost(self):
+        from unit_components.antimatter import AntimatterStorage
+        assert AntimatterStorage.calc_hull_cost(100.0) == 5.0
+
+    def test_sensors_calc_hull_cost(self):
+        from unit_components.sensors import Sensors
+        assert pytest.approx(Sensors.calc_hull_cost(300.0, 0)) == 0.3
+
+    def test_hangar_calc_hull_cost(self):
+        from unit_components.hangar import HangarComponent
+        assert HangarComponent.calc_hull_cost(2) == 20.0
+
+    def test_strikecraft_bay_calc_hull_cost(self):
+        from unit_components.strikecraft import StrikecraftBayComponent
+        assert StrikecraftBayComponent.calc_hull_cost(2) == 15.0
+
+    def test_repair_calc_hull_cost(self):
+        from unit_components.repair import RepairComponent
+        assert pytest.approx(RepairComponent.calc_hull_cost(10.0), rel=1e-3) == 14.9925
+
+    def test_mining_calc_hull_cost(self):
+        from unit_components.mining import MiningComponent
+        assert MiningComponent.calc_hull_cost(10.0, 100.0) == 10.0
+
+    def test_inhibitor_calc_hull_cost(self):
+        from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
+        assert HyperspaceInhibitionFieldEmitter.calc_hull_cost(50.0) == 10.0
+
+    def test_marines_calc_hull_cost(self):
+        from unit_components.marines import MarinesComponent
+        assert MarinesComponent.calc_hull_cost(10) == 10.0
+
+    def test_ability_calc_hull_cost(self):
+        from unit_components.abilities.component import AbilityComponent
+        assert AbilityComponent.calc_hull_cost(["repair_cloud"]) == 15.0
+

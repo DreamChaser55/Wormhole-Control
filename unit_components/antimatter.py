@@ -7,7 +7,7 @@ from geometry import distance
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_REGEN,
     DEFAULT_ANTIMATTER_HARVEST_RATE, ANTIMATTER_HARVEST_RANGE,
-    ANTIMATTER_HARVESTER_HULL_COST
+    ANTIMATTER_HARVESTER_HULL_COST, ANTIMATTER_CAPACITY_PER_HULL_POINT
 )
 
 if TYPE_CHECKING:
@@ -28,12 +28,18 @@ class AntimatterStorage(UnitComponent):
 
     def __init__(self, unit: 'Unit', max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY, regen_rate: float = DEFAULT_ANTIMATTER_REGEN, hull_cost: float = 0.0):
         if hull_cost == 0.0:
-            from custom_unit_templates import calc_antimatter_hull_cost
-            hull_cost = calc_antimatter_hull_cost(max_capacity)
+            hull_cost = AntimatterStorage.calc_hull_cost(max_capacity)
         super().__init__(unit, hull_cost=hull_cost)
         self.max_capacity = max_capacity
         self.regen_rate = regen_rate
         self.current_amount = max_capacity
+
+    @staticmethod
+    def calc_hull_cost(capacity: float) -> float:
+        """Compute the hull cost of an Antimatter Storage component from its capacity."""
+        if capacity <= 0:
+            return 0.0
+        return capacity / ANTIMATTER_CAPACITY_PER_HULL_POINT
 
     def consume(self, amount: float) -> bool:
         """Deducts antimatter. Returns True on success, False if insufficient."""

@@ -6,7 +6,7 @@ import dataclasses
 
 from .base import UnitComponent
 from geometry import Position
-from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL
+from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL, HANGAR_HULL_COST_PER_SLOT
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -26,6 +26,13 @@ class HangarComponent(UnitComponent):
         super().__init__(unit, hull_cost=hull_cost)
         self.max_slots = max_slots
         self.docked_units = []
+
+    @staticmethod
+    def calc_hull_cost(slots: int) -> float:
+        """Compute the hull cost of a Hangar component from hangar_slots."""
+        if slots <= 0:
+            return 0.0
+        return float(slots * HANGAR_HULL_COST_PER_SLOT)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

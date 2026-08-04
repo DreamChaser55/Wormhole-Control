@@ -9,7 +9,7 @@ from utils import HexCoord
 from geometry import Position
 from constants import (
     DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE,
-    XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
+    XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS, HullSize
 )
 
 if TYPE_CHECKING:
@@ -17,6 +17,31 @@ if TYPE_CHECKING:
     from game import Game
 
 logger = logging.getLogger(__name__)
+
+SPEED_PER_HULL_POINT: float = 20.0
+ENGINE_HULL_SIZE_MULTIPLIERS: typing.Dict[HullSize, float] = {
+    HullSize.STRIKECRAFT_WING: 0.4,
+    HullSize.TINY: 0.6,
+    HullSize.SMALL: 0.8,
+    HullSize.MEDIUM: 1.0,
+    HullSize.LARGE: 1.5,
+    HullSize.HUGE: 2.0,
+}
+
+HYPERDRIVE_BASE_COST: typing.Dict[str, int] = {
+    "BASIC": 3,
+    "ADVANCED": 7,
+}
+HYPERDRIVE_RANGE_PER_POINT: float = 5.0
+HYPERDRIVE_HULL_SIZE_MULTIPLIERS: typing.Dict[HullSize, float] = {
+    HullSize.STRIKECRAFT_WING: 0.4,
+    HullSize.TINY: 0.6,
+    HullSize.SMALL: 0.8,
+    HullSize.MEDIUM: 1.0,
+    HullSize.LARGE: 1.5,
+    HullSize.HUGE: 2.0,
+}
+
 
 class Engines(UnitComponent):
     """Engines for sublight (non-faster-than-light) travel, within a single sector."""
@@ -30,6 +55,14 @@ class Engines(UnitComponent):
         super().__init__(unit, hull_cost=hull_cost)
         self.speed = speed
         self.move_target = None
+
+    @staticmethod
+    def calc_hull_cost(speed: float, hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
+        """Compute the hull cost of an Engines component from its speed and unit hull size."""
+        if speed <= 0:
+            return 0.0
+        multiplier = ENGINE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
+        return (speed / SPEED_PER_HULL_POINT) * multiplier
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
@@ -81,6 +114,19 @@ class Hyperdrive(UnitComponent):
         self.jump_status = JumpStatus.READY
         self.recharge_time_remaining = 0
         self.RECHARGE_DURATION = recharge_duration
+
+    @staticmethod
+    def calc_hull_cost(
+        drive_type: str,
+        jump_range: int,
+        hull_size: Optional[HullSize] = HullSize.MEDIUM,
+    ) -> float:
+        """Compute the hull cost of a Hyperdrive component."""
+        base = HYPERDRIVE_BASE_COST.get(drive_type.upper(), HYPERDRIVE_BASE_COST["BASIC"])
+        range_cost = max(0, jump_range) / HYPERDRIVE_RANGE_PER_POINT
+        raw_cost = base + range_cost
+        multiplier = HYPERDRIVE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
+        return raw_cost * multiplier
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

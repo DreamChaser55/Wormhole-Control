@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from entities import Unit
     from game import Game
 
+DEFENSE_PER_HULL_POINT: float = 3.0
+
 @dataclasses.dataclass
 class Defenses(UnitComponent):
     """
@@ -30,6 +32,14 @@ class Defenses(UnitComponent):
         self.armor = armor
         self.shields = shields
         self.point_defense = point_defense
+
+    @staticmethod
+    def calc_hull_cost(armor: int, shields: int, point_defense: int) -> float:
+        """Compute the hull cost of a Defenses component from its stats."""
+        total = armor + shields + point_defense
+        if total <= 0:
+            return 0.0
+        return total / DEFENSE_PER_HULL_POINT
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
