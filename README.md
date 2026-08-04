@@ -123,8 +123,13 @@ Wormhole Control/
 └── rendering/                # Specialized rendering modules
     ├── drawing_utils.py      # Basic shape and overlay drawing utilities
     ├── galaxy_renderer.py    # Galaxy view rendering (systems and wormholes)
-    ├── system_renderer.py    # System view rendering (hex grid and celestial bodies)
-    └── sector_renderer.py    # Sector view rendering (detailed display of units and objects)
+    ├── main_menu_renderer.py # Main menu view rendering (titles, buttons, and about screen)
+    ├── sector_renderer.py    # Sector view orchestrator facade delegating to sub-renderers
+    ├── sector_grid_renderer.py     # Tactical grid, sector boundary, and spatial clipping math
+    ├── sector_celestial_renderer.py # Stars, planets, moons, nebulae, storms, and particle fields
+    ├── sector_entity_renderer.py    # Units, hull icons, health bars, minefields, and inhibition fields
+    ├── sector_overlay_renderer.py   # Selection brackets/box, range circles, order lines, and fog of war
+    └── system_renderer.py    # System view rendering (hex grid and celestial bodies)
 ```
 
 ## Game Mechanics
