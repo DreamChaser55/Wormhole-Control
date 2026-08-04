@@ -2,30 +2,20 @@ import pygame
 import math
 from collections import OrderedDict
 from constants import (
-    NEBULA_COLORS, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX,
-    SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR, SECTOR_GRID_COLOR, SECTOR_GRID_SPACING,
-    STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS,
-    STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER,
-    WHITE, YELLOW, CYAN, PURPLE, RED, FOG_PRESENCE_COLOR, FOG_OF_WAR_COLOR,
-    HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE,
-    ICON_DOT_RADIUS, ICON_DOT_SPACING,
-    HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
-    MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, STORM_COLORS,
-    TEXT_SCALE, XP_SPEED_BONUS,
-    MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS,
-    STAR_COLORS
+    SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL, WORMHOLE_RADIUS,
+    FOG_PRESENCE_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR,
+    TEXT_SCALE, XP_SPEED_BONUS
 )
-
 
 from sector_utils import sector_coords_to_pixels
-from geometry import distance, Position
-import random
-from entities import (
-    Star, Planet, Wormhole, Unit, OrderType, OrderStatus, Moon, ColonizableAsteroid, MetalAsteroid, 
-    AsteroidField, IceField, Nebula, Storm, Comet, StarType, PlanetType, DebrisField, Minefield
-)
-from visibility import is_minefield_visible
+from geometry import Position
+from entities import Unit, OrderType, OrderStatus, Minefield
 from rendering.drawing_utils import draw_shape, draw_dotted_line
+
+from rendering.sector_grid_renderer import SectorGridRenderer
+from rendering.sector_celestial_renderer import SectorCelestialRenderer
+from rendering.sector_entity_renderer import SectorEntityRenderer
+from rendering.sector_overlay_renderer import SectorOverlayRenderer
 
 
 MAX_CACHED_STORM_DIAMETER = 512
@@ -80,6 +70,13 @@ class _BoundedSurfaceCache:
 
 
 class SectorViewRenderer:
+    """Facade orchestrator for sector view rendering. Delegates rendering sub-passes to:
+      - SectorGridRenderer (hex grid, boundary, clipping & viewport math)
+      - SectorCelestialRenderer (stars, planets, nebulae, storms, particle fields)
+      - SectorEntityRenderer (ships, stations, minefields, inhibition zones)
+      - SectorOverlayRenderer (selection box/brackets, range circles, order lines, fog of war)
+    """
+
     def __init__(self, game_instance):
         self.game = game_instance
         self.screen = game_instance.screen
@@ -107,310 +104,186 @@ class SectorViewRenderer:
             'fog_full_reveal': 0,
         }
 
-    def _is_circle_off_screen(self, center_px, radius_px):
-        w, h = self.screen.get_size()
-        return (center_px[0] + radius_px < 0 or
-                center_px[0] - radius_px > w or
-                center_px[1] + radius_px < 0 or
-                center_px[1] - radius_px > h)
+        # Instantiate sub-renderers
+        self._grid_renderer = SectorGridRenderer(self)
+        self._celestial_renderer = SectorCelestialRenderer(self)
+        self._entity_renderer = SectorEntityRenderer(self)
+        self._overlay_renderer = SectorOverlayRenderer(self)
 
-    def _get_cached_circle_surface(self, radius, color):
-        # Round to the nearest 2 pixels so that adjacent zoom-animation steps
-        # share the same cache entry instead of generating a new Surface every frame.
-        radius = max(1, (int(radius) + 1) // 2 * 2)
-        if radius <= 0:
-            return None
-        # Convert color to tuple to make it hashable if it is a pygame.Color
-        color_key = (color[0], color[1], color[2], color[3] if len(color) > 3 else 255)
-        key = (radius, color_key)
-        if key in self._circle_surface_cache:
-            return self._circle_surface_cache[key]
-        
-        if len(self._circle_surface_cache) > 2000:
-            self._circle_surface_cache.clear()
-            
-        surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-        pygame.draw.circle(surface, color, (radius, radius), radius)
-        self._circle_surface_cache[key] = surface
-        return surface
+    # -------------------------------------------------------------------------
+    # Lazy property accessors for sub-renderers (supports __new__ without __init__)
+    # -------------------------------------------------------------------------
 
+    def _ensure_caches(self):
+        if not hasattr(self, '_circle_surface_cache') or self._circle_surface_cache is None:
+            self._circle_surface_cache = {}
+        if not hasattr(self, '_font_cache') or self._font_cache is None:
+            self._font_cache = {}
+        if not hasattr(self, '_nebula_master_surfaces') or self._nebula_master_surfaces is None:
+            self._nebula_master_surfaces = {}
+        if not hasattr(self, '_storm_base_circle_surfaces') or self._storm_base_circle_surfaces is None:
+            self._storm_base_circle_surfaces = {}
+        if not hasattr(self, '_scaled_effect_surfaces') or self._scaled_effect_surfaces is None:
+            self._scaled_effect_surfaces = _BoundedSurfaceCache()
+        if not hasattr(self, '_last_cached_sector'):
+            self._last_cached_sector = None
+        if not hasattr(self, '_inhibition_surface'):
+            self._inhibition_surface = None
+        if not hasattr(self, '_fog_of_war_surface'):
+            self._fog_of_war_surface = None
+        if not hasattr(self, '_fog_cache_key'):
+            self._fog_cache_key = None
+        if not hasattr(self, '_fog_blit_rect'):
+            self._fog_blit_rect = None
+        if not hasattr(self, '_storm_scratch_surface'):
+            self._storm_scratch_surface = None
+        if not hasattr(self, '_range_circle_surface'):
+            self._range_circle_surface = None
+        if not hasattr(self, 'zoom_render_stats') or self.zoom_render_stats is None:
+            self.zoom_render_stats = {
+                'cache_hits': 0,
+                'cache_misses': 0,
+                'cache_bytes': 0,
+                'direct_draw_fallbacks': 0,
+                'range_circle_fills': 0,
+                'fog_rebuilds': 0,
+                'fog_cache_hits': 0,
+                'fog_full_reveal': 0,
+            }
+
+    @property
+    def grid_renderer(self):
+        self._ensure_caches()
+        if getattr(self, '_grid_renderer', None) is None:
+            self._grid_renderer = SectorGridRenderer(self)
+        return self._grid_renderer
+
+    @property
+    def celestial_renderer(self):
+        self._ensure_caches()
+        if getattr(self, '_celestial_renderer', None) is None:
+            self._celestial_renderer = SectorCelestialRenderer(self)
+        return self._celestial_renderer
+
+    @property
+    def entity_renderer(self):
+        self._ensure_caches()
+        if getattr(self, '_entity_renderer', None) is None:
+            self._entity_renderer = SectorEntityRenderer(self)
+        return self._entity_renderer
+
+    @property
+    def overlay_renderer(self):
+        self._ensure_caches()
+        if getattr(self, '_overlay_renderer', None) is None:
+            self._overlay_renderer = SectorOverlayRenderer(self)
+        return self._overlay_renderer
+
+    # -------------------------------------------------------------------------
+    # Delegating helper methods for backward compatibility & test monkeypatching
+    # -------------------------------------------------------------------------
 
     def _coords_to_pixels(self, sector_pos):
-        zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
-        pan_offset = self.game.sector_pan_offset
-        if not isinstance(pan_offset, Position):
-            pan_offset = Position(0, 0)
-        try:
-            return sector_coords_to_pixels(sector_pos, zoom, pan_offset)
-        except TypeError:
-            return sector_coords_to_pixels(sector_pos)
+        return self.grid_renderer.coords_to_pixels(sector_pos)
+
+    def _is_circle_off_screen(self, center_px, radius_px):
+        return self.grid_renderer.is_circle_off_screen(center_px, radius_px)
+
+    def _get_cached_circle_surface(self, radius, color):
+        return self.grid_renderer.get_cached_circle_surface(radius, color)
 
     def _effect_zoom_bucket(self, zoom):
-        """Use fewer resampling steps while the camera is actively moving."""
-        target_zoom = getattr(self.game, 'sector_target_zoom', zoom)
-        is_zooming = (isinstance(target_zoom, (int, float)) and
-                      abs(target_zoom - zoom) > 1e-4)
-        step = 0.10 if is_zooming else 0.05
-        return round(zoom / step) * step
+        return self.grid_renderer.effect_zoom_bucket(zoom)
 
     def _compute_visible_scaled_region(self, source, source_center, destination_center, scale):
-        """Shared clipping math used by both the cached and uncached scaling
-        paths: computes the on-screen destination rect actually visible, and
-        the corresponding source sub-rect, so callers never need to transform
-        more of ``source`` than what will actually be blitted.
+        return self.grid_renderer.compute_visible_scaled_region(source, source_center, destination_center, scale)
 
-        Returns ``None`` when nothing is visible, otherwise a tuple of
-        ``(source_rect, (scaled_left, scaled_top), scaled_size)``.
-        """
-        screen_width, screen_height = self.screen.get_size()
-        source_width, source_height = source.get_size()
-        dest_left = destination_center[0] - source_center[0] * scale
-        dest_top = destination_center[1] - source_center[1] * scale
-        dest_right = dest_left + source_width * scale
-        dest_bottom = dest_top + source_height * scale
+    def _blit_visible_scaled_surface(self, source, source_center, destination_center, scale, cache_prefix, smooth=True):
+        return self.grid_renderer.blit_visible_scaled_surface(source, source_center, destination_center, scale, cache_prefix, smooth)
 
-        visible_left = max(0, int(math.floor(dest_left)))
-        visible_top = max(0, int(math.floor(dest_top)))
-        visible_right = min(screen_width, int(math.ceil(dest_right)))
-        visible_bottom = min(screen_height, int(math.ceil(dest_bottom)))
-        if visible_left >= visible_right or visible_top >= visible_bottom:
-            return None
-
-        source_left = max(0, int(math.floor((visible_left - dest_left) / scale)))
-        source_top = max(0, int(math.floor((visible_top - dest_top) / scale)))
-        source_right = min(source_width, int(math.ceil((visible_right - dest_left) / scale)))
-        source_bottom = min(source_height, int(math.ceil((visible_bottom - dest_top) / scale)))
-        if source_left >= source_right or source_top >= source_bottom:
-            return None
-
-        scaled_left = int(math.floor(dest_left + source_left * scale))
-        scaled_top = int(math.floor(dest_top + source_top * scale))
-        scaled_right = int(math.ceil(dest_left + source_right * scale))
-        scaled_bottom = int(math.ceil(dest_top + source_bottom * scale))
-        scaled_size = (max(1, scaled_right - scaled_left), max(1, scaled_bottom - scaled_top))
-        source_rect = (source_left, source_top, source_right - source_left, source_bottom - source_top)
-
-        return source_rect, (scaled_left, scaled_top), scaled_size
-
-    def _blit_visible_scaled_surface(self, source, source_center, destination_center,
-                                     scale, cache_prefix, smooth=True):
-        """Scale and cache only the portion of an effect visible on screen.
-
-        Scaling a full high-zoom nebula can otherwise create a many-hundred-MiB
-        intermediate texture even though only a viewport-sized part is visible.
-
-        ``smooth`` selects between ``pygame.transform.smoothscale`` (higher
-        quality, slower) and ``pygame.transform.scale`` (nearest-neighbour,
-        much faster). It is folded into the cache key so a fast-scaled frame
-        is never returned when a smooth one was requested, or vice versa.
-        """
-        region = self._compute_visible_scaled_region(source, source_center, destination_center, scale)
-        if region is None:
-            return False
-        source_rect, (scaled_left, scaled_top), scaled_size = region
-
-        cache_key = (*cache_prefix, source_rect, scaled_size, smooth)
-
-        scaled_surface = self._scaled_effect_surfaces.get(cache_key)
-        if scaled_surface is None:
-            source_width, source_height = source.get_size()
-            source_region = source if source_rect == (0, 0, source_width, source_height) else source.subsurface(source_rect)
-            transform_fn = pygame.transform.smoothscale if smooth else pygame.transform.scale
-            scaled_surface = transform_fn(source_region, scaled_size)
-            self._scaled_effect_surfaces.put(cache_key, scaled_surface)
-
-        self.overlay_surface.blit(scaled_surface, (scaled_left, scaled_top))
-        return True
-
-    def _blit_scaled_surface_once(self, source, source_center, destination_center,
-                                   scale, smooth=False):
-        """Scale and blit the visible portion of ``source`` exactly once, with
-        no caching.
-
-        This is used for content that changes every frame (e.g. a storm's
-        composited particle canvas). Caching a scaled result that will never
-        be reused again next frame would just add bookkeeping overhead while
-        still returning nothing but cache misses.
-        """
-        region = self._compute_visible_scaled_region(source, source_center, destination_center, scale)
-        if region is None:
-            return False
-        source_rect, (scaled_left, scaled_top), scaled_size = region
-
-        source_width, source_height = source.get_size()
-        source_region = source if source_rect == (0, 0, source_width, source_height) else source.subsurface(source_rect)
-        transform_fn = pygame.transform.smoothscale if smooth else pygame.transform.scale
-        scaled_surface = transform_fn(source_region, scaled_size)
-        self.overlay_surface.blit(scaled_surface, (scaled_left, scaled_top))
-        return True
-
+    def _blit_scaled_surface_once(self, source, source_center, destination_center, scale, smooth=False):
+        return self.grid_renderer.blit_scaled_surface_once(source, source_center, destination_center, scale, smooth)
 
     def _circle_covers_rect(self, center_px, radius_px, rect) -> bool:
-        """Return True if a circle of the given radius centered at
-        ``center_px`` fully encloses the given rectangle ``rect`` (i.e. all four
-        corners lie within the circle).
-        """
-        cx, cy = center_px
-        radius_sq = radius_px * radius_px
-        try:
-            left, top, right, bottom = rect.left, rect.top, rect.right, rect.bottom
-            left, top, right, bottom = int(left), int(top), int(right), int(bottom)
-        except (AttributeError, TypeError, ValueError):
-            try:
-                left, top, right, bottom = int(rect[0]), int(rect[1]), int(rect[0] + rect[2]), int(rect[1] + rect[3])
-            except (IndexError, TypeError, ValueError):
-                return False
-
-        corners = (
-            (left, top),
-            (right, top),
-            (left, bottom),
-            (right, bottom),
-        )
-        for corner_x, corner_y in corners:
-            if (corner_x - cx) ** 2 + (corner_y - cy) ** 2 > radius_sq:
-                return False
-        return True
+        return self.grid_renderer.circle_covers_rect(center_px, radius_px, rect)
 
     def _circle_covers_viewport(self, center_px, radius_px):
-        """Return True if a circle of the given radius centered at
-        ``center_px`` fully encloses the entire screen.
-        """
-        try:
-            w, h = self.screen.get_size()
-            w, h = int(w), int(h)
-        except (TypeError, ValueError):
-            w, h = 1920, 1080
-        return self._circle_covers_rect(center_px, radius_px, pygame.Rect(0, 0, w, h))
+        return self.grid_renderer.circle_covers_viewport(center_px, radius_px)
 
     def _fill_circle_on_surface(self, surface, center_px, radius_px, rgba, clip_rect) -> bool:
-        """Rasterize a filled circle onto `surface` with replace semantics,
-        bounded to `clip_rect`. Returns True if anything was painted.
-
-        - cull:      circle bbox ∩ clip_rect empty            -> return False
-        - fast path: circle covers clip_rect entirely          -> surface.fill(rgba, vis_rect); return True
-        - normal:    set_clip(vis_rect) + pygame.draw.circle   -> restore clip; return True
-        """
-        cx, cy = center_px
-        radius_px = max(1, min(int(radius_px), MAX_SAFE_CIRCLE_RADIUS_PX))
-
-        circle_bbox = pygame.Rect(cx - radius_px, cy - radius_px, 2 * radius_px, 2 * radius_px)
-        vis_rect = circle_bbox.clip(clip_rect)
-        if vis_rect.width <= 0 or vis_rect.height <= 0:
-            return False
-
-        if self._circle_covers_rect((cx, cy), radius_px, vis_rect):
-            surface.fill(rgba, vis_rect)
-            return True
-
-        old_clip = surface.get_clip()
-        surface.set_clip(vis_rect)
-        pygame.draw.circle(surface, rgba, (cx, cy), radius_px)
-        surface.set_clip(old_clip)
-        return True
+        return self.grid_renderer.fill_circle_on_surface(surface, center_px, radius_px, rgba, clip_rect)
 
     def _fill_circle_clipped(self, center_px, radius_px, rgba):
-        """Alpha-blend a filled circle onto the overlay surface, allocating
-        and rasterizing only the on-screen portion touched by the circle, so
-        that cost is bounded by the visible screen area rather than by
-        ``radius_px ** 2``.
-        """
-        screen_width, screen_height = self.screen.get_size()
-        cx, cy = center_px
-        radius_px = max(1, min(int(radius_px), MAX_SAFE_CIRCLE_RADIUS_PX))
-
-        circle_bbox = pygame.Rect(cx - radius_px, cy - radius_px, 2 * radius_px, 2 * radius_px)
-        rect = circle_bbox.clip(self.screen.get_rect())
-        if rect.width <= 0 or rect.height <= 0:
-            return
-
-        if (self._range_circle_surface is None or
-                self._range_circle_surface.get_size() != (screen_width, screen_height)):
-            self._range_circle_surface = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
-        surf = self._range_circle_surface
-
-        surf.fill((0, 0, 0, 0), rect)
-        self._fill_circle_on_surface(surf, (cx, cy), radius_px, rgba, rect)
-
-        self.overlay_surface.blit(surf, rect.topleft, area=rect)
-        self.zoom_render_stats['range_circle_fills'] += 1
+        return self.grid_renderer.fill_circle_clipped(center_px, radius_px, rgba)
 
     def _blit_uncached_circle(self, circle_pos, radius_px, color):
-        """Draw a large semi-transparent circle onto the overlay using the same
-        source-over alpha blending as the cached/scaled path, without
-        allocating a surface proportional to the circle's (possibly huge)
-        true radius.
-
-        Kept as a thin wrapper around ``_fill_circle_clipped`` (which
-        performs the actual viewport-bounded clipping/allocation) so existing
-        callers/tests keep working unchanged.
-        """
-        self._fill_circle_clipped(circle_pos, radius_px, color)
+        return self.grid_renderer.blit_uncached_circle(circle_pos, radius_px, color)
 
     def _draw_range_ring(self, cx, cy, radius_px, outline_rgb):
-        """Draw one weapon/sensor range ring as a solid 2px outline circle.
-
-        The ring is drawn without a translucent fill so that what lies inside
-        the circle remains clearly visible. If the ring's circumference never
-        crosses the visible screen (i.e. the circle covers the entire
-        viewport), the outline draw is skipped as it would be invisible anyway.
-        """
-        if radius_px <= 1 or self._is_circle_off_screen((cx, cy), radius_px):
-            return
-
-        # If the circle covers the entire viewport its circumference is never
-        # on screen, so there is nothing to draw.
-        if not self._circle_covers_viewport((cx, cy), radius_px):
-            pygame.draw.circle(self.overlay_surface, outline_rgb, (cx, cy), radius_px, 2)
+        return self.grid_renderer.draw_range_ring(cx, cy, radius_px, outline_rgb)
 
     def _update_zoom_render_stats(self):
-
-        self.zoom_render_stats = {
-            'cache_hits': self._scaled_effect_surfaces.hits,
-            'cache_misses': self._scaled_effect_surfaces.misses,
-            'cache_bytes': self._scaled_effect_surfaces.total_bytes,
-            'direct_draw_fallbacks': self.zoom_render_stats.get('direct_draw_fallbacks', 0),
-            'range_circle_fills': self.zoom_render_stats.get('range_circle_fills', 0),
-            'fog_rebuilds': self.zoom_render_stats.get('fog_rebuilds', 0),
-            'fog_cache_hits': self.zoom_render_stats.get('fog_cache_hits', 0),
-            'fog_full_reveal': self.zoom_render_stats.get('fog_full_reveal', 0),
-        }
+        return self.grid_renderer.update_zoom_render_stats()
 
     def _draw_tactical_grid(self):
-        """Draws a faint grey tactical grid clipped to the circular sector boundary."""
-        radius = SECTOR_CIRCLE_RADIUS_LOGICAL
-        spacing = SECTOR_GRID_SPACING
-        if spacing <= 0:
-            return
+        return self.grid_renderer.draw_tactical_grid()
 
-        step = int(spacing)
-        start_val = -int(radius) + step
-        end_val = int(radius)
+    def _draw_fog_of_war(self, hex_obj, dynamic_radius: float) -> None:
+        return self.overlay_renderer.draw_fog_of_war(hex_obj, dynamic_radius)
 
-        for val in range(start_val, end_val, step):
-            # Vertical grid line at x = val
-            y_max_sq = radius * radius - val * val
-            if y_max_sq > 0:
-                y_max = math.sqrt(y_max_sq)
-                p1 = self._coords_to_pixels(Position(val, -y_max))
-                p2 = self._coords_to_pixels(Position(val, y_max))
-                pygame.draw.line(self.screen, SECTOR_GRID_COLOR, (p1.x, p1.y), (p2.x, p2.y), 1)
+    def _draw_unit_range_circles(self, unit: Unit, pixel_pos, dynamic_radius: float) -> None:
+        return self.overlay_renderer.draw_unit_range_circles(unit, pixel_pos, dynamic_radius)
 
-            # Horizontal grid line at y = val
-            x_max_sq = radius * radius - val * val
-            if x_max_sq > 0:
-                x_max = math.sqrt(x_max_sq)
-                p1 = self._coords_to_pixels(Position(-x_max, val))
-                p2 = self._coords_to_pixels(Position(x_max, val))
-                pygame.draw.line(self.screen, SECTOR_GRID_COLOR, (p1.x, p1.y), (p2.x, p2.y), 1)
+    def _get_waypoint_style(self, waypoint):
+        return self.overlay_renderer.get_waypoint_style(waypoint)
+
+    def _draw_single_notch(self, p_start, p_end, p_notch, color, line_width):
+        return self.overlay_renderer.draw_single_notch(p_start, p_end, p_notch, color, line_width)
+
+    def _draw_path_turn_notches_for_segment(self, segment, connect_to_unit, start_pos, effective_speed):
+        return self.overlay_renderer.draw_path_turn_notches_for_segment(segment, connect_to_unit, start_pos, effective_speed)
+
+    def _order_targets_sector(self, order, system_name, hex_coord):
+        return self.overlay_renderer.order_targets_sector(order, system_name, hex_coord)
+
+    def _collect_waypoints_from_order(self, order, unit, all_waypoints_sequence, is_current=False):
+        return self.overlay_renderer.collect_waypoints_from_order(order, unit, all_waypoints_sequence, is_current)
+
+    def _collect_all_waypoints(self, unit, is_current_order=False):
+        return self.overlay_renderer.collect_all_waypoints(unit, is_current_order)
+
+    def _draw_sector_view_order_lines_from_other_sectors(self, external_units):
+        return self.overlay_renderer.draw_sector_view_order_lines_from_other_sectors(external_units)
+
+    def _draw_sector_view_order_lines(self, unit, unit_pixel_x, unit_pixel_y):
+        return self.overlay_renderer.draw_sector_view_order_lines(unit, unit_pixel_x, unit_pixel_y)
+
+    def _get_pre_rendered_nebula(self, nebula):
+        return self.celestial_renderer.get_pre_rendered_nebula(nebula)
+
+    def _draw_nebula(self, nebula, pos_px):
+        return self.celestial_renderer.draw_nebula(nebula, pos_px)
+
+    def _draw_celestial_field(self, field, pos_px, base_color, num_particles=40):
+        return self.celestial_renderer.draw_celestial_field(field, pos_px, base_color, num_particles)
+
+    def _get_pre_rendered_storm_circles(self, storm):
+        return self.celestial_renderer.get_pre_rendered_storm_circles(storm)
+
+    def _draw_storm(self, storm, pos_px):
+        return self.celestial_renderer.draw_storm(storm, pos_px)
+
+    # -------------------------------------------------------------------------
+    # Main Render Cycle
+    # -------------------------------------------------------------------------
 
     def draw_sector_view(self):
         """Draws the detailed view of the current sector hex."""
-        if not self.game.current_system_name or self.game.current_sector_coord is None: return
+        if not self.game.current_system_name or self.game.current_sector_coord is None:
+            return
         system = self.game.galaxy.systems[self.game.current_system_name]
-        if not system: return
+        if not system:
+            return
 
         # Clear cached surfaces if the sector has changed
         current_sector_key = (self.game.current_system_name, self.game.current_sector_coord)
@@ -428,331 +301,58 @@ class SectorViewRenderer:
             zoom = 1.0
         dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
 
-        # 1. Draw Selection Box (if dragging)
-        if self.game.is_dragging_selection_box and self.game.selection_box_start_pos:
-            mouse_pos = pygame.mouse.get_pos()
-            start_pos = self.game.selection_box_start_pos.to_tuple()
-            
-            rect_x = min(start_pos[0], mouse_pos[0])
-            rect_y = min(start_pos[1], mouse_pos[1])
-            rect_w = abs(start_pos[0] - mouse_pos[0])
-            rect_h = abs(start_pos[1] - mouse_pos[1])
-            selection_rect = pygame.Rect(rect_x, rect_y, rect_w, rect_h)
+        # 1. Selection Box (if dragging)
+        self.overlay_renderer.draw_selection_box()
 
-            selection_surface = pygame.Surface(selection_rect.size, pygame.SRCALPHA)
-            selection_surface.fill((0, 100, 255, 64))
-            self.overlay_surface.blit(selection_surface, selection_rect.topleft)
-
-            pygame.draw.rect(self.overlay_surface, (0, 150, 255), selection_rect, 1)
-
-        # 1. Draw Sector Boundary & Tactical Grid
-        boundary_center = (
-            int(SECTOR_CIRCLE_CENTER_IN_PX.x + self.game.sector_pan_offset.x),
-            int(SECTOR_CIRCLE_CENTER_IN_PX.y + self.game.sector_pan_offset.y)
-        )
-        pygame.draw.circle(self.screen, SECTOR_BORDER_COLOR, boundary_center, int(dynamic_radius), 1)
+        # 2. Sector Boundary & Tactical Grid
+        self.grid_renderer.draw_boundary(dynamic_radius)
         self._draw_tactical_grid()
 
-        # 1b. Fog of War overlay (grey fog over areas outside friendly sensor range)
+        # 3. Fog of War overlay
         hex_obj = system.hexes.get(self.game.current_sector_coord)
         if hex_obj:
             self._draw_fog_of_war(hex_obj, dynamic_radius)
 
-        # 2. Draw Inhibition Fields. Draw directly into a viewport-sized alpha
-        # surface instead of scaling and retaining a massive circle texture.
-        hex_obj = system.hexes[self.game.current_sector_coord]
+        # 4. Inhibition Fields
+        hex_obj = system.hexes.get(self.game.current_sector_coord)
         if hex_obj:
-            screen_size = self.screen.get_size()
-            if self._inhibition_surface is None or self._inhibition_surface.get_size() != screen_size:
-                self._inhibition_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
-            self._inhibition_surface.fill((0, 0, 0, 0))
-            drew_inhibition_zone = False
-            for zone in hex_obj.get_all_inhibition_zones():
-                zone_pixel_center = self._coords_to_pixels(zone.center)
-                zone_pixel_radius = int(zone.radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            self.entity_renderer.draw_inhibition_zones(hex_obj, dynamic_radius)
 
-                if zone_pixel_radius <= 0:
-                    continue
-                if self._is_circle_off_screen((zone_pixel_center.x, zone_pixel_center.y), zone_pixel_radius):
-                    continue
+        # 5. Objects in Current Hex
+        if not hex_obj:
+            return
 
-                pygame.draw.circle(
-                    self._inhibition_surface, (255, 0, 0, 25),
-                    (int(zone_pixel_center.x), int(zone_pixel_center.y)), zone_pixel_radius
-                )
-                drew_inhibition_zone = True
-                self.zoom_render_stats['direct_draw_fallbacks'] += 1
-            if drew_inhibition_zone:
-                self.screen.blit(self._inhibition_surface, (0, 0))
-
-        # 3. Get Objects in the Current Hex
-        hex_obj = system.hexes[self.game.current_sector_coord]
-        bodies_to_draw = []
-        units_to_draw = []
-        minefields_to_draw = []
-        has_presence_warning = False
-        if hex_obj:
-            bodies_to_draw = hex_obj.celestial_bodies
-            units_to_draw = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
-            minefields_to_draw = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
-            has_hidden = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
-            if has_hidden and self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
-                has_presence_warning = True
+        bodies_to_draw = hex_obj.celestial_bodies
+        units_to_draw = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
+        minefields_to_draw = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
+        has_hidden = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
         
-        all_objects_in_sector = bodies_to_draw + units_to_draw + minefields_to_draw
-
-        if has_presence_warning:
+        if has_hidden and self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
             font_size = max(12, int(14 * TEXT_SCALE))
             hud_font = pygame.font.Font(None, font_size)
             text_surface = hud_font.render("WARNING: Enemy presence detected in sector", True, FOG_PRESENCE_COLOR)
             text_rect = text_surface.get_rect(center=(self.screen.get_width() // 2, 60))
             self.screen.blit(text_surface, text_rect)
 
+        all_objects_in_sector = bodies_to_draw + units_to_draw + minefields_to_draw
 
         for obj in all_objects_in_sector:
-            obj_pixel_pos = self._coords_to_pixels(obj.position) 
-            obj_radius_logical = 13.89 # Default logical radius (equivalent to 5 pixels)
-            obj_color = WHITE 
+            obj_pixel_pos = self._coords_to_pixels(obj.position)
 
-            should_draw_circle = True
-            if isinstance(obj, Star):
-                obj_color = STAR_COLORS.get(obj.star_type, YELLOW)
-                obj_radius_logical = STAR_RADIUS
-            elif isinstance(obj, Planet):
-                planet_color_map = {
-                    PlanetType.TERRAN: (0, 128, 0),
-                    PlanetType.DESERT: (210, 180, 140),
-                    PlanetType.VOLCANIC: (255, 69, 0),
-                    PlanetType.ICE: (173, 216, 230),
-                    PlanetType.BARREN: (128, 128, 128),
-                    PlanetType.FERROUS: (165, 42, 42),
-                    PlanetType.GREENHOUSE: (0, 255, 0),
-                    PlanetType.OCEANIC: (0, 0, 205),
-                    PlanetType.GAS_GIANT: (255, 228, 181),
-                }
-                obj_color = planet_color_map.get(obj.planet_type, CYAN)
-                obj_radius_logical = PLANET_RADIUS
-                if obj.owner:
-                    pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
-            elif isinstance(obj, Moon):
-                obj_color = (200, 200, 200)
-                obj_radius_logical = MOON_RADIUS
-                if obj.owner:
-                    pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
-            elif isinstance(obj, ColonizableAsteroid):
-                obj_color = (90, 60, 50)
-                obj_radius_logical = ASTEROID_RADIUS
-                if obj.owner:
-                    pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                    pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
-            elif isinstance(obj, MetalAsteroid):
-                obj_color = (140, 140, 160)
-                obj_radius_logical = ASTEROID_RADIUS
-            elif isinstance(obj, AsteroidField):
-                self._draw_celestial_field(obj, obj_pixel_pos, (100, 100, 100))
-                obj_radius_logical = CELESTIAL_FIELD_RADIUS
-                should_draw_circle = False
-            elif isinstance(obj, IceField):
-                self._draw_celestial_field(obj, obj_pixel_pos, (173, 216, 230), num_particles=20)
-                obj_radius_logical = CELESTIAL_FIELD_RADIUS
-                should_draw_circle = False
-            elif isinstance(obj, DebrisField):
-                self._draw_celestial_field(obj, obj_pixel_pos, (112, 128, 144), num_particles=15)
-                obj_radius_logical = CELESTIAL_FIELD_RADIUS
-                should_draw_circle = False
-            elif isinstance(obj, Nebula):
-                self._draw_nebula(obj, obj_pixel_pos)
-                should_draw_circle = False
-            elif isinstance(obj, Storm):
-                self._draw_storm(obj, obj_pixel_pos)
-                should_draw_circle = False
-            elif isinstance(obj, Comet):
-                obj_color = CYAN
-                obj_radius_logical = COMET_RADIUS
-            elif isinstance(obj, Wormhole):
-                obj_radius_logical = WORMHOLE_RADIUS
-                obj_color = PURPLE
-                if obj.stability < 100:
-                    pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                    pygame.draw.circle(self.screen, RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
+            if isinstance(obj, Unit):
+                obj_radius_logical = self.entity_renderer.draw_unit(obj, obj_pixel_pos, dynamic_radius)
             elif isinstance(obj, Minefield):
-                obj_color = obj.owner.color if obj.owner else RED
-                obj_radius_logical = obj.detonation_radius
-                pixel_radius = max(5, int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
-                from unit_components import MinefieldType
-                is_anti_strikecraft = (getattr(obj, 'minefield_type', None) == MinefieldType.ANTI_STRIKECRAFT)
-                if is_anti_strikecraft:
-                    pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
-                    inner_radius = int(pixel_radius * 0.65)
-                    if inner_radius > 2:
-                        pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), inner_radius, 1)
-                else:
-                    pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
+                obj_radius_logical = self.entity_renderer.draw_minefield(obj, obj_pixel_pos, dynamic_radius)
+            else:
+                obj_color, obj_radius_logical = self.celestial_renderer.draw_celestial_object(obj, obj_pixel_pos, dynamic_radius)
 
-                # Draw one dot per remaining mine, horizontally centred
-                n_dots = max(0, obj.mines_remaining)
-                if n_dots > 0:
-                    icon_dot_radius_px = max(2, int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
-                    icon_dot_spacing_px = max(5, int(ICON_DOT_SPACING * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
-                    total_width = (n_dots - 1) * icon_dot_spacing_px
-                    start_x = obj_pixel_pos.x - total_width / 2
-                    for di in range(n_dots):
-                        dot_x = int(start_x + di * icon_dot_spacing_px)
-                        if is_anti_strikecraft:
-                            d_sz = max(2, icon_dot_radius_px)
-                            pts = [
-                                (dot_x, int(obj_pixel_pos.y) - d_sz),
-                                (dot_x + d_sz, int(obj_pixel_pos.y)),
-                                (dot_x, int(obj_pixel_pos.y) + d_sz),
-                                (dot_x - d_sz, int(obj_pixel_pos.y))
-                            ]
-                            pygame.draw.polygon(self.screen, obj_color, pts)
-                        else:
-                            pygame.draw.circle(self.screen, obj_color, (dot_x, int(obj_pixel_pos.y)), icon_dot_radius_px)
-                should_draw_circle = False
+            # Hover highlight
+            self.overlay_renderer.draw_hover_highlight(obj, obj_pixel_pos, dynamic_radius, obj_radius_logical)
 
- 
-            if should_draw_circle and not isinstance(obj, Unit):
-                pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                pygame.draw.circle(self.screen, obj_color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius)
-            elif isinstance(obj, Unit):
-                unit_obj: Unit = obj
-                obj_color = unit_obj.owner.color if unit_obj.owner else WHITE
- 
-                if unit_obj.hull_size.name == "STRIKECRAFT_WING":
-                    shape_type = 'strikecraft_wing'
-                else:
-                    shape_type = 'triangle' if unit_obj.engines_component else 'square'
-                scale_factor = HULL_BASE_ICON_SCALES[unit_obj.hull_size]
-                current_icon_base_size_logical = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
-                dot_count = HULL_DOT_COUNTS[unit_obj.hull_size]
-                
-                current_icon_base_size_px = int(current_icon_base_size_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                obj_radius_logical = current_icon_base_size_logical
- 
-                draw_shape(self.screen, shape_type, obj_color, obj_pixel_pos, current_icon_base_size_px)
- 
-                if unit_obj in self.game.selected_objects and unit_obj.max_hit_points > 0:
-                    health_bar_width = current_icon_base_size_px * 2
-                    health_bar_height = 4
-                    health_bar_y_offset = current_icon_base_size_px + 10
-                    
-                    health_percentage = unit_obj.current_hit_points / unit_obj.max_hit_points
-                    
-                    health_bar_x = obj_pixel_pos.x - health_bar_width / 2
-                    health_bar_y = obj_pixel_pos.y + health_bar_y_offset
-                    
-                    pygame.draw.rect(self.screen, (50, 50, 50), (health_bar_x, health_bar_y, health_bar_width, health_bar_height))
-                    
-                    health_color = (0, 255, 0) if health_percentage > 0.5 else (255, 255, 0) if health_percentage > 0.2 else (255, 0, 0)
-                    pygame.draw.rect(self.screen, health_color, (health_bar_x, health_bar_y, health_bar_width * health_percentage, health_bar_height))
- 
-                if dot_count > 0:
-                    icon_dot_radius_px = int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                    icon_dot_spacing_px = int(ICON_DOT_SPACING * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                    
-                    dot_base_y_offset = current_icon_base_size_px * 0.6
-                    if shape_type == 'square':
-                        dot_base_y_offset = current_icon_base_size_px
-                    
-                    dot_base_y = obj_pixel_pos.y + dot_base_y_offset + icon_dot_radius_px + 2
+            # Selection brackets
+            self.overlay_renderer.draw_selection_brackets(obj, obj_pixel_pos, dynamic_radius, obj_radius_logical)
 
-                    if shape_type == 'triangle':
-                        base_p2_x = obj_pixel_pos.x - int(current_icon_base_size_px * 0.8)
-                        base_p3_x = obj_pixel_pos.x + int(current_icon_base_size_px * 0.8)
-                        base_width = base_p3_x - base_p2_x
-                        start_x = base_p2_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
-                    else: # Square
-                        base_p_left_x = obj_pixel_pos.x - current_icon_base_size_px
-                        base_p_right_x = obj_pixel_pos.x + current_icon_base_size_px
-                        base_width = base_p_right_x - base_p_left_x
-                        start_x = base_p_left_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
-
-                    for dot_i in range(dot_count):
-                        dot_x = start_x + dot_i * icon_dot_spacing_px
-                        pygame.draw.circle(self.screen, obj_color, (dot_x, dot_base_y), icon_dot_radius_px)
-
-                # Draw Unit Name
-                bottom_y = obj_pixel_pos.y + current_icon_base_size_px
-                
-                # If health bar is drawn, account for its height and vertical position.
-                # To prevent the unit name text from moving when selected, we always reserve space 
-                # for the health bar if the unit can have one (i.e. max_hit_points > 0).
-                if unit_obj.max_hit_points > 0:
-                    health_bar_bottom = obj_pixel_pos.y + current_icon_base_size_px + 14
-                    if health_bar_bottom > bottom_y:
-                        bottom_y = health_bar_bottom
-                        
-                # If dots are drawn, account for their radius and vertical position
-                if dot_count > 0:
-                    icon_dot_radius_px = int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                    dot_base_y_offset = current_icon_base_size_px * 0.6 if shape_type == 'triangle' else current_icon_base_size_px
-                    dot_bottom = obj_pixel_pos.y + dot_base_y_offset + 2 * icon_dot_radius_px + 2
-                    if dot_bottom > bottom_y:
-                        bottom_y = dot_bottom
-                        
-                name_font_size = max(1, int(10 * TEXT_SCALE))
-                if name_font_size not in self._font_cache:
-                    self._font_cache[name_font_size] = pygame.font.Font(None, name_font_size)
-                name_font = self._font_cache[name_font_size]
-                name_surface = name_font.render(unit_obj.name, True, obj_color)
-                name_rect = name_surface.get_rect()
-                name_rect.midtop = (obj_pixel_pos.x, bottom_y + 4)
-                self.screen.blit(name_surface, name_rect)
-
-
-            if obj == self.game.sector_view_mouse_hover_object:
-                pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
-
-            if obj in self.game.selected_objects:
-                pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                # Draw four selection brackets in the corners
-                r = pixel_radius + 5
-                tick_length = 10
-                
-                left = obj_pixel_pos.x - r
-                right = obj_pixel_pos.x + r
-                top = obj_pixel_pos.y - r
-                bottom = obj_pixel_pos.y + r
-                
-                # Top-Left corner bracket
-                pygame.draw.lines(
-                    self.overlay_surface,
-                    SELECTION_HIGHLIGHT_COLOR,
-                    False,
-                    [(left + tick_length, top), (left, top), (left, top + tick_length)],
-                    2
-                )
-                # Top-Right corner bracket
-                pygame.draw.lines(
-                    self.overlay_surface,
-                    SELECTION_HIGHLIGHT_COLOR,
-                    False,
-                    [(right - tick_length, top), (right, top), (right, top + tick_length)],
-                    2
-                )
-                # Bottom-Left corner bracket
-                pygame.draw.lines(
-                    self.overlay_surface,
-                    SELECTION_HIGHLIGHT_COLOR,
-                    False,
-                    [(left + tick_length, bottom), (left, bottom), (left, bottom - tick_length)],
-                    2
-                )
-                # Bottom-Right corner bracket
-                pygame.draw.lines(
-                    self.overlay_surface,
-                    SELECTION_HIGHLIGHT_COLOR,
-                    False,
-                    [(right - tick_length, bottom), (right, bottom), (right, bottom - tick_length)],
-                    2
-                )
-
-            # Draw weapon and sensor range circles only when a single
-            # friendly unit is selected -- multiple circles create clutter.
+            # Weapon/sensor range circles for single selected friendly unit
             if (isinstance(obj, Unit)
                     and len(self.game.selected_objects) == 1
                     and obj in self.game.selected_objects):
@@ -760,10 +360,10 @@ class SectorViewRenderer:
                 if current_turn_player and obj.owner == current_turn_player:
                     self._draw_unit_range_circles(obj, obj_pixel_pos, dynamic_radius)
 
+            # Move/Jump order lines
             if isinstance(obj, Unit):
                 unit_obj: Unit = obj
                 is_turn_player_unit = self.game.players and unit_obj.owner == self.game.players[self.game.current_player_index]
-                is_selected_or_hovered = unit_obj in self.game.selected_objects or unit_obj == self.game.sector_view_mouse_hover_object
 
                 if is_turn_player_unit:
                     if unit_obj.engines_component and unit_obj.engines_component.move_target:
@@ -816,10 +416,8 @@ class SectorViewRenderer:
                                         pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
                     if unit_obj.commander_component:
                         self._draw_sector_view_order_lines(unit_obj, obj_pixel_pos.x, obj_pixel_pos.y)
-                                
-        # Collect external units targeting this sector:
-        # 1. Any selected unit (regardless of owner) that is in another sector but targeting this one
-        # 2. Any unit belonging to the current turn player that is in another sector but targeting this one
+
+        # External units targeting this sector
         current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
         candidate_units = set()
         if current_turn_player:
@@ -866,900 +464,3 @@ class SectorViewRenderer:
 
         self._draw_sector_view_order_lines_from_other_sectors(external_units_with_orders_to_this_sector)
         self._update_zoom_render_stats()
-
-    def _draw_fog_of_war(self, hex_obj, dynamic_radius: float) -> None:
-        """Draw a C&C-style grey fog of war over the sector view.
-
-        The sector boundary disc is filled with a semi-transparent grey fog
-        (FOG_OF_WAR_COLOR). Then, for every friendly unit in the current hex
-        whose sensors are intact, a fully transparent circle is punched out of
-        the fog at the unit's position, with radius equal to the unit's sensor
-        short_range_radius. Areas inside a sensor circle appear at full
-        brightness; areas outside remain dimmed.
-
-        Rasterization uses C-level clipped circle drawing (`_fill_circle_on_surface`)
-        with containment culling, short-circuit skip for fully-revealed viewports,
-        and frame-to-frame caching across static frames.
-        """
-        screen_width, screen_height = self.screen.get_size()
-        screen_size = (screen_width, screen_height)
-        screen_rect = pygame.Rect(0, 0, screen_width, screen_height)
-
-        # Allocate or reuse the fog surface
-        if self._fog_of_war_surface is None or self._fog_of_war_surface.get_size() != screen_size:
-            self._fog_of_war_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
-            self._fog_cache_key = None
-            self._fog_blit_rect = None
-
-        sector_center_px = (int(SECTOR_CIRCLE_CENTER_IN_PX.x + self.game.sector_pan_offset.x),
-                            int(SECTOR_CIRCLE_CENTER_IN_PX.y + self.game.sector_pan_offset.y))
-        sector_radius_px = max(1, min(int(dynamic_radius), MAX_SAFE_CIRCLE_RADIUS_PX))
-        cx, cy = sector_center_px
-        r = sector_radius_px
-
-        disc_bbox = pygame.Rect(cx - r, cy - r, 2 * r, 2 * r)
-        fog_rect = screen_rect.clip(disc_bbox)
-
-        if fog_rect.width <= 0 or fog_rect.height <= 0:
-            self._fog_cache_key = None
-            self._fog_blit_rect = None
-            return
-
-        # Collect cut-outs for friendly intact units
-        cutouts = []
-        current_player = (self.game.players[self.game.current_player_index]
-                          if self.game.players and 0 <= self.game.current_player_index < len(self.game.players)
-                          else None)
-
-        if current_player:
-            for unit in hex_obj.units:
-                if unit.owner != current_player:
-                    continue
-                sensors = unit.sensors_component
-                if sensors is None or getattr(sensors, 'is_destroyed', False) or not getattr(sensors, 'has_short_range', False):
-                    continue
-
-                short_range = getattr(sensors, 'short_range_radius', 0.0)
-                if short_range <= 0:
-                    continue
-
-                unit_px = self._coords_to_pixels(unit.position)
-                sr_px = max(1, min(int(short_range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL), MAX_SAFE_CIRCLE_RADIUS_PX))
-                ucx, ucy = int(unit_px.x), int(unit_px.y)
-                unit_bbox = pygame.Rect(ucx - sr_px, ucy - sr_px, 2 * sr_px, 2 * sr_px)
-                if unit_bbox.colliderect(fog_rect):
-                    cutouts.append((ucx, ucy, sr_px))
-
-        key = (
-            screen_size,
-            self._last_cached_sector,
-            round(dynamic_radius, 1),
-            round(self.game.sector_pan_offset.x, 1),
-            round(self.game.sector_pan_offset.y, 1),
-            id(current_player),
-            tuple((round(ucx, 1), round(ucy, 1), sr_px) for ucx, ucy, sr_px in cutouts)
-        )
-
-        if key == self._fog_cache_key:
-            self.zoom_render_stats['fog_cache_hits'] += 1
-            if self._fog_blit_rect is not None:
-                self.screen.blit(self._fog_of_war_surface, self._fog_blit_rect.topleft, area=self._fog_blit_rect)
-            return
-
-        # Cache miss: clear previous region to avoid stale pixels
-        clear_rect = fog_rect.union(self._fog_blit_rect) if self._fog_blit_rect else fog_rect
-        self._fog_of_war_surface.fill((0, 0, 0, 0), clear_rect.clip(screen_rect))
-
-        # Fully-revealed short-circuit: if any cutout covers fog_rect entirely
-        for ucx, ucy, sr_px in cutouts:
-            if self._circle_covers_rect((ucx, ucy), sr_px, fog_rect):
-                self.zoom_render_stats['fog_rebuilds'] += 1
-                self.zoom_render_stats['fog_full_reveal'] += 1
-                self._fog_cache_key = key
-                self._fog_blit_rect = None
-                return
-
-        # Containment culling: sort cutouts by radius descending
-        cutouts.sort(key=lambda c: c[2], reverse=True)
-        culled_cutouts = []
-        for ucx, ucy, sr_px in cutouts:
-            contained = False
-            for acx, acy, ar_px in culled_cutouts:
-                if ar_px >= sr_px:
-                    max_dist = ar_px - sr_px
-                    if (ucx - acx) ** 2 + (ucy - acy) ** 2 <= max_dist * max_dist:
-                        contained = True
-                        break
-            if not contained:
-                culled_cutouts.append((ucx, ucy, sr_px))
-
-        fog_surf = self._fog_of_war_surface
-
-        # Rasterize sector boundary disc
-        self._fill_circle_on_surface(fog_surf, (cx, cy), r, FOG_OF_WAR_COLOR, fog_rect)
-
-        # Punch out sensor cut-outs
-        for ucx, ucy, sr_px in culled_cutouts:
-            self._fill_circle_on_surface(fog_surf, (ucx, ucy), sr_px, (0, 0, 0, 0), fog_rect)
-
-        self.screen.blit(fog_surf, fog_rect.topleft, area=fog_rect)
-        self.zoom_render_stats['fog_rebuilds'] += 1
-        self._fog_cache_key = key
-        self._fog_blit_rect = fog_rect
-
-    def _draw_unit_range_circles(self, unit: 'Unit', pixel_pos, dynamic_radius: float) -> None:
-        """Draw sensor and weapon range circles around a selected owned unit.
-
-        Sensor short-range is drawn as a cyan outline ring; each distinct
-        turret range is drawn as a red/orange outline ring. Rings are empty
-        (no fill) so the space inside them remains visible.
-
-        Each ring is drawn via ``_draw_range_ring``, whose cost is bounded by
-        the visible screen area rather than by the ring's true on-screen
-        radius. Without this, a selected unit's range circles at high
-        sector-view zoom could allocate a many-hundred-MiB SRCALPHA surface
-        (proportional to radius_px**2) and rasterize tens of millions of
-        pixels per frame -- almost all of which get clipped away on blit
-        anyway -- which is what made zooming in with range circles visible so
-        much slower than with no unit selected.
-        """
-        cx, cy = int(pixel_pos.x), int(pixel_pos.y)
-
-        # --- Sensor short-range circle (cyan) ---
-        sensors = unit.sensors_component
-        if sensors and sensors.has_short_range:
-            sr_px = int(sensors.short_range_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            self._draw_range_ring(cx, cy, sr_px, (0, 200, 255))
-
-        # --- Weapon range circle(s) (red/orange) ---
-        weapons = unit.weapons_component
-        if weapons and weapons.turrets:
-            drawn_ranges: set[int] = set()
-            for turret in weapons.turrets:
-                rng_px = int(turret.range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                if rng_px in drawn_ranges:
-                    continue
-                drawn_ranges.add(rng_px)
-                self._draw_range_ring(cx, cy, rng_px, (255, 80, 40))
-
-    def _get_waypoint_style(self, waypoint):
-        if waypoint['order_type'] == OrderType.ATTACK:
-            line_color = RED
-            line_width = 2
-        elif waypoint['order_type'] == OrderType.PROTECT:
-            line_color = (255, 105, 180)
-            line_width = 2
-        elif waypoint['order_type'] == OrderType.USE_ABILITY:
-            line_color = (255, 105, 180)  # Hot Pink
-            line_width = 2
-        elif waypoint['order_type'] == OrderType.PATROL:
-            # Patrol lines are dotted to signal they are interruptible by nearby enemies.
-            line_color = (160, 200, 255)  # Soft blue-white, distinct from standard move
-            line_width = 2
-        elif waypoint['is_current']:
-            line_width = 2
-            line_color = MOVE_ORDER_LINE_COLOR
-        else:
-            line_width = 1
-            line_color = (max(MOVE_ORDER_LINE_COLOR[0] - 40, 0), 
-                         max(MOVE_ORDER_LINE_COLOR[1] - 40, 0), 
-                         max(MOVE_ORDER_LINE_COLOR[2] - 40, 0))
-        return line_color, line_width
-
-    def _draw_single_notch(self, p_start, p_end, p_notch, color, line_width):
-        start_px = self._coords_to_pixels(p_start)
-        end_px = self._coords_to_pixels(p_end)
-        notch_px = self._coords_to_pixels(p_notch)
-        
-        dx = end_px.x - start_px.x
-        dy = end_px.y - start_px.y
-        dist = math.sqrt(dx*dx + dy*dy)
-        if dist > 0:
-            nx = -dy / dist
-            ny = dx / dist
-            
-            notch_half_len = 4
-            x1 = int(notch_px.x + nx * notch_half_len)
-            y1 = int(notch_px.y + ny * notch_half_len)
-            x2 = int(notch_px.x - nx * notch_half_len)
-            y2 = int(notch_px.y - ny * notch_half_len)
-            
-            pygame.draw.line(self.overlay_surface, color, (x1, y1), (x2, y2), max(2, line_width))
-
-    def _draw_path_turn_notches_for_segment(self, segment, connect_to_unit, start_pos, effective_speed):
-        if effective_speed <= 0 or not segment:
-            return
-            
-        segment_points = []
-        segment_wps = []
-        
-        if connect_to_unit:
-            segment_points.append(start_pos)
-            for wp in segment:
-                segment_points.append(wp['position'])
-                segment_wps.append(wp)
-        else:
-            if len(segment) < 2:
-                return
-            for wp in segment:
-                segment_points.append(wp['position'])
-            for wp in segment[1:]:
-                segment_wps.append(wp)
-                
-        current_idx = 0
-        p_curr = segment_points[0]
-        dist_to_next_notch = effective_speed
-        
-        while current_idx < len(segment_points) - 1:
-            p_next = segment_points[current_idx + 1]
-            wp = segment_wps[current_idx]
-            segment_len = distance(p_curr, p_next)
-            
-            if segment_len <= 0:
-                current_idx += 1
-                p_curr = p_next
-                continue
-                
-            if dist_to_next_notch <= segment_len:
-                t = dist_to_next_notch / segment_len
-                p_notch = Position(
-                    p_curr.x + (p_next.x - p_curr.x) * t,
-                    p_curr.y + (p_next.y - p_curr.y) * t
-                )
-                
-                color, width = self._get_waypoint_style(wp)
-                self._draw_single_notch(p_curr, p_next, p_notch, color, width)
-                
-                p_curr = p_notch
-                dist_to_next_notch = effective_speed
-            else:
-                dist_to_next_notch -= segment_len
-                current_idx += 1
-                p_curr = p_next
-
-    def _order_targets_sector(self, order, system_name, hex_coord):
-        """Helper method to check if an order targets the specified system and hex."""
-        if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT]:
-            dsys = order.parameters.get("destination_system_name")
-            dhex = order.parameters.get("destination_hex_coord")
-            return dsys == system_name and dhex == hex_coord
-        elif order.order_type == OrderType.USE_ABILITY:
-            target_unit_id = order.parameters.get("target_unit_id")
-            target_position = order.parameters.get("target_position")
-            if target_unit_id:
-                target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
-                if target_unit:
-                    return target_unit.in_system == system_name and target_unit.in_hex == hex_coord
-            elif target_position:
-                dsys = order.parameters.get("target_system_name") or order.unit.in_system
-                dhex = order.parameters.get("target_hex_coord") or order.unit.in_hex
-                return dsys == system_name and dhex == hex_coord
-        return False
-        
-    def _collect_waypoints_from_order(self, order, unit, all_waypoints_sequence, is_current=False):
-        """Helper method to collect waypoints from a single order and its sub-orders."""
-        if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT]:
-            dsys = order.parameters["destination_system_name"]
-            dhex = order.parameters["destination_hex_coord"]
-            dpos = order.parameters["destination_position"]
-            
-            sequence_index = len(all_waypoints_sequence)
-            all_waypoints_sequence.append({
-                'position': dpos,
-                'system': dsys,
-                'hex': dhex,
-                'is_current': is_current,
-                'is_sub_order': order.parent_order is not None,
-                'sequence_index': sequence_index,
-                'order_type': order.order_type
-            })
-        elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
-            target_unit_id = order.parameters["target_unit_id"]
-            target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
-            if target_unit:
-                sequence_index = len(all_waypoints_sequence)
-                all_waypoints_sequence.append({
-                    'position': target_unit.position,
-                    'system': target_unit.in_system,
-                    'hex': target_unit.in_hex,
-                    'is_current': is_current,
-                    'is_sub_order': False,
-                    'sequence_index': sequence_index,
-                    'order_type': order.order_type
-                })
-        elif order.order_type == OrderType.USE_ABILITY:
-            target_unit_id = order.parameters.get("target_unit_id")
-            target_position = order.parameters.get("target_position")
-            if target_unit_id:
-                target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
-                if target_unit:
-                    sequence_index = len(all_waypoints_sequence)
-                    all_waypoints_sequence.append({
-                        'position': target_unit.position,
-                        'system': target_unit.in_system,
-                        'hex': target_unit.in_hex,
-                        'is_current': is_current,
-                        'is_sub_order': False,
-                        'sequence_index': sequence_index,
-                        'order_type': order.order_type
-                    })
-            elif target_position:
-                dsys = order.parameters.get("target_system_name") or order.unit.in_system
-                dhex = order.parameters.get("target_hex_coord") or order.unit.in_hex
-                sequence_index = len(all_waypoints_sequence)
-                all_waypoints_sequence.append({
-                    'position': target_position,
-                    'system': dsys,
-                    'hex': dhex,
-                    'is_current': is_current,
-                    'is_sub_order': order.parent_order is not None,
-                    'sequence_index': sequence_index,
-                    'order_type': order.order_type
-                })
-        elif order.order_type == OrderType.PATROL:
-            wps = order.parameters.get("waypoints", [])
-            if not wps and "destination_position" in order.parameters:
-                wps = [{
-                    "system_name": order.parameters.get("destination_system_name"),
-                    "hex_coord": order.parameters.get("destination_hex_coord"),
-                    "position": order.parameters.get("destination_position")
-                }]
-            start_pos = getattr(order, "start_position", None)
-            start_sys = getattr(order, "start_system_name", None)
-            start_hex = getattr(order, "start_hex_coord", None)
-            if not start_pos:
-                start_pos = unit.position
-                start_sys = unit.in_system
-                start_hex = unit.in_hex
-
-            # Construct the complete patrol cycle: waypoints list followed by the start position.
-            cycle = []
-            for wp in wps:
-                cycle.append({
-                    'position': wp['position'],
-                    'system': wp['system_name'],
-                    'hex': wp['hex_coord']
-                })
-            if start_pos:
-                cycle.append({
-                    'position': start_pos,
-                    'system': start_sys,
-                    'hex': start_hex
-                })
-
-            if cycle:
-                # Reorder the cycle to start with the active/current waypoint index.
-                # This ensures the path flows from the unit's current position to the current leg target,
-                # and then continues in order to close the loop.
-                idx = getattr(order, "current_waypoint_index", 0)
-                if idx >= len(cycle) or idx < 0:
-                    idx = 0
-
-                # Form a closed loop starting at idx, going through the cycle, and ending back at idx.
-                reordered_cycle = cycle[idx:] + cycle[:idx] + [cycle[idx]]
-
-                for item in reordered_cycle:
-                    sequence_index = len(all_waypoints_sequence)
-                    all_waypoints_sequence.append({
-                        'position': item['position'],
-                        'system': item['system'],
-                        'hex': item['hex'],
-                        'is_current': is_current,
-                        'is_sub_order': True,
-                        'sequence_index': sequence_index,
-                        'order_type': order.order_type
-                    })
-
-        for sub_order in list(order.sub_orders):
-            # Skip the MoveOrder sub-order of a PatrolOrder because the patrol path
-            # loop rendering already handles drawing the active move path to the current target.
-            if order.order_type == OrderType.PATROL and sub_order.order_type == OrderType.MOVE:
-                continue
-            self._collect_waypoints_from_order(
-                sub_order,
-                unit,
-                all_waypoints_sequence,
-                is_current=(is_current and order == unit.commander_component.current_order)
-            )
-    
-    def _collect_all_waypoints(self, unit, is_current_order=False):
-        """Helper method to collect all waypoints from a unit's orders and sub-orders with sequence index."""
-        all_waypoints_sequence = []
-        
-        if unit.commander_component.current_order:
-            self._collect_waypoints_from_order(unit.commander_component.current_order, unit, all_waypoints_sequence, True)
-        
-        for queued_order in list(unit.commander_component.orders_queue):
-            self._collect_waypoints_from_order(queued_order, unit, all_waypoints_sequence, False)
-            
-        return all_waypoints_sequence
-        
-    def _draw_sector_view_order_lines_from_other_sectors(self, external_units):
-        """Draw order paths for units in other sectors that have orders targeting this sector."""
-        for external_unit in external_units:
-            all_waypoints_sequence = self._collect_all_waypoints(external_unit)
-            waypoints_in_current_sector = [wp for wp in all_waypoints_sequence 
-                                        if wp['system'] == self.game.current_system_name and 
-                                           wp['hex'] == self.game.current_sector_coord]
-            waypoints_in_current_sector.sort(key=lambda wp: wp['sequence_index'])
-            
-            path_segments = []
-            current_segment = []
-            
-            for i, waypoint in enumerate(waypoints_in_current_sector):
-                if i == 0:
-                    current_segment.append(waypoint)
-                else:
-                    prev_wp = waypoints_in_current_sector[i-1]
-                    if waypoint['sequence_index'] == prev_wp['sequence_index'] + 1:
-                        current_segment.append(waypoint)
-                    else:
-                        if current_segment:
-                            path_segments.append(current_segment)
-                        current_segment = [waypoint]
-            if current_segment:
-                path_segments.append(current_segment)
-            
-            for segment_index, segment in enumerate(path_segments):
-                if not segment:
-                    continue
-                    
-                for i, waypoint in enumerate(segment):
-                    dest_pixel_point = self._coords_to_pixels(waypoint['position'])
-                    
-                    if waypoint['order_type'] == OrderType.ATTACK:
-                        line_color = RED
-                        line_width = 2
-                    elif waypoint['order_type'] == OrderType.PROTECT:
-                        line_color = (255, 105, 180)
-                        line_width = 2
-                    elif waypoint['order_type'] == OrderType.PATROL:
-                        line_color = (160, 200, 255)
-                        line_width = 2
-                    elif waypoint['is_current']:
-                        line_width = 2
-                        line_color = MOVE_ORDER_LINE_COLOR
-                    else:
-                        line_width = 1
-                        line_color = (max(MOVE_ORDER_LINE_COLOR[0] - 40, 0), 
-                                     max(MOVE_ORDER_LINE_COLOR[1] - 40, 0), 
-                                     max(MOVE_ORDER_LINE_COLOR[2] - 40, 0))
-                    
-                    if i == 0:
-                        entry_color = WORMHOLE_JUMP_ORDER_COLOR
-                        pygame.draw.circle(self.overlay_surface, entry_color, 
-                                           (dest_pixel_point.x, dest_pixel_point.y), 3, 1)
-                        last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
-                    else:
-                        if waypoint['order_type'] == OrderType.PATROL:
-                            draw_dotted_line(self.overlay_surface, line_color,
-                                             (last_pixel_x, last_pixel_y),
-                                             (dest_pixel_point.x, dest_pixel_point.y), line_width)
-                        else:
-                            pygame.draw.line(self.overlay_surface, line_color, 
-                                          (last_pixel_x, last_pixel_y), 
-                                          (dest_pixel_point.x, dest_pixel_point.y), line_width)
-                        last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
-                    
-                    is_exit_point = (i == len(segment) - 1 and segment_index < len(path_segments) - 1)
-                    if is_exit_point:
-                        exit_color = WORMHOLE_JUMP_ORDER_COLOR
-                        pygame.draw.circle(self.overlay_surface, exit_color, 
-                                       (dest_pixel_point.x, dest_pixel_point.y), 3, 1)
-                    else:
-                        if i > 0 or segment_index == 0:
-                            circle_size = 3 if not waypoint['is_sub_order'] else 2
-                            pygame.draw.circle(self.overlay_surface, line_color, 
-                                      (dest_pixel_point.x, dest_pixel_point.y), circle_size)
-                
-                # Draw turn notches for the segment
-                if external_unit.engines_component:
-                    effective_speed = external_unit.engines_component.speed * external_unit.xp_multiplier(XP_SPEED_BONUS)
-                    self._draw_path_turn_notches_for_segment(segment, False, None, effective_speed)
-
-    def _draw_sector_view_order_lines(self, unit, unit_pixel_x, unit_pixel_y):
-        """Draw order paths for a unit in the sector view."""
-        all_waypoints_sequence = self._collect_all_waypoints(unit)
-        waypoints_in_current_sector = [wp for wp in all_waypoints_sequence 
-                                     if wp['system'] == self.game.current_system_name and 
-                                        wp['hex'] == self.game.current_sector_coord]
-        waypoints_in_current_sector.sort(key=lambda wp: wp['sequence_index'])
-        
-        path_segments = []
-        current_segment = []
-        
-        for i, waypoint in enumerate(waypoints_in_current_sector):
-            if i == 0:
-                current_segment.append(waypoint)
-            else:
-                prev_wp = waypoints_in_current_sector[i-1]
-                if waypoint['sequence_index'] == prev_wp['sequence_index'] + 1:
-                    current_segment.append(waypoint)
-                else:
-                    if current_segment:
-                        path_segments.append(current_segment)
-                    current_segment = [waypoint]
-        if current_segment:
-            path_segments.append(current_segment)
-        
-        if path_segments:
-            unit_in_current_sector = (unit.in_system == self.game.current_system_name and 
-                                     unit.in_hex == self.game.current_sector_coord)
-            
-            for segment_index, segment in enumerate(path_segments):
-                if not segment:
-                    continue
-                    
-                first_waypoint_in_segment = segment[0]
-                is_first_waypoint_overall = (first_waypoint_in_segment['sequence_index'] == 0)
-                connect_to_unit = unit_in_current_sector and (
-                    first_waypoint_in_segment.get('connect_to_unit', False) or
-                    (is_first_waypoint_overall and segment_index == 0)
-                )
-                
-                for i, waypoint in enumerate(segment):
-                    dest_pixel_point = self._coords_to_pixels(waypoint['position'])
-                    
-                    if waypoint['order_type'] == OrderType.ATTACK:
-                        line_color = RED
-                        line_width = 2
-                    elif waypoint['order_type'] == OrderType.PROTECT:
-                        line_color = (255, 105, 180)
-                        line_width = 2
-                    elif waypoint['order_type'] == OrderType.PATROL:
-                        line_color = (160, 200, 255)
-                        line_width = 2
-                    elif waypoint['is_current']:
-                        line_width = 2
-                        line_color = MOVE_ORDER_LINE_COLOR
-                    else:
-                        line_width = 1
-                        line_color = (max(MOVE_ORDER_LINE_COLOR[0] - 40, 0), 
-                                     max(MOVE_ORDER_LINE_COLOR[1] - 40, 0), 
-                                     max(MOVE_ORDER_LINE_COLOR[2] - 40, 0))
-                    
-                    is_patrol = waypoint['order_type'] == OrderType.PATROL
-
-                    if i == 0:
-                        if connect_to_unit:
-                            if is_patrol:
-                                draw_dotted_line(self.overlay_surface, line_color,
-                                                 (unit_pixel_x, unit_pixel_y),
-                                                 (dest_pixel_point.x, dest_pixel_point.y), line_width)
-                            else:
-                                pygame.draw.line(self.overlay_surface, line_color, 
-                                              (unit_pixel_x, unit_pixel_y), 
-                                              (dest_pixel_point.x, dest_pixel_point.y), line_width)
-                        if segment_index > 0:
-                            entry_color = WORMHOLE_JUMP_ORDER_COLOR
-                            pygame.draw.circle(self.overlay_surface, entry_color, 
-                                           (dest_pixel_point.x, dest_pixel_point.y), 3, 1)
-                        last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
-                    else:
-                        if is_patrol:
-                            draw_dotted_line(self.overlay_surface, line_color,
-                                             (last_pixel_x, last_pixel_y),
-                                             (dest_pixel_point.x, dest_pixel_point.y), line_width)
-                        else:
-                            pygame.draw.line(self.overlay_surface, line_color, 
-                                          (last_pixel_x, last_pixel_y), 
-                                          (dest_pixel_point.x, dest_pixel_point.y), line_width)
-                        last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
-                    
-                    is_last_in_segment = (i == len(segment) - 1)
-                    is_final_segment = (segment_index == len(path_segments) - 1)
-                    will_exit_sector = False
-                    
-                    if is_last_in_segment:
-                        if not is_final_segment:
-                            will_exit_sector = True
-                        else:
-                            all_waypoints = all_waypoints_sequence
-                            current_seq_index = waypoint['sequence_index']
-                            for wp in all_waypoints:
-                                if wp['sequence_index'] == current_seq_index + 1:
-                                    if wp['hex'] != self.game.current_sector_coord or wp['system'] != self.game.current_system_name:
-                                        will_exit_sector = True
-                                    break
-                    
-                    if is_last_in_segment and will_exit_sector:
-                        exit_color = WORMHOLE_JUMP_ORDER_COLOR
-                        pygame.draw.circle(self.overlay_surface, exit_color, 
-                                      (dest_pixel_point.x, dest_pixel_point.y), 5, 2)
-                    elif not (i == 0 and segment_index > 0):
-                        circle_size = 3 if not waypoint['is_sub_order'] else 2
-                        pygame.draw.circle(self.overlay_surface, line_color, 
-                                      (dest_pixel_point.x, dest_pixel_point.y), circle_size)
-
-                # Draw turn notches for this segment
-                if unit.engines_component:
-                    effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
-                    self._draw_path_turn_notches_for_segment(segment, connect_to_unit, unit.position, effective_speed)
-
-    def _get_pre_rendered_nebula(self, nebula):
-        if nebula.id in self._nebula_master_surfaces:
-            return self._nebula_master_surfaces[nebula.id]
-
-        ref_zoom = 1.0
-        ref_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * ref_zoom
-        num_circles = 15
-        max_offset_logical = NEBULA_RADIUS / 2.0
-        base_radius_logical = NEBULA_RADIUS
-
-        random.seed(nebula.id)
-
-        circles = []
-        min_x, max_x = float('inf'), float('-inf')
-        min_y, max_y = float('inf'), float('-inf')
-
-        for _ in range(num_circles):
-            offset_x_logical = random.uniform(-max_offset_logical, max_offset_logical)
-            offset_y_logical = random.uniform(-max_offset_logical, max_offset_logical)
-
-            offset_x_px = offset_x_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-            offset_y_px = offset_y_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-
-            radius_variation = random.uniform(0.5, 1.2)
-            circle_radius_logical = base_radius_logical * radius_variation
-            circle_radius_px = int(circle_radius_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-
-            if circle_radius_px <= 0:
-                continue
-
-            alpha = random.randint(20, 50)
-            color = NEBULA_COLORS[nebula.nebula_type]
-            color_key = (color[0], color[1], color[2], alpha)
-
-            circles.append((offset_x_px, offset_y_px, circle_radius_px, color_key))
-
-            min_x = min(min_x, offset_x_px - circle_radius_px)
-            max_x = max(max_x, offset_x_px + circle_radius_px)
-            min_y = min(min_y, offset_y_px - circle_radius_px)
-            max_y = max(max_y, offset_y_px + circle_radius_px)
-
-        random.seed()
-
-        if not circles:
-            self._nebula_master_surfaces[nebula.id] = None
-            return None
-
-        # Add padding to prevent any edge clipping
-        width = int(max_x - min_x) + 4
-        height = int(max_y - min_y) + 4
-
-        center_x = -min_x + 2
-        center_y = -min_y + 2
-
-        master_surface = pygame.Surface((width, height), pygame.SRCALPHA)
-
-        for offset_x, offset_y, radius, color in circles:
-            circle_surface = self._get_cached_circle_surface(radius, color)
-            if circle_surface:
-                cx = center_x + offset_x - radius
-                cy = center_y + offset_y - radius
-                master_surface.blit(circle_surface, (cx, cy))
-
-        self._nebula_master_surfaces[nebula.id] = {
-            'master': master_surface,
-            'center_x': center_x,
-            'center_y': center_y,
-        }
-        return self._nebula_master_surfaces[nebula.id]
-
-    def _draw_nebula(self, nebula, pos_px):
-        zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
-
-        pre_rendered = self._get_pre_rendered_nebula(nebula)
-        if not pre_rendered:
-            return
-
-        target_zoom = getattr(self.game, 'sector_target_zoom', zoom)
-        is_zooming = isinstance(target_zoom, (int, float)) and abs(target_zoom - zoom) > 1e-4
-
-        if is_zooming:
-            # While actively zooming, scale by the *true* (smoothly animating) zoom
-            # instead of a quantized bucket. The nebula's on-screen center
-            # (pos_px) is always computed from the true zoom, so scaling the
-            # blob itself by a bucketed zoom made its size/spread snap in
-            # discrete steps relative to that smoothly-moving center -- i.e.
-            # visible jitter/popping every time the zoom crossed a bucket
-            # boundary. Using the true zoom here keeps center and scale in
-            # lockstep. This path is intentionally uncached (the zoom value
-            # is different every frame anyway while animating), and uses a
-            # fast nearest-neighbour scale to keep it cheap.
-            self._blit_scaled_surface_once(
-                pre_rendered['master'],
-                (pre_rendered['center_x'], pre_rendered['center_y']),
-                (pos_px.x, pos_px.y),
-                zoom,
-                smooth=False,
-            )
-        else:
-            # At rest, quantize to a small grid of buckets so repeated frames
-            # at (almost) the same zoom share a cached, high-quality
-            # smooth-scaled texture instead of re-scaling every frame.
-            quantized_zoom = self._effect_zoom_bucket(zoom)
-            self._blit_visible_scaled_surface(
-                pre_rendered['master'],
-                (pre_rendered['center_x'], pre_rendered['center_y']),
-                (pos_px.x, pos_px.y),
-                quantized_zoom,
-                ('nebula', nebula.id, quantized_zoom),
-                smooth=True,
-            )
-
-
-
-    def _draw_celestial_field(self, field, pos_px, base_color, num_particles=40):
-        """Draws a celestial field with random objects (asteroids/ice bodies/debris)"""
-        num_objects = num_particles
-        field_radius = CELESTIAL_FIELD_RADIUS  # Logical radius of the field
-        time_ms = pygame.time.get_ticks()
-        zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
-        dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
-
-        random.seed(field.id)
-
-        for i in range(num_objects):
-            # Generate consistent random properties for each object (asteroid/ice body/debris)
-            initial_angle = random.uniform(0, 360)
-            initial_radius = random.uniform(field_radius * 0.1, field_radius)
-            rotation_speed = random.uniform(-1.5, 1.5)  # Faster rotation
-            object_size = random.randint(1, 3)
-            color_variation = random.randint(-20, 20)
-            object_color = (max(0, min(255, base_color[0] + color_variation)),
-                              max(0, min(255, base_color[1] + color_variation)),
-                              max(0, min(255, base_color[2] + color_variation)))
-
-            # Animate the object's position
-            current_angle_rad = math.radians(initial_angle + (time_ms / 500.0) * rotation_speed)
-            offset_x = initial_radius * math.cos(current_angle_rad)
-            offset_y = initial_radius * math.sin(current_angle_rad)
-            
-            offset_x_px = offset_x * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-            offset_y_px = offset_y * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-            object_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
-
-            # Draw the object
-            pygame.draw.circle(self.screen, object_color, object_pos, object_size)
-
-        random.seed()
-
-    def _get_pre_rendered_storm_circles(self, storm):
-        """Precompute (and cache, per storm.id) the deterministic layout of a
-        storm's rotating particles in a small, fixed-resolution local
-        "compose" space, independent of screen size or zoom.
-
-        Every frame, ``_draw_storm`` positions these particles (by animating
-        their angle) into a shared scratch canvas sized to
-        ``STORM_COMPOSE_MAX_DIAMETER``, then scales the ENTIRE composed
-        canvas to the screen with a single transform call -- instead of the
-        old approach of individually smoothscaling (or, at high zoom,
-        rasterizing via an uncached ``pygame.draw.circle``) each of the 25
-        particles every frame.
-        """
-        if storm.id in self._storm_base_circle_surfaces:
-            return self._storm_base_circle_surfaces[storm.id]
-
-        num_circles = 25
-        base_radius_logical = STORM_RADIUS
-
-        random.seed(storm.id)
-
-        particles = []
-        max_bounding_logical = 0.0
-        for i in range(num_circles):
-            initial_angle = random.uniform(0, 360)
-            initial_radius_logical = random.uniform(base_radius_logical * 0.1, base_radius_logical * 0.9)
-            rotation_speed = random.uniform(-3.0, 3.0)
-            circle_base_radius_logical = base_radius_logical * random.uniform(0.2, 0.5)
-
-            alpha = random.randint(30, 60)
-            color = STORM_COLORS[storm.storm_type]
-            color_key = (color[0], color[1], color[2], alpha)
-
-            particles.append({
-                'initial_angle': initial_angle,
-                'initial_radius_logical': initial_radius_logical,
-                'rotation_speed': rotation_speed,
-                'circle_base_radius_logical': circle_base_radius_logical,
-                'color_key': color_key,
-            })
-            max_bounding_logical = max(max_bounding_logical, initial_radius_logical + circle_base_radius_logical)
-
-        random.seed()
-
-        if max_bounding_logical <= 0:
-            max_bounding_logical = base_radius_logical
-
-        canvas_diameter = float(STORM_COMPOSE_MAX_DIAMETER)
-        canvas_center_px = canvas_diameter / 2.0
-        padding_px = 4.0
-        # logical-units -> local-canvas-px conversion factor, chosen so the
-        # storm's full bounding radius fits inside the capped canvas.
-        s_compose = max(1e-6, (canvas_center_px - padding_px) / max_bounding_logical)
-
-        for particle in particles:
-            particle['local_radius_px'] = max(1, round(particle['circle_base_radius_logical'] * s_compose))
-
-        storm_data = {
-            'particles': particles,
-            'bounding_radius_logical': max_bounding_logical,
-            's_compose': s_compose,
-            'canvas_diameter': canvas_diameter,
-        }
-        self._storm_base_circle_surfaces[storm.id] = storm_data
-        return storm_data
-
-    def _draw_storm(self, storm, pos_px):
-        zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
-        dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
-        time_ms = pygame.time.get_ticks()
-
-        storm_data = self._get_pre_rendered_storm_circles(storm)
-        particles = storm_data['particles']
-        s_compose = storm_data['s_compose']
-        canvas_diameter = storm_data['canvas_diameter']
-        bounding_radius_logical = storm_data['bounding_radius_logical']
-
-        bounding_radius_px = bounding_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-        if bounding_radius_px > 0 and not self._is_circle_off_screen((pos_px.x, pos_px.y), bounding_radius_px):
-            canvas_size = (int(canvas_diameter), int(canvas_diameter))
-            if self._storm_scratch_surface is None or self._storm_scratch_surface.get_size() != canvas_size:
-                self._storm_scratch_surface = pygame.Surface(canvas_size, pygame.SRCALPHA)
-            scratch = self._storm_scratch_surface
-            scratch.fill((0, 0, 0, 0))
-
-            canvas_center_px = canvas_diameter / 2.0
-            for particle in particles:
-                current_angle_rad = math.radians(particle['initial_angle'] + (time_ms / 100.0) * particle['rotation_speed'])
-                offset_x_logical = particle['initial_radius_logical'] * math.cos(current_angle_rad)
-                offset_y_logical = particle['initial_radius_logical'] * math.sin(current_angle_rad)
-
-                local_x = canvas_center_px + offset_x_logical * s_compose
-                local_y = canvas_center_px + offset_y_logical * s_compose
-                local_radius_px = particle['local_radius_px']
-
-                circle_surface = self._get_cached_circle_surface(local_radius_px, particle['color_key'])
-                if circle_surface is not None:
-                    scratch.blit(circle_surface, (local_x - local_radius_px, local_y - local_radius_px))
-
-            # Scale the ENTIRE composed canvas to the screen in a single
-            # transform call. Positions and sizes were both derived from the
-            # same s_compose factor, so this one scale reproduces the same
-            # on-screen layout the old per-particle scaling produced.
-            target_zoom = getattr(self.game, 'sector_target_zoom', zoom)
-            is_zooming = isinstance(target_zoom, (int, float)) and abs(target_zoom - zoom) > 1e-4
-            final_scale = (dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL) / s_compose
-
-            self._blit_scaled_surface_once(
-                scratch,
-                (canvas_center_px, canvas_center_px),
-                (pos_px.x, pos_px.y),
-                final_scale,
-                smooth=not is_zooming,
-            )
-
-        # Reset seed to keep behavior consistent (matches prior behavior,
-        # which reseeded here regardless of cache hit/miss).
-        random.seed()
-
-        # Draw lightning flashes on top
-        if random.random() < 0.05:
-            num_bolts = random.randint(1, 3)
-            base_radius_logical = STORM_RADIUS
-            base_radius_px = int(base_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            for _ in range(num_bolts):
-                angle = random.uniform(0, 2 * math.pi)
-                length_px = random.uniform(base_radius_px * 1.0, base_radius_px * 1.5)
-                end_pos_x = pos_px.x + length_px * math.cos(angle)
-                end_pos_y = pos_px.y + length_px * math.sin(angle)
-                pygame.draw.line(self.overlay_surface, STORM_LIGHTNING_COLOR, (pos_px.x, pos_px.y), (end_pos_x, end_pos_y), 2)
-
-
