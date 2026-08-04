@@ -94,22 +94,19 @@ def get_ability_required_components(ability_key: str) -> List[str]:
     try:
         atype = AbilityType(ability_key)
         defn = ABILITY_DEFINITIONS.get(atype)
-        return defn.required_components if defn else []
+        return list(defn.required_components) if defn else []
     except (ValueError, KeyError):
         return []
 
-# Dynamically generated dictionary mapping ability key -> required component flags
-class _AbilityRequirementsDict(dict):
+class _AbilityRequirementsMap(dict):
     def __getitem__(self, key: str) -> List[str]:
         return get_ability_required_components(key)
     def get(self, key: str, default=None) -> List[str]:
-        from unit_components import AbilityType
         reqs = get_ability_required_components(key)
-        if reqs or any(a.value == key for a in AbilityType):
-            return reqs
-        return default if default is not None else []
+        return reqs if reqs else (default if default is not None else [])
 
-ABILITY_REQUIRED_COMPONENTS = _AbilityRequirementsDict()
+ABILITY_REQUIRED_COMPONENTS = _AbilityRequirementsMap()
+
 
 
 
