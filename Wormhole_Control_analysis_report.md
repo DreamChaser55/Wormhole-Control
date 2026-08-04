@@ -10,7 +10,7 @@ While the codebase exhibits strong architectural foundations—such as decoupled
 
 ## 1. Bugs, Test Suite Failures & Logical Flaws
 
-During test suite execution (`py -m pytest`), **all 430 out of 430 tests passed** cleanly with no module-level import side effects or setup failures.
+During test suite execution (`py -m pytest`), **all 444 out of 444 tests passed** cleanly with no module-level import side effects or setup failures.
 
 ---
 
@@ -45,13 +45,9 @@ While major classes have docstrings, several internal helper functions and event
 
 ## 4. Element Naming Analysis
 
-1. **`HexCoord` Type Alias vs `NamedTuple`**:
-   - `HexCoord` is currently defined as `Tuple[int, int]` in `utils.py`.
-   - Functions often unpack coordinates as `(q, r)` or `(x, y)` interchangeably, creating confusion between sector hex coordinates and 2D pixel coordinates.
-   - *Recommendation*: Define `HexCoord` as a `NamedTuple("HexCoord", [("q", int), ("r", int)])` or dataclass to enforce explicit field access (`coord.q`, `coord.r`).
-2. **`in_hex` Attribute Name**:
+1. **`in_hex` Attribute Name**:
    - On `GameObject`, the hex position is named `in_hex`. In some modules it is referred to as `hex_coord` or `sector_hex`. Standardizing on `hex_coord` would improve clarity.
-3. **`hangar_component` vs `strikecraft_bay_component`**:
+2. **`hangar_component` vs `strikecraft_bay_component`**:
    - `HangarComponent` stores regular units (e.g. ships, constructors).
    - `StrikecraftBayComponent` stores strikecraft wings (fighters, bombers).
    - In code and UI, terms like "Hangar", "Bay", and "Docked Units" are occasionally used interchangeably. Using distinct terms such as `ShipHangarComponent` vs `FighterBayComponent` would clarify usage.

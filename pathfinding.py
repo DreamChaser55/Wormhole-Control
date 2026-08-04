@@ -92,9 +92,8 @@ def find_intersystem_path(graph: Graph, start_node: str, end_node: str, ship_siz
 
 def _axial_to_cube(hex_coord: HexCoord) -> typing.Tuple[float, float, float]:
     """Converts axial coordinates to cube coordinates."""
-    q, r = hex_coord
-    x = float(q)
-    z = float(r)
+    x = float(hex_coord.q if hasattr(hex_coord, 'q') else hex_coord[0])
+    z = float(hex_coord.r if hasattr(hex_coord, 'r') else hex_coord[1])
     y = -x - z
     return (x, y, z)
 
@@ -119,7 +118,7 @@ def _cube_round(cube: typing.Tuple[float, float, float]) -> typing.Tuple[int, in
 
 def _cube_to_axial(cube: typing.Tuple[float, float, float]) -> HexCoord:
     """Converts cube coordinates (potentially rounded) back to axial coordinates."""
-    return (int(cube[0]), int(cube[2]))
+    return HexCoord(int(cube[0]), int(cube[2]))
 
 def _cube_lerp(a: typing.Tuple[float, float, float], b: typing.Tuple[float, float, float], t: float) -> typing.Tuple[float, float, float]:
     """Linear interpolation for cube coordinates."""

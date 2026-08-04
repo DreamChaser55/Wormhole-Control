@@ -41,7 +41,7 @@ def hex_round(q_frac: float, r_frac: float) -> HexCoord:
     else:
         s = -q - r
 
-    return q, r
+    return HexCoord(q, r)
 
 def get_hex_vertices(q: int, r: int) -> typing.List[Position]: # Returns a list of pixel Positions
     """Calculates the 6 vertices of a hexagon at axial coordinates (q, r), relative to system center."""
@@ -61,22 +61,25 @@ def hex_distance(q1: int, r1: int, q2: int, r2: int) -> int:
     ds = (-q1 - r1) - (-q2 - r2)
     return (abs(dq) + abs(dr) + abs(ds)) // 2
 
-HEX_DIRECTIONS: typing.List[HexCoord] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)]
+HEX_DIRECTIONS: typing.List[HexCoord] = [
+    HexCoord(1, 0), HexCoord(1, -1), HexCoord(0, -1),
+    HexCoord(-1, 0), HexCoord(-1, 1), HexCoord(0, 1)
+]
 
 def hex_neighbors(coord: HexCoord) -> typing.List[HexCoord]:
     """Return the 6 axial neighbours of a hex coordinate."""
-    q, r = coord
-    return [(q + dq, r + dr) for dq, dr in HEX_DIRECTIONS]
+    q, r = coord.q, coord.r
+    return [HexCoord(q + dq.q, r + dq.r) for dq in HEX_DIRECTIONS]
 
 def hexes_within_range(coord: HexCoord, n: int) -> typing.List[HexCoord]:
     """Return all hex coords within `n` rings of `coord`, INCLUDING `coord`
     itself (ring 0). n <= 0 returns just [coord]."""
-    q0, r0 = coord
+    hex_c = coord if isinstance(coord, HexCoord) else HexCoord(coord[0], coord[1])
     if n <= 0:
-        return [coord]
+        return [hex_c]
     results = []
     for dq in range(-n, n + 1):
         for dr in range(max(-n, -dq - n), min(n, -dq + n) + 1):
-            results.append((q0 + dq, r0 + dr))
+            results.append(HexCoord(hex_c.q + dq, hex_c.r + dr))
     return results
 

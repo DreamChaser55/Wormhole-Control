@@ -8,7 +8,11 @@ import sys
 import time
 
 # Type definitions
-HexCoord = typing.Tuple[int, int]
+class HexCoord(typing.NamedTuple):
+    """Axial coordinates for the hex grid (q: axial column/diagonal, r: axial row)."""
+    q: int
+    r: int
+
 ContextMenuOption = typing.Union[
     typing.Tuple[str, str],                                    # Flat option: (label, action_id)
     typing.Tuple[str, typing.List[typing.Tuple[str, str]]]     # Submenu parent: (label, [(label, action_id), ...])

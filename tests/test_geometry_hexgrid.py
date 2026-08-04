@@ -114,3 +114,22 @@ def test_hexgrid_utils():
     assert len(vertices) == 6
     for v in vertices:
         assert isinstance(v, Position)
+
+def test_hex_coord_namedtuple():
+    from utils import HexCoord
+    coord = HexCoord(3, -2)
+    assert coord.q == 3
+    assert coord.r == -2
+    assert coord[0] == 3
+    assert coord[1] == -2
+    assert coord == (3, -2)
+    
+    # Test hexgrid_utils returns HexCoord
+    pixel_hex = hexgrid_utils.pixel_to_hex(500, 500)
+    assert hasattr(pixel_hex, 'q')
+    assert hasattr(pixel_hex, 'r')
+
+    neighbors = hexgrid_utils.hex_neighbors(coord)
+    assert len(neighbors) == 6
+    assert all(hasattr(n, 'q') and hasattr(n, 'r') for n in neighbors)
+
