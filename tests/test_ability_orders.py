@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 from geometry import Position, distance
 from entities import Unit, Player, OrderType
 from constants import HullSize, RED
-from unit_components import AbilityComponent, AbilityType, Engines, AntimatterStorage, Commander, Weapons, Defenses
+from unit_components import AbilityComponent, AbilityType, Engines, AntimatterStorage, Commander, Weapons, Defenses, MarinesComponent
 from unit_orders import UseAbilityOrder, OrderStatus, MoveOrder
 from tests.test_unit_components import MockPlayer
 from rendering.sector_renderer import SectorViewRenderer
@@ -249,6 +249,7 @@ def test_capture_unit_success_no_engines():
     
     ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
     caster.add_component(ability_comp)
+    caster.add_component(MarinesComponent(caster, marines_count=10))
     caster.antimatter_component.current_amount = 50.0
     
     order = UseAbilityOrder(caster, {
@@ -278,6 +279,7 @@ def test_capture_unit_success_disabled_engines():
     
     ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
     caster.add_component(ability_comp)
+    caster.add_component(MarinesComponent(caster, marines_count=10))
     caster.antimatter_component.current_amount = 50.0
     
     order = UseAbilityOrder(caster, {
@@ -307,6 +309,7 @@ def test_capture_unit_success_disabled_unit():
     
     ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
     caster.add_component(ability_comp)
+    caster.add_component(MarinesComponent(caster, marines_count=10))
     caster.antimatter_component.current_amount = 50.0
     
     order = UseAbilityOrder(caster, {
@@ -447,6 +450,7 @@ def test_capture_unit_success_weapons_destroyed():
 
     ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
     caster.add_component(ability_comp)
+    caster.add_component(MarinesComponent(caster, marines_count=10))
     caster.antimatter_component.current_amount = 50.0
 
     order = UseAbilityOrder(caster, {
@@ -506,6 +510,7 @@ def test_capture_unit_success_defenses_destroyed():
 
     ability_comp = AbilityComponent(caster, [AbilityType.CAPTURE_UNIT])
     caster.add_component(ability_comp)
+    caster.add_component(MarinesComponent(caster, marines_count=10))
     caster.antimatter_component.current_amount = 50.0
 
     order = UseAbilityOrder(caster, {

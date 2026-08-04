@@ -44,6 +44,7 @@ def test_fullscreen_resolution_autodetect():
     import constants
 
     orig_env = os.environ.get("WORMHOLE_FULLSCREEN")
+    orig_dict = constants.__dict__.copy()
 
     try:
         # 1. Test when FULLSCREEN is True and display info returns a specific resolution
@@ -88,6 +89,8 @@ def test_fullscreen_resolution_autodetect():
                 del os.environ["WORMHOLE_FULLSCREEN"]
         else:
             os.environ["WORMHOLE_FULLSCREEN"] = orig_env
-            
+
         importlib.reload(constants)
+        constants.__dict__.update(orig_dict)
+
 

@@ -43,6 +43,7 @@ from unit_components import (
     StrikecraftWingComponent,
     Sensors,
     MinefieldType,
+    MarinesComponent,
 )
 
 
@@ -408,6 +409,10 @@ class Unit(GameObject):
     @property
     def ability_component(self) -> typing.Optional[AbilityComponent]:
         return self.get_component(AbilityComponent)
+
+    @property
+    def marines_component(self) -> typing.Optional[MarinesComponent]:
+        return self.get_component(MarinesComponent)
 
     @property
     def commander_component(self) -> Commander:

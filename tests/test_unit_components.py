@@ -21,6 +21,7 @@ class MockPlayer:
         self.credits = 1000
         self.metal = 1000
         self.crystal = 1000
+        self.color = (255, 0, 0)
 
 class MockUnit:
     def __init__(self):
