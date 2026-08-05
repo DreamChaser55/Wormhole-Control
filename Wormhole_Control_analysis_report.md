@@ -18,10 +18,9 @@ During test suite execution (`py -m pytest`), **all 444 out of 444 tests passed*
 
 ### 2.1 Monolithic Source Files
 Several files have grown excessively large, combining rendering, state handling, and UI layout into monolithic scripts:
-1. [sector_renderer.py](file:///d:/Programming/Github_repos/Wormhole-Control/rendering/sector_renderer.py) (~92 KB, ~2,200 lines): Combines background rendering, celestial body rendering, particle system rendering (storms/nebulae), selection bracket drawing, range circle overlays, and order line visualization.
-2. [unit_editor_gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/unit_editor_gui.py) (~81 KB, ~1,880 lines): Contains layout creation, state sync, widget creation, dynamic cost recalculation, and template serialization in a single class.
-3. [game.py](file:///d:/Programming/Github_repos/Wormhole-Control/game.py) (~87 KB, ~1,600 lines): Functions as central controller, view state machine, event listener, and UI sidebar content generator.
-4. [gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/gui.py) (~77 KB, ~1,800 lines): Combines top bar, sidebar, context menu, and build menu elements.
+1. [unit_editor_gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/unit_editor_gui.py) (~81 KB, ~1,880 lines): Contains layout creation, state sync, widget creation, dynamic cost recalculation, and template serialization in a single class.
+2. [game.py](file:///d:/Programming/Github_repos/Wormhole-Control/game.py) (~87 KB, ~1,600 lines): Functions as central controller, view state machine, event listener, and UI sidebar content generator.
+3. [gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/gui.py) (~77 KB, ~1,800 lines): Combines top bar, sidebar, context menu, and build menu elements.
 
 ### 2.2 Logic Duplication
 - **Coordinate Conversion Clamping**: Sector-to-pixel coordinate conversion and bounding calculations are duplicated between `sector_utils.py`, `geometry.py`, and `input_processor.py`.
@@ -51,36 +50,14 @@ Several files have grown excessively large, combining rendering, state handling,
 
 ## 5. Brainstorming Ideas for Improvement
 
-### 5.1 Architecture & Modularization
-1. **Split Heavy Renderers**:
-   - Decompose `sector_renderer.py` into dedicated sub-renderers:
-     - `SectorGridRenderer` (hex grid & background stars)
-     - `SectorCelestialRenderer` (planets, stars, nebulae, storms)
-     - `SectorEntityRenderer` (ships, stations, minefields)
-     - `SectorOverlayRenderer` (selection brackets, order path lines, sensor range circles)
-
-### 5.2 Performance Optimizations
+### 5.1 Performance Optimizations
 1. **Spatial Hash / Quadtree for Sector View**:
    - Currently, click detection, range checks, and sensor visibility scans iterate through all units in a system. Implementing spatial hashing for sector objects will optimize performance when dealing with hundreds of units.
 2. **Background Star & Grid Caching**:
    - Pre-render static sector background elements (grid lines, distant starfields) onto a cached `pygame.Surface` and blit directly during camera movement, avoiding per-frame re-computation.
 
-### 5.3 Gameplay & AI Features
+### 5.2 Gameplay & AI Features
 1. **AI Unit Design Integration**:
    - Enable AI players to utilize the `CustomTemplateManager` to create specialized ship variants (e.g. anti-strikecraft escorts, heavy siege platforms) based on available tech and enemy fleet composition.
 2. **Enhanced Marine Boarding Action**:
    - Expand `MarinesComponent` to support planetary raiding or space station defense/capture mechanics.
-
----
-
-## 6. Recommended Action Plan
-
-```mermaid
-flowchart TD
-    A[Refactor Monolithic Sector Renderer]
-```
-
-
-1. **Refactoring & Polish**:
-   - Modularize `sector_renderer.py` into dedicated sub-renderers.
-
