@@ -22,9 +22,6 @@ Several files have grown excessively large, combining rendering, state handling,
 2. [game.py](file:///d:/Programming/Github_repos/Wormhole-Control/game.py) (~87 KB, ~1,600 lines): Functions as central controller, view state machine, event listener, and UI sidebar content generator.
 3. [gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/gui.py) (~77 KB, ~1,800 lines): Combines top bar, sidebar, context menu, and build menu elements.
 
-### 2.2 Logic Duplication
-- **Coordinate Conversion Clamping**: Sector-to-pixel coordinate conversion and bounding calculations are duplicated between `sector_utils.py`, `geometry.py`, and `input_processor.py`.
-
 ---
 
 ## 3. Comments & Docstrings Audit
