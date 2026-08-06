@@ -89,7 +89,20 @@ pip install pygame-ce pygame_gui
 
 ```
 Wormhole Control/
-├── game.py                   # Main game loop, view state machine, and main application controller
+├── game.py                   # Central game loop facade and delegate controller
+├── game_logging.py           # Custom application logging formatter and logger bootstrap
+├── game_camera.py            # Sector view camera math and smooth zoom/pan controller
+├── economy.py                # Credit income and fleet upkeep calculation functions
+├── game_setup.py             # Game state bootstrap and starting fleet setup
+├── game_actions/             # GUI action dispatch package
+│   ├── app_actions.py        # Menu, navigation, persistence, and application handlers
+│   ├── unit_actions.py       # Unit orders, stances, abilities, and carrier wing handlers
+│   └── selection_actions.py  # Object selections and sidebar tab switch handlers
+├── sidebar/                  # Sidebar payload generation package
+│   ├── builder.py            # Sidebar data payload orchestrator
+│   ├── order_formatting.py   # HTML order-text formatters for UI order queues
+│   ├── panels_world.py       # System, Hex, Celestial Body, and Minefield panel builders
+│   └── panels_unit.py        # Unit panel, tabs, and component dropdown builders
 ├── entities.py               # Game objects (Player, Units, Celestial Bodies, Stations)
 ├── galaxy.py                 # Galaxy generation and star system topology
 ├── gui.py                    # User interface management (Top bar, Sidebar, Menus)
