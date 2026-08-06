@@ -2,7 +2,7 @@ import logging
 import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import distance, hex_distance, move_towards_position
+from geometry import distance, hex_distance, position_at_distance_from_target
 from pathfinding import find_intersystem_path
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
@@ -44,7 +44,7 @@ class MineOrder(Order):
         if not in_range:
             if not self.has_active_sub_orders():
                 if at_location:
-                    dest_pos = move_towards_position(self.unit.position, target.position, self.unit.mining_component.mining_range - 5.0)
+                    dest_pos = position_at_distance_from_target(self.unit.position, target.position, self.unit.mining_component.mining_range - 5.0)
                 else:
                     dest_pos = target.position
 
@@ -114,7 +114,7 @@ class UnloadResourcesOrder(Order):
         if not in_range:
             if not self.has_active_sub_orders():
                 if at_location:
-                    dest_pos = move_towards_position(self.unit.position, target_unit.position, unload_range - 5.0)
+                    dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, unload_range - 5.0)
                 else:
                     dest_pos = target_unit.position
 

@@ -166,7 +166,7 @@ def test_enemy_unit_right_click_opens_menu_with_use_ability():
     
     with patch('pygame.key.get_mods', return_value=0):
         with patch.object(game.gui, 'open_context_menu') as mock_open:
-            with patch('input_processor.distance_sq', return_value=0):
+            with patch('input_processor.is_pixel_in_sector', return_value=True):
                 with patch('input_processor.pixels_to_sector_coords', return_value=Position(100,0)):
                     ip.handle_mouse_click(3, Position(0,0))
                     

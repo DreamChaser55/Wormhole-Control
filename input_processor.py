@@ -15,7 +15,7 @@ from constants import (
 from utils import HexCoord
 from geometry import Vector, Position, distance_sq
 from hexgrid_utils import pixel_to_hex
-from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
+from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords, is_pixel_in_sector, sector_radius_to_pixels
 from entities import GameObject, Unit, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, HullSize, AsteroidField, IceField, DebrisField
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
@@ -301,7 +301,7 @@ class InputProcessor:
                         else:
                             obj_radius_logical = 13.89
                         
-                        obj_radius = obj_radius_logical * (SECTOR_CIRCLE_RADIUS_IN_PX * zoom) / SECTOR_CIRCLE_RADIUS_LOGICAL
+                        obj_radius = sector_radius_to_pixels(obj_radius_logical, zoom)
                         actual_click_radius = obj_radius * SECTOR_OBJECT_CLICK_RADIUS_MULT
                         click_radius_sq = (max(actual_click_radius, 5.0))**2
                         if click_radius_sq < 5**2: click_radius_sq = 5**2
@@ -451,13 +451,7 @@ class InputProcessor:
             if not isinstance(pan_offset, Position):
                 pan_offset = Position(0, 0)
 
-            dynamic_center = Position(
-                SECTOR_CIRCLE_CENTER_IN_PX.x + pan_offset.x,
-                SECTOR_CIRCLE_CENTER_IN_PX.y + pan_offset.y
-            )
-            dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
-            dist_from_center_sq = distance_sq(position, dynamic_center)
-            if dist_from_center_sq <= dynamic_radius**2:
+            if is_pixel_in_sector(position, zoom, pan_offset):
                 clicked_object = self.game.sector_view_mouse_hover_object
                 clicked_sector_coord = pixels_to_sector_coords(position, zoom, pan_offset)
                 if is_right_click:

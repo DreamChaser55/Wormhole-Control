@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import distance, move_towards_position
+from geometry import distance, position_at_distance_from_target
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 
@@ -101,7 +101,7 @@ class TransferAntimatterOrder(Order):
 
         if not in_range:
             if in_same_system_and_hex:
-                dest_pos = move_towards_position(self.unit.position, target_unit.position, transfer_range - 5.0)
+                dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, transfer_range - 5.0)
             else:
                 dest_pos = target_unit.position
 
@@ -136,7 +136,7 @@ class TransferAntimatterOrder(Order):
         if not in_range:
             # Target moved away since we last checked; re-approach.
             if in_same_system_and_hex:
-                dest_pos = move_towards_position(self.unit.position, target_unit.position, transfer_range - 5.0)
+                dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, transfer_range - 5.0)
             else:
                 dest_pos = target_unit.position
 

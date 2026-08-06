@@ -108,7 +108,24 @@ def get_closest_point_on_circle_edge(point: Position, circle: Circle) -> Positio
     
     return closest_point
 
-def move_towards_position(current_pos: Position, target_pos: Position, desired_distance_from_target: float) -> Position:
+def clamp_point_to_circle(point: Position, circle: Circle) -> Position:
+    """Clamps a 2D position so that it lies inside or on the edge of a circle."""
+    dist = distance(point, circle.center)
+    if dist <= circle.radius:
+        return point
+    if dist == 0:
+        return Position(circle.center.x + circle.radius, circle.center.y)
+    direction = (point - circle.center).normalize()
+    return circle.center + (direction * circle.radius)
+
+def clamp_vector_magnitude(vector: Vector, max_magnitude: float) -> Vector:
+    """Clamps a vector's magnitude to a maximum value."""
+    mag = vector.magnitude()
+    if mag <= max_magnitude or mag == 0:
+        return vector
+    return vector * (max_magnitude / mag)
+
+def position_at_distance_from_target(current_pos: Position, target_pos: Position, desired_distance_from_target: float) -> Position:
     """
     Calculates a destination position that is a specific distance away from a target position,
     along the line connecting the current position and the target position.
@@ -134,3 +151,7 @@ def move_towards_position(current_pos: Position, target_pos: Position, desired_d
         direction_from_target = vector_from_target_to_current.normalize()
         destination = target_pos + (direction_from_target * desired_distance_from_target)
         return destination
+
+# Backwards compatible alias for position_at_distance_from_target
+move_towards_position = position_at_distance_from_target
+

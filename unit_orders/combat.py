@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import Position, distance, move_towards_position
+from geometry import Position, distance, position_at_distance_from_target
 from constants import HullSize
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
@@ -68,7 +68,7 @@ class AttackOrder(Order):
             min_turret_range = min(turret.range for turret in self.unit.weapons_component.turrets)
 
             if not in_the_same_system_and_hex or not in_range:
-                dest_pos = move_towards_position(self.unit.position, target_unit.position, min_turret_range - 5.0)
+                dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, min_turret_range - 5.0)
 
                 move_params = {
                     "destination_system_name": target_unit.in_system,
@@ -151,7 +151,7 @@ class AttackOrder(Order):
         # If we don't have a movement order, check if we need to move
         if not has_movement_order:
             if not in_the_same_system_and_hex or not in_range:
-                dest_pos = move_towards_position(self.unit.position, target_unit.position, min_turret_range - 5.0)
+                dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, min_turret_range - 5.0)
                 move_params = {
                     "destination_system_name": target_unit.in_system,
                     "destination_hex_coord": target_unit.in_hex,
