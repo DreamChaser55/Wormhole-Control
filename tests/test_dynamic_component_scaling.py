@@ -117,7 +117,7 @@ def test_custom_unit_template_total_hull_cost():
 
 def test_unit_editor_summary_hull_size_scaling():
     from unittest.mock import MagicMock
-    from unit_editor_gui import UnitEditorWindow
+    from gui.unit_editor_gui import UnitEditorWindow
     gui = UnitEditorWindow.__new__(UnitEditorWindow)
     gui._comp = ComponentConfig(has_hyperdrive=True, hyperdrive_type="BASIC", hyperdrive_jump_range=5)
     gui._hull_size = HullSize.HUGE

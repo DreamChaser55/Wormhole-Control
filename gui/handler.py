@@ -15,7 +15,7 @@ from . import layout_main_menu, layout_ingame_menu, layout_hud, text_layout, sid
 if typing.TYPE_CHECKING:
     from game import Game
     from entities import Player
-    from unit_editor_gui import UnitEditorWindow
+    from .unit_editor_gui import UnitEditorWindow
 
 
 class GUI_Handler:
@@ -276,7 +276,7 @@ class GUI_Handler:
             template_manager: CustomTemplateManager instance storing custom unit designs.
         """
         if self.unit_editor_window is None:
-            from unit_editor_gui import UnitEditorWindow
+            from .unit_editor_gui import UnitEditorWindow
             self.unit_editor_window = UnitEditorWindow(
                 manager=self.manager,
                 screen_res=pygame.Vector2(self.screen_res.x, self.screen_res.y),

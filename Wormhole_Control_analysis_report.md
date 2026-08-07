@@ -18,8 +18,7 @@ During test suite execution (`py -m pytest`), **all 444 out of 444 tests passed*
 
 ### 2.1 Monolithic Source Files
 Several files have grown excessively large, combining rendering, state handling, and UI layout into monolithic scripts:
-1. [unit_editor_gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/unit_editor_gui.py) (~81 KB, ~1,880 lines): Contains layout creation, state sync, widget creation, dynamic cost recalculation, and template serialization in a single class.
-2. [gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/gui.py) (~77 KB, ~1,800 lines): Combines top bar, sidebar, context menu, and build menu elements.
+1. [gui.py](file:///d:/Programming/Github_repos/Wormhole-Control/gui.py) (~77 KB, ~1,800 lines): Combines top bar, sidebar, context menu, and build menu elements.
 
 ---
 

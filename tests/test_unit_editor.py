@@ -308,7 +308,7 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
     def test_all_components_in_gui(self):
         import dataclasses
         from custom_unit_templates import ComponentConfig
-        from unit_editor_gui import COMPONENT_ROWS
+        from gui.unit_editor_gui import COMPONENT_ROWS
 
         gui_keys = {row["key"] for row in COMPONENT_ROWS}
         config_keys = {f.name for f in dataclasses.fields(ComponentConfig) if f.name.startswith("has_")}
@@ -377,7 +377,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
     def test_component_selection(self):
         import pygame
         import pygame_gui
-        from unit_editor_gui import UnitEditorWindow
+        from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
 
         mgr = pygame_gui.UIManager((1280, 720))
@@ -406,7 +406,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
     def test_add_turret_button_event(self):
         import pygame
         import pygame_gui
-        from unit_editor_gui import UnitEditorWindow
+        from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
 
         mgr = pygame_gui.UIManager((1280, 720))
@@ -429,7 +429,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
     def test_configurable_parameter_widgets(self):
         import pygame
         import pygame_gui
-        from unit_editor_gui import UnitEditorWindow
+        from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
 
         mgr = pygame_gui.UIManager((1280, 720))

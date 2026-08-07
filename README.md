@@ -116,10 +116,23 @@ Wormhole Control/
 │   ├── text_layout.py        # Text wrapping and measurement utilities
 │   ├── context_menu.py       # Right-click context menu construction, hit testing, and submenu stack
 │   ├── event_router.py       # Event router, precedence dispatching, and action payload generation
-│   └── dynamic_actions.py    # Sidebar dynamic button and dropdown action payload builders
+│   ├── dynamic_actions.py    # Sidebar dynamic button and dropdown action payload builders
+│   └── unit_editor_gui/      # Unit Designer GUI sub-package
+│       ├── __init__.py       # Package re-exports for UnitEditorWindow
+│       ├── window.py         # UnitEditorWindow class definition and facade delegates
+│       ├── catalog.py        # Component catalogue, option lists, and descriptions
+│       ├── widget_factory.py # UI widget construction helper functions
+│       ├── layout.py         # UI layout orchestrator and column 1/2/4 builders
+│       ├── layout_details.py # Column 3 dynamic component detail controls
+│       ├── event_handlers.py # Pygame GUI event handling and dispatch logic
+│       ├── param_readers.py  # Parameter input parsing functions
+│       ├── cost_model.py     # Hull capacity calculations and capacity bar drawing
+│       ├── component_state.py# Component selection, toggling, and restriction logic
+│       ├── turret_editor.py  # Turret list management and widget building
+│       ├── template_io.py    # Template saving, loading, deletion, and widget sync
+│       └── summary_view.py   # Design summary HTML box formatting
 ├── input_processor.py        # Input handling and mouse/keyboard event processing
 ├── turn_processor.py         # Turn-based game logic and resolution engine
-├── unit_editor_gui.py        # Custom Unit Designer GUI window
 ├── custom_unit_templates.py  # Runtime custom ship template manager and dynamic cost scaling
 ├── save_manager.py           # Game state serialization, save, and load manager
 ├── visibility.py             # Fog of War and sensor range visibility algorithms
