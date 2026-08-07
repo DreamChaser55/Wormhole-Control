@@ -34,7 +34,7 @@ from visibility import (
 import game_camera
 import economy
 import game_setup
-import sidebar
+from gui import sidebar
 import game_actions
 
 # --- Game Class ---

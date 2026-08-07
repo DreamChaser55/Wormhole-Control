@@ -98,11 +98,6 @@ Wormhole Control/
 │   ├── app_actions.py        # Menu, navigation, persistence, and application handlers
 │   ├── unit_actions.py       # Unit orders, stances, abilities, carrier wings, and inhibitor toggle handlers
 │   └── selection_actions.py  # Object selections and sidebar tab switch handlers
-├── sidebar/                  # Sidebar payload generation package
-│   ├── builder.py            # Sidebar data payload orchestrator
-│   ├── order_formatting.py   # HTML order-text formatters for UI order queues
-│   ├── panels_world.py       # System, Hex, Celestial Body, and Minefield panel builders
-│   └── panels_unit.py        # Unit panel, tabs, and component dropdown builders
 ├── entities.py               # Game objects (Player, Units, Celestial Bodies, Stations)
 ├── galaxy.py                 # Galaxy generation and star system topology
 ├── gui/                      # User interface management package
@@ -112,11 +107,17 @@ Wormhole Control/
 │   ├── layout_main_menu.py   # Main menu and About screen layout builders
 │   ├── layout_ingame_menu.py # Pause menu and load game dialog builders
 │   ├── layout_hud.py         # Top bar, resource labels, turn display, and HUD update functions
-│   ├── sidebar_view.py       # Dynamic sidebar element widget factory and section expansion state
 │   ├── text_layout.py        # Text wrapping and measurement utilities
 │   ├── context_menu.py       # Right-click context menu construction, hit testing, and submenu stack
 │   ├── event_router.py       # Event router, precedence dispatching, and action payload generation
 │   ├── dynamic_actions.py    # Sidebar dynamic button and dropdown action payload builders
+│   ├── sidebar/              # Sidebar UI sub-package (data payload builders and view rendering)
+│   │   ├── __init__.py       # Package re-exports for sidebar payload builders
+│   │   ├── builder.py        # Sidebar data payload orchestrator
+│   │   ├── order_formatting.py # HTML order-text formatters for UI order queues
+│   │   ├── panels_world.py   # System, Hex, Celestial Body, and Minefield panel builders
+│   │   ├── panels_unit.py    # Unit panel, tabs, and component dropdown builders
+│   │   └── view.py           # Dynamic sidebar element widget factory and section expansion state
 │   └── unit_editor_gui/      # Unit Designer GUI sub-package
 │       ├── __init__.py       # Package re-exports for UnitEditorWindow
 │       ├── window.py         # UnitEditorWindow class definition and facade delegates

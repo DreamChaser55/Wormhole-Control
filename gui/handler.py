@@ -11,7 +11,8 @@ from constants import INFO_BOX_WIDTH, TOP_BAR_HEIGHT, BLUE
 from utils import ContextMenuOption
 from geometry import Vector, Position
 from .theme_loader import build_ui_manager
-from . import layout_main_menu, layout_ingame_menu, layout_hud, text_layout, sidebar_view, context_menu, event_router
+from . import layout_main_menu, layout_ingame_menu, layout_hud, text_layout, context_menu, event_router
+from .sidebar import view as sidebar_view
 if typing.TYPE_CHECKING:
     from game import Game
     from entities import Player
