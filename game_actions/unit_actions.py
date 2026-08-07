@@ -8,9 +8,10 @@ from events import CancelOrdersEvent, LayMinefieldEvent, UseAbilityEvent
 from geometry import distance, hex_distance
 from pathfinding import find_intersystem_path
 from unit_components import UnitStance, WingType
-from unit_orders import DeployAllWingsOrder, DeployUnitOrder, DockOrder, UnloadResourcesOrder
+from unit_orders import DeployAllWingsOrder, DeployUnitOrder, DockOrder, UnloadResourcesOrder, ToggleInhibitorOrder
 
 logger = logging.getLogger(__name__)
+
 
 
 def handle_deploy_ship(game, action: dict) -> None:
@@ -252,6 +253,29 @@ def handle_stop_selected_units(game, action: dict) -> None:
     game.sidebar_needs_update = True
 
 
+def handle_toggle_inhibitor(game, action: dict) -> None:
+    """Toggles hyperspace inhibitor fields on all selected owned units.
+
+    Args:
+        game: Target game instance.
+        action (dict): Action payload containing the 'shift_pressed' queueing flag.
+    """
+    shift_pressed = action.get('shift_pressed', False)
+    for unit in game.selected_objects:
+        if isinstance(unit, Unit) and unit.inhibitor_component:
+            if shift_pressed:
+                turn_on = not unit.inhibitor_component.is_active
+                unit.commander_component.add_order(
+                    ToggleInhibitorOrder(unit, {'turn_on': turn_on}))
+                logger.debug(f"Queued TOGGLE_INHIBITOR order for {unit.name}.")
+            else:
+                success = unit.inhibitor_component.toggle(galaxy_ref=game.galaxy)
+                logger.debug(
+                    f"Directly toggled inhibitor for {unit.name}." if success
+                    else f"Direct inhibitor toggle failed for {unit.name}.")
+    game.sidebar_needs_update = True
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'deploy_ship': handle_deploy_ship,
     'launch_all_wings': handle_launch_all_wings,
@@ -267,4 +291,5 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'use_ability': handle_use_ability,
     'stop_unit': handle_stop_unit,
     'stop_selected_units': handle_stop_selected_units,
+    'toggle_inhibitor': handle_toggle_inhibitor,
 }

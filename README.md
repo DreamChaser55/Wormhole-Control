@@ -96,7 +96,7 @@ Wormhole Control/
 ├── game_setup.py             # Game state bootstrap and starting fleet setup
 ├── game_actions/             # GUI action dispatch package
 │   ├── app_actions.py        # Menu, navigation, persistence, and application handlers
-│   ├── unit_actions.py       # Unit orders, stances, abilities, and carrier wing handlers
+│   ├── unit_actions.py       # Unit orders, stances, abilities, carrier wings, and inhibitor toggle handlers
 │   └── selection_actions.py  # Object selections and sidebar tab switch handlers
 ├── sidebar/                  # Sidebar payload generation package
 │   ├── builder.py            # Sidebar data payload orchestrator
@@ -105,7 +105,18 @@ Wormhole Control/
 │   └── panels_unit.py        # Unit panel, tabs, and component dropdown builders
 ├── entities.py               # Game objects (Player, Units, Celestial Bodies, Stations)
 ├── galaxy.py                 # Galaxy generation and star system topology
-├── gui.py                    # User interface management (Top bar, Sidebar, Menus)
+├── gui/                      # User interface management package
+│   ├── __init__.py           # Package re-exports for GUI_Handler facade
+│   ├── handler.py            # GUI_Handler orchestrator, state fields, view transitions, and delegates
+│   ├── theme_loader.py       # Scaled theme loading and font preloading
+│   ├── layout_main_menu.py   # Main menu and About screen layout builders
+│   ├── layout_ingame_menu.py # Pause menu and load game dialog builders
+│   ├── layout_hud.py         # Top bar, resource labels, turn display, and HUD update functions
+│   ├── sidebar_view.py       # Dynamic sidebar element widget factory and section expansion state
+│   ├── text_layout.py        # Text wrapping and measurement utilities
+│   ├── context_menu.py       # Right-click context menu construction, hit testing, and submenu stack
+│   ├── event_router.py       # Event router, precedence dispatching, and action payload generation
+│   └── dynamic_actions.py    # Sidebar dynamic button and dropdown action payload builders
 ├── input_processor.py        # Input handling and mouse/keyboard event processing
 ├── turn_processor.py         # Turn-based game logic and resolution engine
 ├── unit_editor_gui.py        # Custom Unit Designer GUI window
