@@ -12,10 +12,10 @@ from geometry import Position
 from entities import Unit, OrderType, OrderStatus, Minefield
 from rendering.drawing_utils import draw_shape, draw_dotted_line
 
-from rendering.sector_grid_renderer import SectorGridRenderer
-from rendering.sector_celestial_renderer import SectorCelestialRenderer
-from rendering.sector_entity_renderer import SectorEntityRenderer
-from rendering.sector_overlay_renderer import SectorOverlayRenderer
+from rendering.sector_renderer.sector_grid_renderer import SectorGridRenderer
+from rendering.sector_renderer.sector_celestial_renderer import SectorCelestialRenderer
+from rendering.sector_renderer.sector_entity_renderer import SectorEntityRenderer
+from rendering.sector_renderer.sector_overlay_renderer import SectorOverlayRenderer
 
 
 MAX_CACHED_STORM_DIAMETER = 512
