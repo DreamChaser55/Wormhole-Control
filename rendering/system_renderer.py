@@ -4,7 +4,7 @@ import math
 from constants import (
     DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE,
     SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY,
-    HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR,
+    HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR,
     XP_JUMP_RANGE_BONUS, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS,
     STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR, TEXT_SCALE, FOG_PRESENCE_COLOR,
     STAR_COLORS
@@ -332,6 +332,9 @@ class SystemViewRenderer:
         # 5b. Highlight Hyperdrive Inter-Sector Jump Distance
         self._draw_hyperdrive_jump_range_highlight(system)
 
+        # 5c. Highlight Sensors Inter-Sector Range
+        self._draw_sensors_range_highlight(system)
+
         # 6. Draw Order Lines (Hex Jumps)
         self._draw_system_view_order_lines(system)
 
@@ -369,6 +372,43 @@ class SystemViewRenderer:
                             if dist <= effective_jump_range:
                                 hex_pts = [p.to_tuple() for p in get_hex_vertices(hq, hr)]
                                 pygame.draw.polygon(self.overlay_surface, HYPERDRIVE_RANGE_HEX_FILL_COLOR, hex_pts, 0)
+
+    def _draw_sensors_range_highlight(self, system):
+        """Draws a hexgrid highlight showing inter-sector sensor radius when a unit with Sensors is selected
+        and Sensors component is selected in the sidebar component dropdown menu during System View."""
+        if getattr(self.game, 'view_mode', None) != 'system':
+            return
+
+        active_tab = getattr(self.game, 'selected_unit_tab', 'basic_info')
+        if active_tab != 'components':
+            return
+
+        selected_comp_name = getattr(self.game, 'selected_component_name', None)
+        if selected_comp_name != "Sensors":
+            return
+
+        for obj in self.game.selected_objects:
+            if isinstance(obj, Unit) and obj.sensors_component:
+                if obj.in_system == self.game.current_system_name and obj.in_hex is not None:
+                    unit: Unit = obj
+                    sensors_comp = unit.sensors_component
+                    if getattr(sensors_comp, 'is_destroyed', False):
+                        continue
+                    sensor_range = getattr(sensors_comp, 'long_range_hexes', 0)
+
+                    if sensor_range <= 0:
+                        continue
+
+                    q_start, r_start = unit.in_hex
+
+                    # Highlight hexes within inter-sector sensor range in the current system
+                    if hasattr(system, 'hexes'):
+                        for hex_coord, hex_obj in system.hexes.items():
+                            hq, hr = hex_coord
+                            dist = hex_distance(q_start, r_start, hq, hr)
+                            if dist <= sensor_range:
+                                hex_pts = [p.to_tuple() for p in get_hex_vertices(hq, hr)]
+                                pygame.draw.polygon(self.overlay_surface, SENSOR_RANGE_HEX_FILL_COLOR, hex_pts, 0)
 
     def _draw_system_view_order_lines(self, system):
         units_to_process = []

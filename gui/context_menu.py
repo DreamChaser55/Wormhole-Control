@@ -109,7 +109,7 @@ def handle_button_index(gui, index: int) -> typing.Optional[dict]:
         parent_pos = Position(gui.context_menu_panel.get_abs_rect().x, gui.context_menu_panel.get_abs_rect().y)
         sub_options = gui.context_menu_submenus[index]
         target = gui.context_menu_target
-        back_option = ContextMenuOption("Back", "__submenu_back__")
+        back_option = ("Back", "__submenu_back__")
         full_sub_options = [back_option] + sub_options
         open_context_menu(gui, parent_pos, full_sub_options, target)
         gui.context_menu_parent_options = parent_options

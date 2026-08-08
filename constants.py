@@ -188,6 +188,7 @@ MOVE_ORDER_LINE_COLOR = (0, 255, 0, 150) # Semi-transparent green line for subli
 HEX_JUMP_ORDER_LINE_COLOR = (0, 255, 255, 150) # Semi-transparent cyan line for hex jump orders
 HYPERDRIVE_RANGE_CIRCLE_COLOR = (0, 255, 255, 180) # Semi-transparent cyan for hyperdrive range circle
 HYPERDRIVE_RANGE_HEX_FILL_COLOR = (0, 255, 255, 25) # Semi-transparent cyan fill for hexes within hyperdrive range
+SENSOR_RANGE_HEX_FILL_COLOR = (0, 200, 255, 25) # Semi-transparent cyan/sky-blue fill for hexes within sensor range
 WORMHOLE_JUMP_ORDER_COLOR = (255, 80, 255, 150) # Semi-transparent light magenta line for wormhole jump orders
 WORMHOLE_LINE_COLOR = (180, 0, 255) # Bluish magenta for wormhole lines in galaxy view
 GALAXY_BG_COLOR = (2, 2, 4)

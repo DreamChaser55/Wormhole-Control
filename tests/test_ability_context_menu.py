@@ -179,3 +179,20 @@ def test_enemy_unit_right_click_opens_menu_with_use_ability():
                     sub_options = use_ability_option[1]
                     assert len(sub_options) == 1
                     assert sub_options[0] == ("Ion Bolt (Ready)", "use_ability_ion_bolt")
+
+
+def test_context_menu_submenu_handle_button_index():
+    from gui.context_menu import handle_button_index
+    gui = MagicMock()
+    gui.screen_res = Position(800, 600)
+    gui.context_menu_submenus = {0: [("Sub Item 1", "sub_action_1")]}
+    gui.context_menu_options = [("Construct", [("Sub Item 1", "sub_action_1")])]
+    gui.context_menu_panel.get_abs_rect().x = 100
+    gui.context_menu_panel.get_abs_rect().y = 200
+    gui.context_menu_target = "Target"
+
+    with patch('gui.context_menu.open_context_menu') as mock_open_cm:
+        res = handle_button_index(gui, 0)
+        assert res == {'action': 'ui_handled'}
+        mock_open_cm.assert_called_once_with(gui, Position(100, 200), [("Back", "__submenu_back__"), ("Sub Item 1", "sub_action_1")], "Target")
+
