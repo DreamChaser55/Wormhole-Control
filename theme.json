@@ -34,14 +34,14 @@
     },
     "window": {
         "misc": {
-            "title_bar_height": "48",
+            "title_bar_height": "30",
             "border_width": "2",
             "shadow_width": "4"
         }
     },
     "#message_window": {
         "misc": {
-            "title_bar_height": "48",
+            "title_bar_height": "30",
             "border_width": "2",
             "shadow_width": "4"
         }
@@ -59,6 +59,28 @@
             "text_horiz_alignment": "left",
             "text_vert_alignment": "center",
             "padding": "6,0"
+        }
+    },
+    "#close_button": {
+        "font": {
+            "name": "dejavu_sans",
+            "size": "18",
+            "bold": "1"
+        },
+        "colours": {
+            "normal_text": "#FFFFFF",
+            "hovered_text": "#FF6666"
+        }
+    },
+    "window.#close_button": {
+        "font": {
+            "name": "dejavu_sans",
+            "size": "18",
+            "bold": "1"
+        },
+        "colours": {
+            "normal_text": "#FFFFFF",
+            "hovered_text": "#FF6666"
         }
     },
     "#dismiss_button": {

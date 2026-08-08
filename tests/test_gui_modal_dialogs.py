@@ -45,6 +45,14 @@ class TestGUIModalDialogs(unittest.TestCase):
         self.assertIsInstance(err_dlg, pygame_gui.windows.UIMessageWindow)
         self.assertEqual(len(self.gui.active_dialogs), 3)
 
+        # Verify scaled title bar height and close button font sizing
+        from constants import TEXT_SCALE
+        expected_tb_h = int(30 * TEXT_SCALE)
+        self.assertAlmostEqual(info_dlg.title_bar_height, expected_tb_h, delta=2)
+        if info_dlg.close_window_button:
+            expected_close_font_size = int(18 * TEXT_SCALE)
+            self.assertAlmostEqual(info_dlg.close_window_button.font.point_size, expected_close_font_size, delta=2)
+
     def test_clear_and_reset_cleans_dialogs(self):
         """Test that clear_and_reset destroys active modal dialogs."""
         self.gui.show_warning_dialog("Test warning")
