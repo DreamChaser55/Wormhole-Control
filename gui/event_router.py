@@ -73,6 +73,8 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
                         gui.load_save_window.kill()
                         gui.load_save_window = None
                     action_result = {'action': 'load_game_file', 'filepath': filepath}
+                else:
+                    gui.show_warning_dialog("Please select a save file from the list before clicking Load.", title="No Selection")
 
         # 3. About Screen Buttons
         elif gui.about_screen_back_button and event.ui_element == gui.about_screen_back_button:
@@ -145,6 +147,14 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         if gui.unit_name_entry and event.ui_element is gui.unit_name_entry:
             action_result = {'action': 'rename_unit', 'new_name': event.text}
 
+    elif event.type == pygame_gui.UI_TEXT_ENTRY_CHANGED:
+        if gui.unit_editor_window and gui.unit_editor_window.is_visible:
+            editor_action = gui.process_unit_editor_event(event)
+            if editor_action:
+                action_result = _editor_action_to_gui_action(editor_action)
+                if action_result is None:
+                    action_result = {'action': 'ui_handled'}
+
     elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
         editor_action = gui.process_unit_editor_event(event)
         if editor_action:
@@ -159,14 +169,6 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         else:
             logger.debug(f"Drop down menu changed (GUI): {event.text}")
             action_result = {'action': 'component_selected', 'component_name': event.text}
-
-    # Fallback re-check for unit editor
-    if not action_result and gui.unit_editor_window and gui.unit_editor_window.is_visible:
-        editor_action = gui.process_unit_editor_event(event)
-        if editor_action:
-            action_result = _editor_action_to_gui_action(editor_action)
-            if action_result is None:
-                action_result = {'action': 'ui_handled'}
 
     if action_result:
         return action_result

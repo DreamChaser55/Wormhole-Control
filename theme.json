@@ -32,6 +32,46 @@
             "size": "12"
         }
     },
+    "window": {
+        "misc": {
+            "title_bar_height": "48",
+            "border_width": "2",
+            "shadow_width": "4"
+        }
+    },
+    "#message_window": {
+        "misc": {
+            "title_bar_height": "48",
+            "border_width": "2",
+            "shadow_width": "4"
+        }
+    },
+    "#title_bar": {
+        "font": {
+            "name": "dejavu_sans",
+            "size": "15",
+            "bold": "1"
+        },
+        "colours": {
+            "normal_text": "#FFFFFF"
+        },
+        "misc": {
+            "text_horiz_alignment": "left",
+            "text_vert_alignment": "center",
+            "padding": "6,0"
+        }
+    },
+    "#dismiss_button": {
+        "font": {
+            "name": "dejavu_sans",
+            "size": "14",
+            "bold": "1"
+        },
+        "colours": {
+            "normal_text": "#FFFFFF",
+            "hovered_text": "#FFFFCC"
+        }
+    },
     "#resource_label": {
         "font": {
             "name": "dejavu_sans",

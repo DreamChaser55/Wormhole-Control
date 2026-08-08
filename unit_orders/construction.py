@@ -46,6 +46,11 @@ class ConstructOrder(Order):
         if player.credits < buildable.cost_credits:
             self.status = OrderStatus.FAILED
             logger.debug(f"CONSTRUCT order failed: Not enough credits.")
+            if self.unit and getattr(self.unit, 'game', None) and self.unit.game.gui:
+                self.unit.game.gui.show_warning_dialog(
+                    f"Insufficient credits to construct <b>{unit_template_name}</b>.<br>Required: {buildable.cost_credits:.0f} credits (Available: {player.credits:.0f}).",
+                    title="Insufficient Resources"
+                )
             return
 
         success = constructor.start_construction(unit_template_name, target_pos, galaxy_ref)

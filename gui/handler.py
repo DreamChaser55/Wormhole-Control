@@ -95,12 +95,20 @@ class GUI_Handler:
         self.unit_editor_window: typing.Optional['UnitEditorWindow'] = None
         self.unit_editor_button: typing.Optional[pygame_gui.elements.UIButton] = None
 
+        # Active Pop-up Dialog Windows
+        self.active_dialogs: typing.List[pygame_gui.windows.UIMessageWindow] = []
+
         # Galaxy generation area
         self.galaxy_generation_rect: typing.Optional[pygame.Rect] = None
         self.galaxy_border_color: pygame.Color = pygame.Color(BLUE)
 
     def clear_and_reset(self):
         """Clears all UI elements managed by this class."""
+        for dialog in self.active_dialogs:
+            if dialog.alive():
+                dialog.kill()
+        self.active_dialogs.clear()
+
         if self.main_menu_panel: self.main_menu_panel.kill(); self.main_menu_panel = None
         if self.about_panel: self.about_panel.kill(); self.about_panel = None
         if self.left_top_bar_panel: self.left_top_bar_panel.kill(); self.left_top_bar_panel = None
@@ -404,3 +412,73 @@ class GUI_Handler:
                 if panel.get_abs_rect().collidepoint(mouse_tuple):
                     return True
         return False
+
+    # --- Modal Dialog Methods ---
+    def show_message_dialog(
+        self,
+        title: str,
+        message: str,
+        window_type: str = "info"
+    ) -> pygame_gui.windows.UIMessageWindow:
+        """Displays a pop-up modal message dialog window.
+
+        Args:
+            title (str): Title of the window dialog.
+            message (str): Body message text (HTML supported by Pygame GUI).
+            window_type (str): Type identifier ('info', 'warning', 'error').
+
+        Returns:
+            pygame_gui.windows.UIMessageWindow: Created message window instance.
+        """
+        # Clean up dead dialog references
+        self.active_dialogs = [d for d in self.active_dialogs if d.alive()]
+
+        dialog_w = int(500 * self.scale_x)
+        dialog_h = int(280 * self.scale_y)
+        x = (self.screen_res.x - dialog_w) / 2
+        y = (self.screen_res.y - dialog_h) / 2
+        rect = pygame.Rect(int(x), int(y), dialog_w, dialog_h)
+
+        if window_type == "error":
+            display_title = f"Error: {title}" if not title.lower().startswith("error") else title
+        elif window_type == "warning":
+            display_title = f"Warning: {title}" if not title.lower().startswith("warning") else title
+        else:
+            display_title = title
+
+        formatted_html = f"<p>{message}</p>"
+
+        dialog = pygame_gui.windows.UIMessageWindow(
+            rect=rect,
+            html_message=formatted_html,
+            manager=self.manager,
+            window_title=display_title
+        )
+
+        # Enlarge and reposition Dismiss button and adjust text block bounds
+        if dialog.dismiss_button:
+            btn_w = int(140 * self.scale_x)
+            btn_h = int(38 * self.scale_y)
+            margin = int(14 * self.scale_x)
+            dialog.dismiss_button.set_dimensions((btn_w, btn_h))
+            dialog.dismiss_button.set_relative_position((-btn_w - margin, -btn_h - margin))
+            container = dialog.get_container()
+            if dialog.text_block and container:
+                text_h = max(50, container.get_size()[1] - btn_h - (margin * 2))
+                dialog.text_block.set_dimensions((container.get_size()[0], text_h))
+
+        self.active_dialogs.append(dialog)
+        return dialog
+
+    def show_error_dialog(self, message: str, title: str = "Error") -> pygame_gui.windows.UIMessageWindow:
+        """Convenience method to display an Error modal dialog popup."""
+        return self.show_message_dialog(title=title, message=message, window_type="error")
+
+    def show_warning_dialog(self, message: str, title: str = "Warning") -> pygame_gui.windows.UIMessageWindow:
+        """Convenience method to display a Warning modal dialog popup."""
+        return self.show_message_dialog(title=title, message=message, window_type="warning")
+
+    def show_info_dialog(self, message: str, title: str = "Information") -> pygame_gui.windows.UIMessageWindow:
+        """Convenience method to display an Informational modal dialog popup."""
+        return self.show_message_dialog(title=title, message=message, window_type="info")
+

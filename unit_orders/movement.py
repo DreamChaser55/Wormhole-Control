@@ -83,7 +83,12 @@ class ReachWaypointOrder(Order):
                 self.status = OrderStatus.FAILED
                 any_wh = self.find_wormhole_to_system(current_system, dest_system, galaxy_ref, ship_size=None)
                 if any_wh:
-                    logger.warning(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED: Unit '{self.unit.name}' (size {self.unit.hull_size.name}) is too large for wormhole {any_wh.name} (max capacity: {any_wh.diameter.name}).")
+                    logger.warning(f"[{self.unit.name} (id:{self.order_id})] REACH_WAYPOINT(id:{self.order_id}): FAILED: Unit '{self.unit.name}' (size {self.unit.hull_size.name}) is too large for wormhole {any_wh.name} (max capacity: {any_wh.diameter.name}).")
+                    if self.unit and getattr(self.unit, 'game', None) and self.unit.game.gui:
+                        self.unit.game.gui.show_warning_dialog(
+                            f"Unit '{self.unit.name}' (size {self.unit.hull_size.name}) is too large for wormhole {any_wh.name} (max capacity: {any_wh.diameter.name}).",
+                            title="Wormhole Capacity Exceeded"
+                        )
                 else:
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {current_system} to {dest_system}).")
                 return
@@ -316,6 +321,11 @@ class MoveOrder(Order):
                     unrestricted_path = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system, ship_size=None)
                     if unrestricted_path and len(unrestricted_path) >= 2:
                         logger.warning(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED: Unit '{self.unit.name}' (size {self.unit.hull_size.name}) is too large for wormhole(s) along route {unrestricted_path}.")
+                        if self.unit and getattr(self.unit, 'game', None) and self.unit.game.gui:
+                            self.unit.game.gui.show_warning_dialog(
+                                f"Unit '{self.unit.name}' (size {self.unit.hull_size.name}) cannot navigate to destination: Wormhole(s) along route cannot accommodate its hull size.",
+                                title="Route Planning Failed"
+                            )
                     else:
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (no path found from {current_system} to {dest_system} via pathfinding with find_intersystem_path).")
                     return

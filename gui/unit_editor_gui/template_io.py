@@ -140,15 +140,57 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
     editor._update_summary()
 
 
+def _show_editor_modal(editor, title: str, message: str, window_type: str = "warning") -> None:
+    """Helper to display pop-up modal dialogs within the Unit Designer GUI."""
+    if hasattr(editor, 'manager') and editor.manager:
+        scale_x = editor.screen_res.x / 1280.0
+        scale_y = editor.screen_res.y / 720.0
+        dialog_w = int(500 * scale_x)
+        dialog_h = int(280 * scale_y)
+        x = (editor.screen_res.x - dialog_w) / 2
+        y = (editor.screen_res.y - dialog_h) / 2
+        rect = pygame.Rect(int(x), int(y), dialog_w, dialog_h)
+
+        if window_type == "error":
+            display_title = f"Error: {title}" if not title.lower().startswith("error") else title
+        elif window_type == "warning":
+            display_title = f"Warning: {title}" if not title.lower().startswith("warning") else title
+        else:
+            display_title = title
+
+        formatted_html = f"<p>{message}</p>"
+        dialog = pygame_gui.windows.UIMessageWindow(
+            rect=rect,
+            html_message=formatted_html,
+            manager=editor.manager,
+            window_title=display_title
+        )
+
+        if dialog.dismiss_button:
+            btn_w = int(140 * scale_x)
+            btn_h = int(38 * scale_y)
+            margin = int(14 * scale_x)
+            dialog.dismiss_button.set_dimensions((btn_w, btn_h))
+            dialog.dismiss_button.set_relative_position((-btn_w - margin, -btn_h - margin))
+            container = dialog.get_container()
+            if dialog.text_block and container:
+                text_h = max(50, container.get_size()[1] - btn_h - (margin * 2))
+                dialog.text_block.set_dimensions((container.get_size()[0], text_h))
+
+
 def do_save(editor) -> typing.Optional[str]:
     """Saves current editor state as a template."""
     key = editor._name_entry.get_text().strip() if editor._name_entry else ""
     display = editor._display_entry.get_text().strip() if editor._display_entry else ""
     if not key:
-        set_status(editor, "⚠ Please enter a design key.", error=True)
+        msg = "Please enter a design key."
+        set_status(editor, f"⚠ {msg}", error=True)
+        _show_editor_modal(editor, "Design Key Required", msg, window_type="warning")
         return None
     if not display:
-        set_status(editor, "⚠ Please enter a display name.", error=True)
+        msg = "Please enter a display name."
+        set_status(editor, f"⚠ {msg}", error=True)
+        _show_editor_modal(editor, "Display Name Required", msg, window_type="warning")
         return None
 
     # Sync all input fields before saving
@@ -174,7 +216,9 @@ def do_save(editor) -> typing.Optional[str]:
     )
     errors = editor.template_manager.save_design(template)
     if errors:
+        error_msg = "<br>".join([f"• {e}" for e in errors])
         set_status(editor, " | ".join(errors), error=True)
+        _show_editor_modal(editor, "Design Validation Failed", error_msg, window_type="warning")
         return None
 
     editor._editing_key = template.design_name
@@ -194,7 +238,9 @@ def do_delete(editor) -> typing.Optional[str]:
     if not key:
         key = editor._name_entry.get_text().strip() if editor._name_entry else ""
     if not key:
-        set_status(editor, "⚠ No design selected to delete.", error=True)
+        msg = "No design selected to delete."
+        set_status(editor, f"⚠ {msg}", error=True)
+        _show_editor_modal(editor, "No Design Selected", msg, window_type="warning")
         return None
     deleted = editor.template_manager.delete_design(key)
     if deleted:
@@ -203,7 +249,9 @@ def do_delete(editor) -> typing.Optional[str]:
         refresh_load_dropdown(editor)
         return "design_deleted"
     else:
-        set_status(editor, f"⚠ Design '{key}' not found.", error=True)
+        msg = f"Design '{key}' not found."
+        set_status(editor, f"⚠ {msg}", error=True)
+        _show_editor_modal(editor, "Deletion Failed", msg, window_type="warning")
         return None
 
 

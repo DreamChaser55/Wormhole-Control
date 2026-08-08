@@ -45,10 +45,12 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
             return "close"
 
         if elem is editor._save_button:
-            return do_save(editor)
+            res = do_save(editor)
+            return res if res else "ui_handled"
 
         if elem is editor._delete_button:
-            return do_delete(editor)
+            res = do_delete(editor)
+            return res if res else "ui_handled"
 
         if elem is editor._add_turret_button:
             do_add_turret(editor)

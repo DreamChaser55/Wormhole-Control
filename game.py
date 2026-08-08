@@ -313,19 +313,27 @@ class Game:
         pygame.quit()
         sys.exit()
 
-    def save_game(self, filename: typing.Optional[str] = None) -> str:
+    def save_game(self, filename: typing.Optional[str] = None) -> typing.Optional[str]:
         """Saves current game state to a file.
 
         Args:
             filename (typing.Optional[str]): Optional custom save file name or path.
 
         Returns:
-            str: Absolute or relative filepath where the save file was created.
+            typing.Optional[str]: Absolute or relative filepath where the save file was created, or None on failure.
         """
         import save_manager
-        filepath = save_manager.save_game_to_file(self, filename)
-        logger.debug(f"Game state saved to {filepath}")
-        return filepath
+        try:
+            filepath = save_manager.save_game_to_file(self, filename)
+            logger.debug(f"Game state saved to {filepath}")
+            if self.gui:
+                self.gui.show_info_dialog(f"Game saved successfully.", title="Save Game")
+            return filepath
+        except Exception as e:
+            logger.error(f"Error saving game state: {e}", exc_info=True)
+            if self.gui:
+                self.gui.show_error_dialog(f"Failed to save game state:<br>{e}", title="Save Error")
+            return None
 
     def load_game(self, filepath: str) -> bool:
         """Loads game state from a save file and refreshes all GUI displays.
@@ -338,7 +346,12 @@ class Game:
         """
         import save_manager
         logger.debug(f"Loading game state from {filepath}...")
-        success = save_manager.load_game_from_file(self, filepath)
+        try:
+            success = save_manager.load_game_from_file(self, filepath)
+        except Exception as e:
+            logger.error(f"Error loading save file {filepath}: {e}", exc_info=True)
+            success = False
+
         if success:
             self.gui.show_game_ui()
             self.update_view_specific_labels()
@@ -347,6 +360,11 @@ class Game:
             logger.debug("Game state loaded successfully.")
         else:
             logger.error(f"Failed to load game state from {filepath}")
+            if self.gui:
+                self.gui.show_error_dialog(
+                    f"Failed to load save file:<br>'{filepath}'<br><br>File may be missing or corrupted.",
+                    title="Load Game Error"
+                )
         return success
 
     def quit_to_main_menu(self):

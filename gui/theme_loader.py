@@ -63,6 +63,13 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
             scaled_item_height = max(20, int(30 * TEXT_SCALE))
             theme_data[dropdown_list_theme_id]["misc"]["list_item_height"] = str(scaled_item_height)
 
+            # Scale window title bar height for windows
+            for window_theme_id in ["window", "#message_window", "message_window"]:
+                if window_theme_id in theme_data and isinstance(theme_data[window_theme_id], dict) and "misc" in theme_data[window_theme_id]:
+                    if "title_bar_height" in theme_data[window_theme_id]["misc"]:
+                        orig_tb_height = int(theme_data[window_theme_id]["misc"]["title_bar_height"])
+                        theme_data[window_theme_id]["misc"]["title_bar_height"] = str(max(35, int(orig_tb_height * TEXT_SCALE)))
+
             with open(scaled_theme_path, 'w') as f:
                 json.dump(theme_data, f)
             

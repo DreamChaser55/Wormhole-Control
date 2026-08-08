@@ -629,6 +629,15 @@ class InputProcessor:
         elif extracted_action_id == "scan_hex": logger.debug("  Action: Scan Hex Contents (Not Implemented)")
         
         elif selected_units:
+            disabled_units = [u for u in selected_units if u.is_disabled]
+            if disabled_units and extracted_action_id not in ("cancel_orders", "view_unit", "view_hex", "view_planet", "view_star", "view_wormhole"):
+                if self.game.gui:
+                    unit_names = ", ".join(u.name for u in disabled_units)
+                    self.game.gui.show_warning_dialog(
+                        f"Unit(s) <b>{unit_names}</b> are disabled by Ion/EMP attack and cannot execute orders.",
+                        title="Units Disabled"
+                    )
+
             if extracted_action_id == "cancel_orders":
                 self.game.event_bus.publish(CancelOrdersEvent(selected_units))
             

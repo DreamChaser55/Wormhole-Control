@@ -174,6 +174,11 @@ def handle_set_stance(game, action: dict) -> None:
                     logger.debug(f"Unit {unit.name} (id:{unit.id}) stance set to {matching_stance.name}.")
                 else:
                     logger.warning(f"Unit {unit.name} (id:{unit.id}) stance {matching_stance.name} is not allowed.")
+                    if game.gui:
+                        game.gui.show_warning_dialog(
+                            f"Stance '{matching_stance.display_name}' is not allowed for unit '{unit.name}'.",
+                            title="Invalid Stance"
+                        )
             else:
                 logger.debug(f"Stance not found for display name: {stance_display_name}")
     game.sidebar_needs_update = True
