@@ -109,6 +109,21 @@ def _build_inhibitor_button(gui, item_data: dict, x: int, y: int, width: int, he
     return button.get_relative_rect().height
 
 
+def _build_cloaking_button(gui, item_data: dict, x: int, y: int, width: int, height: int, container, obj_id) -> int:
+    is_active = item_data.get('is_active', False)
+    button_text = "Deactivate Cloak" if is_active else "Activate Cloak"
+    button_rect = pygame.Rect(x, y, width, -1)
+    button = pygame_gui.elements.UIButton(
+        relative_rect=button_rect,
+        text=button_text,
+        manager=gui.manager,
+        container=container,
+        object_id='#toggle_cloaking_button'
+    )
+    gui.side_bar_dynamic_elements.append(button)
+    return button.get_relative_rect().height
+
+
 def _build_progress_bar(gui, item_data: dict, x: int, y: int, width: int, height: int, container, obj_id) -> int:
     progress = item_data.get('progress', 0)
     total = item_data.get('total', 100)
@@ -168,6 +183,7 @@ _ITEM_BUILDERS = {
     'text_box': _build_text_box,
     'button': _build_button,
     'inhibitor_button': _build_inhibitor_button,
+    'cloaking_button': _build_cloaking_button,
     'progress_bar': _build_progress_bar,
     'drop_down_menu': _build_drop_down_menu,
     'text_entry_line': _build_text_entry_line,

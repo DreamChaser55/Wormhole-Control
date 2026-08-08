@@ -54,6 +54,15 @@ class VisibilityService:
         for unit in all_units:
             if unit.owner != viewer:
                 unit_key = (unit.in_system, unit.in_hex)
+
+                # Check if this unit is actively cloaked (defeats long-range sensors only)
+                cloaking = unit.cloaking_component
+                is_cloaked = (
+                    cloaking is not None
+                    and cloaking.is_active
+                    and not cloaking.is_destroyed
+                )
+
                 is_detailed = False
                 if unit_key in short_range_by_hex:
                     for pos, radius in short_range_by_hex[unit_key]:
@@ -62,7 +71,7 @@ class VisibilityService:
                             break
                 if is_detailed:
                     snapshot.visible_enemy_unit_ids.add(unit.id)
-                elif unit_key in long_range_covered:
+                elif unit_key in long_range_covered and not is_cloaked:
                     snapshot.presence_hexes.add(unit_key)
 
         return snapshot

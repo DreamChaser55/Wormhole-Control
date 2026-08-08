@@ -132,6 +132,10 @@ SENSOR_RANGE_PER_HULL_POINT: float = 1000.0    # hull points per unit of short-r
 SENSOR_LONG_RANGE_HULL_COST_PER_HEX: float = 5.0   # hull points per long-range ring
 DEFAULT_SENSOR_LONG_RANGE_HEXES: int = 1       # default ring count for a long-range upgrade
 
+# Cloaking Device Constants
+CLOAKING_ANTIMATTER_COST_PER_TURN: float = 5.0  # antimatter consumed each turn while active
+CLOAKING_HULL_COST: float = 10.0                 # default fixed hull cost
+
 # Fog visuals
 FOG_PRESENCE_COLOR = (200, 60, 60)             # generic enemy-presence marker color
 FOG_TINT_COLOR = (0, 0, 0, 60)                 # optional faint shading for non-detailed hexes (system view)

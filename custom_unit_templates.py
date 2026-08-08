@@ -57,6 +57,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_antimatter_harvester",
         "has_minelayer_component",
         "has_marines_component",
+        "has_cloaking_device",
     },
     HullSize.TINY: {
         "has_inhibitor",
@@ -154,6 +155,8 @@ from unit_components.mining import MiningComponent
 from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
 from unit_components.marines import MarinesComponent, MARINES_HULL_COST_PER_MARINE
 from unit_components.abilities.component import AbilityComponent, ABILITY_BASE_COST, ABILITY_COST_PER_ABILITY
+from unit_components.cloaking import CloakingDevice
+from constants import CLOAKING_HULL_COST
 
 
 # --------------------------------------------------------------------------
@@ -367,6 +370,10 @@ class ComponentConfig:
     has_marines_component: bool = False
     marines_count: int = 10
 
+    # Cloaking Device
+    has_cloaking_device: bool = False
+    cloaking_hull_cost: float = CLOAKING_HULL_COST
+
 
     # ------------------------------------------------------------------
     # Computed hull-cost properties for dynamic components
@@ -475,6 +482,13 @@ class ComponentConfig:
             return 0.0
         return calc_marines_hull_cost(self.marines_count)
 
+    @property
+    def cloaking_device_hull_cost(self) -> float:
+        """Hull cost of Cloaking Device (fixed)."""
+        if not self.has_cloaking_device:
+            return 0.0
+        return float(self.cloaking_hull_cost)
+
 
 
 # --------------------------------------------------------------------------
@@ -534,6 +548,7 @@ class CustomUnitTemplate:
         if c.has_sensors:                       total += c.sensors_hull_cost
         if c.has_minelayer_component:           total += c.minelayer_hull_cost
         if c.has_marines_component:             total += c.marines_hull_cost
+        if c.has_cloaking_device:              total += c.cloaking_device_hull_cost
         return total
 
 
@@ -643,6 +658,7 @@ class CustomUnitTemplate:
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
             c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
             c.has_sensors, c.has_minelayer_component, c.has_marines_component,
+            c.has_cloaking_device,
         ])
 
 
@@ -888,6 +904,9 @@ class CustomTemplateManager:
             "marines_count": c.marines_count,
             "marines_hull_cost": c.marines_hull_cost,
 
+            "has_cloaking_device": c.has_cloaking_device,
+            "cloaking_hull_cost": c.cloaking_device_hull_cost,
+
             "is_custom": True,  # marker so we know it's player-designed
         }
         return d
@@ -986,6 +1005,9 @@ class CustomTemplateManager:
 
             has_marines_component=d.get("has_marines_component", False),
             marines_count=int(d.get("marines_count", 10)),
+
+            has_cloaking_device=d.get("has_cloaking_device", False),
+            cloaking_hull_cost=float(d.get("cloaking_hull_cost", CLOAKING_HULL_COST)),
         )
 
 

@@ -45,6 +45,7 @@ from unit_components import (
     MinefieldType,
     MarinesComponent,
 )
+from unit_components.cloaking import CloakingDevice
 
 
 if TYPE_CHECKING:
@@ -415,6 +416,10 @@ class Unit(GameObject):
         return self.get_component(MarinesComponent)
 
     @property
+    def cloaking_component(self) -> typing.Optional[CloakingDevice]:
+        return self.get_component(CloakingDevice)
+
+    @property
     def commander_component(self) -> Commander:
         return self.get_component(Commander)
 
@@ -556,6 +561,10 @@ class Unit(GameObject):
         # The inhibitor component currently has no update logic, but this is for consistency.
         # if self.inhibitor_component:
         #     self.inhibitor_component.update()
+
+        # Tick the cloaking device: consume antimatter, auto-deactivate if empty.
+        if self.cloaking_component:
+            self.cloaking_component.update()
 
         # Skip weapons updates for disabled units (Ion Bolt)
         if not self.is_disabled:

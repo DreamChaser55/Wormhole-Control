@@ -31,6 +31,7 @@ from .abilities import (
 )
 from .constructor import BuildableUnit, Constructor, UNIT_TEMPLATES, instantiate_unit_from_template
 from .sensors import Sensors
+from .cloaking import CloakingDevice
 from .minelayer import MinelayerComponent
 from .marines import MarinesComponent
 
@@ -72,6 +73,7 @@ __all__ = [
     "Sensors",
     "MinelayerComponent",
     "MarinesComponent",
+    "CloakingDevice",
     "random",
 ]
 

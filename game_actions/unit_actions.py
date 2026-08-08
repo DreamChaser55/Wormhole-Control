@@ -276,6 +276,22 @@ def handle_toggle_inhibitor(game, action: dict) -> None:
     game.sidebar_needs_update = True
 
 
+def handle_toggle_cloaking(game, action: dict) -> None:
+    """Toggles cloaking device on all selected owned units.
+
+    Args:
+        game: Target game instance.
+        action (dict): Action payload containing the 'shift_pressed' queueing flag.
+    """
+    for unit in game.selected_objects:
+        if isinstance(unit, Unit) and unit.cloaking_component:
+            success = unit.cloaking_component.toggle()
+            logger.debug(
+                f"Directly toggled cloaking for {unit.name}." if success
+                else f"Direct cloaking toggle failed for {unit.name}.")
+    game.sidebar_needs_update = True
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'deploy_ship': handle_deploy_ship,
     'launch_all_wings': handle_launch_all_wings,
@@ -292,4 +308,5 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'stop_unit': handle_stop_unit,
     'stop_selected_units': handle_stop_selected_units,
     'toggle_inhibitor': handle_toggle_inhibitor,
+    'toggle_cloaking': handle_toggle_cloaking,
 }

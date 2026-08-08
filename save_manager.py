@@ -27,7 +27,7 @@ from unit_components import (
     ColonyComponent, Constructor, RepairComponent, MiningComponent,
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
-    MinelayerComponent, MarinesComponent, instantiate_unit_from_template
+    MinelayerComponent, MarinesComponent, CloakingDevice, instantiate_unit_from_template
 )
 from unit_orders import (
     Order, OrderStatus, OrderType,
@@ -190,6 +190,8 @@ def serialize_components(unit: Unit) -> dict:
             comp_data["recharge_time_remaining"] = comp.recharge_time_remaining
             comp_data["jump_status"] = comp.jump_status.name
         elif isinstance(comp, HyperspaceInhibitionFieldEmitter):
+            comp_data["is_active"] = comp.is_active
+        elif isinstance(comp, CloakingDevice):
             comp_data["is_active"] = comp.is_active
         elif isinstance(comp, HangarComponent):
             comp_data["docked_units"] = [serialize_unit(u) for u in comp.docked_units]
@@ -584,6 +586,8 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
                 unit.hyperdrive_component.jump_status = JumpStatus[status_str]
         elif comp_name == "HyperspaceInhibitionFieldEmitter" and unit.inhibitor_component:
             unit.inhibitor_component.is_active = comp_fields.get("is_active", unit.inhibitor_component.is_active)
+        elif comp_name == "CloakingDevice" and unit.cloaking_component:
+            unit.cloaking_component.is_active = comp_fields.get("is_active", False)
         elif comp_name == "HangarComponent" and unit.hangar_component:
             unit.hangar_component.docked_units.clear()
             for docked_data in comp_fields.get("docked_units", []):

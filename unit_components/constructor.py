@@ -318,6 +318,12 @@ def instantiate_unit_from_template(
             hull_cost=m_cost
         ))
 
+    if template.get("has_cloaking_device"):
+        from unit_components.cloaking import CloakingDevice
+        from constants import CLOAKING_HULL_COST
+        c_cost = float(template.get("cloaking_hull_cost", CLOAKING_HULL_COST))
+        new_unit.add_component(CloakingDevice(new_unit, hull_cost=c_cost))
+
     system.add_unit(new_unit)
 
     logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")

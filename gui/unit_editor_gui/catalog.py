@@ -36,6 +36,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2.0,  "is_dynamic": True},
     {"key": "has_minelayer_component",   "label": "Minelayer",          "cost_key": "minelayer_hull_cost",        "default_cost": 15.0, "is_dynamic": False},
     {"key": "has_marines_component",     "label": "Marines",            "cost_key": "marines_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
+    {"key": "has_cloaking_device",       "label": "Cloaking Device",    "cost_key": "cloaking_hull_cost",         "default_cost": 10.0, "is_dynamic": False},
 ]
 
 HULL_SIZE_NAMES = [hs.name for hs in HullSize]
@@ -51,4 +52,5 @@ COMPONENT_DESCRIPTIONS = {
     "has_colony_component": "Colony Component<br><br>Enables colonizing uncolonized habitable planets.",
     "has_metal_refinery_component": "Metal Refinery<br><br>Processes raw ore into refined metal alloys.",
     "has_crystal_refinery_component": "Crystal Refinery<br><br>Refines raw crystal into energy matrix components.",
+    "has_cloaking_device": "Cloaking Device<br><br>Hides the unit from enemy long-range (inter-sector) sensors when activated. Short-range in-sector sensors can still detect the unit. Consumes 5.0 antimatter per turn while active. Auto-deactivates if antimatter runs dry.",
 }

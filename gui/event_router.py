@@ -91,6 +91,10 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         elif event.ui_element and event.ui_element.object_ids and event.ui_element.object_ids[-1] == '#toggle_inhibitor_button':
             action_result = {'action': 'toggle_inhibitor', 'shift_pressed': dynamic_actions._shift_pressed()}
 
+        # 5b. Cloaking Toggle Button
+        elif event.ui_element and event.ui_element.object_ids and event.ui_element.object_ids[-1] == '#toggle_cloaking_button':
+            action_result = {'action': 'toggle_cloaking', 'shift_pressed': dynamic_actions._shift_pressed()}
+
         # 6. Context Menu Buttons
         elif gui.context_menu_buttons and event.ui_element in gui.context_menu_buttons:
             index = gui.context_menu_buttons.index(event.ui_element)
