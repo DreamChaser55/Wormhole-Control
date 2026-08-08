@@ -13,6 +13,7 @@ from custom_unit_templates import (
     ABILITY_REQUIRED_COMPONENTS,
 )
 from .catalog import COMPONENT_ROWS, HYPERDRIVE_TYPES
+from .widget_factory import replace_dropdown
 from .turret_editor import rebuild_turret_list, hide_turret_list
 
 
@@ -172,18 +173,13 @@ def apply_hull_restrictions(editor) -> None:
         if editor._comp.hyperdrive_type == "ADVANCED":
             editor._comp.hyperdrive_type = "BASIC"
             if editor._hd_type_dropdown:
-                # UIDropDownMenu doesn't support set_text natively;
-                # we rebuild it by killing and re-creating at same rect.
-                rect = editor._hd_type_dropdown.get_relative_rect()
-                container = editor._hd_type_dropdown.ui_container
-                editor._hd_type_dropdown.kill()
-                editor._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(
-                    options_list=HYPERDRIVE_TYPES,
-                    starting_option="BASIC",
-                    relative_rect=rect,
-                    manager=editor.manager,
-                    container=container,
-                    object_id="#hd_type_dropdown",
+                editor._hd_type_dropdown = replace_dropdown(
+                    editor,
+                    editor._hd_type_dropdown,
+                    HYPERDRIVE_TYPES,
+                    "BASIC",
+                    "#hd_type_dropdown",
+                    group_key="has_hyperdrive",
                 )
 
     # Wing type show/hide & enable/disable

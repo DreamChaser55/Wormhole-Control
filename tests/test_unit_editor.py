@@ -512,6 +512,54 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         errors = t.validate()
         self.assertFalse(any("Capture Unit" in e for e in errors))
 
+    def test_load_design_dropdown_visibility(self):
+        """Verifies loading a design with hyperdrive unselected keeps hyperdrive dropdown hidden."""
+        import pygame
+        import pygame_gui
+        from gui.unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win.show()
+
+        t = CustomUnitTemplate("TEST_DESIGN", "Test Design", HullSize.MEDIUM)
+        t.components.has_engine = True
+        win._sync_widgets_from_template(t)
+        win._select_component("has_engine")
+
+        self.assertFalse(win._hd_type_dropdown.visible)
+        self.assertIn(win._hd_type_dropdown, win._details_groups["has_hyperdrive"])
+        self.assertIn(win._hd_type_dropdown, win._elements)
+
+        win.kill()
+
+    def test_recreated_dropdown_tab_switching(self):
+        """Verifies component tab switching correctly toggles visibility of recreated dropdowns."""
+        import pygame
+        import pygame_gui
+        from gui.unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win.show()
+
+        t = CustomUnitTemplate("TEST_DESIGN", "Test Design", HullSize.MEDIUM)
+        t.components.has_engine = True
+        t.components.has_hyperdrive = True
+        win._sync_widgets_from_template(t)
+
+        win._select_component("has_hyperdrive")
+        self.assertTrue(win._hd_type_dropdown.visible)
+
+        win._select_component("has_engine")
+        self.assertFalse(win._hd_type_dropdown.visible)
+
+        win.kill()
+
 
 if __name__ == "__main__":
     unittest.main()

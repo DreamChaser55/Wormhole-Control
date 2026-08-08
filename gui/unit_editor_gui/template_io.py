@@ -11,6 +11,7 @@ import pygame_gui
 import typing
 from custom_unit_templates import CustomUnitTemplate
 from .catalog import HULL_SIZE_NAMES, HYPERDRIVE_TYPES
+from .widget_factory import replace_dropdown
 from .component_state import (
     apply_hull_restrictions,
     update_component_toggle_labels,
@@ -33,16 +34,14 @@ def refresh_load_dropdown(editor) -> None:
     existing = editor.template_manager.list_design_names()
     load_options = ["— select —"] + existing
     rect = editor._load_dd.get_relative_rect()
-    container = editor._load_dd.ui_container
-    editor._load_dd.kill()
     dd_h = int(28 * (editor.screen_res.y / 720.0))
-    editor._load_dd = pygame_gui.elements.UIDropDownMenu(
-        options_list=load_options,
-        starting_option="— select —",
-        relative_rect=pygame.Rect(rect.x, rect.y, rect.w, dd_h),
-        manager=editor.manager,
-        container=container,
-        object_id="#editor_load_dropdown",
+    editor._load_dd = replace_dropdown(
+        editor,
+        editor._load_dd,
+        load_options,
+        "— select —",
+        "#editor_load_dropdown",
+        override_rect=pygame.Rect(rect.x, rect.y, rect.w, dd_h),
     )
 
 
@@ -101,44 +100,34 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
 
     # Rebuild hull dropdown selection
     if editor._hull_dropdown:
-        rect = editor._hull_dropdown.get_relative_rect()
-        container = editor._hull_dropdown.ui_container
-        editor._hull_dropdown.kill()
-        editor._hull_dropdown = pygame_gui.elements.UIDropDownMenu(
-            options_list=HULL_SIZE_NAMES,
-            starting_option=editor._hull_size.name,
-            relative_rect=rect,
-            manager=editor.manager,
-            container=container,
-            object_id="#hull_size_dropdown",
+        editor._hull_dropdown = replace_dropdown(
+            editor,
+            editor._hull_dropdown,
+            HULL_SIZE_NAMES,
+            editor._hull_size.name,
+            "#hull_size_dropdown",
         )
 
     # Rebuild hyperdrive type dropdown selection
     if editor._hd_type_dropdown:
-        rect = editor._hd_type_dropdown.get_relative_rect()
-        container = editor._hd_type_dropdown.ui_container
-        editor._hd_type_dropdown.kill()
-        editor._hd_type_dropdown = pygame_gui.elements.UIDropDownMenu(
-            options_list=HYPERDRIVE_TYPES,
-            starting_option=editor._comp.hyperdrive_type,
-            relative_rect=rect,
-            manager=editor.manager,
-            container=container,
-            object_id="#hd_type_dropdown",
+        editor._hd_type_dropdown = replace_dropdown(
+            editor,
+            editor._hd_type_dropdown,
+            HYPERDRIVE_TYPES,
+            editor._comp.hyperdrive_type,
+            "#hd_type_dropdown",
+            group_key="has_hyperdrive",
         )
 
     # Rebuild wing type dropdown selection
     if editor._wt_dropdown:
-        rect = editor._wt_dropdown.get_relative_rect()
-        container = editor._wt_dropdown.ui_container
-        editor._wt_dropdown.kill()
-        editor._wt_dropdown = pygame_gui.elements.UIDropDownMenu(
-            options_list=["FIGHTER", "BOMBER"],
-            starting_option=editor._comp.wing_type if hasattr(editor._comp, "wing_type") else "FIGHTER",
-            relative_rect=rect,
-            manager=editor.manager,
-            container=container,
-            object_id="#hd_type_dropdown",
+        editor._wt_dropdown = replace_dropdown(
+            editor,
+            editor._wt_dropdown,
+            ["FIGHTER", "BOMBER"],
+            editor._comp.wing_type if hasattr(editor._comp, "wing_type") else "FIGHTER",
+            "#hd_type_dropdown",
+            group_key="has_strikecraft_bay",
         )
 
     apply_hull_restrictions(editor)
