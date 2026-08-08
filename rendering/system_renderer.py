@@ -7,7 +7,7 @@ from constants import (
     HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR,
     XP_JUMP_RANGE_BONUS, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS,
     STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR, TEXT_SCALE, FOG_PRESENCE_COLOR,
-    STAR_COLORS
+    STAR_COLORS, DARK_RED
 )
 
 from hexgrid_utils import get_hex_vertices, hex_to_pixel, hex_distance
@@ -56,11 +56,17 @@ class SystemViewRenderer:
         if not self.game.current_system_name: return
         system = self.game.galaxy.systems[self.game.current_system_name]
 
-        # 1. Draw Hex Grid Lines
+        # 1. Draw Hex Grid Lines (and Enemy Presence Fill)
         for hex_coord, hex_obj in system.hexes.items():
              q, r = hex_coord
              hex_points_objects = get_hex_vertices(q, r)
              hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
+
+             has_hidden_enemy = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
+             has_presence = self.game.hex_has_presence(self.game.current_system_name, hex_coord)
+             if has_hidden_enemy and has_presence:
+                 pygame.draw.polygon(self.screen, DARK_RED, hex_points_tuples)
+
              pygame.draw.polygon(self.screen, DARK_GRAY, hex_points_tuples, 1)
 
         # 1b. Draw Wormhole Lines
@@ -289,11 +295,6 @@ class SystemViewRenderer:
                         if unit in self.game.selected_objects:
                             pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, main_shape_points, 2)
 
-            if has_hidden_enemy and has_presence:
-                p_size = 6 * scale_val
-                cx, cy = hex_center_pixel.x, hex_center_pixel.y
-                diamond_pts = [(cx, cy - p_size), (cx + p_size, cy), (cx, cy + p_size), (cx - p_size, cy)]
-                pygame.draw.polygon(self.screen, FOG_PRESENCE_COLOR, diamond_pts)
 
         # 3. Highlight Hovered Hex
 

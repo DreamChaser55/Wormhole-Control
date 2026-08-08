@@ -176,6 +176,7 @@ BLACK = (0, 0, 0)
 GRAY = (128, 128, 128) # Used to highlight the hex containing the selected object
 DARK_GRAY = (50, 50, 50) # Hex grid color
 RED = (255, 0, 0)
+DARK_RED = (100, 20, 20) # Hex fill color for enemy presence detected in system view
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0) # Star

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pygame
 
-from constants import BLUE, HullSize, SENSOR_RANGE_HEX_FILL_COLOR
+from constants import BLUE, HullSize, SENSOR_RANGE_HEX_FILL_COLOR, DARK_RED
 from entities import Player, Unit
 from geometry import Position
 from rendering.system_renderer import SystemViewRenderer
@@ -110,3 +110,21 @@ def test_sensors_range_highlight_hidden_when_long_range_hexes_zero(system_render
     with patch.object(pygame.draw, 'polygon') as mock_draw_polygon:
         renderer._draw_sensors_range_highlight(system)
         mock_draw_polygon.assert_not_called()
+
+
+def test_enemy_presence_dark_red_hex_highlight(system_renderer_setup):
+    renderer, game, system, unit = system_renderer_setup
+    game.system_view_mouse_hover_hex = None
+
+    target_hex_obj = system.hexes[(1, 0)]
+    hidden_enemy_unit = MagicMock()
+    target_hex_obj.units = [hidden_enemy_unit]
+    game.is_unit_visible.side_effect = lambda u: u != hidden_enemy_unit
+    game.hex_has_presence.side_effect = lambda sys_name, h_coord: h_coord == (1, 0)
+
+    with patch.object(pygame.draw, 'polygon') as mock_draw_polygon:
+        renderer.draw_system_view()
+
+        # Verify that DARK_RED fill polygon was drawn for hex (1, 0)
+        draw_colors = [call[0][1] for call in mock_draw_polygon.call_args_list]
+        assert DARK_RED in draw_colors
