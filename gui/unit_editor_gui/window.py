@@ -79,6 +79,7 @@ class UnitEditorWindow:
         # Specific widget references
         self._panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self._hull_dropdown: typing.Optional[pygame_gui.elements.UIDropDownMenu] = None
+        self._comp_scroll_container: typing.Optional[pygame_gui.elements.UIScrollingContainer] = None
         self._comp_toggles: typing.Dict[str, pygame_gui.elements.UIButton] = {}
         self._comp_cost_labels: typing.Dict[str, pygame_gui.elements.UILabel] = {}
         self._comp_select_btns: typing.Dict[str, pygame_gui.elements.UIButton] = {}

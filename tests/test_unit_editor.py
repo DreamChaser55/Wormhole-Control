@@ -560,6 +560,26 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         win.kill()
 
+    def test_component_buttons_fit_panel_bounds(self):
+        """Verifies that component buttons are placed in UIScrollingContainer with full height."""
+        import pygame
+        import pygame_gui
+        from gui.unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+
+        self.assertIsNotNone(win._comp_scroll_container)
+        self.assertTrue(isinstance(win._comp_scroll_container, pygame_gui.elements.UIScrollingContainer))
+
+        for key, btn in win._comp_toggles.items():
+            self.assertGreaterEqual(btn.relative_rect.h, 24, f"Component button {key} height is too small: {btn.relative_rect.h}")
+            self.assertEqual(btn.ui_container, win._comp_scroll_container.get_container())
+
+        win.kill()
+
 
 if __name__ == "__main__":
     unittest.main()

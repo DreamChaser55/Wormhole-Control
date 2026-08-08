@@ -169,9 +169,26 @@ def build_col2_components(
     gap = max(2, int(2 * TEXT_SCALE))
     btn_w = c2w - cost_w - select_w - (gap * 2)
 
+    avail_h = editor._panel_rect.h - c2y - pad
+    editor._comp_scroll_container = pygame_gui.elements.UIScrollingContainer(
+        relative_rect=pygame.Rect(c2x, c2y, c2w, avail_h),
+        manager=editor.manager,
+        container=editor._panel,
+        object_id="#comp_scrolling_container",
+    )
+    editor._elements.append(editor._comp_scroll_container)
+
+    scroll_bar_w = 18
+    inner_w = c2w - scroll_bar_w
+    cost_w = max(40, int(40 * TEXT_SCALE))
+    select_w = max(38, int(38 * TEXT_SCALE))
+    gap = max(2, int(2 * TEXT_SCALE))
+    btn_w = inner_w - cost_w - select_w - (gap * 2)
+
+    row_spacing = small_h + 3
     for idx, row in enumerate(COMPONENT_ROWS):
-        cx = c2x
-        cy = c2y + idx * (small_h + 3)
+        cx = 0
+        cy = idx * row_spacing
 
         key, label, cost_display = row["key"], row["label"], ("~" if row["is_dynamic"] else str(row["default_cost"]))
 
@@ -179,7 +196,7 @@ def build_col2_components(
             relative_rect=pygame.Rect(cx, cy, btn_w, small_h),
             text=f"[ ] {label}",
             manager=editor.manager,
-            container=editor._panel,
+            container=editor._comp_scroll_container,
             object_id="#comp_toggle_button",
         )
         editor._comp_toggles[key] = btn
@@ -190,7 +207,7 @@ def build_col2_components(
             relative_rect=pygame.Rect(cx, cy, cost_w, small_h),
             text=cost_display,
             manager=editor.manager,
-            container=editor._panel,
+            container=editor._comp_scroll_container,
             object_id="#comp_cost_label",
         )
         editor._comp_cost_labels[key] = cost_lbl
@@ -201,13 +218,16 @@ def build_col2_components(
             relative_rect=pygame.Rect(cx, cy, select_w, small_h),
             text="▶▶▶" if key == "has_engine" else ">>>",
             manager=editor.manager,
-            container=editor._panel,
+            container=editor._comp_scroll_container,
             object_id="#comp_select_button",
         )
         editor._comp_select_btns[key] = sel_btn
         editor._elements.append(sel_btn)
 
-    c2y += len(COMPONENT_ROWS) * (small_h + 3) + pad
+    total_content_h = len(COMPONENT_ROWS) * row_spacing
+    editor._comp_scroll_container.set_scrollable_area_dimensions((inner_w, total_content_h))
+
+    c2y += avail_h + pad
     return c2y
 
 
