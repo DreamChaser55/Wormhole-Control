@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import typing
-from typing import Dict, Optional, Any, TYPE_CHECKING
+from typing import Dict, Optional, Any, Tuple, TYPE_CHECKING
 from utils import HexCoord
 from geometry import Position, distance, Vector
 from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS, MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS
@@ -66,6 +66,15 @@ class Player:
         self.credits = 20000
         self.metal = 10000
         self.crystal = 10000
+        self.sector_intel: Dict[Tuple[str, HexCoord], int] = {}
+
+    def record_sector_intel(self, system_name: str, hex_coord: HexCoord, turn: int) -> None:
+        """Records or updates the last turn a sector was in long-range sensor range."""
+        self.sector_intel[(system_name, hex_coord)] = turn
+
+    def get_sector_last_intel_turn(self, system_name: str, hex_coord: HexCoord) -> Optional[int]:
+        """Returns the turn number when intel was last updated for a sector, or None."""
+        return self.sector_intel.get((system_name, hex_coord))
 
     def __repr__(self):
         return f"Player({self.name}, ID:{self.id}, Color:{self.color})"

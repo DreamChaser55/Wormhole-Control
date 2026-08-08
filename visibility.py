@@ -20,14 +20,14 @@ class VisibilityService:
     """Computes visibility (DETAILED vs PRESENCE vs HIDDEN) for all enemy units from a viewer's perspective."""
 
     @staticmethod
-    def compute(galaxy: 'Galaxy', viewer: Optional['Player']) -> VisibilitySnapshot:
+    def compute(galaxy: 'Galaxy', viewer: Optional['Player'], turn_number: int = 1) -> VisibilitySnapshot:
         if not viewer or not galaxy:
             return VisibilitySnapshot(viewer=viewer)
 
         snapshot = VisibilitySnapshot(viewer=viewer)
 
         # short_range_by_hex: (system_name, hex_coord) -> list of (position, radius)
-        short_range_by_hex: Dict[Tuple[str, HexCoord], List[Tuple[Any, float]]] = {}
+        short_range_by_hex: Dict[Tuple[str, HexCoord], List[Tuple[typing.Any, float]]] = {}
         # long_range_covered: set of (system_name, hex_coord)
         long_range_covered: Set[Tuple[str, HexCoord]] = set()
 
@@ -37,7 +37,7 @@ class VisibilityService:
                 for unit in hex_obj.units:
                     all_units.append(unit)
                     if unit.owner == viewer:
-                        sensors = unit.sensors_component
+                        sensors = getattr(unit, 'sensors_component', None)
                         if sensors and not sensors.is_destroyed:
                             if sensors.has_short_range:
                                 key = (system_name, hex_coord)
@@ -50,13 +50,24 @@ class VisibilityService:
                                     if h in system.hexes:
                                         long_range_covered.add((system_name, h))
 
+        current_turn = turn_number
+        if current_turn == 1:
+            if hasattr(galaxy, 'turn_number'):
+                current_turn = getattr(galaxy, 'turn_number', 1)
+            elif hasattr(galaxy, 'game') and hasattr(galaxy.game, 'turn_number'):
+                current_turn = getattr(galaxy.game, 'turn_number', 1)
+
+        if hasattr(viewer, 'record_sector_intel'):
+            for sys_name, h_coord in long_range_covered:
+                viewer.record_sector_intel(sys_name, h_coord, current_turn)
+
         # Evaluate enemy units
         for unit in all_units:
             if unit.owner != viewer:
                 unit_key = (unit.in_system, unit.in_hex)
 
                 # Check if this unit is actively cloaked (defeats long-range sensors only)
-                cloaking = unit.cloaking_component
+                cloaking = getattr(unit, 'cloaking_component', None)
                 is_cloaked = (
                     cloaking is not None
                     and cloaking.is_active
@@ -75,6 +86,14 @@ class VisibilityService:
                     snapshot.presence_hexes.add(unit_key)
 
         return snapshot
+
+    @staticmethod
+    def update_all_players_intel(galaxy: 'Galaxy', players: List['Player'], turn_number: int) -> None:
+        """Updates sector intel for all players based on their current long-range sensor coverage."""
+        if not galaxy or not players:
+            return
+        for player in players:
+            VisibilityService.compute(galaxy, player, turn_number=turn_number)
 
 
 def is_unit_visible(snapshot: Optional[VisibilitySnapshot], unit: 'Unit') -> bool:

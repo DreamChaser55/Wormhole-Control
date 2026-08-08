@@ -11,6 +11,7 @@ from geometry import Vector, Position, distance, hex_distance, Circle, is_point_
 from sector_utils import move_towards_position
 from entities import Unit, Wormhole, Planet, Moon, ColonizableAsteroid
 from unit_components import JumpStatus, Commander
+from visibility import VisibilityService
 from constants import (
     UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS,
     ENGINE_ANTIMATTER_COST_PER_TURN, HYPERDRIVE_SYSTEM_JUMP_COST, HYPERDRIVE_HEX_JUMP_COST
@@ -79,6 +80,9 @@ class TurnProcessor:
             with ProfileTimer("Unit updates"):
                 self._process_unit_updates(current_player)
                 self._cleanup_dead_units()
+
+            with ProfileTimer("Sector intel update"):
+                VisibilityService.update_all_players_intel(self.game.galaxy, self.game.players, turn_num)
 
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 

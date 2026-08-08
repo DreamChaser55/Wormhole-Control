@@ -43,6 +43,22 @@ def build_hex_panel(game, hex_obj: Hex) -> list[dict]:
     system_name = game.galaxy.systems[hex_obj.in_system].name
     data.append({'type': 'label', 'text': f"Hex ({coords[0]}, {coords[1]}) in {system_name}", 'object_id': '#sidebar_title_label', 'height': 30})
 
+    current_player = game.players[game.current_player_index] if game.players else None
+    if current_player and hasattr(current_player, 'get_sector_last_intel_turn'):
+        last_turn = current_player.get_sector_last_intel_turn(system_name, coords)
+        if last_turn is None:
+            intel_str = "Never"
+        else:
+            current_game_turn = getattr(game, 'turn_number', 1)
+            diff = current_game_turn - last_turn
+            if diff <= 0:
+                intel_str = "Current turn"
+            elif diff == 1:
+                intel_str = "1 turn ago"
+            else:
+                intel_str = f"{diff} turns ago"
+        data.append({'type': 'label', 'text': f"Last Intel: {intel_str}", 'object_id': '#sidebar_info_label', 'height': 25})
+
     visible_units = [u for u in hex_obj.units if game.is_unit_visible(u)]
     has_presence = game.hex_has_presence(system_name, coords)
 

@@ -160,7 +160,7 @@ class Game:
         """Recomputes the fog-of-war visibility snapshot for the active human/spectator player."""
         if self.game_started and self.galaxy and self.players:
             viewer = self.players[self.current_player_index]
-            self.visibility = VisibilityService.compute(self.galaxy, viewer)
+            self.visibility = VisibilityService.compute(self.galaxy, viewer, turn_number=getattr(self, 'turn_number', 1))
         else:
             self.visibility = None
         self.visibility_dirty = False

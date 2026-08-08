@@ -92,6 +92,10 @@ def _ensure_saves_dir():
 # --- Serialization Functions ---
 
 def serialize_player(player: Player) -> dict:
+    sector_intel_data = {
+        f"{sys}:{q}:{r}": turn
+        for (sys, (q, r)), turn in getattr(player, 'sector_intel', {}).items()
+    }
     return {
         "id": player.id,
         "name": player.name,
@@ -100,6 +104,7 @@ def serialize_player(player: Player) -> dict:
         "credits": player.credits,
         "metal": player.metal,
         "crystal": player.crystal,
+        "sector_intel": sector_intel_data,
     }
 
 
@@ -322,6 +327,17 @@ def deserialize_player(data: dict) -> Player:
     player.credits = data.get("credits", 20000.0)
     player.metal = data.get("metal", 10000.0)
     player.crystal = data.get("crystal", 10000.0)
+
+    raw_intel = data.get("sector_intel", {})
+    if isinstance(raw_intel, dict):
+        for key_str, turn in raw_intel.items():
+            parts = key_str.split(":")
+            if len(parts) == 3:
+                sys_name, q_str, r_str = parts
+                try:
+                    player.sector_intel[(sys_name, (int(q_str), int(r_str)))] = int(turn)
+                except ValueError:
+                    pass
     return player
 
 
