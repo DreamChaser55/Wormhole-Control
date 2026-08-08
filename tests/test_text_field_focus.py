@@ -136,3 +136,51 @@ def test_esc_unfocuses_text_entry():
         
     # Verify that the text entry was unfocused
     assert entry.is_focused is False
+
+def test_esc_brings_up_ingame_menu():
+    game = DummyGame()
+    game.view_mode = 'galaxy'
+    game.game_started = True
+    ip = InputProcessor(game)
+    
+    event_esc = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+    with patch.object(ip.gui, 'is_any_text_entry_focused', return_value=False), \
+         patch.object(ip.gui, 'process_event', return_value=None), \
+         patch.object(ip.gui, 'is_ingame_menu_open', return_value=False), \
+         patch.object(ip.gui, 'is_unit_editor_open', return_value=False), \
+         patch.object(ip.gui, 'is_mouse_over_context_menu', return_value=False), \
+         patch('pygame.event.get', return_value=[event_esc]):
+        ip.handle_input()
+        
+    assert game.view_mode == 'galaxy'
+    assert game.game_started is True
+    ip.gui.toggle_ingame_menu.assert_called_once()
+
+def test_esc_toggles_open_ingame_menu():
+    game = DummyGame()
+    ip = InputProcessor(game)
+    ip.gui.load_save_window = None
+    
+    event_esc = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+    with patch.object(ip.gui, 'is_any_text_entry_focused', return_value=False), \
+         patch.object(ip.gui, 'process_event', return_value=None), \
+         patch.object(ip.gui, 'is_ingame_menu_open', return_value=True), \
+         patch('pygame.event.get', return_value=[event_esc]):
+        ip.handle_input()
+        
+    ip.gui.toggle_ingame_menu.assert_called_once()
+
+def test_esc_closes_unit_editor():
+    game = DummyGame()
+    ip = InputProcessor(game)
+    
+    event_esc = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+    with patch.object(ip.gui, 'is_any_text_entry_focused', return_value=False), \
+         patch.object(ip.gui, 'process_event', return_value=None), \
+         patch.object(ip.gui, 'is_ingame_menu_open', return_value=False), \
+         patch.object(ip.gui, 'is_unit_editor_open', return_value=True), \
+         patch('pygame.event.get', return_value=[event_esc]):
+        ip.handle_input()
+        
+    ip.gui.close_unit_editor.assert_called_once()
+

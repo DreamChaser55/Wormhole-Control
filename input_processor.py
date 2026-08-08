@@ -106,10 +106,18 @@ class InputProcessor:
             # If the in-game menu is open, block all further game-world input processing for this event.
             # This allows the menu to be interactive while disabling the background.
             if self.gui.is_ingame_menu_open():
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    if hasattr(self.gui, 'load_save_window') and self.gui.load_save_window and self.gui.load_save_window.alive():
+                        self.gui.load_save_window.kill()
+                        self.gui.load_save_window = None
+                    else:
+                        self.gui.toggle_ingame_menu()
                 continue
 
             # Similarly, block game-world input when the unit editor is open.
             if self.gui.is_unit_editor_open():
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.gui.close_unit_editor()
                 continue
 
             if event.type == pygame.KEYDOWN:
@@ -125,9 +133,7 @@ class InputProcessor:
                         self.game.view_mode = 'main_menu'
                         self.gui.show_main_menu()
                     elif self.game.view_mode in ['galaxy', 'system', 'sector']:
-                        self.game.view_mode = 'main_menu'
-                        self.game.game_started = False
-                        self.gui.show_main_menu()
+                        self.gui.toggle_ingame_menu()
                 elif event.key == pygame.K_g and self.game.game_started:
                     self.game.view_mode = 'galaxy'
                     self.game.update_view_specific_labels()
