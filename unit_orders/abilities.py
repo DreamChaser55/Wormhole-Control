@@ -86,6 +86,20 @@ class UseAbilityOrder(Order):
                     self.status = OrderStatus.FAILED
                     return
 
+        # --- Pre-validation for DRAIN_ANTIMATTER ability ---
+        if ability_type == AbilityType.DRAIN_ANTIMATTER and target_unit_id is not None:
+            target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
+            if target_unit:
+                if target_unit.owner == self.unit.owner:
+                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target unit {target_unit.name} is friendly.")
+                    self.status = OrderStatus.FAILED
+                    return
+                target_am = target_unit.antimatter_component
+                if not target_am or target_am.is_destroyed or target_am.current_amount <= 0:
+                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} has no antimatter to drain.")
+                    self.status = OrderStatus.FAILED
+                    return
+
         # --- Range check for unit-targeted abilities ---
         if defn.requires_target_unit and target_unit_id is not None:
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)

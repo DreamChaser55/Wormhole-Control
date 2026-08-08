@@ -53,6 +53,8 @@ class AbilityType(Enum):
     MISSILE_BATTERIES = "missile_batteries"
     REPAIR_CLOUD = "repair_cloud"
     CAPTURE_UNIT = "capture_unit"
+    DRAIN_ANTIMATTER = "drain_antimatter"
+
 
 
 class MinefieldType(Enum):
