@@ -567,9 +567,9 @@ class Unit(GameObject):
         if self.hyperdrive_component:
             self.hyperdrive_component.update_recharge()
 
-        # The inhibitor component currently has no update logic, but this is for consistency.
-        # if self.inhibitor_component:
-        #     self.inhibitor_component.update()
+        # Tick the inhibitor field: consume antimatter, auto-deactivate if empty.
+        if self.inhibitor_component:
+            self.inhibitor_component.update()
 
         # Tick the cloaking device: consume antimatter, auto-deactivate if empty.
         if self.cloaking_component:

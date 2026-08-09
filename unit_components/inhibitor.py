@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
-from constants import INHIBITOR_RADIUS_PER_HULL_POINT
+from constants import INHIBITOR_RADIUS_PER_HULL_POINT, INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -31,6 +31,10 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
             return 0.0
         return float(radius / INHIBITOR_RADIUS_PER_HULL_POINT)
 
+    def get_antimatter_cost_per_turn(self) -> float:
+        """Calculates antimatter consumption per turn based on field radius."""
+        return (float(self.radius) / 50.0) * INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS
+
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
         data.append({
@@ -38,6 +42,8 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
             'is_active': self.is_active,
             'height': 30
         })
+        am_cost_text = f"AM Cost: {self.get_antimatter_cost_per_turn():.1f}/turn"
+        data.append({'type': 'label', 'text': am_cost_text, 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
@@ -46,15 +52,15 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
             return data
         status_str = "Active" if self.is_active else "Inactive"
         obj_id = '#sidebar_status_active_label' if self.is_active else '#sidebar_status_idle_label'
+        cost_str = f" ({self.get_antimatter_cost_per_turn():.1f} AM/turn)" if self.is_active else ""
         data.append({
             'type': 'label',
-            'text': f"• FTL Inhibition: {status_str} (Radius {int(self.radius)})",
+            'text': f"• FTL Inhibition: {status_str}{cost_str} (Radius {int(self.radius)})",
             'object_id': obj_id,
             'height': 18,
             'indent_level': 1
         })
         return data
-
 
     def turn_on(self) -> None:
         """Activates the inhibition field. (Validation logic will be handled by the order)."""
@@ -65,17 +71,42 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         logger.debug(f"Unit {self.unit.name} inhibition field activated.")
 
     def turn_off(self) -> None:
-        """Deactivates the inhibition field."""
+        """Deactivates the inhibition field and cleans up registered spatial zone."""
+        if self.is_active:
+            galaxy_ref = getattr(self.unit, 'in_galaxy', None)
+            if galaxy_ref and self.unit.in_system and self.unit.in_hex is not None:
+                system_obj = galaxy_ref.systems.get(self.unit.in_system)
+                if system_obj and self.unit.in_hex in system_obj.hexes:
+                    current_hex = system_obj.hexes[self.unit.in_hex]
+                    if self.unit.id in current_hex.dynamic_inhibition_zones:
+                        del current_hex.dynamic_inhibition_zones[self.unit.id]
         self.is_active = False
         logger.debug(f"Unit {self.unit.name} inhibition field deactivated.")
 
+    def update(self) -> None:
+        """Consume antimatter while active. Auto-deactivate if empty or missing storage."""
+        if not self.is_active or self.is_destroyed:
+            return
+
+        cost = self.get_antimatter_cost_per_turn()
+        am_comp = getattr(self.unit, 'antimatter_component', None)
+        if not am_comp:
+            logger.debug(
+                f"[{self.unit.name}] Inhibitor Field deactivated: no AntimatterStorage on unit."
+            )
+            self.turn_off()
+            return
+
+        consumed = am_comp.consume(cost)
+        if not consumed:
+            logger.debug(
+                f"[{self.unit.name}] Inhibitor Field deactivated: insufficient antimatter "
+                f"({am_comp.current_amount:.1f} < {cost:.1f})."
+            )
+            self.turn_off()
+
     def on_destroyed(self) -> None:
         if self.is_active:
-            galaxy_ref = getattr(self.unit, 'in_galaxy', None)
-            if galaxy_ref and self.unit.in_system and self.unit.in_hex:
-                current_hex = galaxy_ref.systems[self.unit.in_system].hexes.get(self.unit.in_hex)
-                if current_hex and self.unit.id in current_hex.dynamic_inhibition_zones:
-                    del current_hex.dynamic_inhibition_zones[self.unit.id]
             self.turn_off()
 
     def toggle(self, galaxy_ref: 'Galaxy') -> bool:

@@ -53,4 +53,5 @@ COMPONENT_DESCRIPTIONS = {
     "has_metal_refinery_component": "Metal Refinery<br><br>Processes raw ore into refined metal alloys.",
     "has_crystal_refinery_component": "Crystal Refinery<br><br>Refines raw crystal into energy matrix components.",
     "has_cloaking_device": "Cloaking Device<br><br>Hides the unit from enemy long-range (inter-sector) sensors when activated. Short-range in-sector sensors can still detect the unit. Consumes 5.0 antimatter per turn while active. Auto-deactivates if antimatter runs dry.",
+    "has_inhibitor": "Inhibitor Field<br><br>Generates a hyperspace inhibition zone around the unit, preventing hyperdrive jumps into or out of the field. Consumes antimatter per turn while active scaled by field radius. Auto-deactivates if antimatter runs dry.",
 }
