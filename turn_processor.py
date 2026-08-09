@@ -266,6 +266,12 @@ class TurnProcessor:
                                         logger.debug(f"   Wormhole instability damages {unit.name}'s hull for {damage_amount} damage.")
                                         unit.take_damage(damage_amount)
 
+                                    if getattr(self.game, 'gui', None) and getattr(unit.owner, 'is_human', False):
+                                        self.game.gui.show_warning_dialog(
+                                            f"Unit <b>{unit.name}</b> sustained structural damage jumping through unstable wormhole <b>{entry_wormhole.name}</b> ({damage_amount} damage)!",
+                                            title="Wormhole Damage"
+                                        )
+
                             hd_comp.start_recharge() # Clears targets and sets status to CHARGING
                         else:
                             logger.debug(f"   Error during final wormhole jump execution for {unit.name}. Jump aborted.")
@@ -403,6 +409,11 @@ class TurnProcessor:
                 total_upkeep += unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
 
         if total_upkeep > 0:
+            if current_player.credits < total_upkeep and getattr(self.game, 'gui', None) and getattr(current_player, 'is_human', False):
+                self.game.gui.show_warning_dialog(
+                    f"Treasury depleted! Unable to fully pay total unit upkeep of <b>{total_upkeep:.0f}</b> credits.",
+                    title="Upkeep Shortage"
+                )
             current_player.credits = max(0.0, current_player.credits - total_upkeep)
             logger.debug(f"  {current_player.name} paid {total_upkeep:.2f} credits in unit upkeep.")
 
@@ -438,6 +449,11 @@ class TurnProcessor:
 
                         if distance(unit.position, minefield.position) <= minefield.detonation_radius:
                             minefield.detonate_against(unit)
+                            if getattr(self.game, 'gui', None) and getattr(unit.owner, 'is_human', False):
+                                self.game.gui.show_warning_dialog(
+                                    f"Unit <b>{unit.name}</b> triggered an enemy minefield in sector <b>{hex_coord}</b>!",
+                                    title="Minefield Detonation"
+                                )
                             if minefield.mines_remaining <= 0:
                                 minefields_to_remove.append(minefield)
                                 break

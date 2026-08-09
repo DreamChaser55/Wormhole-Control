@@ -49,6 +49,12 @@ class UseAbilityOrder(Order):
 
         if not self.unit.ability_component.can_use(ability_type):
             logger.debug(f"[{self.unit.name}] USE_ABILITY order failed: ability {ability_type.name} not ready (on cooldown or already active).")
+            gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+            if gui:
+                gui.show_warning_dialog(
+                    f"Ability <b>{ability_type.name}</b> on unit <b>{self.unit.name}</b> is on cooldown or cannot be activated.",
+                    title="Ability Unavailable"
+                )
             self.status = OrderStatus.FAILED
             return
 
@@ -73,16 +79,34 @@ class UseAbilityOrder(Order):
                     engines_disabled = target_unit.engines_component.is_destroyed or target_unit.is_disabled
                     if not engines_disabled:
                         logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} engines are not disabled.")
+                        gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                        if gui:
+                            gui.show_warning_dialog(
+                                f"Cannot capture target <b>{target_unit.name}</b>: Unit engines, weapons, and defenses must be disabled first!",
+                                title="Capture Failed"
+                            )
                         self.status = OrderStatus.FAILED
                         return
                 from unit_components import Defenses
                 if target_unit.weapons_component and not target_unit.weapons_component.is_destroyed:
                     logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} weapons are active.")
+                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                    if gui:
+                        gui.show_warning_dialog(
+                            f"Cannot capture target <b>{target_unit.name}</b>: Unit engines, weapons, and defenses must be disabled first!",
+                            title="Capture Failed"
+                        )
                     self.status = OrderStatus.FAILED
                     return
                 defenses = target_unit.get_component(Defenses)
                 if defenses and not defenses.is_destroyed:
                     logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} defenses are active.")
+                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                    if gui:
+                        gui.show_warning_dialog(
+                            f"Cannot capture target <b>{target_unit.name}</b>: Unit engines, weapons, and defenses must be disabled first!",
+                            title="Capture Failed"
+                        )
                     self.status = OrderStatus.FAILED
                     return
 
@@ -97,6 +121,12 @@ class UseAbilityOrder(Order):
                 target_am = target_unit.antimatter_component
                 if not target_am or target_am.is_destroyed or target_am.current_amount <= 0:
                     logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} has no antimatter to drain.")
+                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                    if gui:
+                        gui.show_warning_dialog(
+                            f"Cannot drain antimatter from <b>{target_unit.name}</b>: Target has no antimatter reserves.",
+                            title="Drain Failed"
+                        )
                     self.status = OrderStatus.FAILED
                     return
 

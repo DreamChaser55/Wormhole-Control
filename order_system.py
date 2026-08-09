@@ -78,70 +78,88 @@ class OrderSystem:
 
     def handle_issue_move_order(self, event: IssueMoveOrderEvent):
         for unit in event.units:
-            if unit.engines_component:
-                if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
-                    continue
-                move_params = {
+            if not unit.engines_component:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> has no sub-light engines and cannot execute move orders.",
+                        title="No Engines"
+                    )
+                continue
+            if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
+                continue
+            move_params = {
+                "destination_system_name": event.system_name,
+                "destination_hex_coord": event.sector_coord,
+                "destination_position": event.destination
+            }
+            move_order = MoveOrder(unit, move_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+                logger.debug(f"  Unit {unit.name} orders cancelled.")
+            unit.commander_component.add_order(move_order)
+            logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
+        for unit in event.units:
+            if not unit.engines_component:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> has no sub-light engines and cannot execute patrol orders.",
+                        title="No Engines"
+                    )
+                continue
+            if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
+                continue
+            existing_patrol = None
+            if event.shift_pressed:
+                if unit.commander_component.orders_queue:
+                    last_order = unit.commander_component.orders_queue[-1]
+                    if last_order.order_type == OrderType.PATROL:
+                        existing_patrol = last_order
+                elif unit.commander_component.current_order and unit.commander_component.current_order.order_type == OrderType.PATROL:
+                    existing_patrol = unit.commander_component.current_order
+
+            if existing_patrol:
+                existing_patrol.add_waypoint(event.system_name, event.sector_coord, event.destination)
+                logger.debug(f"  Added waypoint to existing patrol order for unit {unit.name}: {event.system_name}:{event.sector_coord}:{event.destination}")
+            else:
+                patrol_params = {
                     "destination_system_name": event.system_name,
                     "destination_hex_coord": event.sector_coord,
                     "destination_position": event.destination
                 }
+                patrol_order = PatrolOrder(unit, patrol_params)
+                if not event.shift_pressed:
+                    unit.commander_component.clear_orders()
+                    logger.debug(f"  Unit {unit.name} orders cancelled.")
+                unit.commander_component.add_order(patrol_order)
+                logger.debug(f"  Unit {unit.name} ordered to patrol to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_jump_interhex(self, event: JumpInterhexEvent):
+        for unit in event.units:
+            if not unit.hyperdrive_component:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> has no hyperdrive module and cannot perform hyperspace jumps.",
+                        title="No Hyperdrive"
+                    )
+                continue
+            if event.system_name != unit.in_system or event.target_hex != unit.in_hex:
+                move_params = {
+                    "destination_system_name": event.system_name,
+                    "destination_hex_coord": event.target_hex,
+                    "destination_position": random_point_in_sector()
+                }
+                if not self.validate_antimatter_for_unit(unit, event.system_name, event.target_hex, move_params["destination_position"]):
+                    continue
                 move_order = MoveOrder(unit, move_params)
                 if not event.shift_pressed:
                     unit.commander_component.clear_orders()
                     logger.debug(f"  Unit {unit.name} orders cancelled.")
                 unit.commander_component.add_order(move_order)
-                logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
-        self.game.sidebar_needs_update = True
-
-    def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
-        for unit in event.units:
-            if unit.engines_component:
-                if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
-                    continue
-                existing_patrol = None
-                if event.shift_pressed:
-                    if unit.commander_component.orders_queue:
-                        last_order = unit.commander_component.orders_queue[-1]
-                        if last_order.order_type == OrderType.PATROL:
-                            existing_patrol = last_order
-                    elif unit.commander_component.current_order and unit.commander_component.current_order.order_type == OrderType.PATROL:
-                        existing_patrol = unit.commander_component.current_order
-
-                if existing_patrol:
-                    existing_patrol.add_waypoint(event.system_name, event.sector_coord, event.destination)
-                    logger.debug(f"  Added waypoint to existing patrol order for unit {unit.name}: {event.system_name}:{event.sector_coord}:{event.destination}")
-                else:
-                    patrol_params = {
-                        "destination_system_name": event.system_name,
-                        "destination_hex_coord": event.sector_coord,
-                        "destination_position": event.destination
-                    }
-                    patrol_order = PatrolOrder(unit, patrol_params)
-                    if not event.shift_pressed:
-                        unit.commander_component.clear_orders()
-                        logger.debug(f"  Unit {unit.name} orders cancelled.")
-                    unit.commander_component.add_order(patrol_order)
-                    logger.debug(f"  Unit {unit.name} ordered to patrol to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
-        self.game.sidebar_needs_update = True
-
-    def handle_jump_interhex(self, event: JumpInterhexEvent):
-        for unit in event.units:
-            if unit.hyperdrive_component:
-                if event.system_name != unit.in_system or event.target_hex != unit.in_hex:
-                    move_params = {
-                        "destination_system_name": event.system_name,
-                        "destination_hex_coord": event.target_hex,
-                        "destination_position": random_point_in_sector()
-                    }
-                    if not self.validate_antimatter_for_unit(unit, event.system_name, event.target_hex, move_params["destination_position"]):
-                        continue
-                    move_order = MoveOrder(unit, move_params)
-                    if not event.shift_pressed:
-                        unit.commander_component.clear_orders()
-                        logger.debug(f"  Unit {unit.name} orders cancelled.")
-                    unit.commander_component.add_order(move_order)
-                    logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.target_hex}:{move_params['destination_position']} via event.")
+                logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.target_hex}:{move_params['destination_position']} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_jump_wormhole(self, event: JumpWormholeEvent):
@@ -191,6 +209,21 @@ class OrderSystem:
 
     def handle_colonize(self, event: ColonizeEvent):
         for unit in event.units:
+            col_comp = getattr(unit, 'colony_component', None)
+            if not col_comp:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Colony Component and cannot colonize.",
+                        title="Cannot Colonize"
+                    )
+                continue
+            if col_comp.population_cargo <= 0:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> has no colonists in cargo to establish a colony on <b>{event.target_body.name}</b>.",
+                        title="Cannot Colonize"
+                    )
+                continue
             colonize_params = {
                 "target_id": event.target_body.id,
                 "target_name": event.target_body.name
@@ -204,6 +237,13 @@ class OrderSystem:
 
     def handle_load_colonists(self, event: LoadColonistsEvent):
         for unit in event.units:
+            if not getattr(unit, 'colony_component', None):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Colony Component and cannot load colonists.",
+                        title="Cannot Load Colonists"
+                    )
+                continue
             load_params = {
                 "target_id": event.target_body.id,
                 "target_name": event.target_body.name,
@@ -231,13 +271,19 @@ class OrderSystem:
 
     def handle_repair_unit(self, event: RepairUnitEvent):
         for unit in event.units:
-            if unit.repair_component:
-                repair_params = {"target_unit_id": event.target_unit.id}
-                repair_order = RepairOrder(unit, repair_params)
-                if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
-                unit.commander_component.add_order(repair_order)
-                logger.debug(f"  Unit {unit.name} ordered to repair {event.target_unit.name} via event.")
+            if not getattr(unit, 'repair_component', None):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Repair Component and cannot repair units.",
+                        title="No Repair Module"
+                    )
+                continue
+            repair_params = {"target_unit_id": event.target_unit.id}
+            repair_order = RepairOrder(unit, repair_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(repair_order)
+            logger.debug(f"  Unit {unit.name} ordered to repair {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_issue_protect_order(self, event: IssueProtectOrderEvent):
@@ -252,24 +298,36 @@ class OrderSystem:
 
     def handle_mine(self, event: MineEvent):
         for unit in event.units:
-            if getattr(unit, 'mining_component', None):
-                mine_params = {"target_id": event.target_body.id}
-                mine_order = MineOrder(unit, mine_params)
-                if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
-                unit.commander_component.add_order(mine_order)
-                logger.debug(f"  Unit {unit.name} ordered to mine {event.target_body.name} via event.")
+            if not getattr(unit, 'mining_component', None):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Mining Component and cannot extract resources.",
+                        title="No Mining Module"
+                    )
+                continue
+            mine_params = {"target_id": event.target_body.id}
+            mine_order = MineOrder(unit, mine_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(mine_order)
+            logger.debug(f"  Unit {unit.name} ordered to mine {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_continuous_mine(self, event: ContinuousMineEvent):
         for unit in event.units:
-            if getattr(unit, 'mining_component', None):
-                mine_params = {"target_id": event.target_body.id}
-                continuous_mine_order = ContinuousMineOrder(unit, mine_params)
-                if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
-                unit.commander_component.add_order(continuous_mine_order)
-                logger.debug(f"  Unit {unit.name} ordered to continuous mine {event.target_body.name} via event.")
+            if not getattr(unit, 'mining_component', None):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Mining Component and cannot extract resources.",
+                        title="No Mining Module"
+                    )
+                continue
+            mine_params = {"target_id": event.target_body.id}
+            continuous_mine_order = ContinuousMineOrder(unit, mine_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(continuous_mine_order)
+            logger.debug(f"  Unit {unit.name} ordered to continuous mine {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_unload_resources(self, event: UnloadResourcesEvent):
@@ -277,29 +335,47 @@ class OrderSystem:
         is_crystal_refinery = bool(getattr(event.target_unit, 'crystal_refinery_component', None))
         for unit in event.units:
             mining_comp = getattr(unit, 'mining_component', None)
-            if mining_comp:
-                has_correct_cargo = (
-                    (is_metal_refinery and mining_comp.raw_metal_cargo > 0) or
-                    (is_crystal_refinery and mining_comp.raw_crystal_cargo > 0)
-                )
-                if has_correct_cargo:
-                    unload_params = {"target_unit_id": event.target_unit.id}
-                    unload_order = UnloadResourcesOrder(unit, unload_params)
-                    if not event.shift_pressed:
-                        unit.commander_component.clear_orders()
-                    unit.commander_component.add_order(unload_order)
-                    logger.debug(f"  Unit {unit.name} ordered to unload resources to {event.target_unit.name} via event.")
+            if not mining_comp:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Mining Component and cannot unload resources.",
+                        title="No Mining Module"
+                    )
+                continue
+            has_correct_cargo = (
+                (is_metal_refinery and mining_comp.raw_metal_cargo > 0) or
+                (is_crystal_refinery and mining_comp.raw_crystal_cargo > 0)
+            )
+            if not has_correct_cargo:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> does not have matching raw cargo to unload into <b>{event.target_unit.name}</b>.",
+                        title="Incompatible Cargo"
+                    )
+                continue
+            unload_params = {"target_unit_id": event.target_unit.id}
+            unload_order = UnloadResourcesOrder(unit, unload_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(unload_order)
+            logger.debug(f"  Unit {unit.name} ordered to unload resources to {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_dock(self, event: DockEvent):
         for unit in event.units:
-            if unit.hull_size in (HullSize.TINY, HullSize.SMALL):
-                dock_params = {"target_carrier_id": event.target_carrier.id}
-                dock_order = DockOrder(unit, dock_params)
-                if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
-                unit.commander_component.add_order(dock_order)
-                logger.debug(f"  Unit {unit.name} ordered to dock to {event.target_carrier.name} via event.")
+            if unit.hull_size not in (HullSize.TINY, HullSize.SMALL):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> (Hull Size: {unit.hull_size.name}) cannot dock. Only Tiny and Small hull sizes are supported.",
+                        title="Invalid Dock Target"
+                    )
+                continue
+            dock_params = {"target_carrier_id": event.target_carrier.id}
+            dock_order = DockOrder(unit, dock_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(dock_order)
+            logger.debug(f"  Unit {unit.name} ordered to dock to {event.target_carrier.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_use_ability(self, event: UseAbilityEvent):
@@ -340,28 +416,41 @@ class OrderSystem:
         """Creates ContinuousResupplyOrders for selected units that have an
         AntimatterHarvester component, targeting the given star body."""
         for unit in event.units:
-            if getattr(unit, 'harvester_component', None):
-                resupply_params = {
-                    "target_id": event.target_body.id,
-                    "target_name": getattr(event.target_body, 'name', f"Star {event.target_body.id}"),
-                }
-                resupply_order = ContinuousResupplyOrder(unit, resupply_params)
-                if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
-                unit.commander_component.add_order(resupply_order)
-                logger.debug(f"  Unit {unit.name} ordered to continuously resupply from star {event.target_body.name} via event.")
+            if not getattr(unit, 'harvester_component', None):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks an Antimatter Harvester and cannot harvest antimatter from stars.",
+                        title="No Harvester Module"
+                    )
+                continue
+            resupply_params = {
+                "target_id": event.target_body.id,
+                "target_name": getattr(event.target_body, 'name', f"Star {event.target_body.id}"),
+            }
+            resupply_order = ContinuousResupplyOrder(unit, resupply_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(resupply_order)
+            logger.debug(f"  Unit {unit.name} ordered to continuously resupply from star {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_lay_minefield(self, event: LayMinefieldEvent):
         """Creates LayMinefieldOrders for selected units with MinelayerComponent."""
         mtype = getattr(event, 'minefield_type', 'anti_ship')
         for unit in event.units:
-            if getattr(unit, 'minelayer_component', None) is not None or (hasattr(unit, 'components') and any(c.__class__.__name__ == 'MinelayerComponent' for c in unit.components.values())):
-                lay_order = LayMinefieldOrder(unit, minefield_type=mtype)
-                if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
-                unit.commander_component.add_order(lay_order)
-                logger.debug(f"  Unit {unit.name} ordered to lay {mtype} minefield via event.")
+            has_minelayer = getattr(unit, 'minelayer_component', None) is not None or (hasattr(unit, 'components') and any(c.__class__.__name__ == 'MinelayerComponent' for c in unit.components.values()))
+            if not has_minelayer:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Minelayer Component and cannot deploy minefields.",
+                        title="No Minelayer Module"
+                    )
+                continue
+            lay_order = LayMinefieldOrder(unit, minefield_type=mtype)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(lay_order)
+            logger.debug(f"  Unit {unit.name} ordered to lay {mtype} minefield via event.")
         self.game.sidebar_needs_update = True
 
 

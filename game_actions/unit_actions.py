@@ -104,6 +104,15 @@ def handle_unload_resources_nearest(game, action: dict) -> None:
     unit = game.galaxy.get_unit_by_id(unit_id) if game.galaxy else None
     if unit and getattr(unit, 'mining_component', None) is not None:
         mining_comp = unit.mining_component
+        if mining_comp.raw_metal_cargo <= 0 and mining_comp.raw_crystal_cargo <= 0:
+            if getattr(game, 'gui', None):
+                game.gui.show_warning_dialog(
+                    f"Unit <b>{unit.name}</b> has no raw metal or crystal cargo to unload.",
+                    title="Cargo Empty"
+                )
+            game.sidebar_needs_update = True
+            return
+
         friendly_refineries = _iter_friendly_refineries(game.galaxy, unit)
 
         nearest_metal = None
@@ -137,6 +146,13 @@ def handle_unload_resources_nearest(game, action: dict) -> None:
                 if unit.commander_component:
                     unit.commander_component.add_order(order)
                     logger.debug(f"Added UnloadResourcesOrder to unit {unit.name} queue targeting refinery ID {order.parameters['target_unit_id']}.")
+        else:
+            if getattr(game, 'gui', None):
+                game.gui.show_warning_dialog(
+                    f"No friendly operational refineries found in range to receive cargo from <b>{unit.name}</b>.",
+                    title="No Refinery Found"
+                )
+    game.sidebar_needs_update = True
 
 
 def handle_lay_minefield(game, action: dict) -> None:
@@ -275,9 +291,15 @@ def handle_toggle_inhibitor(game, action: dict) -> None:
                 logger.debug(f"Queued TOGGLE_INHIBITOR order for {unit.name}.")
             else:
                 success = unit.inhibitor_component.toggle(galaxy_ref=game.galaxy)
-                logger.debug(
-                    f"Directly toggled inhibitor for {unit.name}." if success
-                    else f"Direct inhibitor toggle failed for {unit.name}.")
+                if success:
+                    logger.debug(f"Directly toggled inhibitor for {unit.name}.")
+                else:
+                    logger.debug(f"Direct inhibitor toggle failed for {unit.name}.")
+                    if getattr(game, 'gui', None):
+                        game.gui.show_warning_dialog(
+                            f"Failed to toggle Hyperspace Inhibitor Field on unit <b>{unit.name}</b>.",
+                            title="Toggle Failed"
+                        )
     game.sidebar_needs_update = True
 
 
@@ -291,9 +313,15 @@ def handle_toggle_cloaking(game, action: dict) -> None:
     for unit in game.selected_objects:
         if isinstance(unit, Unit) and unit.cloaking_component:
             success = unit.cloaking_component.toggle()
-            logger.debug(
-                f"Directly toggled cloaking for {unit.name}." if success
-                else f"Direct cloaking toggle failed for {unit.name}.")
+            if success:
+                logger.debug(f"Directly toggled cloaking for {unit.name}.")
+            else:
+                logger.debug(f"Direct cloaking toggle failed for {unit.name}.")
+                if getattr(game, 'gui', None):
+                    game.gui.show_warning_dialog(
+                        f"Failed to toggle Cloaking Device on unit <b>{unit.name}</b>.",
+                        title="Toggle Failed"
+                    )
     game.sidebar_needs_update = True
 
 

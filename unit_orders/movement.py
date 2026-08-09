@@ -321,6 +321,12 @@ class MoveOrder(Order):
             if not self.unit.hyperdrive_component or self.unit.hyperdrive_component.drive_type != HyperdriveType.ADVANCED:
                 self.status = OrderStatus.FAILED
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot jump system, no advanced hyperdrive).")
+                gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                if gui:
+                    gui.show_warning_dialog(
+                        f"Unit <b>{self.unit.name}</b> requires an Advanced Hyperdrive or direct wormhole to jump to system <b>{dest_system}</b>.",
+                        title="Route Planning Failed"
+                    )
                 return
 
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Checking for direct wormhole from {current_system} to {dest_system}...")
@@ -387,15 +393,21 @@ class MoveOrder(Order):
                     self.sub_orders.clear()
                     self.status = OrderStatus.FAILED
                     unrestricted_path = find_intersystem_path(galaxy_ref.system_graph, current_system, dest_system, ship_size=None)
+                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                     if unrestricted_path and len(unrestricted_path) >= 2:
                         logger.warning(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED: Unit '{self.unit.name}' (size {self.unit.hull_size.name}) is too large for wormhole(s) along route {unrestricted_path}.")
-                        if self.unit and getattr(self.unit, 'game', None) and self.unit.game.gui:
-                            self.unit.game.gui.show_warning_dialog(
+                        if gui:
+                            gui.show_warning_dialog(
                                 f"Unit '{self.unit.name}' (size {self.unit.hull_size.name}) cannot navigate to destination: Wormhole(s) along route cannot accommodate its hull size.",
                                 title="Route Planning Failed"
                             )
                     else:
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (no path found from {current_system} to {dest_system} via pathfinding with find_intersystem_path).")
+                        if gui:
+                            gui.show_warning_dialog(
+                                f"No valid navigation route found for <b>{self.unit.name}</b> from {current_system} to destination system <b>{dest_system}</b>.",
+                                title="No Route Available"
+                            )
                     return
 
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Path found via pathfinding with find_intersystem_path: {path_to_destination}")
