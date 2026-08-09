@@ -1,5 +1,5 @@
 from .base import OrderStatus, OrderType, Order
-from .movement import ReachWaypointOrder, MoveOrder
+from .movement import ReachWaypointOrder, MoveOrder, calculate_required_antimatter
 from .patrol import PatrolOrder
 from .combat import AttackOrder, ProtectOrder
 from .inhibitor import ToggleInhibitorOrder
@@ -18,6 +18,7 @@ __all__ = [
     "Order",
     "ReachWaypointOrder",
     "MoveOrder",
+    "calculate_required_antimatter",
     "PatrolOrder",
     "AttackOrder",
     "ProtectOrder",

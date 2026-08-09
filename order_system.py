@@ -10,7 +10,8 @@ from events import (
 from unit_orders import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
     MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
-    ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder, LayMinefieldOrder
+    ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder, LayMinefieldOrder,
+    calculate_required_antimatter
 )
 
 from sector_utils import random_point_in_sector
@@ -47,7 +48,26 @@ class OrderSystem:
         self.event_bus.subscribe(ContinuousResupplyEvent, self.handle_continuous_resupply)
         self.event_bus.subscribe(LayMinefieldEvent, self.handle_lay_minefield)
 
+    def validate_antimatter_for_unit(self, unit, dest_system, dest_hex, dest_pos=None) -> bool:
+        galaxy_ref = getattr(self.game, 'galaxy', None)
+        if not galaxy_ref:
+            return True
+        am_comp = getattr(unit, 'antimatter_component', None)
+        if not am_comp:
+            return True
 
+        required_am = calculate_required_antimatter(unit, galaxy_ref, dest_system, dest_hex, dest_pos)
+        if required_am > 0 and am_comp.current_amount < required_am:
+            logger.warning(f"Insufficient antimatter for unit {unit.name}: required {required_am:.1f}, available {am_comp.current_amount:.1f}")
+            if getattr(self.game, 'gui', None):
+                self.game.gui.show_error_dialog(
+                    f"Unit <b>{unit.name}</b> has insufficient antimatter reserves to complete the destination journey.<br><br>"
+                    f"<b>Required:</b> {required_am:.1f} AM<br>"
+                    f"<b>Current Reserves:</b> {am_comp.current_amount:.1f}/{am_comp.max_capacity:.1f} AM",
+                    title="Insufficient Antimatter"
+                )
+            return False
+        return True
 
     def handle_cancel_orders(self, event: CancelOrdersEvent):
         for unit in event.units:
@@ -59,6 +79,8 @@ class OrderSystem:
     def handle_issue_move_order(self, event: IssueMoveOrderEvent):
         for unit in event.units:
             if unit.engines_component:
+                if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
+                    continue
                 move_params = {
                     "destination_system_name": event.system_name,
                     "destination_hex_coord": event.sector_coord,
@@ -75,6 +97,8 @@ class OrderSystem:
     def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
         for unit in event.units:
             if unit.engines_component:
+                if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
+                    continue
                 existing_patrol = None
                 if event.shift_pressed:
                     if unit.commander_component.orders_queue:
@@ -110,6 +134,8 @@ class OrderSystem:
                         "destination_hex_coord": event.target_hex,
                         "destination_position": random_point_in_sector()
                     }
+                    if not self.validate_antimatter_for_unit(unit, event.system_name, event.target_hex, move_params["destination_position"]):
+                        continue
                     move_order = MoveOrder(unit, move_params)
                     if not event.shift_pressed:
                         unit.commander_component.clear_orders()
@@ -141,6 +167,8 @@ class OrderSystem:
                         "destination_hex_coord": exit_wormhole.in_hex,
                         "destination_position": exit_wormhole.position 
                     }
+                    if not self.validate_antimatter_for_unit(unit, exit_system_name, exit_wormhole.in_hex, exit_wormhole.position):
+                        continue
                     move_order = MoveOrder(unit, move_params)
                     if not event.shift_pressed:
                         unit.commander_component.clear_orders()

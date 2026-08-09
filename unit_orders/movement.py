@@ -484,3 +484,121 @@ class MoveOrder(Order):
             }
             final_move_sub_order = ReachWaypointOrder(self.unit, sub_order_params, parent_order=self)
             self.add_sub_order(final_move_sub_order)
+
+
+def calculate_required_antimatter(
+    unit: 'Unit',
+    galaxy_ref: Optional['Galaxy'],
+    destination_system_name: str,
+    destination_hex_coord: HexCoord,
+    destination_position: Optional[Position] = None
+) -> float:
+    """Calculates the total antimatter required for a unit to complete a movement journey.
+
+    Includes antimatter costs for:
+    - Sub-light engine movement (ENGINE_ANTIMATTER_COST_PER_TURN per turn)
+    - Intra-system hyperdrive hex jumps (get_hyperdrive_hex_jump_cost)
+    - Inter-system hyperdrive wormhole jumps (get_hyperdrive_system_jump_cost)
+    """
+    if not unit or not getattr(unit, 'antimatter_component', None) or not galaxy_ref:
+        return 0.0
+
+    from custom_unit_templates import get_hyperdrive_system_jump_cost, get_hyperdrive_hex_jump_cost
+    from constants import ENGINE_ANTIMATTER_COST_PER_TURN, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
+
+    curr_system = unit.in_system
+    curr_hex = unit.in_hex
+    curr_pos = unit.position
+
+    if curr_system is None or curr_hex is None or curr_pos is None:
+        return 0.0
+
+    hd_comp = unit.hyperdrive_component
+    engine_comp = unit.engines_component
+
+    sys_jump_cost = get_hyperdrive_system_jump_cost(unit.hull_size)
+    hex_jump_cost = get_hyperdrive_hex_jump_cost(unit.hull_size)
+
+    effective_speed = (engine_comp.speed * unit.xp_multiplier(XP_SPEED_BONUS)) if engine_comp else 0.0
+    effective_jump_range = int(hd_comp.jump_range * unit.xp_multiplier(XP_JUMP_RANGE_BONUS)) if hd_comp else 0
+
+    def _sublight_cost(p1: Optional[Position], p2: Optional[Position]) -> float:
+        if not engine_comp or effective_speed <= 0.0 or p1 is None or p2 is None:
+            return 0.0
+        dist = distance(p1, p2)
+        if dist < 0.01:
+            return 0.0
+        turns = math.ceil(dist / effective_speed)
+        return turns * ENGINE_ANTIMATTER_COST_PER_TURN
+
+    def _hex_jump_cost_seq(start_h: HexCoord, end_h: HexCoord) -> float:
+        if start_h == end_h:
+            return 0.0
+        if not hd_comp or effective_jump_range <= 0:
+            return 0.0
+        dist = hex_distance(start_h, end_h)
+        if dist <= effective_jump_range:
+            return hex_jump_cost
+        waypoints = find_hex_jump_path(start_h, end_h, effective_jump_range)
+        return len(waypoints) * hex_jump_cost
+
+    total_antimatter = 0.0
+
+    # Inter-system movement
+    if curr_system != destination_system_name:
+        direct_wh = Order.find_wormhole_to_system(None, curr_system, destination_system_name, galaxy_ref, unit.hull_size)
+        if direct_wh:
+            path_to_dest = [curr_system, destination_system_name]
+        else:
+            path_to_dest = find_intersystem_path(galaxy_ref.system_graph, curr_system, destination_system_name, unit.hull_size)
+
+        if not path_to_dest or len(path_to_dest) < 2:
+            return 0.0
+
+        curr_leg_arrival_hex = curr_hex
+        curr_leg_pos = curr_pos
+
+        for i in range(len(path_to_dest) - 1):
+            leg_origin = path_to_dest[i]
+            leg_dest = path_to_dest[i + 1]
+            wh_for_leg = Order.find_wormhole_to_system(None, leg_origin, leg_dest, galaxy_ref, unit.hull_size)
+            if not wh_for_leg:
+                break
+            exit_wh = galaxy_ref.wormholes.get(wh_for_leg.exit_wormhole_id)
+            if not exit_wh:
+                break
+
+            # Navigate to entry wormhole position/hex
+            if curr_leg_arrival_hex != wh_for_leg.in_hex:
+                total_antimatter += _hex_jump_cost_seq(curr_leg_arrival_hex, wh_for_leg.in_hex)
+            else:
+                total_antimatter += _sublight_cost(curr_leg_pos, wh_for_leg.position)
+
+            # System jump cost
+            total_antimatter += sys_jump_cost
+
+            curr_leg_arrival_hex = exit_wh.in_hex
+            curr_leg_pos = exit_wh.position
+
+        # Final leg in destination system
+        if curr_leg_arrival_hex != destination_hex_coord:
+            total_antimatter += _hex_jump_cost_seq(curr_leg_arrival_hex, destination_hex_coord)
+            if destination_position:
+                total_antimatter += _sublight_cost(Position(0.0, 0.0), destination_position)
+        else:
+            if destination_position:
+                total_antimatter += _sublight_cost(curr_leg_pos, destination_position)
+
+    # Intra-system movement
+    elif curr_hex != destination_hex_coord:
+        total_antimatter += _hex_jump_cost_seq(curr_hex, destination_hex_coord)
+        if destination_position:
+            total_antimatter += _sublight_cost(Position(0.0, 0.0), destination_position)
+
+    # Intra-hex sub-light movement
+    else:
+        if destination_position:
+            total_antimatter += _sublight_cost(curr_pos, destination_position)
+
+    return total_antimatter
+
