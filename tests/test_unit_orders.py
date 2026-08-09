@@ -1688,3 +1688,229 @@ def test_move_order_plan_route_clears_sub_orders_on_failure(caplog):
 
 
 
+
+
+def test_handle_inhibited_waypoint_intermediate_safe_distance():
+    """
+    When a multi-stage hex jump passes through an intermediate sector that has an
+    inhibition field, the landing position must be placed outside the field
+    (at zone.radius + 1.0), so the unit can immediately re-engage its hyperdrive.
+    """
+    unit = MockUnit()
+    # Jump range of 2; destination at hex (0, 4) forces an intermediate stop at (0, 2).
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=2)
+    unit.add_component(hd)
+
+    dest_hex = (0, 4)
+    dest_pos = Position(10.0, 10.0)
+
+    galaxy = MagicMock()
+
+    from geometry import Circle as GeoCircle, distance as geo_distance
+
+    # Sector (0, 0) - starting sector, no inhibition.
+    start_hex_obj = MagicMock()
+    start_hex_obj.get_all_inhibition_zones.return_value = []
+
+    # Sector (0, 2) - intermediate sector with inhibition field centred at (0, 0), radius 20.
+    ZONE_RADIUS = 20.0
+    inhibitor_zone = GeoCircle(Position(0.0, 0.0), ZONE_RADIUS)
+    intermediate_hex_obj = MagicMock()
+    intermediate_hex_obj.get_all_inhibition_zones.return_value = [inhibitor_zone]
+    # Provide a large boundary circle so clamping has no effect.
+    intermediate_hex_obj.boundary_circle = GeoCircle(Position(0.0, 0.0), 500.0)
+
+    # Sector (0, 4) - destination sector, no inhibition.
+    dest_hex_obj = MagicMock()
+    dest_hex_obj.get_all_inhibition_zones.return_value = []
+    dest_hex_obj.boundary_circle = GeoCircle(Position(0.0, 0.0), 500.0)
+
+    mock_sys = MagicMock()
+    mock_sys.hexes = {
+        (0, 0): start_hex_obj,
+        (0, 2): intermediate_hex_obj,
+        (0, 4): dest_hex_obj,
+    }
+    galaxy.systems = {"Sol": mock_sys}
+
+    order = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": dest_hex,
+        "destination_position": dest_pos,
+    })
+
+    order.execute(galaxy)
+
+    # With jump_range=2 and total distance=4, find_hex_jump_path produces two hops:
+    #   hop 1 -> (0, 2)  [intermediate]
+    #   hop 2 -> (0, 4)  [final]
+    # The intermediate hop sub-order must land outside the inhibition zone.
+    intermediate_sub_order = next(
+        (so for so in order.sub_orders if so.parameters["destination_hex_coord"] == (0, 2)),
+        None
+    )
+
+    assert intermediate_sub_order is not None, "No sub-order for intermediate hex (0, 2) found."
+
+    landing_pos = intermediate_sub_order.parameters["destination_position"]
+    dist_from_zone_centre = geo_distance(landing_pos, inhibitor_zone.center)
+
+    # Landing must be strictly outside the zone (radius + 1.0 = 21.0).
+    assert dist_from_zone_centre > ZONE_RADIUS, (
+        "Intermediate waypoint is inside or on the inhibition zone "
+        "(dist=" + str(round(dist_from_zone_centre, 4)) + ", zone_radius=" + str(ZONE_RADIUS) + ")."
+    )
+    assert abs(dist_from_zone_centre - (ZONE_RADIUS + 1.0)) < 0.01, (
+        "Expected landing at exactly zone.radius + 1.0 = " + str(ZONE_RADIUS + 1.0) +
+        ", got " + str(round(dist_from_zone_centre, 4)) + "."
+    )
+
+
+def test_handle_inhibited_waypoint_intermediate_multiple_zones():
+    """
+    When multiple inhibition zones exist in an intermediate sector, the landing
+    position must clear every zone, not just the first one encountered.
+
+    Zone layout - both zones cover the default landing position at the origin:
+      zone_a: centre (0, 0), radius 10
+      zone_b: centre (5, 0), radius 8
+    Both cleared by moving along +x past x = 14 (5 + 8 + 1 safe margin).
+    The net escape direction (sum of unit vectors away from each zone) points
+    roughly along +x, so the algorithm converges in at most two passes.
+    """
+    unit = MockUnit()
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=2)
+    unit.add_component(hd)
+
+    dest_hex = (0, 4)
+    dest_pos = Position(10.0, 10.0)
+
+    galaxy = MagicMock()
+
+    from geometry import Circle as GeoCircle, is_point_in_circle as geo_in_circle
+
+    zone_a = GeoCircle(Position(0.0, 0.0), 10.0)
+    zone_b = GeoCircle(Position(5.0, 0.0), 8.0)
+
+    start_hex_obj = MagicMock()
+    start_hex_obj.get_all_inhibition_zones.return_value = []
+
+    intermediate_hex_obj = MagicMock()
+    intermediate_hex_obj.get_all_inhibition_zones.return_value = [zone_a, zone_b]
+    intermediate_hex_obj.boundary_circle = GeoCircle(Position(0.0, 0.0), 500.0)
+
+    dest_hex_obj = MagicMock()
+    dest_hex_obj.get_all_inhibition_zones.return_value = []
+    dest_hex_obj.boundary_circle = GeoCircle(Position(0.0, 0.0), 500.0)
+
+    mock_sys = MagicMock()
+    mock_sys.hexes = {
+        (0, 0): start_hex_obj,
+        (0, 2): intermediate_hex_obj,
+        (0, 4): dest_hex_obj,
+    }
+    galaxy.systems = {"Sol": mock_sys}
+
+    order = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": dest_hex,
+        "destination_position": dest_pos,
+    })
+
+    order.execute(galaxy)
+
+    intermediate_sub_order = next(
+        (so for so in order.sub_orders if so.parameters["destination_hex_coord"] == (0, 2)),
+        None
+    )
+
+    assert intermediate_sub_order is not None, "No sub-order for intermediate hex (0, 2) found."
+
+    landing_pos = intermediate_sub_order.parameters["destination_position"]
+
+    # The landing position must be outside both zones.
+    assert not geo_in_circle(landing_pos, zone_a), (
+        "Landing position is still inside zone_a."
+    )
+    assert not geo_in_circle(landing_pos, zone_b), (
+        "Landing position is still inside zone_b."
+    )
+
+
+def test_reach_waypoint_order_hyperdrive_error_fails_order():
+    """
+    When a hyperdrive jump fails (setting jump_status = JumpStatus.ERROR),
+    ReachWaypointOrder must mark itself as OrderStatus.FAILED and reset hyperdrive state,
+    preventing units from being stuck indefinitely in IN_PROGRESS state.
+    """
+    unit = MockUnit()
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5)
+    unit.add_component(hd)
+    from unit_components.movement import JumpStatus
+
+    order = ReachWaypointOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (4, 0),
+        "destination_position": Position(100.0, 100.0),
+    })
+
+    galaxy = MagicMock()
+    order.execute(galaxy)
+    assert order.status == OrderStatus.IN_PROGRESS
+
+    # Simulate turn_processor setting JumpStatus.ERROR when a jump fails
+    hd.jump_status = JumpStatus.ERROR
+
+    order.check_completion_conditions()
+
+    assert order.status == OrderStatus.FAILED
+    assert hd.jump_status == JumpStatus.READY
+    assert hd.hex_jump_target is None
+
+
+def test_turn_processor_failed_hex_jump_does_not_mutate_position():
+    """
+    When a hex jump fails in turn_processor (e.g. due to insufficient antimatter),
+    the unit's position should NOT be mutated to target_pos.
+    """
+    from turn_processor import TurnProcessor
+    from unit_components.antimatter import AntimatterStorage
+    from unit_components.movement import JumpStatus
+
+    unit = MockUnit()
+    unit.position = Position(0.0, 0.0)
+    unit.in_hex = (0, 0)
+    unit.in_system = "Sol"
+
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5)
+    unit.add_component(hd)
+    
+    # Add antimatter component with 0 antimatter (insufficient for jump)
+    am = AntimatterStorage(unit, max_capacity=100.0)
+    am.current_amount = 0.0
+    unit.add_component(am)
+
+    hd.hex_jump_target = ((2, 2), Position(500.0, 500.0))
+    hd.jump_status = JumpStatus.READY
+
+    game = MagicMock()
+    start_hex = MagicMock()
+    start_hex.get_all_inhibition_zones.return_value = []
+    dest_hex = MagicMock()
+    dest_hex.get_all_inhibition_zones.return_value = []
+
+    mock_sys = MagicMock()
+    mock_sys.name = "Sol"
+    mock_sys.hexes = {(0, 0): start_hex, (2, 2): dest_hex}
+    mock_sys.get_all_units.return_value = [(unit, (0, 0))]
+    
+    game.galaxy.systems = {"Sol": mock_sys}
+    game.players = [unit.owner]
+    game.current_player_index = 0
+
+    processor = TurnProcessor(game)
+    processor._process_movement(unit.owner)
+
+    # Position must NOT be mutated to (500.0, 500.0)
+    assert unit.position == Position(0.0, 0.0)
+    assert hd.jump_status == JumpStatus.ERROR

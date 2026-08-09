@@ -223,10 +223,6 @@ class TurnProcessor:
                             hd_comp.wormhole_jump_target = None
                             continue
 
-                        if am_comp:
-                            am_comp.consume(sys_jump_cost)
-
-                        unit.position = exit_wormhole_obj_for_exec.position 
                         moved = self.game.galaxy.move_unit_between_systems(
                             unit=unit,
                             origin_system_name=origin_system.name, 
@@ -234,6 +230,9 @@ class TurnProcessor:
                             destination_hex=arrival_hex 
                         )
                         if moved:
+                            unit.position = exit_wormhole_obj_for_exec.position 
+                            if am_comp:
+                                am_comp.consume(sys_jump_cost)
                             logger.debug(f"   {unit.name} completed wormhole jump from {origin_system.name} to {target_sys_name}, into hex {arrival_hex}")
                             
                             # Apply probabilistic damage for unstable wormholes (< 100 stability)
@@ -344,7 +343,6 @@ class TurnProcessor:
                         hd_comp.hex_jump_target = None
                         continue
                         
-                    unit.position = target_pos
                     # Check/consume antimatter for hex jump
                     from custom_unit_templates import get_hyperdrive_hex_jump_cost
                     hex_jump_cost = get_hyperdrive_hex_jump_cost(unit.hull_size)
@@ -357,6 +355,7 @@ class TurnProcessor:
 
                     moved = origin_system.move_unit_between_hexes(unit=unit, destination_hex=target_hex)
                     if moved:
+                        unit.position = target_pos
                         if am_comp:
                             am_comp.consume(hex_jump_cost)
                         logger.debug(f"   {unit.name}(id:{unit.id}) completed hex jump to {target_hex}:{target_pos} in {origin_system.name} system.")

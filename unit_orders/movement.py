@@ -4,7 +4,7 @@ import random
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from utils import HexCoord
-from geometry import Position, distance, hex_distance, is_point_in_circle, get_closest_point_on_circle_edge
+from geometry import Position, Vector, distance, hex_distance, is_point_in_circle, get_closest_point_on_circle_edge, clamp_point_to_circle
 from pathfinding import find_intersystem_path, find_hex_jump_path
 from constants import XP_JUMP_RANGE_BONUS
 from .base import Order, OrderStatus, OrderType
@@ -103,6 +103,17 @@ class ReachWaypointOrder(Order):
         if self.status != OrderStatus.IN_PROGRESS:
             return
 
+        from unit_components.movement import JumpStatus
+        if self.unit.hyperdrive_component and self.unit.hyperdrive_component.jump_status == JumpStatus.ERROR:
+            if self.unit.engines_component:
+                self.unit.engines_component.move_target = None
+            self.unit.hyperdrive_component.hex_jump_target = None
+            self.unit.hyperdrive_component.wormhole_jump_target = None
+            self.unit.hyperdrive_component.jump_status = JumpStatus.READY
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): FAILED (hyperdrive reported ERROR state).")
+            return
+
         current_system = self.unit.in_system
         current_hex = self.unit.in_hex
         current_position = self.unit.position
@@ -153,31 +164,88 @@ class MoveOrder(Order):
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.handle_inhibited_waypoint: ERROR: Destination hex {target_hex} not found in system {system_name}.")
             return
 
-        for zone in destination_hex_obj.get_all_inhibition_zones():
-            if is_point_in_circle(target_pos, zone):
-                adjusted_pos = get_closest_point_on_circle_edge(target_pos, zone)
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Waypoint {target_pos} in {target_hex} is inhibited. Adjusting landing position to {adjusted_pos}.")
-                
-                self.add_sub_order(ReachWaypointOrder(self.unit, {
-                    "destination_system_name": system_name,
-                    "destination_hex_coord": target_hex,
-                    "destination_position": adjusted_pos
-                }, parent_order=self))
+        zones = destination_hex_obj.get_all_inhibition_zones()
 
-                if is_final_destination:
+        if is_final_destination:
+            # Final destination: snap to edge of the first overlapping zone, then add a
+            # sub-light follow-up move so the unit ultimately reaches its exact target.
+            for zone in zones:
+                if is_point_in_circle(target_pos, zone):
+                    adjusted_pos = get_closest_point_on_circle_edge(target_pos, zone)
+                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Final waypoint {target_pos} in {target_hex} is inhibited. Adjusting landing position to {adjusted_pos}.")
+                    self.add_sub_order(ReachWaypointOrder(self.unit, {
+                        "destination_system_name": system_name,
+                        "destination_hex_coord": target_hex,
+                        "destination_position": adjusted_pos
+                    }, parent_order=self))
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Adding sub-light move from {adjusted_pos} to original target {target_pos}.")
                     self.add_sub_order(ReachWaypointOrder(self.unit, {
                         "destination_system_name": system_name,
                         "destination_hex_coord": target_hex,
                         "destination_position": target_pos
                     }, parent_order=self))
-                return
-        
-        self.add_sub_order(ReachWaypointOrder(self.unit, {
-            "destination_system_name": system_name,
-            "destination_hex_coord": target_hex,
-            "destination_position": target_pos
-        }, parent_order=self))
+                    return
+
+            # No inhibition — land at the exact target.
+            self.add_sub_order(ReachWaypointOrder(self.unit, {
+                "destination_system_name": system_name,
+                "destination_hex_coord": target_hex,
+                "destination_position": target_pos
+            }, parent_order=self))
+
+        else:
+            # Intermediate waypoint: the unit must land outside every inhibition field so
+            # it can immediately re-engage its hyperdrive.  Simple iterative pushes can
+            # oscillate when zones overlap, so instead we compute the net escape direction
+            # from all currently-blocking zones in one pass and advance to clear all of
+            # them, then repeat until no blocking zone remains.
+            SAFE_MARGIN = 1.0
+            MAX_PASSES = 20  # Safety cap against degenerate zone configurations.
+            adjusted_pos = target_pos
+            was_adjusted = False
+
+            for _ in range(MAX_PASSES):
+                # Collect all zones that still block the current candidate position.
+                blocking = [z for z in zones if is_point_in_circle(adjusted_pos, z)]
+                if not blocking:
+                    break  # All zones are clear.
+
+                # Compute the net outward direction as the sum of unit vectors pointing
+                # from each blocking zone's centre toward the current candidate.
+                net_dir = Vector(0.0, 0.0)
+                max_required_dist = 0.0
+                for zone in blocking:
+                    diff = adjusted_pos - zone.center
+                    if diff.magnitude_sq() < 1e-9:
+                        diff = Vector(1.0, 0.0)  # At centre: pick arbitrary direction.
+                    else:
+                        diff = diff.normalize()
+                    net_dir = net_dir + diff
+                    max_required_dist = max(max_required_dist, zone.radius + SAFE_MARGIN)
+
+                # If all blocking zones happen to be perfectly opposed the net vector
+                # collapses to zero — break the tie with an arbitrary unit vector.
+                if net_dir.magnitude_sq() < 1e-9:
+                    net_dir = Vector(1.0, 0.0)
+                else:
+                    net_dir = net_dir.normalize()
+
+                # Advance from the origin of the most constraining blocking zone so we
+                # are guaranteed to clear it while moving in the net escape direction.
+                dominant_zone = max(blocking, key=lambda z: z.radius)
+                adjusted_pos = dominant_zone.center + (net_dir * (dominant_zone.radius + SAFE_MARGIN))
+                was_adjusted = True
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Intermediate waypoint in {target_hex} is inhibited. Adjusting landing position to {adjusted_pos}.")
+
+            if was_adjusted:
+                # Clamp to the sector boundary so the position stays inside the hex.
+                adjusted_pos = clamp_point_to_circle(adjusted_pos, destination_hex_obj.boundary_circle)
+
+            self.add_sub_order(ReachWaypointOrder(self.unit, {
+                "destination_system_name": system_name,
+                "destination_hex_coord": target_hex,
+                "destination_position": adjusted_pos
+            }, parent_order=self))
 
     def plan_hex_jump_sequence(self, start_hex: HexCoord, end_hex: HexCoord, end_pos: Position, system_name: str, galaxy_ref: 'Galaxy') -> None:
         logger.debug(f"  [plan_route->plan_hex_jump_sequence] Planning hex jump sequence from {start_hex} to {end_hex} in system {system_name}.")
