@@ -54,6 +54,7 @@ class AbilityType(Enum):
     REPAIR_CLOUD = "repair_cloud"
     CAPTURE_UNIT = "capture_unit"
     DRAIN_ANTIMATTER = "drain_antimatter"
+    MICROJUMP = "microjump"
 
 
 

@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import distance, position_at_distance_from_target
+from geometry import distance, position_at_distance_from_target, is_point_in_circle
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 
@@ -129,6 +129,35 @@ class UseAbilityOrder(Order):
                         )
                     self.status = OrderStatus.FAILED
                     return
+
+        # --- Pre-validation for MICROJUMP ability ---
+        if ability_type == AbilityType.MICROJUMP:
+            if target_position is not None:
+                system = galaxy_ref.systems.get(self.unit.in_system) if galaxy_ref else None
+                hex_obj = system.hexes.get(self.unit.in_hex) if system else None
+                if hex_obj:
+                    inhibition_zones = hex_obj.get_all_inhibition_zones()
+                    for zone in inhibition_zones:
+                        if is_point_in_circle(self.unit.position, zone):
+                            logger.debug(f"[{self.unit.name}] USE_ABILITY (Microjump) failed: origin position is inside an inhibition field.")
+                            gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                            if gui:
+                                gui.show_warning_dialog(
+                                    f"Cannot microjump unit <b>{self.unit.name}</b>: Origin position is inside a hyperspace inhibition field.",
+                                    title="Microjump Failed"
+                                )
+                            self.status = OrderStatus.FAILED
+                            return
+                        if is_point_in_circle(target_position, zone):
+                            logger.debug(f"[{self.unit.name}] USE_ABILITY (Microjump) failed: destination position is inside an inhibition field.")
+                            gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                            if gui:
+                                gui.show_warning_dialog(
+                                    f"Cannot microjump unit <b>{self.unit.name}</b>: Destination position is inside a hyperspace inhibition field.",
+                                    title="Microjump Failed"
+                                )
+                            self.status = OrderStatus.FAILED
+                            return
 
         # --- Range check for unit-targeted abilities ---
         if defn.requires_target_unit and target_unit_id is not None:

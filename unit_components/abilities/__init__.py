@@ -6,6 +6,8 @@ from .ion_bolt import IonBoltAbility
 from .missile_batteries import MissileBatteriesAbility
 from .repair_cloud import RepairCloudAbility
 from .capture_unit import CaptureUnitAbility
+from .drain_antimatter import DrainAntimatterAbility
+from .microjump import MicrojumpAbility
 from .registry import ABILITY_CLASSES, ABILITY_DEFINITIONS
 from .component import AbilityComponent
 
@@ -19,6 +21,8 @@ __all__ = [
     "MissileBatteriesAbility",
     "RepairCloudAbility",
     "CaptureUnitAbility",
+    "DrainAntimatterAbility",
+    "MicrojumpAbility",
     "ABILITY_CLASSES",
     "ABILITY_DEFINITIONS",
     "AbilityComponent",
