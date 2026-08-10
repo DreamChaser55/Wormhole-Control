@@ -38,7 +38,7 @@ def update_summary(editor) -> None:
         "",
     ]
 
-    comps = []
+    comp_lines = []
     for row in COMPONENT_ROWS:
         key = row["key"]
         if getattr(c, key, False):
@@ -49,43 +49,45 @@ def update_summary(editor) -> None:
             else:
                 cost = getattr(c, row["cost_key"], row["default_cost"])
             cost_str = f"{cost:g}" if isinstance(cost, float) else str(cost)
-            comps.append(f"  • {row['label']} ({cost_str} hull)")
-    if comps:
+            comp_lines.append(f"  • {row['label']} ({cost_str} hull)")
+
+            # Component parameter details
+            if key == "has_engine":
+                comp_lines.append(f"    speed={c.engine_speed:.0f}")
+            elif key == "has_antimatter_storage":
+                comp_lines.append(f"    antimatter_capacity={c.antimatter_capacity:.0f}")
+            elif key == "has_hyperdrive":
+                comp_lines.append(f"    type={c.hyperdrive_type}  jump_range={c.hyperdrive_jump_range}")
+            elif key == "has_weapon_bays":
+                if editor._turrets:
+                    for t in editor._turrets:
+                        disp_range = t.range * 3.0 if t.variant == "LONG_RANGE" else t.range
+                        disp_cooldown = t.cooldown * 3 if t.variant == "LONG_RANGE" else t.cooldown
+                        comp_lines.append(f"    • {t.turret_type} ({t.variant.lower()})  dmg:{t.damage:.0f}  rng:{disp_range:.0f}  cd:{disp_cooldown}")
+            elif key == "has_defenses":
+                comp_lines.append(f"    armor={c.armor}  shields={c.shields}  PD={c.point_defense}")
+            elif key == "has_sensors":
+                comp_lines.append(f"    short_range={c.sensor_short_range:.0f}  long_range={c.sensor_long_range_hexes}")
+            elif key == "has_strikecraft_bay":
+                wing = getattr(c, "wing_type", "FIGHTER")
+                comp_lines.append(f"    wing={wing}  slots={c.strikecraft_bay_slots}")
+            elif key == "has_repair_component":
+                comp_lines.append(f"    rate={c.repair_rate:.0f}  range={c.repair_range:.0f}")
+            elif key == "has_mining_component":
+                comp_lines.append(f"    rate={c.mining_rate:.0f}  range={c.mining_range:.0f}  cargo={c.max_mining_cargo:.0f}")
+            elif key == "has_hangar":
+                comp_lines.append(f"    slots={c.hangar_slots}")
+            elif key == "has_inhibitor":
+                comp_lines.append(f"    radius={c.inhibitor_radius:.0f}")
+            elif key == "has_ability_component":
+                if editor._selected_abilities:
+                    for a in sorted(editor._selected_abilities):
+                        comp_lines.append(f"    • {a}")
+            elif key == "has_marines_component":
+                comp_lines.append(f"    marines_count={c.marines_count}")
+
+    if comp_lines:
         lines.append("<b>Components:</b>")
-        lines.extend(comps)
-
-    # Engine speed detail
-    if c.has_engine:
-        lines.append(f"    speed={c.engine_speed:.0f}")
-
-    # Antimatter capacity detail
-    if c.has_antimatter_storage:
-        lines.append(f"    antimatter_capacity={c.antimatter_capacity:.0f}")
-
-    # Hyperdrive detail
-    if c.has_hyperdrive:
-        lines.append(f"    type={c.hyperdrive_type}  jump_range={c.hyperdrive_jump_range}")
-
-    # Defenses detail
-    if c.has_defenses:
-        lines.append(f"    armor={c.armor}  shields={c.shields}  PD={c.point_defense}")
-
-    # Marines detail
-    if c.has_marines_component:
-        lines.append(f"    marines_count={c.marines_count}")
-
-    if editor._turrets:
-        lines.append("")
-        lines.append(f"<b>Turrets ({len(editor._turrets)}):</b>")
-        for t in editor._turrets:
-            disp_range = t.range * 3.0 if t.variant == "LONG_RANGE" else t.range
-            disp_cooldown = t.cooldown * 3 if t.variant == "LONG_RANGE" else t.cooldown
-            lines.append(f"  • {t.turret_type} ({t.variant.lower()})  dmg:{t.damage:.0f}  rng:{disp_range:.0f}  cd:{disp_cooldown}")
-
-    if editor._selected_abilities:
-        lines.append("")
-        lines.append(f"<b>Abilities ({len(editor._selected_abilities)}):</b>")
-        for a in sorted(editor._selected_abilities):
-            lines.append(f"  • {a}")
+        lines.extend(comp_lines)
 
     editor._summary_box.set_text("<br>".join(lines))

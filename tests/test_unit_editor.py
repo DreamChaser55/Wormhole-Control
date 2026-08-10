@@ -580,9 +580,59 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         win.kill()
 
+    def test_summary_view_nested_parameters(self):
+        """Verifies that component parameters in the design summary are nested directly beneath component lines."""
+        import pygame
+        import pygame_gui
+        from gui.unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win.show()
+
+        c = win._comp
+        c.has_engine = True
+        c.engine_speed = 150.0
+
+        c.has_hyperdrive = True
+        c.hyperdrive_type = "BASIC"
+        c.hyperdrive_jump_range = 7
+
+        c.has_defenses = True
+        c.armor = 25
+        c.shields = 30
+        c.point_defense = 5
+
+        win._update_summary()
+
+        summary_text = win._summary_box.html_text
+
+        # Verify Engines line and nested speed line
+        eng_pos = summary_text.find("Engines")
+        speed_pos = summary_text.find("speed=150")
+        hd_pos = summary_text.find("Hyperdrive")
+        hd_detail_pos = summary_text.find("type=BASIC  jump_range=7")
+        def_pos = summary_text.find("Defenses")
+        def_detail_pos = summary_text.find("armor=25  shields=30  PD=5")
+
+        self.assertNotEqual(eng_pos, -1)
+        self.assertNotEqual(speed_pos, -1)
+        self.assertNotEqual(hd_pos, -1)
+        self.assertNotEqual(hd_detail_pos, -1)
+        self.assertNotEqual(def_pos, -1)
+        self.assertNotEqual(def_detail_pos, -1)
+
+        # Confirm order: Engines < speed=150 < Hyperdrive < type=BASIC... < Defenses < armor=25...
+        self.assertTrue(eng_pos < speed_pos < hd_pos < hd_detail_pos < def_pos < def_detail_pos)
+
+        win.kill()
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 
 
