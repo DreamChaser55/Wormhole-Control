@@ -283,9 +283,11 @@ class Game:
 
         turn_num = getattr(self, 'turn_number', 1)
         self.gui.update_turn_label(f"<font color='{color_hex}'>Turn {turn_num}: {current_player.name}'s Turn</font>")
-        # Update color indicator panel's background
+        # Update color indicator panel's background and dynamic panel theme hue
         self.gui.update_player_color_indicator(Color(color)) # Convert tuple to pygame.Color
+        self.gui.update_player_turn_theme(Color(color))
         self.gui.update_resource_display(current_player)
+
 
 
     def draw(self):

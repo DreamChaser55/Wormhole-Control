@@ -39,6 +39,18 @@
             "shadow_width": "4"
         }
     },
+    "panel": {
+        "colours": {
+            "dark_bg": "#0F1524D8",
+            "normal_bg": "#141C30D8",
+            "normal_border": "#3A6D8CC8"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#3A6D8CC8"
+        }
+    },
     "#message_window": {
         "misc": {
             "title_bar_height": "30",
@@ -108,52 +120,62 @@
     },
     "#side_bar_info_panel": {
         "colours": {
-            "dark_bg": "#202030"
+            "dark_bg": "#0F1524D8"
         },
         "misc": {
             "border_width": "1",
             "shadow_width": "2",
-            "border_colour": "#808090"
+            "border_colour": "#3A6D8CC8"
+        }
+    },
+    "#unit_editor_panel": {
+        "colours": {
+            "dark_bg": "#0F1524D8"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#3A6D8CC8"
         }
     },
     "#main_menu_panel": {
         "colours": {
-            "dark_bg": "#202030"
+            "dark_bg": "#0F1524D8"
         },
         "misc": {
             "border_width": "1",
             "shadow_width": "2",
-            "border_colour": "#808090"
+            "border_colour": "#3A6D8CC8"
         }
     },
     "#about_panel": {
         "colours": {
-            "dark_bg": "#202030"
+            "dark_bg": "#0F1524D8"
         },
         "misc": {
             "border_width": "1",
             "shadow_width": "2",
-            "border_colour": "#808090"
+            "border_colour": "#3A6D8CC8"
         }
     },
     "#left_top_bar": {
         "colours": {
-            "dark_bg": "#252535"
+            "dark_bg": "#121A2CD8"
         },
         "misc": {
             "border_width": "1",
             "shadow_width": "1",
-            "border_colour": "#808090"
+            "border_colour": "#3A6D8CC8"
         }
     },
     "#right_top_bar": {
         "colours": {
-            "dark_bg": "#252535"
+            "dark_bg": "#121A2CD8"
         },
         "misc": {
             "border_width": "1",
             "shadow_width": "1",
-            "border_colour": "#808090"
+            "border_colour": "#3A6D8CC8"
         }
     },
     "#sidebar_title_label": {

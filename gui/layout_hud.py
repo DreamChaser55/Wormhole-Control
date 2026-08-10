@@ -7,10 +7,13 @@ from pygame import Color
 
 from constants import TOP_BAR_HEIGHT, INFO_BOX_WIDTH
 
+from .theme_loader import create_player_scifi_theme_colors
+
 if typing.TYPE_CHECKING:
     from entities import Player
 
 logger = logging.getLogger(__name__)
+
 
 
 def setup_game_ui(gui) -> None:
@@ -245,6 +248,48 @@ def update_player_color_indicator(gui, color: Color) -> None:
             gui.player_color_indicator.rebuild()
         except (ValueError, TypeError) as e:
             logger.debug(f"Error setting player indicator color ({color}): {e}")
+
+
+def update_hud_panel_colors(gui, player_color: Color) -> None:
+    """Dynamically updates UI panels to semi-transparent sci-fi colors tinted by active player color.
+
+    Args:
+        gui: Target GUI_Handler instance.
+        player_color (Color): Active player's color.
+    """
+    bg_color, border_color = create_player_scifi_theme_colors(player_color)
+    gui.current_player_bg_color = bg_color
+    gui.current_player_border_color = border_color
+
+    unit_editor_panel = (
+        gui.unit_editor_window._panel
+        if (gui.unit_editor_window and getattr(gui.unit_editor_window, '_panel', None))
+        else None
+    )
+
+    panels = [
+        gui.left_top_bar_panel,
+        gui.right_top_bar_panel,
+        gui.left_bottom_bar_panel,
+        gui.side_bar_info_panel,
+        gui.ingame_menu_panel,
+        gui.context_menu_panel,
+        gui.main_menu_panel,
+        gui.about_panel,
+        unit_editor_panel
+    ]
+
+
+    for panel in panels:
+        if panel is not None:
+            try:
+                panel.background_colour = bg_color
+                if hasattr(panel, 'border_colour'):
+                    panel.border_colour = border_color
+                panel.rebuild()
+            except Exception as e:
+                logger.debug(f"Error updating panel color for {panel}: {e}")
+
 
 
 def update_resource_display(gui, player: 'Player') -> None:

@@ -61,6 +61,8 @@ class GUI_Handler:
         self.end_turn_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.player_turn_label: typing.Optional[pygame_gui.elements.UITextBox] = None
         self.player_color_indicator: typing.Optional[pygame_gui.elements.UIPanel] = None
+        self.current_player_bg_color: typing.Optional[Color] = None
+        self.current_player_border_color: typing.Optional[Color] = None
         self.credits_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.metal_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.crystal_label: typing.Optional[pygame_gui.elements.UILabel] = None
@@ -291,8 +293,17 @@ class GUI_Handler:
                 screen_res=pygame.Vector2(self.screen_res.x, self.screen_res.y),
                 template_manager=template_manager,
             )
+        if self.current_player_bg_color and getattr(self.unit_editor_window, '_panel', None):
+            try:
+                self.unit_editor_window._panel.background_colour = self.current_player_bg_color
+                if self.current_player_border_color and hasattr(self.unit_editor_window._panel, 'border_colour'):
+                    self.unit_editor_window._panel.border_colour = self.current_player_border_color
+                self.unit_editor_window._panel.rebuild()
+            except Exception as e:
+                logger.debug(f"Error setting unit editor panel color: {e}")
         self.unit_editor_window.show()
         self.hide_ingame_menu()
+
 
     def close_unit_editor(self) -> None:
         """Hides the Unit Editor window overlay."""
@@ -348,6 +359,15 @@ class GUI_Handler:
             color (Color): Pygame Color representing active player.
         """
         layout_hud.update_player_color_indicator(self, color)
+
+    def update_player_turn_theme(self, color: Color):
+        """Updates GUI panel background and border colors derived from the active player's color.
+
+        Args:
+            color (Color): Pygame Color representing active player.
+        """
+        layout_hud.update_hud_panel_colors(self, color)
+
 
     def update_resource_display(self, player: 'Player'):
         """Updates credits, metal, and crystal resource readouts and income tooltips for a player.
