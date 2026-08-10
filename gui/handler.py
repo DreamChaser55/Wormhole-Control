@@ -12,6 +12,7 @@ from utils import ContextMenuOption
 from geometry import Vector, Position
 from .theme_loader import build_ui_manager
 from . import layout_main_menu, layout_ingame_menu, layout_hud, text_layout, context_menu, event_router
+from .layout_new_game_wizard import NewGameWizard
 from .sidebar import view as sidebar_view
 if typing.TYPE_CHECKING:
     from game import Game
@@ -38,6 +39,9 @@ class GUI_Handler:
         self.load_game_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.about_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.quit_button: typing.Optional[pygame_gui.elements.UIButton] = None
+
+        # New Game Wizard
+        self.new_game_wizard: typing.Optional[NewGameWizard] = None
 
         # About Screen
         self.about_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
@@ -111,6 +115,10 @@ class GUI_Handler:
                 dialog.kill()
         self.active_dialogs.clear()
 
+        if self.new_game_wizard:
+            if self.new_game_wizard.is_alive:
+                self.new_game_wizard.kill()
+            self.new_game_wizard = None
         if self.main_menu_panel: self.main_menu_panel.kill(); self.main_menu_panel = None
         if self.about_panel: self.about_panel.kill(); self.about_panel = None
         if self.left_top_bar_panel: self.left_top_bar_panel.kill(); self.left_top_bar_panel = None
@@ -166,6 +174,28 @@ class GUI_Handler:
             self.setup_main_menu()
         self.hide_all_panels()
         if self.main_menu_panel: self.main_menu_panel.show()
+
+    def show_new_game_wizard(self) -> None:
+        """Instantiates (if necessary) and displays the New Game Wizard window."""
+        if self.new_game_wizard and self.new_game_wizard.is_alive:
+            return  # already open
+        self.new_game_wizard = NewGameWizard(
+            manager=self.manager,
+            screen_res=self.screen_res,
+            scale_x=self.scale_x,
+            scale_y=self.scale_y,
+        )
+
+    def close_new_game_wizard(self) -> None:
+        """Closes and destroys the New Game Wizard window."""
+        if self.new_game_wizard:
+            if self.new_game_wizard.is_alive:
+                self.new_game_wizard.kill()
+            self.new_game_wizard = None
+
+    def is_new_game_wizard_open(self) -> bool:
+        """Returns True if the wizard window is currently alive."""
+        return self.new_game_wizard is not None and self.new_game_wizard.is_alive
 
     def show_about_screen(self):
         """Configures and shows the About Screen UI."""
@@ -424,8 +454,13 @@ class GUI_Handler:
             self.right_top_bar_panel,
             self.side_bar_info_panel,
             self.context_menu_panel,
-            self.ingame_menu_panel
+            self.ingame_menu_panel,
         ]
+        # Wizard window panel
+        if self.new_game_wizard and self.new_game_wizard.is_alive:
+            wizard_rect = self.new_game_wizard.window.get_abs_rect()
+            if wizard_rect.collidepoint(mouse_pos.to_tuple()):
+                return True
         mouse_tuple = mouse_pos.to_tuple()
         for panel in panels:
             if panel and panel.visible:

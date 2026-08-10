@@ -12,6 +12,9 @@ from geometry import distance_sq, Vector, Position, Circle, hex_distance
 from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField, Minefield
 import json
 import os
+import typing as _t
+if _t.TYPE_CHECKING:
+    from game_settings import GameSettings
 
 CLASS_MAPPING = {
     "Planet": Planet,
@@ -313,11 +316,31 @@ class StarSystem:
 # --- Galaxy Class ---
 class Galaxy:
     """Represents the entire game galaxy, containing systems and wormholes."""
-    def __init__(self, num_systems: int = NUM_SYSTEMS):
+    def __init__(self, num_systems: int = NUM_SYSTEMS, settings: typing.Optional['GameSettings'] = None):
         self.systems: typing.Dict[str, StarSystem] = {}
         self.wormholes: typing.Dict[int, Wormhole] = {}
         self.system_graph: typing.Dict[str, typing.Dict[str, HullSize]] = {}
-        
+
+        # Resolve generation parameters from settings (fall back to module globals)
+        if settings is not None:
+            _min_dist = settings.min_system_distance
+            _max_dist = settings.max_system_distance
+            _wormhole_prob = settings.wormhole_density
+            _radius_min = settings.system_radius_min
+            _radius_max = settings.system_radius_max
+        else:
+            _min_dist = MIN_SYSTEM_DISTANCE
+            _max_dist = MAX_SYSTEM_DISTANCE
+            _wormhole_prob = SECOND_NEAREST_WORMHOLE_PROB
+            _radius_min = 5
+            _radius_max = 8
+
+        self._min_system_distance = _min_dist
+        self._max_system_distance = _max_dist
+        self._wormhole_prob = _wormhole_prob
+        self._radius_min = _radius_min
+        self._radius_max = _radius_max
+
         self.generation_x_min = int(GALAXY_PADDING)
         self.generation_y_min = int(GALAXY_PADDING)
         self.generation_x_max = int(LOGICAL_GALAXY_SIZE.x - GALAXY_PADDING)
@@ -389,7 +412,7 @@ class Galaxy:
         first_sys_name = system_names[0]
         first_x = random.randint(self.generation_x_min, self.generation_x_max)
         first_y = random.randint(self.generation_y_min, self.generation_y_max)
-        radius = random.randint(5, 8)
+        radius = random.randint(self._radius_min, self._radius_max)
         self.systems[first_sys_name] = StarSystem(first_sys_name, Vector(first_x, first_y), radius)
         logger.debug(f"Placed first system: {first_sys_name} at {self.systems[first_sys_name].position}")
 
@@ -420,12 +443,12 @@ class Galaxy:
                 second_nearest_sys_name = distances[1][1] if len(distances) > 1 else None
 
                 # Check distance constraints
-                min_dist_sq = MIN_SYSTEM_DISTANCE ** 2
-                max_dist_sq = MAX_SYSTEM_DISTANCE ** 2
+                min_dist_sq = self._min_system_distance ** 2
+                max_dist_sq = self._max_system_distance ** 2
 
                 if min_dist_sq <= nearest_dist_sq <= max_dist_sq:
                     # Coords' distance constraints OK - Spawn system
-                    radius = random.randint(5, 8)
+                    radius = random.randint(self._radius_min, self._radius_max)
                     new_system_position = Vector(x,y)
                     self.systems[current_sys_name] = StarSystem(current_sys_name, new_system_position, radius)
                     logger.debug(f"Placed system {current_sys_name} at {new_system_position} near {nearest_sys_name}")
@@ -435,7 +458,7 @@ class Galaxy:
                     logger.debug(f"  Added wormhole: {current_sys_name} <-> {nearest_sys_name}")
 
                     # Connect to second closest (probabilistically)
-                    if second_nearest_sys_name and random.random() < SECOND_NEAREST_WORMHOLE_PROB:
+                    if second_nearest_sys_name and random.random() < self._wormhole_prob:
                         # Check if already connected to avoid duplicate wormholes
                         already_connected = False
                         origin_system = self.systems[current_sys_name]

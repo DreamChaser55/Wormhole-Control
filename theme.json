@@ -32,6 +32,12 @@
             "size": "12"
         }
     },
+    "text_entry_line": {
+        "font": {
+            "name": "dejavu_sans",
+            "size": "12"
+        }
+    },
     "window": {
         "misc": {
             "title_bar_height": "30",

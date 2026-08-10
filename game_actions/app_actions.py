@@ -9,6 +9,20 @@ def handle_new_game(game, action: dict) -> None:
     game.start_new_game()
 
 
+def handle_start_new_game_with_settings(game, action: dict) -> None:
+    """Starts a new game using the GameSettings produced by the New Game Wizard."""
+    settings = action.get('settings')
+    # Close the wizard window before starting (it's still alive at this point)
+    if game.gui.is_new_game_wizard_open():
+        game.gui.close_new_game_wizard()
+    game.start_new_game(settings=settings)
+
+
+def handle_cancel_new_game_wizard(game, action: dict) -> None:
+    """Closes the wizard and returns to the main menu view."""
+    game.gui.close_new_game_wizard()
+
+
 def handle_show_about(game, action: dict) -> None:
     game.gui.show_about_screen()
 
@@ -99,6 +113,8 @@ def handle_ui_handled(game, action: dict) -> None:
 
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'new_game': handle_new_game,
+    'start_new_game_with_settings': handle_start_new_game_with_settings,
+    'cancel_new_game_wizard': handle_cancel_new_game_wizard,
     'show_about': handle_show_about,
     'quit': handle_quit,
     'show_main_menu': handle_show_main_menu,

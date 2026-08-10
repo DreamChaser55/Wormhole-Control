@@ -9,27 +9,33 @@ from galaxy import Galaxy, StarSystem
 from geometry import Position
 from unit_components import instantiate_unit_from_template
 from utils import HexCoord
+from game_settings import GameSettings, _default_player_configs
 
 logger = logging.getLogger(__name__)
 
 
-def start_new_game(game) -> bool:
+def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bool:
     """Initializes a new game when the New Game button is clicked.
 
     Args:
         game: Target game instance.
+        settings: Optional :class:`GameSettings` produced by the New Game Wizard.
+            When *None*, default settings are used for backwards compatibility.
 
     Returns:
         bool: True if initialization succeeded, False otherwise.
     """
+    if settings is None:
+        settings = GameSettings()
+
     logger.debug("Starting new game setup...")
 
     # Set up game UI first to ensure galaxy_generation_rect is defined before galaxy generation
     game.gui.show_game_ui()
 
-    # Generate galaxy using logical coordinates
+    # Generate galaxy using settings parameters
     try:
-        game.galaxy = Galaxy()
+        game.galaxy = Galaxy(num_systems=settings.num_systems, settings=settings)
         if not game.galaxy.systems:
             logger.debug("Warning: Galaxy generated with no systems.")
             return False
@@ -37,11 +43,14 @@ def start_new_game(game) -> bool:
         logger.debug(f"Error during Galaxy generation: {e}")
         return False
 
-    # Add Players
+    # Add Players from settings
     game.players = [
-        Player("Player 1", BLUE, is_human=True),
-        Player("Player 2", RED, is_human=True),
-        Player("Player 3", YELLOW, is_human=True)
+        Player(
+            cfg.name,
+            cfg.color,
+            is_human=cfg.is_human,
+        )
+        for cfg in settings.player_configs
     ]
 
     game.current_player_index = 0
@@ -62,11 +71,17 @@ def start_new_game(game) -> bool:
         if sol_planets:
             homeworld = sol_planets.pop()
             homeworld.owner = player
-            homeworld.population = 50  # Starting population
+            homeworld.population = settings.starting_population
             player_homeworld_hexes[player] = homeworld.in_hex
             logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} at hex {homeworld.in_hex} as homeworld for {player.name}")
         else:
             logger.debug(f"Warning: Not enough planets in Sol to assign a homeworld for {player.name}")
+
+    # Apply starting resources from settings
+    for player in game.players:
+        player.credits = settings.starting_credits
+        player.metal = settings.starting_metal
+        player.crystal = settings.starting_crystal
 
     # Set up starting units
     spawn_units(game, player_homeworld_hexes)

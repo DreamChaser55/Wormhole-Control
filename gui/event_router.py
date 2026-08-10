@@ -48,7 +48,8 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         # 1. Main Menu Buttons
         if gui.new_game_button and event.ui_element == gui.new_game_button:
             logger.debug("New Game button pressed (GUI)")
-            action_result = {'action': 'new_game'}
+            gui.show_new_game_wizard()
+            action_result = {'action': 'ui_handled'}
         elif gui.load_game_button and event.ui_element == gui.load_game_button:
             logger.debug("Load Game button pressed (Main Menu GUI)")
             gui.show_load_game_dialog()
@@ -129,7 +130,17 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
             logger.debug("Unit Editor button pressed (GUI)")
             action_result = {'action': 'toggle_unit_editor'}
 
-        # 9. Unit Editor Fallthrough
+        # 9. New Game Wizard Buttons
+        elif gui.new_game_wizard and gui.new_game_wizard.is_alive:
+            wizard_action = gui.new_game_wizard.process_event(event)
+            if wizard_action:
+                if wizard_action['action'] == 'cancel_new_game_wizard':
+                    gui.close_new_game_wizard()
+                action_result = wizard_action
+            else:
+                action_result = {'action': 'ui_handled'}
+
+        # 10. Unit Editor Fallthrough
         elif gui.unit_editor_window and gui.unit_editor_window.is_visible:
             editor_action = gui.unit_editor_window.process_event(event)
             if editor_action:
@@ -169,6 +180,16 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         else:
             logger.debug(f"Drop down menu changed (GUI): {event.text}")
             action_result = {'action': 'component_selected', 'component_name': event.text}
+
+    elif event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
+        if gui.new_game_wizard and gui.new_game_wizard.is_alive:
+            gui.new_game_wizard.process_event(event)
+
+    elif event.type == pygame_gui.UI_WINDOW_CLOSE:
+        # If the player closed the wizard via the window's own X button
+        if gui.new_game_wizard and event.ui_element is gui.new_game_wizard.window:
+            gui.close_new_game_wizard()
+            action_result = {'action': 'cancel_new_game_wizard'}
 
     if action_result:
         return action_result

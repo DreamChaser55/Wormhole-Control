@@ -127,9 +127,9 @@ class Game:
         """Resets the sector camera zoom and pan offset."""
         game_camera.reset_sector_camera(self)
 
-    def start_new_game(self):
+    def start_new_game(self, settings=None):
         """Initializes a new game when the New Game button is clicked."""
-        return game_setup.start_new_game(self)
+        return game_setup.start_new_game(self, settings=settings)
 
     def spawn_units(self, player_homeworld_hexes: typing.Dict[Player, HexCoord] = None):
         """Sets up the starting units of all players."""
