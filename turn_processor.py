@@ -383,6 +383,7 @@ class TurnProcessor:
 
     def _process_resource_generation(self, current_player):
         total_credits_generated = 0
+        habitat_credits_generated = 0
         for system in self.game.galaxy.systems.values():
             for hexcoord, body in system.get_all_celestial_bodies():
                 if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and body.owner == current_player:
@@ -390,8 +391,19 @@ class TurnProcessor:
                     current_player.credits += credits_generated
                     total_credits_generated += credits_generated
 
+            for unit, _ in system.get_all_units():
+                if unit.owner == current_player:
+                    hab_comp = getattr(unit, 'civilian_habitat_component', None)
+                    if hab_comp and not hab_comp.is_destroyed:
+                        if hab_comp.has_colonized_celestial_object_in_sector(self.game.galaxy):
+                            bonus = hab_comp.economic_bonus
+                            current_player.credits += bonus
+                            habitat_credits_generated += bonus
+
         if total_credits_generated > 0:
             logger.debug(f"  {current_player.name} generated {total_credits_generated:.2f} credits from taxes.")
+        if habitat_credits_generated > 0:
+            logger.debug(f"  {current_player.name} generated {habitat_credits_generated:.2f} credits from civilian habitat bonuses.")
 
     def _process_unit_upkeep(self, current_player):
         """Deducts upkeep costs from the current player's credits for every owned unit.

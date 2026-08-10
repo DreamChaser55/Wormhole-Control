@@ -24,7 +24,7 @@ from galaxy import Galaxy, StarSystem, Hex
 from unit_components import (
     AntimatterStorage, AntimatterHarvester, Engines, Hyperdrive, HyperdriveType,
     Commander, HyperspaceInhibitionFieldEmitter, Weapons, Defenses, Turret,
-    ColonyComponent, Constructor, RepairComponent, MiningComponent,
+    ColonyComponent, CivilianHabitatComponent, Constructor, RepairComponent, MiningComponent,
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
     MinelayerComponent, MarinesComponent, CloakingDevice, instantiate_unit_from_template
@@ -527,6 +527,13 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
 
     if template.get("has_colony_component"):
         new_unit.add_component(ColonyComponent(new_unit))
+
+    if template.get("has_civilian_habitat_component"):
+        new_unit.add_component(CivilianHabitatComponent(
+            new_unit,
+            economic_bonus=template.get("civilian_habitat_bonus", 50.0),
+            hull_cost=template.get("civilian_habitat_hull_cost", 15.0)
+        ))
 
     if template.get("has_marines_component"):
         new_unit.add_component(MarinesComponent(

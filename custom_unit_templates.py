@@ -50,6 +50,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_constructor_component",
         "has_repair_component",
         "has_colony_component",
+        "has_civilian_habitat_component",
         "has_metal_refinery_component",
         "has_crystal_refinery_component",
         "has_ability_component",
@@ -66,6 +67,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_constructor_component",
         "has_repair_component",
         "has_colony_component",
+        "has_civilian_habitat_component",
         "has_metal_refinery_component",
         "has_crystal_refinery_component",
         "has_ability_component",
@@ -157,6 +159,7 @@ from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
 from unit_components.marines import MarinesComponent, MARINES_HULL_COST_PER_MARINE
 from unit_components.abilities.component import AbilityComponent, ABILITY_BASE_COST, ABILITY_COST_PER_ABILITY
 from unit_components.cloaking import CloakingDevice
+from unit_components.civilian_habitat import CivilianHabitatComponent
 from constants import CLOAKING_HULL_COST
 
 
@@ -236,6 +239,11 @@ def calc_inhibitor_hull_cost(radius: float) -> float:
 def calc_marines_hull_cost(marines_count: int) -> float:
     """Compute the hull cost of a Marines component from marines_count."""
     return MarinesComponent.calc_hull_cost(marines_count)
+
+
+def calc_civilian_habitat_hull_cost(economic_bonus: float = 50.0) -> float:
+    """Compute the hull cost of a Civilian Habitat component."""
+    return CivilianHabitatComponent.calc_hull_cost(economic_bonus)
 
 
 def get_hyperdrive_system_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
@@ -329,6 +337,11 @@ class ComponentConfig:
     # Colony
     has_colony_component: bool = False
     colony_hull_cost: float = 10.0
+
+    # Civilian Habitat
+    has_civilian_habitat_component: bool = False
+    civilian_habitat_bonus: float = 50.0
+    civilian_habitat_hull_cost: float = 15.0
 
     # Mining
     has_mining_component: bool = False
@@ -548,6 +561,7 @@ class CustomUnitTemplate:
         if c.has_constructor_component:         total += c.constructor_hull_cost
         if c.has_repair_component:              total += c.repair_hull_cost
         if c.has_colony_component:              total += c.colony_hull_cost
+        if c.has_civilian_habitat_component:    total += c.civilian_habitat_hull_cost
         if c.has_mining_component:              total += c.mining_hull_cost
         if c.has_metal_refinery_component:      total += c.metal_refinery_hull_cost
         if c.has_crystal_refinery_component:    total += c.crystal_refinery_hull_cost
@@ -604,6 +618,7 @@ class CustomUnitTemplate:
             "has_constructor_component": c.has_constructor_component,
             "has_repair_component": c.has_repair_component,
             "has_colony_component": c.has_colony_component,
+            "has_civilian_habitat_component": c.has_civilian_habitat_component,
             "has_metal_refinery_component": c.has_metal_refinery_component,
             "has_crystal_refinery_component": c.has_crystal_refinery_component,
             "has_ability_component": c.has_ability_component,
@@ -664,7 +679,7 @@ class CustomUnitTemplate:
             c.has_engine, c.has_antimatter_storage, c.has_antimatter_harvester, c.has_hyperdrive, c.has_weapon_bays,
             c.has_defenses,
             c.has_constructor_component, c.has_repair_component,
-            c.has_colony_component, c.has_mining_component,
+            c.has_colony_component, c.has_civilian_habitat_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
             c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
             c.has_sensors, c.has_minelayer_component, c.has_marines_component,
@@ -872,6 +887,10 @@ class CustomTemplateManager:
             "has_colony_component": c.has_colony_component,
             "colony_hull_cost": c.colony_hull_cost,
 
+            "has_civilian_habitat_component": c.has_civilian_habitat_component,
+            "civilian_habitat_bonus": c.civilian_habitat_bonus,
+            "civilian_habitat_hull_cost": c.civilian_habitat_hull_cost,
+
             "has_mining_component": c.has_mining_component,
             "mining_rate": c.mining_rate,
             "mining_range": c.mining_range,
@@ -981,6 +1000,10 @@ class CustomTemplateManager:
 
             has_colony_component=d.get("has_colony_component", False),
             colony_hull_cost=d.get("colony_hull_cost", 10),
+
+            has_civilian_habitat_component=d.get("has_civilian_habitat_component", False),
+            civilian_habitat_bonus=float(d.get("civilian_habitat_bonus", 50.0)),
+            civilian_habitat_hull_cost=float(d.get("civilian_habitat_hull_cost", 15.0)),
 
             has_mining_component=d.get("has_mining_component", False),
             mining_rate=d.get("mining_rate", 10.0),

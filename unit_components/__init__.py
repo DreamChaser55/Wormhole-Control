@@ -34,6 +34,7 @@ from .sensors import Sensors
 from .cloaking import CloakingDevice
 from .minelayer import MinelayerComponent
 from .marines import MarinesComponent
+from .civilian_habitat import CivilianHabitatComponent
 
 __all__ = [
     "HyperdriveType",
@@ -56,6 +57,7 @@ __all__ = [
     "Commander",
     "RepairComponent",
     "ColonyComponent",
+    "CivilianHabitatComponent",
     "MiningComponent",
     "MetalRefineryComponent",
     "CrystalRefineryComponent",

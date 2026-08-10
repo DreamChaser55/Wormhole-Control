@@ -15,6 +15,7 @@ from .defenses import Defenses
 from .inhibitor import HyperspaceInhibitionFieldEmitter
 from .repair import RepairComponent
 from .colony import ColonyComponent
+from .civilian_habitat import CivilianHabitatComponent
 from .mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
 from .hangar import HangarComponent
 from .strikecraft import StrikecraftWingComponent, StrikecraftBayComponent
@@ -254,6 +255,18 @@ def instantiate_unit_from_template(
         new_unit.add_component(ColonyComponent(
             new_unit,
             hull_cost=template.get("colony_hull_cost", 10.0)
+        ))
+
+    if template.get("has_civilian_habitat_component"):
+        bonus = float(template.get("civilian_habitat_bonus", 50.0))
+        cost = template.get("civilian_habitat_hull_cost")
+        if cost is None:
+            from custom_unit_templates import calc_civilian_habitat_hull_cost
+            cost = calc_civilian_habitat_hull_cost(bonus)
+        new_unit.add_component(CivilianHabitatComponent(
+            new_unit,
+            economic_bonus=bonus,
+            hull_cost=cost
         ))
 
     if template.get("has_inhibitor"):

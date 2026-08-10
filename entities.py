@@ -31,6 +31,7 @@ from unit_components import (
     Defenses,
     TurretType,
     ColonyComponent,
+    CivilianHabitatComponent,
     Constructor,
     RepairComponent,
     MiningComponent,
@@ -383,6 +384,10 @@ class Unit(GameObject):
     @property
     def colony_component(self) -> typing.Optional[ColonyComponent]:
         return self.get_component(ColonyComponent)
+
+    @property
+    def civilian_habitat_component(self) -> typing.Optional[CivilianHabitatComponent]:
+        return self.get_component(CivilianHabitatComponent)
 
     @property
     def constructor_component(self) -> typing.Optional[Constructor]:
