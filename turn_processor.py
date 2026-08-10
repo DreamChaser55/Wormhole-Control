@@ -115,17 +115,20 @@ class TurnProcessor:
                         units_to_move.append((unit, ("hex_jump", (target_hex_for_jump, target_position_for_jump))))
 
                 elif unit.engines_component and unit.engines_component.move_target:
+                    from custom_unit_templates import get_sublight_antimatter_cost_per_turn
+                    effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
+                    sublight_cost = get_sublight_antimatter_cost_per_turn(unit.hull_size, effective_speed)
+
                     # Engines consume antimatter per turn while moving
                     am_comp = unit.antimatter_component
-                    if am_comp and am_comp.current_amount < ENGINE_ANTIMATTER_COST_PER_TURN:
-                        logger.debug(f"   {unit.name} cannot move sub-light: Insufficient antimatter ({am_comp.current_amount:.1f}/{ENGINE_ANTIMATTER_COST_PER_TURN:.1f}).")
+                    if am_comp and am_comp.current_amount < sublight_cost:
+                        logger.debug(f"   {unit.name} cannot move sub-light: Insufficient antimatter ({am_comp.current_amount:.1f}/{sublight_cost:.1f}).")
                         continue
 
                     if am_comp:
-                        am_comp.consume(ENGINE_ANTIMATTER_COST_PER_TURN)
+                        am_comp.consume(sublight_cost)
 
                     target_pos_in_sector = unit.engines_component.move_target
-                    effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
                     unit.position = move_towards_position(unit.position, target_pos_in_sector, effective_speed)
                     logger.debug(f"   {unit.name} moved to {unit.position} (sub-light, speed={effective_speed:.1f})")
                     

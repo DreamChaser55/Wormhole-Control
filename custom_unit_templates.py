@@ -27,10 +27,11 @@ from constants import (
     MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_CAPACITY_BY_HULL, get_min_antimatter_capacity,
     ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
     DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX,
-    HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS, HANGAR_HULL_COST_PER_SLOT,
-    STRIKECRAFT_BAY_HULL_COST_PER_SLOT, REPAIR_RATE_PER_HULL_POINT, REPAIR_CREDIT_COST_PER_HP,
-    MINING_RATE_PER_HULL_POINT, MINING_CARGO_PER_HULL_POINT, INHIBITOR_RADIUS_PER_HULL_POINT,
-    HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST
+    HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS, ENGINE_ANTIMATTER_HULL_SIZE_MULTIPLIERS,
+    HANGAR_HULL_COST_PER_SLOT, STRIKECRAFT_BAY_HULL_COST_PER_SLOT, REPAIR_RATE_PER_HULL_POINT,
+    REPAIR_CREDIT_COST_PER_HP, MINING_RATE_PER_HULL_POINT, MINING_CARGO_PER_HULL_POINT,
+    INHIBITOR_RADIUS_PER_HULL_POINT, HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST,
+    ENGINE_ANTIMATTER_COST_PER_TURN, BASELINE_ENGINE_SPEED
 )
 
 logger = logging.getLogger(__name__)
@@ -247,6 +248,15 @@ def get_hyperdrive_hex_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM
     """Compute hyperdrive antimatter cost for a hex jump based on hull size."""
     multiplier = HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
     return float(HYPERDRIVE_HEX_JUMP_COST * multiplier)
+
+
+def get_sublight_antimatter_cost_per_turn(hull_size: Optional[HullSize] = HullSize.MEDIUM, speed: float = 100.0) -> float:
+    """Compute dynamic sublight engine antimatter cost per turn based on hull size and engine speed (linear scaling)."""
+    if speed <= 0:
+        return 0.0
+    hull_mult = ENGINE_ANTIMATTER_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
+    speed_mult = speed / BASELINE_ENGINE_SPEED
+    return float(ENGINE_ANTIMATTER_COST_PER_TURN * hull_mult * speed_mult)
 
 
 

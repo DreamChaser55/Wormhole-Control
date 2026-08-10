@@ -60,7 +60,7 @@ def test_sublight_movement_consumes_antimatter():
     unit.position = Position(0, 0)
     
     am_comp = AntimatterStorage(unit)
-    engines = Engines(unit, speed=10.0)
+    engines = Engines(unit, speed=100.0)
     engines.move_target = Position(100.0, 0.0)
     
     unit.components = {
@@ -81,7 +81,7 @@ def test_sublight_movement_consumes_antimatter():
     tp._process_movement(player)
     
     # Handled movement & consumed antimatter
-    assert unit.position.x == 10.0
+    assert unit.position.x == 100.0
     assert am_comp.current_amount == 100.0 - ENGINE_ANTIMATTER_COST_PER_TURN
 
 def test_sublight_movement_fails_without_antimatter():
@@ -93,9 +93,9 @@ def test_sublight_movement_fails_without_antimatter():
     unit.position = Position(0, 0)
     
     am_comp = AntimatterStorage(unit)
-    am_comp.current_amount = 1.0  # Less than ENGINE_ANTIMATTER_COST_PER_TURN (2.0)
+    am_comp.current_amount = 1.0  # Less than cost per turn (2.0)
     
-    engines = Engines(unit, speed=10.0)
+    engines = Engines(unit, speed=100.0)
     engines.move_target = Position(100.0, 0.0)
     
     unit.components = {

@@ -515,8 +515,12 @@ def calculate_required_antimatter(
     if not unit or not getattr(unit, 'antimatter_component', None) or not galaxy_ref:
         return 0.0
 
-    from custom_unit_templates import get_hyperdrive_system_jump_cost, get_hyperdrive_hex_jump_cost
-    from constants import ENGINE_ANTIMATTER_COST_PER_TURN, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
+    from custom_unit_templates import (
+        get_hyperdrive_system_jump_cost,
+        get_hyperdrive_hex_jump_cost,
+        get_sublight_antimatter_cost_per_turn
+    )
+    from constants import XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS
 
     curr_system = unit.in_system
     curr_hex = unit.in_hex
@@ -533,6 +537,7 @@ def calculate_required_antimatter(
 
     effective_speed = (engine_comp.speed * unit.xp_multiplier(XP_SPEED_BONUS)) if engine_comp else 0.0
     effective_jump_range = int(hd_comp.jump_range * unit.xp_multiplier(XP_JUMP_RANGE_BONUS)) if hd_comp else 0
+    sublight_cost_per_turn = get_sublight_antimatter_cost_per_turn(unit.hull_size, effective_speed)
 
     def _sublight_cost(p1: Optional[Position], p2: Optional[Position]) -> float:
         if not engine_comp or effective_speed <= 0.0 or p1 is None or p2 is None:
@@ -541,7 +546,7 @@ def calculate_required_antimatter(
         if dist < 0.01:
             return 0.0
         turns = math.ceil(dist / effective_speed)
-        return turns * ENGINE_ANTIMATTER_COST_PER_TURN
+        return turns * sublight_cost_per_turn
 
     def _hex_jump_cost_seq(start_h: HexCoord, end_h: HexCoord) -> float:
         if start_h == end_h:
