@@ -39,10 +39,54 @@
         }
     },
     "window": {
+        "colours": {
+            "dark_bg": "#0F1524D8",
+            "normal_bg": "#141C30D8",
+            "normal_border": "#3A6D8CC8"
+        },
         "misc": {
             "title_bar_height": "30",
-            "border_width": "2",
-            "shadow_width": "4"
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#3A6D8CC8"
+        }
+    },
+    "#new_game_wizard_window": {
+        "colours": {
+            "dark_bg": "#0F1524D8",
+            "normal_bg": "#141C30D8",
+            "normal_border": "#3A6D8CC8"
+        },
+        "misc": {
+            "title_bar_height": "30",
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#3A6D8CC8"
+        }
+    },
+    "#load_game_window": {
+        "colours": {
+            "dark_bg": "#0F1524D8",
+            "normal_bg": "#141C30D8",
+            "normal_border": "#3A6D8CC8"
+        },
+        "misc": {
+            "title_bar_height": "30",
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#3A6D8CC8"
+        }
+    },
+    "#save_selection_list": {
+        "colours": {
+            "dark_bg": "#0F1524D8",
+            "normal_bg": "#141C30D8",
+            "normal_border": "#3A6D8CC8"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "1",
+            "border_colour": "#3A6D8CC8"
         }
     },
     "panel": {
@@ -58,10 +102,16 @@
         }
     },
     "#message_window": {
+        "colours": {
+            "dark_bg": "#0F1524D8",
+            "normal_bg": "#141C30D8",
+            "normal_border": "#3A6D8CC8"
+        },
         "misc": {
             "title_bar_height": "30",
-            "border_width": "2",
-            "shadow_width": "4"
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#3A6D8CC8"
         }
     },
     "#title_bar": {
@@ -71,6 +121,8 @@
             "bold": "1"
         },
         "colours": {
+            "normal_bg": "#141C30D8",
+            "normal_border": "#3A6D8CC8",
             "normal_text": "#FFFFFF"
         },
         "misc": {

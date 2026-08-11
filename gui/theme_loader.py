@@ -64,7 +64,7 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
             theme_data[dropdown_list_theme_id]["misc"]["list_item_height"] = str(scaled_item_height)
 
             # Scale window title bar height for windows
-            for window_theme_id in ["window", "#message_window", "message_window"]:
+            for window_theme_id in ["window", "#message_window", "message_window", "#new_game_wizard_window", "#load_game_window"]:
                 if window_theme_id in theme_data and isinstance(theme_data[window_theme_id], dict) and "misc" in theme_data[window_theme_id]:
                     if "title_bar_height" in theme_data[window_theme_id]["misc"]:
                         orig_tb_height = int(theme_data[window_theme_id]["misc"]["title_bar_height"])
