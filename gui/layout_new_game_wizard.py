@@ -6,6 +6,9 @@ The wizard collects:
                 min/max system distance
   * Economy   – starting credits / metal / crystal / population
 
+Color selection uses a colored swatch panel flanked by ◀/▶ cycle buttons
+instead of a UIDropDownMenu (which does not support per-item text colors).
+
 On "Start Game", dispatches {'action': 'start_new_game_with_settings', 'settings': GameSettings}.
 On "Cancel", dispatches {'action': 'cancel_new_game_wizard'}.
 """
@@ -21,7 +24,6 @@ from game_settings import (
     GameSettings,
     PlayerConfig,
     PLAYER_COLOR_PALETTE,
-    PLAYER_COLORS_BY_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,12 +41,12 @@ _BTN_H = 36        # action button height
 _BTN_W = 140       # action button width
 
 _PLAYER_ROW_H = 38  # per-player row height
-_COLOR_SWATCH_SIZE = 24  # coloured swatch square painted next to the dropdown
+_COLOR_SWATCH_W = 36  # width of the colored swatch panel
+_COLOR_CYCLE_BTN_W = 24  # width of the ◀/▶ cycle buttons
 
 _MIN_PLAYERS = 2
 _MAX_PLAYERS = 6
 
-_COLOR_NAMES: typing.List[str] = [name for name, _ in PLAYER_COLOR_PALETTE]
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +105,11 @@ class NewGameWizard:
         # Start with 3 players using the default palette
         self._num_players: int = 3
         self._player_name_entries: typing.List[pygame_gui.elements.UITextEntryLine] = []
-        self._player_color_dropdowns: typing.List[pygame_gui.elements.UIDropDownMenu] = []
+        # Color picker state: palette index + two cycle buttons + swatch panel
+        self._player_color_indices: typing.List[int] = []
+        self._player_color_prev_btns: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_color_next_btns: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_color_swatches: typing.List[pygame_gui.elements.UIPanel] = []
         self._player_human_buttons: typing.List[pygame_gui.elements.UIButton] = []
         self._player_is_human: typing.List[bool] = []
 
@@ -316,7 +322,10 @@ class NewGameWizard:
     def _build_player_rows(self, y: int, width: int) -> int:
         """Creates per-player name/color/type rows; returns new y cursor."""
         self._player_name_entries = []
-        self._player_color_dropdowns = []
+        self._player_color_indices = []
+        self._player_color_prev_btns = []
+        self._player_color_next_btns = []
+        self._player_color_swatches = []
         self._player_human_buttons = []
         self._player_is_human = []
 
@@ -326,7 +335,7 @@ class NewGameWizard:
         return y
 
     def _add_single_player_row(self, index: int, y: int, width: int) -> int:
-        """Adds one player row (index label, name entry, colour dropdown, human button)."""
+        """Adds one player row (index label, name entry, colour swatch cycler, human button)."""
         row_h = self._sy(_PLAYER_ROW_H)
         pad = self._sx(_PAD)
 
@@ -351,23 +360,53 @@ class NewGameWizard:
         entry.set_text(f"Player {index + 1}")
         self._player_name_entries.append(entry)
 
-        # Colour dropdown
-        color_dd_w = self._sx(100)
+        # ── Colour swatch cycler: [◀] [■■■] [▶] ─────────────────────────
+        # Use the saved index if available (after a rebuild/restore), or default.
+        if index < len(self._player_color_indices):
+            color_idx = self._player_color_indices[index]
+        else:
+            default_name = build_default_color_name_for_index(index)
+            color_idx = next(
+                (i for i, (n, _) in enumerate(PLAYER_COLOR_PALETTE) if n == default_name),
+                index % len(PLAYER_COLOR_PALETTE),
+            )
+            self._player_color_indices.append(color_idx)
+
+        cycle_btn_w = self._sx(_COLOR_CYCLE_BTN_W)
+        swatch_w = self._sx(_COLOR_SWATCH_W)
         color_x = name_x + name_entry_w + self._sx(8)
-        default_color = build_default_color_name_for_index(index)
-        dd = pygame_gui.elements.UIDropDownMenu(
-            options_list=_COLOR_NAMES,
-            starting_option=default_color,
-            relative_rect=pygame.Rect(color_x, y, color_dd_w, row_h),
+
+        prev_btn = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(color_x, y, cycle_btn_w, row_h),
+            text="◀",
             manager=self.manager,
             container=self._scrollable,
-            object_id=f"#player_color_dropdown_{index}",
+            object_id=f"#player_color_prev_{index}",
         )
-        self._player_color_dropdowns.append(dd)
+        self._player_color_prev_btns.append(prev_btn)
+
+        swatch_panel = pygame_gui.elements.UIPanel(
+            relative_rect=pygame.Rect(color_x + cycle_btn_w, y, swatch_w, row_h),
+            manager=self.manager,
+            container=self._scrollable,
+            object_id=f"#player_color_swatch_{index}",
+        )
+        self._player_color_swatches.append(swatch_panel)
+
+        next_btn = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(color_x + cycle_btn_w + swatch_w, y, cycle_btn_w, row_h),
+            text="▶",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id=f"#player_color_next_{index}",
+        )
+        self._player_color_next_btns.append(next_btn)
+
+        color_block_w = cycle_btn_w * 2 + swatch_w
 
         # Human / AI toggle button
         human_btn_w = self._sx(68)
-        human_x = color_x + color_dd_w + self._sx(8)
+        human_x = color_x + color_block_w + self._sx(8)
         is_human = True
         btn = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(human_x, y, human_btn_w, row_h),
@@ -380,6 +419,29 @@ class NewGameWizard:
         self._player_is_human.append(is_human)
 
         return y + row_h + self._sy(4)
+
+    def _cycle_player_color(self, player_index: int, delta: int) -> None:
+        """Cycles the colour for a player by ±1, wrapping around the palette."""
+        cur = self._player_color_indices[player_index]
+        self._player_color_indices[player_index] = (cur + delta) % len(PLAYER_COLOR_PALETTE)
+
+    def draw_swatches(self, surface: pygame.Surface) -> None:
+        """Draws filled colour squares on top of each player's swatch panel.
+
+        Must be called **after** ``manager.draw_ui(surface)`` so the fill
+        renders on top of the pygame_gui panel background.
+        """
+        if not self._scrollable:
+            return
+        scroll_clip = self._scrollable.get_abs_rect()
+        for i, panel in enumerate(self._player_color_swatches):
+            if not panel.alive():
+                continue
+            color_rgb = PLAYER_COLOR_PALETTE[self._player_color_indices[i]][1]
+            abs_rect = panel.get_abs_rect()
+            clipped = abs_rect.clip(scroll_clip)
+            if clipped.width > 0 and clipped.height > 0:
+                surface.fill(color_rgb, clipped)
 
     def _add_slider_row(
         self,
@@ -484,29 +546,15 @@ class NewGameWizard:
     # ------------------------------------------------------------------
     # Player count change
     # ------------------------------------------------------------------
-
     def _adjust_player_count(self, delta: int) -> None:
-        """Increases or decreases the player count, rebuilding player rows."""
+        """Increases or decreases the player count, rebuilding player rows.
+
+        Snapshot/restore is handled entirely by _full_rebuild(), so we do not
+        need to manually kill player widgets here first.
+        """
         new_count = max(_MIN_PLAYERS, min(_MAX_PLAYERS, self._num_players + delta))
         if new_count == self._num_players:
             return
-
-        # Capture current values before killing widgets
-        saved_names = [e.get_text() for e in self._player_name_entries]
-        saved_colors = [d.selected_option for d in self._player_color_dropdowns]
-        saved_humans = list(self._player_is_human)
-
-        # Kill existing player widgets
-        for e in self._player_name_entries:
-            e.kill()
-        for d in self._player_color_dropdowns:
-            d.kill()
-        for b in self._player_human_buttons:
-            b.kill()
-        self._player_name_entries.clear()
-        self._player_color_dropdowns.clear()
-        self._player_human_buttons.clear()
-        self._player_is_human.clear()
 
         self._num_players = new_count
         if self._player_count_label:
@@ -530,6 +578,7 @@ class NewGameWizard:
         # player-count row.  A full rebuild is the simplest reliable approach.
         self._full_rebuild()
 
+
     def _full_rebuild(self) -> None:
         """Kills the scrollable container and action buttons, then recreates all UI."""
         # Snapshot current values
@@ -548,7 +597,10 @@ class NewGameWizard:
 
         # Clear internal refs
         self._player_name_entries = []
-        self._player_color_dropdowns = []
+        self._player_color_indices = []
+        self._player_color_prev_btns = []
+        self._player_color_swatches = []
+        self._player_color_next_btns = []
         self._player_human_buttons = []
         self._player_is_human = []
 
@@ -567,7 +619,9 @@ class NewGameWizard:
         return {
             "num_players": self._num_players,
             "player_names": [e.get_text() for e in self._player_name_entries],
-            "player_colors": [d.selected_option for d in self._player_color_dropdowns],
+            "player_colors": [
+                PLAYER_COLOR_PALETTE[idx][0] for idx in self._player_color_indices
+            ],
             "player_humans": list(self._player_is_human),
             "num_systems": self._num_systems_slider.get_current_value() if self._num_systems_slider else 15,
             "radius_min": self._sys_radius_min_slider.get_current_value() if self._sys_radius_min_slider else 5,
@@ -584,15 +638,21 @@ class NewGameWizard:
     def _restore_snapshot(self, snap: dict) -> None:
         """Restores widget values from a snapshot dict (best-effort)."""
         player_names = snap.get("player_names", [])
-        player_colors = snap.get("player_colors", [])
+        player_colors = snap.get("player_colors", [])  # list of color name strings
         player_humans = snap.get("player_humans", [])
 
         for i, entry in enumerate(self._player_name_entries):
             if i < len(player_names):
                 entry.set_text(player_names[i])
-        for i, dd in enumerate(self._player_color_dropdowns):
-            if i < len(player_colors) and player_colors[i] in _COLOR_NAMES:
-                dd.selected_option = player_colors[i]
+        for i in range(len(self._player_color_indices)):
+            if i < len(player_colors):
+                saved_name = player_colors[i]
+                found_idx = next(
+                    (j for j, (n, _) in enumerate(PLAYER_COLOR_PALETTE) if n == saved_name),
+                    None,
+                )
+                if found_idx is not None:
+                    self._player_color_indices[i] = found_idx
         for i, is_h in enumerate(player_humans):
             if i < len(self._player_is_human):
                 self._player_is_human[i] = is_h
@@ -651,6 +711,16 @@ class NewGameWizard:
                 self._adjust_player_count(+1)
                 return None
 
+            # Color cycle buttons
+            for i, btn in enumerate(self._player_color_prev_btns):
+                if element is btn:
+                    self._cycle_player_color(i, -1)
+                    return None
+            for i, btn in enumerate(self._player_color_next_btns):
+                if element is btn:
+                    self._cycle_player_color(i, +1)
+                    return None
+
             # Human/AI toggle buttons
             for i, btn in enumerate(self._player_human_buttons):
                 if element is btn:
@@ -704,12 +774,11 @@ class NewGameWizard:
                 else f"Player {i + 1}"
             ) or f"Player {i + 1}"
 
-            color_name = (
-                self._player_color_dropdowns[i].selected_option
-                if i < len(self._player_color_dropdowns)
-                else build_default_color_name_for_index(i)
-            )
-            color = PLAYER_COLORS_BY_NAME.get(color_name, PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1])
+            if i < len(self._player_color_indices):
+                pal_entry = PLAYER_COLOR_PALETTE[self._player_color_indices[i]]
+                color = pal_entry[1]
+            else:
+                color = PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1]
             is_human = self._player_is_human[i] if i < len(self._player_is_human) else True
             player_configs.append(PlayerConfig(name=name, color=color, is_human=is_human))
 
