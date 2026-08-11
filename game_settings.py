@@ -70,3 +70,27 @@ class GameSettings:
     @property
     def num_players(self) -> int:
         return len(self.player_configs)
+
+    def validate(self) -> typing.List[str]:
+        """Validates logical consistency of game settings parameters.
+
+        Returns:
+            List of error strings describing any invalid settings, or empty list if valid.
+        """
+        errors: typing.List[str] = []
+        if self.system_radius_min > self.system_radius_max:
+            errors.append(
+                f"Min System Radius ({self.system_radius_min}) cannot be greater than Max System Radius ({self.system_radius_max})."
+            )
+        if self.min_system_distance >= self.max_system_distance:
+            errors.append(
+                f"Min System Distance ({int(self.min_system_distance)}) must be strictly less than Max System Distance ({int(self.max_system_distance)})."
+            )
+        return errors
+
+    def __post_init__(self) -> None:
+        """Validates settings upon dataclass instantiation."""
+        errors = self.validate()
+        if errors:
+            raise ValueError("; ".join(errors))
+

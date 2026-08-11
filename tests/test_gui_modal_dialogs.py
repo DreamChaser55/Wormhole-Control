@@ -182,6 +182,54 @@ class TestGUIModalDialogs(unittest.TestCase):
         action = event_router.process_event(self.gui, event)
         self.assertEqual(action['action'], 'start_new_game_with_settings')
 
+    def test_wizard_invalid_radius_and_distance_error_dialogs(self):
+        """Test that Start Game with invalid system radius or distance displays a modal error dialog."""
+        self.gui.show_new_game_wizard()
+        wizard = self.gui.new_game_wizard
+        self.assertIsNotNone(wizard)
+
+        # Unique colors so color validation passes
+        wizard._player_color_indices[0] = 0
+        wizard._player_color_indices[1] = 1
+        wizard._player_color_indices[2] = 2
+
+        # 1. Inverted radius: min=8, max=4
+        wizard._sys_radius_min_slider.set_current_value(8)
+        wizard._sys_radius_max_slider.set_current_value(4)
+
+        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": wizard.start_button})
+        from gui import event_router
+        action = event_router.process_event(self.gui, event)
+
+        self.assertEqual(action, {'action': 'ui_handled'})
+        self.assertGreater(len(self.gui.active_dialogs), 0)
+        err_dlg = self.gui.active_dialogs[-1]
+        self.assertIn("Invalid Game Settings", err_dlg.window_display_title)
+        self.assertTrue(wizard.is_alive)
+
+        # Fix radius, but invert distance: min=200, max=100
+        wizard._sys_radius_min_slider.set_current_value(4)
+        wizard._sys_radius_max_slider.set_current_value(8)
+        wizard._min_dist_slider.set_current_value(200)
+        wizard._max_dist_slider.set_current_value(100)
+
+        action = event_router.process_event(self.gui, event)
+        self.assertEqual(action, {'action': 'ui_handled'})
+        err_dlg = self.gui.active_dialogs[-1]
+        self.assertIn("Invalid Game Settings", err_dlg.window_display_title)
+
+    def test_game_settings_post_init_validation(self):
+        """Test that direct instantiation of GameSettings with invalid settings raises ValueError."""
+        from game_settings import GameSettings
+        with self.assertRaises(ValueError) as ctx:
+            GameSettings(system_radius_min=9, system_radius_max=4)
+        self.assertIn("Min System Radius (9) cannot be greater than Max System Radius (4)", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            GameSettings(min_system_distance=200.0, max_system_distance=100.0)
+        self.assertIn("Min System Distance (200) must be strictly less than Max System Distance (100)", str(ctx.exception))
+
 
 if __name__ == '__main__':
     unittest.main()
+

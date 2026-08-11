@@ -731,6 +731,29 @@ class NewGameWizard:
         active_indices = self._player_color_indices[:self._num_players]
         return len(set(active_indices)) < len(active_indices)
 
+    def get_validation_errors(self) -> typing.List[str]:
+        """Validates all wizard inputs and returns a list of human-readable error messages."""
+        errors: typing.List[str] = []
+
+        if self.has_duplicate_colors():
+            errors.append("Each player must be assigned a unique color before starting the game.")
+
+        radius_min = int(self._sys_radius_min_slider.get_current_value()) if self._sys_radius_min_slider else 5
+        radius_max = int(self._sys_radius_max_slider.get_current_value()) if self._sys_radius_max_slider else 8
+        if radius_min > radius_max:
+            errors.append(
+                f"Min System Radius ({radius_min}) cannot be greater than Max System Radius ({radius_max})."
+            )
+
+        min_dist = float(int(self._min_dist_slider.get_current_value())) if self._min_dist_slider else 50.0
+        max_dist = float(int(self._max_dist_slider.get_current_value())) if self._max_dist_slider else 350.0
+        if min_dist >= max_dist:
+            errors.append(
+                f"Min System Distance ({int(min_dist)}) must be strictly less than Max System Distance ({int(max_dist)})."
+            )
+
+        return errors
+
     def process_event(self, event: pygame.event.Event) -> typing.Optional[dict]:
         """Processes a pygame event; returns an action dict or None.
 
@@ -741,6 +764,9 @@ class NewGameWizard:
             ``{'action': 'duplicate_player_colors_warning', 'message': str}``
             when duplicate player colors are detected.
 
+            ``{'action': 'wizard_settings_error', 'message': str, 'title': str}``
+            when settings validation fails.
+
             ``{'action': 'cancel_new_game_wizard'}`` when the player cancels.
 
             ``None`` for events consumed internally.
@@ -749,10 +775,17 @@ class NewGameWizard:
             element = event.ui_element
 
             if element is self.start_button:
-                if self.has_duplicate_colors():
+                validation_errors = self.get_validation_errors()
+                if validation_errors:
+                    if len(validation_errors) == 1 and self.has_duplicate_colors():
+                        return {
+                            "action": "duplicate_player_colors_warning",
+                            "message": validation_errors[0],
+                        }
                     return {
-                        "action": "duplicate_player_colors_warning",
-                        "message": "Each player must be assigned a unique color before starting the game.",
+                        "action": "wizard_settings_error",
+                        "message": "\n".join(validation_errors),
+                        "title": "Invalid Game Settings",
                     }
                 return self._build_start_action()
 
@@ -842,17 +875,12 @@ class NewGameWizard:
 
         radius_min = int(self._sys_radius_min_slider.get_current_value()) if self._sys_radius_min_slider else 5
         radius_max = int(self._sys_radius_max_slider.get_current_value()) if self._sys_radius_max_slider else 8
-        # Ensure min <= max
-        if radius_min > radius_max:
-            radius_min, radius_max = radius_max, radius_min
 
         wormhole_pct = int(self._wormhole_density_slider.get_current_value()) if self._wormhole_density_slider else 33
         wormhole_density = wormhole_pct / 100.0
 
         min_dist = float(int(self._min_dist_slider.get_current_value())) if self._min_dist_slider else 50.0
         max_dist = float(int(self._max_dist_slider.get_current_value())) if self._max_dist_slider else 350.0
-        if min_dist >= max_dist:
-            max_dist = min_dist + 50.0
 
         credits_ = self._safe_float(self._credits_entry.get_text() if self._credits_entry else "20000", 20000.0)
         metal = self._safe_float(self._metal_entry.get_text() if self._metal_entry else "10000", 10000.0)

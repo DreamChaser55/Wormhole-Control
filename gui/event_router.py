@@ -143,6 +143,12 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
                         title="Duplicate Player Colors",
                     )
                     action_result = {'action': 'ui_handled'}
+                elif wizard_action['action'] == 'wizard_settings_error':
+                    gui.show_error_dialog(
+                        wizard_action.get('message', "Invalid settings parameter."),
+                        title=wizard_action.get('title', "Invalid Game Settings"),
+                    )
+                    action_result = {'action': 'ui_handled'}
                 else:
                     action_result = wizard_action
             else:
