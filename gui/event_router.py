@@ -136,7 +136,15 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
             if wizard_action:
                 if wizard_action['action'] == 'cancel_new_game_wizard':
                     gui.close_new_game_wizard()
-                action_result = wizard_action
+                    action_result = wizard_action
+                elif wizard_action['action'] == 'duplicate_player_colors_warning':
+                    gui.show_warning_dialog(
+                        wizard_action.get('message', "Each player must be assigned a unique color before starting."),
+                        title="Duplicate Player Colors",
+                    )
+                    action_result = {'action': 'ui_handled'}
+                else:
+                    action_result = wizard_action
             else:
                 action_result = {'action': 'ui_handled'}
 

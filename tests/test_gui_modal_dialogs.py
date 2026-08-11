@@ -144,6 +144,44 @@ class TestGUIModalDialogs(unittest.TestCase):
         warn_dlg = self.gui.active_dialogs[-1]
         self.assertIn("Invalid Stance", warn_dlg.window_display_title)
 
+    def test_wizard_duplicate_player_colors_warning(self):
+        """Test that Start Game with duplicate player colors displays a modal warning dialog."""
+        self.gui.show_new_game_wizard()
+        wizard = self.gui.new_game_wizard
+        self.assertIsNotNone(wizard)
+
+        # Force identical colors for active players (e.g. both palette index 0)
+        wizard._player_color_indices[0] = 0
+        wizard._player_color_indices[1] = 0
+
+        self.assertTrue(wizard.has_duplicate_colors())
+
+        # Simulate pressing Start Game button
+        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": wizard.start_button})
+        from gui import event_router
+        action = event_router.process_event(self.gui, event)
+
+        # Should be handled by GUI (modal dialog shown), not start new game
+        self.assertEqual(action, {'action': 'ui_handled'})
+        self.assertGreater(len(self.gui.active_dialogs), 0)
+        warn_dlg = self.gui.active_dialogs[-1]
+        self.assertIn("Duplicate Player Colors", warn_dlg.window_display_title)
+        self.assertTrue(wizard.is_alive)
+
+        # Ensure drawing GUI with modal dialog open clips swatches cleanly
+        dummy_surface = pygame.Surface((1280, 720))
+        self.gui.draw(dummy_surface)
+
+        # Now assign unique colors
+        wizard._player_color_indices[0] = 0
+        wizard._player_color_indices[1] = 1
+        wizard._player_color_indices[2] = 2
+        self.assertFalse(wizard.has_duplicate_colors())
+
+        # Press Start Game again
+        action = event_router.process_event(self.gui, event)
+        self.assertEqual(action['action'], 'start_new_game_with_settings')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -58,6 +58,23 @@ def build_default_color_name_for_index(idx: int) -> str:
     return PLAYER_COLOR_PALETTE[idx % len(PLAYER_COLOR_PALETTE)][0]
 
 
+def _subtract_rect_from_blocker(rect: pygame.Rect, blocker: pygame.Rect) -> typing.List[pygame.Rect]:
+    """Splits `rect` into non-overlapping sub-rectangles that lie outside `blocker`."""
+    intersection = rect.clip(blocker)
+    if intersection.width <= 0 or intersection.height <= 0:
+        return [rect]
+    result = []
+    if rect.top < intersection.top:
+        result.append(pygame.Rect(rect.left, rect.top, rect.width, intersection.top - rect.top))
+    if rect.bottom > intersection.bottom:
+        result.append(pygame.Rect(rect.left, intersection.bottom, rect.width, rect.bottom - intersection.bottom))
+    if rect.left < intersection.left:
+        result.append(pygame.Rect(rect.left, intersection.top, intersection.left - rect.left, intersection.height))
+    if rect.right > intersection.right:
+        result.append(pygame.Rect(intersection.right, intersection.top, rect.right - intersection.right, intersection.height))
+    return result
+
+
 # ---------------------------------------------------------------------------
 # The wizard window class
 # ---------------------------------------------------------------------------
@@ -433,6 +450,23 @@ class NewGameWizard:
         """
         if not self._scrollable:
             return
+
+        # Find any UIWindow elements layered on top of the wizard window
+        blockers: typing.List[pygame.Rect] = []
+        if self.manager:
+            wizard_layer_found = False
+            for sprite in self.manager.get_sprite_group().sprites():
+                if sprite is self.window:
+                    wizard_layer_found = True
+                    continue
+                if (
+                    wizard_layer_found
+                    and isinstance(sprite, pygame_gui.elements.UIWindow)
+                    and sprite.alive()
+                    and sprite.visible
+                ):
+                    blockers.append(sprite.get_abs_rect())
+
         scroll_clip = self._scrollable.get_abs_rect()
         for i, panel in enumerate(self._player_color_swatches):
             if not panel.alive():
@@ -441,7 +475,16 @@ class NewGameWizard:
             abs_rect = panel.get_abs_rect()
             clipped = abs_rect.clip(scroll_clip)
             if clipped.width > 0 and clipped.height > 0:
-                surface.fill(color_rgb, clipped)
+                rects_to_draw = [clipped]
+                for b in blockers:
+                    next_rects = []
+                    for r in rects_to_draw:
+                        next_rects.extend(_subtract_rect_from_blocker(r, b))
+                    rects_to_draw = next_rects
+                    if not rects_to_draw:
+                        break
+                for sub_r in rects_to_draw:
+                    surface.fill(color_rgb, sub_r)
 
     def _add_slider_row(
         self,
@@ -683,12 +726,20 @@ class NewGameWizard:
     # Event processing
     # ------------------------------------------------------------------
 
+    def has_duplicate_colors(self) -> bool:
+        """Returns True if any two active players share the same color assignment."""
+        active_indices = self._player_color_indices[:self._num_players]
+        return len(set(active_indices)) < len(active_indices)
+
     def process_event(self, event: pygame.event.Event) -> typing.Optional[dict]:
         """Processes a pygame event; returns an action dict or None.
 
         Returns:
             ``{'action': 'start_new_game_with_settings', 'settings': GameSettings}``
-            when the player clicks Start Game.
+            when the player clicks Start Game and validation passes.
+
+            ``{'action': 'duplicate_player_colors_warning', 'message': str}``
+            when duplicate player colors are detected.
 
             ``{'action': 'cancel_new_game_wizard'}`` when the player cancels.
 
@@ -698,6 +749,11 @@ class NewGameWizard:
             element = event.ui_element
 
             if element is self.start_button:
+                if self.has_duplicate_colors():
+                    return {
+                        "action": "duplicate_player_colors_warning",
+                        "message": "Each player must be assigned a unique color before starting the game.",
+                    }
                 return self._build_start_action()
 
             if element is self.cancel_button:
