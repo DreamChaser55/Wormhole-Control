@@ -67,6 +67,7 @@ pip install pygame-ce pygame_gui
 ```
 
 ## Game Controls & Interface
+- Graphics are deliberately simple and icon-based, resembling a Combat Information System (CIC) interface on a bridge of a command battleship
 
 ### View Navigation
 - **Galaxy View**: Overview of all star systems and wormhole connections
