@@ -1,211 +1,155 @@
 # Wormhole Control
 
-**Wormhole Control** is a 2D turn-based 4X space strategy game prototype written in Python using `pygame-ce` ('pygame - Community Edition') and `pygame_gui`. The game features a large-scale universe where players manage space ships across a galaxy of star systems connected by wormholes. Each star system contains a hexagonal grid of sectors.
+**Wormhole Control** is a 2D turn-based 4X space strategy game prototype written in Python using `pygame-ce` and `pygame_gui`. Players command star fleets, colonize celestial bodies, manage supply lines, and wage tactical warfare across a procedural galaxy of star systems linked by wormholes.
 
-## Features
+The game uses a deliberate, high-contrast tactical display aesthetic inspired by naval Combat Information Center (CIC) bridge consoles. Clean vector icons, range rings, and sensor cones provide full situational awareness across all three strategic zoom levels.
 
-### Core Gameplay
-- **Turn-based Strategy**: Classic 4X gameplay (eXplore, eXpand, eXploit, eXterminate)
-- **Multi-scale Universe**: Navigate between galaxy view, system view, and sector view
-- **Wormhole Network**: Faster-than-light travel between star systems via wormhole connections
-- **Resource Economy**: Manage Credits, Metal, Crystal, and Antimatter fuel
-- **Player vs AI**: Support for multiple players (human and AI) with turn processing
+---
 
-### Space Units & Components
-- **Modular Ship Design**: Units built with customizable components and dynamic parameter scaling
-- **Hull Sizes**: Six hull classes (`STRIKECRAFT_WING`, `TINY`, `SMALL`, `MEDIUM`, `LARGE`, `HUGE`) with different capacities and base stats
-- **Unit Components (15 total)**:
-  - **Engines**: Enable sublight movement within sectors
-  - **Hyperdrives**: Basic (intra-system jumps) and Advanced (inter-system jumps via wormholes)
-  - **Weapons**: Combat systems with customizable weapon types and damage parameters
-  - **Defenses**: Defensive shields and armor for damage mitigation
-  - **Inhibitors**: Hyperspace inhibition field generators (prevents enemy jumps within radius)
-  - **Colony Component**: For planetary colonization
-  - **Constructor Component**: For building space stations and structures
-  - **Refinery Components**: Metal and Crystal processing modules
-  - **Mining Component**: Automated mining of resources from celestial bodies
-  - **Antimatter Harvester**: Harvests antimatter fuel from stars
-  - **Hangar Component**: Stores and transports dockable ships
-  - **Strikecraft Bay**: Deploys strikecraft wings (fighters, bombers)
-  - **Marines Component**: Boarding actions and unit capture mechanics
-  - **Minelayer Component**: Deploys defensive minefields in sector hexes
-  - **Repair Component**: Automated hull repair and maintenance field generator
-  - **Sensors Component**: Short-range and long-range sensor detection for visibility
+## Status
 
-### Special Abilities (7 total)
-- **Adaptive Forcefield**: Temporarily boosts defensive damage mitigation
-- **Capture Unit**: Boarding action by Marines to commandeer enemy vessels
-- **Cluster Warhead**: High-impact area explosion across targeted hexes
-- **Designate Target**: Marks target unit to increase fleet attack accuracy
-- **Ion Bolt**: Disables targeted enemy systems and sub-FTL engines
-- **Missile Batteries**: Launches long-range tactical missile salvos
-- **Repair Cloud**: Emits a nanite cloud that repairs adjacent friendly units
+**Wormhole Control is an active prototype.** The game supports single-machine hot-seat multiplayer for 2 to 6 players. Non-human AI players are currently in development — when configured in the New Game Wizard, AI player turns automatically end after a brief pause.
 
-### Celestial Objects
-- **Stars**: Various types (G-Type, Red Dwarf, White Dwarf, Neutron Star, Pulsar, Black Hole, etc.) with star-harvesting multipliers
-- **Planets**: Nine planet types (Terran, Desert, Volcanic, Ice, Barren, Ferrous, Greenhouse, Oceanic, Gas Giant)
-- **Colonizable Bodies**: Planets, Moons, Asteroids (Metal source)
-- **Space Phenomena**: Nebulae, Storms (Plasma, Magnetic, Radiation), Comets (Crystal source), Asteroid Fields, Debris Fields
-
-### Advanced Subsystems
-- **Unit Designer**: Custom unit design GUI with dynamic hull cost calculation, component scaling, and template serialization
-- **Save & Load System**: Full game state persistence to JSON with save management
-- **Fog of War & Visibility**: Dynamic sensor-based visibility mapping across sector hexes and galaxy views
-- **Experience System**: Units gain XP through combat and actions, boosting stats up to rank caps
-- **Complex Orders System**: Queue sublight move, hex jump, wormhole jump, harvest, transfer, repair, minefield, and ability orders
-
-## Installation & Requirements
-
-### Dependencies
-- **Python 3.8+**
-- **pygame-ce**: Core game engine
-- **pygame_gui**: User interface framework
-
-#### Install dependencies:
-```bash
-pip install pygame-ce pygame_gui
-```
-
-## Game Controls & Interface
-- Graphics are deliberately simple and icon-based, resembling a Combat Information System (CIC) interface on a bridge of a command battleship
-
-### View Navigation
-- **Galaxy View**: Overview of all star systems and wormhole connections
-- **System View**: Hexagonal grid showing all sectors within a star system
-- **Sector View**: Detailed view of individual sector with celestial bodies and units
-
-### Unit Management
-- **Selection**: Click to select units and objects
-- **Multiple Selection**: Drag selection box or Ctrl+click
-- **Context Menus**: Right-click for available actions and special abilities
-- **Order Queue**: View and manage pending unit orders
-- **Unit Editor**: Access the Unit Designer to create and save custom ship templates
-
-### Turn System
-- **End Turn**: Process all player actions and advance to next player
-- **Resource Display**: Real-time tracking of Credits, Metal, Crystal, Antimatter
-- **Player Indicator**: Visual display of current player and team color
-
-## Project Structure
-
-```
-Wormhole Control/
-├── game.py                   # Central game loop facade and delegate controller
-├── game_logging.py           # Custom application logging formatter and logger bootstrap
-├── game_camera.py            # Sector view camera math and smooth zoom/pan controller
-├── economy.py                # Credit income and fleet upkeep calculation functions
-├── game_setup.py             # Game state bootstrap and starting fleet setup
-├── game_actions/             # GUI action dispatch package
-│   ├── app_actions.py        # Menu, navigation, persistence, and application handlers
-│   ├── unit_actions.py       # Unit orders, stances, abilities, carrier wings, and inhibitor toggle handlers
-│   └── selection_actions.py  # Object selections and sidebar tab switch handlers
-├── entities.py               # Game objects (Player, Units, Celestial Bodies, Stations)
-├── galaxy.py                 # Galaxy generation and star system topology
-├── gui/                      # User interface management package
-│   ├── __init__.py           # Package re-exports for GUI_Handler facade
-│   ├── handler.py            # GUI_Handler orchestrator, state fields, view transitions, and delegates
-│   ├── theme_loader.py       # Scaled theme loading and font preloading
-│   ├── layout_main_menu.py   # Main menu and About screen layout builders
-│   ├── layout_ingame_menu.py # Pause menu and load game dialog builders
-│   ├── layout_hud.py         # Top bar, resource labels, turn display, and HUD update functions
-│   ├── text_layout.py        # Text wrapping and measurement utilities
-│   ├── context_menu.py       # Right-click context menu construction, hit testing, and submenu stack
-│   ├── event_router.py       # Event router, precedence dispatching, and action payload generation
-│   ├── dynamic_actions.py    # Sidebar dynamic button and dropdown action payload builders
-│   ├── sidebar/              # Sidebar UI sub-package (data payload builders and view rendering)
-│   │   ├── __init__.py       # Package re-exports for sidebar payload builders
-│   │   ├── builder.py        # Sidebar data payload orchestrator
-│   │   ├── order_formatting.py # HTML order-text formatters for UI order queues
-│   │   ├── panels_world.py   # System, Hex, Celestial Body, and Minefield panel builders
-│   │   ├── panels_unit.py    # Unit panel, tabs, and component dropdown builders
-│   │   └── view.py           # Dynamic sidebar element widget factory and section expansion state
-│   └── unit_editor_gui/      # Unit Designer GUI sub-package
-│       ├── __init__.py       # Package re-exports for UnitEditorWindow
-│       ├── window.py         # UnitEditorWindow class definition and facade delegates
-│       ├── catalog.py        # Component catalogue, option lists, and descriptions
-│       ├── widget_factory.py # UI widget construction helper functions
-│       ├── layout.py         # UI layout orchestrator and column 1/2/4 builders
-│       ├── layout_details.py # Column 3 dynamic component detail controls
-│       ├── event_handlers.py # Pygame GUI event handling and dispatch logic
-│       ├── param_readers.py  # Parameter input parsing functions
-│       ├── cost_model.py     # Hull capacity calculations and capacity bar drawing
-│       ├── component_state.py# Component selection, toggling, and restriction logic
-│       ├── turret_editor.py  # Turret list management and widget building
-│       ├── template_io.py    # Template saving, loading, deletion, and widget sync
-│       └── summary_view.py   # Design summary HTML box formatting
-├── input_processor.py        # Input handling and mouse/keyboard event processing
-├── turn_processor.py         # Turn-based game logic and resolution engine
-├── custom_unit_templates.py  # Runtime custom ship template manager and dynamic cost scaling
-├── save_manager.py           # Game state serialization, save, and load manager
-├── visibility.py             # Fog of War and sensor range visibility algorithms
-├── events.py                 # Central event bus and game event definitions
-├── unit_components/          # Modular unit component package
-│   ├── base.py               # UnitComponent base class
-│   ├── engines.py            # Engine and sublight components
-│   ├── hyperdrive.py         # Hyperdrive components
-│   ├── weapons.py            # Weapon components and turret definitions
-│   ├── defenses.py           # Defense and shield components
-│   ├── sensors.py            # Sensor range components
-│   ├── hangar.py             # Ship hangar and strikecraft bay components
-│   ├── abilities/            # Unit special abilities subpackage
-│   └── ...                   # Additional components (Mining, Antimatter, Repair, Marines, Minelayer)
-├── unit_orders/             # Unit command and order execution subpackage
-├── unit_templates.py         # Baseline predefined unit configurations
-├── constants.py              # Game constants, enums, colors, and resolution configuration
-├── geometry.py               # Vector2D and Position mathematical utilities
-├── hexgrid_utils.py          # Hexagonal grid math and coordinate utilities
-├── pathfinding.py            # Navigation and pathfinding algorithms
-├── renderer.py               # Graphics rendering controller
-├── sector_utils.py           # Sector-specific rendering and coordinate utilities
-├── utils.py                  # General utility functions
-├── theme.json                # UI visual theme configuration
-└── rendering/                # Specialized rendering modules
-    ├── drawing_utils.py      # Basic shape and overlay drawing utilities
-    ├── galaxy_renderer.py    # Galaxy view rendering (systems and wormholes)
-    ├── main_menu_renderer.py # Main menu view rendering (titles, buttons, and about screen)
-    ├── sector_renderer/      # Sector view rendering package
-    │   ├── __init__.py                # Package exports (SectorViewRenderer facade & sub-renderers)
-    │   ├── sector_renderer.py         # Sector view orchestrator facade delegating to sub-renderers
-    │   ├── sector_grid_renderer.py    # Tactical grid, sector boundary, and spatial clipping math
-    │   ├── sector_celestial_renderer.py # Stars, planets, moons, nebulae, storms, and particle fields
-    │   ├── sector_entity_renderer.py   # Units, hull icons, health bars, minefields, and inhibition fields
-    │   └── sector_overlay_renderer.py  # Selection brackets/box, range circles, order lines, and fog of war
-    └── system_renderer.py    # System view rendering (hex grid and celestial bodies)
-```
-
-## Game Mechanics
-
-### Movement System
-- **Sublight Travel**: Move within sectors using engines
-- **Hex Jumps**: Jump between sectors using basic hyperdrive
-- **Wormhole Travel**: Inter-system jumps through wormholes via advanced hyperdrive
-- **Hyperspace Inhibition**: Prevent enemy jumps with inhibitor fields
-
-### Resource Economy
-- **Credits**: Primary currency for transactions and upkeep
-- **Metal**: Harvested from asteroids, used for construction
-- **Crystal**: Harvested from comets, used for advanced technology
-- **Antimatter**: Powers sub-light engines, hyperdrive jumps, and special abilities.
-  Only units with the **Antimatter Harvester** component can generate new antimatter,
-  and only while stationed near a star. All other units must be resupplied by
-  transferring antimatter from another unit's storage.
-
-### Combat & Warfare
-- **Hull Points**: Unit durability based on hull size and component choices
-- **Weapon Systems**: Dynamic range, fire rate, and damage scaling
-- **Boarding Actions**: Commandeer enemy vessels using Marines
-- **Minefields**: Tactical sector hex area denial
+---
 
 ## Getting Started
 
-1. **Install Python 3.8+** and the required dependencies
-2. **Run the game** with `python game.py`
-3. **Click "New Game"** to start a new campaign
-4. **Explore the interface** by navigating between galaxy, system, and sector views
-5. **Select units** and give them orders using the context menu system
-6. **Design custom units** in the Unit Designer window
-7. **Manage resources** and expand your empire across the galaxy
+### Requirements
+- **Python 3.9+** (Verified working on Python 3.14.3)
+- **pygame-ce** (Verified working on 2.5.7)
+- **pygame_gui** (Verified working on 0.6.14)
+
+### Installation & Launch
+
+1. **Install dependencies:**
+   ```bash
+   pip install pygame-ce pygame_gui
+   ```
+
+2. **Launch the game:**
+   ```bash
+   python game.py
+   ```
+
+3. **Start a campaign:**
+   - Click **New Game** to open the **New Game Wizard**.
+   - Configure player count (2–6), custom names, faction colors, and human/AI status.
+   - Adjust galaxy generation parameters (system count, radius, wormhole connectivity) and starting economies.
+   - Click **Start Game** to generate the galaxy and begin turn 1.
+
+---
+
+## Controls
+
+| Input | Action |
+|---|---|
+| **Left Click** | Select unit, celestial body, or destination target |
+| **Shift + Left Click** | Add / remove unit from multi-unit selection |
+| **Left Drag** | Draw selection box to select multiple units |
+| **Right Click** | Open contextual action menu or issue direct unit command |
+| **Middle Mouse Drag** | Pan tactical camera |
+| **Mouse Wheel** | Zoom camera in / out |
+| **G** | Switch to **Galaxy View** |
+| **S** | Switch to **System View** |
+| **E** | **End Turn** (process actions and advance to next player) |
+| **ESC** | Open In-Game Menu / Cancel targeting mode / Deselect |
+| **Arrow Keys** | Pan tactical camera |
+
+---
+
+## The Three Views
+
+Wormhole Control organizes space into three interconnected strategic perspectives:
+
+- **Galaxy View (`G`)**: Strategic overview of the known galaxy showing all star systems, player territory, and wormhole conduits connecting distant systems.
+- **System View (`S`)**: System-level hex map showing orbital sectors radiating outward from the central star, along with celestial bodies, jump routes, and sector-level fog of war.
+- **Sector View**: Tactical in-sector view providing a granular look at celestial objects, orbital structures, individual starships, weapon range circles, minefields, and real-time movement trajectories.
+
+The **Top HUD Bar** tracks Credits, Metal, Crystal, the current turn number, and active player indicator with faction-themed panel coloring. The **Collapsible Sidebar** provides detailed inspectors for selected objects, order queues, component statuses, and actionable command buttons.
+
+---
+
+## Core Gameplay
+
+### Turns & Players
+Matches operate on a hot-seat turn sequence. At the start of a player's turn, movement orders execute, resource income and upkeep resolve, populations grow, and combat engagements are calculated. When finished issuing commands, press **`E`** or click **End Turn** on the HUD to advance.
+
+### Resource Economy
+- **Credits**: General empire treasury generated from colonized populations and civilian habitats. Credits fund ship construction, space installations, and ongoing fleet upkeep.
+- **Metal**: Industrial mineral extracted from metal asteroids by mining ships. Refined at Metal Refineries to construct ship hulls and orbital infrastructure.
+- **Crystal**: Rare energy crystalline mineral harvested from comets. Refined at Crystal Refineries to build advanced sensors, weapons, and hyperdrives.
+- **Antimatter**: High-energy fuel stored in per-unit storage tanks. Powers sublight engine burn, hyperdrive jumps, cloaking fields, and special abilities. Antimatter can be gathered by **Antimatter Harvester** ships stationed near stars and transferred between ships in fleet formations.
+
+### Movement & FTL
+- **Sublight Propulsion**: Standard thruster movement within a sector hex powered by engines and antimatter.
+- **Hex Jumps**: Short-range hyperdrive jumps between adjacent sectors within the same star system (requires **Basic Hyperdrive**).
+- **Wormhole Traversal**: Long-range inter-system travel through natural spacetime wormholes (requires **Advanced Hyperdrive**).
+- **Tactical Microjumps**: Instant short-distance teleportation via special ability to bypass hazards or reposition in combat.
+- **Hyperspace Inhibition**: Dedicated inhibitor ships project interdiction fields that prevent enemy vessels from entering or exiting hyperspace within their radius.
+
+### Combat & Warfare
+- **Hull Durability & Defenses**: Ships feature customizable Armor, Rechargeable Shields, and Point Defense (PD) systems to mitigate incoming damage.
+- **Weapon Systems**: Mount Mass Driver (kinetic), Beam (instant laser), or Missile (guided payload) turrets across Standard, Anti-Strikecraft, and Long-Range variants.
+- **Unit Stances**: Configure automated engagement behavior (Do Nothing, Attack in Weapon Range, Attack in Sector, Attack in Jump Range, or Attack in System).
+- **Combat Experience (XP)**: Units gain experience from battle, ranking up to boost weapon damage, defensive ratings, sublight speed, and hyperdrive jump ranges.
+- **Boarding Actions**: Deploy specialized Marine strike teams to breach and capture enemy vessels.
+- **Minefields**: Minelayers can deploy Anti-Ship and Anti-Strikecraft minefields for tactical area denial.
+- **Strikecraft Wings**: Carriers deploy Fighter wings (air superiority / point defense) and Bomber wings (heavy anti-ship strikes).
+
+### Detection & Intel
+- **Sensor Horizons**: Ships and stations project short-range visual circles and long-range inter-sector sensor detection.
+- **Fog of War & Sector Intel**: Unexplored regions remain hidden; explored sectors remember last-seen turn intel until refreshed by active sensors.
+- **Cloaking Devices**: Active cloaking fields hide ships from enemy inter-sector long-range sensors at the cost of continuous antimatter consumption.
+
+### Expansion & Infrastructure
+- **Colonization**: Dispatch colony ships to settle habitable planets, moons, and colonizable asteroids to grow population and tax revenues.
+- **Automated Logistics**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled.
+- **Orbital Construction**: Constructors assemble orbital defense platforms, shipyards, refineries, and stations.
+- **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses (+50 credits/turn).
+
+---
+
+## Ship Design
+
+Access the **Unit Designer** from the main menu or the in-game menu to build and customize starship templates:
+
+- **Hull Sizing**: Choose from 6 hull classes (`STRIKECRAFT_WING`, `TINY`, `SMALL`, `MEDIUM`, `LARGE`, `HUGE`), each offering distinct capacity budgets, baseline hit points, and construction costs.
+- **Dynamic & Fixed Components**: Tune sublight engines, hyperdrives, turrets, and defense ratings with dynamically scaling hull costs, or install fixed utility modules like refineries, colony pods, and hangars.
+- **Special Abilities**: Equip up to 9 specialized abilities, including *Adaptive Forcefields*, *Cluster Warheads*, *Designate Target*, *Ion Bolts*, *Missile Batteries*, *Repair Clouds*, *Capture Unit*, *Drain Antimatter*, and *Microjumps*.
+- **Persistence**: Saved designs are stored in `data/custom_unit_templates.json` and immediately become available for construction in active shipyards.
+
+> For complete component hull costs, stat scaling formulas, and ability tables, consult the [Reference Manual](docs/REFERENCE.md).
+
+---
+
+## Saving & Loading
+
+- **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory.
+- **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match.
+
+---
+
+## Development & Testing
+
+### Automated Test Suite
+Wormhole Control includes a comprehensive automated test suite consisting of **545 tests across 55 test modules** covering economy, combat, movement, AI logic, order trees, and GUI handlers:
+
+```bash
+python -m pytest
+```
+
+Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests`).
+
+### Configuration & Data Files
+- `data/`: Contains JSON files for unit templates, custom designs, spawn rates, and star name generators.
+- `constants.py`: Central repository for game tuning constants, colors, and resolution definitions.
+- **Environment Flags**:
+  - `WORMHOLE_FULLSCREEN=1`: Forces full-screen display mode.
+
+> For the full repository file tree and architecture breakdown, see the [Reference Manual](docs/REFERENCE.md).
+
+---
 
 ## License
 
-All content and source code for this game are subject to the terms of the MIT License.
+This project is licensed under the terms of the MIT License. See the [LICENSE](LICENSE) file for details.
