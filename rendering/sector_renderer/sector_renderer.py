@@ -463,4 +463,5 @@ class SectorViewRenderer:
                         external_units_with_orders_to_this_sector.append(candidate_unit)
 
         self._draw_sector_view_order_lines_from_other_sectors(external_units_with_orders_to_this_sector)
+        self.overlay_renderer.draw_targeting_mode_overlay()
         self._update_zoom_render_stats()

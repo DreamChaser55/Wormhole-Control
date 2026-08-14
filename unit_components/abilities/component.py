@@ -56,14 +56,37 @@ class AbilityComponent(UnitComponent):
             'height': 28,
         }]
 
-        # Show Ion Bolt / Designate Target targeting-mode indicator
-        if game_state.pending_ability:
-            pending_name = game_state.pending_ability[0].replace('_', ' ').title()
+        # Show targeting-mode guidance indicator
+        pending = getattr(game_state, 'pending_ability', None)
+        if pending and isinstance(pending, (tuple, list)) and len(pending) > 0 and isinstance(pending[0], str):
+            ability_info = pending
+            pending_name = ability_info[0].replace('_', ' ').title()
+            req_unit = ability_info[1] if len(ability_info) > 1 else False
+            req_pos = ability_info[2] if len(ability_info) > 2 else False
+
             data.append({
                 'type': 'label',
-                'text': f"\u25b6 Select target for: {pending_name}",
+                'text': f"\u25b6 TARGETING: {pending_name}",
                 'object_id': '#sidebar_hit_points_light_damage_label',
                 'height': 22,
+            })
+            if req_unit:
+                instruction = "Right-Click target unit to cast"
+            elif req_pos:
+                instruction = "Right-Click target location to cast"
+            else:
+                instruction = "Right-Click to cast"
+            data.append({
+                'type': 'label',
+                'text': f"  {instruction}",
+                'object_id': '#sidebar_info_label',
+                'height': 20,
+            })
+            data.append({
+                'type': 'label',
+                'text': "  (Press ESC to cancel)",
+                'object_id': '#sidebar_info_label',
+                'height': 18,
             })
 
         for ability_type, instance in self.abilities.items():

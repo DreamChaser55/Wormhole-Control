@@ -45,6 +45,32 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
     owner_name_style_id = f'#player_{owner_name.lower().replace(" ", "_")}_label'
     data.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_name_style_id, 'height': 25})
 
+    # --- Targeting Mode Banner (if active) ---
+    pending = getattr(game, 'pending_ability', None)
+    if pending and isinstance(pending, (tuple, list)) and len(pending) > 0 and isinstance(pending[0], str):
+        pending_name = pending[0].replace('_', ' ').title()
+        req_unit = pending[1] if len(pending) > 1 else False
+        req_pos = pending[2] if len(pending) > 2 else False
+
+        data.append({
+            'type': 'label',
+            'text': f"\u25b6 TARGETING: {pending_name}",
+            'object_id': '#sidebar_hit_points_light_damage_label',
+            'height': 24
+        })
+        if req_unit:
+            instruction = "Right-Click target unit to cast"
+        elif req_pos:
+            instruction = "Right-Click target location to cast"
+        else:
+            instruction = "Right-Click to cast"
+        data.append({
+            'type': 'label',
+            'text': f"{instruction} (ESC to cancel)",
+            'object_id': '#sidebar_info_label',
+            'height': 20
+        })
+
     # --- Tab Buttons ---
     active_tab = getattr(game, 'selected_unit_tab', 'basic_info')
     basic_label = "[ Basic Info ]" if active_tab == 'basic_info' else "Basic Info"

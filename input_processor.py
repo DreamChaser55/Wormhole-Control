@@ -334,44 +334,55 @@ class InputProcessor:
         shift_pressed = pygame.key.get_mods() & pygame.KMOD_SHIFT
 
         # --- Pending Ability Targeting Mode ---
-        # If an ability awaiting a target is pending, intercept the next right-click
-        if self.game.pending_ability and is_right_click:
-            ability_type_str, requires_unit, requires_pos = self.game.pending_ability
+        # If an ability awaiting a target is pending, intercept clicks in sector view
+        pending = getattr(self.game, 'pending_ability', None)
+        if pending and isinstance(pending, (tuple, list)) and len(pending) > 0 and isinstance(pending[0], str) and self.game.view_mode == 'sector':
+            ability_type_str = pending[0]
+            requires_unit = pending[1] if len(pending) > 1 else False
+            requires_pos = pending[2] if len(pending) > 2 else False
             selected_units = [u for u in self.game.selected_objects if isinstance(u, Unit)]
 
-            if self.game.view_mode == 'sector' and selected_units:
+            if selected_units:
                 clicked_object = self.game.sector_view_mouse_hover_object
                 clicked_sector_coord = pixels_to_sector_coords(position, self.game.sector_zoom, self.game.sector_pan_offset)
 
-                if requires_unit and isinstance(clicked_object, Unit):
-                    # Complete unit-targeted ability
-                    self.game.event_bus.publish(UseAbilityEvent(
-                        units=selected_units,
-                        ability_type_str=ability_type_str,
-                        target_unit=clicked_object,
-                        shift_pressed=shift_pressed,
-                    ))
-                    logger.debug(f"Ability {ability_type_str} targeted at unit {clicked_object.name}.")
-                    self.game.pending_ability = None
-                    self.game.sidebar_needs_update = True
-                    return  # Consume the click
+                if is_right_click:
+                    if requires_unit and isinstance(clicked_object, Unit):
+                        # Complete unit-targeted ability
+                        self.game.event_bus.publish(UseAbilityEvent(
+                            units=selected_units,
+                            ability_type_str=ability_type_str,
+                            target_unit=clicked_object,
+                            shift_pressed=shift_pressed,
+                        ))
+                        logger.debug(f"Ability {ability_type_str} targeted at unit {clicked_object.name}.")
+                        self.game.pending_ability = None
+                        self.game.sidebar_needs_update = True
+                        return  # Consume the click
 
-                elif requires_pos and not isinstance(clicked_object, Unit):
-                    # Complete position-targeted ability (clicking on empty space / non-unit)
-                    self.game.event_bus.publish(UseAbilityEvent(
-                        units=selected_units,
-                        ability_type_str=ability_type_str,
-                        target_position=clicked_sector_coord,
-                        target_system_name=self.game.current_system_name,
-                        target_hex_coord=self.game.current_sector_coord,
-                        shift_pressed=shift_pressed,
-                    ))
-                    logger.debug(f"Ability {ability_type_str} targeted at position {clicked_sector_coord}.")
-                    self.game.pending_ability = None
-                    self.game.sidebar_needs_update = True
-                    return  # Consume the click
+                    elif requires_pos and not isinstance(clicked_object, Unit):
+                        # Complete position-targeted ability (clicking on empty space / non-unit)
+                        self.game.event_bus.publish(UseAbilityEvent(
+                            units=selected_units,
+                            ability_type_str=ability_type_str,
+                            target_position=clicked_sector_coord,
+                            target_system_name=self.game.current_system_name,
+                            target_hex_coord=self.game.current_sector_coord,
+                            shift_pressed=shift_pressed,
+                        ))
+                        logger.debug(f"Ability {ability_type_str} targeted at position {clicked_sector_coord}.")
+                        self.game.pending_ability = None
+                        self.game.sidebar_needs_update = True
+                        return  # Consume the click
 
-            # Wrong view or wrong target type — don't consume; let normal handling proceed
+                    elif requires_unit and not isinstance(clicked_object, Unit):
+                        logger.debug(f"Ability {ability_type_str} requires a unit target. Right-click on a unit or press ESC to cancel.")
+                        return  # Consume to prevent opening unwanted context menus
+
+                elif is_left_click:
+                    # Protect unit selection from accidental left-clicks while in targeting mode
+                    logger.debug(f"Left-click ignored during targeting mode for {ability_type_str}. Right-click the target to cast, or press ESC to cancel.")
+                    return  # Consume the click to prevent deselecting or changing selection
 
         if self.game.view_mode == 'galaxy':
             clicked_system_name = self.game.galaxy_view_mouse_hover_system_name

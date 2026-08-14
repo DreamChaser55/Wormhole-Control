@@ -4,7 +4,8 @@ from constants import (
     SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL,
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
     MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED,
-    FOG_OF_WAR_COLOR, XP_SPEED_BONUS
+    FOG_OF_WAR_COLOR, XP_SPEED_BONUS,
+    TOP_BAR_HEIGHT, INFO_BOX_WIDTH, TEXT_SCALE
 )
 from geometry import distance, Position
 from entities import Unit, OrderType
@@ -664,3 +665,103 @@ class SectorOverlayRenderer:
                 if unit.engines_component:
                     effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
                     self.draw_path_turn_notches_for_segment(segment, connect_to_unit, unit.position, effective_speed)
+
+    def draw_targeting_mode_overlay(self) -> None:
+        """Renders on-screen guidance banner and cursor/hover target visual cues
+        when an ability targeting mode is active."""
+        pending = getattr(self.game, 'pending_ability', None)
+        if not pending or not isinstance(pending, (tuple, list)) or len(pending) == 0:
+            return
+
+        ability_type_str = pending[0]
+        if not isinstance(ability_type_str, str):
+            return
+
+        req_unit = pending[1] if len(pending) > 1 else False
+        req_pos = pending[2] if len(pending) > 2 else False
+
+        pending_name = ability_type_str.replace('_', ' ').title()
+        if req_unit:
+            guidance_text = f"TARGETING: {pending_name.upper()}  —  Right-Click target unit to cast (ESC to cancel)"
+        elif req_pos:
+            guidance_text = f"TARGETING: {pending_name.upper()}  —  Right-Click target location to cast (ESC to cancel)"
+        else:
+            guidance_text = f"TARGETING: {pending_name.upper()}  —  Right-Click to cast (ESC to cancel)"
+
+        # 1. Draw top-center HUD targeting banner
+        font_size = max(13, int(15 * TEXT_SCALE))
+        if font_size not in self.parent._font_cache:
+            self.parent._font_cache[font_size] = _sr().pygame.font.Font(None, font_size)
+        banner_font = self.parent._font_cache[font_size]
+
+        text_surf = banner_font.render(guidance_text, True, (255, 230, 100))
+        text_rect = text_surf.get_rect()
+
+        screen_w = self.screen.get_width()
+        if not isinstance(screen_w, (int, float)):
+            screen_w = 1280
+        screen_h = self.screen.get_height()
+        if not isinstance(screen_h, (int, float)):
+            screen_h = 720
+
+        banner_w = text_rect.width + 30
+        banner_h = text_rect.height + 12
+        banner_x = int((screen_w - INFO_BOX_WIDTH - banner_w) // 2)
+        banner_y = int(TOP_BAR_HEIGHT + 10)
+
+        banner_rect = _sr().pygame.Rect(banner_x, banner_y, banner_w, banner_h)
+        banner_surf = _sr().pygame.Surface((banner_w, banner_h), _sr().pygame.SRCALPHA)
+        banner_surf.fill((15, 25, 45, 230))
+        _sr().pygame.draw.rect(banner_surf, (255, 200, 50, 255), banner_surf.get_rect(), 2, border_radius=4)
+
+        self.overlay_surface.blit(banner_surf, (banner_x, banner_y))
+        text_rect.center = banner_rect.center
+        self.overlay_surface.blit(text_surf, text_rect)
+
+        # 2. Draw Hover Guidance / Reticle
+        hovered_obj = getattr(self.game, 'sector_view_mouse_hover_object', None)
+        mouse_pos = _sr().pygame.mouse.get_pos()
+        if not isinstance(mouse_pos, (tuple, list)) or len(mouse_pos) < 2 or not isinstance(mouse_pos[0], (int, float)):
+            mouse_pos = (0, 0)
+
+        tip_font_size = max(11, int(13 * TEXT_SCALE))
+        if tip_font_size not in self.parent._font_cache:
+            self.parent._font_cache[tip_font_size] = _sr().pygame.font.Font(None, tip_font_size)
+        tip_font = self.parent._font_cache[tip_font_size]
+
+        if req_unit:
+            if isinstance(hovered_obj, Unit):
+                unit_px = self.parent._coords_to_pixels(hovered_obj.position)
+                _sr().pygame.draw.circle(self.overlay_surface, (255, 80, 80), (int(unit_px.x), int(unit_px.y)), 18, 2)
+                _sr().pygame.draw.line(self.overlay_surface, (255, 80, 80), (int(unit_px.x) - 24, int(unit_px.y)), (int(unit_px.x) + 24, int(unit_px.y)), 1)
+                _sr().pygame.draw.line(self.overlay_surface, (255, 80, 80), (int(unit_px.x), int(unit_px.y) - 24), (int(unit_px.x), int(unit_px.y) + 24), 1)
+
+                tip_str = f"Right-Click to cast {pending_name} on {hovered_obj.name}"
+                tip_color = (120, 255, 120)
+            else:
+                tip_str = f"Right-Click a unit to cast {pending_name}"
+                tip_color = (255, 200, 100)
+        elif req_pos:
+            tip_str = f"Right-Click to cast {pending_name} at position"
+            tip_color = (120, 255, 120)
+        else:
+            tip_str = f"Right-Click to cast {pending_name}"
+            tip_color = (120, 255, 120)
+
+        # Draw tooltip near mouse pointer when inside sector viewport
+        if mouse_pos[0] < screen_w - INFO_BOX_WIDTH and mouse_pos[1] > TOP_BAR_HEIGHT:
+            tip_surf = tip_font.render(tip_str, True, tip_color)
+            tip_bg = _sr().pygame.Surface((tip_surf.get_width() + 10, tip_surf.get_height() + 6), _sr().pygame.SRCALPHA)
+            tip_bg.fill((10, 15, 25, 200))
+            _sr().pygame.draw.rect(tip_bg, tip_color, tip_bg.get_rect(), 1, border_radius=3)
+
+            tip_x = int(mouse_pos[0] + 15)
+            tip_y = int(mouse_pos[1] + 15)
+            if tip_x + tip_bg.get_width() > screen_w - INFO_BOX_WIDTH:
+                tip_x = int(mouse_pos[0] - tip_bg.get_width() - 10)
+            if tip_y + tip_bg.get_height() > screen_h - TOP_BAR_HEIGHT:
+                tip_y = int(mouse_pos[1] - tip_bg.get_height() - 10)
+
+            self.overlay_surface.blit(tip_bg, (tip_x, tip_y))
+            self.overlay_surface.blit(tip_surf, (tip_x + 5, tip_y + 3))
+
