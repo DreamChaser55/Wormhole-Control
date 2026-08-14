@@ -41,7 +41,6 @@ def test_custom_unit_template_total_hull_cost_and_validation():
         antimatter_capacity=150.0,  # ceil(150/20) = 8 hull cost
     )
     template = CustomUnitTemplate(
-        design_name="AM_TEST",
         display_name="AM Test Ship",
         hull_size=HullSize.MEDIUM,  # capacity 50
         components=comp,
@@ -68,7 +67,7 @@ def test_hull_dependent_min_antimatter_capacity():
 
     # Validation test on HUGE hull size (min cap 200.0)
     huge_comp = ComponentConfig(has_engine=True, engine_speed=100.0, has_antimatter_storage=True, antimatter_capacity=150.0)
-    huge_template = CustomUnitTemplate(design_name="HUGE_TEST", display_name="Huge Test", hull_size=HullSize.HUGE, components=huge_comp)
+    huge_template = CustomUnitTemplate(display_name="Huge Test", hull_size=HullSize.HUGE, components=huge_comp)
     errors = huge_template.validate()
     assert any("Antimatter storage capacity must be at least 200.0 for HUGE hull." in e for e in errors)
 
@@ -77,7 +76,7 @@ def test_hull_dependent_min_antimatter_capacity():
 
     # Validation test on TINY hull size (min cap 60.0)
     tiny_comp = ComponentConfig(has_engine=True, engine_speed=100.0, has_antimatter_storage=True, antimatter_capacity=50.0)
-    tiny_template = CustomUnitTemplate(design_name="TINY_TEST", display_name="Tiny Test", hull_size=HullSize.TINY, components=tiny_comp)
+    tiny_template = CustomUnitTemplate(display_name="Tiny Test", hull_size=HullSize.TINY, components=tiny_comp)
     errors = tiny_template.validate()
     assert any("Antimatter storage capacity must be at least 60.0 for TINY hull." in e for e in errors)
 
@@ -101,7 +100,6 @@ def test_custom_template_manager_serialization():
             antimatter_capacity=300.0,
         )
         template = CustomUnitTemplate(
-            design_name="AM_SER_TEST",
             display_name="AM Ser Test",
             hull_size=HullSize.LARGE,
             components=comp,
@@ -109,14 +107,14 @@ def test_custom_template_manager_serialization():
         errors = mgr.save_design(template)
         assert errors == []
 
-        loaded = mgr.get_design("AM_SER_TEST")
+        loaded = mgr.get_design("AM Ser Test")
         assert loaded is not None
         assert loaded.components.has_antimatter_storage is True
         assert loaded.components.antimatter_capacity == 300.0
         assert loaded.components.antimatter_hull_cost == 15
 
         # Check registered dict format
-        tdict = UNIT_TEMPLATES["AM_SER_TEST"]
+        tdict = UNIT_TEMPLATES["AM Ser Test"]
         assert tdict["has_antimatter_storage"] is True
         assert tdict["antimatter_capacity"] == 300.0
         assert tdict["antimatter_hull_cost"] == 15
@@ -165,7 +163,6 @@ def test_create_unit_from_template_custom_antimatter():
             antimatter_capacity=250.0,
         )
         template = CustomUnitTemplate(
-            design_name="AM_BUILD_TEST",
             display_name="AM Build Test",
             hull_size=HullSize.MEDIUM,
             components=comp,
@@ -177,7 +174,7 @@ def test_create_unit_from_template_custom_antimatter():
         galaxy.systems["Sol"].add_unit = lambda u: created_units.append(u)
 
         constructor.create_unit_from_template(
-            galaxy, "AM_BUILD_TEST", owner, "Sol", (0, 0), Position(0, 0)
+            galaxy, "AM Build Test", owner, "Sol", (0, 0), Position(0, 0)
         )
 
         assert len(created_units) == 1
@@ -230,7 +227,6 @@ def test_create_unit_from_template_disabled_antimatter():
             has_antimatter_storage=False,
         )
         template = CustomUnitTemplate(
-            design_name="NO_AM_TEST",
             display_name="No AM Test",
             hull_size=HullSize.MEDIUM,
             components=comp,
@@ -241,7 +237,7 @@ def test_create_unit_from_template_disabled_antimatter():
         galaxy.systems["Sol"].add_unit = lambda u: created_units.append(u)
 
         constructor.create_unit_from_template(
-            galaxy, "NO_AM_TEST", owner, "Sol", (0, 0), Position(0, 0)
+            galaxy, "No AM Test", owner, "Sol", (0, 0), Position(0, 0)
         )
 
         assert len(created_units) == 1

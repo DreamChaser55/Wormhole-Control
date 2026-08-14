@@ -90,9 +90,8 @@ class TestGUIModalDialogs(unittest.TestCase):
         tmp_mgr = CustomTemplateManager()
         editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
 
-        # Trying to save without design key should trigger warning modal
-        editor_win._name_entry.set_text("")
-        editor_win._display_entry.set_text("Display Name")
+        # Trying to save without display name should trigger warning modal
+        editor_win._display_entry.set_text("")
         res = do_save(editor_win)
         self.assertIsNone(res)
 
@@ -106,7 +105,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         """Test that clicking save button in unit editor spawns exactly 1 modal (no double-spawn)."""
         self.gui.open_unit_editor(self.game.custom_template_manager)
         editor = self.gui.unit_editor_window
-        editor._name_entry.set_text("")  # Invalid: no design key
+        editor._display_entry.set_text("")  # Invalid: no display name
 
         event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor._save_button})
         from gui import event_router

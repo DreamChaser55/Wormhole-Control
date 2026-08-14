@@ -107,7 +107,6 @@ def test_custom_unit_template_total_hull_cost():
         inhibitor_radius=100.0,  # 20 hull cost
     )
     tmpl = CustomUnitTemplate(
-        design_name="TEST_CARRIER",
         display_name="Test Carrier",
         hull_size=HullSize.LARGE,
         components=comp,

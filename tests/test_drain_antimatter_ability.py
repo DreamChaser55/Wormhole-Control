@@ -192,7 +192,6 @@ def test_drain_antimatter_fails_no_antimatter_target():
 def test_drain_antimatter_unit_editor_validation():
     # Design without Antimatter Storage equipping drain_antimatter should fail validation
     invalid_template = CustomUnitTemplate(
-        design_name="SIPHON_SHIP",
         display_name="Siphon Ship",
         hull_size=HullSize.MEDIUM,
         components=ComponentConfig(
@@ -207,7 +206,6 @@ def test_drain_antimatter_unit_editor_validation():
 
     # Valid design with Antimatter Storage
     valid_template = CustomUnitTemplate(
-        design_name="SIPHON_SHIP_VALID",
         display_name="Siphon Ship Valid",
         hull_size=HullSize.MEDIUM,
         components=ComponentConfig(

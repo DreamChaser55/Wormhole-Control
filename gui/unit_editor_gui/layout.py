@@ -53,30 +53,10 @@ def build_col1_config(
     editor._cap_bar_rect = pygame.Rect(editor._panel_rect.x + c1x, editor._panel_rect.y + c1y, c1w, bar_h)
     c1y += bar_h + pad
 
-    # Design Key
-    name_lbl = pygame_gui.elements.UILabel(
-        relative_rect=pygame.Rect(c1x, c1y, c1w, row_h),
-        text="Design Key (unique):",
-        manager=editor.manager,
-        container=editor._panel,
-        object_id="#editor_section_label",
-    )
-    editor._elements.append(name_lbl)
-    c1y += row_h + 2
-
-    editor._name_entry = pygame_gui.elements.UITextEntryLine(
-        relative_rect=pygame.Rect(c1x, c1y, c1w, entry_h),
-        manager=editor.manager,
-        container=editor._panel,
-        object_id="#editor_name_entry",
-    )
-    editor._elements.append(editor._name_entry)
-    c1y += entry_h + pad
-
     # Display Name
     display_lbl = pygame_gui.elements.UILabel(
         relative_rect=pygame.Rect(c1x, c1y, c1w, row_h),
-        text="Display Name:",
+        text="Display Name (unique):",
         manager=editor.manager,
         container=editor._panel,
         object_id="#editor_section_label",

@@ -1,5 +1,5 @@
 {
-  "TEST_DESIGN": {
+  "Test Design": {
     "name": "Test Design",
     "hull_size": "MEDIUM",
     "hull_points": 100,
@@ -81,7 +81,7 @@
     "cloaking_hull_cost": 0.0,
     "is_custom": true
   },
-  "SENSORSHIP": {
+  "Sensor Ship": {
     "name": "Sensor Ship",
     "hull_size": "MEDIUM",
     "hull_points": 100,
@@ -163,7 +163,7 @@
     "cloaking_hull_cost": 0.0,
     "is_custom": true
   },
-  "CLOAKEDSHIP": {
+  "Cloaked Ship": {
     "name": "Cloaked Ship",
     "hull_size": "MEDIUM",
     "hull_points": 100,
@@ -237,7 +237,7 @@
     "cloaking_hull_cost": 10.0,
     "is_custom": true
   },
-  "AMDRAINER": {
+  "amdrainer": {
     "name": "amdrainer",
     "hull_size": "MEDIUM",
     "hull_points": 100,
@@ -313,7 +313,7 @@
     "cloaking_hull_cost": 0.0,
     "is_custom": true
   },
-  "MINELAYERSHIP": {
+  "Minelayer Ship": {
     "name": "Minelayer Ship",
     "hull_size": "MEDIUM",
     "hull_points": 100,

@@ -52,13 +52,11 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
         editor: UnitEditorWindow instance.
         template (CustomUnitTemplate): Design template containing component configuration.
     """
-    editor._editing_key = template.design_name
+    editor._editing_name = template.display_name
     editor._hull_size = template.hull_size
     editor._comp = copy.deepcopy(template.components)
     editor._turrets = copy.deepcopy(template.components.turrets)
     editor._selected_abilities = set(template.components.abilities)
-    if editor._name_entry:
-        editor._name_entry.set_text(template.design_name)
     if editor._display_entry:
         editor._display_entry.set_text(template.display_name)
 
@@ -180,13 +178,7 @@ def _show_editor_modal(editor, title: str, message: str, window_type: str = "war
 
 def do_save(editor) -> typing.Optional[str]:
     """Saves current editor state as a template."""
-    key = editor._name_entry.get_text().strip() if editor._name_entry else ""
     display = editor._display_entry.get_text().strip() if editor._display_entry else ""
-    if not key:
-        msg = "Please enter a design key."
-        set_status(editor, f"⚠ {msg}", error=True)
-        _show_editor_modal(editor, "Design Key Required", msg, window_type="warning")
-        return None
     if not display:
         msg = "Please enter a display name."
         set_status(editor, f"⚠ {msg}", error=True)
@@ -209,20 +201,19 @@ def do_save(editor) -> typing.Optional[str]:
     editor._comp.abilities = list(editor._selected_abilities)
 
     template = CustomUnitTemplate(
-        design_name=key,
         display_name=display,
         hull_size=editor._hull_size,
         components=editor._comp,
     )
-    errors = editor.template_manager.save_design(template)
+    errors = editor.template_manager.save_design(template, original_name=editor._editing_name)
     if errors:
         error_msg = "<br>".join([f"• {e}" for e in errors])
         set_status(editor, " | ".join(errors), error=True)
         _show_editor_modal(editor, "Design Validation Failed", error_msg, window_type="warning")
         return None
 
-    editor._editing_key = template.design_name
-    set_status(editor, f"✔ Design '{template.design_name}' saved!", error=False)
+    editor._editing_name = template.display_name
+    set_status(editor, f"✔ Design '{template.display_name}' saved!", error=False)
     refresh_load_dropdown(editor)
     editor._update_summary()
     return "design_saved"
@@ -234,36 +225,36 @@ def do_delete(editor) -> typing.Optional[str]:
     Returns:
         typing.Optional[str]: 'design_deleted' if successful, or None if deletion failed.
     """
-    key = editor._editing_key
-    if not key:
-        key = editor._name_entry.get_text().strip() if editor._name_entry else ""
-    if not key:
+    name = editor._editing_name
+    if not name:
+        name = editor._display_entry.get_text().strip() if editor._display_entry else ""
+    if not name:
         msg = "No design selected to delete."
         set_status(editor, f"⚠ {msg}", error=True)
         _show_editor_modal(editor, "No Design Selected", msg, window_type="warning")
         return None
-    deleted = editor.template_manager.delete_design(key)
+    deleted = editor.template_manager.delete_design(name)
     if deleted:
-        set_status(editor, f"✖ Design '{key}' deleted.", error=False)
-        editor._editing_key = None
+        set_status(editor, f"✖ Design '{name}' deleted.", error=False)
+        editor._editing_name = None
         refresh_load_dropdown(editor)
         return "design_deleted"
     else:
-        msg = f"Design '{key}' not found."
+        msg = f"Design '{name}' not found."
         set_status(editor, f"⚠ {msg}", error=True)
         _show_editor_modal(editor, "Deletion Failed", msg, window_type="warning")
         return None
 
 
-def load_design(editor, key: str) -> None:
+def load_design(editor, display_name: str) -> None:
     """Loads a unit design template into the editor controls.
 
     Args:
-        key (str): Unique design name identifier to load.
+        display_name (str): Unique design display name identifier to load.
     """
-    template = editor.template_manager.get_design(key)
+    template = editor.template_manager.get_design(display_name)
     if not template:
         return
     sync_widgets_from_template(editor, template)
-    set_status(editor, f"Loaded design '{key}'.", error=False)
+    set_status(editor, f"Loaded design '{display_name}'.", error=False)
     refresh_load_dropdown(editor)

@@ -291,7 +291,6 @@ class TestCustomUnitTemplateHullCost:
     def _make(self, **comp_kwargs):
         comp = ComponentConfig(**comp_kwargs)
         return CustomUnitTemplate(
-            design_name="TEST",
             display_name="Test Ship",
             hull_size=HullSize.MEDIUM,
             components=comp,
@@ -307,8 +306,8 @@ class TestCustomUnitTemplateHullCost:
 
     def test_engine_hull_cost_scales_with_template_hull_size(self):
         comp = ComponentConfig(has_engine=True, engine_speed=100.0)
-        t_small = CustomUnitTemplate("S", "Small", HullSize.SMALL, comp)
-        t_huge = CustomUnitTemplate("H", "Huge", HullSize.HUGE, comp)
+        t_small = CustomUnitTemplate("Small", HullSize.SMALL, comp)
+        t_huge = CustomUnitTemplate("Huge", HullSize.HUGE, comp)
         assert t_small.engine_hull_cost == 4.0
         assert t_huge.engine_hull_cost == 10.0
         assert t_huge.total_hull_cost > t_small.total_hull_cost
@@ -319,8 +318,8 @@ class TestCustomUnitTemplateHullCost:
 
     def test_hyperdrive_hull_cost_scales_with_template_hull_size(self):
         comp = ComponentConfig(has_hyperdrive=True, hyperdrive_type="BASIC", hyperdrive_jump_range=5)
-        t_small = CustomUnitTemplate("S", "Small", HullSize.SMALL, comp)
-        t_huge = CustomUnitTemplate("H", "Huge", HullSize.HUGE, comp)
+        t_small = CustomUnitTemplate("Small", HullSize.SMALL, comp)
+        t_huge = CustomUnitTemplate("Huge", HullSize.HUGE, comp)
         assert t_small.hyperdrive_hull_cost == 3.2
         assert t_huge.hyperdrive_hull_cost == 8.0
         assert t_huge.total_hull_cost > t_small.total_hull_cost
@@ -365,7 +364,7 @@ class TestValidation:
             has_engine=True,
             engine_speed=100.0,
         )
-        t = CustomUnitTemplate("X", "X", HullSize.SMALL, comp)
+        t = CustomUnitTemplate("X", HullSize.SMALL, comp)
         errors = t.validate()
         assert any("jump range" in e.lower() for e in errors)
 
@@ -377,7 +376,7 @@ class TestValidation:
             has_engine=True,
             engine_speed=100.0,
         )
-        t = CustomUnitTemplate("X", "X", HullSize.SMALL, comp)
+        t = CustomUnitTemplate("X", HullSize.SMALL, comp)
         errors = t.validate()
         assert not any("jump range" in e.lower() for e in errors)
 

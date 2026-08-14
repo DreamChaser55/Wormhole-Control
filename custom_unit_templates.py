@@ -520,8 +520,7 @@ class ComponentConfig:
 @dataclasses.dataclass
 class CustomUnitTemplate:
     """A player-designed unit template."""
-    design_name: str          # Template key (unique, used as UNIT_TEMPLATES key)
-    display_name: str         # Human-readable name shown in-game
+    display_name: str         # Unique identifier and human-readable name shown in-game
     hull_size: HullSize
     components: ComponentConfig = dataclasses.field(default_factory=ComponentConfig)
 
@@ -599,8 +598,6 @@ class CustomUnitTemplate:
         An empty list means the design is valid.
         """
         errors: List[str] = []
-        if not self.design_name or not self.design_name.strip():
-            errors.append("Design name cannot be empty.")
         if not self.display_name or not self.display_name.strip():
             errors.append("Display name cannot be empty.")
         if self.is_over_capacity:
@@ -702,7 +699,7 @@ class CustomTemplateManager:
     """
     Manages player-created unit designs.
 
-    Designs are stored in self.designs (keyed by design_name).
+    Designs are stored in self.designs (keyed by display_name).
     When saved, designs are:
       1. Inserted into the global UNIT_TEMPLATES dict so that
          create_unit_from_template() works unchanged.
@@ -729,12 +726,12 @@ class CustomTemplateManager:
 
         for key, d in raw.items():
             try:
-                norm_key = key.strip().upper().replace(" ", "_")
-                template = self._dict_to_template(norm_key, d)
-                template.design_name = norm_key
-                self.designs[norm_key] = template
+                display_name = d.get("name", key).strip()
+                template = self._dict_to_template(display_name, d)
+                template.display_name = display_name
+                self.designs[display_name] = template
                 self._register_in_global(template)
-                logger.debug(f"[CustomTemplateManager] Loaded design '{norm_key}'")
+                logger.debug(f"[CustomTemplateManager] Loaded design '{display_name}'")
             except Exception as e:
                 logger.warning(f"[CustomTemplateManager] Failed to load design '{key}': {e}")
 
@@ -746,7 +743,7 @@ class CustomTemplateManager:
             # Ensure hull_size is stored as a string (JSON-serializable)
             if hasattr(d.get("hull_size"), "name"):
                 d["hull_size"] = d["hull_size"].name
-            raw[key] = d
+            raw[template.display_name] = d
         try:
             with open(_DATA_FILE, "w", encoding="utf-8") as f:
                 json.dump(raw, f, indent=2)
@@ -758,7 +755,7 @@ class CustomTemplateManager:
     # Design management
     # ------------------------------------------------------------------
 
-    def save_design(self, template: CustomUnitTemplate) -> List[str]:
+    def save_design(self, template: CustomUnitTemplate, original_name: Optional[str] = None) -> List[str]:
         """
         Validate and save a design.
 
@@ -768,29 +765,64 @@ class CustomTemplateManager:
         errors = template.validate()
         if errors:
             return errors
-        # Use uppercase, whitespace-stripped key
-        key = template.design_name.strip().upper().replace(" ", "_")
-        template.design_name = key
-        self.designs[key] = template
+
+        name = template.display_name.strip()
+        template.display_name = name
+
+        # Duplicate check: check against existing custom designs
+        from unit_templates import UNIT_TEMPLATES
+        orig_clean = original_name.strip().lower() if original_name and original_name.strip() else None
+
+        for existing_name in self.designs.keys():
+            if existing_name.lower() == name.lower():
+                if orig_clean is None or existing_name.lower() != orig_clean:
+                    errors.append(f"A unit template named '{name}' already exists.")
+                    return errors
+
+        # Check against built-in templates
+        for k, t in UNIT_TEMPLATES.items():
+            if not t.get("is_custom"):
+                built_in_name = t.get("name", k)
+                if k.lower() == name.lower() or built_in_name.lower() == name.lower():
+                    errors.append(f"A unit template named '{name}' already exists.")
+                    return errors
+
+        # If renaming an existing design, remove the old entry
+        if original_name and original_name.strip():
+            old_name = original_name.strip()
+            if old_name != name and old_name in self.designs:
+                del self.designs[old_name]
+                self._unregister_from_global(old_name)
+
+        self.designs[name] = template
         self._register_in_global(template)
         self.save_to_file()
-        logger.debug(f"[CustomTemplateManager] Design '{key}' saved.")
+        logger.debug(f"[CustomTemplateManager] Design '{name}' saved.")
         return []
 
-    def delete_design(self, design_name: str) -> bool:
+    def delete_design(self, display_name: str) -> bool:
         """Remove a design. Returns True if it existed."""
-        key = design_name.strip().upper().replace(" ", "_")
-        if key not in self.designs:
+        target_key = None
+        for k in self.designs.keys():
+            if k == display_name or k.lower() == display_name.strip().lower():
+                target_key = k
+                break
+        if not target_key:
             return False
-        del self.designs[key]
-        self._unregister_from_global(key)
+        del self.designs[target_key]
+        self._unregister_from_global(target_key)
         self.save_to_file()
-        logger.debug(f"[CustomTemplateManager] Design '{key}' deleted.")
+        logger.debug(f"[CustomTemplateManager] Design '{target_key}' deleted.")
         return True
 
-    def get_design(self, design_name: str) -> Optional[CustomUnitTemplate]:
-        key = design_name.strip().upper().replace(" ", "_")
-        return self.designs.get(key)
+    def get_design(self, display_name: str) -> Optional[CustomUnitTemplate]:
+        if display_name in self.designs:
+            return self.designs[display_name]
+        # Case-insensitive fallback
+        for k, v in self.designs.items():
+            if k.lower() == display_name.strip().lower():
+                return v
+        return None
 
     def list_design_names(self) -> List[str]:
         return list(self.designs.keys())
@@ -811,11 +843,11 @@ class CustomTemplateManager:
 
     def _register_in_global(self, template: CustomUnitTemplate) -> None:
         from unit_templates import UNIT_TEMPLATES
-        UNIT_TEMPLATES[template.design_name] = self._template_to_dict(template)
+        UNIT_TEMPLATES[template.display_name] = self._template_to_dict(template)
 
-    def _unregister_from_global(self, key: str) -> None:
+    def _unregister_from_global(self, display_name: str) -> None:
         from unit_templates import UNIT_TEMPLATES
-        UNIT_TEMPLATES.pop(key, None)
+        UNIT_TEMPLATES.pop(display_name, None)
 
     def _template_to_dict(self, template: CustomUnitTemplate) -> Dict[str, Any]:
         """Convert a CustomUnitTemplate to the unit_templates.json dict format.
@@ -1045,7 +1077,6 @@ class CustomTemplateManager:
 
 
         return CustomUnitTemplate(
-            design_name=key,
             display_name=d.get("name", key),
             hull_size=hull_size,
             components=comp,

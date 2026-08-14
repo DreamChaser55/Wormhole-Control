@@ -42,7 +42,7 @@ class TestCustomUnitTemplateValidation(unittest.TestCase):
     """Tests for CustomUnitTemplate.validate()."""
 
     def _make_valid(self, hull_size=HullSize.MEDIUM) -> CustomUnitTemplate:
-        t = CustomUnitTemplate("MY_SHIP", "My Ship", hull_size)
+        t = CustomUnitTemplate("My Ship", hull_size)
         t.components.has_engine = True
         return t
 
@@ -54,20 +54,20 @@ class TestCustomUnitTemplateValidation(unittest.TestCase):
         t = self._make_valid()
         self.assertEqual(t.validate(), [])
 
-    def test_empty_name_fails(self):
-        t = self._make_valid()
-        t.design_name = "   "
-        errors = t.validate()
-        self.assertTrue(any("Design name" in e for e in errors))
-
     def test_empty_display_name_fails(self):
         t = self._make_valid()
         t.display_name = ""
         errors = t.validate()
         self.assertTrue(any("Display name" in e for e in errors))
 
+    def test_whitespace_display_name_fails(self):
+        t = self._make_valid()
+        t.display_name = "   "
+        errors = t.validate()
+        self.assertTrue(any("Display name" in e for e in errors))
+
     def test_no_components_fails(self):
-        t = CustomUnitTemplate("EMPTY", "Empty", HullSize.MEDIUM)
+        t = CustomUnitTemplate("Empty", HullSize.MEDIUM)
         errors = t.validate()
         self.assertTrue(any("component" in e.lower() for e in errors))
 
@@ -197,8 +197,8 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
     def _fresh_manager(self) -> CustomTemplateManager:
         return CustomTemplateManager()
 
-    def _make_template(self, key="TEST_CRUISER", hull=HullSize.MEDIUM) -> CustomUnitTemplate:
-        t = CustomUnitTemplate(key, "Test Cruiser", hull)
+    def _make_template(self, name="Test Cruiser", hull=HullSize.MEDIUM) -> CustomUnitTemplate:
+        t = CustomUnitTemplate(name, hull)
         t.components.has_engine = True
         t.components.has_weapon_bays = True
         return t
@@ -208,21 +208,21 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         t = self._make_template()
         errs = mgr.save_design(t)
         self.assertEqual(errs, [])
-        self.assertIn("TEST_CRUISER", UNIT_TEMPLATES)
+        self.assertIn("Test Cruiser", UNIT_TEMPLATES)
 
     def test_saved_template_hull_size_is_enum(self):
         mgr = self._fresh_manager()
         mgr.save_design(self._make_template())
-        td = UNIT_TEMPLATES["TEST_CRUISER"]
+        td = UNIT_TEMPLATES["Test Cruiser"]
         self.assertIsInstance(td["hull_size"], HullSize)
 
     def test_delete_removes_from_unit_templates(self):
         mgr = self._fresh_manager()
         mgr.save_design(self._make_template())
-        self.assertIn("TEST_CRUISER", UNIT_TEMPLATES)
-        deleted = mgr.delete_design("TEST_CRUISER")
+        self.assertIn("Test Cruiser", UNIT_TEMPLATES)
+        deleted = mgr.delete_design("Test Cruiser")
         self.assertTrue(deleted)
-        self.assertNotIn("TEST_CRUISER", UNIT_TEMPLATES)
+        self.assertNotIn("Test Cruiser", UNIT_TEMPLATES)
 
     def test_persistence_round_trip(self):
         mgr1 = self._fresh_manager()
@@ -232,12 +232,12 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         mgr2 = self._fresh_manager()
         mgr2.load_from_file()
 
-        self.assertIn("TEST_CRUISER", mgr2.designs)
-        design = mgr2.designs["TEST_CRUISER"]
+        self.assertIn("Test Cruiser", mgr2.designs)
+        design = mgr2.designs["Test Cruiser"]
         self.assertEqual(design.hull_size, HullSize.MEDIUM)
         self.assertTrue(design.components.has_engine)
         self.assertTrue(design.components.has_weapon_bays)
-        self.assertIn("TEST_CRUISER", UNIT_TEMPLATES)
+        self.assertIn("Test Cruiser", UNIT_TEMPLATES)
 
     def test_persistence_hull_size_survives_round_trip(self):
         mgr1 = self._fresh_manager()
@@ -247,59 +247,104 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         # Verify the JSON has a string (not an enum)
         with open(self.data_file, "r") as f:
             raw = json.load(f)
-        self.assertEqual(raw["TEST_CRUISER"]["hull_size"], "HUGE")
+        self.assertEqual(raw["Test Cruiser"]["hull_size"], "HUGE")
 
         # Load back and verify enum is restored
         mgr2 = self._fresh_manager()
         mgr2.load_from_file()
-        self.assertEqual(mgr2.designs["TEST_CRUISER"].hull_size, HullSize.HUGE)
+        self.assertEqual(mgr2.designs["Test Cruiser"].hull_size, HullSize.HUGE)
 
     def test_multiple_designs_persist(self):
         mgr = self._fresh_manager()
-        mgr.save_design(self._make_template("ALPHA"))
-        mgr.save_design(self._make_template("BETA", HullSize.LARGE))
+        mgr.save_design(self._make_template("Alpha"))
+        mgr.save_design(self._make_template("Beta", HullSize.LARGE))
 
         mgr2 = self._fresh_manager()
         mgr2.load_from_file()
-        self.assertIn("ALPHA", mgr2.designs)
-        self.assertIn("BETA", mgr2.designs)
-        self.assertEqual(mgr2.designs["BETA"].hull_size, HullSize.LARGE)
+        self.assertIn("Alpha", mgr2.designs)
+        self.assertIn("Beta", mgr2.designs)
+        self.assertEqual(mgr2.designs["Beta"].hull_size, HullSize.LARGE)
 
-    def test_duplicate_name_overwrites(self):
+    def test_duplicate_name_rejected_when_new(self):
         mgr = self._fresh_manager()
-        t1 = self._make_template()
-        t1.display_name = "Version 1"
-        mgr.save_design(t1)
+        t1 = self._make_template("Duplicate Ship")
+        err1 = mgr.save_design(t1)
+        self.assertEqual(err1, [])
 
-        t2 = self._make_template()
-        t2.display_name = "Version 2"
-        mgr.save_design(t2)
-
-        self.assertEqual(mgr.designs["TEST_CRUISER"].display_name, "Version 2")
+        t2 = self._make_template("Duplicate Ship")
+        err2 = mgr.save_design(t2)
+        self.assertTrue(any("already exists" in e for e in err2))
         self.assertEqual(len(mgr.list_design_names()), 1)
 
-    def test_load_unnormalized_key_from_file(self):
-        # Write JSON with unnormalized key "Medium Sensor Ship"
-        raw_json = {
-            "Medium Sensor Ship": {
-                "name": "Medium Sensor Ship",
-                "hull_size": "MEDIUM",
-                "has_engine": True,
-                "engine_speed": 100.0,
-                "has_sensors": True
-            }
-        }
-        with open(self.data_file, "w", encoding="utf-8") as f:
-            json.dump(raw_json, f)
-
+    def test_edit_existing_name_succeeds(self):
         mgr = self._fresh_manager()
-        mgr.load_from_file()
+        t1 = self._make_template("Original Ship")
+        err1 = mgr.save_design(t1)
+        self.assertEqual(err1, [])
 
-        # Key should be normalized to "MEDIUM_SENSOR_SHIP"
-        self.assertIn("MEDIUM_SENSOR_SHIP", mgr.designs)
-        self.assertIsNotNone(mgr.get_design("Medium Sensor Ship"))
-        self.assertIsNotNone(mgr.get_design("MEDIUM_SENSOR_SHIP"))
-        self.assertEqual(mgr.list_design_names(), ["MEDIUM_SENSOR_SHIP"])
+        # Edit with same name
+        t1.components.has_hyperdrive = True
+        err2 = mgr.save_design(t1, original_name="Original Ship")
+        self.assertEqual(err2, [])
+        self.assertEqual(len(mgr.list_design_names()), 1)
+        self.assertTrue(mgr.designs["Original Ship"].components.has_hyperdrive)
+
+    def test_rename_design_updates_key_and_unit_templates(self):
+        mgr = self._fresh_manager()
+        t1 = self._make_template("Old Name")
+        mgr.save_design(t1)
+        self.assertIn("Old Name", mgr.designs)
+        self.assertIn("Old Name", UNIT_TEMPLATES)
+
+        t1.display_name = "New Name"
+        err = mgr.save_design(t1, original_name="Old Name")
+        self.assertEqual(err, [])
+        self.assertNotIn("Old Name", mgr.designs)
+        self.assertNotIn("Old Name", UNIT_TEMPLATES)
+        self.assertIn("New Name", mgr.designs)
+        self.assertIn("New Name", UNIT_TEMPLATES)
+
+    def test_duplicate_name_case_insensitive_rejected(self):
+        mgr = self._fresh_manager()
+        t1 = self._make_template("Duplicate Ship")
+        err1 = mgr.save_design(t1)
+        self.assertEqual(err1, [])
+
+        t2 = self._make_template("duplicate ship")
+        err2 = mgr.save_design(t2)
+        self.assertTrue(any("already exists" in e for e in err2))
+        self.assertEqual(len(mgr.list_design_names()), 1)
+
+    def test_duplicate_builtin_template_name_rejected(self):
+        mgr = self._fresh_manager()
+        t = self._make_template("Shipyard Mk.I")
+        err = mgr.save_design(t)
+        self.assertTrue(any("already exists" in e for e in err))
+        self.assertEqual(len(mgr.list_design_names()), 0)
+
+    def test_rename_to_existing_name_rejected(self):
+        mgr = self._fresh_manager()
+        t1 = self._make_template("Ship A")
+        mgr.save_design(t1)
+        t2 = self._make_template("Ship B")
+        mgr.save_design(t2)
+
+        t2.display_name = "Ship A"
+        err = mgr.save_design(t2, original_name="Ship B")
+        self.assertTrue(any("already exists" in e for e in err))
+        self.assertIn("Ship B", mgr.designs)
+        self.assertIn("Ship A", mgr.designs)
+
+    def test_case_insensitive_lookup_and_delete(self):
+        mgr = self._fresh_manager()
+        t = self._make_template("Medium Sensor Ship")
+        mgr.save_design(t)
+
+        self.assertIsNotNone(mgr.get_design("medium sensor ship"))
+        self.assertIsNotNone(mgr.get_design("MEDIUM SENSOR SHIP"))
+        self.assertEqual(mgr.list_design_names(), ["Medium Sensor Ship"])
+        self.assertTrue(mgr.delete_design("medium sensor ship"))
+        self.assertEqual(len(mgr.list_design_names()), 0)
 
 
 class TestUnitEditorGuiComponents(unittest.TestCase):
@@ -323,7 +368,6 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
         # Hull cost calculation includes harvester cost (15)
         comp = ComponentConfig(has_antimatter_storage=True, antimatter_capacity=150.0, has_antimatter_harvester=True)
         template = CustomUnitTemplate(
-            design_name="HARVESTER_SHIP",
             display_name="Harvester Ship",
             hull_size=HullSize.LARGE,
             components=comp,
@@ -334,7 +378,6 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
 
         # Restrictions: STRIKECRAFT_WING & TINY forbidden
         tiny_template = CustomUnitTemplate(
-            design_name="TINY_HARVESTER",
             display_name="Tiny Harvester",
             hull_size=HullSize.TINY,
             components=comp,
@@ -349,16 +392,16 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
             mgr = _make_manager(tmp.name)
             save_errors = mgr.save_design(template)
             self.assertEqual(save_errors, [])
-            retrieved = mgr.get_design("HARVESTER_SHIP")
+            retrieved = mgr.get_design("Harvester Ship")
             self.assertIsNotNone(retrieved)
             self.assertTrue(retrieved.components.has_antimatter_harvester)
 
             # UNIT_TEMPLATES dict entry
-            unit_dict = UNIT_TEMPLATES.get("HARVESTER_SHIP")
+            unit_dict = UNIT_TEMPLATES.get("Harvester Ship")
             self.assertIsNotNone(unit_dict)
             self.assertTrue(unit_dict.get("has_antimatter_harvester"))
             self.assertEqual(unit_dict.get("antimatter_harvester_hull_cost"), ANTIMATTER_HARVESTER_HULL_COST)
-            mgr.delete_design("HARVESTER_SHIP")
+            mgr.delete_design("Harvester Ship")
         finally:
             if os.path.exists(tmp.name):
                 os.remove(tmp.name)
@@ -479,7 +522,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_ability_requires_component_validation_fails(self):
         """Validation fails if an ability is equipped without its required component."""
-        t = CustomUnitTemplate("TEST_ABILITY_FAIL", "Test Ability Fail", HullSize.MEDIUM)
+        t = CustomUnitTemplate("Test Ability Fail", HullSize.MEDIUM)
         t.components.has_engine = True
         t.components.has_ability_component = True
         t.components.abilities = ["adaptive_forcefield"]  # Requires has_defenses
@@ -489,7 +532,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_ability_requires_component_validation_passes(self):
         """Validation passes if an ability is equipped with its required component."""
-        t = CustomUnitTemplate("TEST_ABILITY_PASS", "Test Ability Pass", HullSize.MEDIUM)
+        t = CustomUnitTemplate("Test Ability Pass", HullSize.MEDIUM)
         t.components.has_engine = True
         t.components.has_ability_component = True
         t.components.abilities = ["adaptive_forcefield"]  # Requires has_defenses
@@ -500,7 +543,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_capture_unit_requires_marines_component(self):
         """Capture Unit ability requires has_marines_component."""
-        t = CustomUnitTemplate("TEST_CAPTURE_UNIT", "Test Capture Unit", HullSize.MEDIUM)
+        t = CustomUnitTemplate("Test Capture Unit", HullSize.MEDIUM)
         t.components.has_engine = True
         t.components.has_ability_component = True
         t.components.abilities = ["capture_unit"]
@@ -524,7 +567,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
         win.show()
 
-        t = CustomUnitTemplate("TEST_DESIGN", "Test Design", HullSize.MEDIUM)
+        t = CustomUnitTemplate("Test Design", HullSize.MEDIUM)
         t.components.has_engine = True
         win._sync_widgets_from_template(t)
         win._select_component("has_engine")
@@ -547,7 +590,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
         win.show()
 
-        t = CustomUnitTemplate("TEST_DESIGN", "Test Design", HullSize.MEDIUM)
+        t = CustomUnitTemplate("Test Design", HullSize.MEDIUM)
         t.components.has_engine = True
         t.components.has_hyperdrive = True
         win._sync_widgets_from_template(t)

@@ -105,7 +105,6 @@ def test_strikecraft_design_validation():
         ]
     )
     template_invalid_fighter = CustomUnitTemplate(
-        design_name="Invalid Fighter",
         display_name="Invalid Fighter Wing",
         hull_size=HullSize.STRIKECRAFT_WING,
         components=config_invalid_fighter
@@ -128,7 +127,6 @@ def test_strikecraft_design_validation():
         ]
     )
     template_valid_fighter = CustomUnitTemplate(
-        design_name="Valid Fighter",
         display_name="Valid Fighter Wing",
         hull_size=HullSize.STRIKECRAFT_WING,
         components=config_valid_fighter
@@ -150,7 +148,6 @@ def test_strikecraft_design_validation():
         ]
     )
     template_invalid_bomber = CustomUnitTemplate(
-        design_name="Invalid Bomber",
         display_name="Invalid Bomber Wing",
         hull_size=HullSize.STRIKECRAFT_WING,
         components=config_invalid_bomber
@@ -173,7 +170,6 @@ def test_strikecraft_design_validation():
         ]
     )
     template_valid_bomber = CustomUnitTemplate(
-        design_name="Valid Bomber",
         display_name="Valid Bomber Wing",
         hull_size=HullSize.STRIKECRAFT_WING,
         components=config_valid_bomber

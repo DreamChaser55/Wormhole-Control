@@ -137,7 +137,6 @@ class TestCivilianHabitatComponent(unittest.TestCase):
 
     def test_custom_unit_template_and_catalog(self):
         template = CustomUnitTemplate(
-            design_name="CIVILIAN_HAB_DESIGN",
             display_name="Habitat Cruiser",
             hull_size=HullSize.LARGE,
             components=ComponentConfig(

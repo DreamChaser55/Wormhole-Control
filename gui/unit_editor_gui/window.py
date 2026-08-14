@@ -53,7 +53,7 @@ class UnitEditorWindow:
         self._comp: ComponentConfig = ComponentConfig(has_antimatter_storage=True)
         self._turrets: typing.List[TurretConfig] = []
         self._selected_abilities: typing.Set[str] = set()
-        self._editing_key: typing.Optional[str] = None  # key of design being edited
+        self._editing_name: typing.Optional[str] = None  # display name of design being edited
 
         # --- Panel geometry ---
         panel_x = 20
@@ -133,7 +133,6 @@ class UnitEditorWindow:
         self._ability_buttons: typing.Dict[str, pygame_gui.elements.UIButton] = {}
 
         # Right column
-        self._name_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._display_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._summary_box: typing.Optional[pygame_gui.elements.UITextBox] = None
         self._save_button: typing.Optional[pygame_gui.elements.UIButton] = None

@@ -26,14 +26,14 @@ class TestMarinesComponent(unittest.TestCase):
         self.assertEqual(d["hull_cost"], 15.0)
 
     def test_strikecraft_restriction(self):
-        t = CustomUnitTemplate("SCOUT_WING", "Scout Wing", HullSize.STRIKECRAFT_WING)
+        t = CustomUnitTemplate("Scout Wing", HullSize.STRIKECRAFT_WING)
         t.components.has_engine = True
         t.components.has_marines_component = True
         errors = t.validate()
         self.assertTrue(any("has_marines_component" in e for e in errors))
 
     def test_template_validation_marines_count(self):
-        t = CustomUnitTemplate("BOARDER_FRIGATE", "Boarder Frigate", HullSize.MEDIUM)
+        t = CustomUnitTemplate("Boarder Frigate", HullSize.MEDIUM)
         t.components.has_engine = True
         t.components.has_marines_component = True
         t.components.marines_count = 0
