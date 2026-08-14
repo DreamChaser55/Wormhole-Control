@@ -15,8 +15,11 @@ from constants import (
 from utils import HexCoord
 from geometry import Vector, Position, distance_sq
 from hexgrid_utils import pixel_to_hex
-from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords, is_pixel_in_sector, sector_radius_to_pixels
-from entities import GameObject, Unit, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, HullSize, AsteroidField, IceField, DebrisField
+from sector_utils import (
+    sector_coords_to_pixels, pixels_to_sector_coords, is_pixel_in_sector, sector_radius_to_pixels,
+    get_minefield_dot_pixel_positions, get_minefield_dot_radius_px
+)
+from entities import GameObject, Unit, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, HullSize, AsteroidField, IceField, DebrisField, Minefield
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
@@ -316,6 +319,20 @@ class InputProcessor:
                         if dist_sq_val < click_radius_sq and dist_sq_val < min_dist_sq:
                             min_dist_sq = dist_sq_val
                             hovered_obj = obj
+
+                    # Check Minefield mine count icons (dots/diamonds)
+                    visible_minefields = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
+                    dot_radius_px = get_minefield_dot_radius_px(zoom)
+                    dot_click_radius = max(dot_radius_px * SECTOR_OBJECT_CLICK_RADIUS_MULT, 5.0)
+                    dot_click_radius_sq = dot_click_radius ** 2
+                    for mf in visible_minefields:
+                        dot_positions = get_minefield_dot_pixel_positions(mf.position, mf.mines_remaining, zoom, pan_offset)
+                        for d_x, d_y in dot_positions:
+                            dist_sq_val = (mouse_pos.x - d_x) ** 2 + (mouse_pos.y - d_y) ** 2
+                            if dist_sq_val < dot_click_radius_sq and dist_sq_val < min_dist_sq:
+                                min_dist_sq = dist_sq_val
+                                hovered_obj = mf
+
                 self.game.sector_view_mouse_hover_object = hovered_obj
 
     def handle_mouse_click(self, button: int, position: 'Position'):

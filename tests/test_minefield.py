@@ -303,10 +303,11 @@ def test_minefield_subtypes_serialization():
     assert MinefieldType.ANTI_STRIKECRAFT in types
 
 
-def test_anti_strikecraft_minefield_concentric_circles_rendering():
+def test_minefield_single_circle_rendering():
     import pygame
     from unittest.mock import MagicMock, patch
     from rendering.system_renderer import SystemViewRenderer
+    from rendering.sector_renderer.sector_entity_renderer import SectorEntityRenderer
     from unit_components import MinefieldType
 
     game = MockGame()
@@ -323,17 +324,26 @@ def test_anti_strikecraft_minefield_concentric_circles_rendering():
     mf_sc = Minefield(owner=p1, position=Position(100.0, 100.0), in_hex=(0, 0), in_system="Sol", minefield_type=MinefieldType.ANTI_STRIKECRAFT)
     game.galaxy.systems["Sol"].hexes[(0, 0)].add_minefield(mf_sc)
 
-    renderer = SystemViewRenderer(game)
+    # 1. Test System View draws a single circle
+    sys_renderer = SystemViewRenderer(game)
     with patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle:
-        renderer.draw_system_view()
-        # Find circle calls for minefield rendering
+        sys_renderer.draw_system_view()
         circle_calls = [call for call in mock_draw_circle.call_args_list if call.args[1] == p1.color]
-        assert len(circle_calls) == 2
-        outer_r = circle_calls[0].args[3]
-        inner_r = circle_calls[1].args[3]
-        # Inner radius should be scaled proportionally (0.65 of outer radius), giving distinct spacing
-        assert inner_r == int(outer_r * 0.65)
-        assert outer_r - inner_r >= 4
+        assert len(circle_calls) == 1
+
+    # 2. Test Sector View draws a single outer boundary circle
+    mock_parent = MagicMock()
+    mock_parent.game = game
+    mock_parent.screen = pygame.Surface((800, 600))
+    mock_parent._inhibition_surface = pygame.Surface((800, 600))
+    sector_entity_renderer = SectorEntityRenderer(mock_parent)
+
+    with patch("rendering.sector_renderer.pygame.draw.circle") as mock_sec_circle:
+        sector_entity_renderer.draw_minefield(mf_sc, Position(400, 300), 200.0)
+        circle_calls = [call for call in mock_sec_circle.call_args_list if call.args[1] == p1.color]
+        # Anti-Strikecraft uses polygon diamonds for dots, so only the 1 boundary circle is drawn
+        assert len(circle_calls) == 1
+
 
 
 

@@ -1,7 +1,10 @@
 import math
 import random
 from geometry import Vector, distance, Position, Circle, is_point_in_circle, clamp_point_to_circle
-from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX
+from constants import (
+    SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX,
+    ICON_DOT_RADIUS, ICON_DOT_SPACING
+)
 
 # --- Sector Utility Functions ---
 
@@ -86,4 +89,22 @@ def is_position_in_sector(sector_pos: Position) -> bool:
 def clamp_position_to_sector(sector_pos: Position) -> Position:
     """Clamps logical sector coordinates to stay within SECTOR_CIRCLE_RADIUS_LOGICAL."""
     return clamp_point_to_circle(sector_pos, Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL))
+
+def get_minefield_dot_pixel_positions(position: Position, mines_remaining: int, zoom: float = 1.0, pan_offset: Position = None) -> list[tuple[int, int]]:
+    """Calculates screen pixel (x, y) coordinates for all mine count dots/diamonds of a minefield."""
+    n_dots = max(0, mines_remaining)
+    if n_dots <= 0:
+        return []
+    obj_pixel_pos = sector_coords_to_pixels(position, zoom, pan_offset)
+    dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
+    icon_dot_spacing_px = max(5, int(ICON_DOT_SPACING * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
+    total_width = (n_dots - 1) * icon_dot_spacing_px
+    start_x = obj_pixel_pos.x - total_width / 2
+    return [(int(start_x + di * icon_dot_spacing_px), int(obj_pixel_pos.y)) for di in range(n_dots)]
+
+def get_minefield_dot_radius_px(zoom: float = 1.0) -> int:
+    """Calculates screen pixel radius for mine count dots/diamonds."""
+    dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
+    return max(2, int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
+
 

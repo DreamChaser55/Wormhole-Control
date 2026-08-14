@@ -66,13 +66,7 @@ class SectorEntityRenderer:
         pixel_radius = max(5, int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
         is_anti_strikecraft = (getattr(minefield, 'minefield_type', None) == MinefieldType.ANTI_STRIKECRAFT)
         
-        if is_anti_strikecraft:
-            _sr().pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
-            inner_radius = int(pixel_radius * 0.65)
-            if inner_radius > 2:
-                _sr().pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), inner_radius, 1)
-        else:
-            _sr().pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
+        _sr().pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
 
         n_dots = max(0, minefield.mines_remaining)
         if n_dots > 0:
