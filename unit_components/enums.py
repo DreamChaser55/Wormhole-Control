@@ -55,6 +55,7 @@ class AbilityType(Enum):
     CAPTURE_UNIT = "capture_unit"
     DRAIN_ANTIMATTER = "drain_antimatter"
     MICROJUMP = "microjump"
+    SCAN_FOR_MINEFIELDS = "scan_for_minefields"
 
 
 

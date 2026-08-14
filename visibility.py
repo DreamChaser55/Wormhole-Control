@@ -113,10 +113,14 @@ def hex_has_presence(snapshot: Optional[VisibilitySnapshot], system_name: str, h
 
 
 def is_minefield_visible(snapshot: Optional[VisibilitySnapshot], minefield: typing.Any) -> bool:
-    """Return True if friendly minefield or viewer is None (spectator).
-    Minefields are invisible to enemy players even if inside sensor range.
+    """Return True if friendly minefield, spectator mode, or revealed to viewer.
+    Unrevealed minefields are invisible to enemy players even if inside sensor range.
     """
     if snapshot is None or snapshot.viewer is None:
         return True
-    return minefield.owner == snapshot.viewer
+    if minefield.owner == snapshot.viewer:
+        return True
+    if hasattr(minefield, 'is_revealed_to') and minefield.is_revealed_to(snapshot.viewer):
+        return True
+    return False
 

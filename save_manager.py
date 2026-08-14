@@ -252,6 +252,7 @@ def serialize_minefield(minefield: Minefield) -> dict:
         "mine_damage": minefield.mine_damage,
         "detonation_radius": minefield.detonation_radius,
         "minefield_type": minefield.minefield_type.value,
+        "revealed_to_player_ids": list(getattr(minefield, "revealed_to_player_ids", set())),
     }
 
 
@@ -664,6 +665,7 @@ def deserialize_minefield(data: dict, players_by_id: Dict[int, Player]) -> Minef
         minefield_type=minefield_type
     )
     minefield.id = data.get("id", minefield.id)
+    minefield.revealed_to_player_ids = set(data.get("revealed_to_player_ids", []))
     return minefield
 
 

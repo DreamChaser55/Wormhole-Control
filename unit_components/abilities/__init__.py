@@ -8,6 +8,7 @@ from .repair_cloud import RepairCloudAbility
 from .capture_unit import CaptureUnitAbility
 from .drain_antimatter import DrainAntimatterAbility
 from .microjump import MicrojumpAbility
+from .scan_for_minefields import ScanForMinefieldsAbility
 from .registry import ABILITY_CLASSES, ABILITY_DEFINITIONS
 from .component import AbilityComponent
 
@@ -23,6 +24,7 @@ __all__ = [
     "CaptureUnitAbility",
     "DrainAntimatterAbility",
     "MicrojumpAbility",
+    "ScanForMinefieldsAbility",
     "ABILITY_CLASSES",
     "ABILITY_DEFINITIONS",
     "AbilityComponent",

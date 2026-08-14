@@ -132,7 +132,8 @@ Wormhole Control/
 │       ├── ion_bolt.py            # Ion Bolt system-disable ability
 │       ├── microjump.py           # Microjump tactical teleport ability
 │       ├── missile_batteries.py   # Missile Batteries salvo ability
-│       └── repair_cloud.py        # Repair Cloud area healing ability
+│       ├── repair_cloud.py        # Repair Cloud area healing ability
+│       └── scan_for_minefields.py # Scan for Minefields area reveal ability
 └── unit_orders/                   # Unit command and order execution subpackage
     ├── __init__.py                # Package exports
     ├── base.py                    # Order base class, OrderType, and OrderStatus enums
@@ -202,7 +203,7 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 
 ## 4. Special Abilities
 
-There are **9 special abilities** in the game, registered in `unit_components/abilities/registry.py`. Each ability requires a specific component installed on the unit design.
+There are **10 special abilities** in the game, registered in `unit_components/abilities/registry.py`. Each ability requires a specific component installed on the unit design.
 
 | Ability | Cooldown (Turns) | Duration (Turns) | Range (px) | AM Cost | Required Component | Target Type | Description |
 |---|---|---|---|---|---|---|---|
@@ -215,6 +216,7 @@ There are **9 special abilities** in the game, registered in `unit_components/ab
 | **Capture Unit** | 10 | 0 | 100.0 | 40 | Marines (`has_marines_component`) | Unit | Launches an armed marine boarding party to commandeer and seize control of an enemy vessel. |
 | **Drain Antimatter** | 6 | 0 | 300.0 | 0 | Antimatter Storage (`has_antimatter_storage`) | Unit | Siphons antimatter fuel directly from an enemy unit's storage tanks into your own. |
 | **Microjump** | 5 | 0 | 600.0 | 25 | Hyperdrive (`has_hyperdrive`) | Position | Executes an instant tactical micro-hyperjump to any target location within range. |
+| **Scan for Minefields** | 6 | 0 | 1500.0 | 35 | Sensors (`has_sensors`) | None (Self) | Emits a high-frequency sensor sweep that permanently reveals all enemy minefields within range. |
 
 ---
 

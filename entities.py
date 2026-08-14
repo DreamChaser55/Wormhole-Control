@@ -249,6 +249,18 @@ class Minefield(GameObject):
         self.mines_remaining = mines_remaining
         self.mine_damage = mine_damage
         self.detonation_radius = detonation_radius
+        self.revealed_to_player_ids: typing.Set[int] = set()
+
+    def reveal_to(self, player: typing.Optional[Player]) -> None:
+        """Permanently marks this minefield as revealed to the given player."""
+        if player is not None:
+            self.revealed_to_player_ids.add(player.id)
+
+    def is_revealed_to(self, player: typing.Optional[Player]) -> bool:
+        """Return True if this minefield has been revealed to the given player."""
+        if player is None:
+            return False
+        return player.id in self.revealed_to_player_ids
 
     def can_target(self, unit: 'Unit') -> bool:
         """Return True if unit is a valid target for this minefield type."""

@@ -61,8 +61,12 @@ def build_hex_panel(game, hex_obj: Hex) -> list[dict]:
 
     visible_units = [u for u in hex_obj.units if game.is_unit_visible(u)]
     has_presence = game.hex_has_presence(system_name, coords)
+    visible_minefields = [
+        mf for mf in getattr(hex_obj, 'minefields', [])
+        if game.is_minefield_visible(mf)
+    ]
 
-    if not hex_obj.celestial_bodies and not visible_units and not has_presence:
+    if not hex_obj.celestial_bodies and not visible_units and not has_presence and not visible_minefields:
         data.append({'type': 'label', 'text': "Contains: Nothing", 'object_id': '#sidebar_info_label', 'height': 25})
     else:
         if hex_obj.celestial_bodies:
@@ -94,15 +98,10 @@ def build_hex_panel(game, hex_obj: Hex) -> list[dict]:
                     'indent_level': 1
                 })
 
-        # Minefields (only shown on owner's turn)
-        current_player = game.players[game.current_player_index] if game.players else None
-        friendly_minefields = [
-            mf for mf in getattr(hex_obj, 'minefields', [])
-            if mf.owner == current_player
-        ]
-        if friendly_minefields:
+        # Minefields (friendly or revealed enemy minefields)
+        if visible_minefields:
             data.append({'type': 'label', 'text': "Minefields:", 'object_id': '#sidebar_info_label', 'height': 20})
-            for mf in friendly_minefields:
+            for mf in visible_minefields:
                 owner = getattr(mf, 'owner', None)
                 data.append({
                     'type': 'button',

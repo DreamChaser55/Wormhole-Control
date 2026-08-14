@@ -10,6 +10,7 @@ from .repair_cloud import RepairCloudAbility
 from .capture_unit import CaptureUnitAbility
 from .drain_antimatter import DrainAntimatterAbility
 from .microjump import MicrojumpAbility
+from .scan_for_minefields import ScanForMinefieldsAbility
 
 ABILITY_CLASSES: Dict[AbilityType, Type[AbilityInstance]] = {
     AbilityType.ADAPTIVE_FORCEFIELD: AdaptiveForcefieldAbility,
@@ -21,6 +22,7 @@ ABILITY_CLASSES: Dict[AbilityType, Type[AbilityInstance]] = {
     AbilityType.CAPTURE_UNIT: CaptureUnitAbility,
     AbilityType.DRAIN_ANTIMATTER: DrainAntimatterAbility,
     AbilityType.MICROJUMP: MicrojumpAbility,
+    AbilityType.SCAN_FOR_MINEFIELDS: ScanForMinefieldsAbility,
 }
 
 ABILITY_DEFINITIONS: Dict[AbilityType, AbilityDefinition] = {
