@@ -19,6 +19,7 @@ from .component_state import (
     refresh_component_details,
 )
 from .turret_editor import rebuild_turret_list
+from .save_dialog import SaveConfirmationDialog
 
 
 def set_status(editor, msg: str, error: bool = False) -> None:
@@ -176,16 +177,10 @@ def _show_editor_modal(editor, title: str, message: str, window_type: str = "war
                 dialog.text_block.set_dimensions((container.get_size()[0], text_h))
 
 
-def do_save(editor) -> typing.Optional[str]:
-    """Saves current editor state as a template."""
-    display = editor._display_entry.get_text().strip() if editor._display_entry else ""
-    if not display:
-        msg = "Please enter a display name."
-        set_status(editor, f"⚠ {msg}", error=True)
-        _show_editor_modal(editor, "Display Name Required", msg, window_type="warning")
-        return None
-
-    # Sync all input fields before saving
+def _collect_and_validate_template(
+    editor, display_name: str
+) -> typing.Tuple[typing.Optional[CustomUnitTemplate], typing.List[str]]:
+    """Synchronizes all editor parameters into a CustomUnitTemplate and validates it."""
     editor._read_engine_params()
     editor._read_antimatter_params()
     editor._read_hyperdrive_params()
@@ -201,11 +196,19 @@ def do_save(editor) -> typing.Optional[str]:
     editor._comp.abilities = list(editor._selected_abilities)
 
     template = CustomUnitTemplate(
-        display_name=display,
+        display_name=display_name,
         hull_size=editor._hull_size,
         components=editor._comp,
     )
-    errors = editor.template_manager.save_design(template, original_name=editor._editing_name)
+    errors = template.validate()
+    return template, errors
+
+
+def execute_save(
+    editor, template: CustomUnitTemplate, original_name: typing.Optional[str] = None
+) -> typing.Optional[str]:
+    """Persists the template via template_manager and updates the editor state."""
+    errors = editor.template_manager.save_design(template, original_name=original_name)
     if errors:
         error_msg = "<br>".join([f"• {e}" for e in errors])
         set_status(editor, " | ".join(errors), error=True)
@@ -213,10 +216,134 @@ def do_save(editor) -> typing.Optional[str]:
         return None
 
     editor._editing_name = template.display_name
+    if editor._display_entry:
+        editor._display_entry.set_text(template.display_name)
     set_status(editor, f"✔ Design '{template.display_name}' saved!", error=False)
     refresh_load_dropdown(editor)
     editor._update_summary()
     return "design_saved"
+
+
+def show_save_confirmation_dialog(
+    editor, editing_name: str, suggested_new_name: typing.Optional[str] = None
+) -> None:
+    """Displays the modal confirmation dialog to confirm overwrite or save as a new template."""
+    if editor._save_dialog:
+        editor._save_dialog.kill()
+        editor._save_dialog = None
+
+    editor._save_dialog = SaveConfirmationDialog(
+        manager=editor.manager,
+        screen_res=editor.screen_res,
+        editing_name=editing_name,
+        suggested_new_name=suggested_new_name,
+    )
+
+
+def handle_save_dialog_action(editor, action_data: dict) -> typing.Optional[str]:
+    """Handles user action from SaveConfirmationDialog."""
+    action = action_data.get("action")
+
+    if action == "overwrite":
+        target_name = action_data.get("target_name") or editor._editing_name
+        template, errors = _collect_and_validate_template(editor, target_name)
+        if editor._save_dialog:
+            editor._save_dialog.kill()
+            editor._save_dialog = None
+        if errors:
+            error_msg = "<br>".join([f"• {e}" for e in errors])
+            set_status(editor, " | ".join(errors), error=True)
+            _show_editor_modal(editor, "Design Validation Failed", error_msg, window_type="warning")
+            return None
+        return execute_save(editor, template, original_name=target_name)
+
+    elif action == "save_as_new":
+        new_name = action_data.get("new_name", "").strip()
+        if not new_name:
+            set_status(editor, "⚠ Please enter a valid name.", error=True)
+            _show_editor_modal(editor, "Invalid Name", "Please enter a valid display name to save as a new template.", window_type="warning")
+            return "ui_handled"
+
+        template, errors = _collect_and_validate_template(editor, new_name)
+        if editor._save_dialog:
+            editor._save_dialog.kill()
+            editor._save_dialog = None
+        if errors:
+            error_msg = "<br>".join([f"• {e}" for e in errors])
+            set_status(editor, " | ".join(errors), error=True)
+            _show_editor_modal(editor, "Design Validation Failed", error_msg, window_type="warning")
+            return None
+        return execute_save(editor, template, original_name=None)
+
+    elif action == "cancel":
+        if editor._save_dialog:
+            editor._save_dialog.kill()
+            editor._save_dialog = None
+        return "ui_handled"
+
+    return None
+
+
+def do_save(editor) -> typing.Optional[str]:
+    """Saves current editor state as a template, prompting if overwriting an existing template."""
+    display = editor._display_entry.get_text().strip() if editor._display_entry else ""
+    if not display:
+        msg = "Please enter a display name."
+        set_status(editor, f"⚠ {msg}", error=True)
+        _show_editor_modal(editor, "Display Name Required", msg, window_type="warning")
+        return None
+
+    template, errors = _collect_and_validate_template(editor, display)
+    if errors:
+        error_msg = "<br>".join([f"• {e}" for e in errors])
+        set_status(editor, " | ".join(errors), error=True)
+        _show_editor_modal(editor, "Design Validation Failed", error_msg, window_type="warning")
+        return None
+
+    # Check if this save would overwrite a loaded template or existing template
+    if editor._editing_name:
+        if display.lower() == editor._editing_name.lower():
+            show_save_confirmation_dialog(editor, editing_name=editor._editing_name, suggested_new_name=f"{editor._editing_name} (Copy)")
+            return "ui_handled"
+        else:
+            # User changed name while editing an existing template
+            if editor.template_manager.get_design(display):
+                show_save_confirmation_dialog(editor, editing_name=display, suggested_new_name=f"{display} (Copy)")
+                return "ui_handled"
+            else:
+                show_save_confirmation_dialog(editor, editing_name=editor._editing_name, suggested_new_name=display)
+                return "ui_handled"
+    else:
+        # Not currently editing a loaded template
+        if editor.template_manager.get_design(display):
+            show_save_confirmation_dialog(editor, editing_name=display, suggested_new_name=f"{display} (Copy)")
+            return "ui_handled"
+        return execute_save(editor, template, original_name=None)
+
+
+def do_save_as_new(editor) -> typing.Optional[str]:
+    """Saves the modified design template as a new template without modifying the original."""
+    display = editor._display_entry.get_text().strip() if editor._display_entry else ""
+    if not display:
+        msg = "Please enter a display name."
+        set_status(editor, f"⚠ {msg}", error=True)
+        _show_editor_modal(editor, "Display Name Required", msg, window_type="warning")
+        return None
+
+    template, errors = _collect_and_validate_template(editor, display)
+    if errors:
+        error_msg = "<br>".join([f"• {e}" for e in errors])
+        set_status(editor, " | ".join(errors), error=True)
+        _show_editor_modal(editor, "Design Validation Failed", error_msg, window_type="warning")
+        return None
+
+    # If display name matches loaded template or existing design, prompt for new name
+    if (editor._editing_name and display.lower() == editor._editing_name.lower()) or editor.template_manager.get_design(display):
+        show_save_confirmation_dialog(editor, editing_name=display, suggested_new_name=f"{display} (Copy)")
+        return "ui_handled"
+
+    # Unique name: save directly as new template without modifying original
+    return execute_save(editor, template, original_name=None)
 
 
 def do_delete(editor) -> typing.Optional[str]:

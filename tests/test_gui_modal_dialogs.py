@@ -24,12 +24,23 @@ class TestGUIModalDialogs(unittest.TestCase):
         pygame.display.set_mode((1280, 720))
 
     def setUp(self):
+        import tempfile
+        import custom_unit_templates as ctm
+        self._temp_data_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
+        self._temp_data_file.close()
+        self._orig_data_file = ctm._DATA_FILE
+        ctm._DATA_FILE = self._temp_data_file.name
+
         self.game = Game()
         self.gui = self.game.gui
 
     def tearDown(self):
         if self.gui:
             self.gui.clear_and_reset()
+        import custom_unit_templates as ctm
+        ctm._DATA_FILE = self._orig_data_file
+        if os.path.exists(self._temp_data_file.name):
+            os.remove(self._temp_data_file.name)
 
     def test_show_message_dialogs(self):
         """Test creating info, warning, and error modal dialogs via GUI_Handler."""
@@ -116,6 +127,169 @@ class TestGUIModalDialogs(unittest.TestCase):
             if isinstance(w, pygame_gui.windows.UIMessageWindow)
         ]
         self.assertEqual(len(active_windows), 1)
+
+    def test_unit_editor_save_overwrite_confirmation_modal_trigger(self):
+        """Test that saving a loaded existing design template opens the SaveConfirmationDialog."""
+        from gui.unit_editor_gui.save_dialog import SaveConfirmationDialog
+        from custom_unit_templates import ComponentConfig
+        tmp_mgr = CustomTemplateManager()
+        t = CustomUnitTemplate("Scout Alpha", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=100.0))
+        tmp_mgr.save_design(t)
+
+        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win.show()
+        editor_win._sync_widgets_from_template(t)
+        self.assertEqual(editor_win._editing_name, "Scout Alpha")
+
+        # Modify speed
+        editor_win._engine_speed_entry.set_text("150")
+
+        # Press Save button
+        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_button})
+        res = editor_win.process_event(event)
+
+        self.assertEqual(res, "ui_handled")
+        self.assertIsNotNone(editor_win._save_dialog)
+        self.assertTrue(editor_win._save_dialog.alive())
+        self.assertIsInstance(editor_win._save_dialog, SaveConfirmationDialog)
+        self.assertEqual(editor_win._save_dialog.editing_name, "Scout Alpha")
+        self.assertEqual(editor_win._save_dialog.window.window_display_title, "Save Design Template")
+
+        # Cleanup
+        tmp_mgr.delete_design("Scout Alpha")
+        editor_win.kill()
+
+    def test_unit_editor_save_overwrite_confirmed(self):
+        """Test confirming overwrite replaces the existing design in template manager."""
+        from custom_unit_templates import ComponentConfig
+        tmp_mgr = CustomTemplateManager()
+        t = CustomUnitTemplate("Scout Beta", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=100.0))
+        tmp_mgr.save_design(t)
+
+        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win.show()
+        editor_win._sync_widgets_from_template(t)
+        editor_win._engine_speed_entry.set_text("180")
+
+        # Click Save to open dialog
+        save_ev = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_button})
+        editor_win.process_event(save_ev)
+        self.assertTrue(editor_win._save_dialog.alive())
+
+        # Click Overwrite in dialog
+        overwrite_ev = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_dialog.overwrite_button})
+        res = editor_win.process_event(overwrite_ev)
+
+        self.assertEqual(res, "design_saved")
+        self.assertIsNone(editor_win._save_dialog)
+        saved = tmp_mgr.get_design("Scout Beta")
+        self.assertIsNotNone(saved)
+        self.assertEqual(saved.components.engine_speed, 180.0)
+
+        # Cleanup
+        tmp_mgr.delete_design("Scout Beta")
+        editor_win.kill()
+
+    def test_unit_editor_save_as_new_from_dialog(self):
+        """Test choosing Save as New creates a new template and leaves the original untouched."""
+        from custom_unit_templates import ComponentConfig
+        tmp_mgr = CustomTemplateManager()
+        t = CustomUnitTemplate("Scout Gamma", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=100.0))
+        tmp_mgr.save_design(t)
+
+        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win.show()
+        editor_win._sync_widgets_from_template(t)
+        editor_win._engine_speed_entry.set_text("200")
+
+        # Click Save to open dialog
+        save_ev = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_button})
+        editor_win.process_event(save_ev)
+        self.assertTrue(editor_win._save_dialog.alive())
+
+        # Enter new name and click Save as New
+        editor_win._save_dialog.new_name_entry.set_text("Scout Gamma Speedster")
+        save_as_ev = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_dialog.save_as_button})
+        res = editor_win.process_event(save_as_ev)
+
+        self.assertEqual(res, "design_saved")
+        self.assertIsNone(editor_win._save_dialog)
+
+        # Original template must remain intact with original speed
+        orig = tmp_mgr.get_design("Scout Gamma")
+        self.assertIsNotNone(orig)
+        self.assertEqual(orig.components.engine_speed, 100.0)
+
+        # New template must exist with modified speed
+        new_design = tmp_mgr.get_design("Scout Gamma Speedster")
+        self.assertIsNotNone(new_design)
+        self.assertEqual(new_design.components.engine_speed, 200.0)
+
+        # Cleanup
+        tmp_mgr.delete_design("Scout Gamma")
+        tmp_mgr.delete_design("Scout Gamma Speedster")
+        editor_win.kill()
+
+    def test_unit_editor_save_cancel_dialog(self):
+        """Test cancelling the save dialog aborts the save operation and leaves templates untouched."""
+        from custom_unit_templates import ComponentConfig
+        tmp_mgr = CustomTemplateManager()
+        t = CustomUnitTemplate("Scout Delta", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=100.0))
+        tmp_mgr.save_design(t)
+
+        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win.show()
+        editor_win._sync_widgets_from_template(t)
+        editor_win._engine_speed_entry.set_text("220")
+
+        # Click Save to open dialog
+        save_ev = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_button})
+        editor_win.process_event(save_ev)
+        self.assertTrue(editor_win._save_dialog.alive())
+
+        # Click Cancel
+        cancel_ev = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_dialog.cancel_button})
+        res = editor_win.process_event(cancel_ev)
+
+        self.assertEqual(res, "ui_handled")
+        self.assertIsNone(editor_win._save_dialog)
+
+        # Original template is unchanged in manager
+        orig = tmp_mgr.get_design("Scout Delta")
+        self.assertIsNotNone(orig)
+        self.assertEqual(orig.components.engine_speed, 100.0)
+
+        # Cleanup
+        tmp_mgr.delete_design("Scout Delta")
+        editor_win.kill()
+
+    def test_unit_editor_save_as_new_button_direct(self):
+        """Test Column 1 Save as New button saves directly for unique names or opens modal for existing names."""
+        from custom_unit_templates import ComponentConfig
+        tmp_mgr = CustomTemplateManager()
+        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win.show()
+
+        # 1. Unique brand new design -> direct save
+        editor_win._display_entry.set_text("Brand New Ship Unique")
+        editor_win._comp.has_engine = True
+        save_as_ev = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_as_button})
+        res = editor_win.process_event(save_as_ev)
+
+        self.assertEqual(res, "design_saved")
+        self.assertIsNotNone(tmp_mgr.get_design("Brand New Ship Unique"))
+        self.assertIsNone(editor_win._save_dialog)
+
+        # 2. Duplicate / loaded name -> triggers dialog
+        save_as_dup_ev = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": editor_win._save_as_button})
+        res2 = editor_win.process_event(save_as_dup_ev)
+        self.assertEqual(res2, "ui_handled")
+        self.assertIsNotNone(editor_win._save_dialog)
+        self.assertTrue(editor_win._save_dialog.alive())
+
+        # Cleanup
+        tmp_mgr.delete_design("Brand New Ship Unique")
+        editor_win.kill()
 
     def test_disallowed_stance_warning_modal(self):
         """Test setting disallowed stance triggers warning popup dialog."""

@@ -417,6 +417,20 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         pygame.init()
         pygame.display.set_mode((1280, 720))
 
+    def setUp(self):
+        import tempfile
+        import custom_unit_templates as ctm
+        self._temp_data_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
+        self._temp_data_file.close()
+        self._orig_data_file = ctm._DATA_FILE
+        ctm._DATA_FILE = self._temp_data_file.name
+
+    def tearDown(self):
+        import custom_unit_templates as ctm
+        ctm._DATA_FILE = self._orig_data_file
+        if os.path.exists(self._temp_data_file.name):
+            os.remove(self._temp_data_file.name)
+
     def test_component_selection(self):
         import pygame
         import pygame_gui
@@ -670,6 +684,70 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         # Confirm order: Engines < speed=150 < Hyperdrive < type=BASIC... < Defenses < armor=25...
         self.assertTrue(eng_pos < speed_pos < hd_pos < hd_detail_pos < def_pos < def_detail_pos)
 
+        win.kill()
+
+    def test_save_as_button_exists_and_layout(self):
+        """Verifies that the Save as New button exists in Column 1 and is properly positioned."""
+        import pygame
+        import pygame_gui
+        from gui.unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+
+        self.assertIsNotNone(win._save_as_button)
+        self.assertIsInstance(win._save_as_button, pygame_gui.elements.UIButton)
+        self.assertIn("Save as New", win._save_as_button.text)
+
+        # Ensure Save As New is vertically positioned between Save Design and Delete Design
+        self.assertGreater(win._save_as_button.relative_rect.y, win._save_button.relative_rect.y)
+        self.assertLess(win._save_as_button.relative_rect.y, win._delete_button.relative_rect.y)
+
+        win.kill()
+
+    def test_save_as_new_creates_independent_template(self):
+        """Verifies that _do_save_as_new saves a new template without modifying loaded template."""
+        import pygame
+        import pygame_gui
+        from gui.unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate, ComponentConfig
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win.show()
+
+        # Save an initial template
+        t1 = CustomUnitTemplate("Frigate Alpha", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=80.0))
+        tmp_mgr.save_design(t1)
+
+        # Load it into editor
+        win._sync_widgets_from_template(t1)
+        self.assertEqual(win._editing_name, "Frigate Alpha")
+
+        # Modify parameters and name
+        win._engine_speed_entry.set_text("130")
+        win._display_entry.set_text("Frigate Alpha Mk II")
+
+        # Call _do_save_as_new
+        res = win._do_save_as_new()
+        self.assertEqual(res, "design_saved")
+
+        # Verify Frigate Alpha remains untouched
+        orig = tmp_mgr.get_design("Frigate Alpha")
+        self.assertIsNotNone(orig)
+        self.assertEqual(orig.components.engine_speed, 80.0)
+
+        # Verify Frigate Alpha Mk II exists with modified parameters
+        new_copy = tmp_mgr.get_design("Frigate Alpha Mk II")
+        self.assertIsNotNone(new_copy)
+        self.assertEqual(new_copy.components.engine_speed, 130.0)
+
+        # Cleanup
+        tmp_mgr.delete_design("Frigate Alpha")
+        tmp_mgr.delete_design("Frigate Alpha Mk II")
         win.kill()
 
 

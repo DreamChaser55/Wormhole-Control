@@ -7,7 +7,7 @@ Pygame GUI event processing and interaction dispatch logic for UnitDesignerWindo
 import pygame
 import pygame_gui
 import typing
-from .template_io import do_save, do_delete, load_design
+from .template_io import do_save, do_save_as_new, do_delete, load_design, handle_save_dialog_action
 from .turret_editor import do_add_turret, rebuild_turret_list
 from .component_state import (
     select_component,
@@ -38,6 +38,15 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
     if not editor.is_visible:
         return None
 
+    # Route events to active save confirmation dialog if open
+    if getattr(editor, "_save_dialog", None) and editor._save_dialog.alive():
+        dialog_res = editor._save_dialog.process_event(event)
+        if dialog_res is not None:
+            res = handle_save_dialog_action(editor, dialog_res)
+            return res if res else "ui_handled"
+        if event.type in (pygame_gui.UI_BUTTON_PRESSED, pygame_gui.UI_DROP_DOWN_MENU_CHANGED):
+            return "ui_handled"
+
     if event.type == pygame_gui.UI_BUTTON_PRESSED:
         elem = event.ui_element
 
@@ -46,6 +55,10 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
 
         if elem is editor._save_button:
             res = do_save(editor)
+            return res if res else "ui_handled"
+
+        if elem is getattr(editor, "_save_as_button", None):
+            res = do_save_as_new(editor)
             return res if res else "ui_handled"
 
         if elem is editor._delete_button:

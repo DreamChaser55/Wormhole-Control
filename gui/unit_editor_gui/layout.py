@@ -107,6 +107,17 @@ def build_col1_config(
     editor._elements.append(editor._save_button)
     c1y += btn_h + pad
 
+    # Save as New Button
+    editor._save_as_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(c1x, c1y, c1w, btn_h),
+        text="➕  Save as New",
+        manager=editor.manager,
+        container=editor._panel,
+        object_id="#editor_save_as_button",
+    )
+    editor._elements.append(editor._save_as_button)
+    c1y += btn_h + pad
+
     # Delete Button
     editor._delete_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(c1x, c1y, c1w, btn_h),

@@ -5,6 +5,7 @@ Provides the in-game Unit Designer GUI component split into focused sub-modules.
 """
 
 from .window import UnitEditorWindow
+from .save_dialog import SaveConfirmationDialog
 from .catalog import (
     COMPONENT_ROWS,
     HULL_SIZE_NAMES,
@@ -17,6 +18,7 @@ from .catalog import (
 
 __all__ = [
     "UnitEditorWindow",
+    "SaveConfirmationDialog",
     "COMPONENT_ROWS",
     "HULL_SIZE_NAMES",
     "TURRET_TYPES",

@@ -23,6 +23,7 @@ from . import summary_view
 from . import event_handlers
 from . import layout
 from . import layout_details
+from .save_dialog import SaveConfirmationDialog
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class UnitEditorWindow:
         self._turrets: typing.List[TurretConfig] = []
         self._selected_abilities: typing.Set[str] = set()
         self._editing_name: typing.Optional[str] = None  # display name of design being edited
+        self._save_dialog: typing.Optional[SaveConfirmationDialog] = None
 
         # --- Panel geometry ---
         panel_x = 20
@@ -136,6 +138,7 @@ class UnitEditorWindow:
         self._display_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._summary_box: typing.Optional[pygame_gui.elements.UITextBox] = None
         self._save_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self._save_as_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self._load_dd: typing.Optional[pygame_gui.elements.UIDropDownMenu] = None
         self._delete_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self._close_button: typing.Optional[pygame_gui.elements.UIButton] = None
@@ -186,11 +189,17 @@ class UnitEditorWindow:
     def hide(self) -> None:
         """Hide the editor without destroying widgets."""
         self.is_visible = False
+        if self._save_dialog:
+            self._save_dialog.kill()
+            self._save_dialog = None
         if self._panel:
             self._panel.hide()
 
     def kill(self) -> None:
         """Destroy all widgets."""
+        if self._save_dialog:
+            self._save_dialog.kill()
+            self._save_dialog = None
         if self._panel:
             self._panel.kill()
             self._panel = None
@@ -202,6 +211,7 @@ class UnitEditorWindow:
         self._details_groups.clear()
         self._ability_buttons.clear()
         self._elements.clear()
+        self._save_as_button = None
 
     def process_event(self, event: pygame.event.Event) -> typing.Optional[str]:
         """Process a pygame event."""
@@ -318,6 +328,10 @@ class UnitEditorWindow:
     def _do_save(self) -> typing.Optional[str]:
         """Saves current editor state as a template."""
         return template_io.do_save(self)
+
+    def _do_save_as_new(self) -> typing.Optional[str]:
+        """Saves current editor state as a new template without modifying original."""
+        return template_io.do_save_as_new(self)
 
     def _do_delete(self) -> typing.Optional[str]:
         """Deletes the active unit design template."""
