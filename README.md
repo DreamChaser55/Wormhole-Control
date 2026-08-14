@@ -2,7 +2,7 @@
 
 **Wormhole Control** is a 2D turn-based 4X space strategy game prototype written in Python using `pygame-ce` and `pygame_gui`. Players command star fleets, colonize celestial bodies, manage supply lines, and wage tactical warfare across a procedural galaxy of star systems linked by wormholes.
 
-The game uses a deliberate, high-contrast tactical display aesthetic inspired by naval Combat Information Center (CIC) bridge consoles. Clean vector icons, range rings, and sensor cones provide full situational awareness across all three strategic zoom levels.
+The game uses a deliberately simple, tactical display aesthetic inspired by naval Combat Information Center (CIC) bridge consoles. Clean vector icons, range rings, and sensor cones provide full situational awareness across all three strategic zoom levels.
 
 ---
 
