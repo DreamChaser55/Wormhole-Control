@@ -20,7 +20,7 @@ class MicrojumpAbility(AbilityInstance):
         description="Performs a short-range tactical hyperspace jump to a target position in the same sector.",
         cooldown=5,
         duration=0,
-        range=600.0,
+        range=1200.0,
         requires_target_unit=False,
         requires_target_position=True,
         antimatter_cost=25,

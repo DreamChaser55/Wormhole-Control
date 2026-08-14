@@ -94,7 +94,7 @@ def test_microjump_definition():
     assert defn.name == "Microjump"
     assert defn.requires_target_position is True
     assert defn.requires_target_unit is False
-    assert defn.range == 600.0
+    assert defn.range == 1200.0
     assert defn.cooldown == 5
     assert defn.antimatter_cost == 25
     assert "microjump" in ABILITY_NAMES
