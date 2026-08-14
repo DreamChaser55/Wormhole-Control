@@ -195,7 +195,7 @@ def build_minefield_panel(game, mf: Minefield) -> list[dict]:
     """Constructs sidebar data payload for a selected Minefield."""
     owner_name = mf.owner.name if mf.owner else "Unknown"
     owner_style = f'#player_{owner_name.lower().replace(" ", "_")}_label'
-    return [
+    data = [
         {'type': 'label', 'text': f"Minefield: {mf.name}", 'object_id': '#sidebar_title_label', 'height': 30},
         {'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_style, 'height': 25},
         {'type': 'label', 'text': f"Type: {mf.minefield_type.display_name}", 'object_id': '#sidebar_info_label', 'height': 25},
@@ -203,3 +203,16 @@ def build_minefield_panel(game, mf: Minefield) -> list[dict]:
         {'type': 'label', 'text': f"Mine Damage: {mf.mine_damage:.0f}", 'object_id': '#sidebar_info_label', 'height': 25},
         {'type': 'label', 'text': f"Detonation Radius: {mf.detonation_radius:.0f}", 'object_id': '#sidebar_info_label', 'height': 25}
     ]
+
+    current_player = game.players[game.current_player_index] if (getattr(game, 'players', None) and 0 <= getattr(game, 'current_player_index', 0) < len(game.players)) else None
+    if mf.owner and mf.owner == current_player:
+        data.append({
+            'type': 'button',
+            'text': "Remove minefield",
+            'object_id': '#sidebar_button',
+            'action_id': 'remove_minefield',
+            'target_data': mf.id,
+            'height': 25
+        })
+
+    return data

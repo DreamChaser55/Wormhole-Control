@@ -98,6 +98,11 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
             'action': 'select_minefield',
             'minefield_id': target_data,
         }
+    elif action_id == 'remove_minefield':
+        return {
+            'action': 'remove_minefield',
+            'minefield_id': target_data,
+        }
     elif action_id == 'select_celestial_body':
         return {
             'action': 'select_celestial_body',

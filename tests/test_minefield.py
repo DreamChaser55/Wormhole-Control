@@ -345,6 +345,46 @@ def test_minefield_single_circle_rendering():
         assert len(circle_calls) == 1
 
 
+def test_galaxy_and_system_remove_minefield():
+    galaxy = Galaxy(num_systems=0)
+    sys = StarSystem("Vega", Position(0, 0), radius=2)
+    galaxy.systems["Vega"] = sys
+    player = Player("Tester", (0, 255, 0))
+
+    mf = Minefield(owner=player, position=Position(10.0, 10.0), in_hex=(1, 0), in_system="Vega")
+    sys.hexes[(1, 0)].add_minefield(mf)
+    assert mf in sys.hexes[(1, 0)].minefields
+    assert galaxy.get_minefield_by_id(mf.id) == mf
+
+    # Test removing via galaxy
+    removed = galaxy.remove_minefield(mf)
+    assert removed is True
+    assert mf not in sys.hexes[(1, 0)].minefields
+    assert galaxy.get_minefield_by_id(mf.id) is None
+
+    # Removing again should return False
+    assert galaxy.remove_minefield(mf) is False
+
+
+def test_remove_minefield_via_game_action():
+    from game_actions import handle_gui_action
+    game = MockGame()
+    player = game.players[0]
+    sys = game.galaxy.systems["Sol"]
+    hex_obj = sys.hexes[(0, 0)]
+
+    mf = Minefield(owner=player, position=Position(50.0, 50.0), in_hex=(0, 0), in_system="Sol")
+    hex_obj.add_minefield(mf)
+    game.selected_objects = [mf]
+    game.sidebar_needs_update = False
+
+    handle_gui_action(game, {'action': 'remove_minefield', 'minefield_id': mf.id})
+
+    assert mf not in hex_obj.minefields
+    assert mf not in game.selected_objects
+    assert game.sidebar_needs_update is True
+
+
 
 
 

@@ -257,6 +257,19 @@ class StarSystem:
                 return True
         return False
 
+    def remove_minefield(self, minefield: 'Minefield') -> bool:
+        """Removes a minefield from the system. Returns True if successful."""
+        hex_coord = minefield.in_hex
+        if hex_coord in self.hexes and minefield in getattr(self.hexes[hex_coord], 'minefields', []):
+            self.hexes[hex_coord].remove_minefield(minefield)
+            return True
+        # Fallback: check all hexes in system in case in_hex is outdated
+        for h_coord, hex_obj in self.hexes.items():
+            if minefield in getattr(hex_obj, 'minefields', []):
+                hex_obj.remove_minefield(minefield)
+                return True
+        return False
+
     def get_units_in_hex(self, hex_coord: HexCoord) -> typing.List[Unit]:
         """Returns a list of units in the specified hex."""
         return self.hexes.get(hex_coord, []).units
@@ -380,6 +393,18 @@ class Galaxy:
             if system.remove_unit(unit):
                 return True
         logger.debug(f"Warning: Could not remove unit {unit.id} from galaxy.")
+        return False
+
+    def remove_minefield(self, minefield: 'Minefield') -> bool:
+        """Removes a minefield from the galaxy."""
+        if minefield.in_system and minefield.in_system in self.systems:
+            if self.systems[minefield.in_system].remove_minefield(minefield):
+                return True
+        # Fallback: search all systems if system reference was missing or wrong
+        for system in self.systems.values():
+            if system.remove_minefield(minefield):
+                return True
+        logger.debug(f"Warning: Could not remove minefield {minefield.id} from galaxy.")
         return False
 
     # --- Incremental Galaxy Generation Method  ---

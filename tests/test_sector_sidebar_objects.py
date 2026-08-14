@@ -113,3 +113,92 @@ def test_handle_gui_action_select_celestial_body():
 
     assert mock_game.selected_objects == [planet]
     assert mock_game.sidebar_needs_update is True
+
+
+def test_build_minefield_panel_shows_remove_button_for_owned_minefield():
+    from gui.sidebar.panels_world import build_minefield_panel
+    p1 = Player(name="Player 1", color=(0, 0, 255))
+    p1.id = 1
+    mock_game = MagicMock()
+    mock_game.players = [p1]
+    mock_game.current_player_index = 0
+
+    mf = Minefield(
+        owner=p1,
+        position=Position(10, 20),
+        in_hex=(0, 0),
+        in_system="Sol",
+        mines_remaining=25
+    )
+    mf.id = 888
+
+    panel_data = build_minefield_panel(mock_game, mf)
+    remove_buttons = [d for d in panel_data if d.get("type") == "button" and d.get("action_id") == "remove_minefield"]
+    assert len(remove_buttons) == 1
+    assert remove_buttons[0]["target_data"] == 888
+    assert remove_buttons[0]["text"] == "Remove minefield"
+
+
+def test_build_minefield_panel_no_remove_button_for_enemy_minefield():
+    from gui.sidebar.panels_world import build_minefield_panel
+    p1 = Player(name="Player 1", color=(0, 0, 255))
+    p2 = Player(name="Player 2", color=(255, 0, 0))
+    mock_game = MagicMock()
+    mock_game.players = [p1, p2]
+    mock_game.current_player_index = 0
+
+    enemy_mf = Minefield(
+        owner=p2,
+        position=Position(10, 20),
+        in_hex=(0, 0),
+        in_system="Sol",
+        mines_remaining=25
+    )
+    enemy_mf.id = 889
+
+    panel_data = build_minefield_panel(mock_game, enemy_mf)
+    remove_buttons = [d for d in panel_data if d.get("type") == "button" and d.get("action_id") == "remove_minefield"]
+    assert len(remove_buttons) == 0
+
+
+def test_handle_gui_action_remove_minefield():
+    from galaxy import Galaxy, StarSystem, Hex
+    from gui.dynamic_actions import build_button_payload
+
+    # Test dynamic action builder payload
+    payload = build_button_payload(None, 'remove_minefield', 999)
+    assert payload == {'action': 'remove_minefield', 'minefield_id': 999}
+
+    # Test action handling on game
+    p1 = Player(name="Player 1", color=(0, 0, 255))
+    game = MagicMock()
+    game.players = [p1]
+    game.current_player_index = 0
+    game.galaxy = Galaxy(num_systems=0)
+    sys = StarSystem("Sol", Position(0, 0))
+    hex_obj = Hex(0, 0, "Sol")
+    sys.hexes[(0, 0)] = hex_obj
+    game.galaxy.systems["Sol"] = sys
+
+    mf = Minefield(
+        owner=p1,
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        mines_remaining=10
+    )
+    mf.id = 999
+    hex_obj.add_minefield(mf)
+    game.selected_objects = [mf]
+    game.hovered_object = mf
+    game.sector_view_mouse_hover_object = mf
+    game.sidebar_needs_update = False
+
+    # Dispatch remove action
+    Game.handle_gui_action(game, {'action': 'remove_minefield', 'minefield_id': 999})
+
+    assert mf not in hex_obj.minefields
+    game.deselect_object.assert_called_once_with(mf)
+    assert game.hovered_object is None
+    assert game.sector_view_mouse_hover_object is None
+    assert game.sidebar_needs_update is True

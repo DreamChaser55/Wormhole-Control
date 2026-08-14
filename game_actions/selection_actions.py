@@ -1,5 +1,9 @@
 """GUI action handlers for selection and sidebar-state switching."""
+import logging
 import typing
+from entities import Minefield
+
+logger = logging.getLogger(__name__)
 
 
 def handle_select_individual_unit(game, action: dict) -> None:
@@ -20,6 +24,46 @@ def handle_select_minefield(game, action: dict) -> None:
     if mf:
         game.selected_objects = [mf]
         game.sidebar_needs_update = True
+
+
+def handle_remove_minefield(game, action: dict) -> None:
+    mf_id = action.get('minefield_id', action.get('target_data'))
+    mf = None
+    if game.galaxy and mf_id is not None:
+        mf = game.galaxy.get_minefield_by_id(mf_id)
+    if mf is None:
+        for obj in getattr(game, 'selected_objects', []):
+            if isinstance(obj, Minefield) and (mf_id is None or obj.id == mf_id):
+                mf = obj
+                break
+
+    if mf is None:
+        logger.debug(f"Minefield not found for removal (id: {mf_id}).")
+        return
+
+    current_player = game.players[game.current_player_index] if (getattr(game, 'players', None) and 0 <= getattr(game, 'current_player_index', 0) < len(game.players)) else None
+    if mf.owner and current_player and mf.owner != current_player:
+        logger.warning(f"Player {current_player.name} attempted to remove unowned minefield '{mf.name}' (id: {mf.id}).")
+        return
+
+    if game.galaxy:
+        game.galaxy.remove_minefield(mf)
+
+    if hasattr(game, 'deselect_object'):
+        game.deselect_object(mf)
+    elif hasattr(game, 'selected_objects') and mf in game.selected_objects:
+        game.selected_objects.remove(mf)
+
+    if getattr(game, 'hovered_object', None) == mf:
+        game.hovered_object = None
+    if getattr(game, 'sector_view_mouse_hover_object', None) == mf:
+        game.sector_view_mouse_hover_object = None
+
+    game.sidebar_needs_update = True
+    if hasattr(game, 'visibility_dirty'):
+        game.visibility_dirty = True
+
+    logger.debug(f"Minefield '{mf.name}' (id: {mf.id}) removed from game.")
 
 
 def handle_select_celestial_body(game, action: dict) -> None:
@@ -43,6 +87,7 @@ def handle_switch_unit_sidebar_tab(game, action: dict) -> None:
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'select_individual_unit': handle_select_individual_unit,
     'select_minefield': handle_select_minefield,
+    'remove_minefield': handle_remove_minefield,
     'select_celestial_body': handle_select_celestial_body,
     'component_selected': handle_component_selected,
     'switch_unit_sidebar_tab': handle_switch_unit_sidebar_tab,
