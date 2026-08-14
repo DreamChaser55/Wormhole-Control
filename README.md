@@ -99,7 +99,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 ### Detection & Intel
 - **Sensor Horizons**: Ships and stations project short-range visual circles and long-range inter-sector sensor detection.
 - **Fog of War & Sector Intel**: Unexplored regions remain hidden; explored sectors remember last-seen turn intel until refreshed by active sensors.
-- **Cloaking Devices**: Active cloaking fields hide ships from enemy inter-sector long-range sensors at the cost of continuous antimatter consumption.
+- **Cloaking Devices**: Active cloaking fields hide ships from enemy inter-sector long-range sensors at the cost of continuous antimatter consumption. Basic cloaks shield individual ships, while Advanced cloaks project an area-of-effect stealth field hiding entire fleet formations.
 
 ### Expansion & Infrastructure
 - **Colonization**: Dispatch colony ships to settle habitable planets, moons, and colonizable asteroids to grow population and tax revenues.

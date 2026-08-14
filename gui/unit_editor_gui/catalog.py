@@ -37,7 +37,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_sensors",               "label": "Sensors",            "cost_key": "sensors_hull_cost",          "default_cost": 2.0,  "is_dynamic": True},
     {"key": "has_minelayer_component",   "label": "Minelayer",          "cost_key": "minelayer_hull_cost",        "default_cost": 15.0, "is_dynamic": False},
     {"key": "has_marines_component",     "label": "Marines",            "cost_key": "marines_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
-    {"key": "has_cloaking_device",       "label": "Cloaking Device",    "cost_key": "cloaking_hull_cost",         "default_cost": 10.0, "is_dynamic": False},
+    {"key": "has_cloaking_device",       "label": "Cloaking Device",    "cost_key": "cloaking_device_hull_cost",  "default_cost": 10.0, "is_dynamic": True},
 ]
 
 HULL_SIZE_NAMES = [hs.name for hs in HullSize]
@@ -45,6 +45,7 @@ TURRET_TYPES = [t.name for t in TurretType]
 TURRET_VARIANTS = [v.name for v in TurretVariant]
 ABILITY_NAMES = [a.value for a in AbilityType]
 HYPERDRIVE_TYPES = ["BASIC", "ADVANCED"]
+CLOAKING_TYPES = ["BASIC", "ADVANCED"]
 WING_TYPES = ["FIGHTER", "BOMBER"]
 
 COMPONENT_DESCRIPTIONS = {
@@ -54,6 +55,7 @@ COMPONENT_DESCRIPTIONS = {
     "has_civilian_habitat_component": "Civilian Habitat<br><br>Provides economic bonuses (+50 credits per turn) if stationed in a sector with a colonized celestial object.",
     "has_metal_refinery_component": "Metal Refinery<br><br>Processes raw ore into refined metal alloys.",
     "has_crystal_refinery_component": "Crystal Refinery<br><br>Refines raw crystal into energy matrix components.",
-    "has_cloaking_device": "Cloaking Device<br><br>Hides the unit from enemy long-range (inter-sector) sensors when activated. Short-range in-sector sensors can still detect the unit. Consumes 5.0 antimatter per turn while active. Auto-deactivates if antimatter runs dry.",
+    "has_cloaking_device": "Cloaking Device<br><br>Hides units from enemy long-range (inter-sector) sensors when activated.<br><br>• <b>Basic</b> (10 Hull, 5 AM/turn): Single-ship personal stealth.<br>• <b>Advanced</b> (30 Hull, 20 AM/turn): Area stealth field hiding friendly units within 500 radius.<br><br>Short-range sensors still detect units normally.",
     "has_inhibitor": "Inhibitor Field<br><br>Generates a hyperspace inhibition zone around the unit, preventing hyperdrive jumps into or out of the field. Consumes antimatter per turn while active scaled by field radius. Auto-deactivates if antimatter runs dry.",
 }
+

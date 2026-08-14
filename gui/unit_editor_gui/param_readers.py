@@ -132,3 +132,13 @@ def read_marines_params(editor) -> None:
         editor._comp.marines_count = max(1, count)
     except ValueError:
         pass
+
+
+def read_cloaking_params(editor) -> None:
+    """Reads cloaking radius from UI input field and updates component configuration."""
+    try:
+        radius = float(editor._cloaking_radius_entry.get_text()) if getattr(editor, '_cloaking_radius_entry', None) else 500.0
+        editor._comp.cloaking_radius = max(0.0, radius)
+    except ValueError:
+        pass
+

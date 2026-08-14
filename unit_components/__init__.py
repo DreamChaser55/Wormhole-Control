@@ -2,6 +2,7 @@ import random
 
 from .enums import (
     HyperdriveType,
+    CloakingType,
     JumpStatus,
     UnitStance,
     TurretType,
@@ -38,6 +39,7 @@ from .civilian_habitat import CivilianHabitatComponent
 
 __all__ = [
     "HyperdriveType",
+    "CloakingType",
     "JumpStatus",
     "UnitStance",
     "TurretType",

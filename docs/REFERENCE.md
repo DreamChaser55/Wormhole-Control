@@ -196,7 +196,7 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 18 | `has_sensors` | Sensors | Dynamic | 2.0 | Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. |
 | 19 | `has_minelayer_component` | Minelayer | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields. |
 | 20 | `has_marines_component` | Marines | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count. |
-| 21 | `has_cloaking_device` | Cloaking Device | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING`. Hides unit from long-range inter-sector sensors while active. |
+| 21 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 / 30.0 | Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn) hides single unit from long-range sensors; **Advanced** (30 Hull, 20 AM/turn) projects an area-of-effect stealth field hiding all friendly units within 500 radius from enemy long-range sensors. |
 | — | *Always Present* | Commander | — | — | Core component present on all ships; manages order queues and combat stances. |
 
 ---

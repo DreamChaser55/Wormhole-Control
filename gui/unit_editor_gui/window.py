@@ -265,6 +265,11 @@ class UnitEditorWindow:
         """Reads marines count from UI input field and updates component configuration."""
         param_readers.read_marines_params(self)
 
+    def _read_cloaking_params(self) -> None:
+        """Reads cloaking radius from UI input field and updates component configuration."""
+        param_readers.read_cloaking_params(self)
+
+
     def _current_hull_used(self) -> float:
         """Computes total hull points consumed by active/enabled components."""
         return cost_model.current_hull_used(self)

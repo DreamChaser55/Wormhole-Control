@@ -135,8 +135,13 @@ SENSOR_LONG_RANGE_HULL_COST_PER_HEX: float = 5.0   # hull points per long-range 
 DEFAULT_SENSOR_LONG_RANGE_HEXES: int = 1       # default ring count for a long-range upgrade
 
 # Cloaking Device Constants
-CLOAKING_ANTIMATTER_COST_PER_TURN: float = 5.0  # antimatter consumed each turn while active
-CLOAKING_HULL_COST: float = 10.0                 # default fixed hull cost
+CLOAKING_BASIC_HULL_COST: float = 10.0            # Hull cost for Basic (single-unit) cloak
+CLOAKING_ADVANCED_HULL_COST: float = 30.0         # Hull cost for Advanced (area) cloak
+CLOAKING_HULL_COST: float = CLOAKING_BASIC_HULL_COST  # backward-compat alias
+CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN: float = 5.0  # Antimatter per turn for Basic cloak
+CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN: float = 20.0  # Antimatter per turn for Advanced cloak
+CLOAKING_ANTIMATTER_COST_PER_TURN: float = CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN  # backward-compat alias
+DEFAULT_ADVANCED_CLOAKING_RADIUS: float = 500.0   # Logical radius for Advanced area cloaking
 
 # Fog visuals
 FOG_PRESENCE_COLOR = (200, 60, 60)             # generic enemy-presence marker color
@@ -213,6 +218,8 @@ class HullSize(Enum):
     MEDIUM = auto()
     LARGE = auto()
     HUGE = auto()
+
+ADVANCED_CLOAKING_MIN_HULL: HullSize = HullSize.SMALL # Minimum hull size capable of mounting Advanced Cloak
 
 class StarType(Enum):
     # Main sequence stars

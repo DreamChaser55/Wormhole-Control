@@ -30,6 +30,8 @@ class VisibilityService:
         short_range_by_hex: Dict[Tuple[str, HexCoord], List[Tuple[typing.Any, float]]] = {}
         # long_range_covered: set of (system_name, hex_coord)
         long_range_covered: Set[Tuple[str, HexCoord]] = set()
+        # active_area_cloaks: (system_name, hex_coord, owner) -> list of (position, radius)
+        active_area_cloaks: Dict[Tuple[str, HexCoord, typing.Any], List[Tuple[typing.Any, float]]] = {}
 
         all_units: List['Unit'] = []
         for system_name, system in galaxy.systems.items():
@@ -49,6 +51,16 @@ class VisibilityService:
                                 for h in covered_hexes:
                                     if h in system.hexes:
                                         long_range_covered.add((system_name, h))
+                    else:
+                        # Index enemy active area cloaking emitters
+                        cloaking = getattr(unit, 'cloaking_component', None)
+                        if cloaking and cloaking.is_active and not cloaking.is_destroyed:
+                            from unit_components.enums import CloakingType
+                            if getattr(cloaking, 'device_type', None) == CloakingType.ADVANCED or getattr(cloaking, 'area_radius', 0.0) > 0:
+                                cloak_key = (system_name, hex_coord, unit.owner)
+                                if cloak_key not in active_area_cloaks:
+                                    active_area_cloaks[cloak_key] = []
+                                active_area_cloaks[cloak_key].append((unit.position, cloaking.area_radius))
 
         current_turn = turn_number
         if current_turn == 1:
@@ -67,12 +79,20 @@ class VisibilityService:
                 unit_key = (unit.in_system, unit.in_hex)
 
                 # Check if this unit is actively cloaked (defeats long-range sensors only)
+                # Either personally cloaked or covered by an active friendly Advanced Cloaking field
                 cloaking = getattr(unit, 'cloaking_component', None)
                 is_cloaked = (
                     cloaking is not None
                     and cloaking.is_active
                     and not cloaking.is_destroyed
                 )
+                if not is_cloaked:
+                    cloak_key = (unit.in_system, unit.in_hex, unit.owner)
+                    if cloak_key in active_area_cloaks:
+                        for emitter_pos, radius in active_area_cloaks[cloak_key]:
+                            if distance(emitter_pos, unit.position) <= radius:
+                                is_cloaked = True
+                                break
 
                 is_detailed = False
                 if unit_key in short_range_by_hex:

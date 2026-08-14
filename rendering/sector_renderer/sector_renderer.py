@@ -313,10 +313,11 @@ class SectorViewRenderer:
         if hex_obj:
             self._draw_fog_of_war(hex_obj, dynamic_radius)
 
-        # 4. Inhibition Fields
+        # 4. Inhibition & Cloaking Fields
         hex_obj = system.hexes.get(self.game.current_sector_coord)
         if hex_obj:
             self.entity_renderer.draw_inhibition_zones(hex_obj, dynamic_radius)
+            self.entity_renderer.draw_cloaking_fields(hex_obj, dynamic_radius)
 
         # 5. Objects in Current Hex
         if not hex_obj:

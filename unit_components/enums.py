@@ -4,6 +4,18 @@ class HyperdriveType(Enum):
     BASIC = "basic"  # Inter-sector travel only
     ADVANCED = "advanced" # Wormhole travel capable
 
+class CloakingType(Enum):
+    BASIC = "basic"        # Single-unit personal cloak
+    ADVANCED = "advanced"  # Area-of-effect fleet cloak
+
+    @property
+    def display_name(self) -> str:
+        if self == CloakingType.BASIC:
+            return "Basic"
+        elif self == CloakingType.ADVANCED:
+            return "Advanced"
+        return self.name.replace("_", " ").title()
+
 class JumpStatus(Enum):
     CHARGING = "charging"
     READY = "ready"

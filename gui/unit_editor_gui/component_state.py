@@ -10,9 +10,10 @@ from constants import HullSize, get_min_antimatter_capacity
 from custom_unit_templates import (
     HULL_RESTRICTIONS,
     ADVANCED_HYPERDRIVE_MIN_HULL,
+    ADVANCED_CLOAKING_MIN_HULL,
     ABILITY_REQUIRED_COMPONENTS,
 )
-from .catalog import COMPONENT_ROWS, HYPERDRIVE_TYPES
+from .catalog import COMPONENT_ROWS, HYPERDRIVE_TYPES, CLOAKING_TYPES
 from .widget_factory import replace_dropdown
 from .turret_editor import rebuild_turret_list, hide_turret_list
 
@@ -181,6 +182,22 @@ def apply_hull_restrictions(editor) -> None:
                     "#hd_type_dropdown",
                     group_key="has_hyperdrive",
                 )
+
+    # Advanced cloaking restriction
+    min_clk_idx = hull_sizes.index(ADVANCED_CLOAKING_MIN_HULL)
+    if hull_sizes.index(editor._hull_size) < min_clk_idx:
+        if getattr(editor._comp, "cloaking_type", "BASIC") == "ADVANCED":
+            editor._comp.cloaking_type = "BASIC"
+            if getattr(editor, "_cloaking_type_dropdown", None):
+                editor._cloaking_type_dropdown = replace_dropdown(
+                    editor,
+                    editor._cloaking_type_dropdown,
+                    CLOAKING_TYPES,
+                    "BASIC",
+                    "#cloaking_type_dropdown",
+                    group_key="has_cloaking_device",
+                )
+
 
     # Wing type show/hide & enable/disable
     if editor._wt_dropdown and editor._wt_lbl:

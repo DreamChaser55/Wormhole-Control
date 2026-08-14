@@ -90,6 +90,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
 
 # Advanced hyperdrive is unavailable on TINY hulls (existing game rule).
 ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.SMALL
+ADVANCED_CLOAKING_MIN_HULL = HullSize.SMALL
 
 # Helper to fetch component requirements for abilities dynamically from single-source ABILITY_DEFINITIONS
 def get_ability_required_components(ability_key: str) -> List[str]:
@@ -160,7 +161,13 @@ from unit_components.marines import MarinesComponent, MARINES_HULL_COST_PER_MARI
 from unit_components.abilities.component import AbilityComponent, ABILITY_BASE_COST, ABILITY_COST_PER_ABILITY
 from unit_components.cloaking import CloakingDevice
 from unit_components.civilian_habitat import CivilianHabitatComponent
-from constants import CLOAKING_HULL_COST
+from constants import (
+    CLOAKING_BASIC_HULL_COST,
+    CLOAKING_ADVANCED_HULL_COST,
+    CLOAKING_HULL_COST,
+    DEFAULT_ADVANCED_CLOAKING_RADIUS,
+    ADVANCED_CLOAKING_MIN_HULL,
+)
 
 
 # --------------------------------------------------------------------------
@@ -244,6 +251,11 @@ def calc_marines_hull_cost(marines_count: int) -> float:
 def calc_civilian_habitat_hull_cost(economic_bonus: float = 50.0) -> float:
     """Compute the hull cost of a Civilian Habitat component."""
     return CivilianHabitatComponent.calc_hull_cost(economic_bonus)
+
+
+def calc_cloaking_hull_cost(cloaking_type: str = "BASIC") -> float:
+    """Compute the hull cost of a Cloaking Device component based on cloaking_type."""
+    return CloakingDevice.calc_hull_cost(cloaking_type)
 
 
 def get_hyperdrive_system_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
@@ -395,7 +407,9 @@ class ComponentConfig:
 
     # Cloaking Device
     has_cloaking_device: bool = False
-    cloaking_hull_cost: float = CLOAKING_HULL_COST
+    cloaking_type: str = "BASIC"
+    cloaking_radius: float = DEFAULT_ADVANCED_CLOAKING_RADIUS
+    cloaking_hull_cost: float = CLOAKING_BASIC_HULL_COST
 
 
     # ------------------------------------------------------------------
@@ -507,10 +521,10 @@ class ComponentConfig:
 
     @property
     def cloaking_device_hull_cost(self) -> float:
-        """Hull cost of Cloaking Device (fixed)."""
+        """Hull cost of Cloaking Device, computed from cloaking_type."""
         if not self.has_cloaking_device:
             return 0.0
-        return float(self.cloaking_hull_cost)
+        return calc_cloaking_hull_cost(self.cloaking_type)
 
 
 
@@ -653,6 +667,13 @@ class CustomUnitTemplate:
             if hull_sizes.index(self.hull_size) < min_idx:
                 errors.append(
                     f"ADVANCED hyperdrive requires at least {ADVANCED_HYPERDRIVE_MIN_HULL.name} hull."
+                )
+        # Advanced cloaking restriction
+        min_cloak_idx = hull_sizes.index(ADVANCED_CLOAKING_MIN_HULL)
+        if c.has_cloaking_device and str(c.cloaking_type).upper() == "ADVANCED":
+            if hull_sizes.index(self.hull_size) < min_cloak_idx:
+                errors.append(
+                    f"ADVANCED cloaking device requires at least {ADVANCED_CLOAKING_MIN_HULL.name} hull."
                 )
         # Jump range must be positive
         if c.has_hyperdrive and c.hyperdrive_jump_range < 1:
@@ -966,6 +987,8 @@ class CustomTemplateManager:
             "marines_hull_cost": c.marines_hull_cost,
 
             "has_cloaking_device": c.has_cloaking_device,
+            "cloaking_type": c.cloaking_type,
+            "cloaking_radius": c.cloaking_radius,
             "cloaking_hull_cost": c.cloaking_device_hull_cost,
 
             "is_custom": True,  # marker so we know it's player-designed
@@ -1072,7 +1095,9 @@ class CustomTemplateManager:
             marines_count=int(d.get("marines_count", 10)),
 
             has_cloaking_device=d.get("has_cloaking_device", False),
-            cloaking_hull_cost=float(d.get("cloaking_hull_cost", CLOAKING_HULL_COST)),
+            cloaking_type=d.get("cloaking_type", "BASIC"),
+            cloaking_radius=float(d.get("cloaking_radius", DEFAULT_ADVANCED_CLOAKING_RADIUS)),
+            cloaking_hull_cost=float(d.get("cloaking_hull_cost", CLOAKING_BASIC_HULL_COST)),
         )
 
 

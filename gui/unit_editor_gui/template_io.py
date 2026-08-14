@@ -10,7 +10,7 @@ import pygame
 import pygame_gui
 import typing
 from custom_unit_templates import CustomUnitTemplate
-from .catalog import HULL_SIZE_NAMES, HYPERDRIVE_TYPES
+from .catalog import HULL_SIZE_NAMES, HYPERDRIVE_TYPES, CLOAKING_TYPES
 from .widget_factory import replace_dropdown
 from .component_state import (
     apply_hull_restrictions,
@@ -96,6 +96,8 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
         editor._inhibitor_radius_entry.set_text(str(int(editor._comp.inhibitor_radius)))
     if getattr(editor, '_marines_count_entry', None):
         editor._marines_count_entry.set_text(str(int(editor._comp.marines_count)))
+    if getattr(editor, '_cloaking_radius_entry', None):
+        editor._cloaking_radius_entry.set_text(str(int(getattr(editor._comp, "cloaking_radius", 500))))
 
     # Rebuild hull dropdown selection
     if editor._hull_dropdown:
@@ -127,6 +129,17 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
             editor._comp.wing_type if hasattr(editor._comp, "wing_type") else "FIGHTER",
             "#hd_type_dropdown",
             group_key="has_strikecraft_bay",
+        )
+
+    # Rebuild cloaking type dropdown selection
+    if getattr(editor, '_cloaking_type_dropdown', None):
+        editor._cloaking_type_dropdown = replace_dropdown(
+            editor,
+            editor._cloaking_type_dropdown,
+            CLOAKING_TYPES,
+            getattr(editor._comp, "cloaking_type", "BASIC"),
+            "#cloaking_type_dropdown",
+            group_key="has_cloaking_device",
         )
 
     apply_hull_restrictions(editor)
@@ -192,6 +205,7 @@ def _collect_and_validate_template(
     editor._read_strikecraft_bay_params()
     editor._read_inhibitor_params()
     editor._read_marines_params()
+    editor._read_cloaking_params()
     editor._comp.turrets = editor._turrets
     editor._comp.abilities = list(editor._selected_abilities)
 

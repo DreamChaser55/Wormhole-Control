@@ -198,6 +198,8 @@ def serialize_components(unit: Unit) -> dict:
             comp_data["is_active"] = comp.is_active
         elif isinstance(comp, CloakingDevice):
             comp_data["is_active"] = comp.is_active
+            comp_data["device_type"] = comp.device_type.name
+            comp_data["area_radius"] = comp.area_radius
         elif isinstance(comp, HangarComponent):
             comp_data["docked_units"] = [serialize_unit(u) for u in comp.docked_units]
         elif isinstance(comp, StrikecraftBayComponent):
@@ -543,6 +545,16 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
             hull_cost=template.get("marines_hull_cost", 0.0)
         ))
 
+    if template.get("has_cloaking_device"):
+        from unit_components.cloaking import CloakingDevice
+        from unit_components.enums import CloakingType
+        from constants import DEFAULT_ADVANCED_CLOAKING_RADIUS
+        c_type_raw = template.get("cloaking_type", "BASIC")
+        c_type = CloakingType.ADVANCED if str(c_type_raw).upper() == "ADVANCED" else CloakingType.BASIC
+        c_radius = float(template.get("cloaking_radius", DEFAULT_ADVANCED_CLOAKING_RADIUS)) if c_type == CloakingType.ADVANCED else 0.0
+        c_cost = float(template.get("cloaking_hull_cost", CloakingDevice.calc_hull_cost(c_type)))
+        new_unit.add_component(CloakingDevice(new_unit, device_type=c_type, area_radius=c_radius, hull_cost=c_cost))
+
     return new_unit
 
 
@@ -610,7 +622,17 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
                 unit.hyperdrive_component.jump_status = JumpStatus[status_str]
         elif comp_name == "HyperspaceInhibitionFieldEmitter" and unit.inhibitor_component:
             unit.inhibitor_component.is_active = comp_fields.get("is_active", unit.inhibitor_component.is_active)
-        elif comp_name == "CloakingDevice" and unit.cloaking_component:
+        elif comp_name == "CloakingDevice":
+            from unit_components.enums import CloakingType
+            from unit_components.cloaking import CloakingDevice
+            type_str = comp_fields.get("device_type", "BASIC")
+            c_type = CloakingType.ADVANCED if str(type_str).upper() == "ADVANCED" else CloakingType.BASIC
+            c_radius = float(comp_fields.get("area_radius", 0.0))
+            if not unit.cloaking_component:
+                unit.add_component(CloakingDevice(unit, device_type=c_type, area_radius=c_radius))
+            else:
+                unit.cloaking_component.device_type = c_type
+                unit.cloaking_component.area_radius = c_radius
             unit.cloaking_component.is_active = comp_fields.get("is_active", False)
         elif comp_name == "HangarComponent" and unit.hangar_component:
             unit.hangar_component.docked_units.clear()

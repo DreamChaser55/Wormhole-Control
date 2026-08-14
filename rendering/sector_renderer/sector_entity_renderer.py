@@ -59,6 +59,34 @@ class SectorEntityRenderer:
         if drew_inhibition_zone:
             self.screen.blit(self.parent._inhibition_surface, (0, 0))
 
+    def draw_cloaking_fields(self, hex_obj, dynamic_radius):
+        """Draws active advanced cloaking field boundaries for friendly/visible units."""
+        if not hex_obj:
+            return
+        from unit_components.enums import CloakingType
+        viewer = getattr(self.game, 'current_player', None)
+        for unit in hex_obj.units:
+            if viewer is not None and unit.owner != viewer and not self.game.is_unit_visible(unit):
+                continue
+            clk = getattr(unit, 'cloaking_component', None)
+            if clk and clk.is_active and not clk.is_destroyed and getattr(clk, 'device_type', None) == CloakingType.ADVANCED:
+                center_px = self.parent._coords_to_pixels(unit.position)
+                radius_px = int(clk.area_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                if radius_px > 0 and not self.parent._is_circle_off_screen((center_px.x, center_px.y), radius_px):
+                    screen_size = self.screen.get_size()
+                    if self.parent._inhibition_surface is None or self.parent._inhibition_surface.get_size() != screen_size:
+                        self.parent._inhibition_surface = _sr().pygame.Surface(screen_size, _sr().pygame.SRCALPHA)
+                    self.parent._inhibition_surface.fill((0, 0, 0, 0))
+                    _sr().pygame.draw.circle(
+                        self.parent._inhibition_surface, (70, 160, 240, 25),
+                        (int(center_px.x), int(center_px.y)), radius_px
+                    )
+                    _sr().pygame.draw.circle(
+                        self.parent._inhibition_surface, (100, 190, 255, 70),
+                        (int(center_px.x), int(center_px.y)), radius_px, 1
+                    )
+                    self.screen.blit(self.parent._inhibition_surface, (0, 0))
+
     def draw_minefield(self, minefield: Minefield, obj_pixel_pos, dynamic_radius):
         """Draws a minefield circle and its remaining mine dot/diamond icons. Returns obj_radius_logical."""
         obj_color = minefield.owner.color if minefield.owner else RED

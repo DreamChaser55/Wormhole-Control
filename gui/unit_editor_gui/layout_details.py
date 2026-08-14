@@ -10,6 +10,7 @@ import pygame_gui
 from .catalog import (
     COMPONENT_ROWS,
     HYPERDRIVE_TYPES,
+    CLOAKING_TYPES,
     TURRET_TYPES,
     TURRET_VARIANTS,
     ABILITY_NAMES,
@@ -177,9 +178,30 @@ def build_col3_details(
         y_ab += small_h + 3
     editor._details_groups["has_ability_component"].extend(ab_widgets)
 
-    # --- 13. Fixed & Info-only Components ---
+    # --- 13. Cloaking Device ---
+    y_clk = c3y_base
+    lbl_clk_t = make_label(pygame.Rect(c3x, y_clk, c3w, small_h), "Cloaking Type:", mgr, pan)
+    editor._cloaking_type_dropdown = make_dropdown(
+        pygame.Rect(c3x, y_clk + small_h + 2, c3w, dd_h),
+        CLOAKING_TYPES,
+        editor._comp.cloaking_type if hasattr(editor._comp, "cloaking_type") else "BASIC",
+        mgr, pan, "#cloaking_type_dropdown"
+    )
+    y_clk += small_h + dd_h + pad
+    editor._lbl_clk_r = make_label(pygame.Rect(c3x, y_clk, c3w, small_h), "Area Radius (Advanced):", mgr, pan)
+    editor._cloaking_radius_entry = make_entry(
+        pygame.Rect(c3x, y_clk + small_h + 2, c3w, entry_h),
+        str(int(getattr(editor._comp, "cloaking_radius", 500))),
+        mgr, pan
+    )
+    editor._details_groups["has_cloaking_device"].extend([
+        lbl_clk_t, editor._cloaking_type_dropdown,
+        editor._lbl_clk_r, editor._cloaking_radius_entry,
+    ])
+
+    # --- 14. Fixed & Info-only Components ---
     for comp_key, desc in COMPONENT_DESCRIPTIONS.items():
-        if comp_key in editor._details_groups:
+        if comp_key in editor._details_groups and not editor._details_groups[comp_key]:
             box = pygame_gui.elements.UITextBox(
                 html_text=desc,
                 relative_rect=pygame.Rect(c3x, c3y_base, c3w, int(150 * scale_y)),

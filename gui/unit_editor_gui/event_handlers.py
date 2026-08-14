@@ -26,6 +26,8 @@ from .param_readers import (
     read_hangar_params,
     read_strikecraft_bay_params,
     read_inhibitor_params,
+    read_marines_params,
+    read_cloaking_params,
 )
 
 
@@ -112,6 +114,11 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
             editor._comp.wing_type = event.text
             editor._update_summary()
             return "ui_handled"
+        elif elem is getattr(editor, '_cloaking_type_dropdown', None):
+            editor._comp.cloaking_type = event.text
+            editor._sync_dynamic_costs()
+            editor._update_summary()
+            return "ui_handled"
         elif elem is editor._load_dd and event.text != "— select —":
             load_design(editor, event.text)
             return "ui_handled"
@@ -168,5 +175,16 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
             editor._sync_dynamic_costs()
             editor._update_summary()
             return "ui_handled"
+        elif elem is getattr(editor, '_marines_count_entry', None):
+            read_marines_params(editor)
+            editor._sync_dynamic_costs()
+            editor._update_summary()
+            return "ui_handled"
+        elif elem is getattr(editor, '_cloaking_radius_entry', None):
+            read_cloaking_params(editor)
+            editor._sync_dynamic_costs()
+            editor._update_summary()
+            return "ui_handled"
 
     return None
+
