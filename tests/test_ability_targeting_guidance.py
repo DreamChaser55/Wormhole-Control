@@ -88,6 +88,40 @@ def test_sector_overlay_targeting_mode_renderer():
         renderer.draw_targeting_mode_overlay()
 
 
+def test_sector_overlay_targeting_mode_renders_range_ring():
+    pygame.font.init()
+    player = MockPlayer()
+    game = MagicMock()
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.pending_ability = ("microjump", False, True)
+    game.sector_view_mouse_hover_object = None
+
+    caster = Unit(owner=player, position=Position(100, 200), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    game.selected_objects = [caster]
+
+    parent = MagicMock()
+    parent.game = game
+    parent.screen = pygame.Surface((1280, 720))
+    parent.overlay_surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
+    parent._font_cache = {}
+    parent._coords_to_pixels.return_value = Position(500, 400)
+    parent.get_dynamic_sector_radius.return_value = 3000.0
+
+    renderer = SectorOverlayRenderer(parent)
+
+    with patch('pygame.mouse.get_pos', return_value=(500, 300)):
+        renderer.draw_targeting_mode_overlay()
+
+    parent._draw_range_ring.assert_called_once()
+    args = parent._draw_range_ring.call_args[0]
+    assert args[0] == 500  # cx
+    assert args[1] == 400  # cy
+    assert args[2] == 360  # radius_px (600.0 * 3000 / 5000 = 360)
+    assert args[3] == (200, 100, 255)  # ring color
+
+
+
 def test_input_processor_left_click_protection_in_targeting_mode():
     game = MagicMock()
     game.pending_ability = ("ion_bolt", True, False)

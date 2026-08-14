@@ -688,6 +688,29 @@ class SectorOverlayRenderer:
         else:
             guidance_text = f"TARGETING: {pending_name.upper()}  —  Right-Click to cast (ESC to cancel)"
 
+        # 0. Draw Range Ring around casting unit(s)
+        from unit_components import ABILITY_DEFINITIONS, AbilityType
+        try:
+            atype_enum = AbilityType(ability_type_str)
+            defn = ABILITY_DEFINITIONS.get(atype_enum)
+        except (ValueError, KeyError):
+            defn = None
+
+        if defn and getattr(defn, 'range', 0) > 0 and hasattr(self.parent, '_draw_range_ring') and hasattr(self.parent, '_coords_to_pixels'):
+            dynamic_radius = (
+                self.parent.get_dynamic_sector_radius()
+                if hasattr(self.parent, 'get_dynamic_sector_radius')
+                else SECTOR_CIRCLE_RADIUS_LOGICAL
+            )
+            selected_units = [u for u in getattr(self.game, 'selected_objects', []) if isinstance(u, Unit)]
+            for unit in selected_units:
+                if (getattr(unit, 'in_system', None) == getattr(self.game, 'current_system_name', None) and
+                        getattr(unit, 'in_hex', None) == getattr(self.game, 'current_sector_coord', None)):
+                    unit_px = self.parent._coords_to_pixels(unit.position)
+                    rng_px = int(defn.range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                    if rng_px > 1:
+                        self.parent._draw_range_ring(int(unit_px.x), int(unit_px.y), rng_px, (200, 100, 255))
+
         # 1. Draw top-center HUD targeting banner
         font_size = max(13, int(15 * TEXT_SCALE))
         if font_size not in self.parent._font_cache:

@@ -212,3 +212,56 @@ def test_microjump_fails_out_of_range():
     assert success is False
     assert unit.position == Position(0, 0)
     assert unit.antimatter_component.current_amount == 100.0
+    assert len(game.gui.warning_dialogs) == 1
+    assert "exceeds maximum range" in game.gui.warning_dialogs[0][0]
+
+
+def test_microjump_order_fails_out_of_range_no_sublight_move():
+    unit, game = create_test_unit(position=Position(0, 0))
+    # Target at distance 1500 > range 600
+    target_pos = Position(1500, 0)
+
+    order = UseAbilityOrder(
+        unit,
+        {
+            "ability_type": "microjump",
+            "target_position": target_pos,
+            "target_system_name": "Sol",
+            "target_hex_coord": (0, 0),
+        },
+    )
+
+    order.execute(game.galaxy)
+
+    # Must fail immediately, not create a sublight MoveOrder
+    assert order.status == OrderStatus.FAILED
+    assert len(order.sub_orders) == 0
+    assert unit.position == Position(0, 0)
+    assert unit.antimatter_component.current_amount == 100.0
+    assert len(game.gui.warning_dialogs) == 1
+    assert "exceeds maximum range" in game.gui.warning_dialogs[0][0]
+
+
+def test_microjump_order_fails_different_sector():
+    unit, game = create_test_unit(position=Position(0, 0))
+    target_pos = Position(200, 100)
+
+    order = UseAbilityOrder(
+        unit,
+        {
+            "ability_type": "microjump",
+            "target_position": target_pos,
+            "target_system_name": "Sol",
+            "target_hex_coord": (1, 0),  # Different hex!
+        },
+    )
+
+    order.execute(game.galaxy)
+
+    assert order.status == OrderStatus.FAILED
+    assert len(order.sub_orders) == 0
+    assert unit.position == Position(0, 0)
+    assert unit.antimatter_component.current_amount == 100.0
+    assert len(game.gui.warning_dialogs) == 1
+    assert "Target position is in a different sector" in game.gui.warning_dialogs[0][0]
+

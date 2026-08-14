@@ -47,12 +47,24 @@ class MicrojumpAbility(AbilityInstance):
         # Microjump is strictly intra-sector (same system and hex)
         if sys_name != unit.in_system or hex_coord != unit.in_hex:
             logger.debug(f"[{unit.name}] Microjump failed: Target position is in a different sector.")
+            gui = getattr(getattr(unit, 'game', None), 'gui', None)
+            if gui:
+                gui.show_warning_dialog(
+                    f"Cannot microjump unit <b>{unit.name}</b>: Target position is in a different sector. Microjumps are restricted to the local sector.",
+                    title="Microjump Failed"
+                )
             return False
 
         # Range check
         dist = distance(unit.position, target_position)
         if dist > self.DEFINITION.range:
             logger.debug(f"[{unit.name}] Microjump failed: Target position distance ({dist:.1f}) exceeds range ({self.DEFINITION.range}).")
+            gui = getattr(getattr(unit, 'game', None), 'gui', None)
+            if gui:
+                gui.show_warning_dialog(
+                    f"Cannot microjump unit <b>{unit.name}</b>: Target position distance ({dist:.0f} px) exceeds maximum range ({self.DEFINITION.range:.0f} px).",
+                    title="Microjump Failed"
+                )
             return False
 
         # Fetch system and hex object for inhibition checks

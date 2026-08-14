@@ -133,6 +133,34 @@ class UseAbilityOrder(Order):
         # --- Pre-validation for MICROJUMP ability ---
         if ability_type == AbilityType.MICROJUMP:
             if target_position is not None:
+                target_sys = self.parameters.get("target_system_name") or self.unit.in_system
+                target_hex = self.parameters.get("target_hex_coord") or self.unit.in_hex
+
+                # Microjump is strictly intra-sector
+                if target_sys != self.unit.in_system or target_hex != self.unit.in_hex:
+                    logger.debug(f"[{self.unit.name}] USE_ABILITY (Microjump) failed: target is in a different sector.")
+                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                    if gui:
+                        gui.show_warning_dialog(
+                            f"Cannot microjump unit <b>{self.unit.name}</b>: Target position is in a different sector. Microjumps are restricted to the local sector.",
+                            title="Microjump Failed"
+                        )
+                    self.status = OrderStatus.FAILED
+                    return
+
+                # Range check (instant jump; do not auto-move at sub-light speed)
+                dist = distance(self.unit.position, target_position)
+                if dist > defn.range:
+                    logger.debug(f"[{self.unit.name}] USE_ABILITY (Microjump) failed: target distance ({dist:.1f}) exceeds range ({defn.range}).")
+                    gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                    if gui:
+                        gui.show_warning_dialog(
+                            f"Cannot microjump unit <b>{self.unit.name}</b>: Target position distance ({dist:.0f} px) exceeds maximum range ({defn.range:.0f} px).",
+                            title="Microjump Failed"
+                        )
+                    self.status = OrderStatus.FAILED
+                    return
+
                 system = galaxy_ref.systems.get(self.unit.in_system) if galaxy_ref else None
                 hex_obj = system.hexes.get(self.unit.in_hex) if system else None
                 if hex_obj:
@@ -184,8 +212,8 @@ class UseAbilityOrder(Order):
                     self.add_sub_order(UseAbilityOrder(self.unit, self.parameters, parent_order=self))
                 return
 
-        # --- Range check for position-targeted abilities ---
-        elif defn.requires_target_position and target_position is not None:
+        # --- Range check for position-targeted projectile/effect abilities (e.g. Cluster Warhead) ---
+        elif defn.requires_target_position and target_position is not None and ability_type != AbilityType.MICROJUMP:
             target_sys = self.parameters.get("target_system_name") or self.unit.in_system
             target_hex = self.parameters.get("target_hex_coord") or self.unit.in_hex
 
