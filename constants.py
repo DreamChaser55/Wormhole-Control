@@ -78,8 +78,6 @@ SECTOR_ZOOM_MAX = 15.0
 # even at very high zoom levels.
 STORM_COMPOSE_MAX_DIAMETER = 384
 
-
-
 # Game Mechanics Constants
 DEFAULT_HYPERDRIVE_RECHARGE_DURATION: int = 3
 DEFAULT_JUMP_RANGE: int = 5 # in hexes
@@ -115,7 +113,6 @@ MINEFIELD_DEFAULT_MINES: int = 5
 MINEFIELD_DETONATION_RADIUS: float = 300.0
 MINELAYER_HULL_COST: float = 15.0
 
-
 # Antimatter Harvester component: only units with this component can generate
 # new antimatter, and only while positioned near a star.
 DEFAULT_ANTIMATTER_HARVEST_RATE: float = 10.0
@@ -148,16 +145,12 @@ FOG_PRESENCE_COLOR = (200, 60, 60)             # generic enemy-presence marker c
 FOG_TINT_COLOR = (0, 0, 0, 60)                 # optional faint shading for non-detailed hexes (system view)
 FOG_OF_WAR_COLOR = (40, 40, 50, 55)            # semi-transparent grey fog for out-of-sensor-range areas (sector view)
 
-
-
-
 # Experience point (XP) constants
 MAX_UNIT_XP: int = 1000               # Maximum XP a unit can accumulate
 XP_WEAPON_DAMAGE_BONUS: float = 0.25  # +25% weapon damage at max XP
 XP_DEFENSE_BONUS: float = 0.25        # +25% defense mitigation at max XP
 XP_SPEED_BONUS: float = 0.15          # +15% sub-FTL speed at max XP
 XP_JUMP_RANGE_BONUS: float = 0.20     # +20% hyperdrive jump range at max XP
-
 
 # Object sizes in sector view (in logical world coordinates):
 STATION_ICON_SIZE = 27.78
@@ -208,7 +201,6 @@ SYSTEM_BG_COLOR = (4, 4, 8)
 SECTOR_BG_COLOR = (6, 6, 12)
 SECTOR_BORDER_COLOR = (60, 60, 80)
 SECTOR_GRID_COLOR = (30, 35, 45) # Faint grey grid color for sector view
-
 
 # Enum Definitions
 class HullSize(Enum):
@@ -288,8 +280,6 @@ class StormType(Enum):
     MAGNETIC = auto()
     RADIATION = auto()
 
-
-
 NEBULA_COLORS = {
     NebulaType.HYDROGEN: (255, 105, 180, 30),
     NebulaType.NITROGEN: (138, 43, 226, 30),
@@ -304,7 +294,6 @@ STORM_COLORS = {
 }
 
 STORM_LIGHTNING_COLOR = (255, 255, 224, 150) # Light Yellow for lightning
-
 
 HULL_CAPACITIES: Dict[HullSize, float] = {
     HullSize.STRIKECRAFT_WING: 5.0,
@@ -364,7 +353,6 @@ SECTOR_VIEW_BASE_ICON_SIZE = 22.22
 ICON_DOT_RADIUS = 4.17
 ICON_DOT_SPACING = 11.11
 
-
 MIN_ANTIMATTER_CAPACITY_BY_HULL: Dict[HullSize, float] = {
     HullSize.STRIKECRAFT_WING: 40.0,
     HullSize.TINY: 60.0,
@@ -373,7 +361,6 @@ MIN_ANTIMATTER_CAPACITY_BY_HULL: Dict[HullSize, float] = {
     HullSize.LARGE: 150.0,
     HullSize.HUGE: 200.0,
 }
-
 
 def get_min_antimatter_capacity(hull_size: Optional[HullSize] = None) -> float:
     """Return the minimum antimatter storage capacity for a given hull size.
