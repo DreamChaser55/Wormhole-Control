@@ -395,7 +395,7 @@ class TurnProcessor:
                 if unit.owner == current_player:
                     hab_comp = getattr(unit, 'civilian_habitat_component', None)
                     if hab_comp and not hab_comp.is_destroyed:
-                        if hab_comp.has_colonized_celestial_object_in_sector(self.game.galaxy):
+                        if hab_comp.is_active(self.game.galaxy):
                             bonus = hab_comp.economic_bonus
                             current_player.credits += bonus
                             habitat_credits_generated += bonus

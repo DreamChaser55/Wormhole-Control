@@ -6,7 +6,14 @@ import typing
 from typing import Dict, Optional, Any, Tuple, TYPE_CHECKING
 from utils import HexCoord
 from geometry import Position, distance, Vector
-from constants import WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS, StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS, MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS, MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS
+from constants import (
+    WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS,
+    StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS,
+    MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS,
+    XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS,
+    MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS,
+    POPULATION_PER_HABITAT, BASE_HABITAT_CAPACITY
+)
 import uuid
 import dataclasses
 from enum import Enum, auto
@@ -102,6 +109,12 @@ class CelestialBody(GameObject):
     def __init__(self, position: Position, in_hex: HexCoord, in_system: str, inhibition_field_radius: float = 0.0):
         super().__init__(position, in_hex, in_system)
         self.inhibition_field_radius = inhibition_field_radius
+
+    def get_supported_habitat_capacity(self) -> int:
+        """Returns the maximum number of civilian habitat modules this body can support based on population."""
+        if not getattr(self, 'owner', None) or getattr(self, 'population', 0.0) <= 0:
+            return 0
+        return max(BASE_HABITAT_CAPACITY, int(self.population // POPULATION_PER_HABITAT))
 
 # --- CelestialBody-derived Classes ---
 

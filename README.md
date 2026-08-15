@@ -105,7 +105,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Colonization**: Dispatch colony ships to settle habitable planets, moons, and colonizable asteroids to grow population and tax revenues.
 - **Automated Logistics**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled.
 - **Orbital Construction**: Constructors assemble orbital defense platforms, shipyards, refineries, and stations.
-- **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses (+50 credits/turn).
+- **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses (+50 credits/turn), supported up to finite colony population limits (base 1, +1 per 25 population).
 
 ---
 

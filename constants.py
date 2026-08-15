@@ -83,6 +83,8 @@ DEFAULT_HYPERDRIVE_RECHARGE_DURATION: int = 3
 DEFAULT_JUMP_RANGE: int = 5 # in hexes
 UPKEEP_COST_PER_HULL_POINT: float = 0.01  # Credits per used hull point per turn
 TAX_RATE: float = 0.1  # 10% tax rate
+POPULATION_PER_HABITAT: float = 25.0  # Population required per supported civilian habitat module
+BASE_HABITAT_CAPACITY: int = 1  # Base habitat modules supported by any colonized celestial body with population > 0
 
 # Antimatter Mechanics Constants
 DEFAULT_ANTIMATTER_CAPACITY: float = 100.0

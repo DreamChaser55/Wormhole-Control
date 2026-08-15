@@ -151,6 +151,185 @@ class TestCivilianHabitatComponent(unittest.TestCase):
         self.assertIn("has_civilian_habitat_component", [row["key"] for row in COMPONENT_ROWS])
         self.assertIn("has_civilian_habitat_component", COMPONENT_DESCRIPTIONS)
 
+    def test_population_habitat_capacity_scaling(self):
+        planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
+        self.assertEqual(planet.get_supported_habitat_capacity(), 0)  # Unowned
+
+        planet.owner = self.player
+        planet.population = 0.0
+        self.assertEqual(planet.get_supported_habitat_capacity(), 0)
+
+        planet.population = 10.0
+        self.assertEqual(planet.get_supported_habitat_capacity(), 1)
+
+        planet.population = 25.0
+        self.assertEqual(planet.get_supported_habitat_capacity(), 1)
+
+        planet.population = 50.0
+        self.assertEqual(planet.get_supported_habitat_capacity(), 2)
+
+        planet.population = 75.0
+        self.assertEqual(planet.get_supported_habitat_capacity(), 3)
+
+        planet.population = 100.0
+        self.assertEqual(planet.get_supported_habitat_capacity(), 4)
+
+        moon = Moon(in_hex=self.hex_coord, in_system="Sol")
+        moon.owner = self.player
+        moon.population = 50.0
+        self.assertEqual(moon.get_supported_habitat_capacity(), 2)
+
+        asteroid = ColonizableAsteroid(in_hex=self.hex_coord, in_system="Sol")
+        asteroid.owner = self.player
+        asteroid.population = 20.0
+        self.assertEqual(asteroid.get_supported_habitat_capacity(), 1)
+
+    def test_habitat_capacity_capping_and_inactivity(self):
+        planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
+        planet.owner = self.player
+        planet.population = 25.0  # Supports exactly 1 habitat
+        self.system.add_celestial_body(planet)
+
+        # Create 2 additional habitat units in the same sector
+        unit2 = Unit(
+            owner=self.player,
+            position=None,
+            in_hex=self.hex_coord,
+            in_system="Sol",
+            name="Habitat Station 2",
+            hull_size=HullSize.LARGE,
+            game=MagicMock(galaxy=self.galaxy)
+        )
+        hab2 = CivilianHabitatComponent(unit=unit2, economic_bonus=50.0)
+        unit2.add_component(hab2)
+        self.system.add_unit(unit2)
+
+        unit3 = Unit(
+            owner=self.player,
+            position=None,
+            in_hex=self.hex_coord,
+            in_system="Sol",
+            name="Habitat Station 3",
+            hull_size=HullSize.LARGE,
+            game=MagicMock(galaxy=self.galaxy)
+        )
+        hab3 = CivilianHabitatComponent(unit=unit3, economic_bonus=50.0)
+        unit3.add_component(hab3)
+        self.system.add_unit(unit3)
+
+        # Ensure units are sorted by ID
+        units_sorted = sorted([self.unit, unit2, unit3], key=lambda u: u.id)
+        first_unit = units_sorted[0]
+        second_unit = units_sorted[1]
+        third_unit = units_sorted[2]
+
+        self.assertTrue(first_unit.civilian_habitat_component.is_active(self.galaxy))
+        self.assertFalse(second_unit.civilian_habitat_component.is_active(self.galaxy))
+        self.assertFalse(third_unit.civilian_habitat_component.is_active(self.galaxy))
+
+        status2 = second_unit.civilian_habitat_component.get_sector_habitat_status(self.galaxy)
+        self.assertFalse(status2['active'])
+        self.assertIn("Colony Capacity Reached", status2['reason'])
+        self.assertEqual(status2['capacity'], 1)
+        self.assertEqual(status2['slot'], 2)
+
+        # Turn processing should only give +50 for the 1 active habitat (+ taxes)
+        game_mock = MagicMock()
+        game_mock.galaxy = self.galaxy
+        game_mock.players = [self.player]
+        game_mock.current_player_index = 0
+        tp = TurnProcessor(game_mock)
+
+        from constants import TAX_RATE
+        initial_credits = self.player.credits
+        tp._process_resource_generation(self.player)
+        expected = initial_credits + (25.0 * TAX_RATE) + 50.0
+        self.assertAlmostEqual(self.player.credits, expected)
+
+    def test_dynamic_population_growth_activates_additional_habitat(self):
+        planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
+        planet.owner = self.player
+        planet.population = 25.0  # Capacity 1
+        self.system.add_celestial_body(planet)
+
+        unit2 = Unit(
+            owner=self.player,
+            position=None,
+            in_hex=self.hex_coord,
+            in_system="Sol",
+            name="Habitat Station 2",
+            hull_size=HullSize.LARGE,
+            game=MagicMock(galaxy=self.galaxy)
+        )
+        hab2 = CivilianHabitatComponent(unit=unit2, economic_bonus=50.0)
+        unit2.add_component(hab2)
+        self.system.add_unit(unit2)
+
+        self.assertTrue(self.unit.civilian_habitat_component.is_active(self.galaxy))
+        self.assertFalse(unit2.civilian_habitat_component.is_active(self.galaxy))
+
+        # Population grows to 50 -> Capacity increases to 2
+        planet.population = 50.0
+        self.assertTrue(self.unit.civilian_habitat_component.is_active(self.galaxy))
+        self.assertTrue(unit2.civilian_habitat_component.is_active(self.galaxy))
+
+    def test_economy_income_calculation_with_habitats(self):
+        import economy
+        planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
+        planet.owner = self.player
+        planet.population = 50.0  # Capacity 2
+        self.system.add_celestial_body(planet)
+
+        # 1 habitat unit present
+        from constants import TAX_RATE
+        expected_income = (50.0 * TAX_RATE) + 50.0
+        self.assertAlmostEqual(economy.calculate_player_income(self.galaxy, self.player), expected_income)
+
+        # Add second habitat -> income increases by 50
+        unit2 = Unit(
+            owner=self.player,
+            position=None,
+            in_hex=self.hex_coord,
+            in_system="Sol",
+            name="Habitat Station 2",
+            hull_size=HullSize.LARGE,
+            game=MagicMock(galaxy=self.galaxy)
+        )
+        unit2.add_component(CivilianHabitatComponent(unit=unit2, economic_bonus=50.0))
+        self.system.add_unit(unit2)
+        self.assertAlmostEqual(economy.calculate_player_income(self.galaxy, self.player), expected_income + 50.0)
+
+        # Add third habitat (exceeds capacity 2) -> income does NOT increase
+        unit3 = Unit(
+            owner=self.player,
+            position=None,
+            in_hex=self.hex_coord,
+            in_system="Sol",
+            name="Habitat Station 3",
+            hull_size=HullSize.LARGE,
+            game=MagicMock(galaxy=self.galaxy)
+        )
+        unit3.add_component(CivilianHabitatComponent(unit=unit3, economic_bonus=50.0))
+        self.system.add_unit(unit3)
+        self.assertAlmostEqual(economy.calculate_player_income(self.galaxy, self.player), expected_income + 50.0)
+
+    def test_sidebar_status_labels(self):
+        game_mock = MagicMock()
+        game_mock.galaxy = self.galaxy
+
+        # Uninhabited sector
+        basic_data = self.habitat_comp.get_basic_sidebar_data(game_mock)
+        self.assertTrue(any("Inactive" in item.get("text", "") for item in basic_data))
+
+        # Colonize sector with pop 25
+        planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
+        planet.owner = self.player
+        planet.population = 25.0
+        self.system.add_celestial_body(planet)
+
+        basic_data = self.habitat_comp.get_basic_sidebar_data(game_mock)
+        self.assertTrue(any("+50 Credits/Turn [1/1]" in item.get("text", "") for item in basic_data))
+
 
 if __name__ == "__main__":
     unittest.main()
