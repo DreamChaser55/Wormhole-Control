@@ -22,6 +22,7 @@ ABILITY_COLOR = "#FF69B4"               # Hot Pink for Use Ability order type
 MINE_COLOR = "#FFA500"                  # Orange for Mine
 UNLOAD_COLOR = "#00FFFF"                # Cyan for Unload Resources
 TRANSFER_ANTIMATTER_COLOR = "#7FFFD4"   # Aquamarine for Transfer Antimatter
+TRADE_COLOR = "#FFD700"                 # Gold for Trade orders
 
 
 def _target_name_html(state_data: dict) -> str:
@@ -163,6 +164,16 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         continuous_resupply_type_styled = f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>🔁 Resupply (continuously):</b></font>"
         target_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
         return [f"{continuous_resupply_type_styled} {target_styled}"]
+
+    elif order_type == "TRADE":
+        target_unit_id = parameters.get("target_unit_id", "Unknown")
+        trade_type_styled = f"<font color='{TRADE_COLOR}'><b>Trade:</b></font>"
+        target_styled = f"<font color='{INFO_COLOR}'><i>Target Habitat ID: {target_unit_id}</i></font>"
+        return [f"{trade_type_styled} {target_styled}"]
+
+    elif order_type == "CONTINUOUS_TRADE":
+        continuous_trade_type_styled = f"<font color='{TRADE_COLOR}'><b>🔁 Trade (continuously)</b></font>"
+        return [continuous_trade_type_styled]
 
     elif order_type == "UNLOAD_RESOURCES":
         target_unit_id = parameters.get("target_unit_id", "Unknown")

@@ -86,6 +86,13 @@ TAX_RATE: float = 0.1  # 10% tax rate
 POPULATION_PER_HABITAT: float = 25.0  # Population required per supported civilian habitat module
 BASE_HABITAT_CAPACITY: int = 1  # Base habitat modules supported by any colonized celestial body with population > 0
 
+# Trade Mechanics Constants
+TRADE_BASE_HULL_COST: float = 10.0
+TRADE_BASE_INCOME: float = 25.0
+TRADE_INCOME_PER_DISTANCE_UNIT: float = 15.0
+TRADE_INTERSYSTEM_HOP_DISTANCE: float = 10.0
+TRADE_ARRIVAL_RANGE: float = 200.0
+
 # Antimatter Mechanics Constants
 DEFAULT_ANTIMATTER_CAPACITY: float = 100.0
 MIN_ANTIMATTER_CAPACITY: float = 100.0

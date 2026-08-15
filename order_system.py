@@ -5,13 +5,13 @@ from events import (
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent,
     IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent,
-    LayMinefieldEvent, RefitUnitEvent
+    LayMinefieldEvent, RefitUnitEvent, TradeEvent, ContinuousTradeEvent
 )
 from unit_orders import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
     MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
     ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder, LayMinefieldOrder,
-    RefitOrder, calculate_required_antimatter
+    RefitOrder, TradeOrder, ContinuousTradeOrder, calculate_required_antimatter
 )
 
 from sector_utils import random_point_in_sector
@@ -48,6 +48,8 @@ class OrderSystem:
         self.event_bus.subscribe(TransferAntimatterEvent, self.handle_transfer_antimatter)
         self.event_bus.subscribe(ContinuousResupplyEvent, self.handle_continuous_resupply)
         self.event_bus.subscribe(LayMinefieldEvent, self.handle_lay_minefield)
+        self.event_bus.subscribe(TradeEvent, self.handle_trade)
+        self.event_bus.subscribe(ContinuousTradeEvent, self.handle_continuous_trade)
 
     def validate_antimatter_for_unit(self, unit, dest_system, dest_hex, dest_pos=None) -> bool:
         galaxy_ref = getattr(self.game, 'galaxy', None)
@@ -477,6 +479,42 @@ class OrderSystem:
             unit.commander_component.add_order(lay_order)
             logger.debug(f"  Unit {unit.name} ordered to lay {mtype} minefield via event.")
         self.game.sidebar_needs_update = True
+
+    def handle_trade(self, event: TradeEvent):
+        """Creates TradeOrders for selected units with TradeComponent, targeting an active Civilian Habitat."""
+        for unit in event.units:
+            if not getattr(unit, 'trade_component', None):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Trade Component and cannot engage in commerce.",
+                        title="No Trade Module"
+                    )
+                continue
+            trade_params = {"target_unit_id": event.target_unit.id}
+            trade_order = TradeOrder(unit, trade_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(trade_order)
+            logger.debug(f"  Unit {unit.name} ordered to trade with {event.target_unit.name} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_continuous_trade(self, event: ContinuousTradeEvent):
+        """Creates ContinuousTradeOrders for selected units with TradeComponent."""
+        for unit in event.units:
+            if not getattr(unit, 'trade_component', None):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Trade Component and cannot engage in commerce.",
+                        title="No Trade Module"
+                    )
+                continue
+            continuous_trade_order = ContinuousTradeOrder(unit)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(continuous_trade_order)
+            logger.debug(f"  Unit {unit.name} ordered to continuous trade via event.")
+        self.game.sidebar_needs_update = True
+
 
 
 

@@ -381,6 +381,7 @@ def test_refit_event_and_order_system(setup_universe):
 
 def test_input_processor_get_refit_context_options(setup_universe):
     game, galaxy, player, _, constructor_unit, target_unit = setup_universe
+    target_unit.add_component(Engines(target_unit))
     from input_processor import InputProcessor
     ip = InputProcessor(game)
 
@@ -396,3 +397,60 @@ def test_input_processor_get_refit_context_options(setup_universe):
     add_action_ids = [sub[1] for sub in add_sub]
     assert "refit_add_Defenses" in add_action_ids
     assert "refit_add_MiningComponent" in add_action_ids
+    assert "refit_add_TradeComponent" in add_action_ids
+
+
+def test_refit_add_trade_component(setup_universe):
+    game, galaxy, player, _, constructor_unit, target_unit = setup_universe
+    target_unit.add_component(Engines(target_unit))
+    assert target_unit.trade_component is None
+    assert target_unit.engines_component is not None
+
+    initial_credits = player.credits
+    initial_usage = target_unit.current_hull_usage
+
+    refit_order = RefitOrder(
+        constructor_unit,
+        {
+            "target_unit_id": target_unit.id,
+            "action": "ADD",
+            "component_type": "TradeComponent",
+            "time_to_build": 1
+        }
+    )
+    refit_order.execute(galaxy)
+
+    assert refit_order.status == OrderStatus.IN_PROGRESS
+    assert player.credits == initial_credits - (10.0 * 30.0)
+
+    # Tick 1 -> Finishes
+    constructor_unit.constructor_component.update(galaxy)
+    refit_order.check_completion_conditions()
+
+    assert refit_order.status == OrderStatus.COMPLETED
+    assert target_unit.trade_component is not None
+    assert target_unit.current_hull_usage == initial_usage + 10.0
+
+
+def test_refit_add_trade_component_requires_engine(setup_universe):
+    game, galaxy, player, _, constructor_unit, target_unit = setup_universe
+    assert target_unit.engines_component is None
+
+    from input_processor import InputProcessor
+    ip = InputProcessor(game)
+    options = ip.get_refit_context_options([constructor_unit], target_unit)
+    add_sub = next(opt[1] for opt in options if opt[0] == "Add Component")
+    add_action_ids = [sub[1] for sub in add_sub]
+    assert "refit_add_TradeComponent" not in add_action_ids
+
+    refit_order = RefitOrder(
+        constructor_unit,
+        {
+            "target_unit_id": target_unit.id,
+            "action": "ADD",
+            "component_type": "TradeComponent"
+        }
+    )
+    refit_order.execute(galaxy)
+    assert refit_order.status == OrderStatus.FAILED
+    assert target_unit.trade_component is None

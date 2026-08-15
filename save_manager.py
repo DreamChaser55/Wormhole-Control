@@ -24,7 +24,7 @@ from galaxy import Galaxy, StarSystem, Hex
 from unit_components import (
     AntimatterStorage, AntimatterHarvester, Engines, Hyperdrive, HyperdriveType,
     Commander, HyperspaceInhibitionFieldEmitter, Weapons, Defenses, Turret,
-    ColonyComponent, CivilianHabitatComponent, Constructor, RepairComponent, MiningComponent,
+    ColonyComponent, CivilianHabitatComponent, TradeComponent, Constructor, RepairComponent, MiningComponent,
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
     MinelayerComponent, MarinesComponent, CloakingDevice, instantiate_unit_from_template,
@@ -36,7 +36,7 @@ from unit_orders import (
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
     RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
     UseAbilityOrder, ProtectOrder, ContinuousMineOrder, TransferAntimatterOrder,
-    ContinuousResupplyOrder, LayMinefieldOrder, RefitOrder
+    ContinuousResupplyOrder, LayMinefieldOrder, RefitOrder, TradeOrder, ContinuousTradeOrder
 )
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,8 @@ ORDER_CLASSES = {
     "CONTINUOUS_RESUPPLY": ContinuousResupplyOrder,
     "LAY_MINEFIELD": LayMinefieldOrder,
     "REFIT_UNIT": RefitOrder,
+    "TRADE": TradeOrder,
+    "CONTINUOUS_TRADE": ContinuousTradeOrder,
 }
 
 
@@ -242,6 +244,14 @@ def serialize_components(unit: Unit) -> dict:
         elif isinstance(comp, Sensors):
             comp_data["short_range_radius"] = comp.short_range_radius
             comp_data["long_range_hexes"] = comp.long_range_hexes
+            comp_data["hull_cost"] = comp.hull_cost
+        elif isinstance(comp, TradeComponent):
+            comp_data["last_traded_sector"] = list(comp.last_traded_sector) if comp.last_traded_sector else None
+            comp_data["last_traded_unit_id"] = comp.last_traded_unit_id
+            comp_data["last_trade_income"] = comp.last_trade_income
+            comp_data["total_trade_income"] = comp.total_trade_income
+            comp_data["trades_completed"] = comp.trades_completed
+            comp_data["trade_revenue_multiplier"] = comp.trade_revenue_multiplier
             comp_data["hull_cost"] = comp.hull_cost
 
         comps[comp_name] = comp_data
@@ -572,6 +582,13 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
             hull_cost=template.get("civilian_habitat_hull_cost", 15.0)
         ))
 
+    if template.get("has_trade_component"):
+        new_unit.add_component(TradeComponent(
+            new_unit,
+            hull_cost=template.get("trade_hull_cost", 10.0),
+            trade_revenue_multiplier=template.get("trade_revenue_multiplier", 1.0)
+        ))
+
     if template.get("has_marines_component"):
         new_unit.add_component(MarinesComponent(
             new_unit,
@@ -665,6 +682,19 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
             status_str = comp_fields.get("jump_status", "READY")
             if hasattr(JumpStatus, status_str):
                 unit.hyperdrive_component.jump_status = JumpStatus[status_str]
+        elif comp_name == "CivilianHabitatComponent" and unit.civilian_habitat_component:
+            unit.civilian_habitat_component.economic_bonus = comp_fields.get("economic_bonus", unit.civilian_habitat_component.economic_bonus)
+        elif comp_name == "TradeComponent" and unit.trade_component:
+            raw_sec = comp_fields.get("last_traded_sector")
+            if raw_sec and len(raw_sec) == 2:
+                unit.trade_component.last_traded_sector = (raw_sec[0], tuple(raw_sec[1]))
+            else:
+                unit.trade_component.last_traded_sector = None
+            unit.trade_component.last_traded_unit_id = comp_fields.get("last_traded_unit_id")
+            unit.trade_component.last_trade_income = comp_fields.get("last_trade_income", 0.0)
+            unit.trade_component.total_trade_income = comp_fields.get("total_trade_income", 0.0)
+            unit.trade_component.trades_completed = comp_fields.get("trades_completed", 0)
+            unit.trade_component.trade_revenue_multiplier = comp_fields.get("trade_revenue_multiplier", 1.0)
         elif comp_name == "HyperspaceInhibitionFieldEmitter" and unit.inhibitor_component:
             unit.inhibitor_component.is_active = comp_fields.get("is_active", unit.inhibitor_component.is_active)
         elif comp_name == "CloakingDevice":

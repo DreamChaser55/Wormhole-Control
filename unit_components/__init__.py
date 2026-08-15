@@ -39,6 +39,7 @@ from .cloaking import CloakingDevice
 from .minelayer import MinelayerComponent
 from .marines import MarinesComponent
 from .civilian_habitat import CivilianHabitatComponent
+from .trade import TradeComponent
 
 __all__ = [
     "HyperdriveType",
@@ -63,6 +64,7 @@ __all__ = [
     "RepairComponent",
     "ColonyComponent",
     "CivilianHabitatComponent",
+    "TradeComponent",
     "MiningComponent",
     "MetalRefineryComponent",
     "CrystalRefineryComponent",

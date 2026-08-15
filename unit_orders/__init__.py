@@ -12,6 +12,7 @@ from .hangar import DockOrder, DeployUnitOrder, DeployAllWingsOrder
 from .abilities import UseAbilityOrder
 from .minelayer import LayMinefieldOrder
 from .refit import RefitOrder
+from .trade import TradeOrder, ContinuousTradeOrder
 
 __all__ = [
     "OrderStatus",
@@ -39,5 +40,7 @@ __all__ = [
     "DeployAllWingsOrder",
     "UseAbilityOrder",
     "LayMinefieldOrder",
+    "TradeOrder",
+    "ContinuousTradeOrder",
 ]
 

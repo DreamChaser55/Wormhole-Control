@@ -46,6 +46,8 @@ class OrderType(Enum):
     CONTINUOUS_RESUPPLY = auto() # Harvester cycles between charging at a star and resupplying the closest friendly unit that needs antimatter
     LAY_MINEFIELD = auto()       # Lay a minefield at the unit's current position
     REFIT_UNIT = auto()          # Refit a friendly unit (add/remove components) using a Constructor unit
+    TRADE = auto()               # Travel to an active Civilian Habitat and execute trade
+    CONTINUOUS_TRADE = auto()    # Continuously trade between active Civilian Habitats in different sectors
 
 
 

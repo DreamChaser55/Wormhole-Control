@@ -5,7 +5,7 @@ from geometry import distance, position_at_distance_from_target
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
-from unit_components import get_component_class_by_name, Commander, HangarComponent, StrikecraftBayComponent
+from unit_components.constructor import get_component_class_by_name
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -26,6 +26,8 @@ def get_hull_restriction_flag(component_name: str) -> str:
         "RepairComponent": "has_repair_component",
         "ColonyComponent": "has_colony_component",
         "CivilianHabitatComponent": "has_civilian_habitat_component",
+        "TradeComponent": "has_trade_component",
+        "Trade": "has_trade_component",
         "MetalRefineryComponent": "has_metal_refinery_component",
         "CrystalRefineryComponent": "has_crystal_refinery_component",
         "AbilityComponent": "has_ability_component",
@@ -152,11 +154,28 @@ class RefitOrder(Order):
                     )
                 return
 
+            if component_type in ("TradeComponent", "Trade") and not getattr(target_unit, 'engines_component', None):
+                self.status = OrderStatus.FAILED
+                logger.debug(f"REFIT order failed: Trade component requires an Engine component.")
+                if getattr(self.unit.game, 'gui', None):
+                    self.unit.game.gui.show_warning_dialog(
+                        f"Cannot install <b>Trade Module</b> on <b>{target_unit.name}</b> because it lacks an Engine component.",
+                        title="Engine Required"
+                    )
+                return
+
             # Calculate hull cost
             hull_cost = component_config.get("hull_cost")
             if hull_cost is None:
                 if hasattr(comp_cls, "calc_hull_cost"):
-                    hull_cost = comp_cls.calc_hull_cost(component_config.get("speed", 100.0), target_unit.hull_size) if component_type == "Engines" else comp_cls.calc_hull_cost(component_config.get("radius", 100.0)) if component_type == "HyperspaceInhibitionFieldEmitter" else 15.0
+                    if component_type == "Engines":
+                        hull_cost = comp_cls.calc_hull_cost(component_config.get("speed", 100.0), target_unit.hull_size)
+                    elif component_type == "HyperspaceInhibitionFieldEmitter":
+                        hull_cost = comp_cls.calc_hull_cost(component_config.get("radius", 100.0))
+                    elif component_type in ("TradeComponent", "Trade"):
+                        hull_cost = comp_cls.calc_hull_cost(component_config.get("trade_revenue_multiplier", 1.0))
+                    else:
+                        hull_cost = 15.0
                 else:
                     hull_cost = 15.0
 
@@ -209,7 +228,7 @@ class RefitOrder(Order):
                 logger.debug(f"REFIT order failed: Unit {target_unit.name} does not have {component_type}.")
                 return
 
-            if comp_cls == Commander:
+            if comp_cls.__name__ == "Commander":
                 self.status = OrderStatus.FAILED
                 logger.debug(f"REFIT order failed: Commander component cannot be removed.")
                 if getattr(self.unit.game, 'gui', None):
@@ -221,8 +240,8 @@ class RefitOrder(Order):
 
             # Safety check: do not remove carrier bays if craft are docked
             comp_instance = target_unit.components[comp_cls]
-            if isinstance(comp_instance, (HangarComponent, StrikecraftBayComponent)):
-                if comp_instance.docked_units:
+            if comp_cls.__name__ in ("HangarComponent", "StrikecraftBayComponent"):
+                if getattr(comp_instance, 'docked_units', None):
                     self.status = OrderStatus.FAILED
                     logger.debug(f"REFIT order failed: Cannot remove {component_type} while units are docked.")
                     if getattr(self.unit.game, 'gui', None):

@@ -25,7 +25,7 @@ from events import (
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
     ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent, LayMinefieldEvent,
-    RefitUnitEvent
+    RefitUnitEvent, TradeEvent, ContinuousTradeEvent
 )
 
 
@@ -574,6 +574,16 @@ class InputProcessor:
                                     if refit_options:
                                         options.append(("Refit Unit", refit_options))
 
+                                    is_active_habitat = bool(
+                                        getattr(target_object, 'civilian_habitat_component', None) and
+                                        not target_object.civilian_habitat_component.is_destroyed and
+                                        target_object.civilian_habitat_component.is_active(self.game.galaxy)
+                                    )
+                                    has_traders = any(getattr(a, 'trade_component', None) for a in actors)
+                                    if is_active_habitat and has_traders:
+                                        options.append(("Trade", "trade"))
+                                        options.append(("Trade (continuously)", "continuous_trade"))
+
                                 ability_options = self.get_ability_context_options(actors, target_is_unit=True)
                                 if ability_options:
                                     options.append(("Use Ability", ability_options))
@@ -814,6 +824,22 @@ class InputProcessor:
                     shift_pressed=shift_pressed
                 ))
 
+            elif extracted_action_id == "trade":
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(TradeEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
+            elif extracted_action_id == "continuous_trade":
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(ContinuousTradeEvent(
+                        selected_units,
+                        target,
+                        shift_pressed
+                    ))
+
 
             elif extracted_action_id.startswith("construct_"):
                 unit_template_name = extracted_action_id.split("construct_")[1]
@@ -876,17 +902,19 @@ class InputProcessor:
             return []
 
         from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
+        from unit_orders.refit import get_hull_restriction_flag
         from unit_components import (
             Engines, Hyperdrive, Weapons, Defenses, AntimatterHarvester,
             Sensors, RepairComponent, MiningComponent, MetalRefineryComponent,
             CrystalRefineryComponent, HangarComponent, StrikecraftBayComponent,
             ColonyComponent, CivilianHabitatComponent, HyperspaceInhibitionFieldEmitter,
             MinelayerComponent, MarinesComponent, CloakingDevice, Constructor, Commander,
-            HyperdriveType, CloakingType
+            TradeComponent, HyperdriveType, CloakingType
         )
         from constants import (
             DEFAULT_JUMP_RANGE, DEFAULT_SENSOR_SHORT_RANGE, ANTIMATTER_HARVESTER_HULL_COST,
-            MINELAYER_HULL_COST, DEFAULT_ANTIMATTER_CAPACITY, REPAIR_CREDIT_COST_PER_HP
+            MINELAYER_HULL_COST, DEFAULT_ANTIMATTER_CAPACITY, REPAIR_CREDIT_COST_PER_HP,
+            TRADE_BASE_HULL_COST
         )
 
         refit_options = []
@@ -908,6 +936,7 @@ class InputProcessor:
             ("StrikecraftBayComponent", "Strikecraft Bay", StrikecraftBayComponent, lambda u: StrikecraftBayComponent.calc_hull_cost(2)),
             ("ColonyComponent", "Colony Module", ColonyComponent, lambda u: 10.0),
             ("CivilianHabitatComponent", "Civilian Habitat", CivilianHabitatComponent, lambda u: CivilianHabitatComponent.calc_hull_cost(50.0)),
+            ("TradeComponent", "Trade Module", TradeComponent, lambda u: TradeComponent.calc_hull_cost(1.0)),
             ("HyperspaceInhibitionFieldEmitter", "Hyperspace Inhibitor", HyperspaceInhibitionFieldEmitter, lambda u: HyperspaceInhibitionFieldEmitter.calc_hull_cost(100.0)),
             ("MinelayerComponent", "Minelayer", MinelayerComponent, lambda u: MINELAYER_HULL_COST),
             ("MarinesComponent", "Marines Barracks", MarinesComponent, lambda u: MarinesComponent.calc_hull_cost(10)),
@@ -921,8 +950,10 @@ class InputProcessor:
         for comp_key, comp_display, comp_cls, cost_fn in candidates:
             if comp_cls in target_unit.components:
                 continue
-            flag_key = f"has_{comp_key.lower()}"
-            if flag_key in forbidden_flags or (comp_key == "Constructor" and "has_constructor_component" in forbidden_flags) or (comp_key == "RepairComponent" and "has_repair_component" in forbidden_flags):
+            flag_key = get_hull_restriction_flag(comp_key)
+            if flag_key in forbidden_flags:
+                continue
+            if comp_key == "TradeComponent" and not getattr(target_unit, 'engines_component', None):
                 continue
 
             cost_hull = cost_fn(target_unit)

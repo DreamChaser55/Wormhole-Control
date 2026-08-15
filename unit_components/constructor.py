@@ -12,6 +12,7 @@ from .inhibitor import HyperspaceInhibitionFieldEmitter
 from .repair import RepairComponent
 from .colony import ColonyComponent
 from .civilian_habitat import CivilianHabitatComponent
+from .trade import TradeComponent
 from .mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
 from .hangar import HangarComponent
 from .strikecraft import StrikecraftWingComponent, StrikecraftBayComponent
@@ -268,6 +269,15 @@ def instantiate_unit_from_template(
             new_unit,
             economic_bonus=bonus,
             hull_cost=cost
+        ))
+
+    if template.get("has_trade_component"):
+        cost = template.get("trade_hull_cost", 10.0)
+        mult = template.get("trade_revenue_multiplier", 1.0)
+        new_unit.add_component(TradeComponent(
+            new_unit,
+            hull_cost=float(cost),
+            trade_revenue_multiplier=float(mult)
         ))
 
     if template.get("has_inhibitor"):
@@ -631,6 +641,8 @@ COMPONENT_NAME_MAP = {
     "StrikecraftBayComponent": StrikecraftBayComponent,
     "ColonyComponent": ColonyComponent,
     "CivilianHabitatComponent": CivilianHabitatComponent,
+    "TradeComponent": TradeComponent,
+    "Trade": TradeComponent,
     "HyperspaceInhibitionFieldEmitter": HyperspaceInhibitionFieldEmitter,
     "Inhibitor": HyperspaceInhibitionFieldEmitter,
     "AbilityComponent": AbilityComponent,
@@ -790,6 +802,13 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         if cost is None:
             cost = CivilianHabitatComponent.calc_hull_cost(bonus)
         return CivilianHabitatComponent(unit, economic_bonus=bonus, hull_cost=float(cost))
+
+    elif comp_cls == TradeComponent:
+        cost = config.get("hull_cost")
+        mult = float(config.get("trade_revenue_multiplier", 1.0))
+        if cost is None:
+            cost = TradeComponent.calc_hull_cost(mult)
+        return TradeComponent(unit, hull_cost=float(cost), trade_revenue_multiplier=mult)
 
     elif comp_cls == HyperspaceInhibitionFieldEmitter:
         radius = float(config.get("radius", 100.0))

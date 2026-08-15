@@ -150,6 +150,30 @@
     "build_cost": 600
   },
 
+  "TRADE_FREIGHTER_MK1": {
+    "name": "Trade Freighter Mk.I",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 10.0,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "BASIC",
+    "hyperdrive_hull_cost": 5.0,
+    "has_antimatter_storage": true,
+    "antimatter_capacity": 100.0,
+    "antimatter_hull_cost": 5.0,
+    "has_trade_component": true,
+    "trade_hull_cost": 10.0,
+    "trade_revenue_multiplier": 1.0,
+    "has_sensors": true,
+    "sensor_short_range": 3000.0,
+    "sensor_long_range_hexes": 1,
+    "sensors_hull_cost": 8.0,
+    "build_time": 7,
+    "build_cost": 550
+  },
+
   "METAL_REFINERY_STATION": {
     "name": "Metal Refinery Station",
     "hull_size": "MEDIUM",

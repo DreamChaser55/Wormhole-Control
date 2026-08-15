@@ -60,6 +60,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_minelayer_component",
         "has_marines_component",
         "has_cloaking_device",
+        "has_trade_component",
     },
     HullSize.TINY: {
         "has_inhibitor",
@@ -74,6 +75,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_strikecraft_bay",
         "has_antimatter_harvester",
         "has_minelayer_component",
+        "has_trade_component",
     },
 
     HullSize.SMALL: {
@@ -354,6 +356,11 @@ class ComponentConfig:
     civilian_habitat_bonus: float = 50.0
     civilian_habitat_hull_cost: float = 15.0
 
+    # Trade
+    has_trade_component: bool = False
+    trade_hull_cost: float = 10.0
+    trade_revenue_multiplier: float = 1.0
+
     # Mining
     has_mining_component: bool = False
     mining_rate: float = 10.0
@@ -574,6 +581,7 @@ class CustomUnitTemplate:
         if c.has_repair_component:              total += c.repair_hull_cost
         if c.has_colony_component:              total += c.colony_hull_cost
         if c.has_civilian_habitat_component:    total += c.civilian_habitat_hull_cost
+        if c.has_trade_component:               total += c.trade_hull_cost
         if c.has_mining_component:              total += c.mining_hull_cost
         if c.has_metal_refinery_component:      total += c.metal_refinery_hull_cost
         if c.has_crystal_refinery_component:    total += c.crystal_refinery_hull_cost
@@ -629,6 +637,7 @@ class CustomUnitTemplate:
             "has_repair_component": c.has_repair_component,
             "has_colony_component": c.has_colony_component,
             "has_civilian_habitat_component": c.has_civilian_habitat_component,
+            "has_trade_component": c.has_trade_component,
             "has_metal_refinery_component": c.has_metal_refinery_component,
             "has_crystal_refinery_component": c.has_crystal_refinery_component,
             "has_ability_component": c.has_ability_component,
@@ -691,12 +700,16 @@ class CustomUnitTemplate:
                         ab_name = ab_key.replace('_', ' ').title()
                         errors.append(f"Ability '{ab_name}' requires component '{req_comp}'.")
 
+        # Trade component engine requirement
+        if c.has_trade_component and not c.has_engine:
+            errors.append("Trade component requires an Engine component.")
+
         # At least one meaningful component
         any_component = any([
             c.has_engine, c.has_antimatter_storage, c.has_antimatter_harvester, c.has_hyperdrive, c.has_weapon_bays,
             c.has_defenses,
             c.has_constructor_component, c.has_repair_component,
-            c.has_colony_component, c.has_civilian_habitat_component, c.has_mining_component,
+            c.has_colony_component, c.has_civilian_habitat_component, c.has_trade_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
             c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
             c.has_sensors, c.has_minelayer_component, c.has_marines_component,
@@ -943,6 +956,10 @@ class CustomTemplateManager:
             "civilian_habitat_bonus": c.civilian_habitat_bonus,
             "civilian_habitat_hull_cost": c.civilian_habitat_hull_cost,
 
+            "has_trade_component": c.has_trade_component,
+            "trade_hull_cost": c.trade_hull_cost,
+            "trade_revenue_multiplier": c.trade_revenue_multiplier,
+
             "has_mining_component": c.has_mining_component,
             "mining_rate": c.mining_rate,
             "mining_range": c.mining_range,
@@ -1058,6 +1075,10 @@ class CustomTemplateManager:
             has_civilian_habitat_component=d.get("has_civilian_habitat_component", False),
             civilian_habitat_bonus=float(d.get("civilian_habitat_bonus", 50.0)),
             civilian_habitat_hull_cost=float(d.get("civilian_habitat_hull_cost", 15.0)),
+
+            has_trade_component=d.get("has_trade_component", False),
+            trade_hull_cost=float(d.get("trade_hull_cost", 10.0)),
+            trade_revenue_multiplier=float(d.get("trade_revenue_multiplier", 1.0)),
 
             has_mining_component=d.get("has_mining_component", False),
             mining_rate=d.get("mining_rate", 10.0),

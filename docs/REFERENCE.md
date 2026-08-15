@@ -187,17 +187,18 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 8 | `has_repair_component` | Repair | Dynamic | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with repair rate. |
 | 9 | `has_colony_component` | Colony | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables planetary colonization. |
 | 10 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Generates +50 credits/turn in colonized sectors up to the colony's supported habitat limit (base 1, +1 per 25 population). |
-| 11 | `has_mining_component` | Mining | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with mining rate and cargo capacity. |
-| 12 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined ore into metal. |
-| 13 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined crystals into usable crystal stock. |
-| 14 | `has_hangar` | Hangar | Dynamic | 20.0 | Restricted to `LARGE` and `HUGE` hulls only. Dynamic cost scales with hangar slot capacity. |
-| 15 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. |
-| 16 | `has_inhibitor` | Inhibitor Field | Dynamic | 20.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with inhibition field radius. |
-| 17 | `has_ability_component` | Abilities | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with number of equipped abilities. |
-| 18 | `has_sensors` | Sensors | Dynamic | 2.0 | Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. |
-| 19 | `has_minelayer_component` | Minelayer | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields. |
-| 20 | `has_marines_component` | Marines | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count. |
-| 21 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 / 30.0 | Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius). |
+| 11 | `has_trade_component` | Trade Module | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. **Requires Engines (`has_engine`)**. Enables trade ships to earn credits by traveling between active Civilian Habitat modules in different sectors, with payout scaling with distance between sectors. |
+| 12 | `has_mining_component` | Mining | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with mining rate and cargo capacity. |
+| 13 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined ore into metal. |
+| 14 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined crystals into usable crystal stock. |
+| 15 | `has_hangar` | Hangar | Dynamic | 20.0 | Restricted to `LARGE` and `HUGE` hulls only. Dynamic cost scales with hangar slot capacity. |
+| 16 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. |
+| 17 | `has_inhibitor` | Inhibitor Field | Dynamic | 20.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with inhibition field radius. |
+| 18 | `has_ability_component` | Abilities | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with number of equipped abilities. |
+| 19 | `has_sensors` | Sensors | Dynamic | 2.0 | Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. |
+| 20 | `has_minelayer_component` | Minelayer | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields. |
+| 21 | `has_marines_component` | Marines | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count. |
+| 22 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 / 30.0 | Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius). |
 | — | *Always Present* | Commander | — | — | Core component present on all ships; manages order queues and combat stances. |
 
 ---
@@ -249,6 +250,8 @@ The `OrderType` enum (`unit_orders/base.py`) defines **22 order types** that can
 | `TRANSFER_ANTIMATTER` | Transfers a quantity of stored antimatter fuel to a friendly recipient ship. |
 | `CONTINUOUS_RESUPPLY` | Automated harvester loop: charges antimatter at a star, seeks low-fuel friendly units, refuels them, and repeats. |
 | `LAY_MINEFIELD` | Deploys an anti-ship or anti-strikecraft minefield at the unit's current position. |
+| `TRADE` | Travels to a designated active Civilian Habitat in another sector and conducts trade, earning credits based on distance. |
+| `CONTINUOUS_TRADE` | Automated merchant cycle: travels between active Civilian Habitat modules in different sectors to maximize trade revenue continuously. |
 
 ---
 

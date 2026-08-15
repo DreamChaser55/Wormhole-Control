@@ -188,3 +188,19 @@ class LayMinefieldEvent(Event):
             self.minefield_type = minefield_type
         self.shift_pressed = shift_pressed
 
+
+class TradeEvent(Event):
+    """Fired when the player orders trade ship(s) to trade with an active Civilian Habitat."""
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_unit = target_unit
+        self.shift_pressed = shift_pressed
+
+
+class ContinuousTradeEvent(Event):
+    """Fired when the player orders trade ship(s) to start continuous trade."""
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool):
+        self.units = units
+        self.target_unit = target_unit
+        self.shift_pressed = shift_pressed
+
