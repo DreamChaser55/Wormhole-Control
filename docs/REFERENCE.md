@@ -148,6 +148,7 @@ Wormhole Control/
     ├── mining.py                  # Mine, UnloadResources, and ContinuousMine orders
     ├── movement.py                # Move and ReachWaypoint orders
     ├── patrol.py                  # PatrolOrder implementation
+    ├── refit.py                   # RefitOrder implementation (field component addition/removal)
     └── repair.py                  # RepairOrder implementation
 ```
 
@@ -182,7 +183,7 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 4 | `has_hyperdrive` | Hyperdrive | Dynamic | 5.0 | Forbidden on `STRIKECRAFT_WING`. Basic hyperdrive available on `TINY`+; Advanced hyperdrive requires `SMALL`+. |
 | 5 | `has_weapon_bays` | Weapons | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with turret count, damage, range, and fire rate. |
 | 6 | `has_defenses` | Defenses | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with Armor, Shields, and Point Defense ratings. |
-| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables building space stations and units. |
+| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables building space stations and units, as well as field refitting (adding or removing components) on friendly vessels. |
 | 8 | `has_repair_component` | Repair | Dynamic | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with repair rate. |
 | 9 | `has_colony_component` | Colony | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables planetary colonization. |
 | 10 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Generates +50 credits/turn in colonized sectors. |
@@ -222,7 +223,7 @@ There are **10 special abilities** in the game, registered in `unit_components/a
 
 ## 5. Order Types
 
-The `OrderType` enum (`unit_orders/base.py`) defines **21 order types** that can be issued to units:
+The `OrderType` enum (`unit_orders/base.py`) defines **22 order types** that can be issued to units:
 
 | Order Type | Description |
 |---|---|
@@ -236,6 +237,7 @@ The `OrderType` enum (`unit_orders/base.py`) defines **21 order types** that can
 | `COLONIZE` | Disembarks colonists from a colony ship to establish a settlement on a habitable body. |
 | `LOAD_COLONISTS` | Embarks population from a colonized celestial body onto a colony transport. |
 | `CONSTRUCT` | Deploys a constructor to build a new space station, structure, or starship. |
+| `REFIT_UNIT` | Deploys a constructor to install new components or decommission existing components on a friendly vessel in the field. |
 | `REPAIR` | Moves to and restores hull integrity on a damaged friendly unit. |
 | `MINE` | Extracts raw metal from an asteroid or raw crystal from a comet. |
 | `UNLOAD_RESOURCES` | Transports mined raw ore or crystals to a compatible refinery station. |
@@ -348,6 +350,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 
 - **Event Bus (`events.py`)**: Decouples input handling, order queuing, and UI notifications using a lightweight publish/subscribe pattern.
 - **Order System (`order_system.py`)**: Manages hierarchical order lifecycles (parent orders and dynamically generated sub-orders), route pathfinding, jump safety checks, and continuous loops.
+- **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly units within build range (500 px). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
 - **Visibility Service (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks and persists last-known sector intel per player.
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations.
 - **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
