@@ -164,7 +164,6 @@ from unit_components.civilian_habitat import CivilianHabitatComponent
 from constants import (
     CLOAKING_BASIC_HULL_COST,
     CLOAKING_ADVANCED_HULL_COST,
-    CLOAKING_HULL_COST,
     DEFAULT_ADVANCED_CLOAKING_RADIUS,
     ADVANCED_CLOAKING_MIN_HULL,
 )
