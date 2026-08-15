@@ -31,7 +31,9 @@ from constants import (
     HANGAR_HULL_COST_PER_SLOT, STRIKECRAFT_BAY_HULL_COST_PER_SLOT, REPAIR_RATE_PER_HULL_POINT,
     REPAIR_CREDIT_COST_PER_HP, MINING_RATE_PER_HULL_POINT, MINING_CARGO_PER_HULL_POINT,
     INHIBITOR_RADIUS_PER_HULL_POINT, HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST,
-    ENGINE_ANTIMATTER_COST_PER_TURN, BASELINE_ENGINE_SPEED
+    ENGINE_ANTIMATTER_COST_PER_TURN, BASELINE_ENGINE_SPEED,
+    DEFAULT_ORBITAL_DEFENSE_RADIUS, DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS,
+    DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS, ORBITAL_DEFENSE_HULL_COST
 )
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_repair_component",
         "has_colony_component",
         "has_civilian_habitat_component",
+        "has_orbital_defense_component",
         "has_metal_refinery_component",
         "has_crystal_refinery_component",
         "has_ability_component",
@@ -69,6 +72,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_repair_component",
         "has_colony_component",
         "has_civilian_habitat_component",
+        "has_orbital_defense_component",
         "has_metal_refinery_component",
         "has_crystal_refinery_component",
         "has_ability_component",
@@ -163,6 +167,7 @@ from unit_components.marines import MarinesComponent, MARINES_HULL_COST_PER_MARI
 from unit_components.abilities.component import AbilityComponent, ABILITY_BASE_COST, ABILITY_COST_PER_ABILITY
 from unit_components.cloaking import CloakingDevice
 from unit_components.civilian_habitat import CivilianHabitatComponent
+from unit_components.orbital_defense import OrbitalDefenseComponent
 from constants import (
     CLOAKING_BASIC_HULL_COST,
     CLOAKING_ADVANCED_HULL_COST,
@@ -252,6 +257,11 @@ def calc_marines_hull_cost(marines_count: int) -> float:
 def calc_civilian_habitat_hull_cost(economic_bonus: float = 50.0) -> float:
     """Compute the hull cost of a Civilian Habitat component."""
     return CivilianHabitatComponent.calc_hull_cost(economic_bonus)
+
+
+def calc_orbital_defense_hull_cost(hull_cost: float = ORBITAL_DEFENSE_HULL_COST) -> float:
+    """Compute the hull cost of an Orbital Defense component."""
+    return OrbitalDefenseComponent.calc_hull_cost(hull_cost)
 
 
 def calc_cloaking_hull_cost(cloaking_type: str = "BASIC", cloaking_radius: float = DEFAULT_ADVANCED_CLOAKING_RADIUS) -> float:
@@ -355,6 +365,13 @@ class ComponentConfig:
     has_civilian_habitat_component: bool = False
     civilian_habitat_bonus: float = 50.0
     civilian_habitat_hull_cost: float = 15.0
+
+    # Orbital Defense
+    has_orbital_defense_component: bool = False
+    orbital_defense_radius: float = DEFAULT_ORBITAL_DEFENSE_RADIUS
+    orbital_defense_attack_bonus: float = DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS
+    orbital_defense_defense_bonus: float = DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS
+    orbital_defense_hull_cost: float = ORBITAL_DEFENSE_HULL_COST
 
     # Trade
     has_trade_component: bool = False
@@ -581,6 +598,7 @@ class CustomUnitTemplate:
         if c.has_repair_component:              total += c.repair_hull_cost
         if c.has_colony_component:              total += c.colony_hull_cost
         if c.has_civilian_habitat_component:    total += c.civilian_habitat_hull_cost
+        if c.has_orbital_defense_component:     total += c.orbital_defense_hull_cost
         if c.has_trade_component:               total += c.trade_hull_cost
         if c.has_mining_component:              total += c.mining_hull_cost
         if c.has_metal_refinery_component:      total += c.metal_refinery_hull_cost
@@ -637,6 +655,7 @@ class CustomUnitTemplate:
             "has_repair_component": c.has_repair_component,
             "has_colony_component": c.has_colony_component,
             "has_civilian_habitat_component": c.has_civilian_habitat_component,
+            "has_orbital_defense_component": c.has_orbital_defense_component,
             "has_trade_component": c.has_trade_component,
             "has_metal_refinery_component": c.has_metal_refinery_component,
             "has_crystal_refinery_component": c.has_crystal_refinery_component,
@@ -709,7 +728,7 @@ class CustomUnitTemplate:
             c.has_engine, c.has_antimatter_storage, c.has_antimatter_harvester, c.has_hyperdrive, c.has_weapon_bays,
             c.has_defenses,
             c.has_constructor_component, c.has_repair_component,
-            c.has_colony_component, c.has_civilian_habitat_component, c.has_trade_component, c.has_mining_component,
+            c.has_colony_component, c.has_civilian_habitat_component, c.has_orbital_defense_component, c.has_trade_component, c.has_mining_component,
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
             c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
             c.has_sensors, c.has_minelayer_component, c.has_marines_component,
@@ -956,6 +975,12 @@ class CustomTemplateManager:
             "civilian_habitat_bonus": c.civilian_habitat_bonus,
             "civilian_habitat_hull_cost": c.civilian_habitat_hull_cost,
 
+            "has_orbital_defense_component": c.has_orbital_defense_component,
+            "orbital_defense_radius": c.orbital_defense_radius,
+            "orbital_defense_attack_bonus": c.orbital_defense_attack_bonus,
+            "orbital_defense_defense_bonus": c.orbital_defense_defense_bonus,
+            "orbital_defense_hull_cost": c.orbital_defense_hull_cost,
+
             "has_trade_component": c.has_trade_component,
             "trade_hull_cost": c.trade_hull_cost,
             "trade_revenue_multiplier": c.trade_revenue_multiplier,
@@ -1075,6 +1100,12 @@ class CustomTemplateManager:
             has_civilian_habitat_component=d.get("has_civilian_habitat_component", False),
             civilian_habitat_bonus=float(d.get("civilian_habitat_bonus", 50.0)),
             civilian_habitat_hull_cost=float(d.get("civilian_habitat_hull_cost", 15.0)),
+
+            has_orbital_defense_component=d.get("has_orbital_defense_component", False),
+            orbital_defense_radius=float(d.get("orbital_defense_radius", DEFAULT_ORBITAL_DEFENSE_RADIUS)),
+            orbital_defense_attack_bonus=float(d.get("orbital_defense_attack_bonus", DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS)),
+            orbital_defense_defense_bonus=float(d.get("orbital_defense_defense_bonus", DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS)),
+            orbital_defense_hull_cost=float(d.get("orbital_defense_hull_cost", ORBITAL_DEFENSE_HULL_COST)),
 
             has_trade_component=d.get("has_trade_component", False),
             trade_hull_cost=float(d.get("trade_hull_cost", 10.0)),

@@ -39,6 +39,7 @@ from .cloaking import CloakingDevice
 from .minelayer import MinelayerComponent
 from .marines import MarinesComponent
 from .civilian_habitat import CivilianHabitatComponent
+from .orbital_defense import OrbitalDefenseComponent
 from .trade import TradeComponent
 
 __all__ = [
@@ -64,6 +65,7 @@ __all__ = [
     "RepairComponent",
     "ColonyComponent",
     "CivilianHabitatComponent",
+    "OrbitalDefenseComponent",
     "TradeComponent",
     "MiningComponent",
     "MetalRefineryComponent",

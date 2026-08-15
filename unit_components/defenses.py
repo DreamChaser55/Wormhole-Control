@@ -44,11 +44,20 @@ class Defenses(UnitComponent):
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
         xp = self.unit.experience_points
+        galaxy_ref = getattr(game_state, 'galaxy', None) if game_state else None
+        _, od_def_bonus = self.unit.get_orbital_defense_buffs(galaxy_ref) if hasattr(self.unit, 'get_orbital_defense_buffs') else (0.0, 0.0)
+        
+        bonus_tags = []
         if xp > 0:
             mult = self.unit.xp_multiplier(XP_DEFENSE_BONUS)
-            bonus_pct = int((mult - 1.0) * 100)
+            bonus_tags.append(f"+{int((mult - 1.0) * 100)}% XP")
+        if od_def_bonus > 0:
+            bonus_tags.append(f"+{int(od_def_bonus * 100)}% OD")
+        
+        if bonus_tags:
+            tag_str = f" ({', '.join(bonus_tags)})"
             def fmt(val: int) -> str:
-                return f"{val} (+{bonus_pct}% XP)"
+                return f"{val}{tag_str}"
         else:
             def fmt(val: int) -> str:
                 return str(val)
@@ -91,5 +100,11 @@ class Defenses(UnitComponent):
 
         # Apply XP defense bonus: veteran units are more effective at blocking damage
         mitigation = int(mitigation * self.unit.xp_multiplier(XP_DEFENSE_BONUS))
+
+        # Apply Orbital Defense defense bonus: units in active friendly orbital defense fields mitigate more damage
+        if hasattr(self.unit, 'get_orbital_defense_buffs'):
+            _, od_def_bonus = self.unit.get_orbital_defense_buffs()
+            if od_def_bonus > 0.0:
+                mitigation = int(mitigation * (1.0 + od_def_bonus))
 
         return min(incoming_damage, mitigation)

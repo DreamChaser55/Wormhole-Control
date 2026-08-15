@@ -907,14 +907,14 @@ class InputProcessor:
             Engines, Hyperdrive, Weapons, Defenses, AntimatterHarvester,
             Sensors, RepairComponent, MiningComponent, MetalRefineryComponent,
             CrystalRefineryComponent, HangarComponent, StrikecraftBayComponent,
-            ColonyComponent, CivilianHabitatComponent, HyperspaceInhibitionFieldEmitter,
+            ColonyComponent, CivilianHabitatComponent, OrbitalDefenseComponent, HyperspaceInhibitionFieldEmitter,
             MinelayerComponent, MarinesComponent, CloakingDevice, Constructor, Commander,
             TradeComponent, HyperdriveType, CloakingType
         )
         from constants import (
             DEFAULT_JUMP_RANGE, DEFAULT_SENSOR_SHORT_RANGE, ANTIMATTER_HARVESTER_HULL_COST,
             MINELAYER_HULL_COST, DEFAULT_ANTIMATTER_CAPACITY, REPAIR_CREDIT_COST_PER_HP,
-            TRADE_BASE_HULL_COST
+            TRADE_BASE_HULL_COST, ORBITAL_DEFENSE_HULL_COST
         )
 
         refit_options = []
@@ -936,6 +936,7 @@ class InputProcessor:
             ("StrikecraftBayComponent", "Strikecraft Bay", StrikecraftBayComponent, lambda u: StrikecraftBayComponent.calc_hull_cost(2)),
             ("ColonyComponent", "Colony Module", ColonyComponent, lambda u: 10.0),
             ("CivilianHabitatComponent", "Civilian Habitat", CivilianHabitatComponent, lambda u: CivilianHabitatComponent.calc_hull_cost(50.0)),
+            ("OrbitalDefenseComponent", "Orbital Defense", OrbitalDefenseComponent, lambda u: ORBITAL_DEFENSE_HULL_COST),
             ("TradeComponent", "Trade Module", TradeComponent, lambda u: TradeComponent.calc_hull_cost(1.0)),
             ("HyperspaceInhibitionFieldEmitter", "Hyperspace Inhibitor", HyperspaceInhibitionFieldEmitter, lambda u: HyperspaceInhibitionFieldEmitter.calc_hull_cost(100.0)),
             ("MinelayerComponent", "Minelayer", MinelayerComponent, lambda u: MINELAYER_HULL_COST),

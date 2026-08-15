@@ -39,6 +39,7 @@ from unit_components import (
     TurretType,
     ColonyComponent,
     CivilianHabitatComponent,
+    OrbitalDefenseComponent,
     TradeComponent,
     Constructor,
     RepairComponent,
@@ -116,6 +117,13 @@ class CelestialBody(GameObject):
         if not getattr(self, 'owner', None) or getattr(self, 'population', 0.0) <= 0:
             return 0
         return max(BASE_HABITAT_CAPACITY, int(self.population // POPULATION_PER_HABITAT))
+
+    def get_supported_orbital_defense_capacity(self) -> int:
+        """Returns the maximum number of orbital defense modules this body can support based on population."""
+        if not getattr(self, 'owner', None) or getattr(self, 'population', 0.0) <= 0:
+            return 0
+        from constants import BASE_ORBITAL_DEFENSE_CAPACITY, POPULATION_PER_ORBITAL_DEFENSE
+        return max(BASE_ORBITAL_DEFENSE_CAPACITY, int(self.population // POPULATION_PER_ORBITAL_DEFENSE))
 
 # --- CelestialBody-derived Classes ---
 
@@ -416,6 +424,10 @@ class Unit(GameObject):
         return self.get_component(CivilianHabitatComponent)
 
     @property
+    def orbital_defense_component(self) -> typing.Optional[OrbitalDefenseComponent]:
+        return self.get_component(OrbitalDefenseComponent)
+
+    @property
     def trade_component(self) -> typing.Optional[TradeComponent]:
         return self.get_component(TradeComponent)
 
@@ -476,6 +488,45 @@ class Unit(GameObject):
     def xp_multiplier(self, max_bonus: float) -> float:
         """Returns a linear scaling multiplier (1.0 at 0 XP, 1.0 + max_bonus at MAX_UNIT_XP)."""
         return 1.0 + max_bonus * (self.experience_points / MAX_UNIT_XP)
+
+    def get_orbital_defense_buffs(self, galaxy: typing.Optional['Galaxy'] = None) -> typing.Tuple[float, float]:
+        """Calculates the total additive attack and defense percentage bonuses granted to this
+        unit by friendly active Orbital Defense units within effective radius in the current sector.
+
+        Returns:
+            (total_attack_bonus, total_defense_bonus): e.g. (0.40, 0.40) for two +20% auras.
+        """
+        if not self.owner or self.current_hit_points <= 0 or not self.in_system or self.in_hex is None or not self.position:
+            return (0.0, 0.0)
+
+        g = galaxy or self.in_galaxy
+        if not g and self.game:
+            g = getattr(self.game, 'galaxy', None)
+
+        if not g:
+            return (0.0, 0.0)
+
+        system = g.systems.get(self.in_system)
+        if not system:
+            return (0.0, 0.0)
+
+        hex_obj = system.hexes.get(self.in_hex)
+        if not hex_obj:
+            return (0.0, 0.0)
+
+        total_atk = 0.0
+        total_def = 0.0
+        from geometry import distance
+
+        for u in hex_obj.units:
+            if u.owner == self.owner and u.current_hit_points > 0 and u.position:
+                od_comp = getattr(u, 'orbital_defense_component', None)
+                if od_comp and not od_comp.is_destroyed and od_comp.is_active(g):
+                    if distance(self.position, u.position) <= od_comp.radius:
+                        total_atk += od_comp.attack_bonus
+                        total_def += od_comp.defense_bonus
+
+        return (total_atk, total_def)
 
     def take_damage(self, amount: int, damage_type: Optional[TurretType] = None) -> None:
         """Reduces the unit's current hit points by the given amount, applying any active damage reduction and defenses mitigation."""

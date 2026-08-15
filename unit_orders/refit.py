@@ -26,6 +26,8 @@ def get_hull_restriction_flag(component_name: str) -> str:
         "RepairComponent": "has_repair_component",
         "ColonyComponent": "has_colony_component",
         "CivilianHabitatComponent": "has_civilian_habitat_component",
+        "OrbitalDefenseComponent": "has_orbital_defense_component",
+        "OrbitalDefense": "has_orbital_defense_component",
         "TradeComponent": "has_trade_component",
         "Trade": "has_trade_component",
         "MetalRefineryComponent": "has_metal_refinery_component",

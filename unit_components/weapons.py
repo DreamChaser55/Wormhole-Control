@@ -59,6 +59,12 @@ class Turret:
             # Apply XP weapon damage bonus from the firing unit
             effective_damage *= self.parent_unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
 
+            # Apply Orbital Defense attack bonus if within active friendly aura
+            if hasattr(self.parent_unit, 'get_orbital_defense_buffs'):
+                od_atk_bonus, _ = self.parent_unit.get_orbital_defense_buffs()
+                if od_atk_bonus > 0.0:
+                    effective_damage *= (1.0 + od_atk_bonus)
+
             # Anti-strikecraft damage reduced to 25% against other targets
             if self.variant == TurretVariant.ANTI_STRIKECRAFT and self.target.hull_size != HullSize.STRIKECRAFT_WING:
                 effective_damage *= 0.25
@@ -154,10 +160,17 @@ class Weapons(UnitComponent):
                 'indent_level': 1
             })
             
+            galaxy_ref = getattr(game_state, 'galaxy', None) if game_state else None
+            od_atk_bonus, _ = self.unit.get_orbital_defense_buffs(galaxy_ref) if hasattr(self.unit, 'get_orbital_defense_buffs') else (0.0, 0.0)
+            total_mult = xp_dmg_mult * (1.0 + od_atk_bonus)
+            effective_dmg = turret.damage * total_mult
+            bonus_parts = []
             if xp > 0:
-                effective_dmg = turret.damage * xp_dmg_mult
-                bonus_pct = int((xp_dmg_mult - 1.0) * 100)
-                stats_text = f"Damage: {turret.damage} (+{bonus_pct}% XP → {effective_dmg:.1f}) | Range: {turret.range} | Cooldown: {turret.cooldown}t"
+                bonus_parts.append(f"+{int((xp_dmg_mult - 1.0) * 100)}% XP")
+            if od_atk_bonus > 0:
+                bonus_parts.append(f"+{int(od_atk_bonus * 100)}% OD")
+            if bonus_parts:
+                stats_text = f"Damage: {turret.damage} ({', '.join(bonus_parts)} → {effective_dmg:.1f}) | Range: {turret.range} | Cooldown: {turret.cooldown}t"
             else:
                 stats_text = f"Damage: {turret.damage} | Range: {turret.range} | Cooldown: {turret.cooldown}t"
             data.append({

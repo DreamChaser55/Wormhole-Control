@@ -106,6 +106,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Automated Logistics**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled.
 - **Orbital Construction**: Constructors assemble orbital defense platforms, shipyards, refineries, and stations.
 - **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses (+50 credits/turn), supported up to finite colony population limits (base 1, +1 per 25 population).
+- **Orbital Defense**: Deploy tactical defense modules in colonized sectors to project an area-of-effect aura (+20% attack damage, +20% defense mitigation) for friendly ships in radius, supported up to colony population limits (base 1, +1 per 25 population) with additive stacking.
 
 ---
 

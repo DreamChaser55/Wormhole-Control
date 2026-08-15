@@ -24,7 +24,7 @@ from galaxy import Galaxy, StarSystem, Hex
 from unit_components import (
     AntimatterStorage, AntimatterHarvester, Engines, Hyperdrive, HyperdriveType,
     Commander, HyperspaceInhibitionFieldEmitter, Weapons, Defenses, Turret,
-    ColonyComponent, CivilianHabitatComponent, TradeComponent, Constructor, RepairComponent, MiningComponent,
+    ColonyComponent, CivilianHabitatComponent, OrbitalDefenseComponent, TradeComponent, Constructor, RepairComponent, MiningComponent,
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
     MinelayerComponent, MarinesComponent, CloakingDevice, instantiate_unit_from_template,
@@ -244,6 +244,11 @@ def serialize_components(unit: Unit) -> dict:
         elif isinstance(comp, Sensors):
             comp_data["short_range_radius"] = comp.short_range_radius
             comp_data["long_range_hexes"] = comp.long_range_hexes
+            comp_data["hull_cost"] = comp.hull_cost
+        elif isinstance(comp, OrbitalDefenseComponent):
+            comp_data["radius"] = comp.radius
+            comp_data["attack_bonus"] = comp.attack_bonus
+            comp_data["defense_bonus"] = comp.defense_bonus
             comp_data["hull_cost"] = comp.hull_cost
         elif isinstance(comp, TradeComponent):
             comp_data["last_traded_sector"] = list(comp.last_traded_sector) if comp.last_traded_sector else None
@@ -582,6 +587,15 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
             hull_cost=template.get("civilian_habitat_hull_cost", 15.0)
         ))
 
+    if template.get("has_orbital_defense_component"):
+        new_unit.add_component(OrbitalDefenseComponent(
+            new_unit,
+            radius=template.get("orbital_defense_radius", 500.0),
+            attack_bonus=template.get("orbital_defense_attack_bonus", 0.20),
+            defense_bonus=template.get("orbital_defense_defense_bonus", 0.20),
+            hull_cost=template.get("orbital_defense_hull_cost", 20.0)
+        ))
+
     if template.get("has_trade_component"):
         new_unit.add_component(TradeComponent(
             new_unit,
@@ -684,6 +698,10 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
                 unit.hyperdrive_component.jump_status = JumpStatus[status_str]
         elif comp_name == "CivilianHabitatComponent" and unit.civilian_habitat_component:
             unit.civilian_habitat_component.economic_bonus = comp_fields.get("economic_bonus", unit.civilian_habitat_component.economic_bonus)
+        elif comp_name == "OrbitalDefenseComponent" and unit.orbital_defense_component:
+            unit.orbital_defense_component.radius = comp_fields.get("radius", unit.orbital_defense_component.radius)
+            unit.orbital_defense_component.attack_bonus = comp_fields.get("attack_bonus", unit.orbital_defense_component.attack_bonus)
+            unit.orbital_defense_component.defense_bonus = comp_fields.get("defense_bonus", unit.orbital_defense_component.defense_bonus)
         elif comp_name == "TradeComponent" and unit.trade_component:
             raw_sec = comp_fields.get("last_traded_sector")
             if raw_sec and len(raw_sec) == 2:

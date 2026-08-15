@@ -146,7 +146,9 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         data.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
         if body.owner and body.population > 0:
             cap = body.get_supported_habitat_capacity() if hasattr(body, 'get_supported_habitat_capacity') else 0
+            od_cap = body.get_supported_orbital_defense_capacity() if hasattr(body, 'get_supported_orbital_defense_capacity') else 0
             active_habs = 0
+            active_ods = 0
             if game.galaxy and body.in_system in game.galaxy.systems:
                 sys_obj = game.galaxy.systems[body.in_system]
                 hex_obj = sys_obj.hexes.get(body.in_hex)
@@ -156,7 +158,11 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
                             comp = getattr(u, 'civilian_habitat_component', None)
                             if comp and not comp.is_destroyed and getattr(comp, 'is_active', lambda g: False)(game.galaxy):
                                 active_habs += 1
+                            od_comp = getattr(u, 'orbital_defense_component', None)
+                            if od_comp and not od_comp.is_destroyed and getattr(od_comp, 'is_active', lambda g: False)(game.galaxy):
+                                active_ods += 1
             data.append({'type': 'label', 'text': f"Habitats Supported: {active_habs} / {cap}", 'object_id': '#sidebar_info_label', 'height': 25})
+            data.append({'type': 'label', 'text': f"Orbital Defenses Supported: {active_ods} / {od_cap}", 'object_id': '#sidebar_info_label', 'height': 25})
 
     elif isinstance(body, MetalAsteroid):
         data.append({'type': 'label', 'text': f"Metal Yield: {body.metal_yield}", 'object_id': '#sidebar_info_label', 'height': 25})

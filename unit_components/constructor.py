@@ -12,6 +12,7 @@ from .inhibitor import HyperspaceInhibitionFieldEmitter
 from .repair import RepairComponent
 from .colony import ColonyComponent
 from .civilian_habitat import CivilianHabitatComponent
+from .orbital_defense import OrbitalDefenseComponent
 from .trade import TradeComponent
 from .mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
 from .hangar import HangarComponent
@@ -269,6 +270,19 @@ def instantiate_unit_from_template(
             new_unit,
             economic_bonus=bonus,
             hull_cost=cost
+        ))
+
+    if template.get("has_orbital_defense_component"):
+        cost = template.get("orbital_defense_hull_cost", 20.0)
+        radius = float(template.get("orbital_defense_radius", 500.0))
+        atk_bonus = float(template.get("orbital_defense_attack_bonus", 0.20))
+        def_bonus = float(template.get("orbital_defense_defense_bonus", 0.20))
+        new_unit.add_component(OrbitalDefenseComponent(
+            new_unit,
+            radius=radius,
+            attack_bonus=atk_bonus,
+            defense_bonus=def_bonus,
+            hull_cost=float(cost)
         ))
 
     if template.get("has_trade_component"):
@@ -641,6 +655,8 @@ COMPONENT_NAME_MAP = {
     "StrikecraftBayComponent": StrikecraftBayComponent,
     "ColonyComponent": ColonyComponent,
     "CivilianHabitatComponent": CivilianHabitatComponent,
+    "OrbitalDefenseComponent": OrbitalDefenseComponent,
+    "OrbitalDefense": OrbitalDefenseComponent,
     "TradeComponent": TradeComponent,
     "Trade": TradeComponent,
     "HyperspaceInhibitionFieldEmitter": HyperspaceInhibitionFieldEmitter,
@@ -802,6 +818,15 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         if cost is None:
             cost = CivilianHabitatComponent.calc_hull_cost(bonus)
         return CivilianHabitatComponent(unit, economic_bonus=bonus, hull_cost=float(cost))
+
+    elif comp_cls == OrbitalDefenseComponent:
+        radius = float(config.get("radius", 500.0))
+        atk_bonus = float(config.get("attack_bonus", 0.20))
+        def_bonus = float(config.get("defense_bonus", 0.20))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = OrbitalDefenseComponent.calc_hull_cost()
+        return OrbitalDefenseComponent(unit, radius=radius, attack_bonus=atk_bonus, defense_bonus=def_bonus, hull_cost=float(cost))
 
     elif comp_cls == TradeComponent:
         cost = config.get("hull_cost")
