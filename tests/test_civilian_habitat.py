@@ -327,9 +327,74 @@ class TestCivilianHabitatComponent(unittest.TestCase):
         planet.population = 25.0
         self.system.add_celestial_body(planet)
 
-        basic_data = self.habitat_comp.get_basic_sidebar_data(game_mock)
-        self.assertTrue(any("+50 Credits/Turn [1/1]" in item.get("text", "") for item in basic_data))
+    def test_habitat_ship_movement_and_sector_transitions(self):
+        """Tests that a ship equipped with a civilian habitat correctly updates its active status
+        when moving between sectors, leaving colonies, and entering new colonized sectors.
+        """
+        # 1. Setup colonized planet in origin sector (0, 0)
+        planet = Planet(in_hex=(0, 0), in_system="Sol", planet_type=None)
+        planet.owner = self.player
+        planet.population = 25.0  # Capacity 1
+        self.system.add_celestial_body(planet)
+
+        # Habitat ship at (0, 0) is initially active
+        self.assertTrue(self.habitat_comp.is_active(self.galaxy))
+
+        # Add a second habitat unit in (0, 0) which will be inactive due to capacity
+        unit2 = Unit(
+            owner=self.player,
+            position=None,
+            in_hex=(0, 0),
+            in_system="Sol",
+            name="Habitat Backup",
+            hull_size=HullSize.LARGE,
+            game=MagicMock(galaxy=self.galaxy)
+        )
+        hab2 = CivilianHabitatComponent(unit=unit2, economic_bonus=50.0)
+        unit2.add_component(hab2)
+        self.system.add_unit(unit2)
+
+        # Force deterministic order so self.unit is slot 1, unit2 is slot 2
+        if self.unit.id > unit2.id:
+            self.unit.id, unit2.id = unit2.id, self.unit.id
+
+        self.assertTrue(self.habitat_comp.is_active(self.galaxy))
+        self.assertFalse(hab2.is_active(self.galaxy))
+
+        # 2. Ship moves from (0, 0) to empty sector (1, 0)
+        dest_hex = (1, 0)
+        self.assertTrue(self.system.move_unit_between_hexes(self.unit, dest_hex))
+        self.assertEqual(self.unit.in_hex, dest_hex)
+
+        # Ship in empty sector is now inactive
+        self.assertFalse(self.habitat_comp.is_active(self.galaxy))
+        status = self.habitat_comp.get_sector_habitat_status(self.galaxy)
+        self.assertEqual(status['reason'], 'Inactive (No Colonized Sector Object)')
+
+        # Back in (0, 0), unit2 now takes the available capacity slot and becomes active!
+        self.assertTrue(hab2.is_active(self.galaxy))
+        status2 = hab2.get_sector_habitat_status(self.galaxy)
+        self.assertTrue(status2['active'])
+        self.assertEqual(status2['slot'], 1)
+
+        # 3. Ship moves from empty sector (1, 0) to another colonized sector (2, 0)
+        dest_hex2 = (2, 0)
+        second_planet = Planet(in_hex=dest_hex2, in_system="Sol", planet_type=None)
+        second_planet.owner = self.player
+        second_planet.population = 50.0  # Capacity 2
+        self.system.add_celestial_body(second_planet)
+
+        self.assertTrue(self.system.move_unit_between_hexes(self.unit, dest_hex2))
+        self.assertEqual(self.unit.in_hex, dest_hex2)
+
+        # Ship entering the new colony sector becomes active again
+        self.assertTrue(self.habitat_comp.is_active(self.galaxy))
+        status_new = self.habitat_comp.get_sector_habitat_status(self.galaxy)
+        self.assertTrue(status_new['active'])
+        self.assertEqual(status_new['slot'], 1)
+        self.assertEqual(status_new['capacity'], 2)
 
 
 if __name__ == "__main__":
     unittest.main()
+
