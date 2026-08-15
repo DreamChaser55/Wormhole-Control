@@ -253,9 +253,9 @@ def calc_civilian_habitat_hull_cost(economic_bonus: float = 50.0) -> float:
     return CivilianHabitatComponent.calc_hull_cost(economic_bonus)
 
 
-def calc_cloaking_hull_cost(cloaking_type: str = "BASIC") -> float:
-    """Compute the hull cost of a Cloaking Device component based on cloaking_type."""
-    return CloakingDevice.calc_hull_cost(cloaking_type)
+def calc_cloaking_hull_cost(cloaking_type: str = "BASIC", cloaking_radius: float = DEFAULT_ADVANCED_CLOAKING_RADIUS) -> float:
+    """Compute the hull cost of a Cloaking Device component based on cloaking_type and cloaking_radius."""
+    return CloakingDevice.calc_hull_cost(cloaking_type, cloaking_radius)
 
 
 def get_hyperdrive_system_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
@@ -521,10 +521,10 @@ class ComponentConfig:
 
     @property
     def cloaking_device_hull_cost(self) -> float:
-        """Hull cost of Cloaking Device, computed from cloaking_type."""
+        """Hull cost of Cloaking Device, computed from cloaking_type and cloaking_radius."""
         if not self.has_cloaking_device:
             return 0.0
-        return calc_cloaking_hull_cost(self.cloaking_type)
+        return calc_cloaking_hull_cost(self.cloaking_type, self.cloaking_radius)
 
 
 

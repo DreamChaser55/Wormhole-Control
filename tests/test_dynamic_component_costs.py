@@ -440,3 +440,12 @@ class TestComponentClassCostMethods:
         from unit_components.abilities.component import AbilityComponent
         assert AbilityComponent.calc_hull_cost(["repair_cloud"]) == 15.0
 
+    def test_cloaking_calc_hull_cost(self):
+        from unit_components.cloaking import CloakingDevice
+        from unit_components.enums import CloakingType
+        assert CloakingDevice.calc_hull_cost(CloakingType.BASIC) == 10.0
+        assert CloakingDevice.calc_hull_cost("BASIC", area_radius=800.0) == 10.0
+        assert CloakingDevice.calc_hull_cost(CloakingType.ADVANCED, area_radius=500.0) == 30.0
+        assert CloakingDevice.calc_hull_cost("ADVANCED", area_radius=250.0) == 15.0
+        assert CloakingDevice.calc_hull_cost("ADVANCED", area_radius=1000.0) == 60.0
+

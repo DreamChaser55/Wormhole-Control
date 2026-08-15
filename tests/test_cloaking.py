@@ -77,8 +77,10 @@ def test_advanced_cloaking_initialization(galaxy_setup):
 
     assert cloak.device_type == CloakingType.ADVANCED
     assert cloak.area_radius == 600.0
-    assert cloak.hull_cost == CLOAKING_ADVANCED_HULL_COST
-    assert cloak.get_antimatter_cost_per_turn() == CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN
+    # Radius 600.0: hull cost = (600 / 500) * 30.0 = 36.0
+    assert cloak.hull_cost == 36.0
+    # Radius 600.0: AM cost = (600 / 500) * 20.0 = 24.0
+    assert cloak.get_antimatter_cost_per_turn() == 24.0
     assert cloak.is_active is False
 
 
@@ -87,6 +89,9 @@ def test_calc_hull_cost_helper():
     assert CloakingDevice.calc_hull_cost("basic") == CLOAKING_BASIC_HULL_COST
     assert CloakingDevice.calc_hull_cost(CloakingType.ADVANCED) == CLOAKING_ADVANCED_HULL_COST
     assert CloakingDevice.calc_hull_cost("ADVANCED") == CLOAKING_ADVANCED_HULL_COST
+    assert CloakingDevice.calc_hull_cost("ADVANCED", area_radius=250.0) == 15.0
+    assert CloakingDevice.calc_hull_cost(CloakingType.ADVANCED, area_radius=1000.0) == 60.0
+    assert CloakingDevice.calc_hull_cost(CloakingType.ADVANCED, area_radius=0.0) == 0.0
 
 
 # --------------------------------------------------------------------------
@@ -311,13 +316,60 @@ def test_template_dict_roundtrip():
     assert d["has_cloaking_device"] is True
     assert d["cloaking_type"] == "ADVANCED"
     assert d["cloaking_radius"] == 650.0
-    assert d["cloaking_hull_cost"] == CLOAKING_ADVANCED_HULL_COST
+    # (650 / 500) * 30.0 = 39.0
+    assert d["cloaking_hull_cost"] == 39.0
 
     rebuilt = mgr._dict_to_template("Phantom Cruiser", d)
     assert rebuilt.components.has_cloaking_device is True
     assert rebuilt.components.cloaking_type == "ADVANCED"
     assert rebuilt.components.cloaking_radius == 650.0
-    assert rebuilt.components.cloaking_device_hull_cost == CLOAKING_ADVANCED_HULL_COST
+    assert rebuilt.components.cloaking_device_hull_cost == 39.0
+
+
+def test_advanced_cloaking_radius_scaling_hull_credits_antimatter(galaxy_setup):
+    p1, p2, galaxy, system, mock_game = galaxy_setup
+    for radius, expected_hull, expected_am, expected_cloak_credit_contrib in [
+        (250.0, 15.0, 10.0, 450),
+        (500.0, 30.0, 20.0, 900),
+        (750.0, 45.0, 30.0, 1350),
+        (1000.0, 60.0, 40.0, 1800),
+    ]:
+        unit = Unit(p1, Position(0, 0), in_hex=(0, 0), in_system="Alpha", name="ScalingCloaker", hull_size=HullSize.MEDIUM, game=mock_game)
+        cloak = CloakingDevice(unit, device_type=CloakingType.ADVANCED, area_radius=radius)
+        assert cloak.area_radius == radius
+        assert cloak.hull_cost == expected_hull
+        assert cloak.get_antimatter_cost_per_turn() == expected_am
+
+        # Template cost calculation
+        t = CustomUnitTemplate("Test Cloak Ship", HullSize.MEDIUM)
+        t.components.has_engine = True  # MEDIUM engine = 5.0 hull
+        t.components.has_cloaking_device = True
+        t.components.cloaking_type = "ADVANCED"
+        t.components.cloaking_radius = radius
+
+        assert t.components.cloaking_device_hull_cost == expected_hull
+        # Base hull cost for MEDIUM = 500; engine = 5.0 * 30 = 150; cloak = expected_cloak_credit_contrib
+        assert t.build_cost == 500 + 150 + expected_cloak_credit_contrib
+
+
+def test_basic_cloaking_unaffected_by_radius(galaxy_setup):
+    p1, p2, galaxy, system, mock_game = galaxy_setup
+    unit = Unit(p1, Position(0, 0), in_hex=(0, 0), in_system="Alpha", name="BasicShip", hull_size=HullSize.SMALL, game=mock_game)
+    cloak = CloakingDevice(unit, device_type=CloakingType.BASIC, area_radius=800.0)
+
+    assert cloak.area_radius == 0.0
+    assert cloak.hull_cost == CLOAKING_BASIC_HULL_COST
+    assert cloak.get_antimatter_cost_per_turn() == CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN
+
+    t = CustomUnitTemplate("Basic Cloak Ship", HullSize.SMALL)
+    t.components.has_engine = True  # SMALL engine = 4.0 hull
+    t.components.has_cloaking_device = True
+    t.components.cloaking_type = "BASIC"
+    t.components.cloaking_radius = 800.0  # Should be ignored for BASIC
+
+    assert t.components.cloaking_device_hull_cost == CLOAKING_BASIC_HULL_COST
+    # Base SMALL = 250 + (4.0 + 10.0) * 30 = 250 + 420 = 670
+    assert t.build_cost == 670
 
 
 # --------------------------------------------------------------------------

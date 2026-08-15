@@ -85,6 +85,11 @@ def update_summary(editor) -> None:
                         comp_lines.append(f"    • {a}")
             elif key == "has_marines_component":
                 comp_lines.append(f"    marines_count={c.marines_count}")
+            elif key == "has_cloaking_device":
+                if getattr(c, "cloaking_type", "BASIC") == "ADVANCED":
+                    comp_lines.append(f"    type={c.cloaking_type}  radius={c.cloaking_radius:.0f}")
+                else:
+                    comp_lines.append(f"    type={c.cloaking_type}")
 
     if comp_lines:
         lines.append("<b>Components:</b>")

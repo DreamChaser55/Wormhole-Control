@@ -48,35 +48,43 @@ class CloakingDevice(UnitComponent):
         else:
             dtype = device_type
 
-        if hull_cost is None:
-            hull_cost = CloakingDevice.calc_hull_cost(dtype)
-
-        super().__init__(unit, hull_cost=hull_cost)
-        self.device_type: CloakingType = dtype
-
-        if self.device_type == CloakingType.ADVANCED:
-            self.area_radius: float = (
+        if dtype == CloakingType.ADVANCED:
+            radius = (
                 DEFAULT_ADVANCED_CLOAKING_RADIUS
                 if area_radius is None or area_radius <= 0
                 else float(area_radius)
             )
         else:
-            self.area_radius: float = 0.0
+            radius = 0.0
 
+        if hull_cost is None:
+            hull_cost = CloakingDevice.calc_hull_cost(dtype, area_radius=radius)
+
+        super().__init__(unit, hull_cost=hull_cost)
+        self.device_type: CloakingType = dtype
+        self.area_radius: float = radius
         self.is_active: bool = False
 
     @staticmethod
-    def calc_hull_cost(device_type: Union[CloakingType, str] = CloakingType.BASIC, **kwargs) -> float:
-        """Return the hull cost of a Cloaking Device component based on its type."""
+    def calc_hull_cost(
+        device_type: Union[CloakingType, str] = CloakingType.BASIC,
+        area_radius: float = DEFAULT_ADVANCED_CLOAKING_RADIUS,
+        **kwargs
+    ) -> float:
+        """Return the hull cost of a Cloaking Device component based on its type and area radius."""
         dtype_str = device_type.value if isinstance(device_type, CloakingType) else str(device_type)
         if dtype_str.upper() == "ADVANCED":
-            return float(CLOAKING_ADVANCED_HULL_COST)
+            if area_radius <= 0:
+                return 0.0
+            return float((area_radius / DEFAULT_ADVANCED_CLOAKING_RADIUS) * CLOAKING_ADVANCED_HULL_COST)
         return float(CLOAKING_BASIC_HULL_COST)
 
     def get_antimatter_cost_per_turn(self) -> float:
         """Return antimatter consumption per turn while active."""
         if self.device_type == CloakingType.ADVANCED:
-            return float(CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN)
+            if self.area_radius <= 0:
+                return 0.0
+            return float((self.area_radius / DEFAULT_ADVANCED_CLOAKING_RADIUS) * CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN)
         return float(CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN)
 
     def is_point_cloaked(self, target_pos: Position) -> bool:

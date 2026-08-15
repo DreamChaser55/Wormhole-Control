@@ -338,7 +338,7 @@ def instantiate_unit_from_template(
         c_type_raw = template.get("cloaking_type", "BASIC")
         c_type = CloakingType.ADVANCED if str(c_type_raw).upper() == "ADVANCED" else CloakingType.BASIC
         c_radius = float(template.get("cloaking_radius", DEFAULT_ADVANCED_CLOAKING_RADIUS)) if c_type == CloakingType.ADVANCED else 0.0
-        c_cost = float(template.get("cloaking_hull_cost", CloakingDevice.calc_hull_cost(c_type)))
+        c_cost = float(template.get("cloaking_hull_cost", CloakingDevice.calc_hull_cost(c_type, c_radius)))
         new_unit.add_component(CloakingDevice(new_unit, device_type=c_type, area_radius=c_radius, hull_cost=c_cost))
 
     system.add_unit(new_unit)

@@ -136,12 +136,14 @@ DEFAULT_SENSOR_LONG_RANGE_HEXES: int = 1       # default ring count for a long-r
 
 # Cloaking Device Constants
 CLOAKING_BASIC_HULL_COST: float = 10.0            # Hull cost for Basic (single-unit) cloak
-CLOAKING_ADVANCED_HULL_COST: float = 30.0         # Hull cost for Advanced (area) cloak
+CLOAKING_ADVANCED_HULL_COST: float = 30.0         # Baseline hull cost for Advanced (area) cloak at default radius
 CLOAKING_HULL_COST: float = CLOAKING_BASIC_HULL_COST  # backward-compat alias
 CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN: float = 5.0  # Antimatter per turn for Basic cloak
-CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN: float = 20.0  # Antimatter per turn for Advanced cloak
+CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN: float = 20.0  # Baseline antimatter per turn for Advanced cloak at default radius
 CLOAKING_ANTIMATTER_COST_PER_TURN: float = CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN  # backward-compat alias
 DEFAULT_ADVANCED_CLOAKING_RADIUS: float = 500.0   # Logical radius for Advanced area cloaking
+CLOAKING_ADVANCED_RADIUS_PER_HULL_POINT: float = DEFAULT_ADVANCED_CLOAKING_RADIUS / CLOAKING_ADVANCED_HULL_COST  # ~16.6667 radius units per hull point
+CLOAKING_ADVANCED_ANTIMATTER_COST_PER_RADIUS: float = CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN / DEFAULT_ADVANCED_CLOAKING_RADIUS  # 0.04 AM per turn per radius unit
 
 # Fog visuals
 FOG_PRESENCE_COLOR = (200, 60, 60)             # generic enemy-presence marker color
