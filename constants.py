@@ -139,7 +139,6 @@ CLOAKING_BASIC_HULL_COST: float = 10.0            # Hull cost for Basic (single-
 CLOAKING_ADVANCED_HULL_COST: float = 30.0         # Baseline hull cost for Advanced (area) cloak at default radius
 CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN: float = 5.0  # Antimatter per turn for Basic cloak
 CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN: float = 20.0  # Baseline antimatter per turn for Advanced cloak at default radius
-CLOAKING_ANTIMATTER_COST_PER_TURN: float = CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN  # backward-compat alias
 DEFAULT_ADVANCED_CLOAKING_RADIUS: float = 500.0   # Logical radius for Advanced area cloaking
 CLOAKING_ADVANCED_RADIUS_PER_HULL_POINT: float = DEFAULT_ADVANCED_CLOAKING_RADIUS / CLOAKING_ADVANCED_HULL_COST  # ~16.6667 radius units per hull point
 CLOAKING_ADVANCED_ANTIMATTER_COST_PER_RADIUS: float = CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN / DEFAULT_ADVANCED_CLOAKING_RADIUS  # 0.04 AM per turn per radius unit
