@@ -24,7 +24,8 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
-    ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent, LayMinefieldEvent
+    ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent, LayMinefieldEvent,
+    RefitUnitEvent
 )
 
 
@@ -569,6 +570,10 @@ class InputProcessor:
                                     if can_dock_at_carrier:
                                         options.append(("Dock at Carrier", "dock_at_carrier"))
 
+                                    refit_options = self.get_refit_context_options(actors, target_object)
+                                    if refit_options:
+                                        options.append(("Refit Unit", refit_options))
+
                                 ability_options = self.get_ability_context_options(actors, target_is_unit=True)
                                 if ability_options:
                                     options.append(("Use Ability", ability_options))
@@ -820,6 +825,28 @@ class InputProcessor:
                         shift_pressed
                     ))
 
+            elif extracted_action_id.startswith("refit_add_"):
+                comp_name = extracted_action_id[len("refit_add_"):]
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(RefitUnitEvent(
+                        selected_units,
+                        target_unit=target,
+                        action="ADD",
+                        component_type=comp_name,
+                        shift_pressed=shift_pressed
+                    ))
+
+            elif extracted_action_id.startswith("refit_remove_"):
+                comp_name = extracted_action_id[len("refit_remove_"):]
+                if isinstance(target, Unit):
+                    self.game.event_bus.publish(RefitUnitEvent(
+                        selected_units,
+                        target_unit=target,
+                        action="REMOVE",
+                        component_type=comp_name,
+                        shift_pressed=shift_pressed
+                    ))
+
             elif extracted_action_id.startswith("use_ability_"):
                 ability_type_str = extracted_action_id[len("use_ability_"):]
                 target_unit = target if isinstance(target, Unit) else None
@@ -840,6 +867,83 @@ class InputProcessor:
             self.game.sidebar_needs_update = True
         else:
             logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")
+
+    def get_refit_context_options(self, actors: typing.List[Unit], target_unit: Unit) -> typing.List[typing.Tuple[str, typing.Any]]:
+        """Builds context menu options for adding/removing components from a friendly target unit."""
+        if not any(getattr(a, 'constructor_component', None) for a in actors):
+            return []
+        if target_unit.owner != actors[0].owner:
+            return []
+
+        from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
+        from unit_components import (
+            Engines, Hyperdrive, Weapons, Defenses, AntimatterHarvester,
+            Sensors, RepairComponent, MiningComponent, MetalRefineryComponent,
+            CrystalRefineryComponent, HangarComponent, StrikecraftBayComponent,
+            ColonyComponent, CivilianHabitatComponent, HyperspaceInhibitionFieldEmitter,
+            MinelayerComponent, MarinesComponent, CloakingDevice, Constructor, Commander,
+            HyperdriveType, CloakingType
+        )
+        from constants import (
+            DEFAULT_JUMP_RANGE, DEFAULT_SENSOR_SHORT_RANGE, ANTIMATTER_HARVESTER_HULL_COST,
+            MINELAYER_HULL_COST, DEFAULT_ANTIMATTER_CAPACITY, REPAIR_CREDIT_COST_PER_HP
+        )
+
+        refit_options = []
+        add_options = []
+        remove_options = []
+
+        candidates = [
+            ("Engines", "Engines", Engines, lambda u: Engines.calc_hull_cost(100.0, u.hull_size)),
+            ("Hyperdrive", "Hyperdrive", Hyperdrive, lambda u: Hyperdrive.calc_hull_cost("BASIC", 5, u.hull_size)),
+            ("Weapons", "Weapons Bay", Weapons, lambda u: 5.0),
+            ("Defenses", "Defenses", Defenses, lambda u: Defenses.calc_hull_cost(50, 50, 0)),
+            ("AntimatterHarvester", "AM Harvester", AntimatterHarvester, lambda u: ANTIMATTER_HARVESTER_HULL_COST),
+            ("Sensors", "Sensor Suite", Sensors, lambda u: Sensors.calc_hull_cost(DEFAULT_SENSOR_SHORT_RANGE, 1)),
+            ("RepairComponent", "Repair Module", RepairComponent, lambda u: RepairComponent.calc_hull_cost(10.0)),
+            ("MiningComponent", "Mining Module", MiningComponent, lambda u: MiningComponent.calc_hull_cost(10.0, 100.0)),
+            ("MetalRefineryComponent", "Metal Refinery", MetalRefineryComponent, lambda u: 20.0),
+            ("CrystalRefineryComponent", "Crystal Refinery", CrystalRefineryComponent, lambda u: 20.0),
+            ("HangarComponent", "Hangar Bay", HangarComponent, lambda u: HangarComponent.calc_hull_cost(2)),
+            ("StrikecraftBayComponent", "Strikecraft Bay", StrikecraftBayComponent, lambda u: StrikecraftBayComponent.calc_hull_cost(2)),
+            ("ColonyComponent", "Colony Module", ColonyComponent, lambda u: 10.0),
+            ("CivilianHabitatComponent", "Civilian Habitat", CivilianHabitatComponent, lambda u: CivilianHabitatComponent.calc_hull_cost(50.0)),
+            ("HyperspaceInhibitionFieldEmitter", "Hyperspace Inhibitor", HyperspaceInhibitionFieldEmitter, lambda u: HyperspaceInhibitionFieldEmitter.calc_hull_cost(100.0)),
+            ("MinelayerComponent", "Minelayer", MinelayerComponent, lambda u: MINELAYER_HULL_COST),
+            ("MarinesComponent", "Marines Barracks", MarinesComponent, lambda u: MarinesComponent.calc_hull_cost(10)),
+            ("CloakingDevice", "Cloaking Device", CloakingDevice, lambda u: CloakingDevice.calc_hull_cost("BASIC", 0.0)),
+            ("Constructor", "Constructor Module", Constructor, lambda u: 15.0),
+        ]
+
+        forbidden_flags = HULL_RESTRICTIONS.get(target_unit.hull_size, set())
+        remaining_cap = target_unit.hull_capacity - target_unit.current_hull_usage
+
+        for comp_key, comp_display, comp_cls, cost_fn in candidates:
+            if comp_cls in target_unit.components:
+                continue
+            flag_key = f"has_{comp_key.lower()}"
+            if flag_key in forbidden_flags or (comp_key == "Constructor" and "has_constructor_component" in forbidden_flags) or (comp_key == "RepairComponent" and "has_repair_component" in forbidden_flags):
+                continue
+
+            cost_hull = cost_fn(target_unit)
+            if cost_hull <= remaining_cap:
+                credit_cost = int(round(cost_hull * COMPONENT_COST_PER_HULL_POINT))
+                add_options.append((f"{comp_display} ({credit_cost}c / {cost_hull:.0f}h)", f"refit_add_{comp_key}"))
+
+        for comp_cls, comp_inst in target_unit.components.items():
+            if comp_cls == Commander:
+                continue
+            if isinstance(comp_inst, (HangarComponent, StrikecraftBayComponent)) and comp_inst.docked_units:
+                continue
+            salvage_refund = int(round(comp_inst.hull_cost * COMPONENT_COST_PER_HULL_POINT * 0.5))
+            remove_options.append((f"{comp_inst.DISPLAY_NAME} (+{salvage_refund}c / -{comp_inst.hull_cost:.0f}h)", f"refit_remove_{comp_cls.__name__}"))
+
+        if add_options:
+            refit_options.append(("Add Component", add_options))
+        if remove_options:
+            refit_options.append(("Remove Component", remove_options))
+
+        return refit_options
 
     def get_ability_context_options(self, actors: typing.List[Unit], target_is_unit: bool) -> typing.List[typing.Tuple[str, str]]:
         """Retrieves available unit special abilities applicable to a right-click context target.

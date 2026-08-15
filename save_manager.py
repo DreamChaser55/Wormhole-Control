@@ -27,7 +27,8 @@ from unit_components import (
     ColonyComponent, CivilianHabitatComponent, Constructor, RepairComponent, MiningComponent,
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
-    MinelayerComponent, MarinesComponent, CloakingDevice, instantiate_unit_from_template
+    MinelayerComponent, MarinesComponent, CloakingDevice, instantiate_unit_from_template,
+    instantiate_component_for_unit, get_component_class_by_name
 )
 from unit_orders import (
     Order, OrderStatus, OrderType,
@@ -35,7 +36,7 @@ from unit_orders import (
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
     RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
     UseAbilityOrder, ProtectOrder, ContinuousMineOrder, TransferAntimatterOrder,
-    ContinuousResupplyOrder, LayMinefieldOrder
+    ContinuousResupplyOrder, LayMinefieldOrder, RefitOrder
 )
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,7 @@ ORDER_CLASSES = {
     "TRANSFER_ANTIMATTER": TransferAntimatterOrder,
     "CONTINUOUS_RESUPPLY": ContinuousResupplyOrder,
     "LAY_MINEFIELD": LayMinefieldOrder,
+    "REFIT_UNIT": RefitOrder,
 }
 
 
@@ -188,9 +190,12 @@ def serialize_components(unit: Unit) -> dict:
             comp_data["population_cargo"] = comp.population_cargo
             comp_data["max_cargo"] = comp.max_cargo
         elif isinstance(comp, MiningComponent):
+            comp_data["mining_rate"] = comp.mining_rate
+            comp_data["mining_range"] = comp.mining_range
             comp_data["raw_metal_cargo"] = comp.raw_metal_cargo
             comp_data["raw_crystal_cargo"] = comp.raw_crystal_cargo
             comp_data["max_cargo"] = comp.max_cargo
+            comp_data["hull_cost"] = comp.hull_cost
         elif isinstance(comp, Hyperdrive):
             comp_data["recharge_time_remaining"] = comp.recharge_time_remaining
             comp_data["jump_status"] = comp.jump_status.name
@@ -209,6 +214,35 @@ def serialize_components(unit: Unit) -> dict:
             comp_data["build_wing_type"] = comp.build_wing_type.name
         elif isinstance(comp, StrikecraftWingComponent):
             comp_data["wing_type"] = comp.wing_type.name
+        elif isinstance(comp, Constructor):
+            if comp.current_construction_target:
+                comp_data["current_construction_target"] = [
+                    comp.current_construction_target[0],
+                    [comp.current_construction_target[1].x, comp.current_construction_target[1].y]
+                ]
+                comp_data["construction_progress"] = comp.construction_progress
+                comp_data["time_to_build"] = comp.time_to_build
+            if comp.current_refit_target:
+                comp_data["current_refit_target"] = dict(comp.current_refit_target)
+                comp_data["refit_progress"] = comp.refit_progress
+                comp_data["refit_time"] = comp.refit_time
+        elif isinstance(comp, Defenses):
+            comp_data["armor"] = comp.armor
+            comp_data["shields"] = comp.shields
+            comp_data["point_defense"] = comp.point_defense
+            comp_data["hull_cost"] = comp.hull_cost
+        elif isinstance(comp, Engines):
+            comp_data["speed"] = comp.speed
+            comp_data["hull_cost"] = comp.hull_cost
+        elif isinstance(comp, RepairComponent):
+            comp_data["repair_rate"] = comp.repair_rate
+            comp_data["repair_range"] = comp.repair_range
+            comp_data["credit_cost_per_hp"] = comp.credit_cost_per_hp
+            comp_data["hull_cost"] = comp.hull_cost
+        elif isinstance(comp, Sensors):
+            comp_data["short_range_radius"] = comp.short_range_radius
+            comp_data["long_range_hexes"] = comp.long_range_hexes
+            comp_data["hull_cost"] = comp.hull_cost
 
         comps[comp_name] = comp_data
 
@@ -603,6 +637,15 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
 
     # Restore component dynamic state
     comps_data = data.get("components", {})
+
+    # First, restore dynamically added components that weren't in base template
+    for comp_name, comp_fields in comps_data.items():
+        comp_cls = get_component_class_by_name(comp_name)
+        if comp_cls and comp_cls not in unit.components:
+            inst = instantiate_component_for_unit(comp_name, unit, comp_fields)
+            if inst:
+                unit.add_component(inst)
+
     for comp_name, comp_fields in comps_data.items():
         if comp_name == "AntimatterStorage" and unit.antimatter_component:
             unit.antimatter_component.current_amount = comp_fields.get("current_amount", unit.antimatter_component.current_amount)
@@ -611,6 +654,8 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
             unit.colony_component.population_cargo = comp_fields.get("population_cargo", unit.colony_component.population_cargo)
             unit.colony_component.max_cargo = comp_fields.get("max_cargo", unit.colony_component.max_cargo)
         elif comp_name == "MiningComponent" and unit.mining_component:
+            unit.mining_component.mining_rate = comp_fields.get("mining_rate", unit.mining_component.mining_rate)
+            unit.mining_component.mining_range = comp_fields.get("mining_range", unit.mining_component.mining_range)
             unit.mining_component.raw_metal_cargo = comp_fields.get("raw_metal_cargo", unit.mining_component.raw_metal_cargo)
             unit.mining_component.raw_crystal_cargo = comp_fields.get("raw_crystal_cargo", unit.mining_component.raw_crystal_cargo)
             unit.mining_component.max_cargo = comp_fields.get("max_cargo", unit.mining_component.max_cargo)
@@ -661,6 +706,23 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
             marines_comp = unit.get_component(MarinesComponent)
             if marines_comp:
                 marines_comp.marines_count = comp_fields.get("marines_count", marines_comp.marines_count)
+        elif comp_name == "Constructor" and unit.constructor_component:
+            if "current_construction_target" in comp_fields:
+                tgt_raw = comp_fields["current_construction_target"]
+                unit.constructor_component.current_construction_target = (tgt_raw[0], Position(tgt_raw[1][0], tgt_raw[1][1]))
+                unit.constructor_component.construction_progress = comp_fields.get("construction_progress", 0)
+                unit.constructor_component.time_to_build = comp_fields.get("time_to_build", 0)
+            if "current_refit_target" in comp_fields:
+                unit.constructor_component.current_refit_target = comp_fields["current_refit_target"]
+                unit.constructor_component.refit_progress = comp_fields.get("refit_progress", 0)
+                unit.constructor_component.refit_time = comp_fields.get("refit_time", 0)
+
+    # Remove components that were removed via refit
+    for comp_cls in list(unit.components.keys()):
+        if comp_cls == Commander:
+            continue
+        if comp_cls.__name__ not in comps_data and (comp_cls != HyperspaceInhibitionFieldEmitter or "Inhibitor" not in comps_data):
+            unit.remove_component(comp_cls)
 
     # Note: Commander orders will be restored after all units are in place so references can be mapped.
     unit._saved_orders_data = data.get("orders", [])

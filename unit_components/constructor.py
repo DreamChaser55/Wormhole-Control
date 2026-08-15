@@ -4,10 +4,6 @@ from typing import Optional, TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
-from .enums import (
-    HyperdriveType, UnitStance, TurretType, TurretVariant,
-    WingType, AbilityType
-)
 from .antimatter import AntimatterStorage, AntimatterHarvester
 from .movement import Engines, Hyperdrive
 from .weapons import Weapons, Turret
@@ -23,6 +19,11 @@ from .abilities import AbilityComponent
 from .sensors import Sensors
 from .minelayer import MinelayerComponent
 from .marines import MarinesComponent
+from .cloaking import CloakingDevice
+from .enums import (
+    HyperdriveType, UnitStance, TurretType, TurretVariant,
+    WingType, AbilityType, CloakingType
+)
 
 from utils import HexCoord
 from geometry import Position
@@ -354,7 +355,7 @@ class BuildableUnit:
 
 
 class Constructor(UnitComponent):
-    """A component that allows a unit to construct other units (stations)."""
+    """A component that allows a unit to construct other units (stations) and refit friendly units."""
     DISPLAY_NAME: str = "Constructor"
     SIDEBAR_ORDER: int = 5
     build_range: float = 500.0
@@ -364,11 +365,19 @@ class Constructor(UnitComponent):
     construction_progress: int = 0
     time_to_build: int = 0
 
+    # Refit state
+    current_refit_target: Optional[dict] = None
+    refit_progress: int = 0
+    refit_time: int = 0
+
     def __init__(self, unit: 'Unit', hull_cost: float = 15.0, buildable_unit_names: typing.Optional[list[str]] = None):
         super().__init__(unit, hull_cost)
         self.current_construction_target = None
         self.construction_progress = 0
         self.time_to_build = 0
+        self.current_refit_target = None
+        self.refit_progress = 0
+        self.refit_time = 0
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
@@ -381,6 +390,20 @@ class Constructor(UnitComponent):
                 'type': 'progress_bar',
                 'progress': progress,
                 'total': total,
+                'height': 25
+            })
+        elif self.current_refit_target:
+            tgt_id = self.current_refit_target.get("target_unit_id")
+            action = self.current_refit_target.get("action", "REFIT")
+            comp_name = self.current_refit_target.get("component_type", "Component")
+            tgt_unit = game_state.galaxy.get_unit_by_id(tgt_id) if (game_state and game_state.galaxy) else None
+            tgt_name = tgt_unit.name if tgt_unit else f"Unit #{tgt_id}"
+            action_desc = f"+{comp_name}" if action.upper() == "ADD" else f"-{comp_name}"
+            data.append({'type': 'label', 'text': f"Refitting {tgt_name}: {action_desc}", 'object_id': '#sidebar_info_label', 'height': 25})
+            data.append({
+                'type': 'progress_bar',
+                'progress': self.refit_progress,
+                'total': self.refit_time,
                 'height': 25
             })
         else:
@@ -396,6 +419,14 @@ class Constructor(UnitComponent):
             pct = int((self.construction_progress / self.time_to_build) * 100) if self.time_to_build > 0 else 100
             status_str = f"Constructing {target_name} ({pct}%)"
             obj_id = '#sidebar_status_active_label'
+        elif self.current_refit_target:
+            tgt_id = self.current_refit_target.get("target_unit_id")
+            action = self.current_refit_target.get("action", "REFIT")
+            comp_name = self.current_refit_target.get("component_type", "Component")
+            pct = int((self.refit_progress / self.refit_time) * 100) if self.refit_time > 0 else 100
+            action_desc = f"+{comp_name}" if action.upper() == "ADD" else f"-{comp_name}"
+            status_str = f"Refitting #{tgt_id} ({action_desc}) ({pct}%)"
+            obj_id = '#sidebar_status_active_label'
         else:
             status_str = "Idle"
             obj_id = '#sidebar_status_idle_label'
@@ -407,7 +438,6 @@ class Constructor(UnitComponent):
             'indent_level': 1
         })
         return data
-
 
     @property
     def buildable_units(self) -> list[BuildableUnit]:
@@ -467,14 +497,54 @@ class Constructor(UnitComponent):
             self.construction_progress = 0
             self.time_to_build = 0
 
+    def start_refit(self, target_unit: 'Unit', action: str, component_type: str, component_config: Optional[dict] = None, cost_credits: Optional[int] = 0, time_to_build: Optional[int] = 1) -> bool:
+        """Starts a refit operation on a target unit."""
+        if self.is_destroyed:
+            return False
+
+        cost_credits = int(cost_credits or 0)
+        time_to_build = int(time_to_build or 1)
+
+        owner = self.unit.owner
+        if cost_credits > 0:
+            if owner.credits < cost_credits:
+                logger.debug(f"Error: Not enough credits to refit {target_unit.name}.")
+                return False
+            owner.credits -= cost_credits
+
+        self.current_refit_target = {
+            "target_unit_id": target_unit.id,
+            "action": action,
+            "component_type": component_type,
+            "component_config": component_config or {},
+            "cost_credits": cost_credits,
+            "time_to_build": time_to_build,
+        }
+        self.refit_time = max(1, time_to_build)
+        self.refit_progress = 0
+        logger.debug(f"{self.unit.name} started refit ({action} {component_type}) on {target_unit.name}. Cost: {cost_credits}, Time: {self.refit_time}")
+        return True
+
+    def cancel_refit(self):
+        """Cancels the current refit operation."""
+        if self.current_refit_target:
+            logger.debug(f"Refit on unit {self.current_refit_target.get('target_unit_id')} cancelled.")
+            self.current_refit_target = None
+            self.refit_progress = 0
+            self.refit_time = 0
+
     def update(self, galaxy: 'Galaxy'):
-        """Updates the construction progress. Called each turn."""
+        """Updates the construction or refit progress. Called each turn."""
         if self.is_destroyed:
             return
         if self.current_construction_target:
             self.construction_progress += 1
             if self.construction_progress >= self.time_to_build:
                 self.finish_construction(galaxy)
+        elif self.current_refit_target:
+            self.refit_progress += 1
+            if self.refit_progress >= self.refit_time:
+                self.finish_refit(galaxy)
 
     def create_unit_from_template(self, galaxy: 'Galaxy', template_name: str, owner: 'Player', system_name: str, hex_coord: 'HexCoord', position: 'Position'):
         """Creates a new unit based on the template.
@@ -513,3 +583,261 @@ class Constructor(UnitComponent):
         self.current_construction_target = None
         self.construction_progress = 0
         self.time_to_build = 0
+
+    def finish_refit(self, galaxy: 'Galaxy'):
+        """Finalizes the refit operation on the target unit."""
+        if not self.current_refit_target:
+            return
+
+        target_unit_id = self.current_refit_target["target_unit_id"]
+        action = self.current_refit_target["action"]
+        component_type_name = self.current_refit_target["component_type"]
+        config = self.current_refit_target.get("component_config", {})
+
+        target_unit = galaxy.get_unit_by_id(target_unit_id)
+        if target_unit and target_unit.current_hit_points > 0:
+            if action.upper() == "ADD":
+                comp = instantiate_component_for_unit(component_type_name, target_unit, config)
+                if comp:
+                    target_unit.add_component(comp)
+                    logger.debug(f"Successfully added {component_type_name} to {target_unit.name}.")
+            elif action.upper() == "REMOVE":
+                comp_cls = get_component_class_by_name(component_type_name)
+                if comp_cls and comp_cls in target_unit.components:
+                    comp = target_unit.components[comp_cls]
+                    if hasattr(comp, 'is_active') and comp.is_active:
+                        comp.is_active = False
+                    target_unit.remove_component(comp_cls)
+                    logger.debug(f"Successfully removed {component_type_name} from {target_unit.name}.")
+
+        self.current_refit_target = None
+        self.refit_progress = 0
+        self.refit_time = 0
+
+
+COMPONENT_NAME_MAP = {
+    "Engines": Engines,
+    "Hyperdrive": Hyperdrive,
+    "Weapons": Weapons,
+    "Defenses": Defenses,
+    "AntimatterHarvester": AntimatterHarvester,
+    "AntimatterStorage": AntimatterStorage,
+    "Sensors": Sensors,
+    "RepairComponent": RepairComponent,
+    "MiningComponent": MiningComponent,
+    "MetalRefineryComponent": MetalRefineryComponent,
+    "CrystalRefineryComponent": CrystalRefineryComponent,
+    "HangarComponent": HangarComponent,
+    "StrikecraftBayComponent": StrikecraftBayComponent,
+    "ColonyComponent": ColonyComponent,
+    "CivilianHabitatComponent": CivilianHabitatComponent,
+    "HyperspaceInhibitionFieldEmitter": HyperspaceInhibitionFieldEmitter,
+    "Inhibitor": HyperspaceInhibitionFieldEmitter,
+    "AbilityComponent": AbilityComponent,
+    "MinelayerComponent": MinelayerComponent,
+    "MarinesComponent": MarinesComponent,
+    "CloakingDevice": CloakingDevice,
+    "Constructor": Constructor,
+}
+
+
+def get_component_class_by_name(name: str) -> Optional[type]:
+    """Retrieve the UnitComponent class matching the provided component name string."""
+    return COMPONENT_NAME_MAP.get(name)
+
+
+def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Optional[dict] = None) -> Optional[UnitComponent]:
+    """Instantiate a new UnitComponent for the given unit with specified or default config."""
+    config = config or {}
+    comp_cls = get_component_class_by_name(component_name)
+    if not comp_cls:
+        logger.warning(f"Unknown component name: {component_name}")
+        return None
+
+    if comp_cls == Engines:
+        speed = float(config.get("speed", 100.0))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = Engines.calc_hull_cost(speed, unit.hull_size)
+        return Engines(unit, speed=speed, hull_cost=float(cost))
+
+    elif comp_cls == Hyperdrive:
+        htype_raw = config.get("drive_type", HyperdriveType.BASIC)
+        if isinstance(htype_raw, str):
+            htype = HyperdriveType.ADVANCED if htype_raw.upper() == "ADVANCED" else HyperdriveType.BASIC
+        else:
+            htype = htype_raw
+        jump_range = int(config.get("jump_range", DEFAULT_JUMP_RANGE))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = Hyperdrive.calc_hull_cost(htype, jump_range, unit.hull_size)
+        return Hyperdrive(unit, drive_type=htype, jump_range=jump_range, hull_cost=float(cost))
+
+    elif comp_cls == Weapons:
+        cost = float(config.get("hull_cost", 5.0))
+        weapons_comp = Weapons(unit, hull_cost=cost)
+        turret_defs = config.get("turrets")
+        if turret_defs:
+            for t_def in turret_defs:
+                t_type_str = t_def.get("type", "MASS_DRIVER")
+                t_var_str = t_def.get("variant", "STANDARD")
+                try:
+                    t_type = TurretType[t_type_str.upper()]
+                except KeyError:
+                    t_type = TurretType.MASS_DRIVER
+                try:
+                    t_var = TurretVariant[t_var_str.upper()]
+                except KeyError:
+                    t_var = TurretVariant.STANDARD
+                turret = Turret(
+                    turret_type=t_type,
+                    damage=float(t_def.get("damage", 10)),
+                    range=float(t_def.get("range", 300)),
+                    cooldown=int(t_def.get("cooldown", 1)),
+                    parent_unit=unit,
+                    variant=t_var
+                )
+                weapons_comp.add_turret(turret)
+        else:
+            weapons_comp.add_turret(Turret(
+                turret_type=TurretType.MASS_DRIVER,
+                damage=10,
+                range=300,
+                cooldown=1,
+                parent_unit=unit,
+                variant=TurretVariant.STANDARD
+            ))
+        return weapons_comp
+
+    elif comp_cls == Defenses:
+        armor = int(config.get("armor", 50))
+        shields = int(config.get("shields", 50))
+        pd = int(config.get("point_defense", 0))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = Defenses.calc_hull_cost(armor, shields, pd)
+        return Defenses(unit, armor=armor, shields=shields, point_defense=pd, hull_cost=float(cost))
+
+    elif comp_cls == AntimatterHarvester:
+        rate = float(config.get("harvest_rate", DEFAULT_ANTIMATTER_HARVEST_RATE))
+        cost = float(config.get("hull_cost", ANTIMATTER_HARVESTER_HULL_COST))
+        return AntimatterHarvester(unit, harvest_rate=rate, hull_cost=cost)
+
+    elif comp_cls == AntimatterStorage:
+        cap = float(config.get("max_capacity", DEFAULT_ANTIMATTER_CAPACITY))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = AntimatterStorage.calc_hull_cost(cap)
+        return AntimatterStorage(unit, max_capacity=cap, hull_cost=float(cost))
+
+    elif comp_cls == Sensors:
+        s_range = float(config.get("short_range_radius", DEFAULT_SENSOR_SHORT_RANGE))
+        l_hexes = int(config.get("long_range_hexes", 1))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = Sensors.calc_hull_cost(s_range, l_hexes)
+        return Sensors(unit, short_range_radius=s_range, long_range_hexes=l_hexes, hull_cost=float(cost))
+
+    elif comp_cls == RepairComponent:
+        r_rate = float(config.get("repair_rate", 10.0))
+        r_range = float(config.get("repair_range", 200.0))
+        c_cost = float(config.get("credit_cost_per_hp", REPAIR_CREDIT_COST_PER_HP))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = RepairComponent.calc_hull_cost(r_rate)
+        return RepairComponent(unit, repair_rate=r_rate, repair_range=r_range, credit_cost_per_hp=c_cost, hull_cost=float(cost))
+
+    elif comp_cls == MiningComponent:
+        m_rate = float(config.get("mining_rate", 10.0))
+        m_range = float(config.get("mining_range", 200.0))
+        m_cargo = float(config.get("max_cargo", 100.0))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = MiningComponent.calc_hull_cost(m_rate, m_cargo)
+        return MiningComponent(unit, mining_rate=m_rate, mining_range=m_range, max_cargo=m_cargo, hull_cost=float(cost))
+
+    elif comp_cls == MetalRefineryComponent:
+        u_range = float(config.get("unload_range", 300.0))
+        cost = float(config.get("hull_cost", 20.0))
+        return MetalRefineryComponent(unit, unload_range=u_range, hull_cost=cost)
+
+    elif comp_cls == CrystalRefineryComponent:
+        u_range = float(config.get("unload_range", 300.0))
+        cost = float(config.get("hull_cost", 20.0))
+        return CrystalRefineryComponent(unit, unload_range=u_range, hull_cost=cost)
+
+    elif comp_cls == HangarComponent:
+        slots = int(config.get("max_slots", 2))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = HangarComponent.calc_hull_cost(slots)
+        return HangarComponent(unit, max_slots=slots, hull_cost=float(cost))
+
+    elif comp_cls == StrikecraftBayComponent:
+        slots = int(config.get("max_slots", 2))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = StrikecraftBayComponent.calc_hull_cost(slots)
+        return StrikecraftBayComponent(unit, max_slots=slots, hull_cost=float(cost))
+
+    elif comp_cls == ColonyComponent:
+        cost = float(config.get("hull_cost", 10.0))
+        return ColonyComponent(unit, hull_cost=cost)
+
+    elif comp_cls == CivilianHabitatComponent:
+        bonus = float(config.get("economic_bonus", 50.0))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = CivilianHabitatComponent.calc_hull_cost(bonus)
+        return CivilianHabitatComponent(unit, economic_bonus=bonus, hull_cost=float(cost))
+
+    elif comp_cls == HyperspaceInhibitionFieldEmitter:
+        radius = float(config.get("radius", 100.0))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = HyperspaceInhibitionFieldEmitter.calc_hull_cost(radius)
+        return HyperspaceInhibitionFieldEmitter(unit, radius=radius, hull_cost=float(cost))
+
+    elif comp_cls == AbilityComponent:
+        raw_abilities = config.get("ability_types", [])
+        ability_types = []
+        for aname in raw_abilities:
+            try:
+                ability_types.append(AbilityType(aname) if isinstance(aname, str) else aname)
+            except ValueError:
+                pass
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = AbilityComponent.calc_hull_cost(ability_types)
+        return AbilityComponent(unit, ability_types=ability_types, hull_cost=float(cost))
+
+    elif comp_cls == MinelayerComponent:
+        cost = float(config.get("hull_cost", MINELAYER_HULL_COST))
+        return MinelayerComponent(unit, hull_cost=cost)
+
+    elif comp_cls == MarinesComponent:
+        count = int(config.get("marines_count", 10))
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = MarinesComponent.calc_hull_cost(count)
+        return MarinesComponent(unit, marines_count=count, hull_cost=float(cost))
+
+    elif comp_cls == CloakingDevice:
+        c_type_raw = config.get("device_type", "BASIC")
+        if isinstance(c_type_raw, str):
+            c_type = CloakingType.ADVANCED if c_type_raw.upper() == "ADVANCED" else CloakingType.BASIC
+        else:
+            c_type = c_type_raw
+        radius = float(config.get("area_radius", 0.0)) if c_type == CloakingType.ADVANCED else 0.0
+        cost = config.get("hull_cost")
+        if cost is None:
+            cost = CloakingDevice.calc_hull_cost(c_type, radius)
+        return CloakingDevice(unit, device_type=c_type, area_radius=radius, hull_cost=float(cost))
+
+    elif comp_cls == Constructor:
+        cost = float(config.get("hull_cost", 15.0))
+        return Constructor(unit, hull_cost=cost)
+
+    return None
+
+

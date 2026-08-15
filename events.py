@@ -95,6 +95,20 @@ class RepairUnitEvent(Event):
         self.target_unit = target_unit
         self.shift_pressed = shift_pressed
 
+class RefitUnitEvent(Event):
+    """Fired when the player orders constructor units to refit a friendly unit (add/remove components)."""
+    def __init__(self, units: list, target_unit: typing.Any, action: str, component_type: str,
+                 component_config: typing.Optional[dict] = None, cost_credits: typing.Optional[int] = None,
+                 time_to_build: typing.Optional[int] = None, shift_pressed: bool = False):
+        self.units = units
+        self.target_unit = target_unit
+        self.action = action
+        self.component_type = component_type
+        self.component_config = component_config or {}
+        self.cost_credits = cost_credits
+        self.time_to_build = time_to_build
+        self.shift_pressed = shift_pressed
+
 class TransferAntimatterEvent(Event):
     """Fired when the player orders selected units to transfer antimatter from
     their own storage to a friendly target unit's storage."""

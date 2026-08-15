@@ -5,13 +5,13 @@ from events import (
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent,
     IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent,
-    LayMinefieldEvent
+    LayMinefieldEvent, RefitUnitEvent
 )
 from unit_orders import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
     MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
     ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder, LayMinefieldOrder,
-    calculate_required_antimatter
+    RefitOrder, calculate_required_antimatter
 )
 
 from sector_utils import random_point_in_sector
@@ -38,6 +38,7 @@ class OrderSystem:
         self.event_bus.subscribe(LoadColonistsEvent, self.handle_load_colonists)
         self.event_bus.subscribe(ConstructEvent, self.handle_construct)
         self.event_bus.subscribe(RepairUnitEvent, self.handle_repair_unit)
+        self.event_bus.subscribe(RefitUnitEvent, self.handle_refit_unit)
         self.event_bus.subscribe(MineEvent, self.handle_mine)
         self.event_bus.subscribe(ContinuousMineEvent, self.handle_continuous_mine)
         self.event_bus.subscribe(UnloadResourcesEvent, self.handle_unload_resources)
@@ -284,6 +285,30 @@ class OrderSystem:
                 unit.commander_component.clear_orders()
             unit.commander_component.add_order(repair_order)
             logger.debug(f"  Unit {unit.name} ordered to repair {event.target_unit.name} via event.")
+        self.game.sidebar_needs_update = True
+
+    def handle_refit_unit(self, event: RefitUnitEvent):
+        for unit in event.units:
+            if not getattr(unit, 'constructor_component', None):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Constructor Component and cannot refit units.",
+                        title="No Constructor"
+                    )
+                continue
+            refit_params = {
+                "target_unit_id": event.target_unit.id,
+                "action": event.action,
+                "component_type": event.component_type,
+                "component_config": event.component_config,
+                "cost_credits": event.cost_credits,
+                "time_to_build": event.time_to_build,
+            }
+            refit_order = RefitOrder(unit, refit_params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(refit_order)
+            logger.debug(f"  Unit {unit.name} ordered to refit {event.target_unit.name} ({event.action} {event.component_type}) via event.")
         self.game.sidebar_needs_update = True
 
     def handle_issue_protect_order(self, event: IssueProtectOrderEvent):

@@ -191,6 +191,13 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         repair_type_styled = f"<font color='{REPAIR_COLOR}'><b>Repair:</b></font>"
         return [f"{repair_type_styled} {_target_name_html(state_data)}"]
 
+    elif order_type == "REFIT_UNIT":
+        action = state_data.get("action", parameters.get("action", "ADD"))
+        comp_type = state_data.get("component_type", parameters.get("component_type", "Component"))
+        action_sym = f"+{comp_type}" if str(action).upper() == "ADD" else f"-{comp_type}"
+        refit_type_styled = f"<font color='{CONSTRUCT_COLOR}'><b>Refit ({action_sym}):</b></font>"
+        return [f"{refit_type_styled} {_target_name_html(state_data)}"]
+
     elif order_type == "PROTECT":
         protect_type_styled = f"<font color='#FF69B4'><b>Protect:</b></font>"
         return [f"{protect_type_styled} {_target_name_html(state_data)}"]

@@ -45,6 +45,7 @@ class OrderType(Enum):
     TRANSFER_ANTIMATTER = auto() # Transfer antimatter from this unit's storage to a friendly target unit
     CONTINUOUS_RESUPPLY = auto() # Harvester cycles between charging at a star and resupplying the closest friendly unit that needs antimatter
     LAY_MINEFIELD = auto()       # Lay a minefield at the unit's current position
+    REFIT_UNIT = auto()          # Refit a friendly unit (add/remove components) using a Constructor unit
 
 
 

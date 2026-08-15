@@ -11,6 +11,7 @@ from .mining import MineOrder, UnloadResourcesOrder, ContinuousMineOrder
 from .hangar import DockOrder, DeployUnitOrder, DeployAllWingsOrder
 from .abilities import UseAbilityOrder
 from .minelayer import LayMinefieldOrder
+from .refit import RefitOrder
 
 __all__ = [
     "OrderStatus",
@@ -27,6 +28,7 @@ __all__ = [
     "LoadColonistsOrder",
     "ConstructOrder",
     "RepairOrder",
+    "RefitOrder",
     "TransferAntimatterOrder",
     "ContinuousResupplyOrder",
     "MineOrder",

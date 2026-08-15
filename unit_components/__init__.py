@@ -30,7 +30,10 @@ from .abilities import (
     AbilityInstance,
     AbilityComponent,
 )
-from .constructor import BuildableUnit, Constructor, UNIT_TEMPLATES, instantiate_unit_from_template
+from .constructor import (
+    BuildableUnit, Constructor, UNIT_TEMPLATES, instantiate_unit_from_template,
+    instantiate_component_for_unit, get_component_class_by_name, COMPONENT_NAME_MAP
+)
 from .sensors import Sensors
 from .cloaking import CloakingDevice
 from .minelayer import MinelayerComponent
@@ -74,6 +77,9 @@ __all__ = [
     "Constructor",
     "UNIT_TEMPLATES",
     "instantiate_unit_from_template",
+    "instantiate_component_for_unit",
+    "get_component_class_by_name",
+    "COMPONENT_NAME_MAP",
     "Sensors",
     "MinelayerComponent",
     "MarinesComponent",

@@ -117,12 +117,13 @@ class Hyperdrive(UnitComponent):
 
     @staticmethod
     def calc_hull_cost(
-        drive_type: str,
+        drive_type: typing.Any,
         jump_range: int,
         hull_size: Optional[HullSize] = HullSize.MEDIUM,
     ) -> float:
         """Compute the hull cost of a Hyperdrive component."""
-        base = HYPERDRIVE_BASE_COST.get(drive_type.upper(), HYPERDRIVE_BASE_COST["BASIC"])
+        dt_str = drive_type.name if hasattr(drive_type, 'name') else str(drive_type)
+        base = HYPERDRIVE_BASE_COST.get(dt_str.upper(), HYPERDRIVE_BASE_COST["BASIC"])
         range_cost = max(0, jump_range) / HYPERDRIVE_RANGE_PER_POINT
         raw_cost = base + range_cost
         multiplier = HYPERDRIVE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
