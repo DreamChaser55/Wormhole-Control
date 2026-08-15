@@ -155,21 +155,17 @@ def build_col2_components(
     editor._elements.append(comp_heading)
     c2y += row_h + 2
 
-    cost_w = max(40, int(40 * TEXT_SCALE))
-    select_w = max(38, int(38 * TEXT_SCALE))
-    gap = max(2, int(2 * TEXT_SCALE))
-    btn_w = c2w - cost_w - select_w - (gap * 2)
-
     avail_h = editor._panel_rect.h - c2y - pad
     editor._comp_scroll_container = pygame_gui.elements.UIScrollingContainer(
         relative_rect=pygame.Rect(c2x, c2y, c2w, avail_h),
         manager=editor.manager,
         container=editor._panel,
         object_id="#comp_scrolling_container",
+        allow_scroll_x=False,
     )
     editor._elements.append(editor._comp_scroll_container)
 
-    scroll_bar_w = 18
+    scroll_bar_w = max(20, int(20 * TEXT_SCALE))
     inner_w = c2w - scroll_bar_w
     cost_w = max(40, int(40 * TEXT_SCALE))
     select_w = max(38, int(38 * TEXT_SCALE))

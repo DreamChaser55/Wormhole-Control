@@ -630,6 +630,8 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         self.assertIsNotNone(win._comp_scroll_container)
         self.assertTrue(isinstance(win._comp_scroll_container, pygame_gui.elements.UIScrollingContainer))
+        self.assertFalse(win._comp_scroll_container.allow_scroll_x)
+        self.assertIsNone(win._comp_scroll_container.horiz_scroll_bar)
 
         for key, btn in win._comp_toggles.items():
             self.assertGreaterEqual(btn.relative_rect.h, 24, f"Component button {key} height is too small: {btn.relative_rect.h}")
