@@ -454,3 +454,116 @@ def test_refit_add_trade_component_requires_engine(setup_universe):
     refit_order.execute(galaxy)
     assert refit_order.status == OrderStatus.FAILED
     assert target_unit.trade_component is None
+
+
+def test_refit_low_cost_component_succeeds_under_15_cap(setup_universe):
+    """Test that a component with hull cost < 15 (e.g. Weapons at 5.0) succeeds when available cap is 8.0."""
+    game, galaxy, player, _, constructor_unit, target_unit = setup_universe
+    # Account for default antimatter storage (5.0) and fill until exactly 8.0 remaining
+    needed_fill = (target_unit.hull_capacity - 8.0) - target_unit.current_hull_usage
+    target_unit.add_component(Engines(target_unit, speed=100, hull_cost=needed_fill))
+    assert target_unit.current_hull_usage == target_unit.hull_capacity - 8.0
+    initial_credits = player.credits
+
+    # Issue refit order with no explicit hull_cost or cost_credits
+    refit_order = RefitOrder(
+        constructor_unit,
+        {
+            "target_unit_id": target_unit.id,
+            "action": "ADD",
+            "component_type": "Weapons"
+        }
+    )
+    refit_order.execute(galaxy)
+
+    # Should succeed because 5.0 <= 8.0 available
+    assert refit_order.status == OrderStatus.IN_PROGRESS
+    assert constructor_unit.constructor_component.current_refit_target is not None
+    # 5.0 hull points * 30 credits = 150 credits deducted
+    assert player.credits == initial_credits - 150
+
+    # Finish construction
+    constructor_unit.constructor_component.update(galaxy)
+    refit_order.check_completion_conditions()
+
+    assert refit_order.status == OrderStatus.COMPLETED
+    assert target_unit.get_component(Weapons) is not None
+    assert target_unit.current_hull_usage == target_unit.hull_capacity - 3.0
+
+
+def test_refit_high_cost_component_fails_when_exceeding_actual_cost(setup_universe):
+    """Test that a component with hull cost > 15 (e.g. Hangar at 20.0) fails when available cap is 16.0."""
+    game, galaxy, player, _, constructor_unit, target_unit = setup_universe
+    # Account for default antimatter storage (5.0) and fill until exactly 16.0 remaining
+    needed_fill = (target_unit.hull_capacity - 16.0) - target_unit.current_hull_usage
+    target_unit.add_component(Engines(target_unit, speed=100, hull_cost=needed_fill))
+    assert target_unit.current_hull_usage == target_unit.hull_capacity - 16.0
+    initial_credits = player.credits
+
+    # Issue refit order with no explicit hull_cost (Hangar default is 20.0 for 2 slots)
+    refit_order = RefitOrder(
+        constructor_unit,
+        {
+            "target_unit_id": target_unit.id,
+            "action": "ADD",
+            "component_type": "HangarComponent"
+        }
+    )
+    refit_order.execute(galaxy)
+
+    # Should fail because 20.0 > 16.0 available (previously erroneously allowed by 15.0 fallback)
+    assert refit_order.status == OrderStatus.FAILED
+    assert constructor_unit.constructor_component.current_refit_target is None
+    assert player.credits == initial_credits
+    assert target_unit.get_component(HangarComponent) is None
+
+
+def test_get_component_hull_cost_accuracy(setup_universe):
+    """Verify get_component_hull_cost accurately returns default and configured costs."""
+    from unit_components.constructor import get_component_hull_cost
+    _, _, _, _, _, target_unit = setup_universe
+
+    assert get_component_hull_cost("Weapons", target_unit) == 5.0
+    assert abs(get_component_hull_cost("Defenses", target_unit) - (100.0 / 3.0)) < 1e-6
+    assert get_component_hull_cost("Defenses", target_unit, {"armor": 15, "shields": 15, "point_defense": 0}) == 10.0
+    assert get_component_hull_cost("HangarComponent", target_unit) == 20.0
+    assert get_component_hull_cost("StrikecraftBayComponent", target_unit) == 15.0
+    assert get_component_hull_cost("MetalRefineryComponent", target_unit) == 20.0
+    assert get_component_hull_cost("CrystalRefineryComponent", target_unit) == 20.0
+    assert get_component_hull_cost("ColonyComponent", target_unit) == 10.0
+    assert get_component_hull_cost("CivilianHabitatComponent", target_unit) == 15.0
+    assert get_component_hull_cost("OrbitalDefenseComponent", target_unit) == 20.0
+    assert get_component_hull_cost("TradeComponent", target_unit) == 10.0
+    assert get_component_hull_cost("HyperspaceInhibitionFieldEmitter", target_unit) == 20.0
+    assert get_component_hull_cost("MinelayerComponent", target_unit) == 15.0
+    assert get_component_hull_cost("MarinesComponent", target_unit) == 10.0
+    assert get_component_hull_cost("Constructor", target_unit) == 15.0
+
+    # Custom override
+    assert get_component_hull_cost("Weapons", target_unit, {"hull_cost": 42.0}) == 42.0
+
+
+def test_finish_refit_safeguard_prevents_over_capacity(setup_universe):
+    """Verify finish_refit safeguard prevents adding component if capacity is exhausted during construction."""
+    game, galaxy, player, _, constructor_unit, target_unit = setup_universe
+
+    # Start refit for Defenses (10.0 hull cost)
+    constructor_unit.constructor_component.start_refit(
+        target_unit=target_unit,
+        action="ADD",
+        component_type="Defenses",
+        component_config={"hull_cost": 10.0},
+        cost_credits=300,
+        time_to_build=1
+    )
+
+    # Artificially fill target unit to full capacity before finish_refit runs
+    target_unit.add_component(Engines(target_unit, speed=100, hull_cost=target_unit.hull_capacity))
+
+    # Tick constructor to finish refit
+    constructor_unit.constructor_component.update(galaxy)
+
+    # The safeguard should prevent Defenses from being added
+    assert target_unit.get_component(Defenses) is None
+    assert constructor_unit.constructor_component.current_refit_target is None
+

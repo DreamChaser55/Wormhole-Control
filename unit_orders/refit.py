@@ -5,7 +5,7 @@ from geometry import distance, position_at_distance_from_target
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
-from unit_components.constructor import get_component_class_by_name
+from unit_components.constructor import get_component_class_by_name, get_component_hull_cost
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -167,19 +167,8 @@ class RefitOrder(Order):
                 return
 
             # Calculate hull cost
-            hull_cost = component_config.get("hull_cost")
-            if hull_cost is None:
-                if hasattr(comp_cls, "calc_hull_cost"):
-                    if component_type == "Engines":
-                        hull_cost = comp_cls.calc_hull_cost(component_config.get("speed", 100.0), target_unit.hull_size)
-                    elif component_type == "HyperspaceInhibitionFieldEmitter":
-                        hull_cost = comp_cls.calc_hull_cost(component_config.get("radius", 100.0))
-                    elif component_type in ("TradeComponent", "Trade"):
-                        hull_cost = comp_cls.calc_hull_cost(component_config.get("trade_revenue_multiplier", 1.0))
-                    else:
-                        hull_cost = 15.0
-                else:
-                    hull_cost = 15.0
+            hull_cost = get_component_hull_cost(component_type, target_unit, component_config)
+            component_config["hull_cost"] = hull_cost
 
             if target_unit.current_hull_usage + hull_cost > target_unit.hull_capacity:
                 self.status = OrderStatus.FAILED

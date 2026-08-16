@@ -623,8 +623,14 @@ class Constructor(UnitComponent):
             if action.upper() == "ADD":
                 comp = instantiate_component_for_unit(component_type_name, target_unit, config)
                 if comp:
-                    target_unit.add_component(comp)
-                    logger.debug(f"Successfully added {component_type_name} to {target_unit.name}.")
+                    if target_unit.current_hull_usage + comp.hull_cost > target_unit.hull_capacity:
+                        logger.warning(
+                            f"Refit failed on completion: Exceeds hull capacity of {target_unit.name} "
+                            f"({target_unit.current_hull_usage + comp.hull_cost:.1f}/{target_unit.hull_capacity:.1f})."
+                        )
+                    else:
+                        target_unit.add_component(comp)
+                        logger.debug(f"Successfully added {component_type_name} to {target_unit.name}.")
             elif action.upper() == "REMOVE":
                 comp_cls = get_component_class_by_name(component_type_name)
                 if comp_cls and comp_cls in target_unit.components:
@@ -674,20 +680,23 @@ def get_component_class_by_name(name: str) -> Optional[type]:
     return COMPONENT_NAME_MAP.get(name)
 
 
-def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Optional[dict] = None) -> Optional[UnitComponent]:
-    """Instantiate a new UnitComponent for the given unit with specified or default config."""
+def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[dict] = None) -> float:
+    """Calculate the hull cost for a given component configuration and target unit.
+
+    If explicit 'hull_cost' is present in config, returns that value.
+    Otherwise calculates the default or dynamic cost matching instantiate_component_for_unit.
+    """
     config = config or {}
+    if config.get("hull_cost") is not None:
+        return float(config["hull_cost"])
+
     comp_cls = get_component_class_by_name(component_name)
     if not comp_cls:
-        logger.warning(f"Unknown component name: {component_name}")
-        return None
+        return 15.0
 
     if comp_cls == Engines:
         speed = float(config.get("speed", 100.0))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = Engines.calc_hull_cost(speed, unit.hull_size)
-        return Engines(unit, speed=speed, hull_cost=float(cost))
+        return float(Engines.calc_hull_cost(speed, unit.hull_size))
 
     elif comp_cls == Hyperdrive:
         htype_raw = config.get("drive_type", HyperdriveType.BASIC)
@@ -696,13 +705,149 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         else:
             htype = htype_raw
         jump_range = int(config.get("jump_range", DEFAULT_JUMP_RANGE))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = Hyperdrive.calc_hull_cost(htype, jump_range, unit.hull_size)
-        return Hyperdrive(unit, drive_type=htype, jump_range=jump_range, hull_cost=float(cost))
+        return float(Hyperdrive.calc_hull_cost(htype, jump_range, unit.hull_size))
 
     elif comp_cls == Weapons:
-        cost = float(config.get("hull_cost", 5.0))
+        turret_defs = config.get("turrets")
+        if turret_defs:
+            turrets = []
+            for t_def in turret_defs:
+                t_type_str = t_def.get("type", "MASS_DRIVER")
+                t_var_str = t_def.get("variant", "STANDARD")
+                try:
+                    t_type = TurretType[t_type_str.upper()]
+                except KeyError:
+                    t_type = TurretType.MASS_DRIVER
+                try:
+                    t_var = TurretVariant[t_var_str.upper()]
+                except KeyError:
+                    t_var = TurretVariant.STANDARD
+                turrets.append(Turret(
+                    turret_type=t_type,
+                    damage=float(t_def.get("damage", 10)),
+                    range=float(t_def.get("range", 300)),
+                    cooldown=int(t_def.get("cooldown", 1)),
+                    parent_unit=unit,
+                    variant=t_var
+                ))
+            return float(Weapons.calc_hull_cost(turrets))
+        return 5.0
+
+    elif comp_cls == Defenses:
+        armor = int(config.get("armor", 50))
+        shields = int(config.get("shields", 50))
+        pd = int(config.get("point_defense", 0))
+        return float(Defenses.calc_hull_cost(armor, shields, pd))
+
+    elif comp_cls == AntimatterHarvester:
+        return float(ANTIMATTER_HARVESTER_HULL_COST)
+
+    elif comp_cls == AntimatterStorage:
+        cap = float(config.get("max_capacity", DEFAULT_ANTIMATTER_CAPACITY))
+        return float(AntimatterStorage.calc_hull_cost(cap))
+
+    elif comp_cls == Sensors:
+        s_range = float(config.get("short_range_radius", DEFAULT_SENSOR_SHORT_RANGE))
+        l_hexes = int(config.get("long_range_hexes", 1))
+        return float(Sensors.calc_hull_cost(s_range, l_hexes))
+
+    elif comp_cls == RepairComponent:
+        r_rate = float(config.get("repair_rate", 10.0))
+        return float(RepairComponent.calc_hull_cost(r_rate))
+
+    elif comp_cls == MiningComponent:
+        m_rate = float(config.get("mining_rate", 10.0))
+        m_cargo = float(config.get("max_cargo", 100.0))
+        return float(MiningComponent.calc_hull_cost(m_rate, m_cargo))
+
+    elif comp_cls == MetalRefineryComponent:
+        return 20.0
+
+    elif comp_cls == CrystalRefineryComponent:
+        return 20.0
+
+    elif comp_cls == HangarComponent:
+        slots = int(config.get("max_slots", 2))
+        return float(HangarComponent.calc_hull_cost(slots))
+
+    elif comp_cls == StrikecraftBayComponent:
+        slots = int(config.get("max_slots", 2))
+        return float(StrikecraftBayComponent.calc_hull_cost(slots))
+
+    elif comp_cls == ColonyComponent:
+        return 10.0
+
+    elif comp_cls == CivilianHabitatComponent:
+        bonus = float(config.get("economic_bonus", 50.0))
+        return float(CivilianHabitatComponent.calc_hull_cost(bonus))
+
+    elif comp_cls == OrbitalDefenseComponent:
+        return float(OrbitalDefenseComponent.calc_hull_cost())
+
+    elif comp_cls == TradeComponent:
+        mult = float(config.get("trade_revenue_multiplier", 1.0))
+        return float(TradeComponent.calc_hull_cost(mult))
+
+    elif comp_cls == HyperspaceInhibitionFieldEmitter:
+        radius = float(config.get("radius", 100.0))
+        return float(HyperspaceInhibitionFieldEmitter.calc_hull_cost(radius))
+
+    elif comp_cls == AbilityComponent:
+        raw_abilities = config.get("ability_types", [])
+        ability_types = []
+        for aname in raw_abilities:
+            try:
+                ability_types.append(AbilityType(aname) if isinstance(aname, str) else aname)
+            except ValueError:
+                pass
+        return float(AbilityComponent.calc_hull_cost(ability_types))
+
+    elif comp_cls == MinelayerComponent:
+        return float(MINELAYER_HULL_COST)
+
+    elif comp_cls == MarinesComponent:
+        count = int(config.get("marines_count", 10))
+        return float(MarinesComponent.calc_hull_cost(count))
+
+    elif comp_cls == CloakingDevice:
+        c_type_raw = config.get("device_type", "BASIC")
+        if isinstance(c_type_raw, str):
+            c_type = CloakingType.ADVANCED if c_type_raw.upper() == "ADVANCED" else CloakingType.BASIC
+        else:
+            c_type = c_type_raw
+        radius = float(config.get("area_radius", 0.0)) if c_type == CloakingType.ADVANCED else 0.0
+        return float(CloakingDevice.calc_hull_cost(c_type, radius))
+
+    elif comp_cls == Constructor:
+        return 15.0
+
+    return 15.0
+
+
+def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Optional[dict] = None) -> Optional[UnitComponent]:
+    """Instantiate a new UnitComponent for the given unit with specified or default config."""
+    config = config or {}
+    comp_cls = get_component_class_by_name(component_name)
+    if not comp_cls:
+        logger.warning(f"Unknown component name: {component_name}")
+        return None
+
+    cost = get_component_hull_cost(component_name, unit, config)
+
+    if comp_cls == Engines:
+        speed = float(config.get("speed", 100.0))
+        return Engines(unit, speed=speed, hull_cost=cost)
+
+    elif comp_cls == Hyperdrive:
+        htype_raw = config.get("drive_type", HyperdriveType.BASIC)
+        if isinstance(htype_raw, str):
+            htype = HyperdriveType.ADVANCED if htype_raw.upper() == "ADVANCED" else HyperdriveType.BASIC
+        else:
+            htype = htype_raw
+        jump_range = int(config.get("jump_range", DEFAULT_JUMP_RANGE))
+        return Hyperdrive(unit, drive_type=htype, jump_range=jump_range, hull_cost=cost)
+
+    elif comp_cls == Weapons:
         weapons_comp = Weapons(unit, hull_cost=cost)
         turret_defs = config.get("turrets")
         if turret_defs:
@@ -741,106 +886,69 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         armor = int(config.get("armor", 50))
         shields = int(config.get("shields", 50))
         pd = int(config.get("point_defense", 0))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = Defenses.calc_hull_cost(armor, shields, pd)
-        return Defenses(unit, armor=armor, shields=shields, point_defense=pd, hull_cost=float(cost))
+        return Defenses(unit, armor=armor, shields=shields, point_defense=pd, hull_cost=cost)
 
     elif comp_cls == AntimatterHarvester:
         rate = float(config.get("harvest_rate", DEFAULT_ANTIMATTER_HARVEST_RATE))
-        cost = float(config.get("hull_cost", ANTIMATTER_HARVESTER_HULL_COST))
         return AntimatterHarvester(unit, harvest_rate=rate, hull_cost=cost)
 
     elif comp_cls == AntimatterStorage:
         cap = float(config.get("max_capacity", DEFAULT_ANTIMATTER_CAPACITY))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = AntimatterStorage.calc_hull_cost(cap)
-        return AntimatterStorage(unit, max_capacity=cap, hull_cost=float(cost))
+        return AntimatterStorage(unit, max_capacity=cap, hull_cost=cost)
 
     elif comp_cls == Sensors:
         s_range = float(config.get("short_range_radius", DEFAULT_SENSOR_SHORT_RANGE))
         l_hexes = int(config.get("long_range_hexes", 1))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = Sensors.calc_hull_cost(s_range, l_hexes)
-        return Sensors(unit, short_range_radius=s_range, long_range_hexes=l_hexes, hull_cost=float(cost))
+        return Sensors(unit, short_range_radius=s_range, long_range_hexes=l_hexes, hull_cost=cost)
 
     elif comp_cls == RepairComponent:
         r_rate = float(config.get("repair_rate", 10.0))
         r_range = float(config.get("repair_range", 200.0))
         c_cost = float(config.get("credit_cost_per_hp", REPAIR_CREDIT_COST_PER_HP))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = RepairComponent.calc_hull_cost(r_rate)
-        return RepairComponent(unit, repair_rate=r_rate, repair_range=r_range, credit_cost_per_hp=c_cost, hull_cost=float(cost))
+        return RepairComponent(unit, repair_rate=r_rate, repair_range=r_range, credit_cost_per_hp=c_cost, hull_cost=cost)
 
     elif comp_cls == MiningComponent:
         m_rate = float(config.get("mining_rate", 10.0))
         m_range = float(config.get("mining_range", 200.0))
         m_cargo = float(config.get("max_cargo", 100.0))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = MiningComponent.calc_hull_cost(m_rate, m_cargo)
-        return MiningComponent(unit, mining_rate=m_rate, mining_range=m_range, max_cargo=m_cargo, hull_cost=float(cost))
+        return MiningComponent(unit, mining_rate=m_rate, mining_range=m_range, max_cargo=m_cargo, hull_cost=cost)
 
     elif comp_cls == MetalRefineryComponent:
         u_range = float(config.get("unload_range", 300.0))
-        cost = float(config.get("hull_cost", 20.0))
         return MetalRefineryComponent(unit, unload_range=u_range, hull_cost=cost)
 
     elif comp_cls == CrystalRefineryComponent:
         u_range = float(config.get("unload_range", 300.0))
-        cost = float(config.get("hull_cost", 20.0))
         return CrystalRefineryComponent(unit, unload_range=u_range, hull_cost=cost)
 
     elif comp_cls == HangarComponent:
         slots = int(config.get("max_slots", 2))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = HangarComponent.calc_hull_cost(slots)
-        return HangarComponent(unit, max_slots=slots, hull_cost=float(cost))
+        return HangarComponent(unit, max_slots=slots, hull_cost=cost)
 
     elif comp_cls == StrikecraftBayComponent:
         slots = int(config.get("max_slots", 2))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = StrikecraftBayComponent.calc_hull_cost(slots)
-        return StrikecraftBayComponent(unit, max_slots=slots, hull_cost=float(cost))
+        return StrikecraftBayComponent(unit, max_slots=slots, hull_cost=cost)
 
     elif comp_cls == ColonyComponent:
-        cost = float(config.get("hull_cost", 10.0))
         return ColonyComponent(unit, hull_cost=cost)
 
     elif comp_cls == CivilianHabitatComponent:
         bonus = float(config.get("economic_bonus", 50.0))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = CivilianHabitatComponent.calc_hull_cost(bonus)
-        return CivilianHabitatComponent(unit, economic_bonus=bonus, hull_cost=float(cost))
+        return CivilianHabitatComponent(unit, economic_bonus=bonus, hull_cost=cost)
 
     elif comp_cls == OrbitalDefenseComponent:
         radius = float(config.get("radius", 500.0))
         atk_bonus = float(config.get("attack_bonus", 0.20))
         def_bonus = float(config.get("defense_bonus", 0.20))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = OrbitalDefenseComponent.calc_hull_cost()
-        return OrbitalDefenseComponent(unit, radius=radius, attack_bonus=atk_bonus, defense_bonus=def_bonus, hull_cost=float(cost))
+        return OrbitalDefenseComponent(unit, radius=radius, attack_bonus=atk_bonus, defense_bonus=def_bonus, hull_cost=cost)
 
     elif comp_cls == TradeComponent:
-        cost = config.get("hull_cost")
         mult = float(config.get("trade_revenue_multiplier", 1.0))
-        if cost is None:
-            cost = TradeComponent.calc_hull_cost(mult)
-        return TradeComponent(unit, hull_cost=float(cost), trade_revenue_multiplier=mult)
+        return TradeComponent(unit, hull_cost=cost, trade_revenue_multiplier=mult)
 
     elif comp_cls == HyperspaceInhibitionFieldEmitter:
         radius = float(config.get("radius", 100.0))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = HyperspaceInhibitionFieldEmitter.calc_hull_cost(radius)
-        return HyperspaceInhibitionFieldEmitter(unit, radius=radius, hull_cost=float(cost))
+        return HyperspaceInhibitionFieldEmitter(unit, radius=radius, hull_cost=cost)
 
     elif comp_cls == AbilityComponent:
         raw_abilities = config.get("ability_types", [])
@@ -850,21 +958,14 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
                 ability_types.append(AbilityType(aname) if isinstance(aname, str) else aname)
             except ValueError:
                 pass
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = AbilityComponent.calc_hull_cost(ability_types)
-        return AbilityComponent(unit, ability_types=ability_types, hull_cost=float(cost))
+        return AbilityComponent(unit, ability_types=ability_types, hull_cost=cost)
 
     elif comp_cls == MinelayerComponent:
-        cost = float(config.get("hull_cost", MINELAYER_HULL_COST))
         return MinelayerComponent(unit, hull_cost=cost)
 
     elif comp_cls == MarinesComponent:
         count = int(config.get("marines_count", 10))
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = MarinesComponent.calc_hull_cost(count)
-        return MarinesComponent(unit, marines_count=count, hull_cost=float(cost))
+        return MarinesComponent(unit, marines_count=count, hull_cost=cost)
 
     elif comp_cls == CloakingDevice:
         c_type_raw = config.get("device_type", "BASIC")
@@ -873,13 +974,9 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         else:
             c_type = c_type_raw
         radius = float(config.get("area_radius", 0.0)) if c_type == CloakingType.ADVANCED else 0.0
-        cost = config.get("hull_cost")
-        if cost is None:
-            cost = CloakingDevice.calc_hull_cost(c_type, radius)
-        return CloakingDevice(unit, device_type=c_type, area_radius=radius, hull_cost=float(cost))
+        return CloakingDevice(unit, device_type=c_type, area_radius=radius, hull_cost=cost)
 
     elif comp_cls == Constructor:
-        cost = float(config.get("hull_cost", 15.0))
         return Constructor(unit, hull_cost=cost)
 
     return None
