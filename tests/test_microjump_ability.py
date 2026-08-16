@@ -94,7 +94,7 @@ def test_microjump_definition():
     assert defn.name == "Microjump"
     assert defn.requires_target_position is True
     assert defn.requires_target_unit is False
-    assert defn.range == 1200.0
+    assert defn.range == 0.0
     assert defn.cooldown == 5
     assert defn.antimatter_cost == 25
     assert "microjump" in ABILITY_NAMES
@@ -198,10 +198,10 @@ def test_microjump_fails_insufficient_antimatter():
     assert unit.antimatter_component.current_amount == 10.0
 
 
-def test_microjump_fails_out_of_range():
-    unit, game = create_test_unit(position=Position(0, 0))
-    # Target at distance 700 > range 600
-    target_pos = Position(700, 0)
+def test_microjump_succeeds_anywhere_in_sector():
+    unit, game = create_test_unit(position=Position(-2000, -2000))
+    # Target across the sector (long distance ~4000 px)
+    target_pos = Position(2000, 2000)
 
     success = unit.ability_component.activate(
         ability_type=AbilityType.MICROJUMP,
@@ -209,17 +209,15 @@ def test_microjump_fails_out_of_range():
         target_position=target_pos,
     )
 
-    assert success is False
-    assert unit.position == Position(0, 0)
-    assert unit.antimatter_component.current_amount == 100.0
-    assert len(game.gui.warning_dialogs) == 1
-    assert "exceeds maximum range" in game.gui.warning_dialogs[0][0]
+    assert success is True
+    assert unit.position == target_pos
+    assert unit.antimatter_component.current_amount == 75.0
 
 
-def test_microjump_order_fails_out_of_range_no_sublight_move():
-    unit, game = create_test_unit(position=Position(0, 0))
-    # Target at distance 1500 > range 600
-    target_pos = Position(1500, 0)
+def test_microjump_order_executes_immediately_long_distance():
+    unit, game = create_test_unit(position=Position(-2500, 0))
+    # Long distance target across the sector
+    target_pos = Position(2500, 0)
 
     order = UseAbilityOrder(
         unit,
@@ -233,13 +231,10 @@ def test_microjump_order_fails_out_of_range_no_sublight_move():
 
     order.execute(game.galaxy)
 
-    # Must fail immediately, not create a sublight MoveOrder
-    assert order.status == OrderStatus.FAILED
+    assert order.status == OrderStatus.COMPLETED
     assert len(order.sub_orders) == 0
-    assert unit.position == Position(0, 0)
-    assert unit.antimatter_component.current_amount == 100.0
-    assert len(game.gui.warning_dialogs) == 1
-    assert "exceeds maximum range" in game.gui.warning_dialogs[0][0]
+    assert unit.position == target_pos
+    assert unit.antimatter_component.current_amount == 75.0
 
 
 def test_microjump_order_fails_different_sector():

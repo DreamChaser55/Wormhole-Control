@@ -1,6 +1,6 @@
 import logging
 from typing import Optional, TYPE_CHECKING
-from geometry import Position, distance, is_point_in_circle, clamp_point_to_circle, Circle
+from geometry import Position, is_point_in_circle, clamp_point_to_circle, Circle
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
 from utils import HexCoord
 from ..enums import AbilityType
@@ -17,10 +17,10 @@ class MicrojumpAbility(AbilityInstance):
     DEFINITION = AbilityDefinition(
         ability_type=AbilityType.MICROJUMP,
         name="Microjump",
-        description="Performs a short-range tactical hyperspace jump to a target position in the same sector.",
+        description="Performs a tactical hyperspace jump to any target position in the same sector.",
         cooldown=5,
         duration=0,
-        range=1200.0,
+        range=0.0,
         requires_target_unit=False,
         requires_target_position=True,
         antimatter_cost=25,
@@ -51,18 +51,6 @@ class MicrojumpAbility(AbilityInstance):
             if gui:
                 gui.show_warning_dialog(
                     f"Cannot microjump unit <b>{unit.name}</b>: Target position is in a different sector. Microjumps are restricted to the local sector.",
-                    title="Microjump Failed"
-                )
-            return False
-
-        # Range check
-        dist = distance(unit.position, target_position)
-        if dist > self.DEFINITION.range:
-            logger.debug(f"[{unit.name}] Microjump failed: Target position distance ({dist:.1f}) exceeds range ({self.DEFINITION.range}).")
-            gui = getattr(getattr(unit, 'game', None), 'gui', None)
-            if gui:
-                gui.show_warning_dialog(
-                    f"Cannot microjump unit <b>{unit.name}</b>: Target position distance ({dist:.0f} px) exceeds maximum range ({self.DEFINITION.range:.0f} px).",
                     title="Microjump Failed"
                 )
             return False

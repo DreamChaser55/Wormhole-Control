@@ -219,7 +219,7 @@ There are **10 special abilities** in the game, registered in `unit_components/a
 | **Repair Cloud** | 8 | 4 | 350.0 | 35 | Repair (`has_repair_component`) | None (Self) | Emits an expanding nanite cloud that continuously repairs adjacent friendly units. |
 | **Capture Unit** | 10 | 0 | 100.0 | 40 | Marines (`has_marines_component`) | Unit | Launches an armed marine boarding party to commandeer and seize control of an enemy vessel. |
 | **Drain Antimatter** | 6 | 0 | 300.0 | 0 | Antimatter Storage (`has_antimatter_storage`) | Unit | Siphons antimatter fuel directly from an enemy unit's storage tanks into your own. |
-| **Microjump** | 5 | 0 | 1200.0 | 25 | Hyperdrive (`has_hyperdrive`) | Position | Executes an instant tactical micro-hyperjump to any target location within range. |
+| **Microjump** | 5 | 0 | 0 (sector) | 25 | Hyperdrive (`has_hyperdrive`) | Position | Executes an instant tactical micro-hyperjump to any target location in the same sector. |
 | **Scan for Minefields** | 6 | 0 | 1500.0 | 35 | Sensors (`has_sensors`) | None (Self) | Emits a high-frequency sensor sweep that permanently reveals all enemy minefields within range. |
 
 ---
