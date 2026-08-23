@@ -1,0 +1,300 @@
+"""Context menu action execution and game event bus dispatch."""
+import typing
+import logging
+import pygame
+from geometry import Position
+from entities import Unit, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField
+from events import (
+    CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
+    AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
+    MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
+    ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent, LayMinefieldEvent,
+    RefitUnitEvent, TradeEvent, ContinuousTradeEvent
+)
+
+logger = logging.getLogger(__name__)
+
+
+def _get_shift_pressed() -> bool:
+    try:
+        return bool(pygame.key.get_mods() & pygame.KMOD_SHIFT)
+    except Exception:
+        return False
+
+
+def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None:
+    """Executes the action selected by the user from a right-click context menu.
+
+    Args:
+        game: Target Game instance.
+        action_id (str): Identifier of the chosen menu command (e.g., 'move', 'attack', 'patrol').
+        target (typing.Any): Target object or coordinate associated with the context menu.
+    """
+    current_player = game.players[game.current_player_index]
+    shift_pressed = _get_shift_pressed()
+
+    selected_units = [obj for obj in game.selected_objects if isinstance(obj, Unit) and obj.owner == current_player]
+
+    logger.debug(f"Context Action: '{action_id}', Target: {target}, Actors: {[u.name for u in selected_units]}, SHIFT: {shift_pressed}")
+
+    # Robustly extract action_id if it is nested (from context menu with sub-options)
+    extracted_action_id = action_id
+    while isinstance(extracted_action_id, list) and len(extracted_action_id) > 0:
+        extracted_action_id = extracted_action_id[0]
+    if isinstance(extracted_action_id, tuple) and len(extracted_action_id) > 1:
+        extracted_action_id = extracted_action_id[1]
+    elif isinstance(extracted_action_id, tuple):
+        extracted_action_id = extracted_action_id[0]
+    if not isinstance(extracted_action_id, str):
+        extracted_action_id = str(extracted_action_id)
+
+    if extracted_action_id == "view_hex":
+        logger.debug("  Action: View Hex Details (Not Implemented)")
+    elif extracted_action_id == "view_planet":
+        logger.debug(f"  Action: View Planet {getattr(target, 'name', target)} Info (Not Implemented)")
+    elif extracted_action_id == "view_star":
+        logger.debug(f"  Action: View Star {getattr(target, 'name', target)} Info (Not Implemented)")
+    elif extracted_action_id == "view_wormhole":
+        logger.debug(f"  Action: View Wormhole {getattr(target, 'name', target)} Info (Not Implemented)")
+    elif extracted_action_id == "view_unit":
+        logger.debug(f"  Action: View Unit {getattr(target, 'name', target)} Info (Not Implemented)")
+    elif extracted_action_id == "scan_hex":
+        logger.debug("  Action: Scan Hex Contents (Not Implemented)")
+
+    elif selected_units:
+        disabled_units = [u for u in selected_units if u.is_disabled]
+        if disabled_units and extracted_action_id not in ("cancel_orders", "view_unit", "view_hex", "view_planet", "view_star", "view_wormhole"):
+            if game.gui:
+                unit_names = ", ".join(u.name for u in disabled_units)
+                game.gui.show_warning_dialog(
+                    f"Unit(s) <b>{unit_names}</b> are disabled by Ion/EMP attack and cannot execute orders.",
+                    title="Units Disabled"
+                )
+
+        if extracted_action_id == "cancel_orders":
+            game.event_bus.publish(CancelOrdersEvent(selected_units))
+
+        elif extracted_action_id == "issue_move_order":
+            if isinstance(target, Position):
+                game.event_bus.publish(IssueMoveOrderEvent(
+                    selected_units,
+                    game.current_system_name,
+                    game.current_sector_coord,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "issue_patrol_order":
+            if isinstance(target, Position):
+                game.event_bus.publish(IssuePatrolOrderEvent(
+                    selected_units,
+                    game.current_system_name,
+                    game.current_sector_coord,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "jump_interhex":
+            if isinstance(target, tuple) and len(target) == 2:
+                game.event_bus.publish(JumpInterhexEvent(
+                    selected_units,
+                    game.current_system_name,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "jump_wormhole":
+            if isinstance(target, Wormhole):
+                game.event_bus.publish(JumpWormholeEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id.startswith("attack_unit"):
+            if isinstance(target, Unit):
+                parts = extracted_action_id.split("_", 2)
+                target_component_type_str = parts[2] if len(parts) == 3 else None
+                game.event_bus.publish(AttackUnitEvent(
+                    selected_units,
+                    target,
+                    shift_pressed,
+                    target_component_type_str
+                ))
+
+        elif extracted_action_id == "colonize":
+            if isinstance(target, (Planet, Moon, ColonizableAsteroid)):
+                game.event_bus.publish(ColonizeEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "load_colonists":
+            if isinstance(target, (Planet, Moon, ColonizableAsteroid)):
+                amount_to_load = 25
+                game.event_bus.publish(LoadColonistsEvent(
+                    selected_units,
+                    target,
+                    amount_to_load,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "repair_unit":
+            if isinstance(target, Unit):
+                game.event_bus.publish(RepairUnitEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "transfer_antimatter":
+            if isinstance(target, Unit):
+                game.event_bus.publish(TransferAntimatterEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "protect_unit":
+            if isinstance(target, Unit):
+                game.event_bus.publish(IssueProtectOrderEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "dock_at_carrier":
+            if isinstance(target, Unit):
+                game.event_bus.publish(DockEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "mine":
+            if isinstance(target, (MetalAsteroid, AsteroidField, Comet)):
+                game.event_bus.publish(MineEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "continuous_mine":
+            if isinstance(target, (MetalAsteroid, AsteroidField, Comet)):
+                game.event_bus.publish(ContinuousMineEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "continuous_resupply":
+            from entities import Star as StarEntity
+            if isinstance(target, StarEntity):
+                game.event_bus.publish(ContinuousResupplyEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "unload_resources":
+            if isinstance(target, Unit):
+                game.event_bus.publish(UnloadResourcesEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id in ("lay_minefield", "lay_minefield_anti_ship", "lay_minefield_anti_strikecraft"):
+            mtype = "anti_strikecraft" if extracted_action_id == "lay_minefield_anti_strikecraft" else "anti_ship"
+            game.event_bus.publish(LayMinefieldEvent(
+                selected_units,
+                minefield_type=mtype,
+                shift_pressed=shift_pressed
+            ))
+
+        elif extracted_action_id == "trade":
+            if isinstance(target, Unit):
+                game.event_bus.publish(TradeEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "continuous_trade":
+            if isinstance(target, Unit):
+                game.event_bus.publish(ContinuousTradeEvent(
+                    selected_units,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id.startswith("construct_"):
+            unit_template_name = extracted_action_id.split("construct_")[1]
+            if isinstance(target, Position):
+                game.event_bus.publish(ConstructEvent(
+                    selected_units,
+                    unit_template_name,
+                    target,
+                    shift_pressed
+                ))
+
+        elif extracted_action_id == "open_retrofit_wizard":
+            if isinstance(target, Unit):
+                if getattr(game, 'gui', None) and hasattr(game.gui, 'show_retrofit_wizard'):
+                    game.gui.show_retrofit_wizard(
+                        target_unit=target,
+                        constructor_units=selected_units,
+                        shift_pressed=shift_pressed
+                    )
+
+        elif extracted_action_id.startswith("refit_add_"):
+            comp_name = extracted_action_id[len("refit_add_"):]
+            if isinstance(target, Unit):
+                if getattr(game, 'gui', None) and hasattr(game.gui, 'show_retrofit_wizard'):
+                    game.gui.show_retrofit_wizard(
+                        target_unit=target,
+                        component_type=comp_name,
+                        constructor_units=selected_units,
+                        shift_pressed=shift_pressed
+                    )
+                else:
+                    game.event_bus.publish(RefitUnitEvent(
+                        selected_units,
+                        target_unit=target,
+                        action="ADD",
+                        component_type=comp_name,
+                        shift_pressed=shift_pressed
+                    ))
+
+        elif extracted_action_id.startswith("refit_remove_"):
+            comp_name = extracted_action_id[len("refit_remove_"):]
+            if isinstance(target, Unit):
+                game.event_bus.publish(RefitUnitEvent(
+                    selected_units,
+                    target_unit=target,
+                    action="REMOVE",
+                    component_type=comp_name,
+                    shift_pressed=shift_pressed
+                ))
+
+        elif extracted_action_id.startswith("use_ability_"):
+            ability_type_str = extracted_action_id[len("use_ability_"):]
+            target_unit = target if isinstance(target, Unit) else None
+            target_position = target if isinstance(target, Position) else None
+            game.event_bus.publish(UseAbilityEvent(
+                units=selected_units,
+                ability_type_str=ability_type_str,
+                target_unit=target_unit,
+                target_position=target_position,
+                target_system_name=game.current_system_name,
+                target_hex_coord=game.current_sector_coord,
+                shift_pressed=shift_pressed,
+            ))
+
+        else:
+            logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")
+
+        game.sidebar_needs_update = True
+    else:
+        logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")

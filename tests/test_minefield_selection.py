@@ -2,7 +2,7 @@ import os
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 import pygame
 pygame.init()
-pygame.display.set_mode((1, 1))
+pygame.display.set_mode((1280, 720))
 from unittest.mock import MagicMock
 from geometry import Position
 from entities import Minefield, Player

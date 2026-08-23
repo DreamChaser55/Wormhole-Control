@@ -18,8 +18,15 @@ Wormhole Control/
 ├── events.py                      # Central event bus and game event definitions
 ├── galaxy.py                      # Galaxy generation, star system topology, and sector hex grids
 ├── galaxy_utils.py                # Galaxy generation helper functions and placement math
+├── input_processor/               # Mouse/keyboard event dispatch and selection package
+│   ├── __init__.py                # Package facade and public re-exports
+│   ├── processor.py               # InputProcessor main orchestrator class
+│   ├── hover_tracker.py           # Spatial entity hover detection (galaxy, system, sector)
+│   ├── mouse_handler.py           # Mouse click dispatch, box selection, ability targeting
+│   ├── keyboard_handler.py        # Keyboard camera panning and global hotkeys
+│   ├── context_menu_builder.py    # Dynamic right-click context menu and submenu generators
+│   └── context_actions.py         # Context menu action event dispatchers
 ├── order_system.py                # Order dispatch, route planning, and command validation engine
-├── input_processor.py             # Mouse/keyboard event dispatch and selection logic
 ├── turn_processor.py              # Turn resolution engine (economy, movement, combat, orders, XP)
 ├── custom_unit_templates.py       # Custom ship design manager and dynamic hull cost calculations
 ├── unit_templates.py              # Baseline predefined unit template loader
