@@ -93,7 +93,7 @@ def get_refit_context_options(game, actors: typing.List[Unit], target_unit: Unit
             break
 
     if can_add:
-        refit_options.append(("Retrofit Wizard...", "open_retrofit_wizard"))
+        refit_options.append(("Add Component", "open_retrofit_wizard"))
 
     for comp_cls, comp_inst in target_unit.components.items():
         if comp_cls == Commander:

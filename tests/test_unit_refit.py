@@ -389,7 +389,7 @@ def test_input_processor_get_refit_context_options(setup_universe):
     assert len(options) > 0
 
     option_labels = [opt[0] for opt in options]
-    assert "Retrofit Wizard..." in option_labels
+    assert "Add Component" in option_labels
     assert "Add Component" not in option_labels
     assert "Remove Component" in option_labels
 
