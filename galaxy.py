@@ -288,7 +288,11 @@ class StarSystem:
 
     def get_all_celestial_bodies(self) -> typing.List[typing.Tuple[HexCoord, CelestialBody]]:
         """Returns a list of all celestial bodies and their hex coordinates."""
-        return [(body.in_hex, body) for body in self.celestial_bodies_by_id.values()]
+        all_bodies = []
+        for coord, hex_obj in self.hexes.items():
+            for body in hex_obj.celestial_bodies:
+                all_bodies.append((coord, body))
+        return all_bodies
 
     def move_unit_between_hexes(self, unit: Unit, destination_hex: HexCoord) -> bool:
         """Moves a unit from its current hex to a destination hex within this system.

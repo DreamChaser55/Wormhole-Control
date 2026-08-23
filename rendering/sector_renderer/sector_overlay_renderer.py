@@ -139,14 +139,24 @@ class SectorOverlayRenderer:
 
         if current_player:
             for unit in hex_obj.units:
-                if unit.owner != current_player:
+                is_friendly = (unit.owner == current_player)
+                is_infiltrated = False
+                if hasattr(unit, 'has_infiltrating_agent_from'):
+                    res = unit.has_infiltrating_agent_from(current_player)
+                    if res is True:
+                        is_infiltrated = True
+
+                if not is_friendly and not is_infiltrated:
                     continue
+
                 sensors = unit.sensors_component
                 if sensors is None or getattr(sensors, 'is_destroyed', False) or not getattr(sensors, 'has_short_range', False):
                     continue
 
-                short_range = getattr(sensors, 'short_range_radius', 0.0)
-                if short_range <= 0:
+                short_range = getattr(sensors, 'effective_short_range_radius', None)
+                if not isinstance(short_range, (int, float)):
+                    short_range = getattr(sensors, 'short_range_radius', 0.0)
+                if not isinstance(short_range, (int, float)) or short_range <= 0:
                     continue
 
                 unit_px = self.parent._coords_to_pixels(unit.position)
@@ -155,6 +165,21 @@ class SectorOverlayRenderer:
                 unit_bbox = _sr().pygame.Rect(ucx - sr_px, ucy - sr_px, 2 * sr_px, 2 * sr_px)
                 if unit_bbox.colliderect(fog_rect):
                     cutouts.append((ucx, ucy, sr_px))
+
+            for body in getattr(hex_obj, 'celestial_bodies', []):
+                is_infiltrated_body = False
+                if hasattr(body, 'has_infiltrating_agent_from'):
+                    res = body.has_infiltrating_agent_from(current_player)
+                    if res is True:
+                        is_infiltrated_body = True
+
+                if is_infiltrated_body:
+                    body_px = self.parent._coords_to_pixels(body.position)
+                    sr_px = max(1, min(int(500.0 * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL), MAX_SAFE_CIRCLE_RADIUS_PX))
+                    bcx, bcy = int(body_px.x), int(body_px.y)
+                    body_bbox = _sr().pygame.Rect(bcx - sr_px, bcy - sr_px, 2 * sr_px, 2 * sr_px)
+                    if body_bbox.colliderect(fog_rect):
+                        cutouts.append((bcx, bcy, sr_px))
 
         key = (
             screen_size,

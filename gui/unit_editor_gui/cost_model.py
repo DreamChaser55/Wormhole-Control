@@ -89,6 +89,7 @@ def sync_dynamic_costs(editor) -> None:
         "has_inhibitor":          c.inhibitor_hull_cost,
         "has_marines_component":  c.marines_hull_cost,
         "has_cloaking_device":    c.cloaking_device_hull_cost,
+        "has_intelligence_component": c.intelligence_hull_cost,
     }
 
     for key, computed_cost in dynamic_values.items():

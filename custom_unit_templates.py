@@ -64,6 +64,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_marines_component",
         "has_cloaking_device",
         "has_trade_component",
+        "has_intelligence_component",
     },
     HullSize.TINY: {
         "has_inhibitor",
@@ -80,6 +81,7 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
         "has_antimatter_harvester",
         "has_minelayer_component",
         "has_trade_component",
+        "has_intelligence_component",
     },
 
     HullSize.SMALL: {
@@ -168,6 +170,7 @@ from unit_components.abilities.component import AbilityComponent, ABILITY_BASE_C
 from unit_components.cloaking import CloakingDevice
 from unit_components.civilian_habitat import CivilianHabitatComponent
 from unit_components.orbital_defense import OrbitalDefenseComponent
+from unit_components.intelligence import IntelligenceComponent
 from constants import (
     CLOAKING_BASIC_HULL_COST,
     CLOAKING_ADVANCED_HULL_COST,
@@ -267,6 +270,11 @@ def calc_orbital_defense_hull_cost(hull_cost: float = ORBITAL_DEFENSE_HULL_COST)
 def calc_cloaking_hull_cost(cloaking_type: str = "BASIC", cloaking_radius: float = DEFAULT_ADVANCED_CLOAKING_RADIUS) -> float:
     """Compute the hull cost of a Cloaking Device component based on cloaking_type and cloaking_radius."""
     return CloakingDevice.calc_hull_cost(cloaking_type, cloaking_radius)
+
+
+def calc_intelligence_hull_cost(agents_capacity: int = 1, has_counter_intelligence: bool = False) -> float:
+    """Compute the hull cost of an Intelligence component based on agent capacity and counter-intelligence."""
+    return IntelligenceComponent.calc_hull_cost(agents_capacity, has_counter_intelligence)
 
 
 def get_hyperdrive_system_jump_cost(hull_size: Optional[HullSize] = HullSize.MEDIUM) -> float:
@@ -434,6 +442,19 @@ class ComponentConfig:
     cloaking_radius: float = DEFAULT_ADVANCED_CLOAKING_RADIUS
     cloaking_hull_cost: float = CLOAKING_BASIC_HULL_COST
 
+    # Intelligence / Espionage
+    has_intelligence_component: bool = False
+    intelligence_agents_count: int = 1
+    counter_intelligence: bool = False
+
+    @property
+    def has_counter_intelligence(self) -> bool:
+        return self.counter_intelligence
+
+    @has_counter_intelligence.setter
+    def has_counter_intelligence(self, val: bool) -> None:
+        self.counter_intelligence = bool(val)
+
 
     # ------------------------------------------------------------------
     # Computed hull-cost properties for dynamic components
@@ -549,6 +570,13 @@ class ComponentConfig:
             return 0.0
         return calc_cloaking_hull_cost(self.cloaking_type, self.cloaking_radius)
 
+    @property
+    def intelligence_hull_cost(self) -> float:
+        """Hull cost of Intelligence component, computed from agents count and CI toggle."""
+        if not self.has_intelligence_component:
+            return 0.0
+        return calc_intelligence_hull_cost(self.intelligence_agents_count, self.has_counter_intelligence)
+
 
 
 # --------------------------------------------------------------------------
@@ -663,6 +691,7 @@ class CustomUnitTemplate:
             "has_antimatter_harvester": c.has_antimatter_harvester,
             "has_minelayer_component": c.has_minelayer_component,
             "has_marines_component": c.has_marines_component,
+            "has_intelligence_component": c.has_intelligence_component,
         }
         for flag, enabled in comp_flags.items():
             if enabled and flag in restricted:
@@ -672,6 +701,9 @@ class CustomUnitTemplate:
 
         if c.has_marines_component and c.marines_count < 1:
             errors.append("Marines count must be at least 1.")
+
+        if c.has_intelligence_component and c.intelligence_agents_count < 1:
+            errors.append("Intelligence agents count must be at least 1.")
 
         # Validate Strikecraft Wing wing_type and turret variants
         if self.hull_size == HullSize.STRIKECRAFT_WING:
@@ -732,7 +764,7 @@ class CustomUnitTemplate:
             c.has_metal_refinery_component, c.has_crystal_refinery_component,
             c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
             c.has_sensors, c.has_minelayer_component, c.has_marines_component,
-            c.has_cloaking_device,
+            c.has_cloaking_device, c.has_intelligence_component,
         ])
 
 
@@ -1032,6 +1064,11 @@ class CustomTemplateManager:
             "cloaking_radius": c.cloaking_radius,
             "cloaking_hull_cost": c.cloaking_device_hull_cost,
 
+            "has_intelligence_component": c.has_intelligence_component,
+            "intelligence_agents_count": c.intelligence_agents_count,
+            "has_counter_intelligence": c.has_counter_intelligence,
+            "intelligence_hull_cost": c.intelligence_hull_cost,
+
             "is_custom": True,  # marker so we know it's player-designed
         }
         return d
@@ -1149,6 +1186,10 @@ class CustomTemplateManager:
             cloaking_type=d.get("cloaking_type", "BASIC"),
             cloaking_radius=float(d.get("cloaking_radius", DEFAULT_ADVANCED_CLOAKING_RADIUS)),
             cloaking_hull_cost=float(d.get("cloaking_hull_cost", CLOAKING_BASIC_HULL_COST)),
+
+            has_intelligence_component=d.get("has_intelligence_component", False),
+            intelligence_agents_count=int(d.get("intelligence_agents_count", 1)),
+            counter_intelligence=bool(d.get("has_counter_intelligence", d.get("counter_intelligence", False))),
         )
 
 

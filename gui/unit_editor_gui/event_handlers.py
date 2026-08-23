@@ -28,6 +28,7 @@ from .param_readers import (
     read_inhibitor_params,
     read_marines_params,
     read_cloaking_params,
+    read_intelligence_params,
 )
 
 
@@ -69,6 +70,15 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
 
         if elem is editor._add_turret_button:
             do_add_turret(editor)
+            return "ui_handled"
+
+        if elem is getattr(editor, '_intel_ci_btn', None):
+            editor._comp.has_counter_intelligence = not getattr(editor._comp, "has_counter_intelligence", False)
+            editor._intel_ci_btn.set_text(
+                "[x] Counter-Intelligence" if editor._comp.has_counter_intelligence else "[ ] Counter-Intelligence"
+            )
+            editor._sync_dynamic_costs()
+            editor._update_summary()
             return "ui_handled"
 
         # Component selection (>>> buttons)
@@ -182,6 +192,11 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
             return "ui_handled"
         elif elem is getattr(editor, '_cloaking_radius_entry', None):
             read_cloaking_params(editor)
+            editor._sync_dynamic_costs()
+            editor._update_summary()
+            return "ui_handled"
+        elif elem is getattr(editor, '_intel_agents_entry', None):
+            read_intelligence_params(editor)
             editor._sync_dynamic_costs()
             editor._update_summary()
             return "ui_handled"

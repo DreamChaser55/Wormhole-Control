@@ -65,6 +65,12 @@ class Turret:
                 if od_atk_bonus > 0.0:
                     effective_damage *= (1.0 + od_atk_bonus)
 
+            # Apply weapons sabotage damage reduction
+            if hasattr(self.parent_unit, 'is_sabotaged'):
+                from .enums import SabotageType
+                if self.parent_unit.is_sabotaged(SabotageType.WEAPONS):
+                    effective_damage *= 0.5
+
             # Anti-strikecraft damage reduced to 25% against other targets
             if self.variant == TurretVariant.ANTI_STRIKECRAFT and self.target.hull_size != HullSize.STRIKECRAFT_WING:
                 effective_damage *= 0.25

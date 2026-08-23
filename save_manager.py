@@ -27,8 +27,8 @@ from unit_components import (
     ColonyComponent, CivilianHabitatComponent, OrbitalDefenseComponent, TradeComponent, Constructor, RepairComponent, MiningComponent,
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
-    MinelayerComponent, MarinesComponent, CloakingDevice, instantiate_unit_from_template,
-    instantiate_component_for_unit, get_component_class_by_name
+    MinelayerComponent, MarinesComponent, CloakingDevice, IntelligenceComponent,
+    instantiate_unit_from_template, instantiate_component_for_unit, get_component_class_by_name
 )
 from unit_orders import (
     Order, OrderStatus, OrderType,
@@ -36,7 +36,9 @@ from unit_orders import (
     LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
     RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
     UseAbilityOrder, ProtectOrder, ContinuousMineOrder, TransferAntimatterOrder,
-    ContinuousResupplyOrder, LayMinefieldOrder, RefitOrder, TradeOrder, ContinuousTradeOrder
+    ContinuousResupplyOrder, LayMinefieldOrder, RefitOrder, TradeOrder, ContinuousTradeOrder,
+    InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder,
+    CISweepOrder, EliminateAgentOrder, ExtractAgentOrder
 )
 
 logger = logging.getLogger(__name__)
@@ -80,10 +82,16 @@ ORDER_CLASSES = {
     "CONTINUOUS_MINE": ContinuousMineOrder,
     "TRANSFER_ANTIMATTER": TransferAntimatterOrder,
     "CONTINUOUS_RESUPPLY": ContinuousResupplyOrder,
-    "LAY_MINEFIELD": LayMinefieldOrder,
     "REFIT_UNIT": RefitOrder,
     "TRADE": TradeOrder,
     "CONTINUOUS_TRADE": ContinuousTradeOrder,
+    "INFILTRATE_UNIT": InfiltrateUnitOrder,
+    "INFILTRATE_PLANET": InfiltratePlanetOrder,
+    "RELOCATE_AGENT": RelocateAgentOrder,
+    "SABOTAGE": SabotageOrder,
+    "CI_SWEEP": CISweepOrder,
+    "ELIMINATE_AGENT": EliminateAgentOrder,
+    "EXTRACT_AGENT": ExtractAgentOrder,
 }
 
 
@@ -152,6 +160,7 @@ def serialize_celestial_body(body: CelestialBody) -> dict:
         data["stability"] = body.stability
         data["diameter"] = body.diameter.name
 
+    data["infiltrating_agents"] = [a.to_dict() for a in getattr(body, 'infiltrating_agents', [])]
     return data
 
 
@@ -258,6 +267,11 @@ def serialize_components(unit: Unit) -> dict:
             comp_data["trades_completed"] = comp.trades_completed
             comp_data["trade_revenue_multiplier"] = comp.trade_revenue_multiplier
             comp_data["hull_cost"] = comp.hull_cost
+        elif isinstance(comp, IntelligenceComponent):
+            comp_data["agents_count"] = comp.agents_count
+            comp_data["agents_capacity"] = comp.agents_capacity
+            comp_data["has_counter_intelligence"] = comp.has_counter_intelligence
+            comp_data["hull_cost"] = comp.hull_cost
 
         comps[comp_name] = comp_data
 
@@ -287,6 +301,7 @@ def serialize_unit(unit: Unit) -> dict:
         "damage_amplification": unit.damage_amplification,
         "lifetime": unit.lifetime,
         "is_temporary": unit.is_temporary,
+        "infiltrating_agents": [a.to_dict() for a in getattr(unit, 'infiltrating_agents', [])],
         "components": serialize_components(unit),
         "orders": orders_data
     }
@@ -451,6 +466,10 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player]) -> 
         body.name = data["name"]
     if "inhibition_field_radius" in data:
         body.inhibition_field_radius = data["inhibition_field_radius"]
+
+    if "infiltrating_agents" in data:
+        from unit_components import Agent
+        body.infiltrating_agents = [Agent.from_dict(ad, players_by_id, body) for ad in data["infiltrating_agents"]]
 
     return body
 
@@ -620,6 +639,21 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
         c_cost = float(template.get("cloaking_hull_cost", CloakingDevice.calc_hull_cost(c_type, c_radius)))
         new_unit.add_component(CloakingDevice(new_unit, device_type=c_type, area_radius=c_radius, hull_cost=c_cost))
 
+    if template.get("has_intelligence_component"):
+        from unit_components import IntelligenceComponent
+        i_count = int(template.get("intelligence_agents_count", 1))
+        i_ci = bool(template.get("has_counter_intelligence", False))
+        i_cost = template.get("intelligence_hull_cost")
+        if i_cost is None:
+            i_cost = IntelligenceComponent.calc_hull_cost(i_count, i_ci)
+        new_unit.add_component(IntelligenceComponent(
+            new_unit,
+            agents_count=i_count,
+            agents_capacity=i_count,
+            has_counter_intelligence=i_ci,
+            hull_cost=i_cost
+        ))
+
     return new_unit
 
 
@@ -698,6 +732,10 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
                 unit.hyperdrive_component.jump_status = JumpStatus[status_str]
         elif comp_name == "CivilianHabitatComponent" and unit.civilian_habitat_component:
             unit.civilian_habitat_component.economic_bonus = comp_fields.get("economic_bonus", unit.civilian_habitat_component.economic_bonus)
+        elif comp_name in ("IntelligenceComponent", "Intelligence") and getattr(unit, "intelligence_component", None):
+            unit.intelligence_component.agents_count = comp_fields.get("agents_count", unit.intelligence_component.agents_count)
+            unit.intelligence_component.agents_capacity = comp_fields.get("agents_capacity", unit.intelligence_component.agents_capacity)
+            unit.intelligence_component.has_counter_intelligence = comp_fields.get("has_counter_intelligence", unit.intelligence_component.has_counter_intelligence)
         elif comp_name == "OrbitalDefenseComponent" and unit.orbital_defense_component:
             unit.orbital_defense_component.radius = comp_fields.get("radius", unit.orbital_defense_component.radius)
             unit.orbital_defense_component.attack_bonus = comp_fields.get("attack_bonus", unit.orbital_defense_component.attack_bonus)
@@ -771,6 +809,11 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
             continue
         if comp_cls.__name__ not in comps_data and (comp_cls != HyperspaceInhibitionFieldEmitter or "Inhibitor" not in comps_data):
             unit.remove_component(comp_cls)
+
+    # Restore infiltrating agents if present
+    if "infiltrating_agents" in data:
+        from unit_components import Agent
+        unit.infiltrating_agents = [Agent.from_dict(ad, players_by_id, unit) for ad in data["infiltrating_agents"]]
 
     # Note: Commander orders will be restored after all units are in place so references can be mapped.
     unit._saved_orders_data = data.get("orders", [])

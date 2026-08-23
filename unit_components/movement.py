@@ -4,7 +4,7 @@ from typing import Optional, Tuple, TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
-from .enums import HyperdriveType, JumpStatus
+from .enums import HyperdriveType, JumpStatus, SabotageType
 from utils import HexCoord
 from geometry import Position
 from constants import (
@@ -64,13 +64,31 @@ class Engines(UnitComponent):
         multiplier = ENGINE_HULL_SIZE_MULTIPLIERS.get(hull_size, 1.0) if hull_size else 1.0
         return (speed / SPEED_PER_HULL_POINT) * multiplier
 
+    @property
+    def effective_speed(self) -> float:
+        spd = self.speed
+        if hasattr(self.unit, 'is_sabotaged'):
+            from .enums import SabotageType
+            if self.unit.is_sabotaged(SabotageType.ENGINES):
+                spd *= 0.5
+        if hasattr(self.unit, 'experience_points') and self.unit.experience_points > 0:
+            spd *= self.unit.xp_multiplier(XP_SPEED_BONUS)
+        return spd
+
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
-        xp = self.unit.experience_points
+        xp = getattr(self.unit, 'experience_points', 0)
+        eff_speed = self.effective_speed
+        is_sab = hasattr(self.unit, 'is_sabotaged') and self.unit.is_sabotaged(SabotageType.ENGINES)
+        
+        status_extra = []
+        if is_sab:
+            status_extra.append("-50% Sabotaged")
         if xp > 0:
-            effective_speed = self.speed * self.unit.xp_multiplier(XP_SPEED_BONUS)
-            bonus_pct = int((effective_speed / self.speed - 1.0) * 100) if self.speed else 0
-            speed_text = f"Speed: {self.speed} (+{bonus_pct}% XP → {effective_speed:.1f})"
+            status_extra.append(f"+{int((self.unit.xp_multiplier(XP_SPEED_BONUS) - 1.0) * 100)}% XP")
+        
+        if status_extra:
+            speed_text = f"Speed: {self.speed} ({', '.join(status_extra)} → {eff_speed:.1f})"
         else:
             speed_text = f"Speed: {self.speed}"
         data.append({'type': 'label', 'text': speed_text, 'object_id': '#sidebar_info_label', 'height': 20})
@@ -80,10 +98,10 @@ class Engines(UnitComponent):
         data = super().get_basic_sidebar_data(game_state)
         if self.is_destroyed:
             return data
-        effective_speed = self.speed * self.unit.xp_multiplier(XP_SPEED_BONUS)
+        eff_speed = self.effective_speed
         data.append({
             'type': 'label',
-            'text': f"• Speed: {effective_speed:.1f}",
+            'text': f"• Speed: {eff_speed:.1f}",
             'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
@@ -180,11 +198,12 @@ class Hyperdrive(UnitComponent):
 
     def start_recharge(self) -> None:
         """Initiates the hyperdrive recharge sequence."""
+        extra_turns = 3 if hasattr(self.unit, 'is_sabotaged') and self.unit.is_sabotaged(SabotageType.HYPERDRIVE) else 0
         self.jump_status = JumpStatus.CHARGING
-        self.recharge_time_remaining = self.RECHARGE_DURATION
+        self.recharge_time_remaining = self.RECHARGE_DURATION + extra_turns
         self.hex_jump_target = None
         self.wormhole_jump_target = None
-        logger.debug(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive starting recharge for {self.RECHARGE_DURATION} turns. Status: CHARGING.")
+        logger.debug(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive starting recharge for {self.recharge_time_remaining} turns. Status: CHARGING.")
 
     def update_recharge(self) -> None:
         """Updates the recharge status of the hyperdrive. Called each turn."""

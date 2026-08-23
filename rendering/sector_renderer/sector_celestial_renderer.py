@@ -356,4 +356,47 @@ class SectorCelestialRenderer:
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             _sr().pygame.draw.circle(self.screen, obj_color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius)
 
+            # Draw Celestial Body Name
+            if hasattr(obj, 'name') and obj.name:
+                from constants import TEXT_SCALE
+                name_font_size = max(1, int(10 * TEXT_SCALE))
+                if name_font_size not in self.parent._font_cache:
+                    self.parent._font_cache[name_font_size] = _sr().pygame.font.Font(None, name_font_size)
+                name_font = self.parent._font_cache[name_font_size]
+                name_surface = name_font.render(obj.name, True, obj_color)
+                name_rect = name_surface.get_rect()
+                name_rect.midtop = (obj_pixel_pos.x, obj_pixel_pos.y + pixel_radius + 4)
+                self.screen.blit(name_surface, name_rect)
+
+            # Infiltration Badge
+            current_viewer = getattr(self.game, 'current_player', None)
+            if current_viewer and hasattr(obj, 'has_infiltrating_agent_from') and obj.has_infiltrating_agent_from(current_viewer):
+                agent = next((ag for ag in getattr(obj, 'infiltrating_agents', []) if ag.owner == current_viewer), None)
+                badge_text = f"[SABOTAGED: {agent.active_sabotage.name}]" if (agent and agent.active_sabotage) else "[INFILTRATED]"
+                badge_color = (255, 140, 40) if (agent and agent.active_sabotage) else (50, 220, 255)
+                from constants import TEXT_SCALE
+                badge_font_size = max(1, int(9 * TEXT_SCALE))
+                if badge_font_size not in self.parent._font_cache:
+                    self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
+                badge_font = self.parent._font_cache[badge_font_size]
+                badge_surf = badge_font.render(badge_text, True, badge_color)
+                badge_rect = badge_surf.get_rect()
+                badge_rect.midbottom = (obj_pixel_pos.x, obj_pixel_pos.y - pixel_radius - 4)
+                self.screen.blit(badge_surf, badge_rect)
+
+            elif current_viewer and getattr(obj, 'owner', None) == current_viewer and hasattr(obj, 'infiltrating_agents'):
+                has_discovered = any(ag.is_discovered and ag.owner != current_viewer for ag in obj.infiltrating_agents)
+                if has_discovered:
+                    badge_text = "[DISCOVERED SPY]"
+                    badge_color = (255, 100, 100)
+                    from constants import TEXT_SCALE
+                    badge_font_size = max(1, int(9 * TEXT_SCALE))
+                    if badge_font_size not in self.parent._font_cache:
+                        self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
+                    badge_font = self.parent._font_cache[badge_font_size]
+                    badge_surf = badge_font.render(badge_text, True, badge_color)
+                    badge_rect = badge_surf.get_rect()
+                    badge_rect.midbottom = (obj_pixel_pos.x, obj_pixel_pos.y - pixel_radius - 4)
+                    self.screen.blit(badge_surf, badge_rect)
+
         return obj_color, obj_radius_logical

@@ -143,6 +143,17 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
             data.append({'type': 'label', 'text': f"Type: {body.planet_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
         owner_name = body.owner.name if body.owner else "Uninhabited"
         data.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': '#sidebar_info_label', 'height': 25})
+
+        current_player = game.players[game.current_player_index] if game.players else None
+        if current_player and hasattr(body, 'has_infiltrating_agent_from') and body.has_infiltrating_agent_from(current_player):
+            agent = next((ag for ag in getattr(body, 'infiltrating_agents', []) if ag.owner == current_player), None)
+            sab_txt = f" [SABOTAGE: {agent.active_sabotage.name}]" if (agent and agent.active_sabotage) else ""
+            data.append({
+                'type': 'label',
+                'text': f"👁 COVERT AGENT EMBEDDED{sab_txt}",
+                'object_id': '#sidebar_status_active_label',
+                'height': 24
+            })
         data.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
         if body.owner and body.population > 0:
             cap = body.get_supported_habitat_capacity() if hasattr(body, 'get_supported_habitat_capacity') else 0
@@ -163,6 +174,17 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
                                 active_ods += 1
             data.append({'type': 'label', 'text': f"Habitats Supported: {active_habs} / {cap}", 'object_id': '#sidebar_info_label', 'height': 25})
             data.append({'type': 'label', 'text': f"Orbital Defenses Supported: {active_ods} / {od_cap}", 'object_id': '#sidebar_info_label', 'height': 25})
+
+        current_player = game.players[game.current_player_index] if game.players else None
+        if current_player:
+            if hasattr(body, 'has_infiltrating_agent_from') and body.has_infiltrating_agent_from(current_player):
+                agent = next((ag for ag in getattr(body, 'infiltrating_agents', []) if ag.owner == current_player), None)
+                sab_info = f" (Sabotage: {agent.active_sabotage.name})" if (agent and agent.active_sabotage) else ""
+                data.append({'type': 'label', 'text': f"• Infiltrated: Agent Active{sab_info}", 'object_id': '#sidebar_status_active_label', 'height': 20})
+            if getattr(body, 'owner', None) == current_player and hasattr(body, 'infiltrating_agents'):
+                for ag in body.infiltrating_agents:
+                    if ag.is_discovered and ag.owner != current_player:
+                        data.append({'type': 'label', 'text': f"⚠ Discovered Enemy Agent ({ag.owner.name})", 'object_id': '#sidebar_status_charging_label', 'height': 20})
 
     elif isinstance(body, MetalAsteroid):
         data.append({'type': 'label', 'text': f"Metal Yield: {body.metal_yield}", 'object_id': '#sidebar_info_label', 'height': 25})

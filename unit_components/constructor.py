@@ -22,6 +22,7 @@ from .sensors import Sensors
 from .minelayer import MinelayerComponent
 from .marines import MarinesComponent
 from .cloaking import CloakingDevice
+from .intelligence import IntelligenceComponent
 from .enums import (
     HyperdriveType, UnitStance, TurretType, TurretVariant,
     WingType, AbilityType, CloakingType
@@ -366,6 +367,20 @@ def instantiate_unit_from_template(
         c_cost = float(template.get("cloaking_hull_cost", CloakingDevice.calc_hull_cost(c_type, c_radius)))
         new_unit.add_component(CloakingDevice(new_unit, device_type=c_type, area_radius=c_radius, hull_cost=c_cost))
 
+    if template.get("has_intelligence_component"):
+        i_count = template.get("intelligence_agents_count", 1)
+        i_ci = template.get("has_counter_intelligence", False)
+        i_cost = template.get("intelligence_hull_cost")
+        if i_cost is None:
+            i_cost = IntelligenceComponent.calc_hull_cost(i_count, i_ci)
+        new_unit.add_component(IntelligenceComponent(
+            new_unit,
+            agents_count=i_count,
+            agents_capacity=i_count,
+            has_counter_intelligence=i_ci,
+            hull_cost=i_cost
+        ))
+
     system.add_unit(new_unit)
 
     logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
@@ -671,6 +686,8 @@ COMPONENT_NAME_MAP = {
     "MinelayerComponent": MinelayerComponent,
     "MarinesComponent": MarinesComponent,
     "CloakingDevice": CloakingDevice,
+    "IntelligenceComponent": IntelligenceComponent,
+    "Intelligence": IntelligenceComponent,
     "Constructor": Constructor,
 }
 
@@ -817,6 +834,11 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
             c_type = c_type_raw
         radius = float(config.get("area_radius", 0.0)) if c_type == CloakingType.ADVANCED else 0.0
         return float(CloakingDevice.calc_hull_cost(c_type, radius))
+
+    elif comp_cls == IntelligenceComponent:
+        count = int(config.get("agents_count", config.get("agents_capacity", 1)))
+        ci = bool(config.get("has_counter_intelligence", False))
+        return float(IntelligenceComponent.calc_hull_cost(count, ci))
 
     elif comp_cls == Constructor:
         return 15.0
@@ -975,6 +997,11 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
             c_type = c_type_raw
         radius = float(config.get("area_radius", 0.0)) if c_type == CloakingType.ADVANCED else 0.0
         return CloakingDevice(unit, device_type=c_type, area_radius=radius, hull_cost=cost)
+
+    elif comp_cls == IntelligenceComponent:
+        count = int(config.get("agents_count", config.get("agents_capacity", 1)))
+        ci = bool(config.get("has_counter_intelligence", False))
+        return IntelligenceComponent(unit, agents_count=count, agents_capacity=count, has_counter_intelligence=ci, hull_cost=cost)
 
     elif comp_cls == Constructor:
         return Constructor(unit, hull_cost=cost)

@@ -40,6 +40,7 @@ COMPONENT_ROWS: typing.List[typing.Dict] = [
     {"key": "has_minelayer_component",   "label": "Minelayer",          "cost_key": "minelayer_hull_cost",        "default_cost": 15.0, "is_dynamic": False},
     {"key": "has_marines_component",     "label": "Marines",            "cost_key": "marines_hull_cost",          "default_cost": 10.0, "is_dynamic": True},
     {"key": "has_cloaking_device",       "label": "Cloaking Device",    "cost_key": "cloaking_device_hull_cost",  "default_cost": 10.0, "is_dynamic": True},
+    {"key": "has_intelligence_component", "label": "Intelligence",       "cost_key": "intelligence_hull_cost",     "default_cost": 10.0, "is_dynamic": True},
 ]
 
 HULL_SIZE_NAMES = [hs.name for hs in HullSize]
@@ -61,5 +62,6 @@ COMPONENT_DESCRIPTIONS = {
     "has_crystal_refinery_component": "Crystal Refinery<br><br>Refines raw crystal into energy matrix components.",
     "has_cloaking_device": "Cloaking Device<br><br>Hides units from enemy long-range (inter-sector) sensors when activated.<br><br>• <b>Basic</b> (10 Hull, 5 AM/turn): Single-ship personal stealth.<br>• <b>Advanced</b> (30 Hull, 20 AM/turn): Area stealth field hiding friendly units within 500 radius.<br><br>Short-range sensors still detect units normally.",
     "has_inhibitor": "Inhibitor Field<br><br>Generates a hyperspace inhibition zone around the unit, preventing hyperdrive jumps into or out of the field. Consumes antimatter per turn while active scaled by field radius. Auto-deactivates if antimatter runs dry.",
+    "has_intelligence_component": "Intelligence & Sabotage<br><br>Enables deploying invisible agents onto enemy units and colonized worlds in range (500 units).<br><br>• <b>Sensor Intel:</b> Reveals sensor vision of infiltrated units/colonies.<br>• <b>Sabotage:</b> Sabotages unit systems (Engines, Weapons, Defenses, Hyperdrive, Sensors, Antimatter) or planetary economic output/growth.<br>• <b>Counter-Intelligence:</b> Discovers and eliminates enemy agents lurking on friendly units and colonies within range.",
 }
 

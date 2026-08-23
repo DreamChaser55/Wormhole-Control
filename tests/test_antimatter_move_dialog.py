@@ -51,7 +51,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
 
     def test_calculate_required_antimatter_sublight(self):
         """Test calculation of antimatter for sub-light movement within same hex."""
-        # Moving from (0,0) to (300,300) -> distance ~424.26, speed 100 -> 5 turns -> 5 * 1.0 = 5.0 AM
+        # Moving from (0,0) to (300,300) -> distance ~424.26, speed 100 -> 5 turns -> 5 * 2.0 = 10.0 AM
         cost = calculate_required_antimatter(
             self.unit,
             self.game.galaxy,
@@ -59,7 +59,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
             destination_hex_coord=HexCoord(0, 0),
             destination_position=Position(300.0, 300.0)
         )
-        self.assertEqual(cost, 5.0)
+        self.assertEqual(cost, 10.0)
 
     def test_calculate_required_antimatter_hex_jump(self):
         """Test calculation of antimatter for single hex jump."""

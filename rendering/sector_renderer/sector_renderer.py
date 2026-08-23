@@ -358,7 +358,7 @@ class SectorViewRenderer:
                     and len(self.game.selected_objects) == 1
                     and obj in self.game.selected_objects):
                 current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
-                if current_turn_player and obj.owner == current_turn_player:
+                if current_turn_player and (obj.owner == current_turn_player or (hasattr(obj, 'has_infiltrating_agent_from') and obj.has_infiltrating_agent_from(current_turn_player))):
                     self._draw_unit_range_circles(obj, obj_pixel_pos, dynamic_radius)
 
             # Move/Jump order lines

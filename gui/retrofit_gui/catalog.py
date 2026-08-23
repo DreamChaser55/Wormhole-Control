@@ -18,7 +18,7 @@ from unit_components import (
     ColonyComponent, CivilianHabitatComponent, OrbitalDefenseComponent,
     TradeComponent, HyperspaceInhibitionFieldEmitter, MinelayerComponent,
     MarinesComponent, CloakingDevice, AbilityComponent, Constructor,
-    TurretType, TurretVariant, AbilityType
+    IntelligenceComponent, TurretType, TurretVariant, AbilityType
 )
 
 # List of mountable component definitions for Retrofit Wizard
@@ -187,6 +187,13 @@ RETROFIT_COMPONENTS: List[Dict[str, Any]] = [
         "comp_cls": Constructor,
         "is_dynamic": False,
         "description": "Enables construction of orbital installations, starbases, and field refitting of friendly starships.",
+    },
+    {
+        "comp_key": "IntelligenceComponent",
+        "display_name": "Intelligence Suite",
+        "comp_cls": IntelligenceComponent,
+        "is_dynamic": True,
+        "description": "Deploys covert operatives onto enemy ships and colonized worlds for sensor vision, sabotage, and counter-intelligence protection.",
     },
 ]
 

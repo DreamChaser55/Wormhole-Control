@@ -54,6 +54,9 @@ from unit_components import (
     Sensors,
     MinefieldType,
     MarinesComponent,
+    IntelligenceComponent,
+    Agent,
+    SabotageType,
 )
 from unit_components.cloaking import CloakingDevice
 
@@ -104,13 +107,65 @@ class GameObject:
     def __repr__(self):
         return f"{self.__class__.__name__}(ID:{self.id}, Pos:{self.position}, Hex:{self.in_hex}, System:{self.in_system})"
 
-# --- GameObject-derived Class: CelestialBody ---
+def _normalize_sabotage_type(sabotage_type: typing.Union[str, SabotageType]) -> SabotageType:
+    """Helper to convert a string or SabotageType enum to a SabotageType instance safely."""
+    if isinstance(sabotage_type, SabotageType):
+        return sabotage_type
+    s_val = str(sabotage_type).strip()
+    try:
+        return SabotageType(s_val.lower())
+    except ValueError:
+        pass
+    try:
+        return SabotageType[s_val.upper()]
+    except KeyError:
+        pass
+    return SabotageType(s_val)
+
+
+# --- CelestialBody-derived Class: CelestialBody ---
 
 class CelestialBody(GameObject):
     """Base class for fixed celestial objects like planets, stars."""
     def __init__(self, position: Position, in_hex: HexCoord, in_system: str, inhibition_field_radius: float = 0.0):
         super().__init__(position, in_hex, in_system)
         self.inhibition_field_radius = inhibition_field_radius
+        self.infiltrating_agents: typing.List[Agent] = []
+
+    def has_infiltrating_agent_from(self, player: Optional['Player']) -> bool:
+        """Returns True if this celestial body has an active agent belonging to the player."""
+        if not player or not hasattr(self, 'infiltrating_agents'):
+            return False
+        return any(a.owner == player for a in self.infiltrating_agents)
+
+    def get_infiltrating_agents_for_viewer(self, viewer: Optional['Player']) -> typing.List[Agent]:
+        """Returns infiltrating agents visible to the viewer."""
+        if not viewer or not hasattr(self, 'infiltrating_agents'):
+            return []
+        return [a for a in self.infiltrating_agents if a.owner == viewer or (a.is_discovered and getattr(self, 'owner', None) == viewer)]
+
+    def is_sabotaged(self, sabotage_type: typing.Union[str, SabotageType]) -> bool:
+        """Returns True if this body currently suffers from the specified sabotage."""
+        if not hasattr(self, 'infiltrating_agents'):
+            return False
+        target_type = _normalize_sabotage_type(sabotage_type)
+        return any(a.active_sabotage == target_type for a in self.infiltrating_agents)
+
+    def apply_sabotage(self, agent: Agent, sabotage_type: typing.Union[str, SabotageType]) -> bool:
+        """Applies a sabotage operation to this celestial body through an attached agent."""
+        target_type = _normalize_sabotage_type(sabotage_type)
+        if agent in getattr(self, 'infiltrating_agents', []):
+            agent.active_sabotage = target_type
+            logger.debug(f"Applied sabotage {target_type.name} to {self.name} via Agent {agent.id}.")
+            return True
+        return False
+
+    def remove_agent(self, agent: Agent) -> bool:
+        """Removes an agent from this celestial body."""
+        if hasattr(self, 'infiltrating_agents') and agent in self.infiltrating_agents:
+            self.infiltrating_agents.remove(agent)
+            return True
+        return False
 
     def get_supported_habitat_capacity(self) -> int:
         """Returns the maximum number of civilian habitat modules this body can support based on population."""
@@ -161,6 +216,8 @@ class Planet(CelestialBody):
         self.planet_type = planet_type
 
     def update_population(self):
+        if self.is_sabotaged(SabotageType.GROWTH):
+            return
         if self.owner and self.population < self.max_population:
             self.population += self.population * self.population_growth_rate
             if self.population > self.max_population:
@@ -178,6 +235,8 @@ class Moon(CelestialBody):
         self.population_growth_rate: float = 0.01
 
     def update_population(self):
+        if self.is_sabotaged(SabotageType.GROWTH):
+            return
         if self.owner and self.population < self.max_population:
             self.population += self.population * self.population_growth_rate
             if self.population > self.max_population:
@@ -195,6 +254,8 @@ class ColonizableAsteroid(CelestialBody):
         self.population_growth_rate: float = 0.005
 
     def update_population(self):
+        if self.is_sabotaged(SabotageType.GROWTH):
+            return
         if self.owner and self.population < self.max_population:
             self.population += self.population * self.population_growth_rate
             if self.population > self.max_population:
@@ -365,6 +426,7 @@ class Unit(GameObject):
         self.experience_points: int = 0
 
         self.template_name: typing.Optional[str] = template_name
+        self.infiltrating_agents: typing.List[Agent] = []
 
         # Every unit has a commander component by default
         self.add_component(Commander(unit=self))
@@ -476,8 +538,59 @@ class Unit(GameObject):
         return self.get_component(CloakingDevice)
 
     @property
+    def intelligence_component(self) -> typing.Optional[IntelligenceComponent]:
+        return self.get_component(IntelligenceComponent)
+
+    @property
     def commander_component(self) -> Commander:
         return self.get_component(Commander)
+
+    def has_infiltrating_agent_from(self, player: Optional['Player']) -> bool:
+        """Returns True if this unit has an active agent belonging to the player."""
+        if not player or not hasattr(self, 'infiltrating_agents'):
+            return False
+        return any(a.owner == player for a in self.infiltrating_agents)
+
+    def get_infiltrating_agents_for_viewer(self, viewer: Optional['Player']) -> typing.List[Agent]:
+        """Returns infiltrating agents visible to the viewer."""
+        if not viewer or not hasattr(self, 'infiltrating_agents'):
+            return []
+        return [a for a in self.infiltrating_agents if a.owner == viewer or (a.is_discovered and self.owner == viewer)]
+
+    def is_sabotaged(self, sabotage_type: typing.Union[str, SabotageType]) -> bool:
+        """Returns True if this unit currently suffers from the specified sabotage."""
+        if not hasattr(self, 'infiltrating_agents'):
+            return False
+        target_type = _normalize_sabotage_type(sabotage_type)
+        return any(a.active_sabotage == target_type for a in self.infiltrating_agents)
+
+    def apply_sabotage(self, agent: Agent, sabotage_type: typing.Union[str, SabotageType]) -> bool:
+        """Applies a sabotage operation to this unit through an attached agent."""
+        target_type = _normalize_sabotage_type(sabotage_type)
+        if agent in getattr(self, 'infiltrating_agents', []):
+            agent.active_sabotage = target_type
+            logger.debug(f"Applied sabotage {target_type.name} to {self.name} via Agent {agent.id}.")
+            if target_type == SabotageType.ANTIMATTER:
+                am_comp = self.antimatter_component
+                if am_comp and am_comp.current_amount > 0:
+                    drained = am_comp.current_amount * 0.5
+                    am_comp.consume(drained)
+                    logger.debug(f"Antimatter sabotage drained {drained:.1f} AM from {self.name}.")
+            elif target_type == SabotageType.HYPERDRIVE:
+                hd = self.hyperdrive_component
+                if hd:
+                    from unit_components import JumpStatus
+                    hd.jump_status = JumpStatus.CHARGING
+                    hd.recharge_time_remaining = max(hd.recharge_time_remaining, 3)
+            return True
+        return False
+
+    def remove_agent(self, agent: Agent) -> bool:
+        """Removes an agent from this unit."""
+        if hasattr(self, 'infiltrating_agents') and agent in self.infiltrating_agents:
+            self.infiltrating_agents.remove(agent)
+            return True
+        return False
 
     def gain_experience(self, amount: int) -> None:
         """Awards experience points to the unit, capped at MAX_UNIT_XP."""
@@ -534,7 +647,9 @@ class Unit(GameObject):
             defenses = self.get_component(Defenses)
             if defenses:
                 mitigation = defenses.calculate_mitigation(amount, damage_type)
-                amount = max(0, amount - mitigation)
+                if self.is_sabotaged(SabotageType.DEFENSES):
+                    mitigation *= 0.5
+                amount = max(0, int(round(amount - mitigation)))
                 logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} damage. Remaining damage: {amount}")
 
         if self.damage_reduction > 0.0:
@@ -557,7 +672,9 @@ class Unit(GameObject):
             defenses = self.get_component(Defenses)
             if defenses:
                 mitigation = defenses.calculate_mitigation(amount, damage_type)
-                amount = max(0, amount - mitigation)
+                if self.is_sabotaged(SabotageType.DEFENSES):
+                    mitigation *= 0.5
+                amount = max(0, int(round(amount - mitigation)))
                 logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} component damage. Remaining damage: {amount}")
 
         component = self.get_component(component_type)

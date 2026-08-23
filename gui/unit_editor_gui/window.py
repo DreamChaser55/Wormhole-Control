@@ -269,6 +269,10 @@ class UnitEditorWindow:
         """Reads cloaking radius from UI input field and updates component configuration."""
         param_readers.read_cloaking_params(self)
 
+    def _read_intelligence_params(self) -> None:
+        """Reads agent capacity from UI input field and updates component configuration."""
+        param_readers.read_intelligence_params(self)
+
 
     def _current_hull_used(self) -> float:
         """Computes total hull points consumed by active/enabled components."""

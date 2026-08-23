@@ -199,7 +199,21 @@ def build_col3_details(
         editor._lbl_clk_r, editor._cloaking_radius_entry,
     ])
 
-    # --- 14. Fixed & Info-only Components ---
+    # --- 14. Intelligence ---
+    y_intel = c3y_base
+    lbl_intel_cnt = make_label(pygame.Rect(c3x, y_intel, c3w, small_h), "Agent Capacity:", mgr, pan)
+    editor._intel_agents_entry = make_entry(pygame.Rect(c3x, y_intel + small_h + 2, c3w, entry_h), str(int(getattr(editor._comp, "intelligence_agents_count", 1))), mgr, pan)
+    y_intel += small_h + entry_h + pad + 2
+    editor._intel_ci_btn = make_button(
+        pygame.Rect(c3x, y_intel, c3w, btn_h),
+        "[x] Counter-Intelligence" if getattr(editor._comp, "has_counter_intelligence", False) else "[ ] Counter-Intelligence",
+        mgr, pan, "#ability_toggle_button"
+    )
+    editor._details_groups["has_intelligence_component"].extend([
+        lbl_intel_cnt, editor._intel_agents_entry, editor._intel_ci_btn,
+    ])
+
+    # --- 15. Fixed & Info-only Components ---
     for comp_key, desc in COMPONENT_DESCRIPTIONS.items():
         if comp_key in editor._details_groups and not editor._details_groups[comp_key]:
             box = pygame_gui.elements.UITextBox(

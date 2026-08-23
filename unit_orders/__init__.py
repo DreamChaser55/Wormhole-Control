@@ -13,6 +13,15 @@ from .abilities import UseAbilityOrder
 from .minelayer import LayMinefieldOrder
 from .refit import RefitOrder
 from .trade import TradeOrder, ContinuousTradeOrder
+from .intelligence import (
+    InfiltrateUnitOrder,
+    InfiltratePlanetOrder,
+    RelocateAgentOrder,
+    SabotageOrder,
+    CISweepOrder,
+    EliminateAgentOrder,
+    ExtractAgentOrder,
+)
 
 __all__ = [
     "OrderStatus",
@@ -42,5 +51,12 @@ __all__ = [
     "LayMinefieldOrder",
     "TradeOrder",
     "ContinuousTradeOrder",
+    "InfiltrateUnitOrder",
+    "InfiltratePlanetOrder",
+    "RelocateAgentOrder",
+    "SabotageOrder",
+    "CISweepOrder",
+    "EliminateAgentOrder",
+    "ExtractAgentOrder",
 ]
 

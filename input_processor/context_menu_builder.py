@@ -120,7 +120,11 @@ def get_ability_context_options(game, actors: typing.List[Unit], target_is_unit:
     Returns:
         list of (action_id, display_label) tuples for valid abilities.
     """
-    current_player = game.players[game.current_player_index]
+    current_player = (
+        game.players[game.current_player_index]
+        if getattr(game, 'players', None) and 0 <= getattr(game, 'current_player_index', 0) < len(game.players)
+        else getattr(game, 'current_player', None)
+    )
     player_actors = [a for a in actors if a.owner == current_player]
     if not player_actors:
         return []
@@ -192,6 +196,11 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
     target_coords = target if isinstance(target, Position) else None
 
     actors = [a for a in game.selected_objects if isinstance(a, Unit)]
+    current_player = (
+        game.players[game.current_player_index]
+        if getattr(game, 'players', None) and 0 <= getattr(game, 'current_player_index', 0) < len(game.players)
+        else getattr(game, 'current_player', None)
+    )
 
     if any(actors):
         if target_coords is not None:
@@ -202,6 +211,9 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
             ability_options = get_ability_context_options(game, actors, target_is_unit=False)
             if ability_options:
                 options.append(("Use Ability", ability_options))
+
+            if any(getattr(a, 'intelligence_component', None) and a.intelligence_component.has_counter_intelligence for a in actors):
+                options.append(("Counter-Intelligence Sweep", "ci_sweep"))
 
             for actor in actors:
                 if actor.constructor_component:
@@ -229,6 +241,41 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                             options.append(("Attack Weapons", "attack_unit_Weapons"))
                         if target_object.inhibitor_component:
                             options.append(("Attack Inhibitor", "attack_unit_HyperspaceInhibitionFieldEmitter"))
+
+                    has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
+                    if has_intel_actors:
+                        options.append(("Infiltrate Unit", "infiltrate_unit"))
+
+                    if hasattr(target_object, 'has_infiltrating_agent_from') and target_object.has_infiltrating_agent_from(current_player):
+                        agent = next((ag for ag in getattr(target_object, 'infiltrating_agents', []) if ag.owner == current_player), None)
+                        if agent:
+                            sab_options = [
+                                ("Sabotage Engines (-50% Speed)", f"sabotage_{agent.id}_ENGINES"),
+                                ("Sabotage Weapons (-50% Damage)", f"sabotage_{agent.id}_WEAPONS"),
+                                ("Sabotage Defenses (-50% Mitigation)", f"sabotage_{agent.id}_DEFENSES"),
+                                ("Sabotage Hyperdrive (+3 Recharge Turns)", f"sabotage_{agent.id}_HYPERDRIVE"),
+                                ("Sabotage Sensors (-50% Short, 0 Long)", f"sabotage_{agent.id}_SENSORS"),
+                                ("Sabotage Antimatter (-50% Stored AM)", f"sabotage_{agent.id}_ANTIMATTER"),
+                            ]
+                            options.append(("Sabotage Systems", sab_options))
+
+                            # Relocate options
+                            relocate_options = []
+                            cur_sys = game.galaxy.systems.get(game.current_system_name)
+                            if cur_sys:
+                                hex_obj = cur_sys.hexes.get(game.current_sector_coord)
+                                if hex_obj:
+                                    for dest_u in hex_obj.units:
+                                        if dest_u.id != target_object.id and dest_u.owner != current_player:
+                                            relocate_options.append((f"To {dest_u.name}", f"relocate_{agent.id}_unit_{dest_u.id}"))
+                                    for dest_b in hex_obj.celestial_bodies:
+                                        if getattr(dest_b, 'owner', None) and dest_b.owner != current_player:
+                                            relocate_options.append((f"To {dest_b.name}", f"relocate_{agent.id}_planet_{dest_b.id}"))
+                            if relocate_options:
+                                options.append(("Relocate Agent", relocate_options))
+
+                            options.append(("Extract Agent", f"extract_agent_{agent.id}"))
+
                 elif any(target_object.owner == a.owner for a in actors) and target_object not in actors:
                     options.append(("Protect", "protect_unit"))
                     target_is_damaged = (
@@ -280,6 +327,14 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                         options.append(("Trade", "trade"))
                         options.append(("Trade (continuously)", "continuous_trade"))
 
+                    has_ci_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.has_counter_intelligence for a in actors)
+                    if has_ci_actors:
+                        options.append(("Counter-Intelligence Sweep", "ci_sweep"))
+                        if hasattr(target_object, 'infiltrating_agents'):
+                            for ag in target_object.infiltrating_agents:
+                                if ag.is_discovered and ag.owner != current_player:
+                                    options.append((f"Eliminate Enemy Agent ({ag.owner.name})", f"eliminate_agent_{ag.id}"))
+
                 ability_options = get_ability_context_options(game, actors, target_is_unit=True)
                 if ability_options:
                     options.append(("Use Ability", ability_options))
@@ -299,6 +354,46 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                         options.append(("Colonize", "colonize"))
                     if unit.colony_component and target_object.owner == unit.owner and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
                         options.append(("Load Colonists", "load_colonists"))
+            if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
+                if target_object.owner and target_object.owner != current_player:
+                    has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
+                    if has_intel_actors:
+                        options.append(("Infiltrate Colony", "infiltrate_planet"))
+
+                    if hasattr(target_object, 'has_infiltrating_agent_from') and target_object.has_infiltrating_agent_from(current_player):
+                        agent = next((ag for ag in getattr(target_object, 'infiltrating_agents', []) if ag.owner == current_player), None)
+                        if agent:
+                            col_sab_options = [
+                                ("Sabotage Economy (-50% Tax, +25% Siphon)", f"sabotage_{agent.id}_ECONOMY"),
+                                ("Sabotage Growth (Halt Pop Growth)", f"sabotage_{agent.id}_GROWTH"),
+                            ]
+                            options.append(("Sabotage Colony", col_sab_options))
+
+                            # Relocate options
+                            relocate_options = []
+                            cur_sys = game.galaxy.systems.get(game.current_system_name)
+                            if cur_sys:
+                                hex_obj = cur_sys.hexes.get(game.current_sector_coord)
+                                if hex_obj:
+                                    for dest_u in hex_obj.units:
+                                        if dest_u.owner != current_player:
+                                            relocate_options.append((f"To {dest_u.name}", f"relocate_{agent.id}_unit_{dest_u.id}"))
+                                    for dest_b in hex_obj.celestial_bodies:
+                                        if dest_b.id != target_object.id and getattr(dest_b, 'owner', None) and dest_b.owner != current_player:
+                                            relocate_options.append((f"To {dest_b.name}", f"relocate_{agent.id}_planet_{dest_b.id}"))
+                            if relocate_options:
+                                options.append(("Relocate Agent", relocate_options))
+
+                            options.append(("Extract Agent", f"extract_agent_{agent.id}"))
+                elif target_object.owner == current_player:
+                    has_ci_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.has_counter_intelligence for a in actors)
+                    if has_ci_actors:
+                        options.append(("Counter-Intelligence Sweep", "ci_sweep"))
+                        if hasattr(target_object, 'infiltrating_agents'):
+                            for ag in target_object.infiltrating_agents:
+                                if ag.is_discovered and ag.owner != current_player:
+                                    options.append((f"Eliminate Enemy Agent ({ag.owner.name})", f"eliminate_agent_{ag.id}"))
+
             if isinstance(target_object, (MetalAsteroid, AsteroidField, Comet)) and any(getattr(a, 'mining_component', None) for a in actors):
                 options.append(("Mine", "mine"))
                 options.append(("Mine (continuously)", "continuous_mine"))

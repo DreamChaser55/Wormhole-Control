@@ -123,6 +123,13 @@ class Game:
         self.zoom_anchor_pixel = None
         self.zoom_anchor_logical = None
 
+    @property
+    def current_player(self) -> typing.Optional[Player]:
+        """Returns the currently active Player object, or None if players list is empty."""
+        if self.players and 0 <= self.current_player_index < len(self.players):
+            return self.players[self.current_player_index]
+        return None
+
     def reset_sector_camera(self):
         """Resets the sector camera zoom and pan offset."""
         game_camera.reset_sector_camera(self)

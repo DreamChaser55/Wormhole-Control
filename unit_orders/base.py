@@ -48,6 +48,13 @@ class OrderType(Enum):
     REFIT_UNIT = auto()          # Refit a friendly unit (add/remove components) using a Constructor unit
     TRADE = auto()               # Travel to an active Civilian Habitat and execute trade
     CONTINUOUS_TRADE = auto()    # Continuously trade between active Civilian Habitats in different sectors
+    INFILTRATE_UNIT = auto()     # Place an agent on an enemy unit in range
+    INFILTRATE_PLANET = auto()   # Place an agent on an enemy colonized celestial body in range
+    RELOCATE_AGENT = auto()      # Move an agent from an infiltrated target to another enemy target in range
+    SABOTAGE = auto()            # Sabotage a system or economic output of the infiltrated target
+    CI_SWEEP = auto()            # Counter-intelligence scan on friendly units/planets in range to discover agents
+    ELIMINATE_AGENT = auto()     # Eliminate a discovered enemy agent on a friendly unit/planet in range
+    EXTRACT_AGENT = auto()       # Extract an agent back to a friendly unit with intelligence capacity
 
 
 

@@ -116,7 +116,11 @@ class TurnProcessor:
 
                 elif unit.engines_component and unit.engines_component.move_target:
                     from custom_unit_templates import get_sublight_antimatter_cost_per_turn
-                    effective_speed = unit.engines_component.speed * unit.xp_multiplier(XP_SPEED_BONUS)
+                    raw_eff = getattr(unit.engines_component, 'effective_speed', None)
+                    if isinstance(raw_eff, (int, float)):
+                        effective_speed = float(raw_eff)
+                    else:
+                        effective_speed = float(getattr(unit.engines_component, 'speed', 100.0))
                     sublight_cost = get_sublight_antimatter_cost_per_turn(unit.hull_size, effective_speed)
 
                     # Engines consume antimatter per turn while moving
@@ -384,12 +388,29 @@ class TurnProcessor:
     def _process_resource_generation(self, current_player):
         total_credits_generated = 0
         habitat_credits_generated = 0
+        siphon_credits_generated = 0
+        from unit_components.enums import SabotageType
         for system in self.game.galaxy.systems.values():
             for hexcoord, body in system.get_all_celestial_bodies():
-                if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and body.owner == current_player:
-                    credits_generated = body.population * TAX_RATE
-                    current_player.credits += credits_generated
-                    total_credits_generated += credits_generated
+                if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
+                    base_tax = body.population * TAX_RATE
+                    if body.owner == current_player:
+                        is_sab = False
+                        if getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list) and len(body.infiltrating_agents) > 0:
+                            if hasattr(body, 'is_sabotaged') and callable(body.is_sabotaged):
+                                is_sab = bool(body.is_sabotaged(SabotageType.ECONOMY))
+                        if is_sab:
+                            credits_generated = base_tax * 0.5
+                        else:
+                            credits_generated = base_tax
+                        current_player.credits += credits_generated
+                        total_credits_generated += credits_generated
+                    else:
+                        if getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list):
+                            if any(getattr(a, 'owner', None) == current_player and getattr(a, 'active_sabotage', None) == SabotageType.ECONOMY for a in body.infiltrating_agents):
+                                siphoned = base_tax * 0.25
+                                current_player.credits += siphoned
+                                siphon_credits_generated += siphoned
 
             for unit, _ in system.get_all_units():
                 if unit.owner == current_player:
@@ -402,6 +423,8 @@ class TurnProcessor:
 
         if total_credits_generated > 0:
             logger.debug(f"  {current_player.name} generated {total_credits_generated:.2f} credits from taxes.")
+        if siphon_credits_generated > 0:
+            logger.debug(f"  {current_player.name} siphoned {siphon_credits_generated:.2f} credits from infiltrated colonies.")
         if habitat_credits_generated > 0:
             logger.debug(f"  {current_player.name} generated {habitat_credits_generated:.2f} credits from civilian habitat bonuses.")
 
@@ -434,11 +457,36 @@ class TurnProcessor:
 
     def _process_unit_updates(self, current_player):
         if current_player:
+            import random
+            from geometry import distance
             for system_name, system_obj in self.game.galaxy.systems.items():
                 all_units_in_system_for_final_update = system_obj.get_all_units()[:]
-                for unit, _ in all_units_in_system_for_final_update:
+                for unit, u_hex in all_units_in_system_for_final_update:
                     if unit.owner == current_player:
                         unit.update()
+
+                        # Passive Counter-Intelligence Sweep check
+                        intel_comp = getattr(unit, 'intelligence_component', None)
+                        if intel_comp and intel_comp.has_counter_intelligence and not intel_comp.is_destroyed:
+                            # Check friendly units and colonies in same system and hex within 500 units
+                            current_hex_obj = system_obj.hexes.get(u_hex)
+                            if current_hex_obj:
+                                for target_u in current_hex_obj.units:
+                                    if target_u.owner == current_player and hasattr(target_u, 'infiltrating_agents'):
+                                        if distance(unit.position, target_u.position) <= 500.0:
+                                            for agent in target_u.infiltrating_agents:
+                                                if agent.owner != current_player and not agent.is_discovered:
+                                                    if random.random() < 0.30:
+                                                        agent.is_discovered = True
+                                                        logger.info(f"Counter-Intelligence on {unit.name} discovered enemy agent on {target_u.name}!")
+                                for body in current_hex_obj.celestial_bodies:
+                                    if getattr(body, 'owner', None) == current_player and hasattr(body, 'infiltrating_agents'):
+                                        if distance(unit.position, body.position) <= 500.0:
+                                            for agent in body.infiltrating_agents:
+                                                if agent.owner != current_player and not agent.is_discovered:
+                                                    if random.random() < 0.30:
+                                                        agent.is_discovered = True
+                                                        logger.info(f"Counter-Intelligence on {unit.name} discovered enemy agent on {body.name}!")
 
     def _process_minefield_detonations(self):
         """Checks all units across all systems for contact with enemy minefields."""

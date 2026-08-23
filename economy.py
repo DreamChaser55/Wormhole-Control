@@ -17,10 +17,24 @@ def calculate_player_income(galaxy: typing.Any, player: Player) -> float:
     """
     total_income = 0.0
     if galaxy:
+        from unit_components.enums import SabotageType
         for system in galaxy.systems.values():
             for hexcoord, body in system.get_all_celestial_bodies():
-                if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and getattr(body, 'owner', None) == player:
-                    total_income += getattr(body, 'population', 0.0) * TAX_RATE
+                if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
+                    base_tax = getattr(body, 'population', 0.0) * TAX_RATE
+                    if getattr(body, 'owner', None) == player:
+                        is_sab = False
+                        if getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list) and len(body.infiltrating_agents) > 0:
+                            if hasattr(body, 'is_sabotaged') and callable(body.is_sabotaged):
+                                is_sab = bool(body.is_sabotaged(SabotageType.ECONOMY))
+                        if is_sab:
+                            total_income += base_tax * 0.5
+                        else:
+                            total_income += base_tax
+                    else:
+                        if getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list):
+                            if any(getattr(a, 'owner', None) == player and getattr(a, 'active_sabotage', None) == SabotageType.ECONOMY for a in body.infiltrating_agents):
+                                total_income += base_tax * 0.25
 
             for unit, _ in system.get_all_units():
                 if getattr(unit, 'owner', None) == player:

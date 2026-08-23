@@ -98,6 +98,12 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
         editor._marines_count_entry.set_text(str(int(editor._comp.marines_count)))
     if getattr(editor, '_cloaking_radius_entry', None):
         editor._cloaking_radius_entry.set_text(str(int(getattr(editor._comp, "cloaking_radius", 500))))
+    if getattr(editor, '_intel_agents_entry', None):
+        editor._intel_agents_entry.set_text(str(int(getattr(editor._comp, "intelligence_agents_count", 1))))
+    if getattr(editor, '_intel_ci_btn', None):
+        editor._intel_ci_btn.set_text(
+            "[x] Counter-Intelligence" if getattr(editor._comp, "has_counter_intelligence", False) else "[ ] Counter-Intelligence"
+        )
 
     # Rebuild hull dropdown selection
     if editor._hull_dropdown:
@@ -206,6 +212,7 @@ def _collect_and_validate_template(
     editor._read_inhibitor_params()
     editor._read_marines_params()
     editor._read_cloaking_params()
+    editor._read_intelligence_params()
     editor._comp.turrets = editor._turrets
     editor._comp.abilities = list(editor._selected_abilities)
 

@@ -10,6 +10,7 @@ from .enums import (
     WingType,
     AbilityType,
     MinefieldType,
+    SabotageType,
 )
 from .base import UnitComponent
 from .antimatter import AntimatterStorage, AntimatterHarvester
@@ -41,6 +42,7 @@ from .marines import MarinesComponent
 from .civilian_habitat import CivilianHabitatComponent
 from .orbital_defense import OrbitalDefenseComponent
 from .trade import TradeComponent
+from .intelligence import IntelligenceComponent, Agent
 
 __all__ = [
     "HyperdriveType",
@@ -52,6 +54,7 @@ __all__ = [
     "WingType",
     "AbilityType",
     "MinefieldType",
+    "SabotageType",
     "UnitComponent",
     "AntimatterStorage",
     "AntimatterHarvester",
@@ -88,6 +91,8 @@ __all__ = [
     "MinelayerComponent",
     "MarinesComponent",
     "CloakingDevice",
+    "IntelligenceComponent",
+    "Agent",
     "random",
 ]
 

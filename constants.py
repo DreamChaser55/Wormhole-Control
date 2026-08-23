@@ -108,10 +108,10 @@ DEFAULT_ANTIMATTER_CAPACITY: float = 100.0
 MIN_ANTIMATTER_CAPACITY: float = 100.0
 DEFAULT_ANTIMATTER_REGEN: float = 10.0
 ANTIMATTER_CAPACITY_PER_HULL_POINT: float = 20.0
-ENGINE_ANTIMATTER_COST_PER_TURN: float = 1.0
+ENGINE_ANTIMATTER_COST_PER_TURN: float = 2.0
 BASELINE_ENGINE_SPEED: float = 100.0
-HYPERDRIVE_SYSTEM_JUMP_COST: float = 40.0
-HYPERDRIVE_HEX_JUMP_COST: float = 15.0
+HYPERDRIVE_SYSTEM_JUMP_COST: float = 50.0
+HYPERDRIVE_HEX_JUMP_COST: float = 20.0
 
 # Dynamic Component Tuning Constants
 HANGAR_HULL_COST_PER_SLOT: float = 10.0
@@ -154,7 +154,7 @@ DEFAULT_SENSOR_LONG_RANGE_HEXES: int = 1       # default ring count for a long-r
 CLOAKING_BASIC_HULL_COST: float = 10.0            # Hull cost for Basic (single-unit) cloak
 CLOAKING_ADVANCED_HULL_COST: float = 30.0         # Baseline hull cost for Advanced (area) cloak at default radius
 CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN: float = 5.0  # Antimatter per turn for Basic cloak
-CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN: float = 10.0  # Baseline antimatter per turn for Advanced cloak at default radius
+CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN: float = 20.0  # Baseline antimatter per turn for Advanced cloak at default radius
 DEFAULT_ADVANCED_CLOAKING_RADIUS: float = 500.0   # Logical radius for Advanced area cloaking
 CLOAKING_ADVANCED_RADIUS_PER_HULL_POINT: float = DEFAULT_ADVANCED_CLOAKING_RADIUS / CLOAKING_ADVANCED_HULL_COST  # ~16.6667 radius units per hull point
 CLOAKING_ADVANCED_ANTIMATTER_COST_PER_RADIUS: float = CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN / DEFAULT_ADVANCED_CLOAKING_RADIUS  # 0.04 AM per turn per radius unit

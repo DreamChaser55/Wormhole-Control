@@ -38,16 +38,24 @@ class VisibilityService:
             for hex_coord, hex_obj in system.hexes.items():
                 for unit in hex_obj.units:
                     all_units.append(unit)
-                    if unit.owner == viewer:
+                    is_friendly = (unit.owner == viewer)
+                    is_infiltrated = hasattr(unit, 'has_infiltrating_agent_from') and unit.has_infiltrating_agent_from(viewer)
+                    
+                    if is_infiltrated:
+                        snapshot.visible_enemy_unit_ids.add(unit.id)
+
+                    if is_friendly or is_infiltrated:
                         sensors = getattr(unit, 'sensors_component', None)
                         if sensors and not sensors.is_destroyed:
-                            if sensors.has_short_range:
+                            sr_radius = getattr(sensors, 'effective_short_range_radius', sensors.short_range_radius)
+                            lr_hexes = getattr(sensors, 'effective_long_range_hexes', sensors.long_range_hexes)
+                            if sr_radius > 0:
                                 key = (system_name, hex_coord)
                                 if key not in short_range_by_hex:
                                     short_range_by_hex[key] = []
-                                short_range_by_hex[key].append((unit.position, sensors.short_range_radius))
-                            if sensors.has_long_range:
-                                covered_hexes = hexes_within_range(hex_coord, sensors.long_range_hexes)
+                                short_range_by_hex[key].append((unit.position, sr_radius))
+                            if lr_hexes > 0:
+                                covered_hexes = hexes_within_range(hex_coord, lr_hexes)
                                 for h in covered_hexes:
                                     if h in system.hexes:
                                         long_range_covered.add((system_name, h))
@@ -61,6 +69,14 @@ class VisibilityService:
                                 if cloak_key not in active_area_cloaks:
                                     active_area_cloaks[cloak_key] = []
                                 active_area_cloaks[cloak_key].append((unit.position, cloaking.area_radius))
+
+                for body in hex_obj.celestial_bodies:
+                    if hasattr(body, 'has_infiltrating_agent_from') and body.has_infiltrating_agent_from(viewer):
+                        key = (system_name, hex_coord)
+                        if key not in short_range_by_hex:
+                            short_range_by_hex[key] = []
+                        short_range_by_hex[key].append((body.position, 500.0))
+                        long_range_covered.add(key)
 
         current_turn = turn_number
         if current_turn == 1:

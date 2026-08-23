@@ -290,6 +290,11 @@ class SystemViewRenderer:
                         if unit in self.game.selected_objects:
                             pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, main_shape_points, 2)
 
+                    # Draw spy indicator if unit is infiltrated by current player
+                    current_viewer = getattr(self.game, 'current_player', None)
+                    if current_viewer and hasattr(unit, 'has_infiltrating_agent_from') and unit.has_infiltrating_agent_from(current_viewer):
+                        pygame.draw.circle(self.screen, (50, 220, 255), (int(unit_screen_x), int(unit_screen_y)), int(current_icon_base_size + 2), 1)
+
 
         # 3. Highlight Hovered Hex
 
@@ -390,7 +395,7 @@ class SystemViewRenderer:
                     sensors_comp = unit.sensors_component
                     if getattr(sensors_comp, 'is_destroyed', False):
                         continue
-                    sensor_range = getattr(sensors_comp, 'long_range_hexes', 0)
+                    sensor_range = getattr(sensors_comp, 'effective_long_range_hexes', getattr(sensors_comp, 'long_range_hexes', 0))
 
                     if sensor_range <= 0:
                         continue

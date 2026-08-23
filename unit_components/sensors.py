@@ -34,6 +34,22 @@ class Sensors(UnitComponent):
     def has_long_range(self) -> bool:
         return self.long_range_hexes > 0
 
+    @property
+    def effective_short_range_radius(self) -> float:
+        if hasattr(self.unit, 'is_sabotaged'):
+            from .enums import SabotageType
+            if self.unit.is_sabotaged(SabotageType.SENSORS):
+                return self.short_range_radius * 0.5
+        return self.short_range_radius
+
+    @property
+    def effective_long_range_hexes(self) -> int:
+        if hasattr(self.unit, 'is_sabotaged'):
+            from .enums import SabotageType
+            if self.unit.is_sabotaged(SabotageType.SENSORS):
+                return 0
+        return self.long_range_hexes
+
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
         sr_text = f"Short Range: {int(self.short_range_radius)}" if self.has_short_range else "Short Range: None"

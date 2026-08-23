@@ -198,4 +198,35 @@ class SectorEntityRenderer:
         name_rect.midtop = (obj_pixel_pos.x, bottom_y + 4)
         self.screen.blit(name_surface, name_rect)
 
+        # Draw Infiltration / Discovered Spy Indicator Badges
+        current_viewer = getattr(self.game, 'current_player', None)
+        if current_viewer:
+            is_infiltrated_by_viewer = (hasattr(unit_obj, 'has_infiltrating_agent_from') and unit_obj.has_infiltrating_agent_from(current_viewer))
+            if is_infiltrated_by_viewer:
+                agent = next((ag for ag in getattr(unit_obj, 'infiltrating_agents', []) if ag.owner == current_viewer), None)
+                badge_text = f"[SABOTAGED: {agent.active_sabotage.name}]" if (agent and agent.active_sabotage) else "[INFILTRATED]"
+                badge_color = (255, 140, 40) if (agent and agent.active_sabotage) else (50, 220, 255)
+                badge_font_size = max(1, int(9 * TEXT_SCALE))
+                if badge_font_size not in self.parent._font_cache:
+                    self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
+                badge_font = self.parent._font_cache[badge_font_size]
+                badge_surf = badge_font.render(badge_text, True, badge_color)
+                badge_rect = badge_surf.get_rect()
+                badge_rect.midbottom = (obj_pixel_pos.x, obj_pixel_pos.y - current_icon_base_size_px - 4)
+                self.screen.blit(badge_surf, badge_rect)
+
+            elif unit_obj.owner == current_viewer and hasattr(unit_obj, 'infiltrating_agents'):
+                has_discovered = any(ag.is_discovered and ag.owner != current_viewer for ag in unit_obj.infiltrating_agents)
+                if has_discovered:
+                    badge_text = "[DISCOVERED SPY]"
+                    badge_color = (255, 100, 100)
+                    badge_font_size = max(1, int(9 * TEXT_SCALE))
+                    if badge_font_size not in self.parent._font_cache:
+                        self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
+                    badge_font = self.parent._font_cache[badge_font_size]
+                    badge_surf = badge_font.render(badge_text, True, badge_color)
+                    badge_rect = badge_surf.get_rect()
+                    badge_rect.midbottom = (obj_pixel_pos.x, obj_pixel_pos.y - current_icon_base_size_px - 4)
+                    self.screen.blit(badge_surf, badge_rect)
+
         return obj_radius_logical

@@ -83,3 +83,28 @@ class MinefieldType(Enum):
             return "Anti-Strikecraft"
         return self.name.replace("_", " ").title()
 
+
+class SabotageType(Enum):
+    ENGINES = "engines"
+    WEAPONS = "weapons"
+    DEFENSES = "defenses"
+    HYPERDRIVE = "hyperdrive"
+    SENSORS = "sensors"
+    ANTIMATTER = "antimatter"
+    ECONOMY = "economy"
+    GROWTH = "growth"
+
+    @property
+    def display_name(self) -> str:
+        names = {
+            SabotageType.ENGINES: "Sabotage Engines",
+            SabotageType.WEAPONS: "Sabotage Weapons",
+            SabotageType.DEFENSES: "Sabotage Defenses",
+            SabotageType.HYPERDRIVE: "Sabotage Hyperdrive",
+            SabotageType.SENSORS: "Sabotage Sensors",
+            SabotageType.ANTIMATTER: "Sabotage Antimatter",
+            SabotageType.ECONOMY: "Sabotage Economy",
+            SabotageType.GROWTH: "Sabotage Growth",
+        }
+        return names.get(self, self.name.replace("_", " ").title())
+

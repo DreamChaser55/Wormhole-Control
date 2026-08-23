@@ -204,3 +204,63 @@ class ContinuousTradeEvent(Event):
         self.target_unit = target_unit
         self.shift_pressed = shift_pressed
 
+
+class InfiltrateUnitEvent(Event):
+    """Fired when ordering intelligence units to infiltrate an enemy unit."""
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool = False):
+        self.units = units
+        self.target_unit = target_unit
+        self.shift_pressed = shift_pressed
+
+
+class InfiltratePlanetEvent(Event):
+    """Fired when ordering intelligence units to infiltrate a colonized celestial body."""
+    def __init__(self, units: list, target_body: typing.Any, target_system: str, target_hex: typing.Any, shift_pressed: bool = False):
+        self.units = units
+        self.target_body = target_body
+        self.target_system = target_system
+        self.target_hex = target_hex
+        self.shift_pressed = shift_pressed
+
+
+class RelocateAgentEvent(Event):
+    """Fired when relocating an agent to a new host target."""
+    def __init__(self, units: list, agent_id: int, target_type: str, destination_id: int, shift_pressed: bool = False):
+        self.units = units
+        self.agent_id = agent_id
+        self.target_type = target_type
+        self.destination_id = destination_id
+        self.shift_pressed = shift_pressed
+
+
+class SabotageEvent(Event):
+    """Fired when ordering an agent to sabotage a target."""
+    def __init__(self, units: list, agent_id: int, sabotage_type: str, shift_pressed: bool = False):
+        self.units = units
+        self.agent_id = agent_id
+        self.sabotage_type = sabotage_type
+        self.shift_pressed = shift_pressed
+
+
+class CISweepEvent(Event):
+    """Fired when ordering a Counter-Intelligence sweep."""
+    def __init__(self, units: list, shift_pressed: bool = False):
+        self.units = units
+        self.shift_pressed = shift_pressed
+
+
+class EliminateAgentEvent(Event):
+    """Fired when ordering counter-intelligence to eliminate a discovered enemy agent."""
+    def __init__(self, units: list, agent_id: int, shift_pressed: bool = False):
+        self.units = units
+        self.agent_id = agent_id
+        self.shift_pressed = shift_pressed
+
+
+class ExtractAgentEvent(Event):
+    """Fired when extracting an agent back into an intelligence vessel."""
+    def __init__(self, units: list, agent_id: int, shift_pressed: bool = False):
+        self.units = units
+        self.agent_id = agent_id
+        self.shift_pressed = shift_pressed
+

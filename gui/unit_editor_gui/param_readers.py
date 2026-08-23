@@ -142,3 +142,12 @@ def read_cloaking_params(editor) -> None:
     except ValueError:
         pass
 
+
+def read_intelligence_params(editor) -> None:
+    """Reads agent capacity from UI input field and updates component configuration."""
+    try:
+        count = int(editor._intel_agents_entry.get_text()) if getattr(editor, '_intel_agents_entry', None) else 1
+        editor._comp.intelligence_agents_count = max(1, count)
+    except ValueError:
+        pass
+

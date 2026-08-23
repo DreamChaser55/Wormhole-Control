@@ -5,13 +5,17 @@ from events import (
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, IssuePatrolOrderEvent, UseAbilityEvent,
     IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent,
-    LayMinefieldEvent, RefitUnitEvent, TradeEvent, ContinuousTradeEvent
+    LayMinefieldEvent, RefitUnitEvent, TradeEvent, ContinuousTradeEvent,
+    InfiltrateUnitEvent, InfiltratePlanetEvent, RelocateAgentEvent,
+    SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent
 )
 from unit_orders import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
     MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
     ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder, LayMinefieldOrder,
-    RefitOrder, TradeOrder, ContinuousTradeOrder, calculate_required_antimatter
+    RefitOrder, TradeOrder, ContinuousTradeOrder, calculate_required_antimatter,
+    InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder,
+    CISweepOrder, EliminateAgentOrder, ExtractAgentOrder
 )
 
 from sector_utils import random_point_in_sector
@@ -50,6 +54,13 @@ class OrderSystem:
         self.event_bus.subscribe(LayMinefieldEvent, self.handle_lay_minefield)
         self.event_bus.subscribe(TradeEvent, self.handle_trade)
         self.event_bus.subscribe(ContinuousTradeEvent, self.handle_continuous_trade)
+        self.event_bus.subscribe(InfiltrateUnitEvent, self.handle_infiltrate_unit)
+        self.event_bus.subscribe(InfiltratePlanetEvent, self.handle_infiltrate_planet)
+        self.event_bus.subscribe(RelocateAgentEvent, self.handle_relocate_agent)
+        self.event_bus.subscribe(SabotageEvent, self.handle_sabotage)
+        self.event_bus.subscribe(CISweepEvent, self.handle_ci_sweep)
+        self.event_bus.subscribe(EliminateAgentEvent, self.handle_eliminate_agent)
+        self.event_bus.subscribe(ExtractAgentEvent, self.handle_extract_agent)
 
     def validate_antimatter_for_unit(self, unit, dest_system, dest_hex, dest_pos=None) -> bool:
         galaxy_ref = getattr(self.game, 'galaxy', None)
@@ -515,7 +526,170 @@ class OrderSystem:
             logger.debug(f"  Unit {unit.name} ordered to continuous trade via event.")
         self.game.sidebar_needs_update = True
 
+    def handle_infiltrate_unit(self, event: InfiltrateUnitEvent):
+        """Creates InfiltrateUnitOrders for selected units with IntelligenceComponent."""
+        for unit in event.units:
+            intel_comp = getattr(unit, 'intelligence_component', None)
+            if not intel_comp:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks an Intelligence Suite and cannot deploy agents.",
+                        title="No Intelligence Suite"
+                    )
+                continue
+            if intel_comp.available_agents <= 0:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> has no remaining agents available to deploy.",
+                        title="No Agents Available"
+                    )
+                continue
+            order = InfiltrateUnitOrder(unit, {"target_unit_id": event.target_unit.id})
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(order)
+            logger.debug(f"  Unit {unit.name} ordered to infiltrate {event.target_unit.name} via event.")
 
+            # If already in range in the same sector, execute immediately to deploy agent in real time
+            if getattr(self.game, 'galaxy', None) and unit.in_system == event.target_unit.in_system and unit.in_hex == event.target_unit.in_hex:
+                from geometry import distance
+                from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
+                if distance(unit.position, event.target_unit.position) <= INTELLIGENCE_OPERATIONAL_RANGE:
+                    order.execute(self.game.galaxy)
+                    self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
+
+    def handle_infiltrate_planet(self, event: InfiltratePlanetEvent):
+        """Creates InfiltratePlanetOrders for selected units with IntelligenceComponent."""
+        for unit in event.units:
+            intel_comp = getattr(unit, 'intelligence_component', None)
+            if not intel_comp:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks an Intelligence Suite and cannot deploy agents.",
+                        title="No Intelligence Suite"
+                    )
+                continue
+            if intel_comp.available_agents <= 0:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> has no remaining agents available to deploy.",
+                        title="No Agents Available"
+                    )
+                continue
+            params = {
+                "target_body_id": getattr(event.target_body, 'id', None),
+                "target_body_name": getattr(event.target_body, 'name', None),
+                "system": event.target_system,
+                "hex": event.target_hex,
+            }
+            order = InfiltratePlanetOrder(unit, params)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(order)
+            logger.debug(f"  Unit {unit.name} ordered to infiltrate {getattr(event.target_body, 'name', 'colony')} via event.")
+
+            # If already in range in the same sector, execute immediately to deploy agent in real time
+            if getattr(self.game, 'galaxy', None) and unit.in_system == event.target_system and unit.in_hex == event.target_hex:
+                from geometry import distance
+                from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
+                if distance(unit.position, event.target_body.position) <= INTELLIGENCE_OPERATIONAL_RANGE:
+                    order.execute(self.game.galaxy)
+                    self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
+
+    def handle_relocate_agent(self, event: RelocateAgentEvent):
+        """Dispatches RelocateAgentOrder directly or to the agent's controlling unit."""
+        unit = event.units[0] if event.units else None
+        if not unit and getattr(self.game, 'current_player', None):
+            for u in self.game.current_player.units:
+                if getattr(u, 'intelligence_component', None):
+                    unit = u
+                    break
+        if unit and getattr(self.game, 'galaxy', None):
+            order = RelocateAgentOrder(unit, {
+                "agent_id": event.agent_id,
+                "target_type": event.target_type,
+                "destination_id": event.destination_id,
+            })
+            order.execute(self.game.galaxy)
+            self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
+
+    def handle_sabotage(self, event: SabotageEvent):
+        """Dispatches SabotageOrder for the specified agent."""
+        unit = event.units[0] if event.units else None
+        if not unit and getattr(self.game, 'current_player', None):
+            for u in self.game.current_player.units:
+                if getattr(u, 'intelligence_component', None):
+                    unit = u
+                    break
+        if unit and getattr(self.game, 'galaxy', None):
+            order = SabotageOrder(unit, {
+                "agent_id": event.agent_id,
+                "sabotage_type": event.sabotage_type,
+            })
+            order.execute(self.game.galaxy)
+            self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
+
+    def handle_ci_sweep(self, event: CISweepEvent):
+        """Dispatches CISweepOrder to selected Counter-Intelligence units."""
+        for unit in event.units:
+            intel_comp = getattr(unit, 'intelligence_component', None)
+            if not intel_comp or not intel_comp.has_counter_intelligence:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Counter-Intelligence Suite.",
+                        title="No Counter-Intelligence"
+                    )
+                continue
+            order = CISweepOrder(unit)
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(order)
+            logger.debug(f"  Unit {unit.name} ordered CI Sweep via event.")
+            if getattr(self.game, 'galaxy', None):
+                order.execute(self.game.galaxy)
+                self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
+
+    def handle_eliminate_agent(self, event: EliminateAgentEvent):
+        """Dispatches EliminateAgentOrder to selected Counter-Intelligence units."""
+        for unit in event.units:
+            intel_comp = getattr(unit, 'intelligence_component', None)
+            if not intel_comp or not intel_comp.has_counter_intelligence:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> lacks a Counter-Intelligence Suite.",
+                        title="No Counter-Intelligence"
+                    )
+                continue
+            order = EliminateAgentOrder(unit, {"agent_id": event.agent_id})
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(order)
+            logger.debug(f"  Unit {unit.name} ordered to eliminate Agent {event.agent_id} via event.")
+            if getattr(self.game, 'galaxy', None):
+                order.execute(self.game.galaxy)
+                self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
+
+    def handle_extract_agent(self, event: ExtractAgentEvent):
+        """Dispatches ExtractAgentOrder to extract an agent back into an intelligence vessel."""
+        for unit in event.units:
+            intel_comp = getattr(unit, 'intelligence_component', None)
+            if not intel_comp:
+                continue
+            order = ExtractAgentOrder(unit, {"agent_id": event.agent_id})
+            if not event.shift_pressed:
+                unit.commander_component.clear_orders()
+            unit.commander_component.add_order(order)
+            logger.debug(f"  Unit {unit.name} ordered to extract Agent {event.agent_id} via event.")
+            if getattr(self.game, 'galaxy', None):
+                order.execute(self.game.galaxy)
+                self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
 
 
 

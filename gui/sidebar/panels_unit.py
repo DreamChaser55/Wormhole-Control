@@ -45,6 +45,16 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
     owner_name_style_id = f'#player_{owner_name.lower().replace(" ", "_")}_label'
     data.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_name_style_id, 'height': 25})
 
+    if current_player and hasattr(unit, 'has_infiltrating_agent_from') and unit.has_infiltrating_agent_from(current_player):
+        agent = next((ag for ag in getattr(unit, 'infiltrating_agents', []) if ag.owner == current_player), None)
+        sab_txt = f" [SABOTAGE: {agent.active_sabotage.name}]" if (agent and agent.active_sabotage) else ""
+        data.append({
+            'type': 'label',
+            'text': f"👁 COVERT AGENT EMBEDDED{sab_txt}",
+            'object_id': '#sidebar_status_active_label',
+            'height': 24
+        })
+
     # --- Targeting Mode Banner (if active) ---
     pending = getattr(game, 'pending_ability', None)
     if pending and isinstance(pending, (tuple, list)) and len(pending) > 0 and isinstance(pending[0], str):
@@ -114,6 +124,16 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         if xp >= MAX_UNIT_XP:
             xp_text += " [Veteran]"
         data.append({'type': 'label', 'text': xp_text, 'object_id': '#sidebar_info_label', 'height': 20})
+
+        if current_player:
+            if hasattr(unit, 'has_infiltrating_agent_from') and unit.has_infiltrating_agent_from(current_player):
+                agent = next((ag for ag in getattr(unit, 'infiltrating_agents', []) if ag.owner == current_player), None)
+                sab_info = f" (Sabotage: {agent.active_sabotage.name})" if (agent and agent.active_sabotage) else ""
+                data.append({'type': 'label', 'text': f"• Infiltrated: Agent Active{sab_info}", 'object_id': '#sidebar_status_active_label', 'height': 20})
+            if is_owned and hasattr(unit, 'infiltrating_agents'):
+                for ag in unit.infiltrating_agents:
+                    if ag.is_discovered and ag.owner != current_player:
+                        data.append({'type': 'label', 'text': f"⚠ Discovered Enemy Agent ({ag.owner.name})", 'object_id': '#sidebar_status_charging_label', 'height': 20})
 
         # Summaries from all installed components
         data.append({'type': 'label', 'text': "Component Overview:", 'object_id': '#sidebar_section_header_label', 'height': 25})

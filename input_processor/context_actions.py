@@ -9,7 +9,9 @@ from events import (
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
     ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent, LayMinefieldEvent,
-    RefitUnitEvent, TradeEvent, ContinuousTradeEvent
+    RefitUnitEvent, TradeEvent, ContinuousTradeEvent,
+    InfiltrateUnitEvent, InfiltratePlanetEvent, RelocateAgentEvent,
+    SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent
 )
 
 logger = logging.getLogger(__name__)
@@ -289,6 +291,72 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                 target_position=target_position,
                 target_system_name=game.current_system_name,
                 target_hex_coord=game.current_sector_coord,
+                shift_pressed=shift_pressed,
+            ))
+
+        elif extracted_action_id == "infiltrate_unit":
+            if isinstance(target, Unit):
+                game.event_bus.publish(InfiltrateUnitEvent(
+                    units=selected_units,
+                    target_unit=target,
+                    shift_pressed=shift_pressed,
+                ))
+
+        elif extracted_action_id == "infiltrate_planet":
+            if isinstance(target, (Planet, Moon, ColonizableAsteroid)):
+                game.event_bus.publish(InfiltratePlanetEvent(
+                    units=selected_units,
+                    target_body=target,
+                    target_system=game.current_system_name,
+                    target_hex=game.current_sector_coord,
+                    shift_pressed=shift_pressed,
+                ))
+
+        elif extracted_action_id == "ci_sweep":
+            game.event_bus.publish(CISweepEvent(
+                units=selected_units,
+                shift_pressed=shift_pressed,
+            ))
+
+        elif extracted_action_id.startswith("sabotage_"):
+            parts = extracted_action_id.split("_")
+            if len(parts) >= 3:
+                agent_id = int(parts[1])
+                sab_type = "_".join(parts[2:])
+                game.event_bus.publish(SabotageEvent(
+                    units=selected_units,
+                    agent_id=agent_id,
+                    sabotage_type=sab_type,
+                    shift_pressed=shift_pressed,
+                ))
+
+        elif extracted_action_id.startswith("relocate_"):
+            parts = extracted_action_id.split("_")
+            if len(parts) >= 4:
+                agent_id = int(parts[1])
+                target_type = parts[2]  # "unit" or "planet"
+                dest_id = int(parts[3])
+                game.event_bus.publish(RelocateAgentEvent(
+                    units=selected_units,
+                    agent_id=agent_id,
+                    target_type=target_type,
+                    destination_id=dest_id,
+                    shift_pressed=shift_pressed,
+                ))
+
+        elif extracted_action_id.startswith("eliminate_agent_"):
+            agent_id = int(extracted_action_id[len("eliminate_agent_"):])
+            game.event_bus.publish(EliminateAgentEvent(
+                units=selected_units,
+                agent_id=agent_id,
+                shift_pressed=shift_pressed,
+            ))
+
+        elif extracted_action_id.startswith("extract_agent_"):
+            agent_id = int(extracted_action_id[len("extract_agent_"):])
+            game.event_bus.publish(ExtractAgentEvent(
+                units=selected_units,
+                agent_id=agent_id,
                 shift_pressed=shift_pressed,
             ))
 
