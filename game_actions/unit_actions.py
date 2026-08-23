@@ -325,6 +325,30 @@ def handle_toggle_cloaking(game, action: dict) -> None:
     game.sidebar_needs_update = True
 
 
+def handle_confirm_retrofit(game, action: dict) -> None:
+    from events import RefitUnitEvent
+    target_unit = action.get("target_unit")
+    constructor_units = action.get("constructor_units") or []
+    component_type = action.get("component_type")
+    component_config = action.get("component_config") or {}
+    cost_credits = action.get("cost_credits")
+    time_to_build = action.get("time_to_build")
+    shift_pressed = action.get("shift_pressed", False)
+
+    if target_unit and constructor_units:
+        game.event_bus.publish(RefitUnitEvent(
+            units=constructor_units,
+            target_unit=target_unit,
+            action="ADD",
+            component_type=component_type,
+            component_config=component_config,
+            cost_credits=cost_credits,
+            time_to_build=time_to_build,
+            shift_pressed=shift_pressed,
+        ))
+    game.sidebar_needs_update = True
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'deploy_ship': handle_deploy_ship,
     'launch_all_wings': handle_launch_all_wings,
@@ -342,4 +366,5 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'stop_selected_units': handle_stop_selected_units,
     'toggle_inhibitor': handle_toggle_inhibitor,
     'toggle_cloaking': handle_toggle_cloaking,
+    'confirm_retrofit': handle_confirm_retrofit,
 }

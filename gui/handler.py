@@ -16,8 +16,9 @@ from .layout_new_game_wizard import NewGameWizard
 from .sidebar import view as sidebar_view
 if typing.TYPE_CHECKING:
     from game import Game
-    from entities import Player
+    from entities import Player, Unit
     from .unit_editor_gui import UnitEditorWindow
+    from .retrofit_gui import RetrofitWizardWindow
 
 
 class GUI_Handler:
@@ -101,6 +102,9 @@ class GUI_Handler:
         self.unit_editor_window: typing.Optional['UnitEditorWindow'] = None
         self.unit_editor_button: typing.Optional[pygame_gui.elements.UIButton] = None
 
+        # Retrofit Wizard
+        self.retrofit_wizard: typing.Optional['RetrofitWizardWindow'] = None
+
         # Active Pop-up Dialog Windows
         self.active_dialogs: typing.List[pygame_gui.windows.UIMessageWindow] = []
 
@@ -135,6 +139,10 @@ class GUI_Handler:
         if self.unit_editor_window:
             self.unit_editor_window.kill()
             self.unit_editor_window = None
+
+        if self.retrofit_wizard:
+            self.retrofit_wizard.kill()
+            self.retrofit_wizard = None
 
         if self.load_save_window:
             self.load_save_window.kill()
@@ -540,4 +548,34 @@ class GUI_Handler:
     def show_info_dialog(self, message: str, title: str = "Information") -> pygame_gui.windows.UIMessageWindow:
         """Convenience method to display an Informational modal dialog popup."""
         return self.show_message_dialog(title=title, message=message, window_type="info")
+
+    def show_retrofit_wizard(
+        self,
+        target_unit: 'Unit',
+        component_type: typing.Optional[str] = None,
+        constructor_units: typing.Optional[typing.List['Unit']] = None,
+        shift_pressed: bool = False
+    ) -> typing.Optional['RetrofitWizardWindow']:
+        """Opens the Retrofit Customization Options Wizard for a friendly target unit."""
+        self.close_retrofit_wizard()
+        from .retrofit_gui import RetrofitWizardWindow
+        self.retrofit_wizard = RetrofitWizardWindow(
+            manager=self.manager,
+            screen_res=self.screen_res,
+            target_unit=target_unit,
+            constructor_units=constructor_units or [],
+            initial_comp_key=component_type,
+            shift_pressed=shift_pressed
+        )
+        return self.retrofit_wizard
+
+    def close_retrofit_wizard(self) -> None:
+        """Closes and cleans up the active Retrofit Wizard."""
+        if self.retrofit_wizard:
+            self.retrofit_wizard.kill()
+            self.retrofit_wizard = None
+
+    def is_retrofit_wizard_open(self) -> bool:
+        """Returns True if the Retrofit Wizard is currently visible."""
+        return bool(self.retrofit_wizard and self.retrofit_wizard.is_visible)
 

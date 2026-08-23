@@ -114,7 +114,9 @@ class Weapons(UnitComponent):
         effective_range = turret.range
         effective_cooldown = max(1, turret.cooldown)
 
-        if getattr(turret, "variant", "").upper() == "LONG_RANGE":
+        variant_val = getattr(turret, "variant", "")
+        variant_name = variant_val.name if hasattr(variant_val, "name") else str(variant_val)
+        if variant_name.upper() == "LONG_RANGE":
             effective_range *= 3.0
             effective_cooldown *= 3
 

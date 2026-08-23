@@ -154,6 +154,21 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
             else:
                 action_result = {'action': 'ui_handled'}
 
+        # 9b. Retrofit Wizard Buttons
+        elif gui.retrofit_wizard and gui.retrofit_wizard.is_visible:
+            wiz_action = gui.retrofit_wizard.process_event(event)
+            if wiz_action:
+                if wiz_action.get('action') == 'cancel_retrofit':
+                    gui.close_retrofit_wizard()
+                    action_result = {'action': 'ui_handled'}
+                elif wiz_action.get('action') == 'confirm_retrofit':
+                    gui.close_retrofit_wizard()
+                    action_result = wiz_action
+                else:
+                    action_result = wiz_action
+            else:
+                action_result = {'action': 'ui_handled'}
+
         # 10. Unit Editor Fallthrough
         elif gui.unit_editor_window and gui.unit_editor_window.is_visible:
             editor_action = gui.unit_editor_window.process_event(event)
@@ -173,7 +188,11 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
             action_result = {'action': 'rename_unit', 'new_name': event.text}
 
     elif event.type == pygame_gui.UI_TEXT_ENTRY_CHANGED:
-        if gui.unit_editor_window and gui.unit_editor_window.is_visible:
+        if gui.retrofit_wizard and gui.retrofit_wizard.is_visible:
+            wiz_action = gui.retrofit_wizard.process_event(event)
+            if wiz_action:
+                action_result = wiz_action
+        elif gui.unit_editor_window and gui.unit_editor_window.is_visible:
             editor_action = gui.process_unit_editor_event(event)
             if editor_action:
                 action_result = _editor_action_to_gui_action(editor_action)
@@ -181,11 +200,16 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
                     action_result = {'action': 'ui_handled'}
 
     elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
-        editor_action = gui.process_unit_editor_event(event)
-        if editor_action:
-            action_result = _editor_action_to_gui_action(editor_action)
-            if action_result is None:
-                action_result = {'action': 'ui_handled'}
+        if gui.retrofit_wizard and gui.retrofit_wizard.is_visible:
+            wiz_action = gui.retrofit_wizard.process_event(event)
+            if wiz_action:
+                action_result = wiz_action
+        elif gui.unit_editor_window and gui.unit_editor_window.is_visible:
+            editor_action = gui.process_unit_editor_event(event)
+            if editor_action:
+                action_result = _editor_action_to_gui_action(editor_action)
+                if action_result is None:
+                    action_result = {'action': 'ui_handled'}
         elif event.ui_element in gui.dynamic_dropdown_actions:
             dropdown_data = gui.dynamic_dropdown_actions[event.ui_element]
             action_id = dropdown_data['action_id']
@@ -204,6 +228,9 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         if gui.new_game_wizard and event.ui_element is gui.new_game_wizard.window:
             gui.close_new_game_wizard()
             action_result = {'action': 'cancel_new_game_wizard'}
+        elif gui.retrofit_wizard and event.ui_element is gui.retrofit_wizard.window:
+            gui.close_retrofit_wizard()
+            action_result = {'action': 'ui_handled'}
 
     if action_result:
         return action_result

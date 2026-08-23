@@ -124,6 +124,12 @@ class InputProcessor:
                     self.gui.close_unit_editor()
                 continue
 
+            # Block game-world input when the retrofit wizard is open.
+            if hasattr(self.gui, 'is_retrofit_wizard_open') and self.gui.is_retrofit_wizard_open() is True:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.gui.close_retrofit_wizard()
+                continue
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     if self.gui.is_mouse_over_context_menu((-1,-1)): 
@@ -851,16 +857,33 @@ class InputProcessor:
                         shift_pressed
                     ))
 
+            elif extracted_action_id == "open_retrofit_wizard":
+                if isinstance(target, Unit):
+                    if getattr(self.game, 'gui', None) and hasattr(self.game.gui, 'show_retrofit_wizard'):
+                        self.game.gui.show_retrofit_wizard(
+                            target_unit=target,
+                            constructor_units=selected_units,
+                            shift_pressed=shift_pressed
+                        )
+
             elif extracted_action_id.startswith("refit_add_"):
                 comp_name = extracted_action_id[len("refit_add_"):]
                 if isinstance(target, Unit):
-                    self.game.event_bus.publish(RefitUnitEvent(
-                        selected_units,
-                        target_unit=target,
-                        action="ADD",
-                        component_type=comp_name,
-                        shift_pressed=shift_pressed
-                    ))
+                    if getattr(self.game, 'gui', None) and hasattr(self.game.gui, 'show_retrofit_wizard'):
+                        self.game.gui.show_retrofit_wizard(
+                            target_unit=target,
+                            component_type=comp_name,
+                            constructor_units=selected_units,
+                            shift_pressed=shift_pressed
+                        )
+                    else:
+                        self.game.event_bus.publish(RefitUnitEvent(
+                            selected_units,
+                            target_unit=target,
+                            action="ADD",
+                            component_type=comp_name,
+                            shift_pressed=shift_pressed
+                        ))
 
             elif extracted_action_id.startswith("refit_remove_"):
                 comp_name = extracted_action_id[len("refit_remove_"):]
@@ -971,6 +994,7 @@ class InputProcessor:
             remove_options.append((f"{comp_inst.DISPLAY_NAME} (+{salvage_refund}c / -{comp_inst.hull_cost:.0f}h)", f"refit_remove_{comp_cls.__name__}"))
 
         if add_options:
+            refit_options.append(("Retrofit Wizard...", "open_retrofit_wizard"))
             refit_options.append(("Add Component", add_options))
         if remove_options:
             refit_options.append(("Remove Component", remove_options))

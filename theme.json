@@ -64,6 +64,19 @@
             "border_colour": "#3A6D8CC8"
         }
     },
+    "#retrofit_wizard_window": {
+        "colours": {
+            "dark_bg": "#0F1524D8",
+            "normal_bg": "#141C30D8",
+            "normal_border": "#3A6D8CC8"
+        },
+        "misc": {
+            "title_bar_height": "30",
+            "border_width": "1",
+            "shadow_width": "2",
+            "border_colour": "#3A6D8CC8"
+        }
+    },
     "#load_game_window": {
         "colours": {
             "dark_bg": "#0F1524D8",
