@@ -926,64 +926,32 @@ class InputProcessor:
 
         from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
         from unit_orders.refit import get_hull_restriction_flag
-        from unit_components import (
-            Engines, Hyperdrive, Weapons, Defenses, AntimatterHarvester,
-            Sensors, RepairComponent, MiningComponent, MetalRefineryComponent,
-            CrystalRefineryComponent, HangarComponent, StrikecraftBayComponent,
-            ColonyComponent, CivilianHabitatComponent, OrbitalDefenseComponent, HyperspaceInhibitionFieldEmitter,
-            MinelayerComponent, MarinesComponent, CloakingDevice, Constructor, Commander,
-            TradeComponent, HyperdriveType, CloakingType
-        )
-        from constants import (
-            DEFAULT_JUMP_RANGE, DEFAULT_SENSOR_SHORT_RANGE, ANTIMATTER_HARVESTER_HULL_COST,
-            MINELAYER_HULL_COST, DEFAULT_ANTIMATTER_CAPACITY, REPAIR_CREDIT_COST_PER_HP,
-            TRADE_BASE_HULL_COST, ORBITAL_DEFENSE_HULL_COST
-        )
+        from unit_components import Commander, HangarComponent, StrikecraftBayComponent
+        from gui.retrofit_gui.catalog import RETROFIT_COMPONENTS
 
         refit_options = []
-        add_options = []
         remove_options = []
-
-        candidates = [
-            ("Engines", "Engines", Engines, lambda u: Engines.calc_hull_cost(100.0, u.hull_size)),
-            ("Hyperdrive", "Hyperdrive", Hyperdrive, lambda u: Hyperdrive.calc_hull_cost("BASIC", 5, u.hull_size)),
-            ("Weapons", "Weapons Bay", Weapons, lambda u: 5.0),
-            ("Defenses", "Defenses", Defenses, lambda u: Defenses.calc_hull_cost(50, 50, 0)),
-            ("AntimatterHarvester", "AM Harvester", AntimatterHarvester, lambda u: ANTIMATTER_HARVESTER_HULL_COST),
-            ("Sensors", "Sensor Suite", Sensors, lambda u: Sensors.calc_hull_cost(DEFAULT_SENSOR_SHORT_RANGE, 1)),
-            ("RepairComponent", "Repair Module", RepairComponent, lambda u: RepairComponent.calc_hull_cost(10.0)),
-            ("MiningComponent", "Mining Module", MiningComponent, lambda u: MiningComponent.calc_hull_cost(10.0, 100.0)),
-            ("MetalRefineryComponent", "Metal Refinery", MetalRefineryComponent, lambda u: 20.0),
-            ("CrystalRefineryComponent", "Crystal Refinery", CrystalRefineryComponent, lambda u: 20.0),
-            ("HangarComponent", "Hangar Bay", HangarComponent, lambda u: HangarComponent.calc_hull_cost(2)),
-            ("StrikecraftBayComponent", "Strikecraft Bay", StrikecraftBayComponent, lambda u: StrikecraftBayComponent.calc_hull_cost(2)),
-            ("ColonyComponent", "Colony Module", ColonyComponent, lambda u: 10.0),
-            ("CivilianHabitatComponent", "Civilian Habitat", CivilianHabitatComponent, lambda u: CivilianHabitatComponent.calc_hull_cost(50.0)),
-            ("OrbitalDefenseComponent", "Orbital Defense", OrbitalDefenseComponent, lambda u: ORBITAL_DEFENSE_HULL_COST),
-            ("TradeComponent", "Trade Module", TradeComponent, lambda u: TradeComponent.calc_hull_cost(1.0)),
-            ("HyperspaceInhibitionFieldEmitter", "Hyperspace Inhibitor", HyperspaceInhibitionFieldEmitter, lambda u: HyperspaceInhibitionFieldEmitter.calc_hull_cost(100.0)),
-            ("MinelayerComponent", "Minelayer", MinelayerComponent, lambda u: MINELAYER_HULL_COST),
-            ("MarinesComponent", "Marines Barracks", MarinesComponent, lambda u: MarinesComponent.calc_hull_cost(10)),
-            ("CloakingDevice", "Cloaking Device", CloakingDevice, lambda u: CloakingDevice.calc_hull_cost("BASIC", 0.0)),
-            ("Constructor", "Constructor Module", Constructor, lambda u: 15.0),
-        ]
 
         forbidden_flags = HULL_RESTRICTIONS.get(target_unit.hull_size, set())
         remaining_cap = target_unit.hull_capacity - target_unit.current_hull_usage
 
-        for comp_key, comp_display, comp_cls, cost_fn in candidates:
-            if comp_cls in target_unit.components:
-                continue
-            flag_key = get_hull_restriction_flag(comp_key)
-            if flag_key in forbidden_flags:
-                continue
-            if comp_key == "TradeComponent" and not getattr(target_unit, 'engines_component', None):
-                continue
+        can_add = False
+        if remaining_cap > 0:
+            for comp_meta in RETROFIT_COMPONENTS:
+                comp_key = comp_meta["comp_key"]
+                comp_cls = comp_meta["comp_cls"]
+                if comp_cls in target_unit.components:
+                    continue
+                flag_key = get_hull_restriction_flag(comp_key)
+                if flag_key in forbidden_flags:
+                    continue
+                if comp_key == "TradeComponent" and not getattr(target_unit, 'engines_component', None):
+                    continue
+                can_add = True
+                break
 
-            cost_hull = cost_fn(target_unit)
-            if cost_hull <= remaining_cap:
-                credit_cost = int(round(cost_hull * COMPONENT_COST_PER_HULL_POINT))
-                add_options.append((f"{comp_display} ({credit_cost}c / {cost_hull:.0f}h)", f"refit_add_{comp_key}"))
+        if can_add:
+            refit_options.append(("Retrofit Wizard...", "open_retrofit_wizard"))
 
         for comp_cls, comp_inst in target_unit.components.items():
             if comp_cls == Commander:
@@ -993,9 +961,6 @@ class InputProcessor:
             salvage_refund = int(round(comp_inst.hull_cost * COMPONENT_COST_PER_HULL_POINT * 0.5))
             remove_options.append((f"{comp_inst.DISPLAY_NAME} (+{salvage_refund}c / -{comp_inst.hull_cost:.0f}h)", f"refit_remove_{comp_cls.__name__}"))
 
-        if add_options:
-            refit_options.append(("Retrofit Wizard...", "open_retrofit_wizard"))
-            refit_options.append(("Add Component", add_options))
         if remove_options:
             refit_options.append(("Remove Component", remove_options))
 

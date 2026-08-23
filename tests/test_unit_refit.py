@@ -389,15 +389,9 @@ def test_input_processor_get_refit_context_options(setup_universe):
     assert len(options) > 0
 
     option_labels = [opt[0] for opt in options]
-    assert "Add Component" in option_labels
+    assert "Retrofit Wizard..." in option_labels
+    assert "Add Component" not in option_labels
     assert "Remove Component" in option_labels
-
-    # Check Add options
-    add_sub = next(opt[1] for opt in options if opt[0] == "Add Component")
-    add_action_ids = [sub[1] for sub in add_sub]
-    assert "refit_add_Defenses" in add_action_ids
-    assert "refit_add_MiningComponent" in add_action_ids
-    assert "refit_add_TradeComponent" in add_action_ids
 
 
 def test_refit_add_trade_component(setup_universe):
@@ -435,13 +429,6 @@ def test_refit_add_trade_component(setup_universe):
 def test_refit_add_trade_component_requires_engine(setup_universe):
     game, galaxy, player, _, constructor_unit, target_unit = setup_universe
     assert target_unit.engines_component is None
-
-    from input_processor import InputProcessor
-    ip = InputProcessor(game)
-    options = ip.get_refit_context_options([constructor_unit], target_unit)
-    add_sub = next(opt[1] for opt in options if opt[0] == "Add Component")
-    add_action_ids = [sub[1] for sub in add_sub]
-    assert "refit_add_TradeComponent" not in add_action_ids
 
     refit_order = RefitOrder(
         constructor_unit,

@@ -359,5 +359,5 @@ def test_input_processor_refit_context_menu_options(wizard_setup):
     option_labels = [opt[0] for opt in options]
 
     assert "Retrofit Wizard..." in option_labels
-    assert "Add Component" in option_labels
+    assert "Add Component" not in option_labels
     assert "Remove Component" in option_labels
