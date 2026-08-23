@@ -38,6 +38,8 @@ def get_hull_restriction_flag(component_name: str) -> str:
         "MarinesComponent": "has_marines_component",
         "CloakingDevice": "has_cloaking_device",
         "Hyperdrive": "has_hyperdrive",
+        "IntelligenceComponent": "has_intelligence_component",
+        "Intelligence": "has_intelligence_component",
     }
     return flag_map.get(component_name, f"has_{component_name.lower()}")
 

@@ -151,6 +151,10 @@ class RetrofitWizardWindow:
         self._lbl_clk_r: Optional[pygame_gui.elements.UILabel] = None
         self._cloaking_radius_entry: Optional[pygame_gui.elements.UITextEntryLine] = None
 
+        self._intel_agents_entry: Optional[pygame_gui.elements.UITextEntryLine] = None
+        self._intel_ci_button: Optional[pygame_gui.elements.UIButton] = None
+        self._intel_ci_enabled: bool = False
+
         self._ability_buttons: Dict[str, pygame_gui.elements.UIButton] = {}
 
         # Summary widget refs
@@ -330,6 +334,8 @@ class RetrofitWizardWindow:
                 self._comp_config["device_type"] = raw_c[0] if isinstance(raw_c, tuple) else str(raw_c)
         elif k == "AbilityComponent":
             self._comp_config["ability_types"] = list(self._selected_abilities)
+        elif k == "IntelligenceComponent":
+            param_readers.read_intelligence_params(self)
 
     def _sync_cost_and_summary(self) -> None:
         """Recalculates hull cost, credits, build time, and updates summary UI elements."""
@@ -432,6 +438,14 @@ class RetrofitWizardWindow:
                 if elem is rbtn:
                     self._remove_turret(i)
                     return {"action": "ui_handled"}
+
+            # Intelligence CI toggle
+            if elem is self._intel_ci_button:
+                self._intel_ci_enabled = not self._intel_ci_enabled
+                ci_text = "[X] Counter-Intelligence" if self._intel_ci_enabled else "[ ] Counter-Intelligence"
+                self._intel_ci_button.set_text(ci_text)
+                self._sync_cost_and_summary()
+                return {"action": "ui_handled"}
 
             # Ability toggles
             for aname, abtn in self._ability_buttons.items():

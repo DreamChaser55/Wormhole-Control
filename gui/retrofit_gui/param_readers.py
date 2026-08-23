@@ -141,3 +141,13 @@ def read_cloaking_params(wizard) -> None:
         wizard._comp_config["area_radius"] = max(0.0, radius)
     except ValueError:
         pass
+
+
+def read_intelligence_params(wizard) -> None:
+    """Reads intelligence agent capacity and counter-intelligence flag from UI state and updates config."""
+    try:
+        count = int(wizard._intel_agents_entry.get_text()) if getattr(wizard, '_intel_agents_entry', None) else 1
+        wizard._comp_config["agents_capacity"] = max(1, count)
+    except ValueError:
+        pass
+    wizard._comp_config["has_counter_intelligence"] = bool(getattr(wizard, '_intel_ci_enabled', False))

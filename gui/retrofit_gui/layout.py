@@ -350,7 +350,14 @@ def _build_component_detail_groups(
         y_ab += small_h + 3
     wizard._details_groups["AbilityComponent"].extend(ab_widgets)
 
-    # 15. Fixed & Informational Components
+    # 15. Intelligence
+    lbl_intel_cap = make_label(pygame.Rect(pad, y, w, small_h), "Agent Capacity:", mgr, pan)
+    wizard._intel_agents_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), "1", mgr, pan)
+    y_intel = y + small_h + 2 + entry_h + pad
+    wizard._intel_ci_button = make_button(pygame.Rect(pad, y_intel, w, btn_h), "[ ] Counter-Intelligence", mgr, pan, "#ability_toggle_button")
+    wizard._details_groups["IntelligenceComponent"].extend([lbl_intel_cap, wizard._intel_agents_entry, wizard._intel_ci_button])
+
+    # 16. Fixed & Informational Components
     for comp in RETROFIT_COMPONENTS:
         k = comp["comp_key"]
         if k in wizard._details_groups and not wizard._details_groups[k]:
