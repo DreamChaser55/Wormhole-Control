@@ -102,7 +102,7 @@ Wormhole Control/
 │       ├── sector_entity_renderer.py # Units, hull icons, health bars, and minefields
 │       └── sector_overlay_renderer.py # Selection boxes, range circles, and fog of war
 ├── saves/                         # Saved game files (*.json)
-├── tests/                         # Automated test suite (55 test modules, 545 tests)
+├── tests/                         # Automated test suite
 │   ├── __init__.py
 │   └── test_*.py                  # Unit and integration test suites
 ├── unit_components/               # Modular unit component package
