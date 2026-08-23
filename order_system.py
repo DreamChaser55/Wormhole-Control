@@ -99,6 +99,15 @@ class OrderSystem:
                         title="No Engines"
                     )
                 continue
+            # Jumping to a different sector or system requires a hyperdrive.
+            needs_hyperdrive = (event.system_name != unit.in_system or event.sector_coord != unit.in_hex)
+            if needs_hyperdrive and not unit.hyperdrive_component:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> has no hyperdrive module and cannot jump to a different sector.",
+                        title="No Hyperdrive"
+                    )
+                continue
             if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
                 continue
             move_params = {
@@ -207,6 +216,12 @@ class OrderSystem:
                         logger.debug(f"  Unit {unit.name} orders cancelled.")
                     unit.commander_component.add_order(move_order)
                     logger.debug(f"  Unit {unit.name} ordered to move via wormhole {target_wormhole.name} to {exit_system_name}:{exit_wormhole.in_hex}:{exit_wormhole.position} via event.")
+            else:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> has no hyperdrive module and cannot perform wormhole jumps.",
+                        title="No Hyperdrive"
+                    )
         self.game.sidebar_needs_update = True
 
     def handle_attack_unit(self, event: AttackUnitEvent):

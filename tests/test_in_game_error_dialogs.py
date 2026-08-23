@@ -16,7 +16,7 @@ from unit_components import (
     AbilityComponent, AbilityType
 )
 from events import (
-    IssueMoveOrderEvent, JumpInterhexEvent, ColonizeEvent, RepairUnitEvent,
+    IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent, ColonizeEvent, RepairUnitEvent,
     MineEvent, DockEvent, ContinuousResupplyEvent, LayMinefieldEvent
 )
 from unit_orders import MoveOrder, UseAbilityOrder
@@ -207,6 +207,51 @@ class TestInGameErrorDialogs(unittest.TestCase):
         dlg = self.gui.active_dialogs[-1]
         self.assertIn("Upkeep Shortage", dlg.window_display_title)
         self.assertIn("Treasury depleted", dlg.text_block.html_text)
+    def test_move_order_cross_sector_without_hyperdrive_shows_warning(self):
+        """Move order to a different hex on a unit without hyperdrive should show 'No Hyperdrive' dialog."""
+        unit = Unit(
+            owner=self.player, position=Position(0, 0), in_hex=HexCoord(0, 0),
+            in_system="Sol", name="Slow Freighter", hull_size=HullSize.MEDIUM, game=self.game
+        )
+        unit.add_component(Commander(unit))
+        unit.add_component(Engines(unit, speed=100))
+
+        self.game.order_system.handle_issue_move_order(
+            IssueMoveOrderEvent([unit], "Sol", HexCoord(1, 0), Position(0, 0), False)
+        )
+        # Order should be blocked
+        self.assertEqual(unit.commander_component.get_active_orders_count(), 0)
+        # Warning dialog should be displayed
+        self.assertGreater(len(self.gui.active_dialogs), 0)
+        dlg = self.gui.active_dialogs[-1]
+        self.assertIn("No Hyperdrive", dlg.window_display_title)
+        self.assertIn("no hyperdrive module", dlg.text_block.html_text)
+
+    def test_wormhole_jump_without_hyperdrive_shows_warning(self):
+        """Wormhole jump on a unit without hyperdrive should show 'No Hyperdrive' dialog."""
+        unit = Unit(
+            owner=self.player, position=Position(0, 0), in_hex=HexCoord(0, 0),
+            in_system="Sol", name="Drifter Barge", hull_size=HullSize.MEDIUM, game=self.game
+        )
+        unit.add_component(Commander(unit))
+        unit.add_component(Engines(unit, speed=100))
+        self.game.galaxy.systems["Sol"].add_unit(unit)
+
+        # Find any wormhole in Sol to use as the event target
+        wormhole = None
+        for wh in self.game.galaxy.wormholes.values():
+            if wh.in_system == "Sol" and wh.exit_system_name:
+                wormhole = wh
+                break
+        self.assertIsNotNone(wormhole, "Test requires at least one wormhole in Sol")
+
+        self.game.order_system.handle_jump_wormhole(
+            JumpWormholeEvent([unit], wormhole, False)
+        )
+        self.assertGreater(len(self.gui.active_dialogs), 0)
+        dlg = self.gui.active_dialogs[-1]
+        self.assertIn("No Hyperdrive", dlg.window_display_title)
+        self.assertIn("no hyperdrive module", dlg.text_block.html_text)
 
 
 if __name__ == "__main__":
