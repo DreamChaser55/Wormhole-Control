@@ -141,6 +141,10 @@ python -m pytest
 
 Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests`).
 
+### Debug log
+
+Each run of the game produces a `game.log` text file in the root folder, containing the debug log.
+
 ### Configuration & Data Files
 - `data/`: Contains JSON files for unit templates, custom designs, spawn rates, and star name generators.
 - `constants.py`: Central repository for game tuning constants, colors, and resolution definitions.
