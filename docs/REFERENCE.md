@@ -119,6 +119,7 @@ Wormhole Control/
 │   ├── enums.py                   # Component-related enums (Stance, Turret, Ability, etc.)
 │   ├── hangar.py                  # HangarComponent (dockable ship carrier bays)
 │   ├── inhibitor.py               # HyperspaceInhibitionFieldEmitter component
+│   ├── intelligence.py            # IntelligenceComponent and Agent (espionage and counter-intelligence)
 │   ├── marines.py                 # MarinesComponent (boarding and capture)
 │   ├── minelayer.py               # MinelayerComponent (minefield deployment)
 │   ├── mining.py                  # Mining, MetalRefinery, and CrystalRefinery components
@@ -152,6 +153,7 @@ Wormhole Control/
     ├── construction.py            # ConstructOrder implementation
     ├── hangar.py                  # Dock, DeployUnit, and DeployAllWings orders
     ├── inhibitor.py               # ToggleInhibitorOrder implementation
+    ├── intelligence.py            # InfiltrateUnit, InfiltratePlanet, RelocateAgent, Sabotage, CISweep, EliminateAgent, ExtractAgent orders
     ├── minelayer.py               # LayMinefieldOrder implementation
     ├── mining.py                  # Mine, UnloadResources, and ContinuousMine orders
     ├── movement.py                # Move and ReachWaypoint orders
@@ -181,7 +183,7 @@ Wormhole Control features 6 hull classes (`HullSize`). Each hull size sets the c
 
 ## 3. Component Catalogue
 
-The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **21 selectable component rows**. In addition, all active units are equipped with a `Commander` component (order management and stances).
+The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **22 selectable component rows**. In addition, all active units are equipped with a `Commander` component (order management and stances).
 
 | # | Component Key | Label | Cost Type | Default Cost | Hull Size Restrictions / Notes |
 |---|---|---|---|---|---|
@@ -208,6 +210,7 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields. |
 | 22 | `has_marines_component` | Marines | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count. |
 | 23 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 / 30.0 | Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius). |
+| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps and eliminating discovered enemy agents. |
 | — | *Always Present* | Commander | — | — | Core component present on all ships; manages order queues and combat stances. |
 
 ---
@@ -233,7 +236,7 @@ There are **10 special abilities** in the game, registered in `unit_components/a
 
 ## 5. Order Types
 
-The `OrderType` enum (`unit_orders/base.py`) defines **22 order types** that can be issued to units:
+The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can be issued to units:
 
 | Order Type | Description |
 |---|---|
@@ -261,6 +264,13 @@ The `OrderType` enum (`unit_orders/base.py`) defines **22 order types** that can
 | `LAY_MINEFIELD` | Deploys an anti-ship or anti-strikecraft minefield at the unit's current position. |
 | `TRADE` | Travels to a designated active Civilian Habitat in another sector and conducts trade, earning credits based on distance. |
 | `CONTINUOUS_TRADE` | Automated merchant cycle: travels between active Civilian Habitat modules in different sectors to maximize trade revenue continuously. |
+| `INFILTRATE_UNIT` | Deploys a covert agent onto an enemy vessel within operational range (500 px). |
+| `INFILTRATE_PLANET` | Deploys a covert agent onto an enemy colonized celestial body within operational range. |
+| `RELOCATE_AGENT` | Moves an embedded agent from their current host to another enemy unit or colony in operational range. |
+| `SABOTAGE` | Commands an embedded agent to sabotage host unit subsystems or colonial infrastructure. |
+| `CI_SWEEP` | Counter-Intelligence ship performs an active sensor sweep to detect enemy spies in the sector. |
+| `ELIMINATE_AGENT` | Counter-Intelligence ship neutralizes and removes a discovered enemy agent from a friendly unit or colony. |
+| `EXTRACT_AGENT` | Recovers an embedded agent back into the parent Intelligence unit. |
 
 ---
 
@@ -319,6 +329,16 @@ Every star system contains a central star with a unique antimatter harvesting ra
   - `ANTI_STRIKECRAFT`: High rate of fire and tracking speed, optimized against strikecraft.
   - `LONG_RANGE`: Extended engagement range with increased cycle cooldown.
 
+### Sabotage Types (`SabotageType` — 8 total)
+- `ENGINES`: Reduces host vessel maximum sublight speed by 50%.
+- `WEAPONS`: Decreases turret weapon damage output by 50%.
+- `DEFENSES`: Lowers armor mitigation and shield strength by 50%.
+- `HYPERDRIVE`: Disables intra-system sector jumping and wormhole jumping.
+- `SENSORS`: Blindfolds target short-range sensors and disables long-range radar hex sharing.
+- `ANTIMATTER`: Causes 5.0 antimatter fuel leak per turn from storage tanks.
+- `ECONOMY`: Halves credit tax revenue generated by the host colony.
+- `GROWTH`: Halts population growth on the host colony.
+
 ### Minefield Types (`MinefieldType` — 2 total)
 - `ANTI_SHIP`: Heavy proximity charges engineered to destroy capital ships and frigates.
 - `ANTI_STRIKECRAFT`: High-density fragmentation charges designed to shred incoming strikecraft wings.
@@ -366,3 +386,48 @@ Every star system contains a central star with a unique antimatter harvesting ra
 - **Visibility Service (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks and persists last-known sector intel per player.
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations.
 - **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
+
+---
+
+## 9. Intelligence, Counter-Intelligence & Sabotage Systems
+
+### 9.1 Overview & Components
+The Intelligence system introduces covert operations, espionage, sensor reconnaissance, subsystem sabotage, and counter-intelligence sweeps into the strategic and tactical gameplay.
+
+- **`IntelligenceComponent` (`unit_components/intelligence.py`)**:
+  - Available on `SMALL`, `MEDIUM`, `LARGE`, and `HUGE` hulls (Forbidden on `STRIKECRAFT_WING` and `TINY`).
+  - **Agent Capacity**: Configurable in the Unit Designer / Retrofit Wizard ($5.0\text{ Hull/agent}$, default 2 agents).
+  - **Counter-Intelligence Suite**: Optional toggle ($+10.0\text{ Hull}$, $+300\text{ credits}$) that enables active sector sweeps to uncover enemy agents and eliminate them.
+- **`Agent` Dataclass (`unit_components/intelligence.py`)**:
+  - Embedded field operative with fields: `id`, `owner`, `source_unit_id`, `target_type` (`"UNIT"` or `"CELESTIAL_BODY"`), `target_id`, `is_discovered`, `active_sabotage`, and `turns_active`.
+
+### 9.2 Agent Deployment & Operational Lifecycle
+- **Deployment Range**: Standard operational range is **500.0 px**.
+- **Real-Time Execution**: When issuing an intelligence command within operational range in the same sector, the order executes immediately in the current frame without requiring the turn to end. If outside range, an approach `MoveOrder` is automatically generated and executed.
+- **Relocation & Extraction**: Agents can transition directly between enemy hosts in range via `RelocateAgentOrder` or be recovered back into an Intelligence vessel via `ExtractAgentOrder`.
+
+### 9.3 Sensor Sharing & Fog of War
+- **Covert Sensor Reconnaissance**: Embedded agents grant their owner full access to the host unit or colony's sensor horizon.
+- **Visibility & Rendering**:
+  - `VisibilityService` incorporates short-range and long-range sensor coverage of all infiltrated targets.
+  - Sector view Fog-of-War cutouts immediately reveal the area around infiltrated enemy units and celestial bodies (500 px radius for colonies).
+  - Range circles (weapons, sensors) and system-view long-range highlights are fully rendered for selected infiltrated enemy units.
+
+### 9.4 Subsystem & Colonial Sabotage
+Agents can execute 8 distinct sabotage operations against their host:
+1. **Engines (`ENGINES`)**: Multiplies maximum sublight speed by 0.5×.
+2. **Weapons (`WEAPONS`)**: Multiplies turret damage output by 0.5×.
+3. **Defenses (`DEFENSES`)**: Multiplies armor rating and shield absorption by 0.5×.
+4. **Hyperdrive (`HYPERDRIVE`)**: Disables intra-system sector hex jumps and wormhole jumps.
+5. **Sensors (`SENSORS`)**: Multiplies short-range sensor radius by 0.0× and disables long-range radar hex sharing.
+6. **Antimatter (`ANTIMATTER`)**: Drains 5.0 antimatter fuel per turn from target tanks.
+7. **Economy (`ECONOMY`)**: Siphons/destroys 50% of the host colony's credit tax revenue.
+8. **Growth (`GROWTH`)**: Halts population growth on the host colony.
+
+### 9.5 Counter-Intelligence & Discovery
+- **CI Sweeps (`CISweepOrder`)**: A vessel equipped with a Counter-Intelligence suite performs a sector sweep that reveals all enemy agents embedded on friendly ships or colonies in that sector, setting `agent.is_discovered = True`.
+- **Elimination (`EliminateAgentOrder`)**: Counter-Intelligence ships within 500 px operational range can neutralize and remove any discovered enemy agent.
+- **Visual & UI Indicators**:
+  - Infiltrated ships and planets display `[INFILTRATED]` (cyan) or `[SABOTAGED: <TYPE>]` (orange) badges in sector view and cyan spy indicators in system view.
+  - Friendly entities hosting detected enemy spies display `[DISCOVERED SPY]` (red) warning badges.
+  - Sidebar panels display a prominent `👁 COVERT AGENT EMBEDDED [SABOTAGE: ...]` status banner when inspecting infiltrated targets.
