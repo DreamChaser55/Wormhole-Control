@@ -367,56 +367,35 @@ class SectorViewRenderer:
                 is_turn_player_unit = self.game.players and unit_obj.owner == self.game.players[self.game.current_player_index]
 
                 if is_turn_player_unit:
-                    if unit_obj.engines_component and unit_obj.engines_component.move_target:
-                        target_pos_in_sector = unit_obj.engines_component.move_target
-                        target_pixel_pos = self._coords_to_pixels(target_pos_in_sector)
-                        pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
-                        pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
-                        
-                        mock_wp = {
-                            'order_type': OrderType.MOVE,
-                            'is_current': True,
-                            'position': target_pos_in_sector
-                        }
-                        effective_speed = unit_obj.engines_component.speed * unit_obj.xp_multiplier(XP_SPEED_BONUS)
-                        self._draw_path_turn_notches_for_segment([mock_wp], True, unit_obj.position, effective_speed)
-                    elif unit_obj.hyperdrive_component and unit_obj.hyperdrive_component.wormhole_jump_target:
-                        target_wh_for_jump = unit_obj.hyperdrive_component.wormhole_jump_target
-                        if target_wh_for_jump.in_system == self.game.current_system_name and target_wh_for_jump.in_hex == self.game.current_sector_coord:
-                            wh_pixel_pos = self._coords_to_pixels(target_wh_for_jump.position)
-                            pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
-                            wh_pixel_radius = int(WORMHOLE_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                            pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
-                    elif unit_obj.commander_component and unit_obj.commander_component.current_order:
-                        order = unit_obj.commander_component.current_order
-                        if order.order_type == OrderType.MOVE and order.status in [OrderStatus.PENDING, OrderStatus.IN_PROGRESS]:
-                            dest_sys = order.parameters["destination_system_name"]
-                            dest_hex = order.parameters["destination_hex_coord"]
-                            dest_pos = order.parameters["destination_position"]
-
-                            if dest_sys == self.game.current_system_name and dest_hex == self.game.current_sector_coord and dest_pos:
-                                target_pixel_pos = self._coords_to_pixels(dest_pos)
-                                pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
-                                pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
-                                
-                                if unit_obj.engines_component:
-                                    mock_wp = {
-                                        'order_type': OrderType.MOVE,
-                                        'is_current': True,
-                                        'position': dest_pos
-                                    }
-                                    effective_speed = unit_obj.engines_component.speed * unit_obj.xp_multiplier(XP_SPEED_BONUS)
-                                    self._draw_path_turn_notches_for_segment([mock_wp], True, unit_obj.position, effective_speed)
-                            elif dest_sys != self.game.current_system_name:
-                                if unit_obj.in_galaxy:
-                                    local_wh_for_jump = order.find_wormhole_to_system(unit_obj.in_system, dest_sys, unit_obj.in_galaxy, unit_obj.hull_size)
-                                    if local_wh_for_jump and local_wh_for_jump.in_system == self.game.current_system_name and local_wh_for_jump.in_hex == self.game.current_sector_coord:
-                                        wh_pixel_pos = self._coords_to_pixels(local_wh_for_jump.position)
-                                        pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
-                                        wh_pixel_radius = int(WORMHOLE_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                                        pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
-                    if unit_obj.commander_component:
+                    has_commander_orders = (
+                        unit_obj.commander_component and (
+                            unit_obj.commander_component.current_order or
+                            unit_obj.commander_component.orders_queue
+                        )
+                    )
+                    if has_commander_orders:
                         self._draw_sector_view_order_lines(unit_obj, obj_pixel_pos.x, obj_pixel_pos.y)
+                    else:
+                        if unit_obj.engines_component and unit_obj.engines_component.move_target:
+                            target_pos_in_sector = unit_obj.engines_component.move_target
+                            target_pixel_pos = self._coords_to_pixels(target_pos_in_sector)
+                            pygame.draw.line(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (target_pixel_pos.x, target_pixel_pos.y), 1)
+                            pygame.draw.circle(self.overlay_surface, MOVE_ORDER_LINE_COLOR, (target_pixel_pos.x, target_pixel_pos.y), 3)
+                            
+                            mock_wp = {
+                                'order_type': OrderType.MOVE,
+                                'is_current': True,
+                                'position': target_pos_in_sector
+                            }
+                            effective_speed = unit_obj.engines_component.speed * unit_obj.xp_multiplier(XP_SPEED_BONUS)
+                            self._draw_path_turn_notches_for_segment([mock_wp], True, unit_obj.position, effective_speed)
+                        elif unit_obj.hyperdrive_component and unit_obj.hyperdrive_component.wormhole_jump_target:
+                            target_wh_for_jump = unit_obj.hyperdrive_component.wormhole_jump_target
+                            if target_wh_for_jump.in_system == self.game.current_system_name and target_wh_for_jump.in_hex == self.game.current_sector_coord:
+                                wh_pixel_pos = self._coords_to_pixels(target_wh_for_jump.position)
+                                pygame.draw.line(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), (wh_pixel_pos.x, wh_pixel_pos.y), 2)
+                                wh_pixel_radius = int(WORMHOLE_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+                                pygame.draw.circle(self.overlay_surface, WORMHOLE_JUMP_ORDER_COLOR, (wh_pixel_pos.x, wh_pixel_pos.y), wh_pixel_radius + 4, 1)
 
         # External units targeting this sector
         current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None

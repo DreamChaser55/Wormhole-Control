@@ -527,3 +527,268 @@ def test_draw_sector_view_patrol_order_path():
         assert ((10.0, 10.0), (100.0, 10.0)) in coords
         assert ((100.0, 10.0), (200.0, 10.0)) in coords
 
+
+def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
+    """Verify that a movement order with sub-orders (e.g. avoidance waypoints)
+    draws a single sequential path unit -> W1 -> W2 -> D without extra lines to D."""
+    game = MagicMock()
+    player1 = Player("Player 1", BLUE, is_human=True)
+    game.players = [player1]
+    game.current_player_index = 0
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.selected_objects = []
+    game.sector_view_mouse_hover_object = None
+    game.is_dragging_selection_box = False
+
+    renderer = SectorViewRenderer(game)
+    renderer.screen = MagicMock()
+    renderer.screen.get_size.return_value = (1920, 1080)
+    renderer.overlay_surface = MagicMock()
+
+    system = MagicMock()
+    game.galaxy.systems = {"Sol": system}
+    hex_obj = MagicMock()
+    system.hexes = {(0, 0): hex_obj}
+
+    unit = Unit(player1, Position(0, 0), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
+    unit.max_hit_points = 0
+
+    from unit_components import Commander, Engines
+    commander = Commander(unit)
+    engines = Engines(unit, speed=100.0)
+    unit.add_component(commander)
+    unit.add_component(engines)
+
+    # Parent MoveOrder to (500, 500)
+    from unit_orders.movement import MoveOrder, ReachWaypointOrder
+    move_order = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(500, 500)
+    })
+
+    # Sub-orders: W1=(100, 100), W2=(200, 200), D=(500, 500)
+    sub1 = ReachWaypointOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(100, 100)
+    }, parent_order=move_order)
+    sub2 = ReachWaypointOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(200, 200)
+    }, parent_order=move_order)
+    sub3 = ReachWaypointOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(500, 500)
+    }, parent_order=move_order)
+
+    move_order.add_sub_order(sub1)
+    move_order.add_sub_order(sub2)
+    move_order.add_sub_order(sub3)
+
+    commander.current_order = move_order
+    commander.orders_queue = []
+    hex_obj.celestial_bodies = []
+    hex_obj.units = [unit]
+
+    # 1. Verify waypoint collection order
+    waypoints = renderer._collect_all_waypoints(unit)
+    assert len(waypoints) == 3
+    assert waypoints[0]['position'] == Position(100, 100)
+    assert waypoints[1]['position'] == Position(200, 200)
+    assert waypoints[2]['position'] == Position(500, 500)
+
+    # 2. Verify drawn lines
+    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
+         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
+         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
+         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
+         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
+         patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
+
+        renderer.draw_sector_view()
+
+        def line_pairs():
+            result = []
+            for call in mock_draw_line.call_args_list:
+                args = call[0]
+                s = args[2]
+                e = args[3]
+                s_tup = (s.x, s.y) if hasattr(s, 'x') else (float(s[0]), float(s[1]))
+                e_tup = (e.x, e.y) if hasattr(e, 'x') else (float(e[0]), float(e[1]))
+                result.append((s_tup, e_tup))
+            return result
+
+        drawn = line_pairs()
+        # Should contain sequential segments:
+        # Unit (0, 0) -> W1 (100, 100)
+        assert ((0.0, 0.0), (100.0, 100.0)) in drawn
+        # W1 (100, 100) -> W2 (200, 200)
+        assert ((100.0, 100.0), (200.0, 200.0)) in drawn
+        # W2 (200, 200) -> D (500, 500)
+        assert ((200.0, 200.0), (500.0, 500.0)) in drawn
+
+        # Should NOT contain direct line from Unit (0, 0) to D (500, 500)
+        assert ((0.0, 0.0), (500.0, 500.0)) not in drawn
+        # Should NOT contain line from D (500, 500) to W1 (100, 100)
+        assert ((500.0, 500.0), (100.0, 100.0)) not in drawn
+
+
+def test_sector_view_attack_with_move_sub_order_sequential():
+    """Verify that an attack order with a movement sub-order draws unit -> move_pos -> target."""
+    game = MagicMock()
+    player1 = Player("Player 1", BLUE, is_human=True)
+    player2 = Player("Player 2", (255, 0, 0), is_human=False)
+    game.players = [player1, player2]
+    game.current_player_index = 0
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.selected_objects = []
+    game.sector_view_mouse_hover_object = None
+    game.is_dragging_selection_box = False
+
+    renderer = SectorViewRenderer(game)
+    renderer.screen = MagicMock()
+    renderer.screen.get_size.return_value = (1920, 1080)
+    renderer.overlay_surface = MagicMock()
+
+    system = MagicMock()
+    game.galaxy.systems = {"Sol": system}
+    hex_obj = MagicMock()
+    system.hexes = {(0, 0): hex_obj}
+
+    unit = Unit(player1, Position(0, 0), (0, 0), "Sol", "Attacker", HullSize.MEDIUM, game)
+    unit.max_hit_points = 0
+    target_unit = Unit(player2, Position(400, 400), (0, 0), "Sol", "Target", HullSize.MEDIUM, game)
+    target_unit.id = 999
+    game.galaxy.get_unit_by_id = MagicMock(return_value=target_unit)
+
+    from unit_components import Commander, Engines
+    commander = Commander(unit)
+    engines = Engines(unit, speed=100.0)
+    unit.add_component(commander)
+    unit.add_component(engines)
+
+    from unit_orders.combat import AttackOrder
+    from unit_orders.movement import MoveOrder, ReachWaypointOrder
+    attack_order = AttackOrder(unit, {"target_unit_id": 999})
+    move_sub = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(300, 300)
+    }, parent_order=attack_order)
+    wp_sub = ReachWaypointOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(300, 300)
+    }, parent_order=move_sub)
+    move_sub.add_sub_order(wp_sub)
+    attack_sub = AttackOrder(unit, {"target_unit_id": 999}, parent_order=attack_order)
+
+    attack_order.add_sub_order(move_sub)
+    attack_order.add_sub_order(attack_sub)
+    commander.current_order = attack_order
+    commander.orders_queue = []
+
+    waypoints = renderer._collect_all_waypoints(unit)
+    assert len(waypoints) == 2
+    assert waypoints[0]['position'] == Position(300, 300)
+    assert waypoints[0]['order_type'] == OrderType.REACH_WAYPOINT
+    assert waypoints[1]['position'] == Position(400, 400)
+    assert waypoints[1]['order_type'] == OrderType.ATTACK
+
+
+def test_sector_view_queued_orders_without_sub_orders_sequential():
+    """Verify that current order and queued order without sub-orders chain sequentially."""
+    game = MagicMock()
+    player1 = Player("Player 1", BLUE, is_human=True)
+    game.players = [player1]
+    game.current_player_index = 0
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.selected_objects = []
+    game.sector_view_mouse_hover_object = None
+    game.is_dragging_selection_box = False
+
+    renderer = SectorViewRenderer(game)
+    renderer.screen = MagicMock()
+    renderer.screen.get_size.return_value = (1920, 1080)
+    renderer.overlay_surface = MagicMock()
+
+    system = MagicMock()
+    game.galaxy.systems = {"Sol": system}
+    hex_obj = MagicMock()
+    system.hexes = {(0, 0): hex_obj}
+
+    unit = Unit(player1, Position(0, 0), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
+    unit.max_hit_points = 0
+
+    from unit_components import Commander, Engines
+    commander = Commander(unit)
+    engines = Engines(unit, speed=100.0)
+    unit.add_component(commander)
+    unit.add_component(engines)
+
+    from unit_orders.movement import MoveOrder, ReachWaypointOrder
+    current_move = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(100, 100)
+    })
+    sub1 = ReachWaypointOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(100, 100)
+    }, parent_order=current_move)
+    current_move.add_sub_order(sub1)
+
+    queued_move = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(200, 200)
+    })
+
+    commander.current_order = current_move
+    commander.orders_queue = [queued_move]
+    hex_obj.celestial_bodies = []
+    hex_obj.units = [unit]
+
+    waypoints = renderer._collect_all_waypoints(unit)
+    assert len(waypoints) == 2
+    assert waypoints[0]['position'] == Position(100, 100)
+    assert waypoints[1]['position'] == Position(200, 200)
+
+    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
+         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
+         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
+         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
+         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
+         patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
+
+        renderer.draw_sector_view()
+
+        def line_pairs():
+            result = []
+            for call in mock_draw_line.call_args_list:
+                args = call[0]
+                s = args[2]
+                e = args[3]
+                s_tup = (s.x, s.y) if hasattr(s, 'x') else (float(s[0]), float(s[1]))
+                e_tup = (e.x, e.y) if hasattr(e, 'x') else (float(e[0]), float(e[1]))
+                result.append((s_tup, e_tup))
+            return result
+
+        drawn = line_pairs()
+        assert ((0.0, 0.0), (100.0, 100.0)) in drawn
+        assert ((100.0, 100.0), (200.0, 200.0)) in drawn
+
+

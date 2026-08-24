@@ -356,80 +356,36 @@ class SectorOverlayRenderer:
         if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT]:
             dsys = order.parameters.get("destination_system_name")
             dhex = order.parameters.get("destination_hex_coord")
-            return dsys == system_name and dhex == hex_coord
+            if dsys == system_name and dhex == hex_coord:
+                return True
         elif order.order_type == OrderType.USE_ABILITY:
             target_unit_id = order.parameters.get("target_unit_id")
             target_position = order.parameters.get("target_position")
             if target_unit_id:
                 target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
-                if target_unit:
-                    return target_unit.in_system == system_name and target_unit.in_hex == hex_coord
+                if target_unit and target_unit.in_system == system_name and target_unit.in_hex == hex_coord:
+                    return True
             elif target_position:
                 dsys = order.parameters.get("target_system_name") or order.unit.in_system
                 dhex = order.parameters.get("target_hex_coord") or order.unit.in_hex
-                return dsys == system_name and dhex == hex_coord
+                if dsys == system_name and dhex == hex_coord:
+                    return True
+        elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
+            target_unit_id = order.parameters.get("target_unit_id")
+            if target_unit_id:
+                target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
+                if target_unit and target_unit.in_system == system_name and target_unit.in_hex == hex_coord:
+                    return True
+
+        for sub_order in getattr(order, 'sub_orders', []):
+            if self.order_targets_sector(sub_order, system_name, hex_coord):
+                return True
+
         return False
 
     def collect_waypoints_from_order(self, order, unit, all_waypoints_sequence, is_current=False):
-        if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT]:
-            dsys = order.parameters["destination_system_name"]
-            dhex = order.parameters["destination_hex_coord"]
-            dpos = order.parameters["destination_position"]
-            
-            sequence_index = len(all_waypoints_sequence)
-            all_waypoints_sequence.append({
-                'position': dpos,
-                'system': dsys,
-                'hex': dhex,
-                'is_current': is_current,
-                'is_sub_order': order.parent_order is not None,
-                'sequence_index': sequence_index,
-                'order_type': order.order_type
-            })
-        elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
-            target_unit_id = order.parameters["target_unit_id"]
-            target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
-            if target_unit:
-                sequence_index = len(all_waypoints_sequence)
-                all_waypoints_sequence.append({
-                    'position': target_unit.position,
-                    'system': target_unit.in_system,
-                    'hex': target_unit.in_hex,
-                    'is_current': is_current,
-                    'is_sub_order': False,
-                    'sequence_index': sequence_index,
-                    'order_type': order.order_type
-                })
-        elif order.order_type == OrderType.USE_ABILITY:
-            target_unit_id = order.parameters.get("target_unit_id")
-            target_position = order.parameters.get("target_position")
-            if target_unit_id:
-                target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
-                if target_unit:
-                    sequence_index = len(all_waypoints_sequence)
-                    all_waypoints_sequence.append({
-                        'position': target_unit.position,
-                        'system': target_unit.in_system,
-                        'hex': target_unit.in_hex,
-                        'is_current': is_current,
-                        'is_sub_order': False,
-                        'sequence_index': sequence_index,
-                        'order_type': order.order_type
-                    })
-            elif target_position:
-                dsys = order.parameters.get("target_system_name") or order.unit.in_system
-                dhex = order.parameters.get("target_hex_coord") or order.unit.in_hex
-                sequence_index = len(all_waypoints_sequence)
-                all_waypoints_sequence.append({
-                    'position': target_position,
-                    'system': dsys,
-                    'hex': dhex,
-                    'is_current': is_current,
-                    'is_sub_order': order.parent_order is not None,
-                    'sequence_index': sequence_index,
-                    'order_type': order.order_type
-                })
-        elif order.order_type == OrderType.PATROL:
+        # 1. Patrol orders manage their own full cyclic sequence of waypoints
+        if order.order_type == OrderType.PATROL:
             wps = order.parameters.get("waypoints", [])
             if not wps and "destination_position" in order.parameters:
                 wps = [{
@@ -478,15 +434,89 @@ class SectorOverlayRenderer:
                         'order_type': order.order_type
                     })
 
-        for sub_order in list(order.sub_orders):
-            if order.order_type == OrderType.PATROL and sub_order.order_type == OrderType.MOVE:
-                continue
-            self.collect_waypoints_from_order(
-                sub_order,
-                unit,
-                all_waypoints_sequence,
-                is_current=(is_current and order == unit.commander_component.current_order)
-            )
+            for sub_order in list(order.sub_orders):
+                if sub_order.order_type == OrderType.MOVE:
+                    continue
+                self.collect_waypoints_from_order(
+                    sub_order,
+                    unit,
+                    all_waypoints_sequence,
+                    is_current=(is_current and order == unit.commander_component.current_order)
+                )
+            return
+
+        # 2. If this order has active sub-orders, collect waypoints sequentially from them
+        if getattr(order, 'sub_orders', None) and len(order.sub_orders) > 0:
+            for sub_order in list(order.sub_orders):
+                self.collect_waypoints_from_order(
+                    sub_order,
+                    unit,
+                    all_waypoints_sequence,
+                    is_current=(is_current and order == unit.commander_component.current_order)
+                )
+            return
+
+        # 3. Leaf order without sub-orders
+        if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT]:
+            dsys = order.parameters.get("destination_system_name")
+            dhex = order.parameters.get("destination_hex_coord")
+            dpos = order.parameters.get("destination_position")
+            
+            if dpos is not None:
+                sequence_index = len(all_waypoints_sequence)
+                all_waypoints_sequence.append({
+                    'position': dpos,
+                    'system': dsys,
+                    'hex': dhex,
+                    'is_current': is_current,
+                    'is_sub_order': order.parent_order is not None,
+                    'sequence_index': sequence_index,
+                    'order_type': order.order_type
+                })
+        elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
+            target_unit_id = order.parameters.get("target_unit_id")
+            if target_unit_id:
+                target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
+                if target_unit:
+                    sequence_index = len(all_waypoints_sequence)
+                    all_waypoints_sequence.append({
+                        'position': target_unit.position,
+                        'system': target_unit.in_system,
+                        'hex': target_unit.in_hex,
+                        'is_current': is_current,
+                        'is_sub_order': order.parent_order is not None,
+                        'sequence_index': sequence_index,
+                        'order_type': order.order_type
+                    })
+        elif order.order_type == OrderType.USE_ABILITY:
+            target_unit_id = order.parameters.get("target_unit_id")
+            target_position = order.parameters.get("target_position")
+            if target_unit_id:
+                target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
+                if target_unit:
+                    sequence_index = len(all_waypoints_sequence)
+                    all_waypoints_sequence.append({
+                        'position': target_unit.position,
+                        'system': target_unit.in_system,
+                        'hex': target_unit.in_hex,
+                        'is_current': is_current,
+                        'is_sub_order': order.parent_order is not None,
+                        'sequence_index': sequence_index,
+                        'order_type': order.order_type
+                    })
+            elif target_position:
+                dsys = order.parameters.get("target_system_name") or order.unit.in_system
+                dhex = order.parameters.get("target_hex_coord") or order.unit.in_hex
+                sequence_index = len(all_waypoints_sequence)
+                all_waypoints_sequence.append({
+                    'position': target_position,
+                    'system': dsys,
+                    'hex': dhex,
+                    'is_current': is_current,
+                    'is_sub_order': order.parent_order is not None,
+                    'sequence_index': sequence_index,
+                    'order_type': order.order_type
+                })
 
     def collect_all_waypoints(self, unit, is_current_order=False):
         all_waypoints_sequence = []
