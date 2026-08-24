@@ -4,7 +4,11 @@ import random
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from utils import HexCoord
-from geometry import Position, Vector, distance, hex_distance, is_point_in_circle, get_closest_point_on_circle_edge, clamp_point_to_circle
+from geometry import (
+    Position, Vector, distance, hex_distance, is_point_in_circle,
+    get_closest_point_on_circle_edge, clamp_point_to_circle, Circle,
+    segment_intersects_circle, compute_avoidance_waypoints
+)
 from pathfinding import find_intersystem_path, find_hex_jump_path
 from constants import XP_JUMP_RANGE_BONUS
 from .base import Order, OrderStatus, OrderType
@@ -14,6 +18,34 @@ if TYPE_CHECKING:
     from entities import Unit
 
 logger = logging.getLogger(__name__)
+
+
+def get_hex_collision_obstacles(
+    galaxy_ref: Optional['Galaxy'],
+    system_name: Optional[str],
+    hex_coord: Optional[HexCoord]
+) -> typing.List[Circle]:
+    """Returns a list of Circle collision obstacles for solid celestial bodies in the given hex."""
+    if not galaxy_ref or not system_name or hex_coord is None:
+        return []
+    systems = getattr(galaxy_ref, 'systems', None)
+    if not isinstance(systems, dict):
+        return []
+    system = systems.get(system_name)
+    if not system:
+        return []
+    hexes = getattr(system, 'hexes', None)
+    if not isinstance(hexes, dict):
+        return []
+    hex_obj = hexes.get(hex_coord)
+    if not hex_obj:
+        return []
+    obstacles = []
+    for body in getattr(hex_obj, 'celestial_bodies', []):
+        r = getattr(body, 'collision_radius', 0.0)
+        if isinstance(r, (int, float)) and r > 0.0:
+            obstacles.append(Circle(body.position, float(r)))
+    return obstacles
 
 
 class ReachWaypointOrder(Order):
@@ -62,6 +94,25 @@ class ReachWaypointOrder(Order):
                     self.unit.hyperdrive_component.hex_jump_target = None
                     self.unit.hyperdrive_component.wormhole_jump_target = None
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): COMPLETED (already at sub-light destination {dest_position} in {dest_system}:{dest_hex}).")
+                return
+
+            obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex)
+            avoidance_wps = compute_avoidance_waypoints(self.unit.position, dest_position, obstacles, margin=50.0)
+            if avoidance_wps:
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Path intersects celestial body. Spawning {len(avoidance_wps)} avoidance sub-order(s).")
+                for wp in avoidance_wps:
+                    self.add_sub_order(ReachWaypointOrder(self.unit, {
+                        "destination_system_name": dest_system,
+                        "destination_hex_coord": dest_hex,
+                        "destination_position": wp
+                    }, parent_order=self))
+                self.add_sub_order(ReachWaypointOrder(self.unit, {
+                    "destination_system_name": dest_system,
+                    "destination_hex_coord": dest_hex,
+                    "destination_position": dest_position
+                }, parent_order=self))
+                if self.sub_orders:
+                    self.sub_orders[0].execute(galaxy_ref=galaxy_ref)
                 return
 
             self.unit.engines_component.move_target = dest_position
@@ -179,6 +230,14 @@ class MoveOrder(Order):
                         "destination_position": adjusted_pos
                     }, parent_order=self))
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Adding sub-light move from {adjusted_pos} to original target {target_pos}.")
+                    obstacles = get_hex_collision_obstacles(galaxy_ref, system_name, target_hex)
+                    avoidance_wps = compute_avoidance_waypoints(adjusted_pos, target_pos, obstacles, margin=50.0)
+                    for wp in avoidance_wps:
+                        self.add_sub_order(ReachWaypointOrder(self.unit, {
+                            "destination_system_name": system_name,
+                            "destination_hex_coord": target_hex,
+                            "destination_position": wp
+                        }, parent_order=self))
                     self.add_sub_order(ReachWaypointOrder(self.unit, {
                         "destination_system_name": system_name,
                         "destination_hex_coord": target_hex,
@@ -489,6 +548,17 @@ class MoveOrder(Order):
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, no engines).")
                 return
             
+            obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex)
+            avoidance_wps = compute_avoidance_waypoints(current_position, dest_position, obstacles, margin=50.0)
+            if avoidance_wps:
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct sub-light path intersects celestial body. Adding {len(avoidance_wps)} avoidance waypoint(s).")
+                for wp in avoidance_wps:
+                    self.add_sub_order(ReachWaypointOrder(self.unit, {
+                        "destination_system_name": dest_system,
+                        "destination_hex_coord": dest_hex,
+                        "destination_position": wp
+                    }, parent_order=self))
+
             sub_order_params = {
                 "destination_system_name": dest_system,
                 "destination_hex_coord": dest_hex,

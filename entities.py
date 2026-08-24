@@ -12,7 +12,8 @@ from constants import (
     MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS,
     XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS,
     MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS,
-    POPULATION_PER_HABITAT, BASE_HABITAT_CAPACITY
+    POPULATION_PER_HABITAT, BASE_HABITAT_CAPACITY,
+    STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS
 )
 import uuid
 import dataclasses
@@ -127,6 +128,7 @@ def _normalize_sabotage_type(sabotage_type: typing.Union[str, SabotageType]) -> 
 
 class CelestialBody(GameObject):
     """Base class for fixed celestial objects like planets, stars."""
+    collision_radius: float = 0.0
     def __init__(self, position: Position, in_hex: HexCoord, in_system: str, inhibition_field_radius: float = 0.0):
         super().__init__(position, in_hex, in_system)
         self.inhibition_field_radius = inhibition_field_radius
@@ -194,6 +196,7 @@ class Wormhole(CelestialBody):
 
 class Star(CelestialBody):
     """Represents the central star of a system."""
+    collision_radius: float = STAR_RADIUS
     def __init__(self, in_system: str, star_type: StarType):
         super().__init__(position=Position(0.0, 0.0), in_hex=(0, 0), in_system=in_system, inhibition_field_radius=2700.0)
         self.star_type = star_type
@@ -206,6 +209,7 @@ class Star(CelestialBody):
 
 class Planet(CelestialBody):
     """Represents a planet within a system."""
+    collision_radius: float = PLANET_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str, planet_type: PlanetType):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=2400.0)
         self.name = f"Planet {self.id}"
@@ -226,6 +230,7 @@ class Planet(CelestialBody):
 
 class Moon(CelestialBody):
     """Represents a moon, which is colonisable."""
+    collision_radius: float = MOON_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1800.0)
         self.name = f"Moon {self.id}"
@@ -245,6 +250,7 @@ class Moon(CelestialBody):
 
 class ColonizableAsteroid(CelestialBody):
     """Represents a colonisable asteroid with population growth."""
+    collision_radius: float = ASTEROID_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1200.0)
         self.name = f"Colonizable Asteroid {self.id}"
@@ -263,6 +269,7 @@ class ColonizableAsteroid(CelestialBody):
 
 class MetalAsteroid(CelestialBody):
     """Represents a metal asteroid, which is a source of Metal."""
+    collision_radius: float = ASTEROID_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1200.0)
         self.name = f"Metal Asteroid {self.id}"
@@ -304,6 +311,7 @@ class Storm(CelestialBody):
 
 class Comet(CelestialBody):
     """Represents a comet, which is a source of Crystal."""
+    collision_radius: float = COMET_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
         self.name = f"Comet {self.id}"
