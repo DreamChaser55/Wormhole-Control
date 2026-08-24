@@ -129,6 +129,8 @@ class NewGameWizard:
         self._player_color_swatches: typing.List[pygame_gui.elements.UIPanel] = []
         self._player_human_buttons: typing.List[pygame_gui.elements.UIButton] = []
         self._player_is_human: typing.List[bool] = []
+        self._player_team_buttons: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_teams: typing.List[int] = [1, 2, 2]
 
         # Slider references (value read via .get_current_value())
         self._num_systems_slider: typing.Optional[pygame_gui.elements.UIHorizontalSlider] = None
@@ -345,6 +347,7 @@ class NewGameWizard:
         self._player_color_swatches = []
         self._player_human_buttons = []
         self._player_is_human = []
+        self._player_team_buttons = []
 
         for i in range(self._num_players):
             y = self._add_single_player_row(i, y, width)
@@ -435,12 +438,36 @@ class NewGameWizard:
         self._player_human_buttons.append(btn)
         self._player_is_human.append(is_human)
 
+        # Team selector button (cycles Team 1 -> Team 2 -> ...)
+        team_btn_w = self._sx(72)
+        team_x = human_x + human_btn_w + self._sx(8)
+        if index >= len(self._player_teams):
+            self._player_teams.append(2 if index > 0 else 1)
+        team_num = self._player_teams[index]
+        team_btn = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(team_x, y, team_btn_w, row_h),
+            text=f"Team {team_num}",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id=f"#player_team_button_{index}",
+        )
+        self._player_team_buttons.append(team_btn)
+
         return y + row_h + self._sy(4)
 
     def _cycle_player_color(self, player_index: int, delta: int) -> None:
         """Cycles the colour for a player by ±1, wrapping around the palette."""
         cur = self._player_color_indices[player_index]
         self._player_color_indices[player_index] = (cur + delta) % len(PLAYER_COLOR_PALETTE)
+
+    def _cycle_player_team(self, player_index: int, delta: int = 1) -> None:
+        """Cycles the team assignment for a player."""
+        max_teams = max(2, self._num_players)
+        cur = self._player_teams[player_index]
+        new_team = ((cur - 1 + delta) % max_teams) + 1
+        self._player_teams[player_index] = new_team
+        if player_index < len(self._player_team_buttons) and self._player_team_buttons[player_index]:
+            self._player_team_buttons[player_index].set_text(f"Team {new_team}")
 
     def draw_swatches(self, surface: pygame.Surface) -> None:
         """Draws filled colour squares on top of each player's swatch panel.
@@ -646,6 +673,7 @@ class NewGameWizard:
         self._player_color_next_btns = []
         self._player_human_buttons = []
         self._player_is_human = []
+        self._player_team_buttons = []
 
         # Rebuild
         self._build_ui()
@@ -666,6 +694,7 @@ class NewGameWizard:
                 PLAYER_COLOR_PALETTE[idx][0] for idx in self._player_color_indices
             ],
             "player_humans": list(self._player_is_human),
+            "player_teams": list(self._player_teams),
             "num_systems": self._num_systems_slider.get_current_value() if self._num_systems_slider else 15,
             "radius_min": self._sys_radius_min_slider.get_current_value() if self._sys_radius_min_slider else 5,
             "radius_max": self._sys_radius_max_slider.get_current_value() if self._sys_radius_max_slider else 8,
@@ -683,6 +712,7 @@ class NewGameWizard:
         player_names = snap.get("player_names", [])
         player_colors = snap.get("player_colors", [])  # list of color name strings
         player_humans = snap.get("player_humans", [])
+        player_teams = snap.get("player_teams", [])
 
         for i, entry in enumerate(self._player_name_entries):
             if i < len(player_names):
@@ -701,6 +731,11 @@ class NewGameWizard:
                 self._player_is_human[i] = is_h
                 if self._player_human_buttons[i]:
                     self._player_human_buttons[i].set_text("Human" if is_h else "AI")
+        for i, team_num in enumerate(player_teams):
+            if i < len(self._player_teams):
+                self._player_teams[i] = team_num
+                if i < len(self._player_team_buttons) and self._player_team_buttons[i]:
+                    self._player_team_buttons[i].set_text(f"Team {team_num}")
 
         def _restore_slider(slider, value):
             if slider and value is not None:
@@ -737,6 +772,10 @@ class NewGameWizard:
 
         if self.has_duplicate_colors():
             errors.append("Each player must be assigned a unique color before starting the game.")
+
+        active_teams = set(self._player_teams[:self._num_players])
+        if self._num_players >= 2 and len(active_teams) < 2:
+            errors.append("Players must be grouped into at least two different teams.")
 
         radius_min = int(self._sys_radius_min_slider.get_current_value()) if self._sys_radius_min_slider else 5
         radius_max = int(self._sys_radius_max_slider.get_current_value()) if self._sys_radius_max_slider else 8
@@ -817,6 +856,12 @@ class NewGameWizard:
                     btn.set_text("Human" if self._player_is_human[i] else "AI")
                     return None
 
+            # Team cycle buttons
+            for i, btn in enumerate(self._player_team_buttons):
+                if element is btn:
+                    self._cycle_player_team(i, +1)
+                    return None
+
         elif event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
             self._update_slider_labels()
 
@@ -869,7 +914,8 @@ class NewGameWizard:
             else:
                 color = PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1]
             is_human = self._player_is_human[i] if i < len(self._player_is_human) else True
-            player_configs.append(PlayerConfig(name=name, color=color, is_human=is_human))
+            team_id = self._player_teams[i] if i < len(self._player_teams) else (2 if i > 0 else 1)
+            player_configs.append(PlayerConfig(name=name, color=color, is_human=is_human, team_id=team_id))
 
         num_systems = int(self._num_systems_slider.get_current_value()) if self._num_systems_slider else 15
 

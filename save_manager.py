@@ -113,6 +113,7 @@ def serialize_player(player: Player) -> dict:
         "name": player.name,
         "color": list(player.color),
         "is_human": player.is_human,
+        "team_id": getattr(player, "team_id", player.id + 1),
         "credits": player.credits,
         "metal": player.metal,
         "crystal": player.crystal,
@@ -388,9 +389,12 @@ def deserialize_player(data: dict) -> Player:
     player = Player(
         name=data.get("name", "Player"),
         color=tuple(data.get("color", (255, 255, 255))),
-        is_human=data.get("is_human", True)
+        is_human=data.get("is_human", True),
+        team_id=data.get("team_id", None)
     )
     player.id = data.get("id", player.id)
+    if "team_id" in data:
+        player.team_id = data["team_id"]
     player.credits = data.get("credits", 20000.0)
     player.metal = data.get("metal", 10000.0)
     player.crystal = data.get("crystal", 10000.0)

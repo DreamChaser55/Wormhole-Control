@@ -33,9 +33,15 @@ from constants import (
 # ---------------------------------------------------------------------------
 
 class MockPlayer:
-    def __init__(self):
-        self.id = 1
-        self.name = "Test Player"
+    _counter = 1
+    def __init__(self, name="Test Player", player_id=None, team_id=None):
+        if player_id is not None:
+            self.id = player_id
+        else:
+            self.id = MockPlayer._counter
+            MockPlayer._counter += 1
+        self.name = name
+        self.team_id = team_id if team_id is not None else self.id
         self.credits = 10_000
         self.metal = 10_000
         self.crystal = 10_000

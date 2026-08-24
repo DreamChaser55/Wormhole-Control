@@ -28,14 +28,15 @@ class PlayerConfig:
     name: str
     color: typing.Tuple[int, int, int]
     is_human: bool = True
+    team_id: int = 1
 
 
 def _default_player_configs() -> typing.List[PlayerConfig]:
     """Returns the three default player configurations."""
     return [
-        PlayerConfig("Player 1", PLAYER_COLOR_PALETTE[0][1], is_human=True),
-        PlayerConfig("Player 2", PLAYER_COLOR_PALETTE[1][1], is_human=True),
-        PlayerConfig("Player 3", PLAYER_COLOR_PALETTE[2][1], is_human=True),
+        PlayerConfig("Player 1", PLAYER_COLOR_PALETTE[0][1], is_human=True, team_id=1),
+        PlayerConfig("Player 2", PLAYER_COLOR_PALETTE[1][1], is_human=True, team_id=2),
+        PlayerConfig("Player 3", PLAYER_COLOR_PALETTE[2][1], is_human=True, team_id=2),
     ]
 
 
@@ -86,6 +87,10 @@ class GameSettings:
             errors.append(
                 f"Min System Distance ({int(self.min_system_distance)}) must be strictly less than Max System Distance ({int(self.max_system_distance)})."
             )
+        if len(self.player_configs) >= 2:
+            distinct_teams = {cfg.team_id for cfg in self.player_configs}
+            if len(distinct_teams) < 2:
+                errors.append("Players must be grouped into at least two different teams.")
         return errors
 
     def __post_init__(self) -> None:

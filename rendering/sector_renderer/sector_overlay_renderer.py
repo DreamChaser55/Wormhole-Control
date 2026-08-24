@@ -138,10 +138,13 @@ class SectorOverlayRenderer:
                           else None)
 
         if current_player:
+            from entities import are_allies
             for unit in hex_obj.units:
-                is_friendly = (unit.owner == current_player)
+                is_friendly = are_allies(unit.owner, current_player)
                 is_infiltrated = False
-                if hasattr(unit, 'has_infiltrating_agent_from'):
+                if hasattr(unit, 'infiltrating_agents') and isinstance(unit.infiltrating_agents, list):
+                    is_infiltrated = any(are_allies(ag.owner, current_player) for ag in unit.infiltrating_agents)
+                elif hasattr(unit, 'has_infiltrating_agent_from'):
                     res = unit.has_infiltrating_agent_from(current_player)
                     if res is True:
                         is_infiltrated = True
@@ -168,7 +171,9 @@ class SectorOverlayRenderer:
 
             for body in getattr(hex_obj, 'celestial_bodies', []):
                 is_infiltrated_body = False
-                if hasattr(body, 'has_infiltrating_agent_from'):
+                if hasattr(body, 'infiltrating_agents') and isinstance(body.infiltrating_agents, list):
+                    is_infiltrated_body = any(are_allies(ag.owner, current_player) for ag in body.infiltrating_agents)
+                elif hasattr(body, 'has_infiltrating_agent_from'):
                     res = body.has_infiltrating_agent_from(current_player)
                     if res is True:
                         is_infiltrated_body = True

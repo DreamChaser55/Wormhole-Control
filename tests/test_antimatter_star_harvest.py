@@ -8,8 +8,15 @@ from unit_components import AntimatterStorage, AntimatterHarvester
 
 
 class MockPlayer:
-    def __init__(self, name="TestPlayer"):
+    _counter = 1
+    def __init__(self, name="TestPlayer", player_id=None, team_id=None):
+        if player_id is not None:
+            self.id = player_id
+        else:
+            self.id = MockPlayer._counter
+            MockPlayer._counter += 1
         self.name = name
+        self.team_id = team_id if team_id is not None else self.id
 
 
 class FakeHex:

@@ -43,6 +43,11 @@ class DesignateTargetAbility(AbilityInstance):
             logger.debug(f"[{component.unit.name}] Designate Target: target unit {target_unit_id} not found.")
             return False
 
+        from entities import are_allies
+        if are_allies(target_unit.owner, component.unit.owner):
+            logger.debug(f"[{component.unit.name}] Designate Target: target unit {target_unit.name} is friendly/allied.")
+            return False
+
         target_unit.damage_amplification += 0.5
         self.target_unit_id = target_unit_id
         logger.debug(f"[{component.unit.name}] Designate Target applied to {target_unit.name}. Amplification now: {target_unit.damage_amplification:.2f}.")

@@ -406,7 +406,8 @@ class TurnProcessor:
                         current_player.credits += credits_generated
                         total_credits_generated += credits_generated
                     else:
-                        if getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list):
+                        from entities import are_enemies
+                        if body.owner and are_enemies(current_player, body.owner) and getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list):
                             if any(getattr(a, 'owner', None) == current_player and getattr(a, 'active_sabotage', None) == SabotageType.ECONOMY for a in body.infiltrating_agents):
                                 siphoned = base_tax * 0.25
                                 current_player.credits += siphoned
@@ -468,22 +469,24 @@ class TurnProcessor:
                         # Passive Counter-Intelligence Sweep check
                         intel_comp = getattr(unit, 'intelligence_component', None)
                         if intel_comp and intel_comp.has_counter_intelligence and not intel_comp.is_destroyed:
-                            # Check friendly units and colonies in same system and hex within 500 units
+                            # Check friendly and allied units and colonies in same system and hex within 500 units
+                            from entities import are_allies, are_enemies
                             current_hex_obj = system_obj.hexes.get(u_hex)
                             if current_hex_obj:
                                 for target_u in current_hex_obj.units:
-                                    if target_u.owner == current_player and hasattr(target_u, 'infiltrating_agents'):
+                                    if are_allies(current_player, target_u.owner) and hasattr(target_u, 'infiltrating_agents'):
                                         if distance(unit.position, target_u.position) <= 500.0:
                                             for agent in target_u.infiltrating_agents:
-                                                if agent.owner != current_player and not agent.is_discovered:
+                                                if are_enemies(current_player, agent.owner) and not agent.is_discovered:
                                                     if random.random() < 0.30:
                                                         agent.is_discovered = True
                                                         logger.info(f"Counter-Intelligence on {unit.name} discovered enemy agent on {target_u.name}!")
                                 for body in current_hex_obj.celestial_bodies:
-                                    if getattr(body, 'owner', None) == current_player and hasattr(body, 'infiltrating_agents'):
+                                    body_owner = getattr(body, 'owner', None)
+                                    if are_allies(current_player, body_owner) and hasattr(body, 'infiltrating_agents'):
                                         if distance(unit.position, body.position) <= 500.0:
                                             for agent in body.infiltrating_agents:
-                                                if agent.owner != current_player and not agent.is_discovered:
+                                                if are_enemies(current_player, agent.owner) and not agent.is_discovered:
                                                     if random.random() < 0.30:
                                                         agent.is_discovered = True
                                                         logger.info(f"Counter-Intelligence on {unit.name} discovered enemy agent on {body.name}!")

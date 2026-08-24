@@ -8,9 +8,15 @@ from events import UseAbilityEvent
 from constants import HullSize
 
 class MockPlayer:
-    def __init__(self, name="Test Player"):
-        self.id = 1
+    _counter = 1
+    def __init__(self, name="Test Player", player_id=None, team_id=None):
+        if player_id is not None:
+            self.id = player_id
+        else:
+            self.id = MockPlayer._counter
+            MockPlayer._counter += 1
         self.name = name
+        self.team_id = team_id if team_id is not None else self.id
 
 def test_get_ability_context_options_empty():
     game = MagicMock()

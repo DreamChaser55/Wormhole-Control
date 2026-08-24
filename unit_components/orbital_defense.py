@@ -72,10 +72,11 @@ class OrbitalDefenseComponent(UnitComponent):
         if not hex_obj:
             return False
 
-        from entities import Planet, Moon, ColonizableAsteroid
+        from entities import Planet, Moon, ColonizableAsteroid, are_allies
         for body in hex_obj.celestial_bodies:
             if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
-                if getattr(body, 'owner', None) == self.unit.owner and getattr(body, 'population', 0) > 0:
+                body_owner = getattr(body, 'owner', None)
+                if are_allies(body_owner, self.unit.owner) and getattr(body, 'population', 0) > 0:
                     return True
 
         return False
@@ -142,10 +143,11 @@ class OrbitalDefenseComponent(UnitComponent):
 
         sector_capacity = 0
         has_colonized_body = False
-        from entities import Planet, Moon, ColonizableAsteroid
+        from entities import Planet, Moon, ColonizableAsteroid, are_allies
         for body in hex_obj.celestial_bodies:
             if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
-                if getattr(body, 'owner', None) == self.unit.owner and getattr(body, 'population', 0) > 0:
+                body_owner = getattr(body, 'owner', None)
+                if are_allies(body_owner, self.unit.owner) and getattr(body, 'population', 0) > 0:
                     has_colonized_body = True
                     if hasattr(body, 'get_supported_orbital_defense_capacity'):
                         sector_capacity += body.get_supported_orbital_defense_capacity()
@@ -167,7 +169,7 @@ class OrbitalDefenseComponent(UnitComponent):
 
         od_units = []
         for u in hex_obj.units:
-            if u.owner == self.unit.owner:
+            if are_allies(u.owner, self.unit.owner):
                 comp = getattr(u, 'orbital_defense_component', None)
                 if comp and not comp.is_destroyed:
                     od_units.append(u)

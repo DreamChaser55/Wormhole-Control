@@ -193,11 +193,11 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 4 | `has_hyperdrive` | Hyperdrive | Dynamic | 5.0 | Forbidden on `STRIKECRAFT_WING`. Basic hyperdrive available on `TINY`+; Advanced hyperdrive requires `SMALL`+. |
 | 5 | `has_weapon_bays` | Weapons | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with turret count, damage, range, and fire rate. |
 | 6 | `has_defenses` | Defenses | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with Armor, Shields, and Point Defense ratings. |
-| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables building space stations and units, as well as field refitting (adding or removing components) on friendly vessels. |
-| 8 | `has_repair_component` | Repair | Dynamic | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with repair rate. |
-| 9 | `has_colony_component` | Colony | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables planetary colonization. |
+| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables building space stations and units, as well as field refitting (adding or removing components) on friendly and allied vessels. |
+| 8 | `has_repair_component` | Repair | Dynamic | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with repair rate. Repairs friendly and allied ships. |
+| 9 | `has_colony_component` | Colony | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables planetary colonization and loading colonists from friendly/allied worlds. |
 | 10 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Generates +50 credits/turn in colonized sectors up to the colony's supported habitat limit (base 1, +1 per 25 population). |
-| 11 | `has_orbital_defense_component` | Orbital Defense | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Projects an area-of-effect aura (500 radius) providing +20% weapon damage and +20% defense mitigation to friendly ships in range in colonized sectors up to the colony's supported orbital defense limit (base 1, +1 per 25 population). Overlapping auras stack additively. |
+| 11 | `has_orbital_defense_component` | Orbital Defense | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Projects an area-of-effect aura (500 radius) providing +20% weapon damage and +20% defense mitigation to friendly and allied ships in range in friendly/allied colonized sectors up to the colony's supported orbital defense limit (base 1, +1 per 25 population). Overlapping auras stack additively. |
 | 12 | `has_trade_component` | Trade Module | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. **Requires Engines (`has_engine`)**. Enables trade ships to earn credits by traveling between active Civilian Habitat modules in different sectors, with payout scaling with distance between sectors. |
 | 13 | `has_mining_component` | Mining | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with mining rate and cargo capacity. |
 | 14 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined ore into metal. |
@@ -206,11 +206,11 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. |
 | 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 20.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with inhibition field radius. |
 | 19 | `has_ability_component` | Abilities | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with number of equipped abilities. |
-| 20 | `has_sensors` | Sensors | Dynamic | 2.0 | Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. |
-| 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields. |
+| 20 | `has_sensors` | Sensors | Dynamic | 2.0 | Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. Coverage is shared across all allied players. |
+| 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields that ignore friendly and allied vessels. |
 | 22 | `has_marines_component` | Marines | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count. |
-| 23 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 / 30.0 | Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius). |
-| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps and eliminating discovered enemy agents. |
+| 23 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 / 30.0 | Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly and allied units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius). |
+| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps to protect friendly and allied assets and eliminate discovered enemy agents. |
 | — | *Always Present* | Commander | — | — | Core component present on all ships; manages order queues and combat stances. |
 
 ---
@@ -244,14 +244,14 @@ The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can
 | `MOVE` | High-level multi-leg movement across positions, hexes, or star systems via wormholes. |
 | `PATROL` | Repeatedly patrols a looping sequence of waypoint coordinates. |
 | `ATTACK` | Moves into weapon range and engages a designated enemy unit until destroyed. |
-| `DEFEND` | Holds position at a target location or guards a friendly unit against incoming hostiles. |
-| `PROTECT` | Escorts a friendly unit, matching its movement and intercepting hostile attackers. |
+| `DEFEND` | Holds position at a target location or guards a friendly/allied unit against incoming hostiles. |
+| `PROTECT` | Escorts a friendly or allied unit, matching its movement and intercepting hostile attackers. |
 | `TOGGLE_INHIBITOR` | Activates or deactivates the ship's hyperspace inhibition field emitter. |
 | `COLONIZE` | Disembarks colonists from a colony ship to establish a settlement on a habitable body. |
-| `LOAD_COLONISTS` | Embarks population from a colonized celestial body onto a colony transport. |
+| `LOAD_COLONISTS` | Embarks population from a friendly or allied colonized celestial body onto a colony transport. |
 | `CONSTRUCT` | Deploys a constructor to build a new space station, structure, or starship. |
-| `REFIT_UNIT` | Deploys a constructor to install new components or decommission existing components on a friendly vessel in the field. |
-| `REPAIR` | Moves to and restores hull integrity on a damaged friendly unit. |
+| `REFIT_UNIT` | Deploys a constructor to install new components or decommission existing components on a friendly or allied vessel in the field. |
+| `REPAIR` | Moves to and restores hull integrity on a damaged friendly or allied unit. |
 | `MINE` | Extracts raw metal from an asteroid or raw crystal from a comet. |
 | `UNLOAD_RESOURCES` | Transports mined raw ore or crystals to a compatible refinery station. |
 | `DOCK` | Lands a dockable vessel into a carrier's hangar bay. |
@@ -259,8 +259,8 @@ The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can
 | `DEPLOY_ALL_WINGS` | Scrambles all carrier strikecraft wings (fighters/bombers) into active combat. |
 | `USE_ABILITY` | Activates an equipped special ability on self, a target position, or a target unit. |
 | `CONTINUOUS_MINE` | Automated cycle: mines raw resources until cargo is full, unloads at nearest refinery, and repeats. |
-| `TRANSFER_ANTIMATTER` | Transfers a quantity of stored antimatter fuel to a friendly recipient ship. |
-| `CONTINUOUS_RESUPPLY` | Automated harvester loop: charges antimatter at a star, seeks low-fuel friendly units, refuels them, and repeats. |
+| `TRANSFER_ANTIMATTER` | Transfers a quantity of stored antimatter fuel to a friendly or allied recipient ship. |
+| `CONTINUOUS_RESUPPLY` | Automated harvester loop: charges antimatter at a star, seeks low-fuel friendly or allied units, refuels them, and repeats. |
 | `LAY_MINEFIELD` | Deploys an anti-ship or anti-strikecraft minefield at the unit's current position. |
 | `TRADE` | Travels to a designated active Civilian Habitat in another sector and conducts trade, earning credits based on distance. |
 | `CONTINUOUS_TRADE` | Automated merchant cycle: travels between active Civilian Habitat modules in different sectors to maximize trade revenue continuously. |
@@ -268,8 +268,8 @@ The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can
 | `INFILTRATE_PLANET` | Deploys a covert agent onto an enemy colonized celestial body within operational range. |
 | `RELOCATE_AGENT` | Moves an embedded agent from their current host to another enemy unit or colony in operational range. |
 | `SABOTAGE` | Commands an embedded agent to sabotage host unit subsystems or colonial infrastructure. |
-| `CI_SWEEP` | Counter-Intelligence ship performs an active sensor sweep to detect enemy spies in the sector. |
-| `ELIMINATE_AGENT` | Counter-Intelligence ship neutralizes and removes a discovered enemy agent from a friendly unit or colony. |
+| `CI_SWEEP` | Counter-Intelligence ship performs an active sensor sweep to detect enemy spies on friendly and allied assets in the sector. |
+| `ELIMINATE_AGENT` | Counter-Intelligence ship neutralizes and removes a discovered enemy agent from a friendly or allied unit or colony. |
 | `EXTRACT_AGENT` | Recovers an embedded agent back into the parent Intelligence unit. |
 
 ---
@@ -382,8 +382,9 @@ Every star system contains a central star with a unique antimatter harvesting ra
 
 - **Event Bus (`events.py`)**: Decouples input handling, order queuing, and UI notifications using a lightweight publish/subscribe pattern.
 - **Order System (`order_system.py`)**: Manages hierarchical order lifecycles (parent orders and dynamically generated sub-orders), route pathfinding, jump safety checks, and continuous loops.
-- **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly units within build range (500 px). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
-- **Visibility Service (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks and persists last-known sector intel per player.
+- **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly and allied units within build range (500 px). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
+- **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, and persists last-known sector intel per player.
+- **Diplomacy & Team System (`entities.py`, `game_settings.py`, `game_setup.py`, `save_manager.py`)**: Manages static multi-team configurations established during game setup. Evaluates relations (`is_allied_with`, `is_enemy_of`) to govern sensor sharing, tactical combat engagement, logistics sharing, area buffs, friendly fire prevention, and covert espionage targeting.
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations.
 - **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
 
@@ -425,9 +426,59 @@ Agents can execute 8 distinct sabotage operations against their host:
 8. **Growth (`GROWTH`)**: Halts population growth on the host colony.
 
 ### 9.5 Counter-Intelligence & Discovery
-- **CI Sweeps (`CISweepOrder`)**: A vessel equipped with a Counter-Intelligence suite performs a sector sweep that reveals all enemy agents embedded on friendly ships or colonies in that sector, setting `agent.is_discovered = True`.
-- **Elimination (`EliminateAgentOrder`)**: Counter-Intelligence ships within 500 px operational range can neutralize and remove any discovered enemy agent.
+- **CI Sweeps (`CISweepOrder`)**: A vessel equipped with a Counter-Intelligence suite performs a sector sweep that reveals all enemy agents embedded on friendly and allied ships or colonies in that sector, setting `agent.is_discovered = True`.
+- **Elimination (`EliminateAgentOrder`)**: Counter-Intelligence ships within 500 px operational range can neutralize and remove any discovered enemy agent from friendly and allied assets.
 - **Visual & UI Indicators**:
   - Infiltrated ships and planets display `[INFILTRATED]` (cyan) or `[SABOTAGED: <TYPE>]` (orange) badges in sector view and cyan spy indicators in system view.
-  - Friendly entities hosting detected enemy spies display `[DISCOVERED SPY]` (red) warning badges.
+  - Friendly and allied entities hosting detected enemy spies display `[DISCOVERED SPY]` (red) warning badges.
   - Sidebar panels display a prominent `👁 COVERT AGENT EMBEDDED [SABOTAGE: ...]` status banner when inspecting infiltrated targets.
+
+---
+
+## 10. Diplomacy & Team Systems
+
+### 10.1 Overview & Team Architecture
+Wormhole Control supports multi-player and multi-team diplomatic alignment. Diplomatic relations are configured during game setup in the **New Game Wizard** and remain **static in-game** throughout the match.
+
+- **Team Groups (`team_id: int`)**: Players are assigned to numeric teams ($1 \dots N$).
+  - **Allies**: Players sharing the same `team_id` are considered allies (`player.is_allied_with(other)` is `True`).
+  - **Enemies**: Players assigned to different `team_id` values are enemies (`player.is_enemy_of(other)` is `True`).
+- **Validation**: When configuring games with 2 or more players, at least two distinct teams are required to ensure valid competitive or cooperative matchups.
+- **Persistence**: Team assignments are serialized and deserialized with the game state in `save_manager.py` (`team_id`).
+
+### 10.2 Sensor Sharing, Visibility & Stealth
+- **Allied Sensor Fusion (`visibility.py`)**:
+  - Short-range sensor horizons (pixels) and long-range radar hex coverage are fully shared across all allied players.
+  - Infiltrated enemy units or celestial bodies also provide shared sensor vision to the infiltrating player and all of their allies.
+  - Long-range sector reconnaissance automatically records sector intel for all allied players.
+- **Fog of War**: Sector-view Fog of War cutouts dynamically reveal regions covered by friendly or allied sensor suites.
+- **Advanced Area Cloaking**: Units equipped with an active Advanced Cloaking Device (`CloakingType.ADVANCED`) extend long-range sensor stealth to all friendly and allied vessels located within their projection radius.
+- **Minefield Awareness**: Minefields deployed by allied players are always visible and do not trigger on friendly or allied ships.
+
+### 10.3 Combat, Targeting & Area Effects
+- **Target Discrimination**:
+  - Combat orders (`AttackOrder`, `ProtectOrder`, `PatrolOrder`) exclusively acquire enemy targets and will never engage friendly or allied ships.
+  - Automated turret fire and weapon systems reject allied targets.
+- **Orbital Defense Coordination (`unit_components/orbital_defense.py`)**:
+  - Orbital defense ships activate their defensive aura in sectors containing friendly or allied colonies with population $> 0$.
+  - Defense capacity limits and active aura slots are shared and coordinated with allied orbital defense vessels in the sector.
+  - The $+20\%$ weapon damage and $+20\%$ defense mitigation aura applies to all allied ships in range.
+- **Area Healing & Splash Avoidance**:
+  - **Repair Cloud (`repair_cloud.py`)**: Heals all friendly and allied vessels within range.
+  - **Cluster Warhead (`cluster_warhead.py`)**: AoE detonation excludes friendly and allied ships from splash damage.
+
+### 10.4 Intelligence & Covert Rules
+- **Hostile Espionage Operations**: Infiltration (`InfiltrateUnitOrder`, `InfiltratePlanetOrder`), agent relocation (`RelocateAgentOrder`), and subsystem sabotage strictly target enemy units and enemy colonies.
+- **Economic Siphoning**: Credit tax siphoning from the Economy sabotage operation applies exclusively to enemy colonies.
+- **Shared Counter-Intelligence**:
+  - Active `CISweepOrder` scans both friendly and allied ships/colonies in the sector to expose hidden enemy agents.
+  - Turn-tick passive counter-intelligence checks protect friendly and allied assets in proximity.
+  - Discovered enemy spies on allied ships or colonies can be neutralized via `EliminateAgentOrder`.
+
+### 10.5 Support & Logistics Cooperation
+- **Refitting & Repairs**: Constructor ships (`RefitOrder`) can add or remove components on allied vessels, and repair ships (`RepairOrder`) can restore hull integrity on damaged allied units.
+- **Antimatter Transfers**: Harvesters and tankers (`TransferAntimatterOrder`, `ContinuousResupplyOrder`) can transfer fuel to allied vessels.
+- **Colonist Transfers**: Colony transports (`LoadColonistsOrder`) can embark population from allied colonies.
+- **Hostile Abilities**: Targeted hostile abilities (`CaptureUnit`, `DrainAntimatter`, `DesignateTarget`) automatically disallow targeting allied ships.
+- **Context Menus**: Right-click context menus dynamically adapt based on diplomacy, displaying cooperative options (Protect, Repair, Refit, Refuel, CI Sweep) for allies, and hostile options (Attack, Infiltrate, Sabotage) for enemies.
+

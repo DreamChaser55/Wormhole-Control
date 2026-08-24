@@ -12,6 +12,38 @@ from unit_components import HyperdriveType
 logger = logging.getLogger(__name__)
 
 
+def _are_allies(p1: typing.Optional[typing.Any], p2: typing.Optional[typing.Any]) -> bool:
+    if p1 is None or p2 is None:
+        return False
+    if p1 is p2:
+        return True
+    from entities import Player
+    if isinstance(p1, Player):
+        return p1.is_allied_with(p2)
+    if isinstance(p2, Player):
+        return p2.is_allied_with(p1)
+    p1_id = getattr(p1, 'id', None)
+    p2_id = getattr(p2, 'id', None)
+    if isinstance(p1_id, (int, str)) and isinstance(p2_id, (int, str)) and p1_id == p2_id:
+        return True
+    team1 = getattr(p1, 'team_id', None)
+    team2 = getattr(p2, 'team_id', None)
+    if isinstance(team1, (int, str)) and isinstance(team2, (int, str)):
+        return team1 == team2
+    return p1 == p2
+
+
+def _are_enemies(p1: typing.Optional[typing.Any], p2: typing.Optional[typing.Any]) -> bool:
+    if p1 is None or p2 is None:
+        return False
+    from entities import Player
+    if isinstance(p1, Player):
+        return p1.is_enemy_of(p2)
+    if isinstance(p2, Player):
+        return p2.is_enemy_of(p1)
+    return not _are_allies(p1, p2)
+
+
 def build_system_context_menu_options(game, target_hex_coord: HexCoord) -> typing.List[typing.Tuple[str, str]]:
     """Builds context menu options for a right-clicked hex coordinate in system view.
 
@@ -63,7 +95,7 @@ def get_refit_context_options(game, actors: typing.List[Unit], target_unit: Unit
     """
     if not any(getattr(a, 'constructor_component', None) for a in actors):
         return []
-    if target_unit.owner != actors[0].owner:
+    if not _are_allies(target_unit.owner, actors[0].owner):
         return []
 
     from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
@@ -93,7 +125,7 @@ def get_refit_context_options(game, actors: typing.List[Unit], target_unit: Unit
             break
 
     if can_add:
-        refit_options.append(("Add Component", "open_retrofit_wizard"))
+        refit_options.append(("Retrofit Wizard...", "open_retrofit_wizard"))
 
     for comp_cls, comp_inst in target_unit.components.items():
         if comp_cls == Commander:
@@ -230,7 +262,10 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
 
         elif target_object is not None:
             if isinstance(target_object, Unit):
-                if any(target_object.owner != a.owner for a in actors):
+                is_enemy_target = any(target_object.owner and _are_enemies(a.owner, target_object.owner) for a in actors)
+                is_friendly_target = any(target_object.owner and _are_allies(a.owner, target_object.owner) for a in actors)
+
+                if is_enemy_target:
                     if any(a.weapons_component for a in actors):
                         options.append(("Attack Hull", "attack_unit"))
                         if target_object.engines_component:
@@ -266,17 +301,17 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                                 hex_obj = cur_sys.hexes.get(game.current_sector_coord)
                                 if hex_obj:
                                     for dest_u in hex_obj.units:
-                                        if dest_u.id != target_object.id and dest_u.owner != current_player:
+                                        if dest_u.id != target_object.id and dest_u.owner and _are_enemies(current_player, dest_u.owner):
                                             relocate_options.append((f"To {dest_u.name}", f"relocate_{agent.id}_unit_{dest_u.id}"))
                                     for dest_b in hex_obj.celestial_bodies:
-                                        if getattr(dest_b, 'owner', None) and dest_b.owner != current_player:
+                                        if getattr(dest_b, 'owner', None) and _are_enemies(current_player, dest_b.owner):
                                             relocate_options.append((f"To {dest_b.name}", f"relocate_{agent.id}_planet_{dest_b.id}"))
                             if relocate_options:
                                 options.append(("Relocate Agent", relocate_options))
 
                             options.append(("Extract Agent", f"extract_agent_{agent.id}"))
 
-                elif any(target_object.owner == a.owner for a in actors) and target_object not in actors:
+                elif is_friendly_target and target_object not in actors:
                     options.append(("Protect", "protect_unit"))
                     target_is_damaged = (
                         target_object.current_hit_points < target_object.max_hit_points or
@@ -332,7 +367,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                         options.append(("Counter-Intelligence Sweep", "ci_sweep"))
                         if hasattr(target_object, 'infiltrating_agents'):
                             for ag in target_object.infiltrating_agents:
-                                if ag.is_discovered and ag.owner != current_player:
+                                if ag.is_discovered and ag.owner and current_player.is_enemy_of(ag.owner):
                                     options.append((f"Eliminate Enemy Agent ({ag.owner.name})", f"eliminate_agent_{ag.id}"))
 
                 ability_options = get_ability_context_options(game, actors, target_is_unit=True)
@@ -352,10 +387,10 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                 if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
                     if unit.colony_component and unit.colony_component.population_cargo > 0 and not target_object.owner:
                         options.append(("Colonize", "colonize"))
-                    if unit.colony_component and target_object.owner == unit.owner and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
+                    if unit.colony_component and target_object.owner and _are_allies(unit.owner, target_object.owner) and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
                         options.append(("Load Colonists", "load_colonists"))
             if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
-                if target_object.owner and target_object.owner != current_player:
+                if target_object.owner and _are_enemies(current_player, target_object.owner):
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
                     if has_intel_actors:
                         options.append(("Infiltrate Colony", "infiltrate_planet"))
@@ -376,22 +411,22 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                                 hex_obj = cur_sys.hexes.get(game.current_sector_coord)
                                 if hex_obj:
                                     for dest_u in hex_obj.units:
-                                        if dest_u.owner != current_player:
+                                        if dest_u.owner and _are_enemies(current_player, dest_u.owner):
                                             relocate_options.append((f"To {dest_u.name}", f"relocate_{agent.id}_unit_{dest_u.id}"))
                                     for dest_b in hex_obj.celestial_bodies:
-                                        if dest_b.id != target_object.id and getattr(dest_b, 'owner', None) and dest_b.owner != current_player:
+                                        if dest_b.id != target_object.id and getattr(dest_b, 'owner', None) and _are_enemies(current_player, dest_b.owner):
                                             relocate_options.append((f"To {dest_b.name}", f"relocate_{agent.id}_planet_{dest_b.id}"))
                             if relocate_options:
                                 options.append(("Relocate Agent", relocate_options))
 
                             options.append(("Extract Agent", f"extract_agent_{agent.id}"))
-                elif target_object.owner == current_player:
+                elif target_object.owner and _are_allies(current_player, target_object.owner):
                     has_ci_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.has_counter_intelligence for a in actors)
                     if has_ci_actors:
                         options.append(("Counter-Intelligence Sweep", "ci_sweep"))
                         if hasattr(target_object, 'infiltrating_agents'):
                             for ag in target_object.infiltrating_agents:
-                                if ag.is_discovered and ag.owner != current_player:
+                                if ag.is_discovered and ag.owner and _are_enemies(current_player, ag.owner):
                                     options.append((f"Eliminate Enemy Agent ({ag.owner.name})", f"eliminate_agent_{ag.id}"))
 
             if isinstance(target_object, (MetalAsteroid, AsteroidField, Comet)) and any(getattr(a, 'mining_component', None) for a in actors):

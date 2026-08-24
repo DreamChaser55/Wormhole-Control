@@ -50,9 +50,10 @@ class RepairOrder(Order):
             logger.debug(f"REPAIR order failed: Target unit {target_unit_id} not found.")
             return
 
-        if target_unit.owner != self.unit.owner:
+        from entities import are_allies
+        if not are_allies(self.unit.owner, target_unit.owner):
             self.status = OrderStatus.FAILED
-            logger.debug(f"REPAIR order failed: Target unit {target_unit.name} is not friendly.")
+            logger.debug(f"REPAIR order failed: Target unit {target_unit.name} is not friendly/allied.")
             return
 
         self.unit.repair_component.set_target(target_unit)

@@ -110,8 +110,9 @@ class PatrolOrder(Order):
         closest_enemy = None
         min_dist = float('inf')
 
+        from entities import are_enemies
         for unit in hex_obj.units:
-            if unit.owner != self.unit.owner and unit.current_hit_points > 0:
+            if are_enemies(self.unit.owner, unit.owner) and unit.current_hit_points > 0:
                 # Fighter/Bomber targeting rules
                 if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
                     wing_comp = self.unit.strikecraft_wing_component

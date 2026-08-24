@@ -46,8 +46,9 @@ class CaptureUnitAbility(AbilityInstance):
             logger.debug(f"[{component.unit.name}] Capture Unit: target unit {target_unit_id} not found.")
             return False
 
-        if target_unit.owner == component.unit.owner:
-            logger.debug(f"[{component.unit.name}] Capture Unit: target unit {target_unit.name} is already friendly.")
+        from entities import are_allies
+        if are_allies(target_unit.owner, component.unit.owner):
+            logger.debug(f"[{component.unit.name}] Capture Unit: target unit {target_unit.name} is friendly/allied.")
             return False
 
         if target_unit.engines_component is not None:

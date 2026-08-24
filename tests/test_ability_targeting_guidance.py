@@ -12,9 +12,15 @@ from rendering.sector_renderer.sector_overlay_renderer import SectorOverlayRende
 
 
 class MockPlayer:
-    def __init__(self, name="Test Player", player_id=1):
-        self.id = player_id
+    _counter = 1
+    def __init__(self, name="Test Player", player_id=None, team_id=None):
+        if player_id is not None:
+            self.id = player_id
+        else:
+            self.id = MockPlayer._counter
+            MockPlayer._counter += 1
         self.name = name
+        self.team_id = team_id if team_id is not None else self.id
         self.color = (0, 200, 255)
 
 

@@ -248,8 +248,9 @@ class ProtectOrder(Order):
         # Any enemy that gets closer than 1000.0 to the protected ship is a valid target.
         detection_range = 1000.0
 
+        from entities import are_enemies
         for candidate in hex_obj.units:
-            if candidate.owner != self.unit.owner and candidate.current_hit_points > 0:
+            if are_enemies(self.unit.owner, candidate.owner) and candidate.current_hit_points > 0:
                 # Fighter/Bomber targeting rules
                 if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
                     wing_comp = self.unit.strikecraft_wing_component

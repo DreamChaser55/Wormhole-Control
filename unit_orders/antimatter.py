@@ -85,9 +85,10 @@ class TransferAntimatterOrder(Order):
             logger.debug(f"TRANSFER_ANTIMATTER order failed: Target unit {target_unit_id} not found.")
             return
 
-        if target_unit.owner != self.unit.owner:
+        from entities import are_allies
+        if not are_allies(self.unit.owner, target_unit.owner):
             self.status = OrderStatus.FAILED
-            logger.debug(f"TRANSFER_ANTIMATTER order failed: Target unit {target_unit.name} is not friendly.")
+            logger.debug(f"TRANSFER_ANTIMATTER order failed: Target unit {target_unit.name} is not friendly/allied.")
             return
 
         if not target_unit.antimatter_component:
@@ -124,7 +125,8 @@ class TransferAntimatterOrder(Order):
         target_unit_id = self.parameters.get("target_unit_id")
         target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id else None
 
-        if (not target_unit or target_unit.owner != self.unit.owner or
+        from entities import are_allies
+        if (not target_unit or not are_allies(self.unit.owner, target_unit.owner) or
                 not target_unit.antimatter_component or not self.unit.antimatter_component):
             self.status = OrderStatus.FAILED
             return

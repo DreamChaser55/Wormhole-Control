@@ -49,6 +49,7 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
             cfg.name,
             cfg.color,
             is_human=cfg.is_human,
+            team_id=cfg.team_id,
         )
         for cfg in settings.player_configs
     ]

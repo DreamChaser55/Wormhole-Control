@@ -13,8 +13,15 @@ from galaxy import Galaxy, StarSystem, Hex
 
 
 class MockPlayer:
-    def __init__(self, name="Player 1", color=(0, 255, 0)):
+    _counter = 1
+    def __init__(self, name="Player 1", color=(0, 255, 0), player_id=None, team_id=None):
+        if player_id is not None:
+            self.id = player_id
+        else:
+            self.id = MockPlayer._counter
+            MockPlayer._counter += 1
         self.name = name
+        self.team_id = team_id if team_id is not None else self.id
         self.color = color
 
 

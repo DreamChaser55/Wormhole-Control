@@ -44,8 +44,9 @@ class DrainAntimatterAbility(AbilityInstance):
             logger.debug(f"[{component.unit.name}] Drain Antimatter: target unit {target_unit_id} not found.")
             return False
 
-        if target_unit.owner == component.unit.owner:
-            logger.debug(f"[{component.unit.name}] Drain Antimatter: target unit {target_unit.name} is friendly.")
+        from entities import are_allies
+        if are_allies(target_unit.owner, component.unit.owner):
+            logger.debug(f"[{component.unit.name}] Drain Antimatter: target unit {target_unit.name} is friendly/allied.")
             return False
 
         source_am = component.unit.antimatter_component

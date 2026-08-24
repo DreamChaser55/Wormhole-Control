@@ -69,8 +69,11 @@ class ClusterWarheadAbility(AbilityInstance):
         hex_obj = system.hexes.get(hex_coord)
         if not hex_obj:
             return
+        from entities import are_allies
         for target_unit in list(hex_obj.units):
             if target_unit is component.unit:
+                continue
+            if are_allies(component.unit.owner, target_unit.owner):
                 continue
             dist = distance(target_unit.position, target_position)
             if dist <= self.SPLASH_RADIUS:

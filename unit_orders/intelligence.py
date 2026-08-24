@@ -37,6 +37,12 @@ class InfiltrateUnitOrder(Order):
             logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: target unit {target_unit_id} not found.")
             return
 
+        from entities import are_allies, are_enemies
+        if are_allies(self.unit.owner, target_unit.owner):
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: cannot infiltrate friendly or allied unit.")
+            return
+
         intel_comp = getattr(self.unit, 'intelligence_component', None)
         if not intel_comp or intel_comp.is_destroyed:
             self.status = OrderStatus.FAILED
@@ -107,6 +113,13 @@ class InfiltratePlanetOrder(Order):
         if not target_body:
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] INFILTRATE_PLANET failed: celestial body not found.")
+            return
+
+        body_owner = getattr(target_body, 'owner', None)
+        from entities import are_allies
+        if not body_owner or are_allies(self.unit.owner, body_owner):
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] INFILTRATE_PLANET failed: celestial body is unowned or friendly/allied.")
             return
 
         intel_comp = getattr(self.unit, 'intelligence_component', None)
@@ -223,6 +236,13 @@ class RelocateAgentOrder(Order):
             logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: destination target {dest_id} not found.")
             return
 
+        dest_owner = getattr(dest_target, 'owner', None)
+        from entities import are_allies
+        if not dest_owner or are_allies(self.unit.owner, dest_owner):
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: destination target is unowned or friendly/allied.")
+            return
+
         # Check range between source and destination
         if source_sys != dest_target.in_system or source_hex != dest_target.in_hex:
             self.status = OrderStatus.FAILED
@@ -324,19 +344,21 @@ class CISweepOrder(Order):
             return
 
         discovered_count = 0
+        from entities import are_allies, are_enemies
         for target_u in hex_obj.units:
-            if target_u.owner == self.unit.owner and hasattr(target_u, 'infiltrating_agents'):
+            if are_allies(self.unit.owner, target_u.owner) and hasattr(target_u, 'infiltrating_agents'):
                 if distance(self.unit.position, target_u.position) <= INTELLIGENCE_OPERATIONAL_RANGE:
                     for agent in target_u.infiltrating_agents:
-                        if agent.owner != self.unit.owner:
+                        if are_enemies(self.unit.owner, agent.owner):
                             agent.is_discovered = True
                             discovered_count += 1
 
         for body in hex_obj.celestial_bodies:
-            if getattr(body, 'owner', None) == self.unit.owner and hasattr(body, 'infiltrating_agents'):
+            body_owner = getattr(body, 'owner', None)
+            if are_allies(self.unit.owner, body_owner) and hasattr(body, 'infiltrating_agents'):
                 if distance(self.unit.position, body.position) <= INTELLIGENCE_OPERATIONAL_RANGE:
                     for agent in body.infiltrating_agents:
-                        if agent.owner != self.unit.owner:
+                        if are_enemies(self.unit.owner, agent.owner):
                             agent.is_discovered = True
                             discovered_count += 1
 

@@ -45,16 +45,17 @@ class RepairCloudAbility(AbilityInstance):
         logger.debug(f"[{component.unit.name}] Repair Cloud expired.")
 
     def _apply_repair_cloud(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
-        """Heals all friendly units within Repair Cloud range by 5 HP."""
+        """Heals all friendly and allied units within Repair Cloud range by 5 HP."""
         system = galaxy.systems.get(component.unit.in_system)
         if not system:
             return
         hex_obj = system.hexes.get(component.unit.in_hex)
         if not hex_obj:
             return
+        from entities import are_allies
         heal_per_turn = 5
         for unit in hex_obj.units:
-            if unit.owner != component.unit.owner:
+            if not are_allies(unit.owner, component.unit.owner):
                 continue
             if distance(component.unit.position, unit.position) <= self.DEFINITION.range:
                 unit.heal_hull(heal_per_turn)

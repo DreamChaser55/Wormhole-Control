@@ -152,7 +152,9 @@ def test_apply_cluster_warhead_accurate_routing():
     player = MockPlayer()
     game = DummyGame()
     caster = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
-    enemy = Unit(owner=player, position=Position(10, 10), in_hex=(0, 1), in_system="Sol", name="Enemy", hull_size=HullSize.MEDIUM, game=game)
+    enemy_player = MockPlayer("Enemy")
+    enemy_player.id = 2
+    enemy = Unit(owner=enemy_player, position=Position(10, 10), in_hex=(0, 1), in_system="Sol", name="Enemy", hull_size=HullSize.MEDIUM, game=game)
     
     ability_comp = AbilityComponent(caster, [AbilityType.CLUSTER_WARHEAD])
     caster.add_component(ability_comp)

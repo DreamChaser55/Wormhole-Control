@@ -71,16 +71,52 @@ class Player:
     """Represents a player in the game (human or AI)."""
     player_counter = 0
 
-    def __init__(self, name: str, color: tuple, is_human: bool = True):
+    def __init__(self, name: str, color: tuple, is_human: bool = True, team_id: Optional[int] = None):
         self.id = Player.player_counter
         Player.player_counter += 1
         self.name = name if name else f"Player {self.id}"
         self.color = color
         self.is_human = is_human
+        self.team_id: int = team_id if team_id is not None else (self.id + 1)
         self.credits = 20000
         self.metal = 10000
         self.crystal = 10000
         self.sector_intel: Dict[Tuple[str, HexCoord], int] = {}
+
+    def is_allied_with(self, other: Optional['Player']) -> bool:
+        """Returns True if other is not None and is allied with this player (same team or same instance)."""
+        if other is None:
+            return False
+        if self is other:
+            return True
+        other_id = getattr(other, 'id', None)
+        if isinstance(other_id, (int, str)) and self.id == other_id:
+            return True
+        other_team = getattr(other, 'team_id', None)
+        if isinstance(other_team, (int, str)) and self.team_id is not None:
+            return self.team_id == other_team
+        return False
+
+    def is_enemy_of(self, other: Optional['Player']) -> bool:
+        """Returns True if other is a valid opposing player on a different team."""
+        if other is None:
+            return False
+        if self is other:
+            return False
+        other_id = getattr(other, 'id', None)
+        if isinstance(other_id, (int, str)) and self.id == other_id:
+            return False
+        return not self.is_allied_with(other)
+
+    def relation_to(self, other: Optional['Player']) -> str:
+        """Returns 'self', 'ally', or 'enemy' relationship relative to other."""
+        if other is None:
+            return "neutral"
+        if self is other or (isinstance(getattr(other, 'id', None), (int, str)) and self.id == other.id):
+            return "self"
+        if self.is_allied_with(other):
+            return "ally"
+        return "enemy"
 
     def record_sector_intel(self, system_name: str, hex_coord: HexCoord, turn: int) -> None:
         """Records or updates the last turn a sector was in long-range sensor range."""
@@ -91,7 +127,39 @@ class Player:
         return self.sector_intel.get((system_name, hex_coord))
 
     def __repr__(self):
-        return f"Player({self.name}, ID:{self.id}, Color:{self.color})"
+        return f"Player({self.name}, ID:{self.id}, Team:{self.team_id}, Color:{self.color})"
+
+
+def are_allies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
+    """Returns True if p1 and p2 are valid allied players (or the same player)."""
+    if p1 is None or p2 is None:
+        return False
+    if p1 is p2:
+        return True
+    if isinstance(p1, Player):
+        return p1.is_allied_with(p2)
+    if isinstance(p2, Player):
+        return p2.is_allied_with(p1)
+    p1_id = getattr(p1, 'id', None)
+    p2_id = getattr(p2, 'id', None)
+    if isinstance(p1_id, (int, str)) and isinstance(p2_id, (int, str)) and p1_id == p2_id:
+        return True
+    team1 = getattr(p1, 'team_id', None)
+    team2 = getattr(p2, 'team_id', None)
+    if isinstance(team1, (int, str)) and isinstance(team2, (int, str)):
+        return team1 == team2
+    return p1 == p2
+
+
+def are_enemies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
+    """Returns True if p1 and p2 are valid enemy players."""
+    if p1 is None or p2 is None:
+        return False
+    if isinstance(p1, Player):
+        return p1.is_enemy_of(p2)
+    if isinstance(p2, Player):
+        return p2.is_enemy_of(p1)
+    return not are_allies(p1, p2)
 
 # --- Game Object Base Class ---
 class GameObject:
@@ -355,7 +423,7 @@ class Minefield(GameObject):
 
     def can_target(self, unit: 'Unit') -> bool:
         """Return True if unit is a valid target for this minefield type."""
-        if self.owner and unit.owner == self.owner:
+        if self.owner and (unit.owner == self.owner or self.owner.is_allied_with(unit.owner)):
             return False
         if unit.current_hit_points <= 0:
             return False
@@ -640,7 +708,7 @@ class Unit(GameObject):
         from geometry import distance
 
         for u in hex_obj.units:
-            if u.owner == self.owner and u.current_hit_points > 0 and u.position:
+            if (u.owner == self.owner or (self.owner and self.owner.is_allied_with(u.owner))) and u.current_hit_points > 0 and u.position:
                 od_comp = getattr(u, 'orbital_defense_component', None)
                 if od_comp and not od_comp.is_destroyed and od_comp.is_active(g):
                     if distance(self.position, u.position) <= od_comp.radius:
