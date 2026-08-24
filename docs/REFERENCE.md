@@ -33,7 +33,7 @@ Wormhole Control/
 ├── save_manager.py                # Game state serialization, save, and load manager (JSON)
 ├── visibility.py                  # Sensor detection algorithms and dynamic fog of war tracking
 ├── constants.py                   # Global constants, enums, colors, and resolution config
-├── geometry.py                    # Vector2D and Position mathematical utilities
+├── geometry.py                    # Vector, Position, Circle geometry, intersection math, and avoidance pathfinding
 ├── hexgrid_utils.py               # Hexagonal grid math and axial coordinate utilities
 ├── pathfinding.py                 # A* pathfinding and navigation algorithms
 ├── renderer.py                    # Top-level graphics rendering orchestrator
@@ -277,36 +277,53 @@ The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can
 ## 6. Universe Objects & Celestial Bodies
 
 ### 6.1 Central Stars (`StarType`)
-Every star system contains a central star with a unique antimatter harvesting rate multiplier (`constants.py: STAR_HARVEST_MULTIPLIERS`):
+Every star system contains a central star with a unique antimatter harvesting rate multiplier (`constants.py: STAR_HARVEST_MULTIPLIERS`). Central stars are solid celestial obstacles with a physical **Collision Radius** of **500.01 px** (`STAR_RADIUS`):
 
-| Star Type | Enum Member | Harvest Multiplier | Color (RGB) | Inhibition Radius |
-|---|---|---|---|---|
-| **Pulsar** | `PULSAR` | **2.5×** | (225, 110, 255) | 2700.0 |
-| **Blue Giant** | `BLUE_GIANT` | **2.0×** | (173, 216, 255) | 2700.0 |
-| **Neutron Star** | `NEUTRON_STAR` | **1.8×** | (200, 245, 255) | 2700.0 |
-| **Yellow Giant** | `YELLOW_GIANT` | **1.5×** | (255, 195, 0) | 2700.0 |
-| **Red Giant** | `RED_GIANT` | **1.3×** | (235, 50, 35) | 2700.0 |
-| **G-Type (Sol-like)** | `G_TYPE` | **1.0×** (Baseline) | (255, 235, 120) | 2700.0 |
-| **White Dwarf** | `WHITE_DWARF` | **0.8×** | (240, 248, 255) | 2700.0 |
-| **Protostar** | `PROTOSTAR` | **0.7×** | (255, 140, 0) | 2700.0 |
-| **Red Dwarf** | `RED_DWARF` | **0.5×** | (255, 127, 80) | 2700.0 |
-| **Brown Dwarf** | `BROWN_DWARF` | **0.3×** | (160, 82, 45) | 2700.0 |
-| **Black Hole** | `BLACK_HOLE` | **0.1×** | (75, 35, 100) | 2700.0 |
+| Star Type | Enum Member | Harvest Multiplier | Color (RGB) | Inhibition Radius | Collision Radius |
+|---|---|---|---|---|---|
+| **Pulsar** | `PULSAR` | **2.5×** | (225, 110, 255) | 2700.0 | 500.01 |
+| **Blue Giant** | `BLUE_GIANT` | **2.0×** | (173, 216, 255) | 2700.0 | 500.01 |
+| **Neutron Star** | `NEUTRON_STAR` | **1.8×** | (200, 245, 255) | 2700.0 | 500.01 |
+| **Yellow Giant** | `YELLOW_GIANT` | **1.5×** | (255, 195, 0) | 2700.0 | 500.01 |
+| **Red Giant** | `RED_GIANT` | **1.3×** | (235, 50, 35) | 2700.0 | 500.01 |
+| **G-Type (Sol-like)** | `G_TYPE` | **1.0×** (Baseline) | (255, 235, 120) | 2700.0 | 500.01 |
+| **White Dwarf** | `WHITE_DWARF` | **0.8×** | (240, 248, 255) | 2700.0 | 500.01 |
+| **Protostar** | `PROTOSTAR` | **0.7×** | (255, 140, 0) | 2700.0 | 500.01 |
+| **Red Dwarf** | `RED_DWARF` | **0.5×** | (255, 127, 80) | 2700.0 | 500.01 |
+| **Brown Dwarf** | `BROWN_DWARF` | **0.3×** | (160, 82, 45) | 2700.0 | 500.01 |
+| **Black Hole** | `BLACK_HOLE` | **0.1×** | (75, 35, 100) | 2700.0 | 500.01 |
 
 ### 6.2 Planets & Colonizable Bodies
-- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 2400.0.
-- **Moons (`Moon`)**: Colonizable satellites supporting up to **50.0 population** with a growth rate of **1.0% per turn**. Inhibition radius: 1800.0.
-- **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts supporting up to **20.0 population** with a growth rate of **0.5% per turn**. Inhibition radius: 1200.0.
+- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 2400.0. **Collision Radius**: **375.0 px** (`PLANET_RADIUS`).
+- **Moons (`Moon`)**: Colonizable satellites supporting up to **50.0 population** with a growth rate of **1.0% per turn**. Inhibition radius: 1800.0. **Collision Radius**: **83.34 px** (`MOON_RADIUS`).
+- **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts supporting up to **20.0 population** with a growth rate of **0.5% per turn**. Inhibition radius: 1200.0. **Collision Radius**: **50.01 px** (`ASTEROID_RADIUS`).
 
 ### 6.3 Resource & Spatial Phenomena
-- **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1200.0.
-- **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 600.0.
-- **Wormholes (`Wormhole`)**: Natural spacetime conduits linking star systems. Traversal requires an Advanced Hyperdrive. Inhibition radius: 1500.0.
-- **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Inhibition radius: 900.0.
-- **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Inhibition radius: 600.0.
-- **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures.
-- **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`).
-- **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`).
+- **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1200.0. **Collision Radius**: **50.01 px** (`ASTEROID_RADIUS`).
+- **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 600.0. **Collision Radius**: **50.01 px** (`COMET_RADIUS`).
+- **Wormholes (`Wormhole`)**: Natural spacetime conduits linking star systems. Traversal requires an Advanced Hyperdrive. Visual radius: 291.66. Inhibition radius: 1500.0. **Collision Radius**: **0.0 px** (permeable).
+- **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Inhibition radius: 900.0. **Collision Radius**: **0.0 px** (permeable).
+- **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Inhibition radius: 600.0. **Collision Radius**: **0.0 px** (permeable).
+- **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures. **Collision Radius**: **0.0 px** (permeable).
+- **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`). Visual radius: 1666.68. **Collision Radius**: **0.0 px** (permeable).
+- **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`). Visual radius: 1666.68. **Collision Radius**: **0.0 px** (permeable).
+
+### 6.4 Celestial Body Dimensions & Obstacle Classification Summary
+
+| Entity Class | Solid Obstacle? | Collision Radius (`px`) | Inhibition Radius (`px`) | Harvest / Resource Yield | Colonizable |
+|---|---|---|---|---|---|
+| `Star` | **Yes** | 500.01 (`STAR_RADIUS`) | 2700.0 | 0.1× – 2.5× Antimatter | No |
+| `Planet` | **Yes** | 375.00 (`PLANET_RADIUS`) | 2400.0 | — | Yes (Max 100 pop) |
+| `Moon` | **Yes** | 83.34 (`MOON_RADIUS`) | 1800.0 | — | Yes (Max 50 pop) |
+| `ColonizableAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1200.0 | — | Yes (Max 20 pop) |
+| `MetalAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1200.0 | 10.0 Metal / Turn | No |
+| `Comet` | **Yes** | 50.01 (`COMET_RADIUS`) | 600.0 | 10.0 Crystal / Turn | No |
+| `Wormhole` | No | 0.00 (Permeable) | 1500.0 | Inter-System Travel | No |
+| `AsteroidField` | No | 0.00 (Permeable) | 900.0 | — | No |
+| `IceField` | No | 0.00 (Permeable) | 600.0 | — | No |
+| `DebrisField` | No | 0.00 (Permeable) | 0.0 | — | No |
+| `Nebula` | No | 0.00 (Permeable) | 0.0 | — | No |
+| `Storm` | No | 0.00 (Permeable) | 0.0 | — | No |
 
 ---
 
@@ -385,6 +402,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 - **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly and allied units within build range (500 px). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
 - **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, and persists last-known sector intel per player.
 - **Diplomacy & Team System (`entities.py`, `game_settings.py`, `game_setup.py`, `save_manager.py`)**: Manages static multi-team configurations established during game setup. Evaluates relations (`is_allied_with`, `is_enemy_of`) to govern sensor sharing, tactical combat engagement, logistics sharing, area buffs, friendly fire prevention, and covert espionage targeting.
+- **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Real-time geometric pathfinding preventing sub-light vessels from clipping into solid celestial bodies (stars, planets, moons, asteroids, comets). Uses parametric line-circle intersection analysis, dual-tangent escape waypoint generation, and recursive obstacle resolution to steer ships safely around physical bodies with a $+50.0\text{ px}$ clearance margin, while permitting unhindered landings and departures.
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations.
 - **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
 
@@ -482,3 +500,28 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 - **Hostile Abilities**: Targeted hostile abilities (`CaptureUnit`, `DrainAntimatter`, `DesignateTarget`) automatically disallow targeting allied ships.
 - **Context Menus**: Right-click context menus dynamically adapt based on diplomacy, displaying cooperative options (Protect, Repair, Refit, Refuel, CI Sweep) for allies, and hostile options (Attack, Infiltrate, Sabotage) for enemies.
 
+---
+
+## 11. Celestial Collision Avoidance
+
+### 11.1 Overview & Purpose
+In Wormhole Control, ships moving at sub-light speeds navigate tactical sector space ($5000\text{ px}$ radius circle per hex). To preserve spatial immersion and tactical realism, units never fly straight through physical solid bodies (such as stars, planets, moons, asteroids, or comets). 
+
+The collision avoidance system automatically detects obstructed sub-light trajectories in real-time, calculates optimal curved bypass trajectories using geometric tangent math, and injects intermediate waypoint sub-orders into unit order queues without requiring manual player micro-management.
+
+### 11.2 Celestial Body Collision Radii & Classification
+Every celestial entity defines a `collision_radius: float` attribute (`entities.py`):
+
+1. **Solid Celestial Obstacles (`collision_radius > 0.0`)**:
+   - **Central Star (`Star`)**: `STAR_RADIUS = 500.01 px`
+   - **Planets (`Planet`)**: `PLANET_RADIUS = 375.00 px`
+   - **Moons (`Moon`)**: `MOON_RADIUS = 83.34 px`
+   - **Asteroids (`ColonizableAsteroid`, `MetalAsteroid`)**: `ASTEROID_RADIUS = 50.01 px`
+   - **Comets (`Comet`)**: `COMET_RADIUS = 50.01 px`
+
+2. **Permeable Spatial Phenomena (`collision_radius = 0.0`)**:
+   - **Nebulae, Space Storms, Wormholes, Asteroid Fields, Ice Fields, Debris Fields**: Non-solid entities that do not obstruct sub-light flight. Ships pass straight through them.
+
+3. **Safety Margin**:
+   - When checking for collisions and computing avoidance waypoints, the navigation engine adds a safety margin buffer $\text{margin} = 50.0\text{ px}$ around the obstacle's physical radius:
+   $$R_{\text{expanded}} = r_{\text{body}} + \text{margin}$$
