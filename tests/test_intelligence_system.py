@@ -478,3 +478,155 @@ def test_eliminate_agent_zero_id(test_setup):
 
     assert elim_order.status == OrderStatus.COMPLETED
     assert not friendly_ship.has_infiltrating_agent_from(p2)
+
+
+def test_enemy_unit_intelligence_hidden_in_sidebar_basic_info(test_setup):
+    from gui.sidebar.panels_unit import build_unit_panel
+    p1, p2, galaxy, system, game = test_setup
+
+    enemy_ship = Unit(p2, Position(200, 200), (0, 0), "Sol", "Enemy Spy Ship", HullSize.MEDIUM, game)
+    enemy_ship.add_component(Engines(enemy_ship, speed=100.0))
+    weapons = Weapons(enemy_ship)
+    weapons.turrets.append(Turret(TurretType.MASS_DRIVER, 10, 300, 2, enemy_ship))
+    enemy_ship.add_component(weapons)
+    enemy_ship.add_component(Hyperdrive(enemy_ship, HyperdriveType.BASIC))
+    enemy_intel = IntelligenceComponent(enemy_ship, agents_count=2, agents_capacity=2, has_counter_intelligence=True)
+    enemy_ship.add_component(enemy_intel)
+    system.hexes[(0, 0)].add_unit(enemy_ship)
+
+    game.players = [p1, p2]
+    game.current_player_index = 0  # Player 1 is active (enemy of p2)
+    game.selected_objects = [enemy_ship]
+    game.selected_unit_tab = 'basic_info'
+
+    panel_data = build_unit_panel(game, enemy_ship)
+    labels = [item['text'] for item in panel_data if item.get('type') == 'label']
+
+    # Standard components are visible in Component Overview
+    assert any("Speed:" in lbl for lbl in labels)
+    assert any("Turrets" in lbl for lbl in labels)
+    assert any("FTL Jump:" in lbl for lbl in labels)
+
+    # IntelligenceComponent must be completely hidden from enemy inspection
+    assert not any("Intelligence:" in lbl for lbl in labels)
+    assert not any("Agents" in lbl for lbl in labels)
+    assert not any("CI Active" in lbl for lbl in labels)
+
+
+def test_enemy_unit_intelligence_hidden_in_sidebar_components_tab(test_setup):
+    from gui.sidebar.panels_unit import build_unit_panel
+    p1, p2, galaxy, system, game = test_setup
+
+    enemy_ship = Unit(p2, Position(200, 200), (0, 0), "Sol", "Enemy Spy Ship", HullSize.MEDIUM, game)
+    enemy_ship.add_component(Engines(enemy_ship, speed=100.0))
+    weapons = Weapons(enemy_ship)
+    weapons.turrets.append(Turret(TurretType.MASS_DRIVER, 10, 300, 2, enemy_ship))
+    enemy_ship.add_component(weapons)
+    enemy_intel = IntelligenceComponent(enemy_ship, agents_count=2, agents_capacity=2, has_counter_intelligence=True)
+    enemy_ship.add_component(enemy_intel)
+    system.hexes[(0, 0)].add_unit(enemy_ship)
+
+    game.players = [p1, p2]
+    game.current_player_index = 0  # Player 1 is active
+    game.selected_objects = [enemy_ship]
+    game.selected_unit_tab = 'components'
+    game.selected_component_name = 'Intelligence'  # Attempt to inspect Intelligence component
+
+    panel_data = build_unit_panel(game, enemy_ship)
+
+    dropdowns = [item for item in panel_data if item.get('type') == 'drop_down_menu']
+    assert len(dropdowns) == 1
+    options_list = dropdowns[0]['options_list']
+
+    # Intelligence should NOT be an available option in the dropdown
+    assert "Intelligence" not in options_list
+    assert "Commander" in options_list
+    assert "Engines" in options_list
+    assert "Weapons" in options_list
+
+    # Selection automatically fell back from 'Intelligence'
+    assert game.selected_component_name != "Intelligence"
+
+    # Component details should not display intelligence data
+    labels = [item['text'] for item in panel_data if item.get('type') == 'label']
+    assert not any("Agents:" in lbl for lbl in labels)
+    assert not any("Infiltration Range:" in lbl for lbl in labels)
+    assert not any("Counter-Intelligence:" in lbl for lbl in labels)
+
+
+def test_friendly_unit_intelligence_visible_in_sidebar(test_setup):
+    from gui.sidebar.panels_unit import build_unit_panel
+    p1, p2, galaxy, system, game = test_setup
+
+    friendly_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Friendly Spy Ship", HullSize.MEDIUM, game)
+    friendly_intel = IntelligenceComponent(friendly_ship, agents_count=2, agents_capacity=2, has_counter_intelligence=True)
+    friendly_ship.add_component(friendly_intel)
+    system.hexes[(0, 0)].add_unit(friendly_ship)
+
+    game.players = [p1, p2]
+    game.current_player_index = 0  # Player 1 is active (owner of friendly_ship)
+    game.selected_objects = [friendly_ship]
+
+    # 1. Basic Info Tab
+    game.selected_unit_tab = 'basic_info'
+    panel_data = build_unit_panel(game, friendly_ship)
+    labels = [item['text'] for item in panel_data if item.get('type') == 'label']
+    assert any("• Intelligence: 2/2 Agents | CI Active" in lbl for lbl in labels)
+
+    # 2. Components Tab
+    game.selected_unit_tab = 'components'
+    game.selected_component_name = 'Intelligence'
+    panel_data = build_unit_panel(game, friendly_ship)
+    dropdowns = [item for item in panel_data if item.get('type') == 'drop_down_menu']
+    assert "Intelligence" in dropdowns[0]['options_list']
+
+    labels = [item['text'] for item in panel_data if item.get('type') == 'label']
+    assert any("Agents: 2 / 2 Ready" in lbl for lbl in labels)
+    assert any("Counter-Intelligence: Active" in lbl for lbl in labels)
+
+
+def test_enemy_unit_intelligence_hidden_from_attack_context_menu(test_setup):
+    from input_processor.context_menu_builder import build_sector_context_menu_options
+    from unit_components import HyperspaceInhibitionFieldEmitter
+    p1, p2, galaxy, system, game = test_setup
+
+    # Player 1 warship with weapons
+    attacker = Unit(p1, Position(100, 100), (0, 0), "Sol", "Battleship", HullSize.LARGE, game)
+    w_attacker = Weapons(attacker)
+    w_attacker.turrets.append(Turret(TurretType.MASS_DRIVER, 20, 400, 2, attacker))
+    attacker.add_component(w_attacker)
+    system.hexes[(0, 0)].add_unit(attacker)
+
+    # Player 2 enemy ship with Engines, Hyperdrive, Weapons, Inhibitor, and Intelligence
+    enemy_ship = Unit(p2, Position(150, 100), (0, 0), "Sol", "Enemy Carrier", HullSize.LARGE, game)
+    enemy_ship.add_component(Engines(enemy_ship, speed=80.0))
+    enemy_ship.add_component(Hyperdrive(enemy_ship, HyperdriveType.BASIC))
+    w_enemy = Weapons(enemy_ship)
+    w_enemy.turrets.append(Turret(TurretType.BEAM, 15, 350, 2, enemy_ship))
+    enemy_ship.add_component(w_enemy)
+    enemy_ship.add_component(HyperspaceInhibitionFieldEmitter(enemy_ship, radius=1000.0))
+    enemy_ship.add_component(IntelligenceComponent(enemy_ship, agents_count=2, agents_capacity=2))
+    system.hexes[(0, 0)].add_unit(enemy_ship)
+
+    game.players = [p1, p2]
+    game.current_player_index = 0
+    game.selected_objects = [attacker]
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.galaxy = galaxy
+
+    options, target = build_sector_context_menu_options(game, enemy_ship, (150, 100))
+    menu_labels = [opt[0] for opt in options]
+    action_ids = [opt[1] for opt in options if isinstance(opt[1], str)]
+
+    # Verifying standard attack options are available
+    assert "Attack Hull" in menu_labels
+    assert "Attack Engines" in menu_labels
+    assert "Attack Hyperdrive" in menu_labels
+    assert "Attack Weapons" in menu_labels
+    assert "Attack Inhibitor" in menu_labels
+
+    # Verifying Intelligence component is NOT exposed in the attack context menu
+    assert not any("Attack Intelligence" in lbl for lbl in menu_labels)
+    assert not any("intelligence" in act_id.lower() and "attack" in act_id.lower() for act_id in action_ids)
+

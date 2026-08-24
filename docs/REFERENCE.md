@@ -443,9 +443,10 @@ Agents can execute 8 distinct sabotage operations against their host:
 7. **Economy (`ECONOMY`)**: Siphons/destroys 50% of the host colony's credit tax revenue.
 8. **Growth (`GROWTH`)**: Halts population growth on the host colony.
 
-### 9.5 Counter-Intelligence & Discovery
+### 9.5 Counter-Intelligence, Discovery & Stealth
 - **CI Sweeps (`CISweepOrder`)**: A vessel equipped with a Counter-Intelligence suite performs a sector sweep that reveals all enemy agents embedded on friendly and allied ships or colonies in that sector, setting `agent.is_discovered = True`.
 - **Elimination (`EliminateAgentOrder`)**: Counter-Intelligence ships within 500 px operational range can neutralize and remove any discovered enemy agent from friendly and allied assets.
+- **Covert Component Concealment**: The `IntelligenceComponent` is completely hidden from enemy players. When an enemy player inspects a hostile vessel, the component is completely omitted from the sidebar (both the *Basic Info* component overview and the *Components* dropdown inspector) and is hidden from the attack context menu. Friendly and allied players retain full visibility and inspector access.
 - **Visual & UI Indicators**:
   - Infiltrated ships and planets display `[INFILTRATED]` (cyan) or `[SABOTAGED: <TYPE>]` (orange) badges in sector view and cyan spy indicators in system view.
   - Friendly and allied entities hosting detected enemy spies display `[DISCOVERED SPY]` (red) warning badges.
@@ -487,6 +488,7 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 
 ### 10.4 Intelligence & Covert Rules
 - **Hostile Espionage Operations**: Infiltration (`InfiltrateUnitOrder`, `InfiltratePlanetOrder`), agent relocation (`RelocateAgentOrder`), and subsystem sabotage strictly target enemy units and enemy colonies.
+- **Covert Component Concealment**: Hostile players inspecting opposing units cannot detect installed `IntelligenceComponent` suites in the sidebar (Basic Info overview and Components tab inspector) or target them in attack context menus.
 - **Economic Siphoning**: Credit tax siphoning from the Economy sabotage operation applies exclusively to enemy colonies.
 - **Shared Counter-Intelligence**:
   - Active `CISweepOrder` scans both friendly and allied ships/colonies in the sector to expose hidden enemy agents.

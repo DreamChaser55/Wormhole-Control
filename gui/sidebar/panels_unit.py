@@ -1,7 +1,8 @@
 """Sidebar UI panel builders for Unit entities."""
 import typing
 from constants import MAX_UNIT_XP, UPKEEP_COST_PER_HULL_POINT
-from entities import Unit
+from entities import Unit, are_enemies
+from unit_components import IntelligenceComponent
 
 
 def hit_point_style_id(unit: Unit) -> str:
@@ -24,6 +25,7 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
     data = []
     current_player = game.players[game.current_player_index] if game.players else None
     is_owned = (unit.owner == current_player)
+    is_enemy = are_enemies(current_player, unit.owner)
 
     if is_owned:
         data.append({
@@ -137,7 +139,10 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
 
         # Summaries from all installed components
         data.append({'type': 'label', 'text': "Component Overview:", 'object_id': '#sidebar_section_header_label', 'height': 25})
-        installed_components = list(unit.components.values())
+        installed_components = [
+            comp for comp in unit.components.values()
+            if not (is_enemy and isinstance(comp, IntelligenceComponent))
+        ]
         installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
         for comp in installed_components:
             data.extend(comp.get_basic_sidebar_data(game))
@@ -146,7 +151,10 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         data.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hit_point_style_id(unit), 'height': 20})
         data.append({'type': 'label', 'text': "Select Component:", 'object_id': '#sidebar_section_header_label', 'height': 25})
 
-        installed_components = list(unit.components.values())
+        installed_components = [
+            comp for comp in unit.components.values()
+            if not (is_enemy and isinstance(comp, IntelligenceComponent))
+        ]
         installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
 
         components_map = {c.DISPLAY_NAME: c for c in installed_components}

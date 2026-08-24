@@ -205,7 +205,21 @@ class IntelligenceComponent(UnitComponent):
         logger.debug(f"[{self.unit.name}] Retrieved agent {agent.id}.")
         return True
 
+    def _is_enemy_of_active_player(self, game_state: 'Game') -> bool:
+        """Returns True if the active player in game_state is an enemy of the unit's owner."""
+        if not game_state or not self.unit or not self.unit.owner:
+            return False
+        current_player = (
+            game_state.players[game_state.current_player_index]
+            if getattr(game_state, 'players', None) and 0 <= getattr(game_state, 'current_player_index', 0) < len(game_state.players)
+            else getattr(game_state, 'current_player', None)
+        )
+        from entities import are_enemies
+        return are_enemies(current_player, self.unit.owner)
+
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        if self._is_enemy_of_active_player(game_state):
+            return []
         data = super().get_sidebar_data(game_state)
         data.append({
             'type': 'label',
@@ -229,6 +243,8 @@ class IntelligenceComponent(UnitComponent):
         return data
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
+        if self._is_enemy_of_active_player(game_state):
+            return []
         data = super().get_basic_sidebar_data(game_state)
         if self.is_destroyed:
             return data

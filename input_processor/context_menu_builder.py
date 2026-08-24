@@ -276,6 +276,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                             options.append(("Attack Weapons", "attack_unit_Weapons"))
                         if target_object.inhibitor_component:
                             options.append(("Attack Inhibitor", "attack_unit_HyperspaceInhibitionFieldEmitter"))
+                        # Note: Covert components (e.g. IntelligenceComponent) are hidden from enemy attack menus
 
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
                     if has_intel_actors:
