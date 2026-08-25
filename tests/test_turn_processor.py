@@ -15,9 +15,9 @@ def test_end_turn_advances_player():
     game.current_player_index = 0
     
     tp = TurnProcessor(game)
-    with patch.object(tp, 'process_turn') as mock_process:
+    with patch.object(tp, 'process_player_turn') as mock_process:
         tp.end_turn()
-        mock_process.assert_called_once()
+        mock_process.assert_called_once_with(player1)
         assert game.current_player_index == 1
         game.update_player_turn_display.assert_called_once()
         game.update_side_bar_content.assert_called_once()
@@ -370,12 +370,52 @@ def test_turn_number_increment():
     game.current_player_index = 0
 
     tp = TurnProcessor(game)
-    with patch.object(tp, 'process_turn'):
+    with patch.object(tp, 'process_player_turn'), patch.object(tp, 'process_global_end_of_round'):
+        # Player 1 ends turn -> Still Turn 1, player advances to Player 2
         tp.end_turn()
-        assert game.turn_number == 2
+        assert game.turn_number == 1
         assert game.current_player_index == 1
 
+        # Player 2 (last player) ends turn -> Round completes, advances to Turn 2, player wraps to Player 1
         tp.end_turn()
-        assert game.turn_number == 3
+        assert game.turn_number == 2
+        assert game.current_player_index == 0
+
+
+def test_global_round_execution_order_and_population_growth():
+    game = MagicMock()
+    game.turn_number = 1
+    player1 = MockPlayer("Player 1")
+    player2 = MockPlayer("Player 2")
+    player3 = MockPlayer("Player 3")
+    player1.is_human = True
+    player2.is_human = True
+    player3.is_human = True
+    game.players = [player1, player2, player3]
+    game.current_player_index = 0
+
+    tp = TurnProcessor(game)
+    with patch.object(tp, 'process_player_turn') as mock_player_turn, \
+         patch.object(tp, 'process_global_end_of_round') as mock_global_round:
+        
+        # Player 1 ends turn
+        tp.end_turn()
+        mock_player_turn.assert_called_with(player1)
+        mock_global_round.assert_not_called()
+        assert game.turn_number == 1
+        assert game.current_player_index == 1
+
+        # Player 2 ends turn
+        tp.end_turn()
+        mock_player_turn.assert_called_with(player2)
+        mock_global_round.assert_not_called()
+        assert game.turn_number == 1
+        assert game.current_player_index == 2
+
+        # Player 3 (final player) ends turn
+        tp.end_turn()
+        mock_player_turn.assert_called_with(player3)
+        mock_global_round.assert_called_once()
+        assert game.turn_number == 2
         assert game.current_player_index == 0
 

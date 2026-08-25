@@ -40,3 +40,22 @@ def test_update_player_turn_display_missing_color():
     
     # Assert default white color is used
     game.gui.update_turn_label.assert_called_once_with("<font color='#ffffff'>Turn 1: Mock No Color's Turn</font>")
+
+
+def test_update_player_turn_display_multiplayer():
+    game = DummyGame()
+    p1 = Player("Federation", (0, 0, 255))
+    p2 = Player("Empire", (255, 0, 0))
+    game.players = [p1, p2]
+    game.turn_number = 3
+    
+    # Player 1 turn in round 3
+    game.current_player_index = 0
+    game.update_player_turn_display()
+    game.gui.update_turn_label.assert_called_with("<font color='#0000ff'>Turn 3: Federation's Turn</font>")
+    
+    # Player 2 turn in round 3
+    game.current_player_index = 1
+    game.update_player_turn_display()
+    game.gui.update_turn_label.assert_called_with("<font color='#ff0000'>Turn 3: Empire's Turn</font>")
+

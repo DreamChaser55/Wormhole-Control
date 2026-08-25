@@ -23,31 +23,42 @@ class TurnProcessor:
         self.game = game_instance
 
     def end_turn(self):
-        """Processes the end of the current player's turn."""
+        """Processes the end of the current player's turn and advances turn/round state."""
         turn_num = getattr(self.game, 'turn_number', 1)
-        logger.debug(f"--- Turn {turn_num} - End of {self.game.players[self.game.current_player_index].name}'s Turn ---")
-        self.process_turn()
+        current_player = self.game.players[self.game.current_player_index]
+        logger.debug(f"--- Turn {turn_num} - End of {current_player.name}'s Turn ---")
+        self.process_player_turn(current_player)
 
-        self.game.current_player_index = (self.game.current_player_index + 1) % len(self.game.players)
-        if hasattr(self.game, 'turn_number'):
-            self.game.turn_number += 1
+        is_last_player = (self.game.current_player_index == len(self.game.players) - 1)
+        if is_last_player:
+            self.process_global_end_of_round()
+            if hasattr(self.game, 'turn_number'):
+                self.game.turn_number += 1
+            self.game.current_player_index = 0
+        else:
+            self.game.current_player_index += 1
+
         new_turn_num = getattr(self.game, 'turn_number', 1)
-
-        current_player_name = self.game.players[self.game.current_player_index].name
-        logger.debug(f"\n--- Turn {new_turn_num} - Start of {current_player_name}'s Turn ---")
+        next_player = self.game.players[self.game.current_player_index]
+        logger.debug(f"\n--- Turn {new_turn_num} - Start of {next_player.name}'s Turn ---")
 
         self.game.update_player_turn_display()
         self.game.update_side_bar_content() # Update info box after changing turn
 
-        if not self.game.players[self.game.current_player_index].is_human:
-             logger.debug(f"AI Turn for {current_player_name} (Not Implemented) - Ending Turn Automatically")
+        if not next_player.is_human:
+             logger.debug(f"AI Turn for {next_player.name} (Not Implemented) - Ending Turn Automatically")
              self.game.pending_ai_turn_end_time = pygame.time.get_ticks() + 500
 
 
-    def process_turn(self):
-        """Processes actions that occur at the end of a turn (movement, jumps) and calls update() for all units in the current player's turn."""
-        with ProfileTimer("Total turn processing"):
-            current_player = self.game.players[self.game.current_player_index]
+    def process_turn(self, player=None):
+        """Processes actions that occur at the end of a player's turn (movement, jumps, economy, unit updates)."""
+        target_player = player if player is not None else self.game.players[self.game.current_player_index]
+        self.process_player_turn(target_player)
+
+
+    def process_player_turn(self, current_player):
+        """Processes player-specific actions that occur at the end of their turn (movement, economy, unit updates)."""
+        with ProfileTimer("Total player turn processing"):
             turn_num = getattr(self.game, 'turn_number', 1)
             logger.debug(f"Processing Turn {turn_num} for {current_player.name}...")
             
@@ -57,19 +68,16 @@ class TurnProcessor:
 
             # The execution order is critical for game state consistency:
             # 1. Resolve unit movement first so positions are updated.
-            # 2. Process population growth next so tax revenue utilizes updated sizes.
-            # 3. Generate resource credits based on the new population counts.
-            # 4. Run unit state updates (engines, weapons, order resolution) with updated context.
+            # 2. Minefield detonations from movement.
+            # 3. Generate resource credits for the active player based on population and habitats.
+            # 4. Deduct upkeep for the active player's units.
+            # 5. Run unit state updates (engines, weapons, order resolution) with updated context.
             with ProfileTimer("Movement processing"):
                 self._process_movement(current_player)
 
             with ProfileTimer("Minefield detonations"):
                 self._process_minefield_detonations()
                 self._cleanup_dead_units()
-
-            with ProfileTimer("Population growth"):
-                self._process_population_growth()
-
 
             with ProfileTimer("Resource generation"):
                 self._process_resource_generation(current_player)
@@ -81,10 +89,25 @@ class TurnProcessor:
                 self._process_unit_updates(current_player)
                 self._cleanup_dead_units()
 
+            logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
+
+
+    def process_global_end_of_round(self):
+        """Processes galaxy-wide actions at the end of a full round (after all players have acted)."""
+        with ProfileTimer("Total global end of round processing"):
+            turn_num = getattr(self.game, 'turn_number', 1)
+            logger.debug(f"Processing End of Round {turn_num} (Global)...")
+
+            if not self.game.galaxy or not self.game.galaxy.systems:
+                return
+
+            with ProfileTimer("Population growth"):
+                self._process_population_growth()
+
             with ProfileTimer("Sector intel update"):
                 VisibilityService.update_all_players_intel(self.game.galaxy, self.game.players, turn_num)
 
-            logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
+            logger.debug(f"Finished End of Round {turn_num} processing.")
 
     def _process_movement(self, current_player):
         for system_name, system in self.game.galaxy.systems.items():
