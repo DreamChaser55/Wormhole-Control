@@ -71,13 +71,28 @@ class Player:
     """Represents a player in the game (human or AI)."""
     player_counter = 0
 
-    def __init__(self, name: str, color: tuple, is_human: bool = True, team_id: Optional[int] = None):
+    def __init__(
+        self,
+        name: str,
+        color: tuple,
+        is_human: bool = True,
+        team_id: Optional[int] = None,
+        persistent_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        ai_profile: str = "balanced",
+        ai_memory: Optional[Dict[str, Any]] = None,
+    ):
         self.id = Player.player_counter
         Player.player_counter += 1
         self.name = name if name else f"Player {self.id}"
         self.color = color
         self.is_human = is_human
         self.team_id: int = team_id if team_id is not None else (self.id + 1)
+        self.persistent_id: str = persistent_id or str(uuid.uuid4())
+        self.agent_id: str = agent_id or str(uuid.uuid4())
+        self.ai_profile: str = ai_profile or "balanced"
+        self.ai_memory: Dict[str, Any] = dict(ai_memory or {})
+        self.last_ai_report: Dict[str, Any] = {}
         self.credits = 20000
         self.metal = 10000
         self.crystal = 10000

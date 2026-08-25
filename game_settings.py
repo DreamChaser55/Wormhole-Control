@@ -29,6 +29,7 @@ class PlayerConfig:
     color: typing.Tuple[int, int, int]
     is_human: bool = True
     team_id: int = 1
+    ai_profile: str = "balanced"
 
 
 def _default_player_configs() -> typing.List[PlayerConfig]:
@@ -98,4 +99,3 @@ class GameSettings:
         errors = self.validate()
         if errors:
             raise ValueError("; ".join(errors))
-

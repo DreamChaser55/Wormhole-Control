@@ -9,6 +9,7 @@ Hex grids, CelestialBodies, Units, UnitComponents, and Orders.
 import json
 import logging
 import os
+import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 
@@ -114,6 +115,10 @@ def serialize_player(player: Player) -> dict:
         "color": list(player.color),
         "is_human": player.is_human,
         "team_id": getattr(player, "team_id", player.id + 1),
+        "persistent_id": getattr(player, "persistent_id", None) or str(uuid.uuid4()),
+        "agent_id": getattr(player, "agent_id", None) or str(uuid.uuid4()),
+        "ai_profile": getattr(player, "ai_profile", "balanced"),
+        "ai_memory": getattr(player, "ai_memory", {}),
         "credits": player.credits,
         "metal": player.metal,
         "crystal": player.crystal,
@@ -368,7 +373,7 @@ def serialize_game_state(game: Any) -> dict:
     galaxy_data = serialize_galaxy(game.galaxy) if game.galaxy else None
 
     return {
-        "version": "1.0",
+        "version": "2.0",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -378,6 +383,7 @@ def serialize_game_state(game: Any) -> dict:
             "current_sector_coord": list(game.current_sector_coord) if game.current_sector_coord else None,
             "object_counter": object_counter,
             "player_counter": player_counter,
+            "campaign_id": getattr(game, "campaign_id", str(uuid.uuid4())),
         },
         "players": players_data,
         "galaxy": galaxy_data
@@ -391,7 +397,11 @@ def deserialize_player(data: dict) -> Player:
         name=data.get("name", "Player"),
         color=tuple(data.get("color", (255, 255, 255))),
         is_human=data.get("is_human", True),
-        team_id=data.get("team_id", None)
+        team_id=data.get("team_id", None),
+        persistent_id=data.get("persistent_id"),
+        agent_id=data.get("agent_id"),
+        ai_profile=data.get("ai_profile", "balanced"),
+        ai_memory=data.get("ai_memory", {}),
     )
     player.id = data.get("id", player.id)
     if "team_id" in data:
@@ -930,6 +940,7 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
         game.current_player_index = state_info.get("current_player_index", 0)
         game.view_mode = state_info.get("view_mode", "galaxy")
         game.current_system_name = state_info.get("current_system_name")
+        game.campaign_id = state_info.get("campaign_id") or str(uuid.uuid4())
 
         sec_coord = state_info.get("current_sector_coord")
         game.current_sector_coord = tuple(sec_coord) if sec_coord else None
@@ -1002,8 +1013,28 @@ def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
     filepath = os.path.join(SAVES_DIR, filename)
 
     state_dict = serialize_game_state(game)
-    with open(filepath, "w", encoding="utf-8") as f:
+    temporary_path = filepath + ".tmp"
+    with open(temporary_path, "w", encoding="utf-8") as f:
         json.dump(state_dict, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(temporary_path, filepath)
+
+    try:
+        from pathlib import Path
+        from game_ai.memory import AgentMemory, write_memory_sidecar
+
+        for player in game.players:
+            if not getattr(player, "is_human", True):
+                write_memory_sidecar(
+                    Path(SAVES_DIR),
+                    campaign_id=str(game.campaign_id),
+                    agent_id=str(player.agent_id),
+                    player_name=str(player.name),
+                    memory=AgentMemory.from_dict(getattr(player, "ai_memory", None)),
+                )
+    except Exception:
+        logger.warning("Could not write AI memory sidecars.", exc_info=True)
 
     logger.debug(f"Game saved successfully to {filepath}")
     return filepath

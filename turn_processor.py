@@ -47,13 +47,15 @@ class TurnProcessor:
         self.check_and_schedule_ai_turn()
 
     def check_and_schedule_ai_turn(self):
-        """Checks if the current player is an AI, and if so schedules an automated turn completion."""
+        """Schedule the active AI after a short delay so the UI can show the turn."""
         if not getattr(self.game, 'players', None) or not (0 <= getattr(self.game, 'current_player_index', 0) < len(self.game.players)):
             return
         current_player = self.game.players[self.game.current_player_index]
         if not getattr(current_player, 'is_human', True):
-            logger.debug(f"AI Turn for {current_player.name} (Not Implemented) - Ending Turn Automatically")
+            logger.debug(f"Scheduling agentic AI turn for {current_player.name}")
             self.game.pending_ai_turn_end_time = pygame.time.get_ticks() + 500
+        else:
+            self.game.pending_ai_turn_end_time = 0
 
     def process_turn(self, player=None):
         """Processes actions that occur at the end of a player's turn (movement, jumps, economy, unit updates)."""

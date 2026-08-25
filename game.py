@@ -1,6 +1,7 @@
 import logging
 import sys
 import typing
+import uuid
 import pygame
 from pygame import Color
 
@@ -29,6 +30,7 @@ from visibility import (
     hex_has_presence as vis_hex_has_presence,
     is_minefield_visible as vis_is_minefield_visible
 )
+from game_ai.coordinator import AgentTurnCoordinator
 
 # Subsystem modules
 import game_camera
@@ -75,6 +77,7 @@ class Game:
         self.players: typing.List[Player] = []
         self.current_player_index = 0
         self.turn_number = 1
+        self.campaign_id = str(uuid.uuid4())
 
         # Visibility / Fog of War State
         self.visibility: typing.Optional[VisibilitySnapshot] = None
@@ -96,6 +99,7 @@ class Game:
 
         # Instantiate the TurnProcessor
         self.turn_manager = TurnProcessor(self)
+        self.ai_coordinator = AgentTurnCoordinator(self)
 
         # Initialize the main menu UI
         self.gui.show_main_menu()
@@ -157,7 +161,21 @@ class Game:
     # --- GUI Action Handling ---
     def handle_gui_action(self, action: typing.Dict[str, typing.Any]):
         """Handles action events triggered by user interactions with GUI controls."""
+        if self.is_ai_input_locked() and action.get('action') not in {
+            'toggle_ingame_menu', 'save_game', 'load_game_file',
+            'quit_to_main_menu', 'show_main_menu', 'quit',
+        }:
+            return
         game_actions.handle_gui_action(self, action)
+
+    def is_ai_input_locked(self) -> bool:
+        current = self.current_player
+        return bool(
+            self.game_started
+            and current is not None
+            and not current.is_human
+            and (self.pending_ai_turn_end_time > 0 or self.ai_coordinator.is_busy)
+        )
 
     def update_sector_camera(self, dt: float):
         """Smoothly interpolates the sector camera zoom and pan offset."""
@@ -233,12 +251,19 @@ class Game:
         if self.game_started and self.pending_ai_turn_end_time > 0:
             if pygame.time.get_ticks() >= self.pending_ai_turn_end_time:
                 self.pending_ai_turn_end_time = 0
+                if not self.ai_coordinator.start_current_turn():
+                    current = self.current_player
+                    if current is not None and not current.is_human:
+                        logger.warning("AI coordinator did not start; ending turn as fallback.")
+                        self.end_turn()
 
-                self.end_turn()
+        self.ai_coordinator.update()
 
 
     def end_turn(self):
         """Delegates end_turn processing to the TurnProcessor instance."""
+        if self.ai_coordinator.is_busy:
+            self.ai_coordinator.reset()
         self.turn_manager.end_turn()
         self.visibility_dirty = True
         self.sidebar_needs_update = True # Ensure sidebar refreshes after turn processing
@@ -294,7 +319,11 @@ class Game:
             color_hex = "#FFFFFF"
 
         turn_num = getattr(self, 'turn_number', 1)
-        self.gui.update_turn_label(f"<font color='{color_hex}'>Turn {turn_num}: {current_player.name}'s Turn</font>")
+        ai_status = ""
+        if not current_player.is_human:
+            status = self.ai_coordinator.status_message or "AI"
+            ai_status = f" — {status}"
+        self.gui.update_turn_label(f"<font color='{color_hex}'>Turn {turn_num}: {current_player.name}'s Turn{ai_status}</font>")
         # Update color indicator panel's background and dynamic panel theme hue
         self.gui.update_player_color_indicator(Color(color)) # Convert tuple to pygame.Color
         self.gui.update_player_turn_theme(Color(color))
@@ -360,6 +389,7 @@ class Game:
         """
         import save_manager
         logger.debug(f"Loading game state from {filepath}...")
+        self.ai_coordinator.reset()
         try:
             success = save_manager.load_game_from_file(self, filepath)
         except Exception as e:
@@ -384,6 +414,7 @@ class Game:
     def quit_to_main_menu(self):
         """Resets active game state and returns the UI to the main menu."""
         logger.debug("Quitting to main menu...")
+        self.ai_coordinator.reset()
         self.game_started = False
         self.view_mode = 'main_menu'
         self.gui.clear_and_reset()

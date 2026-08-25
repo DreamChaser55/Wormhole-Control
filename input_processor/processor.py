@@ -52,6 +52,9 @@ class InputProcessor:
                 if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION, pygame.MOUSEWHEEL]:
                     continue
 
+            if hasattr(self.game, "is_ai_input_locked") and self.game.is_ai_input_locked():
+                continue
+
             if event.type == pygame.KEYDOWN:
                 if handle_key_down(self.game, self.gui, event):
                     continue

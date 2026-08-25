@@ -131,3 +131,7 @@ Thumbs.db
 
 # Secrets
 *.key
+
+# Agentic AI runtime artifacts
+saves/agent_memory/
+saves/ai_telemetry.jsonl

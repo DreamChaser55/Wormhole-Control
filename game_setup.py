@@ -2,6 +2,7 @@
 import logging
 import random
 import typing
+import uuid
 
 from constants import BLUE, RED, YELLOW
 from entities import Player, Planet, Star, Wormhole
@@ -29,6 +30,9 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
         settings = GameSettings()
 
     logger.debug("Starting new game setup...")
+    if hasattr(game, 'ai_coordinator'):
+        game.ai_coordinator.reset()
+    game.campaign_id = str(uuid.uuid4())
 
     # Set up game UI first to ensure galaxy_generation_rect is defined before galaxy generation
     game.gui.show_game_ui()
@@ -50,6 +54,7 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
             cfg.color,
             is_human=cfg.is_human,
             team_id=cfg.team_id,
+            ai_profile=getattr(cfg, "ai_profile", "balanced"),
         )
         for cfg in settings.player_configs
     ]

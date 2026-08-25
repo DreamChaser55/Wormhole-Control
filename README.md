@@ -8,7 +8,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 ## Status
 
-**Wormhole Control is an active prototype.** The game supports single-machine hot-seat multiplayer for 2 to 6 players. Non-human AI players are currently in development — when configured in the New Game Wizard, AI player turns automatically end after a brief pause.
+**Wormhole Control is an active prototype.** The game supports single-machine hot-seat multiplayer for 2 to 6 players and agentic OpenAI-powered opponents. AI players receive only player-visible state, formulate a turn plan, issue validated engine commands, update persistent strategy memory, and end their turn.
 
 ---
 
@@ -18,12 +18,13 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 - **Python 3.9+** (Verified working on Python 3.14.3)
 - **pygame-ce** (Verified working on 2.5.7)
 - **pygame_gui** (Verified working on 0.6.14)
+- **OpenAI Python SDK** (for AI players)
 
 ### Installation & Launch
 
 1. **Install dependencies:**
    ```bash
-   pip install pygame-ce pygame_gui
+   pip install -r requirements.txt
    ```
 
 2. **Launch the game:**
@@ -33,7 +34,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 3. **Start a campaign:**
    - Click **New Game** to open the **New Game Wizard**.
-   - Configure player count (2–6), custom names, faction colors, and human/AI status.
+   - Configure player count (2–6), custom names, faction colors, and human/AI profile. The player-type button cycles through Human, Balanced, Fast, and Strategic.
    - Adjust galaxy generation parameters (system count, radius, wormhole connectivity) and starting economies.
    - Click **Start Game** to generate the galaxy and begin turn 1.
 
@@ -128,6 +129,21 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 
 - **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory.
 - **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match.
+- **AI Memory**: Canonical long-term memory is embedded in each save. A readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`.
+
+## Agentic AI
+
+AI players use the OpenAI Responses API with strict Structured Outputs. Configure the API key through `OPENAI_API_KEY`, or place the raw key in the ignored `API_keys/OpenAI.key` file. Environment configuration takes precedence. Secrets are never written to saves, memory, reports, or telemetry.
+
+The three profiles are:
+
+- **Fast** — GPT-5.6 Luna with low reasoning.
+- **Balanced** — GPT-5.6 Terra with medium reasoning (default).
+- **Strategic** — GPT-5.6 Sol with high reasoning.
+
+Planning runs outside the Pygame thread. Returned command batches are preflighted against the same visibility-limited observation before the game is mutated. If commands are rejected, the agent gets one repair attempt; API or validation failures leave the End Turn button available for manual recovery.
+
+See [Agentic AI Architecture](docs/AGENTIC_AI.md) for the full design and evaluation workflow.
 
 ---
 
@@ -137,6 +153,7 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 Wormhole Control includes a comprehensive automated test suite consisting of **545 tests across 55 test modules** covering economy, combat, movement, AI logic, order trees, and GUI handlers:
 
 ```bash
+pip install -r requirements-dev.txt
 python -m pytest
 ```
 

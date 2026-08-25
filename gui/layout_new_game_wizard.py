@@ -129,6 +129,7 @@ class NewGameWizard:
         self._player_color_swatches: typing.List[pygame_gui.elements.UIPanel] = []
         self._player_human_buttons: typing.List[pygame_gui.elements.UIButton] = []
         self._player_is_human: typing.List[bool] = []
+        self._player_ai_profiles: typing.List[str] = []
         self._player_team_buttons: typing.List[pygame_gui.elements.UIButton] = []
         self._player_teams: typing.List[int] = [1, 2, 2]
 
@@ -347,6 +348,7 @@ class NewGameWizard:
         self._player_color_swatches = []
         self._player_human_buttons = []
         self._player_is_human = []
+        self._player_ai_profiles = []
         self._player_team_buttons = []
 
         for i in range(self._num_players):
@@ -425,7 +427,7 @@ class NewGameWizard:
         color_block_w = cycle_btn_w * 2 + swatch_w
 
         # Human / AI toggle button
-        human_btn_w = self._sx(68)
+        human_btn_w = self._sx(96)
         human_x = color_x + color_block_w + self._sx(8)
         is_human = True
         btn = pygame_gui.elements.UIButton(
@@ -437,6 +439,7 @@ class NewGameWizard:
         )
         self._player_human_buttons.append(btn)
         self._player_is_human.append(is_human)
+        self._player_ai_profiles.append("balanced")
 
         # Team selector button (cycles Team 1 -> Team 2 -> ...)
         team_btn_w = self._sx(72)
@@ -468,6 +471,13 @@ class NewGameWizard:
         self._player_teams[player_index] = new_team
         if player_index < len(self._player_team_buttons) and self._player_team_buttons[player_index]:
             self._player_team_buttons[player_index].set_text(f"Team {new_team}")
+
+    @staticmethod
+    def _player_type_label(is_human: bool, profile: str) -> str:
+        if is_human:
+            return "Human"
+        labels = {"fast": "AI: Fast", "balanced": "AI: Balanced", "strategic": "AI: Strategic"}
+        return labels.get(profile, "AI: Balanced")
 
     def draw_swatches(self, surface: pygame.Surface) -> None:
         """Draws filled colour squares on top of each player's swatch panel.
@@ -673,6 +683,7 @@ class NewGameWizard:
         self._player_color_next_btns = []
         self._player_human_buttons = []
         self._player_is_human = []
+        self._player_ai_profiles = []
         self._player_team_buttons = []
 
         # Rebuild
@@ -694,6 +705,7 @@ class NewGameWizard:
                 PLAYER_COLOR_PALETTE[idx][0] for idx in self._player_color_indices
             ],
             "player_humans": list(self._player_is_human),
+            "player_ai_profiles": list(self._player_ai_profiles),
             "player_teams": list(self._player_teams),
             "num_systems": self._num_systems_slider.get_current_value() if self._num_systems_slider else 15,
             "radius_min": self._sys_radius_min_slider.get_current_value() if self._sys_radius_min_slider else 5,
@@ -712,6 +724,7 @@ class NewGameWizard:
         player_names = snap.get("player_names", [])
         player_colors = snap.get("player_colors", [])  # list of color name strings
         player_humans = snap.get("player_humans", [])
+        player_ai_profiles = snap.get("player_ai_profiles", [])
         player_teams = snap.get("player_teams", [])
 
         for i, entry in enumerate(self._player_name_entries):
@@ -730,7 +743,15 @@ class NewGameWizard:
             if i < len(self._player_is_human):
                 self._player_is_human[i] = is_h
                 if self._player_human_buttons[i]:
-                    self._player_human_buttons[i].set_text("Human" if is_h else "AI")
+                    profile = (
+                        player_ai_profiles[i]
+                        if i < len(player_ai_profiles)
+                        else "balanced"
+                    )
+                    self._player_ai_profiles[i] = profile
+                    self._player_human_buttons[i].set_text(
+                        self._player_type_label(is_h, profile)
+                    )
         for i, team_num in enumerate(player_teams):
             if i < len(self._player_teams):
                 self._player_teams[i] = team_num
@@ -852,8 +873,19 @@ class NewGameWizard:
             # Human/AI toggle buttons
             for i, btn in enumerate(self._player_human_buttons):
                 if element is btn:
-                    self._player_is_human[i] = not self._player_is_human[i]
-                    btn.set_text("Human" if self._player_is_human[i] else "AI")
+                    is_human = self._player_is_human[i]
+                    profile = self._player_ai_profiles[i]
+                    if is_human:
+                        is_human, profile = False, "balanced"
+                    elif profile == "balanced":
+                        profile = "fast"
+                    elif profile == "fast":
+                        profile = "strategic"
+                    else:
+                        is_human, profile = True, "balanced"
+                    self._player_is_human[i] = is_human
+                    self._player_ai_profiles[i] = profile
+                    btn.set_text(self._player_type_label(is_human, profile))
                     return None
 
             # Team cycle buttons
@@ -914,8 +946,15 @@ class NewGameWizard:
             else:
                 color = PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1]
             is_human = self._player_is_human[i] if i < len(self._player_is_human) else True
+            ai_profile = self._player_ai_profiles[i] if i < len(self._player_ai_profiles) else "balanced"
             team_id = self._player_teams[i] if i < len(self._player_teams) else (2 if i > 0 else 1)
-            player_configs.append(PlayerConfig(name=name, color=color, is_human=is_human, team_id=team_id))
+            player_configs.append(PlayerConfig(
+                name=name,
+                color=color,
+                is_human=is_human,
+                team_id=team_id,
+                ai_profile=ai_profile,
+            ))
 
         num_systems = int(self._num_systems_slider.get_current_value()) if self._num_systems_slider else 15
 
