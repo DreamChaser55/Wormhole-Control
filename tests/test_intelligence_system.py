@@ -29,6 +29,10 @@ from constants import (
     HullSize,
     DEFAULT_SENSOR_SHORT_RANGE,
     TAX_RATE,
+    CI_SWEEP_CREDIT_COST,
+    CI_SWEEP_ANTIMATTER_COST,
+    CI_SWEEP_COOLDOWN_TURNS,
+    CI_SWEEP_RANGE,
 )
 from entities import Player, Unit, Planet, Moon, ColonizableAsteroid, Star
 from unit_components import (
@@ -312,6 +316,7 @@ def test_counter_intelligence_sweep_and_eliminate(test_setup):
     p1, p2, galaxy, system, game = test_setup
 
     # Friendly vessel with CI suite
+    p1.credits = 1000.0
     ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
     ci_comp = IntelligenceComponent(ci_ship, agents_count=1, agents_capacity=1, has_counter_intelligence=True)
     ci_ship.add_component(ci_comp)
@@ -332,6 +337,11 @@ def test_counter_intelligence_sweep_and_eliminate(test_setup):
     agent_on_planet = enemy_intel.deploy_agent(planet)
     assert not agent_on_ship.is_discovered
     assert not agent_on_planet.is_discovered
+    assert ci_comp.is_ci_ready is True
+    assert ci_comp.ci_cooldown_remaining == 0
+
+    init_credits = p1.credits
+    init_am = ci_ship.antimatter_component.current_amount
 
     # Execute active CI Sweep
     sweep_order = CISweepOrder(ci_ship)
@@ -339,6 +349,12 @@ def test_counter_intelligence_sweep_and_eliminate(test_setup):
     assert sweep_order.status == OrderStatus.COMPLETED
     assert agent_on_ship.is_discovered
     assert agent_on_planet.is_discovered
+
+    # Verify resource deductions and cooldown
+    assert p1.credits == init_credits - CI_SWEEP_CREDIT_COST
+    assert ci_ship.antimatter_component.current_amount == init_am - CI_SWEEP_ANTIMATTER_COST
+    assert ci_comp.ci_cooldown_remaining == CI_SWEEP_COOLDOWN_TURNS
+    assert ci_comp.is_ci_ready is False
 
     # Eliminate agent on planet
     elim_order = EliminateAgentOrder(ci_ship, {"agent_id": agent_on_planet.id})
@@ -348,11 +364,88 @@ def test_counter_intelligence_sweep_and_eliminate(test_setup):
     assert enemy_intel.deployed_agents == [agent_on_ship]
 
 
+def test_ci_sweep_cooldown_and_costs_validation(test_setup):
+    p1, p2, galaxy, system, game = test_setup
+    ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
+    ci_comp = IntelligenceComponent(ci_ship, agents_count=1, agents_capacity=1, has_counter_intelligence=True)
+    ci_ship.add_component(ci_comp)
+    system.hexes[(0, 0)].add_unit(ci_ship)
+
+    # 1. Test failure on cooldown
+    ci_comp.ci_cooldown_remaining = 2
+    order_cd = CISweepOrder(ci_ship)
+    order_cd.execute(galaxy)
+    assert order_cd.status == OrderStatus.FAILED
+    assert ci_comp.ci_cooldown_remaining == 2
+
+    # 2. Test failure with insufficient credits
+    ci_comp.ci_cooldown_remaining = 0
+    p1.credits = 50.0  # Needs 100.0
+    order_cred = CISweepOrder(ci_ship)
+    order_cred.execute(galaxy)
+    assert order_cred.status == OrderStatus.FAILED
+    assert p1.credits == 50.0
+    assert ci_comp.ci_cooldown_remaining == 0
+
+    # 3. Test failure with insufficient antimatter
+    p1.credits = 500.0
+    ci_ship.antimatter_component.current_amount = 10.0  # Needs 25.0
+    order_am = CISweepOrder(ci_ship)
+    order_am.execute(galaxy)
+    assert order_am.status == OrderStatus.FAILED
+    assert ci_ship.antimatter_component.current_amount == 10.0
+    assert ci_comp.ci_cooldown_remaining == 0
+
+
+def test_ci_cooldown_turn_decrement(test_setup):
+    p1, p2, galaxy, system, game = test_setup
+    ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
+    ci_comp = IntelligenceComponent(ci_ship, agents_count=1, agents_capacity=1, has_counter_intelligence=True, ci_cooldown_remaining=3)
+    ci_ship.add_component(ci_comp)
+    system.hexes[(0, 0)].add_unit(ci_ship)
+
+    assert ci_comp.ci_cooldown_remaining == 3
+    ci_ship.update()
+    assert ci_comp.ci_cooldown_remaining == 2
+    ci_ship.update()
+    assert ci_comp.ci_cooldown_remaining == 1
+    ci_ship.update()
+    assert ci_comp.ci_cooldown_remaining == 0
+    assert ci_comp.is_ci_ready is True
+    # Clamped at 0
+    ci_ship.update()
+    assert ci_comp.ci_cooldown_remaining == 0
+
+
+def test_no_passive_ci_detection_on_turn_end(test_setup):
+    p1, p2, galaxy, system, game = test_setup
+    from turn_processor import TurnProcessor
+    turn_proc = TurnProcessor(game)
+
+    ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
+    ci_comp = IntelligenceComponent(ci_ship, agents_count=1, agents_capacity=1, has_counter_intelligence=True)
+    ci_ship.add_component(ci_comp)
+    system.hexes[(0, 0)].add_unit(ci_ship)
+
+    enemy_spy = Unit(p2, Position(120, 100), (0, 0), "Sol", "Enemy Spy", HullSize.MEDIUM, game)
+    enemy_intel = IntelligenceComponent(enemy_spy, agents_count=1, agents_capacity=1)
+    enemy_spy.add_component(enemy_intel)
+    system.hexes[(0, 0)].add_unit(enemy_spy)
+
+    agent = enemy_intel.deploy_agent(ci_ship)
+    assert agent.is_discovered is False
+
+    # Process 20 turns of unit updates for p1
+    for _ in range(20):
+        turn_proc._process_unit_updates(p1)
+        assert agent.is_discovered is False, "Agent should never be discovered passively without active CI sweep!"
+
+
 def test_save_and_load_intelligence_state(test_setup):
     p1, p2, galaxy, system, game = test_setup
 
     spy_unit = Unit(p1, Position(100, 100), (0, 0), "Sol", "Spy 1", HullSize.MEDIUM, game)
-    intel_comp = IntelligenceComponent(spy_unit, agents_count=2, agents_capacity=2, has_counter_intelligence=True)
+    intel_comp = IntelligenceComponent(spy_unit, agents_count=2, agents_capacity=2, has_counter_intelligence=True, ci_cooldown_remaining=2)
     spy_unit.add_component(intel_comp)
     system.hexes[(0, 0)].add_unit(spy_unit)
 
@@ -380,6 +473,7 @@ def test_save_and_load_intelligence_state(test_setup):
 
     assert loaded_spy.intelligence_component is not None
     assert loaded_spy.intelligence_component.has_counter_intelligence is True
+    assert loaded_spy.intelligence_component.ci_cooldown_remaining == 2
     assert loaded_target.has_infiltrating_agent_from(new_game.players[0])
     assert loaded_target.is_sabotaged(SabotageType.ENGINES)
     loaded_agent = loaded_target.infiltrating_agents[0]
@@ -571,7 +665,7 @@ def test_friendly_unit_intelligence_visible_in_sidebar(test_setup):
     game.selected_unit_tab = 'basic_info'
     panel_data = build_unit_panel(game, friendly_ship)
     labels = [item['text'] for item in panel_data if item.get('type') == 'label']
-    assert any("• Intelligence: 2/2 Agents | CI Active" in lbl for lbl in labels)
+    assert any("• Intelligence: 2/2 Agents | CI: Ready" in lbl for lbl in labels)
 
     # 2. Components Tab
     game.selected_unit_tab = 'components'
@@ -582,7 +676,8 @@ def test_friendly_unit_intelligence_visible_in_sidebar(test_setup):
 
     labels = [item['text'] for item in panel_data if item.get('type') == 'label']
     assert any("Agents: 2 / 2 Ready" in lbl for lbl in labels)
-    assert any("Counter-Intelligence: Active" in lbl for lbl in labels)
+    assert any("Counter-Intelligence: Ready" in lbl for lbl in labels)
+    assert any("Sweep Cost: 100c, 25am" in lbl for lbl in labels)
 
 
 def test_enemy_unit_intelligence_hidden_from_attack_context_menu(test_setup):

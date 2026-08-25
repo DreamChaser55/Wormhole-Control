@@ -132,6 +132,12 @@ MINEFIELD_DEFAULT_MINES: int = 5
 MINEFIELD_DETONATION_RADIUS: float = 300.0
 MINELAYER_HULL_COST: float = 15.0
 
+# Intelligence & Counter-Intelligence Constants
+CI_SWEEP_CREDIT_COST: float = 100.0
+CI_SWEEP_ANTIMATTER_COST: float = 25.0
+CI_SWEEP_COOLDOWN_TURNS: int = 3
+CI_SWEEP_RANGE: float = 500.0
+
 # Antimatter Harvester component: only units with this component can generate
 # new antimatter, and only while positioned near a star.
 DEFAULT_ANTIMATTER_HARVEST_RATE: float = 10.0

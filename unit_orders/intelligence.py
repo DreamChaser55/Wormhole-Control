@@ -327,10 +327,28 @@ class CISweepOrder(Order):
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
 
+        from constants import CI_SWEEP_CREDIT_COST, CI_SWEEP_ANTIMATTER_COST, CI_SWEEP_COOLDOWN_TURNS
+
         intel_comp = getattr(self.unit, 'intelligence_component', None)
         if not intel_comp or intel_comp.is_destroyed or not intel_comp.has_counter_intelligence:
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] CI_SWEEP failed: unit lacks functional Counter-Intelligence suite.")
+            return
+
+        if intel_comp.ci_cooldown_remaining > 0:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CI_SWEEP failed: Counter-Intelligence suite is on cooldown ({intel_comp.ci_cooldown_remaining} turns remaining).")
+            return
+
+        if not self.unit.owner or getattr(self.unit.owner, 'credits', 0.0) < CI_SWEEP_CREDIT_COST:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CI_SWEEP failed: insufficient empire credits (requires {CI_SWEEP_CREDIT_COST}).")
+            return
+
+        am_comp = getattr(self.unit, 'antimatter_component', None)
+        if not am_comp or am_comp.is_destroyed or am_comp.current_amount < CI_SWEEP_ANTIMATTER_COST:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] CI_SWEEP failed: insufficient antimatter (requires {CI_SWEEP_ANTIMATTER_COST}).")
             return
 
         sys_obj = galaxy_ref.systems.get(self.unit.in_system)
@@ -342,6 +360,11 @@ class CISweepOrder(Order):
         if not hex_obj:
             self.status = OrderStatus.FAILED
             return
+
+        # Deduct costs and apply cooldown
+        self.unit.owner.credits -= CI_SWEEP_CREDIT_COST
+        am_comp.consume(CI_SWEEP_ANTIMATTER_COST)
+        intel_comp.ci_cooldown_remaining = CI_SWEEP_COOLDOWN_TURNS
 
         discovered_count = 0
         from entities import are_allies, are_enemies
@@ -363,7 +386,7 @@ class CISweepOrder(Order):
                             discovered_count += 1
 
         self.status = OrderStatus.COMPLETED
-        logger.info(f"[{self.unit.name}] CI Sweep complete! Discovered {discovered_count} enemy agent(s).")
+        logger.info(f"[{self.unit.name}] CI Sweep complete! Discovered {discovered_count} enemy agent(s). (Cost: {CI_SWEEP_CREDIT_COST}c, {CI_SWEEP_ANTIMATTER_COST}am, Cooldown: {CI_SWEEP_COOLDOWN_TURNS}t)")
 
 
 class EliminateAgentOrder(Order):

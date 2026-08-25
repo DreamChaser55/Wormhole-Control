@@ -272,6 +272,7 @@ def serialize_components(unit: Unit) -> dict:
             comp_data["agents_count"] = comp.agents_count
             comp_data["agents_capacity"] = comp.agents_capacity
             comp_data["has_counter_intelligence"] = comp.has_counter_intelligence
+            comp_data["ci_cooldown_remaining"] = comp.ci_cooldown_remaining
             comp_data["hull_cost"] = comp.hull_cost
 
         comps[comp_name] = comp_data
@@ -740,6 +741,7 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
             unit.intelligence_component.agents_count = comp_fields.get("agents_count", unit.intelligence_component.agents_count)
             unit.intelligence_component.agents_capacity = comp_fields.get("agents_capacity", unit.intelligence_component.agents_capacity)
             unit.intelligence_component.has_counter_intelligence = comp_fields.get("has_counter_intelligence", unit.intelligence_component.has_counter_intelligence)
+            unit.intelligence_component.ci_cooldown_remaining = comp_fields.get("ci_cooldown_remaining", 0)
         elif comp_name == "OrbitalDefenseComponent" and unit.orbital_defense_component:
             unit.orbital_defense_component.radius = comp_fields.get("radius", unit.orbital_defense_component.radius)
             unit.orbital_defense_component.attack_bonus = comp_fields.get("attack_bonus", unit.orbital_defense_component.attack_bonus)

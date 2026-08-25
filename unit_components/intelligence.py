@@ -130,7 +130,8 @@ class IntelligenceComponent(UnitComponent):
         agents_capacity: int = 1,
         has_counter_intelligence: bool = False,
         infiltration_range: float = DEFAULT_INFILTRATION_RANGE,
-        hull_cost: float = 0.0
+        hull_cost: float = 0.0,
+        ci_cooldown_remaining: int = 0
     ):
         super().__init__(unit, hull_cost)
         self.agents_capacity: int = max(1, int(agents_capacity))
@@ -138,6 +139,7 @@ class IntelligenceComponent(UnitComponent):
         self.has_counter_intelligence: bool = bool(has_counter_intelligence)
         self.infiltration_range: float = float(infiltration_range)
         self.counter_intelligence_range: float = float(infiltration_range)
+        self.ci_cooldown_remaining: int = max(0, int(ci_cooldown_remaining))
         self._deployed_agents: List[Agent] = []
 
     @staticmethod
@@ -148,6 +150,16 @@ class IntelligenceComponent(UnitComponent):
         if has_counter_intelligence:
             cost += COUNTER_INTELLIGENCE_HULL_COST
         return float(cost)
+
+    @property
+    def is_ci_ready(self) -> bool:
+        """Returns True if the Counter-Intelligence suite is functional and off cooldown."""
+        return self.has_counter_intelligence and not self.is_destroyed and self.ci_cooldown_remaining <= 0
+
+    def update(self) -> None:
+        """Called each turn to decrement active cooldowns."""
+        if self.ci_cooldown_remaining > 0:
+            self.ci_cooldown_remaining -= 1
 
     @property
     def available_agents(self) -> int:
@@ -227,13 +239,31 @@ class IntelligenceComponent(UnitComponent):
             'object_id': '#sidebar_info_label',
             'height': 20
         })
-        ci_status = "Active" if self.has_counter_intelligence else "None"
-        data.append({
-            'type': 'label',
-            'text': f"Counter-Intelligence: {ci_status}",
-            'object_id': '#sidebar_info_label',
-            'height': 20
-        })
+        if self.has_counter_intelligence:
+            if self.ci_cooldown_remaining > 0:
+                ci_status = f"Cooldown ({self.ci_cooldown_remaining} turn{'s' if self.ci_cooldown_remaining > 1 else ''})"
+            else:
+                ci_status = "Ready"
+            from constants import CI_SWEEP_CREDIT_COST, CI_SWEEP_ANTIMATTER_COST
+            data.append({
+                'type': 'label',
+                'text': f"Counter-Intelligence: {ci_status}",
+                'object_id': '#sidebar_info_label',
+                'height': 20
+            })
+            data.append({
+                'type': 'label',
+                'text': f"Sweep Cost: {int(CI_SWEEP_CREDIT_COST)}c, {int(CI_SWEEP_ANTIMATTER_COST)}am",
+                'object_id': '#sidebar_info_label',
+                'height': 20
+            })
+        else:
+            data.append({
+                'type': 'label',
+                'text': "Counter-Intelligence: None",
+                'object_id': '#sidebar_info_label',
+                'height': 20
+            })
         data.append({
             'type': 'label',
             'text': f"Infiltration Range: {int(self.infiltration_range)}",
@@ -248,7 +278,13 @@ class IntelligenceComponent(UnitComponent):
         data = super().get_basic_sidebar_data(game_state)
         if self.is_destroyed:
             return data
-        ci_text = " | CI Active" if self.has_counter_intelligence else ""
+        if self.has_counter_intelligence:
+            if self.ci_cooldown_remaining > 0:
+                ci_text = f" | CI: Cooldown ({self.ci_cooldown_remaining}t)"
+            else:
+                ci_text = " | CI: Ready"
+        else:
+            ci_text = ""
         data.append({
             'type': 'label',
             'text': f"• Intelligence: {self.agents_count}/{self.agents_capacity} Agents{ci_text}",

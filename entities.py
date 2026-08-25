@@ -875,5 +875,8 @@ class Unit(GameObject):
         if self.strikecraft_bay_component and self.in_galaxy:
             self.strikecraft_bay_component.update(self.in_galaxy)
             
+        if self.intelligence_component:
+            self.intelligence_component.update()
+
         if self.commander_component:
             self.commander_component.update()

@@ -650,6 +650,7 @@ class OrderSystem:
 
     def handle_ci_sweep(self, event: CISweepEvent):
         """Dispatches CISweepOrder to selected Counter-Intelligence units."""
+        from constants import CI_SWEEP_CREDIT_COST, CI_SWEEP_ANTIMATTER_COST
         for unit in event.units:
             intel_comp = getattr(unit, 'intelligence_component', None)
             if not intel_comp or not intel_comp.has_counter_intelligence:
@@ -659,6 +660,37 @@ class OrderSystem:
                         title="No Counter-Intelligence"
                     )
                 continue
+
+            if intel_comp.ci_cooldown_remaining > 0:
+                if getattr(self.game, 'gui', None):
+                    turns_label = f"{intel_comp.ci_cooldown_remaining} turn" if intel_comp.ci_cooldown_remaining == 1 else f"{intel_comp.ci_cooldown_remaining} turns"
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> Counter-Intelligence Suite is recharging ({turns_label} remaining).",
+                        title="CI Sweep On Cooldown"
+                    )
+                continue
+
+            if not unit.owner or getattr(unit.owner, 'credits', 0.0) < CI_SWEEP_CREDIT_COST:
+                if getattr(self.game, 'gui', None):
+                    avail = getattr(unit.owner, 'credits', 0.0) if unit.owner else 0.0
+                    self.game.gui.show_warning_dialog(
+                        f"Insufficient empire credits for Counter-Intelligence Sweep.<br>"
+                        f"Requires <b>{int(CI_SWEEP_CREDIT_COST)}</b> credits (Treasury: <b>{int(avail)}</b>).",
+                        title="Insufficient Credits"
+                    )
+                continue
+
+            am_comp = getattr(unit, 'antimatter_component', None)
+            if not am_comp or am_comp.is_destroyed or am_comp.current_amount < CI_SWEEP_ANTIMATTER_COST:
+                if getattr(self.game, 'gui', None):
+                    avail_am = am_comp.current_amount if am_comp else 0.0
+                    self.game.gui.show_warning_dialog(
+                        f"Insufficient antimatter on <b>{unit.name}</b> for Counter-Intelligence Sweep.<br>"
+                        f"Requires <b>{int(CI_SWEEP_ANTIMATTER_COST)}</b> AM (Available: <b>{int(avail_am)}</b>).",
+                        title="Insufficient Antimatter"
+                    )
+                continue
+
             order = CISweepOrder(unit)
             if not event.shift_pressed:
                 unit.commander_component.clear_orders()

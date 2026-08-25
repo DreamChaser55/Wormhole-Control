@@ -458,38 +458,11 @@ class TurnProcessor:
 
     def _process_unit_updates(self, current_player):
         if current_player:
-            import random
-            from geometry import distance
             for system_name, system_obj in self.game.galaxy.systems.items():
                 all_units_in_system_for_final_update = system_obj.get_all_units()[:]
                 for unit, u_hex in all_units_in_system_for_final_update:
                     if unit.owner == current_player:
                         unit.update()
-
-                        # Passive Counter-Intelligence Sweep check
-                        intel_comp = getattr(unit, 'intelligence_component', None)
-                        if intel_comp and intel_comp.has_counter_intelligence and not intel_comp.is_destroyed:
-                            # Check friendly and allied units and colonies in same system and hex within 500 units
-                            from entities import are_allies, are_enemies
-                            current_hex_obj = system_obj.hexes.get(u_hex)
-                            if current_hex_obj:
-                                for target_u in current_hex_obj.units:
-                                    if are_allies(current_player, target_u.owner) and hasattr(target_u, 'infiltrating_agents'):
-                                        if distance(unit.position, target_u.position) <= 500.0:
-                                            for agent in target_u.infiltrating_agents:
-                                                if are_enemies(current_player, agent.owner) and not agent.is_discovered:
-                                                    if random.random() < 0.30:
-                                                        agent.is_discovered = True
-                                                        logger.info(f"Counter-Intelligence on {unit.name} discovered enemy agent on {target_u.name}!")
-                                for body in current_hex_obj.celestial_bodies:
-                                    body_owner = getattr(body, 'owner', None)
-                                    if are_allies(current_player, body_owner) and hasattr(body, 'infiltrating_agents'):
-                                        if distance(unit.position, body.position) <= 500.0:
-                                            for agent in body.infiltrating_agents:
-                                                if are_enemies(current_player, agent.owner) and not agent.is_discovered:
-                                                    if random.random() < 0.30:
-                                                        agent.is_discovered = True
-                                                        logger.info(f"Counter-Intelligence on {unit.name} discovered enemy agent on {body.name}!")
 
     def _process_minefield_detonations(self):
         """Checks all units across all systems for contact with enemy minefields."""
