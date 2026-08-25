@@ -257,6 +257,20 @@ class IntelligenceComponent(UnitComponent):
                 'object_id': '#sidebar_info_label',
                 'height': 20
             })
+            if not self.is_destroyed:
+                cd_active = self.ci_cooldown_remaining > 0
+                btn_text = f"CI Sweep ({int(CI_SWEEP_CREDIT_COST)}c, {int(CI_SWEEP_ANTIMATTER_COST)}am)"
+                if cd_active:
+                    btn_text += f" [{self.ci_cooldown_remaining}t]"
+                data.append({
+                    'type': 'button',
+                    'text': btn_text,
+                    'object_id': '#sidebar_expand_button',
+                    'action_id': 'ci_sweep',
+                    'target_data': self.unit.id,
+                    'height': 25,
+                    'enabled': not cd_active,
+                })
         else:
             data.append({
                 'type': 'label',

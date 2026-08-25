@@ -725,3 +725,138 @@ def test_enemy_unit_intelligence_hidden_from_attack_context_menu(test_setup):
     assert not any("Attack Intelligence" in lbl for lbl in menu_labels)
     assert not any("intelligence" in act_id.lower() and "attack" in act_id.lower() for act_id in action_ids)
 
+
+def test_ci_sweep_sidebar_button_data(test_setup):
+    p1, p2, galaxy, system, game = test_setup
+    ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
+    ci_comp = IntelligenceComponent(ci_ship, agents_count=1, agents_capacity=2, has_counter_intelligence=True)
+    ci_ship.add_component(ci_comp)
+    system.hexes[(0, 0)].add_unit(ci_ship)
+
+    game.players = [p1, p2]
+    game.current_player_index = 0
+
+    # 1. Ready state: Button is present and enabled
+    sidebar_data = ci_comp.get_sidebar_data(game)
+    btn = next((item for item in sidebar_data if item.get('type') == 'button' and item.get('action_id') == 'ci_sweep'), None)
+    assert btn is not None
+    assert btn['target_data'] == ci_ship.id
+    assert btn['enabled'] is True
+    assert "CI Sweep" in btn['text']
+
+    # 2. Cooldown state: Button is present but disabled
+    ci_comp.ci_cooldown_remaining = 3
+    sidebar_data_cd = ci_comp.get_sidebar_data(game)
+    btn_cd = next((item for item in sidebar_data_cd if item.get('type') == 'button' and item.get('action_id') == 'ci_sweep'), None)
+    assert btn_cd is not None
+    assert btn_cd['enabled'] is False
+    assert "[3t]" in btn_cd['text']
+
+    # 3. Destroyed component: Button is not present
+    ci_comp.ci_cooldown_remaining = 0
+    ci_comp.current_hit_points = 0
+    assert ci_comp.is_destroyed is True
+    sidebar_data_destroyed = ci_comp.get_sidebar_data(game)
+    btn_dest = next((item for item in sidebar_data_destroyed if item.get('type') == 'button' and item.get('action_id') == 'ci_sweep'), None)
+    assert btn_dest is None
+
+    # 4. Inspected by enemy player: Sidebar data is empty
+    ci_comp.current_hit_points = ci_comp.max_hit_points
+    game.current_player_index = 1  # Enemy player (p2)
+    assert ci_comp.get_sidebar_data(game) == []
+
+
+def test_ci_sweep_removed_from_context_menus(test_setup):
+    from input_processor.context_menu_builder import build_sector_context_menu_options
+    from constants import PlanetType
+    p1, p2, galaxy, system, game = test_setup
+
+    ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
+    ci_comp = IntelligenceComponent(ci_ship, agents_count=1, agents_capacity=2, has_counter_intelligence=True)
+    ci_ship.add_component(ci_comp)
+    system.hexes[(0, 0)].add_unit(ci_ship)
+
+    friendly_ship = Unit(p1, Position(120, 100), (0, 0), "Sol", "Friendly Frigate", HullSize.SMALL, game)
+    system.hexes[(0, 0)].add_unit(friendly_ship)
+
+    planet = Planet((0, 0), "Sol", PlanetType.TERRAN)
+    planet.owner = p1
+    planet.population = 50.0
+    planet.position = Position(200, 200)
+    system.hexes[(0, 0)].add_celestial_body(planet)
+
+    # Attach discovered enemy agent to friendly ship
+    enemy_spy = Unit(p2, Position(500, 500), (0, 0), "Sol", "Enemy Spy", HullSize.SMALL, game)
+    enemy_intel = IntelligenceComponent(enemy_spy, agents_count=1, agents_capacity=1)
+    enemy_spy.add_component(enemy_intel)
+    agent = enemy_intel.deploy_agent(friendly_ship)
+    agent.is_discovered = True
+
+    game.players = [p1, p2]
+    game.current_player_index = 0
+    game.selected_objects = [ci_ship]
+    game.current_system_name = "Sol"
+    game.current_sector_coord = (0, 0)
+    game.galaxy = galaxy
+
+    # 1. Empty space context menu -> no "ci_sweep"
+    options_space, _ = build_sector_context_menu_options(game, None, (300, 300))
+    action_ids_space = [opt[1] for opt in options_space if isinstance(opt[1], str)]
+    assert "ci_sweep" not in action_ids_space
+
+    # 2. Friendly ship context menu -> no "ci_sweep", but "eliminate_agent_" is present for discovered spy
+    options_ship, _ = build_sector_context_menu_options(game, friendly_ship, (120, 100))
+    action_ids_ship = [opt[1] for opt in options_ship if isinstance(opt[1], str)]
+    assert "ci_sweep" not in action_ids_ship
+    assert any(act.startswith("eliminate_agent_") for act in action_ids_ship)
+
+    # 3. Friendly planet context menu -> no "ci_sweep"
+    options_planet, _ = build_sector_context_menu_options(game, planet, (200, 200))
+    action_ids_planet = [opt[1] for opt in options_planet if isinstance(opt[1], str)]
+    assert "ci_sweep" not in action_ids_planet
+
+
+def test_ci_sweep_gui_action_handling(test_setup):
+    from events import EventBus
+    from order_system import OrderSystem
+    from game_actions import handle_gui_action
+    p1, p2, galaxy, system, game = test_setup
+
+    game.event_bus = EventBus()
+    order_sys = OrderSystem(game, game.event_bus)
+
+    ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
+    ci_comp = IntelligenceComponent(ci_ship, agents_count=1, agents_capacity=2, has_counter_intelligence=True)
+    ci_ship.add_component(ci_comp)
+    system.hexes[(0, 0)].add_unit(ci_ship)
+
+    friendly_ship = Unit(p1, Position(150, 100), (0, 0), "Sol", "Friendly Ship", HullSize.SMALL, game)
+    system.hexes[(0, 0)].add_unit(friendly_ship)
+
+    enemy_spy = Unit(p2, Position(500, 500), (0, 0), "Sol", "Enemy Spy", HullSize.SMALL, game)
+    enemy_intel = IntelligenceComponent(enemy_spy, agents_count=1, agents_capacity=1)
+    enemy_spy.add_component(enemy_intel)
+    agent = enemy_intel.deploy_agent(friendly_ship)
+    assert agent.is_discovered is False
+
+    game.players = [p1, p2]
+    game.current_player_index = 0
+    game.selected_objects = [ci_ship]
+    game.galaxy = galaxy
+
+    init_credits = p1.credits
+    init_am = ci_ship.antimatter_component.current_amount
+
+    # Execute GUI action for CI Sweep
+    action_payload = {'action': 'ci_sweep', 'unit_id': ci_ship.id}
+    handle_gui_action(game, action_payload)
+
+    # Verify agent was discovered
+    assert agent.is_discovered is True
+    # Verify costs and cooldown applied
+    assert p1.credits == init_credits - CI_SWEEP_CREDIT_COST
+    assert ci_ship.antimatter_component.current_amount == init_am - CI_SWEEP_ANTIMATTER_COST
+    assert ci_comp.ci_cooldown_remaining == CI_SWEEP_COOLDOWN_TURNS
+    assert ci_comp.is_ci_ready is False
+
+

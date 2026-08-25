@@ -210,7 +210,7 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields that ignore friendly and allied vessels. |
 | 22 | `has_marines_component` | Marines | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count. |
 | 23 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 / 30.0 | Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly and allied units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius). |
-| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps (cost: 100 credits, 25 AM, 3-turn cooldown) to protect friendly and allied assets and eliminate discovered enemy agents. |
+| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps (activated via the component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to protect friendly and allied assets and eliminate discovered enemy agents. |
 | — | *Always Present* | Commander | — | — | Core component present on all ships; manages order queues and combat stances. |
 
 ---
@@ -268,7 +268,7 @@ The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can
 | `INFILTRATE_PLANET` | Deploys a covert agent onto an enemy colonized celestial body within operational range. |
 | `RELOCATE_AGENT` | Moves an embedded agent from their current host to another enemy unit or colony in operational range. |
 | `SABOTAGE` | Commands an embedded agent to sabotage host unit subsystems or colonial infrastructure. |
-| `CI_SWEEP` | Counter-Intelligence ship performs an active sensor sweep (cost: 100 credits, 25 AM, 3-turn cooldown) to detect enemy spies on friendly and allied assets within operational range (500 px). |
+| `CI_SWEEP` | Counter-Intelligence ship performs an active sector sweep (activated via component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to detect enemy spies on friendly and allied assets within operational range (500 px). |
 | `ELIMINATE_AGENT` | Counter-Intelligence ship neutralizes and removes a discovered enemy agent from a friendly or allied unit or colony. |
 | `EXTRACT_AGENT` | Recovers an embedded agent back into the parent Intelligence unit. |
 
@@ -444,7 +444,7 @@ Agents can execute 8 distinct sabotage operations against their host:
 8. **Growth (`GROWTH`)**: Halts population growth on the host colony.
 
 ### 9.5 Counter-Intelligence, Discovery & Stealth
-- **Active CI Sweeps (`CISweepOrder`)**: A vessel equipped with a Counter-Intelligence suite performs a sector sweep within operational range (500 px) that reveals all enemy agents embedded on friendly and allied ships or colonies in range, setting `agent.is_discovered = True`. Sweeps cost **100 credits** from the treasury, **25 AM** from the ship's tanks, and trigger a **3-turn cooldown** on the vessel. Passive turn-tick detection is not present—enemy agents remain hidden unless actively swept.
+- **Active CI Sweeps (`CISweepOrder`)**: A vessel equipped with a Counter-Intelligence suite performs an area-of-effect sector sweep within operational range (500 px) activated via the Intelligence component panel in the sidebar. The sweep reveals all enemy agents embedded on friendly and allied ships or colonies in range, setting `agent.is_discovered = True`. Sweeps cost **100 credits** from the treasury, **25 AM** from the ship's tanks, and trigger a **3-turn cooldown** on the vessel. Passive turn-tick detection is not present—enemy agents remain hidden unless actively swept.
 - **Elimination (`EliminateAgentOrder`)**: Counter-Intelligence ships within 500 px operational range can neutralize and remove any discovered enemy agent from friendly and allied assets.
 - **Covert Component Concealment**: The `IntelligenceComponent` is completely hidden from enemy players. When an enemy player inspects a hostile vessel, the component is completely omitted from the sidebar (both the *Basic Info* component overview and the *Components* dropdown inspector) and is hidden from the attack context menu. Friendly and allied players retain full visibility and inspector access.
 - **Visual & UI Indicators**:

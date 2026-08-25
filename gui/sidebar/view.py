@@ -89,6 +89,8 @@ def _build_button(gui, item_data: dict, x: int, y: int, width: int, height: int,
         container=container,
         object_id=obj_id
     )
+    if 'enabled' in item_data and not item_data['enabled']:
+        button.disable()
     gui.dynamic_button_actions[button] = {'action_id': action_id, 'target_data': target_data}
     gui.side_bar_dynamic_elements.append(button)
     return button.get_relative_rect().height

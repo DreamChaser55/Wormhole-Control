@@ -46,6 +46,12 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
             'unit_id': target_data,
             'shift_pressed': _shift_pressed()
         }
+    elif action_id == 'ci_sweep':
+        return {
+            'action': 'ci_sweep',
+            'unit_id': target_data,
+            'shift_pressed': _shift_pressed()
+        }
     elif action_id == 'toggle_orders_queue':
         section_key = f"{target_data}_orders_queue"
         gui.toggle_section_expansion(section_key)

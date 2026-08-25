@@ -349,6 +349,31 @@ def handle_confirm_retrofit(game, action: dict) -> None:
     game.sidebar_needs_update = True
 
 
+def handle_ci_sweep(game, action: dict) -> None:
+    """Dispatches a Counter-Intelligence sweep event for the target unit or selected units.
+
+    Args:
+        game: Target game instance.
+        action (dict): Action payload containing 'unit_id' and optional 'shift_pressed'.
+    """
+    from events import CISweepEvent
+    unit_id = action.get('unit_id')
+    units = []
+    if unit_id is not None:
+        unit = game.galaxy.get_unit_by_id(unit_id) if game.galaxy else None
+        if unit:
+            units = [unit]
+    else:
+        units = [u for u in game.selected_objects if isinstance(u, Unit)]
+
+    if units:
+        game.event_bus.publish(CISweepEvent(
+            units=units,
+            shift_pressed=action.get('shift_pressed', False)
+        ))
+    game.sidebar_needs_update = True
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'deploy_ship': handle_deploy_ship,
     'launch_all_wings': handle_launch_all_wings,
@@ -367,4 +392,5 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'toggle_inhibitor': handle_toggle_inhibitor,
     'toggle_cloaking': handle_toggle_cloaking,
     'confirm_retrofit': handle_confirm_retrofit,
+    'ci_sweep': handle_ci_sweep,
 }

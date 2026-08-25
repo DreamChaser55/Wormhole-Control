@@ -244,9 +244,6 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
             if ability_options:
                 options.append(("Use Ability", ability_options))
 
-            if any(getattr(a, 'intelligence_component', None) and a.intelligence_component.has_counter_intelligence for a in actors):
-                options.append(("Counter-Intelligence Sweep (100c, 25am)", "ci_sweep"))
-
             for actor in actors:
                 if actor.constructor_component:
                     build_options = []
@@ -365,7 +362,6 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
 
                     has_ci_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.has_counter_intelligence for a in actors)
                     if has_ci_actors:
-                        options.append(("Counter-Intelligence Sweep (100c, 25am)", "ci_sweep"))
                         if hasattr(target_object, 'infiltrating_agents'):
                             for ag in target_object.infiltrating_agents:
                                 if ag.is_discovered and ag.owner and current_player.is_enemy_of(ag.owner):
@@ -424,7 +420,6 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                 elif target_object.owner and _are_allies(current_player, target_object.owner):
                     has_ci_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.has_counter_intelligence for a in actors)
                     if has_ci_actors:
-                        options.append(("Counter-Intelligence Sweep (100c, 25am)", "ci_sweep"))
                         if hasattr(target_object, 'infiltrating_agents'):
                             for ag in target_object.infiltrating_agents:
                                 if ag.is_discovered and ag.owner and _are_enemies(current_player, ag.owner):
