@@ -49,7 +49,7 @@ class InputProcessor:
 
             if gui_action:
                 self.game.handle_gui_action(gui_action)
-                if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION]:
+                if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION, pygame.MOUSEWHEEL]:
                     continue
 
             if event.type == pygame.KEYDOWN:

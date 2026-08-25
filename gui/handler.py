@@ -452,32 +452,85 @@ class GUI_Handler:
         return context_menu.is_mouse_over_context_menu(self, mouse_pos)
 
     def is_mouse_over_gui_panels(self, mouse_pos: Position) -> bool:
-        """Determines if mouse coordinates collide with any visible top-level GUI panels.
+        """Determines if mouse coordinates collide with any visible top-level GUI panels, windows, or dialogs.
 
         Args:
             mouse_pos (Position): Mouse screen coordinates to test.
 
         Returns:
-            bool: True if mouse position collides with any visible HUD or panel element.
+            bool: True if mouse position collides with any visible HUD, window, or panel element.
         """
-        panels = [
-            self.left_top_bar_panel,
-            self.left_bottom_bar_panel,
-            self.right_top_bar_panel,
-            self.side_bar_info_panel,
-            self.context_menu_panel,
-            self.ingame_menu_panel,
-        ]
-        # Wizard window panel
-        if self.new_game_wizard and self.new_game_wizard.is_alive:
-            wizard_rect = self.new_game_wizard.window.get_abs_rect()
-            if wizard_rect.collidepoint(mouse_pos.to_tuple()):
-                return True
-        mouse_tuple = mouse_pos.to_tuple()
-        for panel in panels:
-            if panel and panel.visible:
+        mouse_tuple = mouse_pos.to_tuple() if isinstance(mouse_pos, Position) else tuple(mouse_pos)
+
+        # 1. Check all active UI windows on the UI manager window stack
+        if hasattr(self, 'manager') and self.manager:
+            try:
+                window_stack = self.manager.get_window_stack()
+                if window_stack:
+                    stack_windows = getattr(window_stack, 'get_full_stack', lambda: getattr(window_stack, 'stack', []))()
+                    for win in stack_windows:
+                        if win and hasattr(win, 'alive') and win.alive() and hasattr(win, 'get_abs_rect'):
+                            if win.get_abs_rect().collidepoint(mouse_tuple):
+                                return True
+            except Exception:
+                pass
+
+        # 2. Retrofit Wizard window check
+        retrofit_wizard = getattr(self, 'retrofit_wizard', None)
+        if retrofit_wizard and getattr(retrofit_wizard, 'is_visible', False) and getattr(retrofit_wizard, 'window', None):
+            if hasattr(retrofit_wizard.window, 'alive') and retrofit_wizard.window.alive():
+                if hasattr(retrofit_wizard.window, 'get_abs_rect') and retrofit_wizard.window.get_abs_rect().collidepoint(mouse_tuple):
+                    return True
+
+        # 3. Unit Editor overlay panel & modal save dialog
+        unit_editor = getattr(self, 'unit_editor_window', None)
+        if unit_editor and getattr(unit_editor, 'is_visible', False):
+            panel = getattr(unit_editor, '_panel', None)
+            if panel and hasattr(panel, 'alive') and panel.alive() and hasattr(panel, 'get_abs_rect'):
                 if panel.get_abs_rect().collidepoint(mouse_tuple):
                     return True
+            save_dialog = getattr(unit_editor, '_save_dialog', None)
+            if save_dialog and getattr(save_dialog, 'window', None) and hasattr(save_dialog.window, 'alive') and save_dialog.window.alive():
+                if hasattr(save_dialog.window, 'get_abs_rect') and save_dialog.window.get_abs_rect().collidepoint(mouse_tuple):
+                    return True
+
+        # 4. New Game Wizard window
+        new_game_wizard = getattr(self, 'new_game_wizard', None)
+        if new_game_wizard and getattr(new_game_wizard, 'is_alive', False) and getattr(new_game_wizard, 'window', None):
+            if hasattr(new_game_wizard.window, 'alive') and new_game_wizard.window.alive():
+                if hasattr(new_game_wizard.window, 'get_abs_rect') and new_game_wizard.window.get_abs_rect().collidepoint(mouse_tuple):
+                    return True
+
+        # 5. Load / Save Game dialog window
+        load_save_window = getattr(self, 'load_save_window', None)
+        if load_save_window and hasattr(load_save_window, 'alive') and load_save_window.alive():
+            if hasattr(load_save_window, 'get_abs_rect') and load_save_window.get_abs_rect().collidepoint(mouse_tuple):
+                return True
+
+        # 6. Active modal message dialogs
+        for dialog in getattr(self, 'active_dialogs', []):
+            if dialog and hasattr(dialog, 'alive') and dialog.alive() and hasattr(dialog, 'get_abs_rect'):
+                if dialog.get_abs_rect().collidepoint(mouse_tuple):
+                    return True
+
+        # 7. Standard HUD and overlay panels
+        panels = [
+            getattr(self, 'left_top_bar_panel', None),
+            getattr(self, 'left_bottom_bar_panel', None),
+            getattr(self, 'right_top_bar_panel', None),
+            getattr(self, 'side_bar_info_panel', None),
+            getattr(self, 'context_menu_panel', None),
+            getattr(self, 'ingame_menu_panel', None),
+            getattr(self, 'main_menu_panel', None),
+            getattr(self, 'about_panel', None),
+        ]
+        for panel in panels:
+            if panel and getattr(panel, 'visible', True):
+                if hasattr(panel, 'alive') and not panel.alive():
+                    continue
+                if hasattr(panel, 'get_abs_rect') and panel.get_abs_rect().collidepoint(mouse_tuple):
+                    return True
+
         return False
 
     # --- Modal Dialog Methods ---

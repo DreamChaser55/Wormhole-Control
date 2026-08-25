@@ -104,6 +104,12 @@ class DummyGame:
         self.gui = MagicMock()
         self.gui.is_mouse_over_gui_panels.return_value = False
 
+    def handle_gui_action(self, gui_action):
+        pass
+
+    def handle_mouse_wheel(self, scroll_y: int):
+        pass
+
 def test_input_processor_drag_pan():
     game = DummyGame()
     ip = InputProcessor(game)
@@ -303,6 +309,138 @@ def test_zoom_in_clamped_to_max():
         
         # Should clamp to SECTOR_ZOOM_MAX
         assert game.sector_target_zoom == SECTOR_ZOOM_MAX
+
+
+def test_mouse_wheel_suppressed_when_hovering_gui_panels():
+    """Verifies that handle_mouse_wheel aborts immediately when mouse is over GUI panels or windows."""
+    game = DummyGame()
+    game.view_mode = 'sector'
+    game.game_started = True
+    game.sector_zoom = 1.0
+    game.sector_target_zoom = 1.0
+    game.gui.is_mouse_over_gui_panels.return_value = True
+
+    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x + 50
+    mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y + 50
+
+    with patch('pygame.mouse.get_pos', return_value=(mouse_x, mouse_y)):
+        Game.handle_mouse_wheel(game, 1)
+
+    assert game.sector_target_zoom == 1.0
+    assert game.zoom_anchor_pixel is None
+    assert game.zoom_anchor_logical is None
+
+
+def test_is_mouse_over_gui_panels_retrofit_wizard():
+    """Verifies that GUI_Handler.is_mouse_over_gui_panels detects RetrofitWizardWindow bounds."""
+    from gui.handler import GUI_Handler
+    gui = GUI_Handler.__new__(GUI_Handler)
+    gui.left_top_bar_panel = None
+    gui.left_bottom_bar_panel = None
+    gui.right_top_bar_panel = None
+    gui.side_bar_info_panel = None
+    gui.context_menu_panel = None
+    gui.ingame_menu_panel = None
+    gui.main_menu_panel = None
+    gui.about_panel = None
+    gui.new_game_wizard = None
+    gui.unit_editor_window = None
+    gui.load_save_window = None
+    gui.active_dialogs = []
+    gui.manager = MagicMock()
+    gui.manager.get_window_stack.return_value.get_full_stack.return_value = []
+
+    # Mock RetrofitWizardWindow
+    mock_wiz = MagicMock()
+    mock_wiz.is_visible = True
+    mock_wiz.window.alive.return_value = True
+    mock_wiz.window.get_abs_rect.return_value = pygame.Rect(100, 100, 400, 300)
+    gui.retrofit_wizard = mock_wiz
+
+    # Inside wizard
+    assert gui.is_mouse_over_gui_panels(Position(200, 200)) is True
+    # Outside wizard
+    assert gui.is_mouse_over_gui_panels(Position(50, 50)) is False
+
+    # When killed / not visible
+    mock_wiz.is_visible = False
+    assert gui.is_mouse_over_gui_panels(Position(200, 200)) is False
+
+
+def test_is_mouse_over_gui_panels_unit_editor_and_dialogs():
+    """Verifies that GUI_Handler.is_mouse_over_gui_panels detects UnitEditor, load/save, and modal dialogs."""
+    from gui.handler import GUI_Handler
+    gui = GUI_Handler.__new__(GUI_Handler)
+    gui.left_top_bar_panel = None
+    gui.left_bottom_bar_panel = None
+    gui.right_top_bar_panel = None
+    gui.side_bar_info_panel = None
+    gui.context_menu_panel = None
+    gui.ingame_menu_panel = None
+    gui.main_menu_panel = None
+    gui.about_panel = None
+    gui.new_game_wizard = None
+    gui.retrofit_wizard = None
+    gui.active_dialogs = []
+    gui.manager = MagicMock()
+    gui.manager.get_window_stack.return_value.get_full_stack.return_value = []
+
+    # 1. Unit Editor
+    mock_editor = MagicMock()
+    mock_editor.is_visible = True
+    mock_editor._panel.alive.return_value = True
+    mock_editor._panel.get_abs_rect.return_value = pygame.Rect(20, 40, 600, 500)
+    mock_editor._save_dialog = None
+    gui.unit_editor_window = mock_editor
+
+    assert gui.is_mouse_over_gui_panels(Position(100, 100)) is True
+    assert gui.is_mouse_over_gui_panels(Position(700, 600)) is False
+
+    # Unit Editor save dialog popup
+    mock_save_dlg = MagicMock()
+    mock_save_dlg.window.alive.return_value = True
+    mock_save_dlg.window.get_abs_rect.return_value = pygame.Rect(700, 600, 200, 100)
+    mock_editor._save_dialog = mock_save_dlg
+    assert gui.is_mouse_over_gui_panels(Position(750, 650)) is True
+
+    gui.unit_editor_window = None
+
+    # 2. Load / Save Window
+    mock_ls_win = MagicMock()
+    mock_ls_win.alive.return_value = True
+    mock_ls_win.get_abs_rect.return_value = pygame.Rect(300, 200, 400, 300)
+    gui.load_save_window = mock_ls_win
+    assert gui.is_mouse_over_gui_panels(Position(350, 250)) is True
+    assert gui.is_mouse_over_gui_panels(Position(10, 10)) is False
+    gui.load_save_window = None
+
+    # 3. Active Dialogs
+    mock_dialog = MagicMock()
+    mock_dialog.alive.return_value = True
+    mock_dialog.get_abs_rect.return_value = pygame.Rect(400, 300, 300, 200)
+    gui.active_dialogs = [mock_dialog]
+    assert gui.is_mouse_over_gui_panels(Position(450, 350)) is True
+    assert gui.is_mouse_over_gui_panels(Position(10, 10)) is False
+
+
+def test_input_processor_mousewheel_suppressed_on_gui_action():
+    """Verifies that InputProcessor suppresses handle_mouse_wheel when gui.process_event consumes MOUSEWHEEL."""
+    game = DummyGame()
+    ip = InputProcessor(game)
+
+    event_wheel = pygame.event.Event(pygame.MOUSEWHEEL, y=1)
+    with patch('pygame.mouse.get_pos', return_value=(300, 400)), \
+         patch.object(ip, 'update_hover_states'), \
+         patch.object(ip.gui, 'process_event', return_value={'action': 'ui_handled'}), \
+         patch.object(game, 'handle_gui_action') as mock_gui_action, \
+         patch.object(game, 'handle_mouse_wheel') as mock_mouse_wheel, \
+         patch('pygame.event.get', return_value=[event_wheel]):
+
+        ip.handle_input()
+        mock_gui_action.assert_called_once_with({'action': 'ui_handled'})
+        mock_mouse_wheel.assert_not_called()
+
 
 
 
