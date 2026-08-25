@@ -419,3 +419,59 @@ def test_global_round_execution_order_and_population_growth():
         assert game.turn_number == 2
         assert game.current_player_index == 0
 
+
+def test_check_and_schedule_ai_turn():
+    game = MagicMock()
+    ai_player = MockPlayer("AI Player")
+    ai_player.is_human = False
+    human_player = MockPlayer("Human Player")
+    human_player.is_human = True
+
+    game.players = [ai_player, human_player]
+    game.current_player_index = 0
+    game.pending_ai_turn_end_time = 0
+
+    tp = TurnProcessor(game)
+    with patch('pygame.time.get_ticks', return_value=1000):
+        tp.check_and_schedule_ai_turn()
+        assert game.pending_ai_turn_end_time == 1500
+
+    # For human player, pending_ai_turn_end_time is not set
+    game.current_player_index = 1
+    game.pending_ai_turn_end_time = 0
+    with patch('pygame.time.get_ticks', return_value=1000):
+        tp.check_and_schedule_ai_turn()
+        assert game.pending_ai_turn_end_time == 0
+
+
+def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
+    from game_settings import GameSettings, PlayerConfig
+    from game_setup import start_new_game
+
+    game = MagicMock()
+    game.turn_manager = TurnProcessor(game)
+    game.current_player_index = 0
+    game.pending_ai_turn_end_time = 0
+    game.galaxy = MagicMock()
+    game.galaxy.systems = {"Sol": MagicMock()}
+
+    def check_ai():
+        game.turn_manager.check_and_schedule_ai_turn()
+    game.check_and_schedule_ai_turn = check_ai
+
+    settings = GameSettings(player_configs=[
+        PlayerConfig("AI Player 1", (255, 0, 0), is_human=False, team_id=1),
+        PlayerConfig("Human Player 2", (0, 0, 255), is_human=True, team_id=2),
+    ])
+
+    with patch('game_setup.Galaxy') as mock_galaxy_cls, \
+         patch('game_setup.spawn_units'), \
+         patch('pygame.time.get_ticks', return_value=2000):
+        mock_galaxy = MagicMock()
+        mock_galaxy.systems = {"Sol": MagicMock()}
+        mock_galaxy_cls.return_value = mock_galaxy
+
+        start_new_game(game, settings=settings)
+        assert game.pending_ai_turn_end_time == 2500
+
+

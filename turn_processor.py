@@ -44,11 +44,16 @@ class TurnProcessor:
 
         self.game.update_player_turn_display()
         self.game.update_side_bar_content() # Update info box after changing turn
+        self.check_and_schedule_ai_turn()
 
-        if not next_player.is_human:
-             logger.debug(f"AI Turn for {next_player.name} (Not Implemented) - Ending Turn Automatically")
-             self.game.pending_ai_turn_end_time = pygame.time.get_ticks() + 500
-
+    def check_and_schedule_ai_turn(self):
+        """Checks if the current player is an AI, and if so schedules an automated turn completion."""
+        if not getattr(self.game, 'players', None) or not (0 <= getattr(self.game, 'current_player_index', 0) < len(self.game.players)):
+            return
+        current_player = self.game.players[self.game.current_player_index]
+        if not getattr(current_player, 'is_human', True):
+            logger.debug(f"AI Turn for {current_player.name} (Not Implemented) - Ending Turn Automatically")
+            self.game.pending_ai_turn_end_time = pygame.time.get_ticks() + 500
 
     def process_turn(self, player=None):
         """Processes actions that occur at the end of a player's turn (movement, jumps, economy, unit updates)."""

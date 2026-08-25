@@ -96,6 +96,8 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
     game.update_side_bar_content()  # Update info box for initial state
     game.update_player_turn_display()  # Update turn display for Player 1
     logger.debug(f"--- Turn {game.turn_number} - Start of {game.players[game.current_player_index].name}'s Turn ---")
+    if hasattr(game, 'check_and_schedule_ai_turn'):
+        game.check_and_schedule_ai_turn()
     logger.debug("New game setup complete.\n")
     return True
 

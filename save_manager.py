@@ -975,6 +975,8 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
         game.recompute_visibility()
         game.update_side_bar_content()
         game.update_player_turn_display()
+        if hasattr(game, 'check_and_schedule_ai_turn'):
+            game.check_and_schedule_ai_turn()
 
         logger.debug(f"Game state successfully loaded. Turn: {game.turn_number}, Systems: {len(game.galaxy.systems)}")
         return True

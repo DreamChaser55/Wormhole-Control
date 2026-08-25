@@ -139,5 +139,30 @@ class TestSaveLoad(unittest.TestCase):
         self.assertIsNotNone(game.gui.load_save_confirm_button)
         self.assertIsNotNone(game.gui.load_save_cancel_button)
 
+    def test_load_game_schedules_ai_turn_if_current_player_is_ai(self):
+        from game import Game
+        from unittest.mock import patch
+
+        game = Game()
+        game.start_new_game()
+        # Set player 0 to AI and save
+        game.players[0].is_human = False
+        game.current_player_index = 0
+
+        test_filename = "test_ai_load_save.json"
+        saved_filepath = game.save_game(test_filename)
+        self.assertTrue(os.path.exists(saved_filepath))
+
+        new_game = Game()
+        with patch('pygame.time.get_ticks', return_value=3000):
+            load_success = new_game.load_game(saved_filepath)
+            self.assertTrue(load_success)
+            self.assertEqual(new_game.pending_ai_turn_end_time, 3500)
+
+        # Cleanup
+        if os.path.exists(saved_filepath):
+            os.remove(saved_filepath)
+
 if __name__ == "__main__":
     unittest.main()
+

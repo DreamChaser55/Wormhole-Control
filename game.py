@@ -243,6 +243,11 @@ class Game:
         self.visibility_dirty = True
         self.sidebar_needs_update = True # Ensure sidebar refreshes after turn processing
 
+    def check_and_schedule_ai_turn(self):
+        """Schedules automated turn completion if the active player is an AI."""
+        if hasattr(self, 'turn_manager') and self.turn_manager:
+            self.turn_manager.check_and_schedule_ai_turn()
+
 
     def update_view_specific_labels(self):
         """Updates UI labels that depend on the current view mode."""
