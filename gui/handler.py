@@ -89,6 +89,8 @@ class GUI_Handler:
         self.context_menu_submenus: typing.Dict[int, typing.List[typing.Tuple[str, str]]] = {}
         self.context_menu_parent_options: typing.Optional[typing.List[ContextMenuOption]] = None
         self.context_menu_parent_position: typing.Optional[Position] = None
+        self.context_menu_anchor: typing.Optional[Position] = None
+        self.context_menu_history: typing.List[typing.Tuple[typing.List[ContextMenuOption], Position]] = []
 
         # In-Game Menu
         self.ingame_menu_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
@@ -157,6 +159,11 @@ class GUI_Handler:
         self.context_menu_buttons = []
         self.context_menu_target = None
         self.context_menu_options = []
+        self.context_menu_submenus = {}
+        self.context_menu_parent_options = None
+        self.context_menu_parent_position = None
+        self.context_menu_anchor = None
+        self.context_menu_history = []
 
         self.menu_button = self.resume_button = self.save_game_button = self.ingame_load_game_button = self.quit_to_menu_button = None
         self.unit_editor_button = None
