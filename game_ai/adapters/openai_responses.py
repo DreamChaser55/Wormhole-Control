@@ -9,7 +9,7 @@ from typing import Any
 
 from game_ai.config import load_openai_api_key
 from game_ai.contracts import ContractError, TurnPlan
-from game_ai.profiles import AgentProfile
+from game_ai.runtime import AgentRuntimeConfig
 from game_ai.prompts import SYSTEM_INSTRUCTIONS
 from game_ai.schema import responses_text_config
 
@@ -20,7 +20,7 @@ class OpenAIResponsesProvider:
     def __init__(self, *, client: Any | None = None):
         self._client = client
 
-    def _client_for(self, profile: AgentProfile):
+    def _client_for(self, runtime_config: AgentRuntimeConfig):
         if self._client is not None:
             return self._client
         try:
@@ -31,7 +31,7 @@ class OpenAIResponsesProvider:
             ) from exc
         self._client = OpenAI(
             api_key=load_openai_api_key(),
-            timeout=profile.timeout_seconds,
+            timeout=runtime_config.timeout_seconds,
             max_retries=2,
         )
         return self._client
@@ -39,17 +39,17 @@ class OpenAIResponsesProvider:
     def plan_turn(
         self,
         request: PlanningRequest,
-        profile: AgentProfile,
+        runtime_config: AgentRuntimeConfig,
     ) -> PlanningResult:
         started = perf_counter()
-        client = self._client_for(profile)
+        client = self._client_for(runtime_config)
         response = client.responses.create(
-            model=profile.model,
+            model=runtime_config.model,
             instructions=SYSTEM_INSTRUCTIONS,
             input=json.dumps(request.to_dict(), separators=(",", ":"), ensure_ascii=False),
-            reasoning={"effort": profile.reasoning_effort},
+            reasoning={"effort": runtime_config.reasoning_effort},
             text=responses_text_config(),
-            max_output_tokens=profile.max_output_tokens,
+            max_output_tokens=runtime_config.max_output_tokens,
             store=False,
             metadata={
                 "game": "wormhole-control",
@@ -66,11 +66,12 @@ class OpenAIResponsesProvider:
             raw = json.loads(output_text)
         except json.JSONDecodeError as exc:
             raise ContractError("OpenAI returned invalid JSON.") from exc
-        plan = TurnPlan.from_dict(raw, max_commands=profile.max_commands)
+        plan = TurnPlan.from_dict(raw, max_commands=runtime_config.max_commands)
         return PlanningResult(
             plan=plan,
             provider="openai",
-            model=profile.model,
+            model=runtime_config.model,
+            reasoning_effort=runtime_config.reasoning_effort,
             response_id=getattr(response, "id", None),
             usage=_usage_dict(getattr(response, "usage", None)),
             latency_seconds=perf_counter() - started,

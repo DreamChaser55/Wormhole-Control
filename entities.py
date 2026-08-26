@@ -19,6 +19,7 @@ import uuid
 import dataclasses
 from enum import Enum, auto
 from collections import deque
+from game_ai.runtime import DEFAULT_REASONING_EFFORT, normalize_reasoning_effort
 from unit_orders import (
     Order, OrderStatus, OrderType,
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
@@ -79,7 +80,7 @@ class Player:
         team_id: Optional[int] = None,
         persistent_id: Optional[str] = None,
         agent_id: Optional[str] = None,
-        ai_profile: str = "balanced",
+        ai_reasoning_effort: str = DEFAULT_REASONING_EFFORT,
         ai_memory: Optional[Dict[str, Any]] = None,
     ):
         self.id = Player.player_counter
@@ -90,7 +91,9 @@ class Player:
         self.team_id: int = team_id if team_id is not None else (self.id + 1)
         self.persistent_id: str = persistent_id or str(uuid.uuid4())
         self.agent_id: str = agent_id or str(uuid.uuid4())
-        self.ai_profile: str = ai_profile or "balanced"
+        self.ai_reasoning_effort: str = normalize_reasoning_effort(
+            ai_reasoning_effort
+        )
         self.ai_memory: Dict[str, Any] = dict(ai_memory or {})
         self.last_ai_report: Dict[str, Any] = {}
         self.credits = 20000

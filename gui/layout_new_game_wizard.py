@@ -129,7 +129,7 @@ class NewGameWizard:
         self._player_color_swatches: typing.List[pygame_gui.elements.UIPanel] = []
         self._player_human_buttons: typing.List[pygame_gui.elements.UIButton] = []
         self._player_is_human: typing.List[bool] = []
-        self._player_ai_profiles: typing.List[str] = []
+        self._player_ai_reasoning_efforts: typing.List[str] = []
         self._player_team_buttons: typing.List[pygame_gui.elements.UIButton] = []
         self._player_teams: typing.List[int] = [1, 2, 2]
 
@@ -348,7 +348,7 @@ class NewGameWizard:
         self._player_color_swatches = []
         self._player_human_buttons = []
         self._player_is_human = []
-        self._player_ai_profiles = []
+        self._player_ai_reasoning_efforts = []
         self._player_team_buttons = []
 
         for i in range(self._num_players):
@@ -439,7 +439,7 @@ class NewGameWizard:
         )
         self._player_human_buttons.append(btn)
         self._player_is_human.append(is_human)
-        self._player_ai_profiles.append("balanced")
+        self._player_ai_reasoning_efforts.append("medium")
 
         # Team selector button (cycles Team 1 -> Team 2 -> ...)
         team_btn_w = self._sx(72)
@@ -473,11 +473,15 @@ class NewGameWizard:
             self._player_team_buttons[player_index].set_text(f"Team {new_team}")
 
     @staticmethod
-    def _player_type_label(is_human: bool, profile: str) -> str:
+    def _player_type_label(is_human: bool, reasoning_effort: str) -> str:
         if is_human:
             return "Human"
-        labels = {"fast": "AI: Fast", "balanced": "AI: Balanced", "strategic": "AI: Strategic"}
-        return labels.get(profile, "AI: Balanced")
+        labels = {
+            "low": "AI: Low",
+            "medium": "AI: Medium",
+            "high": "AI: High",
+        }
+        return labels.get(reasoning_effort, "AI: Medium")
 
     def draw_swatches(self, surface: pygame.Surface) -> None:
         """Draws filled colour squares on top of each player's swatch panel.
@@ -683,7 +687,7 @@ class NewGameWizard:
         self._player_color_next_btns = []
         self._player_human_buttons = []
         self._player_is_human = []
-        self._player_ai_profiles = []
+        self._player_ai_reasoning_efforts = []
         self._player_team_buttons = []
 
         # Rebuild
@@ -705,7 +709,9 @@ class NewGameWizard:
                 PLAYER_COLOR_PALETTE[idx][0] for idx in self._player_color_indices
             ],
             "player_humans": list(self._player_is_human),
-            "player_ai_profiles": list(self._player_ai_profiles),
+            "player_ai_reasoning_efforts": list(
+                self._player_ai_reasoning_efforts
+            ),
             "player_teams": list(self._player_teams),
             "num_systems": self._num_systems_slider.get_current_value() if self._num_systems_slider else 15,
             "radius_min": self._sys_radius_min_slider.get_current_value() if self._sys_radius_min_slider else 5,
@@ -724,7 +730,9 @@ class NewGameWizard:
         player_names = snap.get("player_names", [])
         player_colors = snap.get("player_colors", [])  # list of color name strings
         player_humans = snap.get("player_humans", [])
-        player_ai_profiles = snap.get("player_ai_profiles", [])
+        player_ai_reasoning_efforts = snap.get(
+            "player_ai_reasoning_efforts", []
+        )
         player_teams = snap.get("player_teams", [])
 
         for i, entry in enumerate(self._player_name_entries):
@@ -743,14 +751,14 @@ class NewGameWizard:
             if i < len(self._player_is_human):
                 self._player_is_human[i] = is_h
                 if self._player_human_buttons[i]:
-                    profile = (
-                        player_ai_profiles[i]
-                        if i < len(player_ai_profiles)
-                        else "balanced"
+                    reasoning_effort = (
+                        player_ai_reasoning_efforts[i]
+                        if i < len(player_ai_reasoning_efforts)
+                        else "medium"
                     )
-                    self._player_ai_profiles[i] = profile
+                    self._player_ai_reasoning_efforts[i] = reasoning_effort
                     self._player_human_buttons[i].set_text(
-                        self._player_type_label(is_h, profile)
+                        self._player_type_label(is_h, reasoning_effort)
                     )
         for i, team_num in enumerate(player_teams):
             if i < len(self._player_teams):
@@ -874,18 +882,20 @@ class NewGameWizard:
             for i, btn in enumerate(self._player_human_buttons):
                 if element is btn:
                     is_human = self._player_is_human[i]
-                    profile = self._player_ai_profiles[i]
+                    reasoning_effort = self._player_ai_reasoning_efforts[i]
                     if is_human:
-                        is_human, profile = False, "balanced"
-                    elif profile == "balanced":
-                        profile = "fast"
-                    elif profile == "fast":
-                        profile = "strategic"
+                        is_human, reasoning_effort = False, "medium"
+                    elif reasoning_effort == "medium":
+                        reasoning_effort = "high"
+                    elif reasoning_effort == "high":
+                        reasoning_effort = "low"
                     else:
-                        is_human, profile = True, "balanced"
+                        is_human, reasoning_effort = True, "medium"
                     self._player_is_human[i] = is_human
-                    self._player_ai_profiles[i] = profile
-                    btn.set_text(self._player_type_label(is_human, profile))
+                    self._player_ai_reasoning_efforts[i] = reasoning_effort
+                    btn.set_text(
+                        self._player_type_label(is_human, reasoning_effort)
+                    )
                     return None
 
             # Team cycle buttons
@@ -946,14 +956,18 @@ class NewGameWizard:
             else:
                 color = PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1]
             is_human = self._player_is_human[i] if i < len(self._player_is_human) else True
-            ai_profile = self._player_ai_profiles[i] if i < len(self._player_ai_profiles) else "balanced"
+            ai_reasoning_effort = (
+                self._player_ai_reasoning_efforts[i]
+                if i < len(self._player_ai_reasoning_efforts)
+                else "medium"
+            )
             team_id = self._player_teams[i] if i < len(self._player_teams) else (2 if i > 0 else 1)
             player_configs.append(PlayerConfig(
                 name=name,
                 color=color,
                 is_human=is_human,
                 team_id=team_id,
-                ai_profile=ai_profile,
+                ai_reasoning_effort=ai_reasoning_effort,
             ))
 
         num_systems = int(self._num_systems_slider.get_current_value()) if self._num_systems_slider else 15

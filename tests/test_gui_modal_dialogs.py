@@ -355,6 +355,45 @@ class TestGUIModalDialogs(unittest.TestCase):
         action = event_router.process_event(self.gui, event)
         self.assertEqual(action['action'], 'start_new_game_with_settings')
 
+    def test_wizard_cycles_and_preserves_luna_reasoning_effort(self):
+        self.gui.show_new_game_wizard()
+        wizard = self.gui.new_game_wizard
+        button = wizard._player_human_buttons[0]
+
+        expected_states = (
+            (False, "medium", "AI: Medium"),
+            (False, "high", "AI: High"),
+            (False, "low", "AI: Low"),
+            (True, "medium", "Human"),
+        )
+        for is_human, reasoning_effort, label in expected_states:
+            event = pygame.event.Event(
+                pygame_gui.UI_BUTTON_PRESSED,
+                {"ui_element": button},
+            )
+            wizard.process_event(event)
+            self.assertEqual(wizard._player_is_human[0], is_human)
+            self.assertEqual(
+                wizard._player_ai_reasoning_efforts[0], reasoning_effort
+            )
+            self.assertEqual(button.text, label)
+
+        wizard.process_event(
+            pygame.event.Event(
+                pygame_gui.UI_BUTTON_PRESSED,
+                {"ui_element": button},
+            )
+        )
+        wizard._full_rebuild()
+        self.assertFalse(wizard._player_is_human[0])
+        self.assertEqual(wizard._player_ai_reasoning_efforts[0], "medium")
+        self.assertEqual(wizard._player_human_buttons[0].text, "AI: Medium")
+
+        action = wizard._build_start_action()
+        player_config = action["settings"].player_configs[0]
+        self.assertFalse(player_config.is_human)
+        self.assertEqual(player_config.ai_reasoning_effort, "medium")
+
     def test_wizard_invalid_radius_and_distance_error_dialogs(self):
         """Test that Start Game with invalid system radius or distance displays a modal error dialog."""
         self.gui.show_new_game_wizard()
@@ -405,4 +444,3 @@ class TestGUIModalDialogs(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

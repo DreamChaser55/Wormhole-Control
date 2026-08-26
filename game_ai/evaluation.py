@@ -11,7 +11,7 @@ from typing import Any, Iterable
 
 from .adapters.base import PlanningProvider, PlanningRequest
 from .contracts import TurnPlan
-from .profiles import get_profile
+from .runtime import get_runtime_config
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,7 @@ class CaseScore:
 
 @dataclass
 class EvaluationReport:
-    profile_id: str
+    reasoning_effort: str
     scores: list[CaseScore] = field(default_factory=list)
 
     @property
@@ -64,7 +64,7 @@ class EvaluationReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "profile_id": self.profile_id,
+            "reasoning_effort": self.reasoning_effort,
             "pass_rate": self.pass_rate,
             "average_latency_seconds": self.average_latency,
             "scores": [score.__dict__ for score in self.scores],
@@ -75,15 +75,15 @@ def run_evaluation(
     provider: PlanningProvider,
     cases: Iterable[EvaluationCase],
     *,
-    profile_id: str = "balanced",
+    reasoning_effort: str = "medium",
     seed: int = 0,
 ) -> EvaluationReport:
     """Run deterministic fixture cases. Live OpenAI use is opt-in via provider choice."""
     random.seed(seed)
-    profile = get_profile(profile_id)
-    report = EvaluationReport(profile_id=profile.id)
+    runtime_config = get_runtime_config(reasoning_effort)
+    report = EvaluationReport(reasoning_effort=runtime_config.reasoning_effort)
     for case in cases:
-        result = provider.plan_turn(case.request, profile)
+        result = provider.plan_turn(case.request, runtime_config)
         report.scores.append(score_plan(case, result.plan, result.latency_seconds, result.usage))
     return report
 

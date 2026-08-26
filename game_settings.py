@@ -2,6 +2,8 @@
 import typing
 from dataclasses import dataclass, field
 
+from game_ai.runtime import DEFAULT_REASONING_EFFORT, normalize_reasoning_effort
+
 # ---------------------------------------------------------------------------
 # Preset player colour palette (name → RGB tuple)
 # ---------------------------------------------------------------------------
@@ -29,7 +31,12 @@ class PlayerConfig:
     color: typing.Tuple[int, int, int]
     is_human: bool = True
     team_id: int = 1
-    ai_profile: str = "balanced"
+    ai_reasoning_effort: str = DEFAULT_REASONING_EFFORT
+
+    def __post_init__(self) -> None:
+        self.ai_reasoning_effort = normalize_reasoning_effort(
+            self.ai_reasoning_effort
+        )
 
 
 def _default_player_configs() -> typing.List[PlayerConfig]:

@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 
 from geometry import Position, Vector
+from game_ai.runtime import DEFAULT_REASONING_EFFORT, normalize_reasoning_effort
 from constants import (
     HullSize, StarType, PlanetType, NebulaType, StormType, HULL_CAPACITIES, HIT_POINTS
 )
@@ -43,6 +44,13 @@ from unit_orders import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+LEGACY_AI_PROFILE_EFFORTS = {
+    "fast": "low",
+    "balanced": "medium",
+    "strategic": "high",
+}
 
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
@@ -117,7 +125,9 @@ def serialize_player(player: Player) -> dict:
         "team_id": getattr(player, "team_id", player.id + 1),
         "persistent_id": getattr(player, "persistent_id", None) or str(uuid.uuid4()),
         "agent_id": getattr(player, "agent_id", None) or str(uuid.uuid4()),
-        "ai_profile": getattr(player, "ai_profile", "balanced"),
+        "ai_reasoning_effort": normalize_reasoning_effort(
+            getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT)
+        ),
         "ai_memory": getattr(player, "ai_memory", {}),
         "credits": player.credits,
         "metal": player.metal,
@@ -373,7 +383,7 @@ def serialize_game_state(game: Any) -> dict:
     galaxy_data = serialize_galaxy(game.galaxy) if game.galaxy else None
 
     return {
-        "version": "2.0",
+        "version": "2.1",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -393,6 +403,15 @@ def serialize_game_state(game: Any) -> dict:
 # --- Deserialization Functions ---
 
 def deserialize_player(data: dict) -> Player:
+    if "ai_reasoning_effort" in data:
+        ai_reasoning_effort = normalize_reasoning_effort(
+            data.get("ai_reasoning_effort")
+        )
+    else:
+        legacy_profile = data.get("ai_profile")
+        ai_reasoning_effort = LEGACY_AI_PROFILE_EFFORTS.get(
+            legacy_profile, DEFAULT_REASONING_EFFORT
+        )
     player = Player(
         name=data.get("name", "Player"),
         color=tuple(data.get("color", (255, 255, 255))),
@@ -400,7 +419,7 @@ def deserialize_player(data: dict) -> Player:
         team_id=data.get("team_id", None),
         persistent_id=data.get("persistent_id"),
         agent_id=data.get("agent_id"),
-        ai_profile=data.get("ai_profile", "balanced"),
+        ai_reasoning_effort=ai_reasoning_effort,
         ai_memory=data.get("ai_memory", {}),
     )
     player.id = data.get("id", player.id)

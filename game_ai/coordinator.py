@@ -13,7 +13,7 @@ from .adapters.openai_responses import OpenAIResponsesProvider
 from .commands import CommandGateway, CommandResult
 from .memory import AgentMemory, write_memory_sidecar
 from .observation import build_observation
-from .profiles import get_profile
+from .runtime import DEFAULT_REASONING_EFFORT, get_runtime_config
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,9 @@ class AgentTurnCoordinator:
 
     def _submit(self, request: PlanningRequest, *, repairing: bool) -> None:
         player = self.game.current_player
-        profile = get_profile(getattr(player, "ai_profile", "balanced"))
+        runtime_config = get_runtime_config(
+            getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT)
+        )
         self._request = request
         self._turn_token = (
             request.campaign_id,
@@ -114,7 +116,9 @@ class AgentTurnCoordinator:
         self.status_message = "revising…" if repairing else "thinking…"
         self.last_error = ""
         self._set_end_turn_enabled(False)
-        self._future = self._executor.submit(self.provider.plan_turn, request, profile)
+        self._future = self._executor.submit(
+            self.provider.plan_turn, request, runtime_config
+        )
 
     def _apply_result(self, result: PlanningResult) -> None:
         player = self.game.current_player
@@ -165,6 +169,7 @@ class AgentTurnCoordinator:
             "plan": list(result.plan.plan),
             "receipts": list(command_result.receipts),
             "model": result.model,
+            "reasoning_effort": result.reasoning_effort,
             "usage": result.usage,
             "latency_seconds": round(result.latency_seconds, 3),
         }
@@ -223,6 +228,7 @@ class AgentTurnCoordinator:
                 "turn": getattr(self.game, "turn_number", None),
                 "provider": result.provider,
                 "model": result.model,
+                "reasoning_effort": result.reasoning_effort,
                 "response_id": result.response_id,
                 "usage": result.usage,
                 "latency_seconds": round(result.latency_seconds, 3),

@@ -2,13 +2,13 @@
 
 from .contracts import Command, CommandBatch, TurnPlan
 from .memory import AgentMemory
-from .profiles import AgentProfile, get_profile
+from .runtime import AgentRuntimeConfig, get_runtime_config
 
 __all__ = [
     "AgentMemory",
-    "AgentProfile",
+    "AgentRuntimeConfig",
     "Command",
     "CommandBatch",
     "TurnPlan",
-    "get_profile",
+    "get_runtime_config",
 ]

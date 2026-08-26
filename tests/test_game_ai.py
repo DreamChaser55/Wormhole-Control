@@ -6,16 +6,21 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from game_ai.adapters.base import PlanningRequest
+from game_ai.adapters.base import PlanningRequest, PlanningResult
 from game_ai.adapters.fake import FakePlanningProvider
 from game_ai.adapters.openai_responses import OpenAIResponsesProvider
-from game_ai.commands import CommandGateway
+from game_ai.commands import CommandGateway, CommandResult
 from game_ai.coordinator import AgentTurnCoordinator
 from game_ai.contracts import Command, CommandBatch, ContractError, TurnPlan
-from game_ai.evaluation import EvaluationCase, score_plan
+from game_ai.evaluation import EvaluationCase, run_evaluation, score_plan
 from game_ai.memory import AgentMemory, write_memory_sidecar
 from game_ai.observation import build_observation
-from game_ai.profiles import get_profile
+from game_ai.runtime import (
+    DEFAULT_REASONING_EFFORT,
+    LUNA_MODEL,
+    SUPPORTED_REASONING_EFFORTS,
+    get_runtime_config,
+)
 
 
 EMPTY_PATCH = {
@@ -25,6 +30,24 @@ EMPTY_PATCH = {
     "beliefs": None,
     "lessons": None,
 }
+
+
+class TestRuntimeConfiguration(unittest.TestCase):
+    def test_supported_efforts_share_the_luna_runtime_envelope(self):
+        for effort in SUPPORTED_REASONING_EFFORTS:
+            runtime_config = get_runtime_config(effort)
+            self.assertEqual(runtime_config.model, LUNA_MODEL)
+            self.assertEqual(runtime_config.reasoning_effort, effort)
+            self.assertEqual(runtime_config.max_output_tokens, 7000)
+            self.assertEqual(runtime_config.timeout_seconds, 120.0)
+            self.assertEqual(runtime_config.max_commands, 40)
+
+    def test_missing_and_invalid_efforts_default_to_medium(self):
+        for effort in (None, "", "unsupported"):
+            self.assertEqual(
+                get_runtime_config(effort).reasoning_effort,
+                DEFAULT_REASONING_EFFORT,
+            )
 
 
 class TestContracts(unittest.TestCase):
@@ -79,7 +102,7 @@ class TestMemory(unittest.TestCase):
             self.assertIn("# AI — Agent Memory", text)
             self.assertIn("Scout moved.", text)
 
-    def test_player_identity_profile_and_memory_survive_save_round_trip(self):
+    def test_player_identity_reasoning_and_memory_survive_save_round_trip(self):
         import builtins
         import typing
 
@@ -88,19 +111,69 @@ class TestMemory(unittest.TestCase):
         from save_manager import deserialize_player, serialize_player
 
         player = Player(
-            "Strategist",
+            "Luna High",
             (12, 34, 56),
             is_human=False,
             persistent_id="player-stable",
             agent_id="agent-stable",
-            ai_profile="strategic",
+            ai_reasoning_effort="high",
             ai_memory={"strategy": "Hold Sol."},
         )
         restored = deserialize_player(serialize_player(player))
         self.assertEqual(restored.persistent_id, "player-stable")
         self.assertEqual(restored.agent_id, "agent-stable")
-        self.assertEqual(restored.ai_profile, "strategic")
+        self.assertEqual(restored.ai_reasoning_effort, "high")
         self.assertEqual(restored.ai_memory["strategy"], "Hold Sol.")
+        serialized = serialize_player(player)
+        self.assertEqual(serialized["ai_reasoning_effort"], "high")
+        self.assertNotIn("ai_profile", serialized)
+
+    def test_legacy_profiles_migrate_to_luna_reasoning_efforts(self):
+        import builtins
+        import typing
+
+        builtins.typing = typing
+        from save_manager import deserialize_player
+
+        for legacy_profile, expected_effort in (
+            ("fast", "low"),
+            ("balanced", "medium"),
+            ("strategic", "high"),
+            ("unknown", "medium"),
+            (None, "medium"),
+        ):
+            data = {"name": "Legacy AI", "is_human": False}
+            if legacy_profile is not None:
+                data["ai_profile"] = legacy_profile
+            restored = deserialize_player(data)
+            self.assertEqual(
+                restored.ai_reasoning_effort,
+                expected_effort,
+            )
+
+        invalid_new_value = deserialize_player(
+            {"ai_reasoning_effort": "max", "ai_profile": "strategic"}
+        )
+        self.assertEqual(invalid_new_value.ai_reasoning_effort, "medium")
+
+    def test_game_state_uses_save_version_2_1(self):
+        import builtins
+        import typing
+
+        builtins.typing = typing
+        from save_manager import serialize_game_state
+
+        game = SimpleNamespace(
+            players=[],
+            galaxy=None,
+            turn_number=1,
+            current_player_index=0,
+            view_mode="galaxy",
+            current_system_name=None,
+            current_sector_coord=None,
+            campaign_id="campaign",
+        )
+        self.assertEqual(serialize_game_state(game)["version"], "2.1")
 
 
 class _FakeResponses:
@@ -130,11 +203,13 @@ class TestOpenAIAdapter(unittest.TestCase):
         client = SimpleNamespace(responses=responses)
         provider = OpenAIResponsesProvider(client=client)
         request = PlanningRequest("campaign", "agent", "AI", 1, {}, {})
-        result = provider.plan_turn(request, get_profile("balanced"))
+        result = provider.plan_turn(request, get_runtime_config("high"))
         self.assertEqual(result.response_id, "response-1")
         self.assertFalse(responses.kwargs["store"])
         self.assertTrue(responses.kwargs["text"]["format"]["strict"])
-        self.assertEqual(responses.kwargs["model"], "gpt-5.6-terra")
+        self.assertEqual(responses.kwargs["model"], "gpt-5.6-luna")
+        self.assertEqual(responses.kwargs["reasoning"], {"effort": "high"})
+        self.assertEqual(result.reasoning_effort, "high")
         self.assertNotIn("tools", responses.kwargs)
 
 
@@ -248,7 +323,7 @@ class TestCoordinator(unittest.TestCase):
         player = _Player(1, 1)
         player.is_human = False
         player.agent_id = "agent-1"
-        player.ai_profile = "fast"
+        player.ai_reasoning_effort = "low"
         player.ai_memory = {}
         player.last_ai_report = {}
         ended = []
@@ -262,9 +337,8 @@ class TestCoordinator(unittest.TestCase):
             end_turn=lambda: ended.append(True),
         )
         plan = TurnPlan("Consolidate.", (), CommandBatch((), True), EMPTY_PATCH)
-        coordinator = AgentTurnCoordinator(
-            game, provider=FakePlanningProvider([plan])
-        )
+        provider = FakePlanningProvider([plan])
+        coordinator = AgentTurnCoordinator(game, provider=provider)
         try:
             with patch("game_ai.coordinator.build_observation", return_value={}), patch.object(
                 coordinator, "_write_memory"
@@ -275,6 +349,47 @@ class TestCoordinator(unittest.TestCase):
             self.assertEqual(ended, [True])
             self.assertIn("No commands issued.", player.ai_memory["receipts"][-1])
             self.assertEqual(player.last_ai_report["summary"], "Consolidate.")
+            self.assertEqual(player.last_ai_report["reasoning_effort"], "low")
+            self.assertEqual(provider.runtime_configs[0].reasoning_effort, "low")
+        finally:
+            coordinator.shutdown()
+
+    def test_telemetry_records_reasoning_effort(self):
+        import save_manager
+
+        player = SimpleNamespace(agent_id="agent-1")
+        game = SimpleNamespace(
+            campaign_id="campaign-1",
+            current_player=player,
+            turn_number=4,
+        )
+        plan = TurnPlan("Wait.", (), CommandBatch((), True), EMPTY_PATCH)
+        result = PlanningResult(
+            plan=plan,
+            provider="fake",
+            model="gpt-5.6-luna",
+            reasoning_effort="high",
+        )
+        coordinator = AgentTurnCoordinator(
+            game,
+            provider=FakePlanningProvider([]),
+        )
+        try:
+            with tempfile.TemporaryDirectory() as directory, patch.object(
+                save_manager, "SAVES_DIR", directory
+            ):
+                coordinator._record_telemetry(
+                    result,
+                    CommandResult(accepted=True),
+                    status="accepted",
+                )
+                record = json.loads(
+                    (Path(directory) / "ai_telemetry.jsonl").read_text(
+                        encoding="utf-8"
+                    )
+                )
+            self.assertEqual(record["model"], "gpt-5.6-luna")
+            self.assertEqual(record["reasoning_effort"], "high")
         finally:
             coordinator.shutdown()
 
@@ -297,6 +412,22 @@ class TestEvaluation(unittest.TestCase):
         score = score_plan(case, plan)
         self.assertTrue(score.passed)
         self.assertEqual(score.required_coverage, 1.0)
+
+    def test_evaluation_reports_effective_reasoning_effort(self):
+        request = PlanningRequest("c", "a", "AI", 1, {}, {})
+        case = EvaluationCase("wait", request)
+        plan = TurnPlan("Wait", (), CommandBatch((), True), EMPTY_PATCH)
+        provider = FakePlanningProvider([plan])
+
+        report = run_evaluation(
+            provider,
+            [case],
+            reasoning_effort="invalid",
+        )
+
+        self.assertEqual(report.reasoning_effort, "medium")
+        self.assertEqual(report.to_dict()["reasoning_effort"], "medium")
+        self.assertEqual(provider.runtime_configs[0].model, "gpt-5.6-luna")
 
 
 if __name__ == "__main__":

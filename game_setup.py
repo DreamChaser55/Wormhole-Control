@@ -8,6 +8,7 @@ from constants import BLUE, RED, YELLOW
 from entities import Player, Planet, Star, Wormhole
 from galaxy import Galaxy, StarSystem
 from geometry import Position
+from game_ai.runtime import DEFAULT_REASONING_EFFORT
 from unit_components import instantiate_unit_from_template
 from utils import HexCoord
 from game_settings import GameSettings, _default_player_configs
@@ -54,7 +55,9 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
             cfg.color,
             is_human=cfg.is_human,
             team_id=cfg.team_id,
-            ai_profile=getattr(cfg, "ai_profile", "balanced"),
+            ai_reasoning_effort=getattr(
+                cfg, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT
+            ),
         )
         for cfg in settings.player_configs
     ]

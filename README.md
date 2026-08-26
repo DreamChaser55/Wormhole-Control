@@ -34,7 +34,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 3. **Start a campaign:**
    - Click **New Game** to open the **New Game Wizard**.
-   - Configure player count (2–6), custom names, faction colors, and human/AI profile. The player-type button cycles through Human, Balanced, Fast, and Strategic.
+   - Configure player count (2–6), custom names, faction colors, and human/AI thinking level. The player-type button cycles through Human, AI: Medium, AI: High, and AI: Low.
    - Adjust galaxy generation parameters (system count, radius, wormhole connectivity) and starting economies.
    - Click **Start Game** to generate the galaxy and begin turn 1.
 
@@ -135,11 +135,17 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 
 AI players use the OpenAI Responses API with strict Structured Outputs. Configure the API key through `OPENAI_API_KEY`, or place the raw key in the ignored `API_keys/OpenAI.key` file. Environment configuration takes precedence. Secrets are never written to saves, memory, reports, or telemetry.
 
-The three profiles are:
+All AI players use **GPT-5.6 Luna**. The New Game Wizard exposes the model's
+reasoning effort directly:
 
-- **Fast** — GPT-5.6 Luna with low reasoning.
-- **Balanced** — GPT-5.6 Terra with medium reasoning (default).
-- **Strategic** — GPT-5.6 Sol with high reasoning.
+- **Low** — fastest, lowest-reasoning configuration.
+- **Medium** — default configuration.
+- **High** — more reasoning for difficult strategic turns.
+
+The three levels share the same 7,000-output-token limit, 120-second timeout,
+and 40-command turn limit, so the selected level changes only Luna's reasoning
+effort. Older saves migrate Fast, Balanced, and Strategic selections to Low,
+Medium, and High respectively when loaded.
 
 Planning runs outside the Pygame thread. Returned command batches are preflighted against the same visibility-limited observation before the game is mutated. If commands are rejected, the agent gets one repair attempt; API or validation failures leave the End Turn button available for manual recovery.
 

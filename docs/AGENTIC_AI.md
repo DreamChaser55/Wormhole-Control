@@ -49,29 +49,33 @@ The adapter uses the current Responses API and strict `text.format` JSON Schema.
 It does not enable model tools and does not chain response IDs. Each turn is
 self-contained from the observation plus canonical memory.
 
-Profiles are defined in `game_ai/profiles.py`:
+The Luna-only runtime is defined in `game_ai/runtime.py`:
 
-| Profile | Model | Reasoning | Intended use |
-|---|---|---|---|
-| Fast | `gpt-5.6-luna` | low | inexpensive, high-volume play |
-| Balanced | `gpt-5.6-terra` | medium | default quality/cost tradeoff |
-| Strategic | `gpt-5.6-sol` | high | strongest long-horizon planning |
+| Player choice | Model | Reasoning |
+|---|---|---|
+| Low | `gpt-5.6-luna` | low |
+| Medium (default) | `gpt-5.6-luna` | medium |
+| High | `gpt-5.6-luna` | high |
+
+Every choice uses the same 7,000-output-token limit, 120-second timeout, and
+40-command turn limit. The player setting changes only the reasoning effort.
 
 The API key loader checks `OPENAI_API_KEY` first, then
 `API_keys/OpenAI.key`. The key is loaded lazily when the first AI turn begins.
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable UUID. Save version 2 embeds:
+Every campaign, player, and agent has a stable UUID. Save version 2.1 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
-- selected `ai_profile`;
+- selected `ai_reasoning_effort`;
 - bounded structured `ai_memory`.
 
-Older saves migrate automatically by generating missing identities. The save is
-authoritative. The `memory.md` sidecar is generated for inspection and is not
-read back into the campaign.
+Older saves migrate automatically by generating missing identities and mapping
+Fast, Balanced, and Strategic AI profiles to Low, Medium, and High Luna
+reasoning respectively. The save is authoritative. The `memory.md` sidecar is
+generated for inspection and is not read back into the campaign.
 
 Memory contains strategy, objectives, commitments, beliefs, lessons, and the
 twenty most recent execution receipts. Text and list counts are bounded before
@@ -110,7 +114,7 @@ model.
 - latency;
 - input/output token use.
 
-Inject `FakePlanningProvider` for deterministic CI. Live model comparisons are
-explicitly opt-in by constructing `OpenAIResponsesProvider`. Keep fixed
-observations, seeds, model snapshots, and game balance constants with any
-published result so regressions can be reproduced.
+Inject `FakePlanningProvider` for deterministic CI. Live reasoning-effort
+comparisons are explicitly opt-in by constructing `OpenAIResponsesProvider`.
+Keep fixed observations, seeds, model snapshots, and game balance constants
+with any published result so regressions can be reproduced.

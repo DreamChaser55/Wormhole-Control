@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from game_ai.contracts import TurnPlan
-from game_ai.profiles import AgentProfile
+from game_ai.runtime import AgentRuntimeConfig
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,7 @@ class PlanningResult:
     plan: TurnPlan
     provider: str
     model: str
+    reasoning_effort: str
     response_id: str | None = None
     usage: dict[str, int] = field(default_factory=dict)
     latency_seconds: float = 0.0
@@ -43,6 +44,6 @@ class PlanningProvider(Protocol):
     def plan_turn(
         self,
         request: PlanningRequest,
-        profile: AgentProfile,
+        runtime_config: AgentRuntimeConfig,
     ) -> PlanningResult:
         ...
