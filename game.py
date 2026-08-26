@@ -161,9 +161,11 @@ class Game:
     # --- GUI Action Handling ---
     def handle_gui_action(self, action: typing.Dict[str, typing.Any]):
         """Handles action events triggered by user interactions with GUI controls."""
-        if self.is_ai_input_locked() and action.get('action') not in {
+        input_locked = isinstance(self, Game) and self.is_ai_input_locked()
+        if input_locked and action.get('action') not in {
             'toggle_ingame_menu', 'save_game', 'load_game_file',
             'quit_to_main_menu', 'show_main_menu', 'quit',
+            'update_ai_repair_retries',
         }:
             return
         game_actions.handle_gui_action(self, action)

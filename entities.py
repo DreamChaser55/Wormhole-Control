@@ -19,7 +19,12 @@ import uuid
 import dataclasses
 from enum import Enum, auto
 from collections import deque
-from game_ai.runtime import DEFAULT_REASONING_EFFORT, normalize_reasoning_effort
+from game_ai.runtime import (
+    DEFAULT_REASONING_EFFORT,
+    DEFAULT_REPAIR_RETRIES,
+    normalize_reasoning_effort,
+    normalize_repair_retries,
+)
 from unit_orders import (
     Order, OrderStatus, OrderType,
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
@@ -81,6 +86,7 @@ class Player:
         persistent_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         ai_reasoning_effort: str = DEFAULT_REASONING_EFFORT,
+        ai_repair_retries: int = DEFAULT_REPAIR_RETRIES,
         ai_memory: Optional[Dict[str, Any]] = None,
     ):
         self.id = Player.player_counter
@@ -93,6 +99,9 @@ class Player:
         self.agent_id: str = agent_id or str(uuid.uuid4())
         self.ai_reasoning_effort: str = normalize_reasoning_effort(
             ai_reasoning_effort
+        )
+        self.ai_repair_retries: int = normalize_repair_retries(
+            ai_repair_retries
         )
         self.ai_memory: Dict[str, Any] = dict(ai_memory or {})
         self.last_ai_report: Dict[str, Any] = {}

@@ -96,6 +96,8 @@ class GUI_Handler:
         self.ingame_menu_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.menu_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.resume_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.ai_settings_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.ai_settings_dialog: typing.Optional[layout_ingame_menu.AISettingsDialog] = None
         self.save_game_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.ingame_load_game_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.quit_to_menu_button: typing.Optional[pygame_gui.elements.UIButton] = None
@@ -138,6 +140,10 @@ class GUI_Handler:
 
         if self.ingame_menu_panel: self.ingame_menu_panel.kill(); self.ingame_menu_panel = None
 
+        if self.ai_settings_dialog:
+            self.ai_settings_dialog.kill()
+            self.ai_settings_dialog = None
+
         if self.unit_editor_window:
             self.unit_editor_window.kill()
             self.unit_editor_window = None
@@ -165,7 +171,7 @@ class GUI_Handler:
         self.context_menu_anchor = None
         self.context_menu_history = []
 
-        self.menu_button = self.resume_button = self.save_game_button = self.ingame_load_game_button = self.quit_to_menu_button = None
+        self.menu_button = self.resume_button = self.ai_settings_button = self.save_game_button = self.ingame_load_game_button = self.quit_to_menu_button = None
         self.unit_editor_button = None
 
         self.manager.clear_and_reset()
@@ -241,6 +247,7 @@ class GUI_Handler:
         """Displays the in-game pause menu and disables background game buttons."""
         if not self.ingame_menu_panel:
             self.setup_ingame_menu()
+        layout_ingame_menu.refresh_ai_settings_button(self)
         if self.ingame_menu_panel: self.ingame_menu_panel.show()
         if self.end_turn_button: self.end_turn_button.disable()
         if self.back_button: self.back_button.disable()
@@ -276,6 +283,18 @@ class GUI_Handler:
     def setup_ingame_menu(self):
         """Initializes the Pygame GUI elements for the in-game menu interface."""
         layout_ingame_menu.setup_ingame_menu(self)
+
+    def show_ai_settings_dialog(self) -> None:
+        """Open the per-AI repair retry editor."""
+        if self.ai_settings_dialog and self.ai_settings_dialog.is_alive:
+            return
+        self.ai_settings_dialog = layout_ingame_menu.AISettingsDialog(self)
+
+    def close_ai_settings_dialog(self) -> None:
+        """Close and forget the AI settings editor."""
+        if self.ai_settings_dialog:
+            self.ai_settings_dialog.kill()
+            self.ai_settings_dialog = None
 
     def show_load_game_dialog(self):
         """Displays a dialog window listing available save files to load."""

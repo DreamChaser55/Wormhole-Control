@@ -73,6 +73,90 @@ class TestGUIModalDialogs(unittest.TestCase):
         self.gui.clear_and_reset()
         self.assertEqual(len(self.gui.active_dialogs), 0)
 
+    def test_ai_settings_button_is_disabled_without_ai_players(self):
+        self.game.players = [Player("Human", (10, 20, 30), is_human=True)]
+        self.gui.show_ingame_menu()
+        self.assertIsNotNone(self.gui.ai_settings_button)
+        self.assertFalse(self.gui.ai_settings_button.is_enabled)
+
+    def test_ai_settings_dialog_bounds_cancel_and_atomic_apply(self):
+        human = Player("Human", (10, 20, 30), is_human=True)
+        ai_one = Player(
+            "AI One",
+            (40, 50, 60),
+            is_human=False,
+            agent_id="ai-one",
+            ai_repair_retries=2,
+        )
+        ai_two = Player(
+            "AI Two",
+            (70, 80, 90),
+            is_human=False,
+            agent_id="ai-two",
+            ai_repair_retries=4,
+        )
+        self.game.players = [human, ai_one, ai_two]
+        self.game.game_started = True
+        self.gui.show_ingame_menu()
+        self.assertTrue(self.gui.ai_settings_button.is_enabled)
+
+        from gui import event_router
+
+        open_event = pygame.event.Event(
+            pygame_gui.UI_BUTTON_PRESSED,
+            {"ui_element": self.gui.ai_settings_button},
+        )
+        self.assertEqual(
+            event_router.process_event(self.gui, open_event),
+            {"action": "ui_handled"},
+        )
+        dialog = self.gui.ai_settings_dialog
+        self.assertEqual([p.name for p in dialog.ai_players], ["AI One", "AI Two"])
+
+        for _ in range(10):
+            dialog.process_event(
+                pygame.event.Event(
+                    pygame_gui.UI_BUTTON_PRESSED,
+                    {"ui_element": dialog.plus_buttons[0]},
+                )
+            )
+            dialog.process_event(
+                pygame.event.Event(
+                    pygame_gui.UI_BUTTON_PRESSED,
+                    {"ui_element": dialog.minus_buttons[1]},
+                )
+            )
+        self.assertEqual(dialog.values["ai-one"], 5)
+        self.assertEqual(dialog.values["ai-two"], 1)
+        self.assertFalse(dialog.plus_buttons[0].is_enabled)
+        self.assertFalse(dialog.minus_buttons[1].is_enabled)
+
+        dialog.process_event(
+            pygame.event.Event(
+                pygame_gui.UI_BUTTON_PRESSED,
+                {"ui_element": dialog.cancel_button},
+            )
+        )
+        self.assertEqual(ai_one.ai_repair_retries, 2)
+        self.assertEqual(ai_two.ai_repair_retries, 4)
+
+        self.gui.show_ai_settings_dialog()
+        dialog = self.gui.ai_settings_dialog
+        dialog.values["ai-one"] = 3
+        dialog.values["ai-two"] = 5
+        self.game.ai_coordinator.state = "thinking"
+        apply_action = dialog.process_event(
+            pygame.event.Event(
+                pygame_gui.UI_BUTTON_PRESSED,
+                {"ui_element": dialog.apply_button},
+            )
+        )
+        self.game.handle_gui_action(apply_action)
+        self.game.ai_coordinator.state = "idle"
+        self.assertEqual(ai_one.ai_repair_retries, 3)
+        self.assertEqual(ai_two.ai_repair_retries, 5)
+        self.assertIsNone(self.gui.ai_settings_dialog)
+
     def test_save_game_success_and_load_failure_modal(self):
         """Test modal dialogs during save success and load failure."""
         self.game.game_started = True

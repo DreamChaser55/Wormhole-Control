@@ -1,6 +1,7 @@
 """Theme loader and UIManager construction for GUI."""
 import json
 import logging
+import typing
 import pygame
 import pygame_gui
 
@@ -135,4 +136,3 @@ def create_player_scifi_theme_colors(player_color: typing.Union[pygame.Color, ty
     border_color = pygame.Color(border_r, border_g, border_b, 220)
 
     return bg_color, border_color
-

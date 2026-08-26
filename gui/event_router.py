@@ -45,8 +45,14 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         if DEBUG:
             logger.debug(f"[GUI_Handler DEBUG] UI_BUTTON_PRESSED: event.ui_element={event.ui_element}")
 
+        # Modal AI settings dialog
+        if gui.ai_settings_dialog and gui.ai_settings_dialog.is_alive:
+            action_result = gui.ai_settings_dialog.process_event(event)
+            if action_result is None:
+                action_result = {'action': 'ui_handled'}
+
         # 1. Main Menu Buttons
-        if gui.new_game_button and event.ui_element == gui.new_game_button:
+        elif gui.new_game_button and event.ui_element == gui.new_game_button:
             logger.debug("New Game button pressed (GUI)")
             gui.show_new_game_wizard()
             action_result = {'action': 'ui_handled'}
@@ -117,6 +123,10 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         elif gui.resume_button and event.ui_element == gui.resume_button:
             logger.debug("Resume button pressed (GUI)")
             action_result = {'action': 'toggle_ingame_menu'}
+        elif gui.ai_settings_button and event.ui_element == gui.ai_settings_button:
+            logger.debug("AI Settings button pressed (GUI)")
+            gui.show_ai_settings_dialog()
+            action_result = {'action': 'ui_handled'}
         elif gui.save_game_button and event.ui_element == gui.save_game_button:
             logger.debug("Save Game button pressed (GUI)")
             action_result = {'action': 'save_game'}
@@ -225,7 +235,13 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
 
     elif event.type == pygame_gui.UI_WINDOW_CLOSE:
         # If the player closed the wizard via the window's own X button
-        if gui.new_game_wizard and event.ui_element is gui.new_game_wizard.window:
+        if (
+            gui.ai_settings_dialog
+            and event.ui_element is gui.ai_settings_dialog.window
+        ):
+            gui.close_ai_settings_dialog()
+            action_result = {'action': 'ui_handled'}
+        elif gui.new_game_wizard and event.ui_element is gui.new_game_wizard.window:
             gui.close_new_game_wizard()
             action_result = {'action': 'cancel_new_game_wizard'}
         elif gui.retrofit_wizard and event.ui_element is gui.retrofit_wizard.window:

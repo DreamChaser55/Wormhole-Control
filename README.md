@@ -147,7 +147,7 @@ and 40-command turn limit, so the selected level changes only Luna's reasoning
 effort. Older saves migrate Fast, Balanced, and Strategic selections to Low,
 Medium, and High respectively when loaded.
 
-Planning runs outside the Pygame thread. Returned command batches are preflighted against the same visibility-limited observation before the game is mutated. If commands are rejected, the agent gets one repair attempt; API or validation failures leave the End Turn button available for manual recovery.
+Planning runs outside the Pygame thread. Returned command batches are preflighted against the same visibility-limited observation before the game is mutated. Open **AI Settings** from the in-game pause menu to configure 1–5 repair retries separately for each AI player (2 by default). A retry is an additional model request after the initial output, changes take effect on that AI's next turn, and the setting persists with normal game saves. After the configured retries are exhausted, API or validation failures leave the End Turn button available for manual recovery.
 
 See [Agentic AI Architecture](docs/AGENTIC_AI.md) for the full design and evaluation workflow.
 

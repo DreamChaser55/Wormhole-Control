@@ -2,7 +2,12 @@
 import typing
 from dataclasses import dataclass, field
 
-from game_ai.runtime import DEFAULT_REASONING_EFFORT, normalize_reasoning_effort
+from game_ai.runtime import (
+    DEFAULT_REASONING_EFFORT,
+    DEFAULT_REPAIR_RETRIES,
+    normalize_reasoning_effort,
+    normalize_repair_retries,
+)
 
 # ---------------------------------------------------------------------------
 # Preset player colour palette (name → RGB tuple)
@@ -32,10 +37,14 @@ class PlayerConfig:
     is_human: bool = True
     team_id: int = 1
     ai_reasoning_effort: str = DEFAULT_REASONING_EFFORT
+    ai_repair_retries: int = DEFAULT_REPAIR_RETRIES
 
     def __post_init__(self) -> None:
         self.ai_reasoning_effort = normalize_reasoning_effort(
             self.ai_reasoning_effort
+        )
+        self.ai_repair_retries = normalize_repair_retries(
+            self.ai_repair_retries
         )
 
 

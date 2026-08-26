@@ -14,7 +14,12 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 
 from geometry import Position, Vector
-from game_ai.runtime import DEFAULT_REASONING_EFFORT, normalize_reasoning_effort
+from game_ai.runtime import (
+    DEFAULT_REASONING_EFFORT,
+    DEFAULT_REPAIR_RETRIES,
+    normalize_reasoning_effort,
+    normalize_repair_retries,
+)
 from constants import (
     HullSize, StarType, PlanetType, NebulaType, StormType, HULL_CAPACITIES, HIT_POINTS
 )
@@ -127,6 +132,9 @@ def serialize_player(player: Player) -> dict:
         "agent_id": getattr(player, "agent_id", None) or str(uuid.uuid4()),
         "ai_reasoning_effort": normalize_reasoning_effort(
             getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT)
+        ),
+        "ai_repair_retries": normalize_repair_retries(
+            getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)
         ),
         "ai_memory": getattr(player, "ai_memory", {}),
         "credits": player.credits,
@@ -383,7 +391,7 @@ def serialize_game_state(game: Any) -> dict:
     galaxy_data = serialize_galaxy(game.galaxy) if game.galaxy else None
 
     return {
-        "version": "2.1",
+        "version": "2.2",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -420,6 +428,9 @@ def deserialize_player(data: dict) -> Player:
         persistent_id=data.get("persistent_id"),
         agent_id=data.get("agent_id"),
         ai_reasoning_effort=ai_reasoning_effort,
+        ai_repair_retries=normalize_repair_retries(
+            data.get("ai_repair_retries", DEFAULT_REPAIR_RETRIES)
+        ),
         ai_memory=data.get("ai_memory", {}),
     )
     player.id = data.get("id", player.id)

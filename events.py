@@ -1,5 +1,7 @@
 import typing
 
+from utils import HexCoord
+
 class Event:
     """Base class for all events in the game."""
     pass
@@ -263,4 +265,3 @@ class ExtractAgentEvent(Event):
         self.units = units
         self.agent_id = agent_id
         self.shift_pressed = shift_pressed
-

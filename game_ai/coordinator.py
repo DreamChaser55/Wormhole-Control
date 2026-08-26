@@ -13,7 +13,12 @@ from .adapters.openai_responses import OpenAIResponsesProvider
 from .commands import CommandGateway, CommandResult
 from .memory import AgentMemory, write_memory_sidecar
 from .observation import build_observation
-from .runtime import DEFAULT_REASONING_EFFORT, get_runtime_config
+from .runtime import (
+    DEFAULT_REASONING_EFFORT,
+    DEFAULT_REPAIR_RETRIES,
+    get_runtime_config,
+    normalize_repair_retries,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +42,8 @@ class AgentTurnCoordinator:
         self._future: Future | None = None
         self._request: PlanningRequest | None = None
         self._turn_token: tuple[str, str, int] | None = None
-        self._repair_attempted = False
+        self._repair_attempts_used = 0
+        self._max_repair_retries = DEFAULT_REPAIR_RETRIES
         self.state = "idle"
         self.status_message = ""
         self.last_error = ""
@@ -62,7 +68,10 @@ class AgentTurnCoordinator:
             observation=observation,
             memory=memory.to_dict(),
         )
-        self._repair_attempted = False
+        self._repair_attempts_used = 0
+        self._max_repair_retries = normalize_repair_retries(
+            getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)
+        )
         self._submit(request, repairing=False)
         return True
 
@@ -90,7 +99,8 @@ class AgentTurnCoordinator:
         self._future = None
         self._request = None
         self._turn_token = None
-        self._repair_attempted = False
+        self._repair_attempts_used = 0
+        self._max_repair_retries = DEFAULT_REPAIR_RETRIES
         self.state = "idle"
         self.status_message = ""
         self.last_error = ""
@@ -126,8 +136,11 @@ class AgentTurnCoordinator:
         self.status_message = "issuing…"
         command_result = CommandGateway(self.game).apply_batch(player, result.plan.batch)
         if not command_result.accepted:
-            if not self._repair_attempted and self._request is not None:
-                self._repair_attempted = True
+            if (
+                self._repair_attempts_used < self._max_repair_retries
+                and self._request is not None
+            ):
+                self._repair_attempts_used += 1
                 repaired_observation = dict(self._request.observation)
                 repaired_observation["previous_command_errors"] = [
                     {

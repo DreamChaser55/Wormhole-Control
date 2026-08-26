@@ -1,6 +1,7 @@
 import logging
 import math
 import random
+import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from utils import HexCoord
@@ -688,4 +689,3 @@ def calculate_required_antimatter(
             total_antimatter += _sublight_cost(curr_pos, destination_position)
 
     return total_antimatter
-

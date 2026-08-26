@@ -27,6 +27,7 @@ class TestSaveLoad(unittest.TestCase):
 
     def test_player_round_trip(self):
         player = Player("Test Player", (0, 128, 255), is_human=True)
+        player.ai_repair_retries = 5
         player.credits = 15000.0
         player.metal = 5000.0
         player.crystal = 2500.0
@@ -41,6 +42,7 @@ class TestSaveLoad(unittest.TestCase):
         self.assertEqual(deserialized.credits, 15000.0)
         self.assertEqual(deserialized.metal, 5000.0)
         self.assertEqual(deserialized.crystal, 2500.0)
+        self.assertEqual(deserialized.ai_repair_retries, 5)
 
     def test_celestial_bodies_round_trip(self):
         player = Player("Owner", (255, 0, 0))
@@ -165,4 +167,3 @@ class TestSaveLoad(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -8,7 +8,7 @@ from constants import BLUE, RED, YELLOW
 from entities import Player, Planet, Star, Wormhole
 from galaxy import Galaxy, StarSystem
 from geometry import Position
-from game_ai.runtime import DEFAULT_REASONING_EFFORT
+from game_ai.runtime import DEFAULT_REASONING_EFFORT, DEFAULT_REPAIR_RETRIES
 from unit_components import instantiate_unit_from_template
 from utils import HexCoord
 from game_settings import GameSettings, _default_player_configs
@@ -57,6 +57,9 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
             team_id=cfg.team_id,
             ai_reasoning_effort=getattr(
                 cfg, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT
+            ),
+            ai_repair_retries=getattr(
+                cfg, "ai_repair_retries", DEFAULT_REPAIR_RETRIES
             ),
         )
         for cfg in settings.player_configs

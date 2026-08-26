@@ -17,8 +17,8 @@ files, or arbitrary tools.
 5. `CommandGateway` preflights the entire batch. Hidden and nonexistent targets
    deliberately return the same `target_unavailable` error.
 6. Accepted orders are committed on the Pygame thread. A rejected batch gets
-   one semantic repair request; a second rejection becomes a recoverable UI
-   error.
+   another semantic repair request while the active AI player's snapshotted
+   retry budget remains; exhaustion becomes a recoverable UI error.
 7. The memory patch and execution receipts are bounded, persisted, and the turn
    ends.
 
@@ -65,11 +65,12 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable UUID. Save version 2.1 embeds:
+Every campaign, player, and agent has a stable UUID. Save version 2.2 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
 - selected `ai_reasoning_effort`;
+- selected `ai_repair_retries`;
 - bounded structured `ai_memory`.
 
 Older saves migrate automatically by generating missing identities and mapping
@@ -97,7 +98,11 @@ model.
 ## Failure behavior
 
 - SDK retries transient transport failures up to two times.
-- Invalid command batches receive one model repair attempt.
+- Invalid command batches receive 1–5 model repair retries, configured per AI
+  player from the in-game **AI Settings** dialog and defaulting to 2. The
+  initial submission is not counted as a retry.
+- The retry limit is snapshotted when an AI turn begins, so in-match edits take
+  effect on that AI player's next turn.
 - Stale responses are discarded when campaign, agent, or turn changes.
 - On final failure, the error is shown and End Turn is re-enabled.
 - The API key and prompt contents are never logged.

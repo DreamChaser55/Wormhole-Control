@@ -9,7 +9,7 @@ from unittest.mock import patch
 from game_ai.adapters.base import PlanningRequest, PlanningResult
 from game_ai.adapters.fake import FakePlanningProvider
 from game_ai.adapters.openai_responses import OpenAIResponsesProvider
-from game_ai.commands import CommandGateway, CommandResult
+from game_ai.commands import CommandError, CommandGateway, CommandResult
 from game_ai.coordinator import AgentTurnCoordinator
 from game_ai.contracts import Command, CommandBatch, ContractError, TurnPlan
 from game_ai.evaluation import EvaluationCase, run_evaluation, score_plan
@@ -17,9 +17,13 @@ from game_ai.memory import AgentMemory, write_memory_sidecar
 from game_ai.observation import build_observation
 from game_ai.runtime import (
     DEFAULT_REASONING_EFFORT,
+    DEFAULT_REPAIR_RETRIES,
     LUNA_MODEL,
+    MAX_REPAIR_RETRIES,
+    MIN_REPAIR_RETRIES,
     SUPPORTED_REASONING_EFFORTS,
     get_runtime_config,
+    normalize_repair_retries,
 )
 
 
@@ -48,6 +52,14 @@ class TestRuntimeConfiguration(unittest.TestCase):
                 get_runtime_config(effort).reasoning_effort,
                 DEFAULT_REASONING_EFFORT,
             )
+
+    def test_repair_retries_are_normalized_and_bounded(self):
+        self.assertEqual(normalize_repair_retries(None), DEFAULT_REPAIR_RETRIES)
+        self.assertEqual(normalize_repair_retries("invalid"), DEFAULT_REPAIR_RETRIES)
+        self.assertEqual(normalize_repair_retries(True), DEFAULT_REPAIR_RETRIES)
+        self.assertEqual(normalize_repair_retries(-10), MIN_REPAIR_RETRIES)
+        self.assertEqual(normalize_repair_retries(99), MAX_REPAIR_RETRIES)
+        self.assertEqual(normalize_repair_retries("4"), 4)
 
 
 class TestContracts(unittest.TestCase):
@@ -117,15 +129,18 @@ class TestMemory(unittest.TestCase):
             persistent_id="player-stable",
             agent_id="agent-stable",
             ai_reasoning_effort="high",
+            ai_repair_retries=4,
             ai_memory={"strategy": "Hold Sol."},
         )
         restored = deserialize_player(serialize_player(player))
         self.assertEqual(restored.persistent_id, "player-stable")
         self.assertEqual(restored.agent_id, "agent-stable")
         self.assertEqual(restored.ai_reasoning_effort, "high")
+        self.assertEqual(restored.ai_repair_retries, 4)
         self.assertEqual(restored.ai_memory["strategy"], "Hold Sol.")
         serialized = serialize_player(player)
         self.assertEqual(serialized["ai_reasoning_effort"], "high")
+        self.assertEqual(serialized["ai_repair_retries"], 4)
         self.assertNotIn("ai_profile", serialized)
 
     def test_legacy_profiles_migrate_to_luna_reasoning_efforts(self):
@@ -156,7 +171,31 @@ class TestMemory(unittest.TestCase):
         )
         self.assertEqual(invalid_new_value.ai_reasoning_effort, "medium")
 
-    def test_game_state_uses_save_version_2_1(self):
+    def test_legacy_and_invalid_repair_retry_values_are_normalized(self):
+        import builtins
+        import typing
+
+        builtins.typing = typing
+        from save_manager import deserialize_player
+
+        self.assertEqual(
+            deserialize_player({"name": "Legacy AI"}).ai_repair_retries,
+            DEFAULT_REPAIR_RETRIES,
+        )
+        self.assertEqual(
+            deserialize_player({"ai_repair_retries": 0}).ai_repair_retries,
+            MIN_REPAIR_RETRIES,
+        )
+        self.assertEqual(
+            deserialize_player({"ai_repair_retries": 100}).ai_repair_retries,
+            MAX_REPAIR_RETRIES,
+        )
+        self.assertEqual(
+            deserialize_player({"ai_repair_retries": "bad"}).ai_repair_retries,
+            DEFAULT_REPAIR_RETRIES,
+        )
+
+    def test_game_state_uses_save_version_2_2(self):
         import builtins
         import typing
 
@@ -173,7 +212,7 @@ class TestMemory(unittest.TestCase):
             current_sector_coord=None,
             campaign_id="campaign",
         )
-        self.assertEqual(serialize_game_state(game)["version"], "2.1")
+        self.assertEqual(serialize_game_state(game)["version"], "2.2")
 
 
 class _FakeResponses:
@@ -319,6 +358,35 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
 
 class TestCoordinator(unittest.TestCase):
+    @staticmethod
+    def _coordinator_fixture(repair_retries, plans):
+        player = _Player(1, 1)
+        player.is_human = False
+        player.agent_id = "agent-1"
+        player.ai_reasoning_effort = "medium"
+        player.ai_repair_retries = repair_retries
+        player.ai_memory = {}
+        player.last_ai_report = {}
+        ended = []
+        game = SimpleNamespace(
+            game_started=True,
+            campaign_id="campaign-1",
+            current_player=player,
+            turn_number=3,
+            galaxy=SimpleNamespace(),
+            gui=None,
+            end_turn=lambda: ended.append(True),
+        )
+        provider = FakePlanningProvider(plans)
+        return player, game, ended, provider, AgentTurnCoordinator(
+            game, provider=provider
+        )
+
+    @staticmethod
+    def _finish_pending_request(coordinator):
+        coordinator._future.result(timeout=2)
+        coordinator.update()
+
     def test_fake_provider_completes_turn_and_persists_receipt(self):
         player = _Player(1, 1)
         player.is_human = False
@@ -351,6 +419,113 @@ class TestCoordinator(unittest.TestCase):
             self.assertEqual(player.last_ai_report["summary"], "Consolidate.")
             self.assertEqual(player.last_ai_report["reasoning_effort"], "low")
             self.assertEqual(provider.runtime_configs[0].reasoning_effort, "low")
+        finally:
+            coordinator.shutdown()
+
+    def test_configured_repairs_forward_latest_errors_and_can_recover(self):
+        plan = TurnPlan("Retry.", (), CommandBatch((), True), EMPTY_PATCH)
+        player, _game, ended, provider, coordinator = self._coordinator_fixture(
+            2, [plan, plan, plan]
+        )
+        rejected_first = CommandResult(
+            accepted=False,
+            errors=(CommandError(0, "first_error", "First rejection"),),
+        )
+        rejected_second = CommandResult(
+            accepted=False,
+            errors=(CommandError(1, "second_error", "Second rejection"),),
+        )
+        accepted = CommandResult(accepted=True)
+        try:
+            with patch(
+                "game_ai.coordinator.build_observation", return_value={}
+            ), patch("game_ai.coordinator.CommandGateway") as gateway_class, patch.object(
+                coordinator, "_write_memory"
+            ), patch.object(coordinator, "_record_telemetry"):
+                gateway_class.return_value.apply_batch.side_effect = [
+                    rejected_first,
+                    rejected_second,
+                    accepted,
+                ]
+                self.assertTrue(coordinator.start_current_turn())
+                self._finish_pending_request(coordinator)
+                self._finish_pending_request(coordinator)
+                self._finish_pending_request(coordinator)
+
+            self.assertEqual(len(provider.requests), 3)
+            self.assertEqual(
+                provider.requests[1].observation["previous_command_errors"],
+                [{
+                    "command_index": 0,
+                    "code": "first_error",
+                    "message": "First rejection",
+                }],
+            )
+            self.assertEqual(
+                provider.requests[2].observation["previous_command_errors"],
+                [{
+                    "command_index": 1,
+                    "code": "second_error",
+                    "message": "Second rejection",
+                }],
+            )
+            self.assertEqual(ended, [True])
+            self.assertEqual(player.last_ai_report["summary"], "Retry.")
+        finally:
+            coordinator.shutdown()
+
+    def test_retry_limit_is_snapshotted_and_exhaustion_returns_manual_control(self):
+        plan = TurnPlan("Invalid.", (), CommandBatch((), True), EMPTY_PATCH)
+        player, game, ended, provider, coordinator = self._coordinator_fixture(
+            1, [plan, plan]
+        )
+
+        class Button:
+            def __init__(self):
+                self.enabled = False
+
+            def enable(self):
+                self.enabled = True
+
+            def disable(self):
+                self.enabled = False
+
+        dialogs = []
+        button = Button()
+        game.gui = SimpleNamespace(
+            end_turn_button=button,
+            show_error_dialog=lambda message, title: dialogs.append((message, title)),
+        )
+        rejected = CommandResult(
+            accepted=False,
+            errors=(CommandError(0, "invalid", "Still invalid"),),
+        )
+        try:
+            with patch(
+                "game_ai.coordinator.build_observation", return_value={}
+            ), patch("game_ai.coordinator.CommandGateway") as gateway_class, patch.object(
+                coordinator, "_record_telemetry"
+            ):
+                gateway_class.return_value.apply_batch.side_effect = [
+                    rejected,
+                    rejected,
+                ]
+                self.assertTrue(coordinator.start_current_turn())
+                player.ai_repair_retries = 5
+                self._finish_pending_request(coordinator)
+                self._finish_pending_request(coordinator)
+
+            self.assertEqual(len(provider.requests), 2)
+            self.assertEqual(coordinator.state, "error")
+            self.assertTrue(button.enabled)
+            self.assertEqual(ended, [])
+            self.assertEqual(dialogs[0][1], "AI Turn Error")
+            self.assertIn("end the turn manually", dialogs[0][0])
+
+            provider._plans.extend([plan])
+            with patch("game_ai.coordinator.build_observation", return_value={}):
+                self.assertTrue(coordinator.start_current_turn())
+            self.assertEqual(coordinator._max_repair_retries, 5)
         finally:
             coordinator.shutdown()
 

@@ -2,6 +2,8 @@
 import logging
 import typing
 
+from game_ai.runtime import normalize_repair_retries
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,6 +54,19 @@ def handle_end_turn(game, action: dict) -> None:
 
 def handle_toggle_ingame_menu(game, action: dict) -> None:
     game.gui.toggle_ingame_menu()
+
+
+def handle_update_ai_repair_retries(game, action: dict) -> None:
+    """Apply per-agent repair retry settings from the in-game dialog."""
+    values = action.get("values", {})
+    if not isinstance(values, dict):
+        return
+    for player in getattr(game, "players", []):
+        if getattr(player, "is_human", True):
+            continue
+        agent_id = str(getattr(player, "agent_id", ""))
+        if agent_id in values:
+            player.ai_repair_retries = normalize_repair_retries(values[agent_id])
 
 
 def handle_toggle_unit_editor(game, action: dict) -> None:
@@ -121,6 +136,7 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'context_menu_select': handle_context_menu_select,
     'end_turn': handle_end_turn,
     'toggle_ingame_menu': handle_toggle_ingame_menu,
+    'update_ai_repair_retries': handle_update_ai_repair_retries,
     'toggle_unit_editor': handle_toggle_unit_editor,
     'unit_editor_design_saved': handle_unit_editor_design_saved,
     'unit_editor_design_deleted': handle_unit_editor_design_deleted,
