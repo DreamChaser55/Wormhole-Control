@@ -320,10 +320,11 @@ class Game:
 
         turn_num = getattr(self, 'turn_number', 1)
         ai_status = ""
-        if not current_player.is_human:
-            status = self.ai_coordinator.status_message or "AI"
-            ai_status = f" — {status}"
-        self.gui.update_turn_label(f"<font color='{color_hex}'>Turn {turn_num}: {current_player.name}'s Turn{ai_status}</font>")
+        if not getattr(current_player, 'is_human', True):
+            coordinator = getattr(self, 'ai_coordinator', None)
+            status = getattr(coordinator, 'status_message', '') or "AI"
+            ai_status = f" ({status})"
+        self.gui.update_turn_label(f"<font color='{color_hex}'>Turn {turn_num}: {current_player.name}{ai_status}</font>")
         # Update color indicator panel's background and dynamic panel theme hue
         self.gui.update_player_color_indicator(Color(color)) # Convert tuple to pygame.Color
         self.gui.update_player_turn_theme(Color(color))

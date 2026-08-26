@@ -125,7 +125,7 @@ def setup_game_ui(gui) -> None:
         object_id='#right_top_bar'
     )
 
-    # --- Elements in Top Right Panel (right-aligned) ---
+    # --- Elements in Top Right Panel ---
     end_turn_button_width = int(100 * gui.scale_x)
     end_turn_button_rect = pygame.Rect(
         panel_width - end_turn_button_width - padding,
@@ -141,9 +141,24 @@ def setup_game_ui(gui) -> None:
         object_id='#end_turn_button'
     )
 
-    turn_label_width = int(230 * gui.scale_x)
+    indicator_size = int(15 * min(gui.scale_x, gui.scale_y))
+    indicator_rect = pygame.Rect(
+        padding,
+        (TOP_BAR_HEIGHT - indicator_size) // 2,
+        indicator_size,
+        indicator_size
+    )
+    gui.player_color_indicator = pygame_gui.elements.UIPanel(
+        relative_rect=indicator_rect,
+        manager=gui.manager,
+        container=gui.right_top_bar_panel,
+        object_id='#player_color_indicator'
+    )
+
+    turn_label_left = indicator_rect.right + padding
+    turn_label_width = max(10, end_turn_button_rect.left - turn_label_left - padding)
     turn_label_rect = pygame.Rect(
-        end_turn_button_rect.left - turn_label_width - padding * 2,
+        turn_label_left,
         padding,
         turn_label_width,
         -1
@@ -154,20 +169,6 @@ def setup_game_ui(gui) -> None:
         manager=gui.manager,
         container=gui.right_top_bar_panel,
         object_id='#turn_label'
-    )
-
-    indicator_size = int(15 * min(gui.scale_x, gui.scale_y))
-    indicator_rect = pygame.Rect(
-        turn_label_rect.left - indicator_size - padding,
-        (TOP_BAR_HEIGHT - indicator_size) // 2,
-        indicator_size,
-        indicator_size
-    )
-    gui.player_color_indicator = pygame_gui.elements.UIPanel(
-        relative_rect=indicator_rect,
-        manager=gui.manager,
-        container=gui.right_top_bar_panel,
-        object_id='#player_color_indicator'
     )
 
     # --- Side Bar Info Panel ---

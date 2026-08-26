@@ -111,7 +111,7 @@ class AgentTurnCoordinator:
             request.turn_number,
         )
         self.state = "repairing" if repairing else "thinking"
-        self.status_message = "revising commands…" if repairing else "thinking…"
+        self.status_message = "revising…" if repairing else "thinking…"
         self.last_error = ""
         self._set_end_turn_enabled(False)
         self._future = self._executor.submit(self.provider.plan_turn, request, profile)
@@ -119,7 +119,7 @@ class AgentTurnCoordinator:
     def _apply_result(self, result: PlanningResult) -> None:
         player = self.game.current_player
         self.state = "applying"
-        self.status_message = "issuing orders…"
+        self.status_message = "issuing…"
         command_result = CommandGateway(self.game).apply_batch(player, result.plan.batch)
         if not command_result.accepted:
             if not self._repair_attempted and self._request is not None:
@@ -238,7 +238,7 @@ class AgentTurnCoordinator:
 
     def _fail(self, message: str) -> None:
         self.state = "error"
-        self.status_message = "needs attention"
+        self.status_message = "attention"
         self.last_error = message
         self._request = None
         self._turn_token = None
