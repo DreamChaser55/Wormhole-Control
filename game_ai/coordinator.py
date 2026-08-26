@@ -8,7 +8,13 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-from .adapters.base import PlanningRequest, PlanningResult
+from .adapters.base import (
+    PlanningOutputError,
+    PlanningRequest,
+    PlanningResult,
+    RepairContext,
+    RepairIssue,
+)
 from .adapters.openai_responses import OpenAIResponsesProvider
 from .commands import CommandGateway, CommandResult
 from .memory import AgentMemory, write_memory_sidecar
@@ -41,6 +47,7 @@ class AgentTurnCoordinator:
         self._owns_executor = executor is None
         self._future: Future | None = None
         self._request: PlanningRequest | None = None
+        self._base_request: PlanningRequest | None = None
         self._turn_token: tuple[str, str, int] | None = None
         self._repair_attempts_used = 0
         self._max_repair_retries = DEFAULT_REPAIR_RETRIES
@@ -68,6 +75,7 @@ class AgentTurnCoordinator:
             observation=observation,
             memory=memory.to_dict(),
         )
+        self._base_request = request
         self._repair_attempts_used = 0
         self._max_repair_retries = normalize_repair_retries(
             getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)
@@ -82,13 +90,19 @@ class AgentTurnCoordinator:
         self._future = None
         try:
             result = future.result()
+        except PlanningOutputError as exc:
+            logger.warning("AI output was invalid: %s", exc)
+            self._handle_output_error(exc)
+            return
         except Exception as exc:
-            logger.error("AI planning failed: %s", exc, exc_info=True)
-            self._fail(f"AI planning failed: {exc}")
+            logger.error("AI planning provider failed: %s", exc.__class__.__name__)
+            self._record_transport_error(exc)
+            self._fail(
+                f"AI planning provider failed ({exc.__class__.__name__})."
+            )
             return
         if not self._turn_is_current():
-            self.state = "idle"
-            self.status_message = ""
+            self._discard_stale_result()
             return
         self._apply_result(result)
 
@@ -98,6 +112,7 @@ class AgentTurnCoordinator:
             self._future.cancel()
         self._future = None
         self._request = None
+        self._base_request = None
         self._turn_token = None
         self._repair_attempts_used = 0
         self._max_repair_retries = DEFAULT_REPAIR_RETRIES
@@ -136,32 +151,33 @@ class AgentTurnCoordinator:
         self.status_message = "issuing…"
         command_result = CommandGateway(self.game).apply_batch(player, result.plan.batch)
         if not command_result.accepted:
-            if (
-                self._repair_attempts_used < self._max_repair_retries
-                and self._request is not None
-            ):
+            will_retry = bool(
+                command_result.retryable
+                and self._repair_attempts_used < self._max_repair_retries
+                and self._base_request is not None
+            )
+            self._record_telemetry(
+                result,
+                command_result,
+                status="rejected",
+                will_retry=will_retry,
+            )
+            if will_retry:
                 self._repair_attempts_used += 1
-                repaired_observation = dict(self._request.observation)
-                repaired_observation["previous_command_errors"] = [
-                    {
-                        "command_index": error.command_index,
-                        "code": error.code,
-                        "message": error.message,
-                    }
-                    for error in command_result.errors
-                ]
-                repaired_request = PlanningRequest(
-                    campaign_id=self._request.campaign_id,
-                    agent_id=self._request.agent_id,
-                    player_name=self._request.player_name,
-                    turn_number=self._request.turn_number,
-                    observation=repaired_observation,
-                    memory=self._request.memory,
+                repair_context = RepairContext(
+                    rejected_plan=result.plan,
+                    errors=tuple(
+                        RepairIssue(
+                            command_index=error.command_index,
+                            code=error.code,
+                            message=error.message,
+                        )
+                        for error in command_result.errors
+                    ),
                 )
-                self._submit(repaired_request, repairing=True)
+                self._submit(self._repair_request(repair_context), repairing=True)
                 return
             messages = "; ".join(error.message for error in command_result.errors)
-            self._record_telemetry(result, command_result, status="rejected")
             self._fail(f"AI commands were rejected: {messages}")
             return
 
@@ -187,16 +203,52 @@ class AgentTurnCoordinator:
             "latency_seconds": round(result.latency_seconds, 3),
         }
         self._write_memory(player, memory)
-        self._record_telemetry(result, command_result, status="accepted")
+        self._record_telemetry(
+            result, command_result, status="accepted", will_retry=False
+        )
         self.state = "idle"
         self.status_message = ""
         self._request = None
+        self._base_request = None
         self._turn_token = None
         self._set_end_turn_enabled(True)
         if result.plan.batch.end_turn:
             self.game.end_turn()
         else:
             self._fail("The AI returned control without ending its turn.")
+
+    def _handle_output_error(self, error: PlanningOutputError) -> None:
+        if not self._turn_is_current():
+            self._discard_stale_result()
+            return
+        will_retry = bool(
+                self._repair_attempts_used < self._max_repair_retries
+                and self._base_request is not None
+        )
+        self._record_output_error(error, will_retry=will_retry)
+        if will_retry:
+            self._repair_attempts_used += 1
+            context = RepairContext(
+                rejected_plan=None,
+                errors=(RepairIssue(None, error.code, str(error)),),
+            )
+            self._submit(self._repair_request(context), repairing=True)
+            return
+        self._fail(f"AI planning output was invalid: {error}")
+
+    def _repair_request(self, context: RepairContext) -> PlanningRequest:
+        base = self._base_request
+        if base is None:
+            raise RuntimeError("Cannot create a repair request without a base request.")
+        return PlanningRequest(
+            campaign_id=base.campaign_id,
+            agent_id=base.agent_id,
+            player_name=base.player_name,
+            turn_number=base.turn_number,
+            observation=base.observation,
+            memory=base.memory,
+            repair_context=context,
+        )
 
     def _turn_is_current(self) -> bool:
         player = getattr(self.game, "current_player", None)
@@ -229,27 +281,137 @@ class AgentTurnCoordinator:
         command_result: CommandResult,
         *,
         status: str,
+        will_retry: bool = False,
     ) -> None:
+        record = {
+            "campaign_id": getattr(self.game, "campaign_id", None),
+            "agent_id": getattr(self.game.current_player, "agent_id", None),
+            "turn": getattr(self.game, "turn_number", None),
+            "attempt_index": self._repair_attempts_used,
+            "is_repair": self._repair_attempts_used > 0,
+            "provider": result.provider,
+            "model": result.model,
+            "reasoning_effort": result.reasoning_effort,
+            "response_id": result.response_id,
+            "usage": result.usage,
+            "latency_seconds": round(result.latency_seconds, 3),
+            "status": status,
+            "commands": len(result.plan.batch.commands),
+            "command_summaries": [
+                {
+                    "index": index,
+                    "type": command.type,
+                    "unit_ids": list(command.unit_ids),
+                    "target_id": command.target_id,
+                    "queue": command.queue,
+                }
+                for index, command in enumerate(result.plan.batch.commands)
+            ],
+            "applied_operations": command_result.applied_count,
+            "errors": [error.code for error in command_result.errors],
+            "error_details": [
+                {
+                    "command_index": error.command_index,
+                    "code": error.code,
+                    "message": _bounded_text(error.message),
+                }
+                for error in command_result.errors
+            ],
+            "will_retry": will_retry,
+        }
+        self._append_telemetry(record)
+        logger.info(
+            "AI attempt completed: turn=%s attempt=%s status=%s commands=%s errors=%s",
+            record["turn"],
+            record["attempt_index"],
+            status,
+            record["commands"],
+            record["errors"],
+        )
+
+    def _record_output_error(
+        self, error: PlanningOutputError, *, will_retry: bool
+    ) -> None:
+        record = {
+            "campaign_id": getattr(self.game, "campaign_id", None),
+            "agent_id": getattr(self.game.current_player, "agent_id", None),
+            "turn": getattr(self.game, "turn_number", None),
+            "attempt_index": self._repair_attempts_used,
+            "is_repair": self._repair_attempts_used > 0,
+            "provider": error.provider,
+            "model": error.model,
+            "reasoning_effort": error.reasoning_effort,
+            "response_id": error.response_id,
+            "usage": error.usage,
+            "latency_seconds": round(error.latency_seconds, 3),
+            "status": "invalid_output",
+            "commands": 0,
+            "command_summaries": [],
+            "applied_operations": 0,
+            "errors": [error.code],
+            "error_details": [
+                {
+                    "command_index": None,
+                    "code": error.code,
+                    "message": _bounded_text(error),
+                }
+            ],
+            "will_retry": will_retry,
+        }
+        self._append_telemetry(record)
+        logger.info(
+            "AI attempt completed: turn=%s attempt=%s status=invalid_output errors=%s",
+            record["turn"],
+            record["attempt_index"],
+            record["errors"],
+        )
+
+    def _record_transport_error(self, error: Exception) -> None:
+        player = getattr(self.game, "current_player", None)
+        runtime_config = get_runtime_config(
+            getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT)
+        )
+        record = {
+            "campaign_id": getattr(self.game, "campaign_id", None),
+            "agent_id": getattr(player, "agent_id", None),
+            "turn": getattr(self.game, "turn_number", None),
+            "attempt_index": self._repair_attempts_used,
+            "is_repair": self._repair_attempts_used > 0,
+            "provider": self.provider.__class__.__name__,
+            "model": runtime_config.model,
+            "reasoning_effort": runtime_config.reasoning_effort,
+            "response_id": None,
+            "usage": {},
+            "latency_seconds": 0.0,
+            "status": "transport_error",
+            "commands": 0,
+            "command_summaries": [],
+            "applied_operations": 0,
+            "errors": [error.__class__.__name__],
+            "error_details": [
+                {
+                    "command_index": None,
+                    "code": error.__class__.__name__,
+                    "message": "The planning provider request failed.",
+                }
+            ],
+            "will_retry": False,
+        }
+        self._append_telemetry(record)
+        logger.info(
+            "AI attempt completed: turn=%s attempt=%s status=transport_error errors=%s",
+            record["turn"],
+            record["attempt_index"],
+            record["errors"],
+        )
+
+    @staticmethod
+    def _append_telemetry(record: dict[str, Any]) -> None:
         try:
             import save_manager
 
             path = Path(save_manager.SAVES_DIR) / "ai_telemetry.jsonl"
             path.parent.mkdir(parents=True, exist_ok=True)
-            record = {
-                "campaign_id": getattr(self.game, "campaign_id", None),
-                "agent_id": getattr(self.game.current_player, "agent_id", None),
-                "turn": getattr(self.game, "turn_number", None),
-                "provider": result.provider,
-                "model": result.model,
-                "reasoning_effort": result.reasoning_effort,
-                "response_id": result.response_id,
-                "usage": result.usage,
-                "latency_seconds": round(result.latency_seconds, 3),
-                "status": status,
-                "commands": len(result.plan.batch.commands),
-                "applied_operations": command_result.applied_count,
-                "errors": [error.code for error in command_result.errors],
-            }
             with path.open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record, sort_keys=True) + "\n")
         except Exception:
@@ -260,6 +422,7 @@ class AgentTurnCoordinator:
         self.status_message = "attention"
         self.last_error = message
         self._request = None
+        self._base_request = None
         self._turn_token = None
         self._set_end_turn_enabled(True)
         gui = getattr(self.game, "gui", None)
@@ -269,6 +432,14 @@ class AgentTurnCoordinator:
                 title="AI Turn Error",
             )
 
+    def _discard_stale_result(self) -> None:
+        self.state = "idle"
+        self.status_message = ""
+        self._request = None
+        self._base_request = None
+        self._turn_token = None
+        self._set_end_turn_enabled(True)
+
     def _set_end_turn_enabled(self, enabled: bool) -> None:
         gui = getattr(self.game, "gui", None)
         button = getattr(gui, "end_turn_button", None)
@@ -277,3 +448,8 @@ class AgentTurnCoordinator:
                 button.enable()
             else:
                 button.disable()
+
+
+def _bounded_text(value: Any, limit: int = 500) -> str:
+    text = str(value)
+    return text if len(text) <= limit else text[: limit - 1] + "…"

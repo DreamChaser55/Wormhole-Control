@@ -6,13 +6,27 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from game_ai.adapters.base import PlanningRequest, PlanningResult
+from game_ai.adapters.base import (
+    PlanningOutputError,
+    PlanningRequest,
+    PlanningResult,
+    RepairContext,
+    RepairIssue,
+)
 from game_ai.adapters.fake import FakePlanningProvider
 from game_ai.adapters.openai_responses import OpenAIResponsesProvider
 from game_ai.commands import CommandError, CommandGateway, CommandResult
 from game_ai.coordinator import AgentTurnCoordinator
 from game_ai.contracts import Command, CommandBatch, ContractError, TurnPlan
-from game_ai.evaluation import EvaluationCase, run_evaluation, score_plan
+from game_ai.evaluation import (
+    EvaluationCase,
+    colony_opening_case,
+    colony_opening_gateway_case,
+    compare_gateway_reasoning_efforts,
+    compare_reasoning_efforts,
+    run_evaluation,
+    score_plan,
+)
 from game_ai.memory import AgentMemory, write_memory_sidecar
 from game_ai.observation import build_observation
 from game_ai.runtime import (
@@ -88,6 +102,25 @@ class TestContracts(unittest.TestCase):
     def test_unknown_command_is_rejected(self):
         with self.assertRaises(ContractError):
             Command.from_dict({"type": "teleport", "unit_ids": [1]})
+
+    def test_planning_request_serializes_repair_context_separately(self):
+        plan = TurnPlan("Retry.", (), CommandBatch((), True), EMPTY_PATCH)
+        request = PlanningRequest(
+            "campaign",
+            "agent",
+            "AI",
+            1,
+            {"schema_version": 2},
+            {},
+            RepairContext(plan, (RepairIssue(0, "invalid", "Fix command 0."),)),
+        )
+        payload = request.to_dict()
+        self.assertEqual(payload["observation"], {"schema_version": 2})
+        self.assertEqual(payload["repair_context"]["rejected_plan"], plan.to_dict())
+        self.assertEqual(
+            payload["repair_context"]["validation_errors"][0]["command_index"],
+            0,
+        )
 
 
 class TestMemory(unittest.TestCase):
@@ -250,6 +283,21 @@ class TestOpenAIAdapter(unittest.TestCase):
         self.assertEqual(responses.kwargs["reasoning"], {"effort": "high"})
         self.assertEqual(result.reasoning_effort, "high")
         self.assertNotIn("tools", responses.kwargs)
+        self.assertEqual(responses.kwargs["prompt_cache_key"], "wormhole-control-turn-v2")
+        self.assertNotIn("previous_response_id", responses.kwargs)
+
+    def test_responses_adapter_classifies_invalid_output_as_repairable(self):
+        responses = _FakeResponses(None)
+        provider = OpenAIResponsesProvider(
+            client=SimpleNamespace(responses=responses)
+        )
+        with self.assertRaises(PlanningOutputError) as caught:
+            provider.plan_turn(
+                PlanningRequest("campaign", "agent", "AI", 1, {}, {}),
+                get_runtime_config("low"),
+            )
+        self.assertEqual(caught.exception.code, "invalid_contract")
+        self.assertEqual(caught.exception.reasoning_effort, "low")
 
 
 class _Player:
@@ -272,6 +320,14 @@ class _Commander:
 
     def clear_orders(self):
         self.clear_count += 1
+        self.current_order = None
+        self.orders_queue.clear()
+
+    def add_order(self, order):
+        self.orders_queue.append(order)
+
+    def get_allowed_stances(self):
+        return []
 
 
 def _unit(unit_id, owner):
@@ -306,6 +362,42 @@ def _unit(unit_id, owner):
 
 
 class TestInformationBoundaryAndGateway(unittest.TestCase):
+    @staticmethod
+    def _colony_fixture(*, population=50, unit_count=1):
+        from entities import Moon, Planet, PlanetType
+
+        player = _Player(1, 1)
+        units = [_unit(10 + index, player) for index in range(unit_count)]
+        for unit in units:
+            unit.colony_component = SimpleNamespace(
+                population_cargo=0,
+                max_cargo=100,
+            )
+        source = Planet((0, 0), "Sol", next(iter(PlanetType)))
+        source.owner = player
+        source.population = population
+        target = Moon((1, 0), "Sol")
+        bodies = {source.id: source, target.id: target}
+
+        class Galaxy:
+            systems = {}
+
+            def __init__(self):
+                self.bodies = bodies
+
+            def get_unit_by_id(self, unit_id):
+                return next((unit for unit in units if unit.id == unit_id), None)
+
+            def get_celestial_body_by_id(self, body_id):
+                return self.bodies.get(body_id)
+
+        game = SimpleNamespace(
+            galaxy=Galaxy(),
+            sidebar_needs_update=False,
+            visibility_dirty=False,
+        )
+        return player, units, source, target, game
+
     def test_hidden_enemy_is_omitted_but_presence_is_retained(self):
         viewer = _Player(1, 1)
         enemy = _Player(2, 2)
@@ -355,6 +447,360 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         result = CommandGateway(game).apply_batch(player, batch)
         self.assertFalse(result.accepted)
         self.assertEqual(unit.commander_component.clear_count, 0)
+
+    def test_colonist_load_can_feed_a_queued_colonize_command(self):
+        player, units, source, target, game = self._colony_fixture()
+        batch = CommandBatch(
+            commands=(
+                Command(
+                    type="load_colonists",
+                    unit_ids=(units[0].id,),
+                    target_id=source.id,
+                    amount=50,
+                    queue=False,
+                ),
+                Command(
+                    type="colonize",
+                    unit_ids=(units[0].id,),
+                    target_id=target.id,
+                    queue=True,
+                ),
+            )
+        )
+        result = CommandGateway(game).apply_batch(player, batch)
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.applied_count, 2)
+        self.assertEqual(len(units[0].commander_component.orders_queue), 2)
+
+    def test_existing_queued_load_can_feed_colonization(self):
+        player, units, source, target, game = self._colony_fixture()
+        units[0].commander_component.current_order = SimpleNamespace(
+            order_type=SimpleNamespace(name="LOAD_COLONISTS"),
+            status=SimpleNamespace(name="IN_PROGRESS"),
+            parameters={"target_id": source.id, "amount": 40},
+        )
+        result = CommandGateway(game).apply_batch(
+            player,
+            CommandBatch(
+                commands=(
+                    Command(
+                        type="colonize",
+                        unit_ids=(units[0].id,),
+                        target_id=target.id,
+                        queue=True,
+                    ),
+                )
+            ),
+        )
+        self.assertTrue(result.accepted)
+
+    def test_cancellation_releases_projected_population_reservation(self):
+        player, units, source, _target, game = self._colony_fixture(unit_count=2)
+        batch = CommandBatch(
+            commands=(
+                Command(
+                    type="load_colonists",
+                    unit_ids=(units[0].id,),
+                    target_id=source.id,
+                    amount=50,
+                    queue=False,
+                ),
+                Command(type="cancel_orders", unit_ids=(units[0].id,)),
+                Command(
+                    type="load_colonists",
+                    unit_ids=(units[1].id,),
+                    target_id=source.id,
+                    amount=50,
+                    queue=True,
+                ),
+            )
+        )
+        result = CommandGateway(game).apply_batch(player, batch)
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.applied_count, 3)
+
+    def test_colonize_without_cargo_or_preserved_load_is_rejected_atomically(self):
+        player, units, source, target, game = self._colony_fixture()
+        batch = CommandBatch(
+            commands=(
+                Command(
+                    type="load_colonists",
+                    unit_ids=(units[0].id,),
+                    target_id=source.id,
+                    amount=50,
+                    queue=False,
+                ),
+                Command(
+                    type="colonize",
+                    unit_ids=(units[0].id,),
+                    target_id=target.id,
+                    queue=False,
+                ),
+            )
+        )
+        result = CommandGateway(game).apply_batch(player, batch)
+        self.assertFalse(result.accepted)
+        self.assertEqual(units[0].commander_component.clear_count, 0)
+        self.assertIn("queue=true", result.errors[0].message)
+
+    def test_colonist_population_is_reserved_across_multi_unit_command(self):
+        player, units, source, _target, game = self._colony_fixture(
+            population=50, unit_count=2
+        )
+        batch = CommandBatch(
+            commands=(
+                Command(
+                    type="load_colonists",
+                    unit_ids=tuple(unit.id for unit in units),
+                    target_id=source.id,
+                    amount=30,
+                ),
+            )
+        )
+        result = CommandGateway(game).apply_batch(player, batch)
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.errors[0].code, "insufficient_population")
+        self.assertTrue(all(unit.commander_component.clear_count == 0 for unit in units))
+
+    def test_construction_credits_are_reserved_across_a_batch(self):
+        player = _Player(1, 1)
+        unit = _unit(10, player)
+        buildable = SimpleNamespace(
+            unit_template_name="SCOUT",
+            cost_credits=6,
+            time_to_build=1,
+        )
+        unit.constructor_component = SimpleNamespace(
+            can_build=lambda name: buildable if name == "SCOUT" else None,
+            buildable_units=[buildable],
+        )
+
+        class Galaxy:
+            def get_unit_by_id(self, unit_id):
+                return unit if unit_id == unit.id else None
+
+        game = SimpleNamespace(galaxy=Galaxy(), sidebar_needs_update=False)
+        command = Command(
+            type="construct",
+            unit_ids=(unit.id,),
+            position=(0, 0),
+            template_name="SCOUT",
+            queue=True,
+        )
+        result = CommandGateway(game).apply_batch(
+            player, CommandBatch(commands=(command, command))
+        )
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.errors[0].code, "insufficient_resources")
+        self.assertEqual(unit.commander_component.clear_count, 0)
+
+    def test_colony_sources_targets_and_capacity_are_validated_before_commit(self):
+        from entities import Star, StarType
+
+        def assert_rejected(configure, make_command, expected_code):
+            player, units, source, target, game = self._colony_fixture()
+            configure(player, units[0], source, target, game)
+            command = make_command(units[0], source, target, game)
+            result = CommandGateway(game).apply_batch(
+                player, CommandBatch(commands=(command,))
+            )
+            self.assertFalse(result.accepted)
+            self.assertEqual(result.errors[0].code, expected_code)
+            self.assertEqual(units[0].commander_component.clear_count, 0)
+
+        assert_rejected(
+            lambda _player, _unit, source, _target, _game: setattr(
+                source, "owner", _Player(2, 1)
+            ),
+            lambda unit, source, _target, _game: Command(
+                type="load_colonists",
+                unit_ids=(unit.id,),
+                target_id=source.id,
+                amount=10,
+            ),
+            "invalid_relation",
+        )
+        assert_rejected(
+            lambda _player, unit, _source, _target, _game: setattr(
+                unit.colony_component, "max_cargo", 5
+            ),
+            lambda unit, source, _target, _game: Command(
+                type="load_colonists",
+                unit_ids=(unit.id,),
+                target_id=source.id,
+                amount=10,
+            ),
+            "insufficient_capacity",
+        )
+
+        def add_star(_player, _unit, _source, _target, game):
+            star = Star("Sol", next(iter(StarType)))
+            game.galaxy.bodies[star.id] = star
+            game.invalid_star = star
+
+        assert_rejected(
+            add_star,
+            lambda unit, _source, _target, game: Command(
+                type="load_colonists",
+                unit_ids=(unit.id,),
+                target_id=game.invalid_star.id,
+                amount=10,
+            ),
+            "invalid_target",
+        )
+        assert_rejected(
+            add_star,
+            lambda unit, _source, _target, game: Command(
+                type="colonize",
+                unit_ids=(unit.id,),
+                target_id=game.invalid_star.id,
+            ),
+            "invalid_target",
+        )
+
+    def test_observation_reports_colony_legality_and_capacity(self):
+        player, units, source, target, game = self._colony_fixture()
+        hex_obj = SimpleNamespace(
+            celestial_bodies=[source, target], units=units, minefields=[]
+        )
+        system = SimpleNamespace(
+            position=SimpleNamespace(x=1, y=2),
+            radius=2,
+            hexes={(0, 0): hex_obj},
+        )
+        game.galaxy.systems = {"Sol": system}
+        game.galaxy.system_graph = {"Sol": {}}
+        game.players = [player]
+        game.turn_number = 1
+        snapshot = SimpleNamespace(
+            visible_enemy_unit_ids=set(),
+            presence_hexes=set(),
+        )
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            observation = build_observation(game, player)
+        unit_view = observation["units"][0]
+        self.assertEqual(observation["schema_version"], 2)
+        self.assertNotIn("celestial_bodies", observation)
+        self.assertIn("colonize", unit_view["supported_commands"])
+        self.assertNotIn("colonize", unit_view["legal_commands"])
+        self.assertIn("load_colonists", unit_view["legal_commands"])
+        self.assertEqual(
+            unit_view["capability_details"]["colony"]["maximum_cargo"],
+            100.0,
+        )
+        self.assertEqual(unit_view["command_options"]["colonize"]["target_ids"], [target.id])
+        self.assertEqual(unit_view["conditional_commands"][0]["type"], "colonize")
+
+    def test_hybrid_observation_summarizes_remote_neutral_bodies(self):
+        from entities import Moon, Planet, PlanetType, Star, StarType
+
+        player = _Player(1, 1)
+        unit = _unit(10, player)
+        planet_type = next(iter(PlanetType))
+        star_type = next(iter(StarType))
+
+        def make_system(name, bodies, units=()):
+            return SimpleNamespace(
+                position=SimpleNamespace(x=0, y=0),
+                radius=4,
+                hexes={
+                    (0, 0): SimpleNamespace(
+                        celestial_bodies=bodies,
+                        units=list(units),
+                        minefields=[],
+                    )
+                },
+            )
+
+        sol_star = Star("Sol", star_type)
+        sol_target = Moon((0, 0), "Sol")
+        vega_star = Star("Vega", star_type)
+        vega_target = Planet((0, 0), "Vega", planet_type)
+        sirius_star = Star("Sirius", star_type)
+        remote_neutral = Planet((0, 0), "Sirius", planet_type)
+        remote_colony = Planet((0, 0), "Sirius", planet_type)
+        remote_colony.owner = player
+        remote_colony.population = 20
+        galaxy = SimpleNamespace(
+            systems={
+                "Sol": make_system("Sol", [sol_star, sol_target], [unit]),
+                "Vega": make_system("Vega", [vega_star, vega_target]),
+                "Sirius": make_system(
+                    "Sirius", [sirius_star, remote_neutral, remote_colony]
+                ),
+            },
+            system_graph={
+                "Sol": {"Vega": SimpleNamespace(value="huge")},
+                "Vega": {"Sol": SimpleNamespace(value="huge")},
+                "Sirius": {},
+            },
+        )
+        game = SimpleNamespace(galaxy=galaxy, players=[player], turn_number=1)
+        snapshot = SimpleNamespace(
+            visible_enemy_unit_ids=set(), presence_hexes=set()
+        )
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            observation = build_observation(game, player)
+
+        systems = {system["name"]: system for system in observation["systems"]}
+        self.assertEqual(systems["Sol"]["detail_level"], "full")
+        self.assertEqual(systems["Vega"]["detail_level"], "full")
+        self.assertEqual(systems["Sirius"]["detail_level"], "summary")
+        notable_ids = {body["id"] for body in systems["Sirius"]["notable_bodies"]}
+        self.assertIn(sirius_star.id, notable_ids)
+        self.assertIn(remote_colony.id, notable_ids)
+        self.assertNotIn(remote_neutral.id, notable_ids)
+        self.assertEqual(
+            systems["Sirius"]["body_summary"]["neutral_colonizable_count"], 1
+        )
+        self.assertNotIn(
+            remote_neutral.id,
+            observation["action_catalogs"]["colonization_target_ids"],
+        )
+
+    def test_large_hybrid_observation_stays_below_character_budget(self):
+        from entities import Planet, PlanetType, Star, StarType
+
+        player = _Player(1, 1)
+        unit = _unit(10, player)
+        planet_type = next(iter(PlanetType))
+        star_type = next(iter(StarType))
+        systems = {}
+        graph = {}
+        remaining_planets = 785
+        for index in range(15):
+            name = f"System {index}"
+            count = remaining_planets // (15 - index)
+            remaining_planets -= count
+            bodies = [Star(name, star_type)] + [
+                Planet((0, 0), name, planet_type) for _ in range(count)
+            ]
+            systems[name] = SimpleNamespace(
+                position=SimpleNamespace(x=index, y=0),
+                radius=4,
+                hexes={
+                    (0, 0): SimpleNamespace(
+                        celestial_bodies=bodies,
+                        units=[unit] if index == 0 else [],
+                        minefields=[],
+                    )
+                },
+            )
+            graph[name] = {}
+        graph["System 0"]["System 1"] = SimpleNamespace(value="huge")
+        graph["System 1"]["System 0"] = SimpleNamespace(value="huge")
+        galaxy = SimpleNamespace(systems=systems, system_graph=graph)
+        game = SimpleNamespace(galaxy=galaxy, players=[player], turn_number=1)
+        snapshot = SimpleNamespace(
+            visible_enemy_unit_ids=set(), presence_hexes=set()
+        )
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            observation = build_observation(game, player)
+        payload = json.dumps(
+            PlanningRequest("campaign", "agent", "AI", 1, observation, {}).to_dict(),
+            separators=(",", ":"),
+        )
+        self.assertLess(len(payload), 75_000)
 
 
 class TestCoordinator(unittest.TestCase):
@@ -423,9 +869,11 @@ class TestCoordinator(unittest.TestCase):
             coordinator.shutdown()
 
     def test_configured_repairs_forward_latest_errors_and_can_recover(self):
-        plan = TurnPlan("Retry.", (), CommandBatch((), True), EMPTY_PATCH)
+        first_plan = TurnPlan("First.", (), CommandBatch((), True), EMPTY_PATCH)
+        second_plan = TurnPlan("Second.", (), CommandBatch((), True), EMPTY_PATCH)
+        accepted_plan = TurnPlan("Recovered.", (), CommandBatch((), True), EMPTY_PATCH)
         player, _game, ended, provider, coordinator = self._coordinator_fixture(
-            2, [plan, plan, plan]
+            2, [first_plan, second_plan, accepted_plan]
         )
         rejected_first = CommandResult(
             accepted=False,
@@ -454,7 +902,7 @@ class TestCoordinator(unittest.TestCase):
 
             self.assertEqual(len(provider.requests), 3)
             self.assertEqual(
-                provider.requests[1].observation["previous_command_errors"],
+                provider.requests[1].repair_context.to_dict()["validation_errors"],
                 [{
                     "command_index": 0,
                     "code": "first_error",
@@ -462,15 +910,24 @@ class TestCoordinator(unittest.TestCase):
                 }],
             )
             self.assertEqual(
-                provider.requests[2].observation["previous_command_errors"],
+                provider.requests[1].repair_context.rejected_plan,
+                first_plan,
+            )
+            self.assertEqual(provider.requests[1].observation, {})
+            self.assertEqual(
+                provider.requests[2].repair_context.to_dict()["validation_errors"],
                 [{
                     "command_index": 1,
                     "code": "second_error",
                     "message": "Second rejection",
                 }],
             )
+            self.assertEqual(
+                provider.requests[2].repair_context.rejected_plan,
+                second_plan,
+            )
             self.assertEqual(ended, [True])
-            self.assertEqual(player.last_ai_report["summary"], "Retry.")
+            self.assertEqual(player.last_ai_report["summary"], "Recovered.")
         finally:
             coordinator.shutdown()
 
@@ -529,6 +986,158 @@ class TestCoordinator(unittest.TestCase):
         finally:
             coordinator.shutdown()
 
+    def test_invalid_model_output_uses_repair_context_and_same_reasoning(self):
+        plan = TurnPlan("Recovered.", (), CommandBatch((), True), EMPTY_PATCH)
+        player, _game, ended, _provider, coordinator = self._coordinator_fixture(
+            1, []
+        )
+
+        class Provider:
+            def __init__(self):
+                self.requests = []
+                self.runtime_configs = []
+
+            def plan_turn(self, request, runtime_config):
+                self.requests.append(request)
+                self.runtime_configs.append(runtime_config)
+                if len(self.requests) == 1:
+                    raise PlanningOutputError(
+                        "invalid_json",
+                        "Invalid JSON.",
+                        provider="fake",
+                        model=runtime_config.model,
+                        reasoning_effort=runtime_config.reasoning_effort,
+                    )
+                return PlanningResult(
+                    plan=plan,
+                    provider="fake",
+                    model=runtime_config.model,
+                    reasoning_effort=runtime_config.reasoning_effort,
+                )
+
+        provider = Provider()
+        coordinator.provider = provider
+        try:
+            with patch(
+                "game_ai.coordinator.build_observation", return_value={"schema_version": 2}
+            ), patch("game_ai.coordinator.CommandGateway") as gateway_class, patch.object(
+                coordinator, "_write_memory"
+            ), patch.object(coordinator, "_record_output_error"), patch.object(
+                coordinator, "_record_telemetry"
+            ):
+                gateway_class.return_value.apply_batch.return_value = CommandResult(
+                    accepted=True
+                )
+                self.assertTrue(coordinator.start_current_turn())
+                coordinator._future.exception(timeout=2)
+                coordinator.update()
+                self._finish_pending_request(coordinator)
+
+            self.assertEqual(ended, [True])
+            self.assertEqual(len(provider.requests), 2)
+            repair = provider.requests[1].repair_context
+            self.assertIsNone(repair.rejected_plan)
+            self.assertEqual(repair.errors[0].code, "invalid_json")
+            self.assertEqual(provider.requests[1].observation, {"schema_version": 2})
+            self.assertEqual(
+                [config.reasoning_effort for config in provider.runtime_configs],
+                ["medium", "medium"],
+            )
+        finally:
+            coordinator.shutdown()
+
+    def test_malformed_output_exhausts_exact_semantic_retry_budget(self):
+        _player, _game, ended, _provider, coordinator = self._coordinator_fixture(
+            1, []
+        )
+
+        class InvalidProvider:
+            def __init__(self):
+                self.requests = []
+
+            def plan_turn(self, request, runtime_config):
+                self.requests.append(request)
+                raise PlanningOutputError(
+                    "invalid_contract",
+                    "The turn output violated its contract.",
+                    provider="fake",
+                    model=runtime_config.model,
+                    reasoning_effort=runtime_config.reasoning_effort,
+                )
+
+        provider = InvalidProvider()
+        coordinator.provider = provider
+        try:
+            with patch(
+                "game_ai.coordinator.build_observation", return_value={}
+            ), patch.object(coordinator, "_record_output_error"):
+                self.assertTrue(coordinator.start_current_turn())
+                coordinator._future.exception(timeout=2)
+                coordinator.update()
+                coordinator._future.exception(timeout=2)
+                coordinator.update()
+            self.assertEqual(len(provider.requests), 2)
+            self.assertIsNotNone(provider.requests[1].repair_context)
+            self.assertEqual(coordinator.state, "error")
+            self.assertEqual(ended, [])
+        finally:
+            coordinator.shutdown()
+
+    def test_transport_failure_does_not_use_semantic_retry(self):
+        _player, _game, ended, _provider, coordinator = self._coordinator_fixture(
+            3, []
+        )
+
+        class TransportProvider:
+            def __init__(self):
+                self.calls = 0
+
+            def plan_turn(self, request, runtime_config):
+                self.calls += 1
+                raise TimeoutError("provider timeout")
+
+        provider = TransportProvider()
+        coordinator.provider = provider
+        try:
+            with patch(
+                "game_ai.coordinator.build_observation", return_value={}
+            ), patch.object(coordinator, "_record_transport_error"):
+                self.assertTrue(coordinator.start_current_turn())
+                coordinator._future.exception(timeout=2)
+                coordinator.update()
+            self.assertEqual(provider.calls, 1)
+            self.assertEqual(coordinator.state, "error")
+            self.assertNotIn("provider timeout", coordinator.last_error)
+            self.assertEqual(ended, [])
+        finally:
+            coordinator.shutdown()
+
+    def test_commit_failure_is_not_retried(self):
+        plan = TurnPlan("Commit.", (), CommandBatch((), True), EMPTY_PATCH)
+        _player, _game, ended, provider, coordinator = self._coordinator_fixture(
+            3, [plan]
+        )
+        commit_failure = CommandResult(
+            accepted=False,
+            errors=(CommandError(-1, "commit_failed", "Commit failed"),),
+            failure_stage="commit",
+            retryable=False,
+        )
+        try:
+            with patch(
+                "game_ai.coordinator.build_observation", return_value={}
+            ), patch("game_ai.coordinator.CommandGateway") as gateway_class, patch.object(
+                coordinator, "_record_telemetry"
+            ):
+                gateway_class.return_value.apply_batch.return_value = commit_failure
+                self.assertTrue(coordinator.start_current_turn())
+                self._finish_pending_request(coordinator)
+            self.assertEqual(len(provider.requests), 1)
+            self.assertEqual(ended, [])
+            self.assertEqual(coordinator.state, "error")
+        finally:
+            coordinator.shutdown()
+
     def test_telemetry_records_reasoning_effort(self):
         import save_manager
 
@@ -565,11 +1174,172 @@ class TestCoordinator(unittest.TestCase):
                 )
             self.assertEqual(record["model"], "gpt-5.6-luna")
             self.assertEqual(record["reasoning_effort"], "high")
+            self.assertEqual(record["attempt_index"], 0)
+            self.assertFalse(record["is_repair"])
+            self.assertEqual(record["command_summaries"], [])
+            self.assertFalse(record["will_retry"])
+        finally:
+            coordinator.shutdown()
+
+    def test_telemetry_records_every_rejected_and_accepted_attempt(self):
+        import save_manager
+
+        command = Command(type="cancel_orders", unit_ids=(1,))
+        plan = TurnPlan(
+            "Retry.", (), CommandBatch((command,), True), EMPTY_PATCH
+        )
+        _player, _game, ended, _provider, coordinator = self._coordinator_fixture(
+            2, [plan, plan, plan]
+        )
+        rejected = CommandResult(
+            accepted=False,
+            errors=(CommandError(0, "invalid", "Try again."),),
+        )
+        accepted = CommandResult(accepted=True, applied_count=1)
+        try:
+            with tempfile.TemporaryDirectory() as directory, patch.object(
+                save_manager, "SAVES_DIR", directory
+            ), patch(
+                "game_ai.coordinator.build_observation", return_value={}
+            ), patch("game_ai.coordinator.CommandGateway") as gateway_class, patch.object(
+                coordinator, "_write_memory"
+            ):
+                gateway_class.return_value.apply_batch.side_effect = [
+                    rejected,
+                    rejected,
+                    accepted,
+                ]
+                self.assertTrue(coordinator.start_current_turn())
+                self._finish_pending_request(coordinator)
+                self._finish_pending_request(coordinator)
+                self._finish_pending_request(coordinator)
+                records = [
+                    json.loads(line)
+                    for line in (
+                        Path(directory) / "ai_telemetry.jsonl"
+                    ).read_text(encoding="utf-8").splitlines()
+                ]
+            self.assertEqual(ended, [True])
+            self.assertEqual([record["attempt_index"] for record in records], [0, 1, 2])
+            self.assertEqual([record["will_retry"] for record in records], [True, True, False])
+            self.assertEqual([record["status"] for record in records], ["rejected", "rejected", "accepted"])
+            self.assertEqual(records[0]["command_summaries"][0]["type"], "cancel_orders")
+            self.assertEqual(records[0]["error_details"][0]["command_index"], 0)
+            self.assertNotIn("analysis_summary", records[0])
+            self.assertNotIn("observation", records[0])
         finally:
             coordinator.shutdown()
 
 
+class TestLogging(unittest.TestCase):
+    def test_third_party_http_clients_cannot_emit_debug_request_bodies(self):
+        import logging
+
+        from game_logging import THIRD_PARTY_LOGGERS, setup_logging
+
+        setup_logging(log_to_file=False)
+        for logger_name in THIRD_PARTY_LOGGERS:
+            self.assertGreaterEqual(
+                logging.getLogger(logger_name).getEffectiveLevel(), logging.WARNING
+            )
+        record = logging.LogRecord(
+            "openai._base_client.responses",
+            logging.DEBUG,
+            __file__,
+            1,
+            "request body: secret",
+            (),
+            None,
+        )
+        self.assertTrue(
+            all(not handler.filter(record) for handler in logging.getLogger().handlers)
+        )
+
+
 class TestEvaluation(unittest.TestCase):
+    def test_colony_opening_fixture_and_reasoning_comparison_are_opt_in(self):
+        case = colony_opening_case()
+        command = Command(
+            type="load_colonists",
+            unit_ids=(101,),
+            target_id=201,
+            amount=50,
+        )
+        plan = TurnPlan(
+            "Load first.", (), CommandBatch((command,), True), EMPTY_PATCH
+        )
+        provider = FakePlanningProvider([plan, plan, plan])
+        reports = compare_reasoning_efforts(provider, [case])
+        self.assertEqual(set(reports), {"low", "medium", "high"})
+        self.assertTrue(all(report.pass_rate == 1.0 for report in reports.values()))
+        self.assertEqual(
+            [config.reasoning_effort for config in provider.runtime_configs],
+            ["low", "medium", "high"],
+        )
+
+    def test_gateway_reasoning_comparison_tracks_repairs_and_acceptance(self):
+        invalid = TurnPlan(
+            "Colonize immediately.",
+            (),
+            CommandBatch(
+                (
+                    Command(
+                        type="colonize", unit_ids=(101,), target_id=202, queue=True
+                    ),
+                ),
+                True,
+            ),
+            EMPTY_PATCH,
+        )
+        repaired = TurnPlan(
+            "Load before colonizing.",
+            (),
+            CommandBatch(
+                (
+                    Command(
+                        type="load_colonists",
+                        unit_ids=(101,),
+                        target_id=201,
+                        amount=50,
+                    ),
+                    Command(
+                        type="colonize", unit_ids=(101,), target_id=202, queue=True
+                    ),
+                ),
+                True,
+            ),
+            EMPTY_PATCH,
+        )
+
+        class RepairAwareProvider:
+            def __init__(self):
+                self.requests = []
+
+            def plan_turn(self, request, runtime_config):
+                self.requests.append(request)
+                plan = repaired if request.repair_context else invalid
+                return PlanningResult(
+                    plan=plan,
+                    provider="fake",
+                    model=runtime_config.model,
+                    reasoning_effort=runtime_config.reasoning_effort,
+                    usage={"input_tokens": 10, "output_tokens": 5},
+                    latency_seconds=0.25,
+                )
+
+        provider = RepairAwareProvider()
+        reports = compare_gateway_reasoning_efforts(
+            provider, [colony_opening_gateway_case()]
+        )
+        for report in reports.values():
+            self.assertEqual(report.acceptance_rate, 1.0)
+            self.assertEqual(report.scores[0].attempts, 2)
+            self.assertEqual(report.scores[0].retries_used, 1)
+            self.assertEqual(report.scores[0].input_tokens, 20)
+            self.assertEqual(report.scores[0].output_tokens, 10)
+            self.assertEqual(report.scores[0].latency_seconds, 0.5)
+        self.assertTrue(all(request.repair_context for request in provider.requests[1::2]))
+
     def test_fixture_score_tracks_required_and_forbidden_commands(self):
         request = PlanningRequest("c", "a", "AI", 1, {}, {})
         case = EvaluationCase(

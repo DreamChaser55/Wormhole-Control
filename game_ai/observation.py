@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
+
+from .rules import (
+    ability_states,
+    command_guidance,
+    is_colonizable_body,
+    is_mining_target,
+    is_self_owned,
+    is_star,
+    supported_commands,
+)
 
 
 COMMAND_HELP = {
@@ -44,50 +55,108 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
 
     visibility = VisibilityService.compute(galaxy, player, turn_number=turn)
     systems = []
-    units = []
-    bodies = []
+    visible_unit_objects = []
+    bodies_by_system: dict[str, list[Any]] = {}
     minefields = []
 
     for system_name in sorted(galaxy.systems):
         system = galaxy.systems[system_name]
-        connections = []
-        for destination, maximum_hull in sorted(
-            getattr(galaxy, "system_graph", {}).get(system_name, {}).items()
-        ):
-            connections.append(
-                {
-                    "system_name": destination,
-                    "maximum_hull": _enum_value(maximum_hull),
-                }
-            )
-        systems.append(
-            {
-                "name": system_name,
-                "position": _position(getattr(system, "position", None)),
-                "radius": int(getattr(system, "radius", 0)),
-                "connections": connections,
-            }
-        )
+        system_bodies = []
         for hex_coord, hex_obj in sorted(system.hexes.items()):
             for body in getattr(hex_obj, "celestial_bodies", []):
-                bodies.append(_body_view(body, player))
+                system_bodies.append(body)
             for unit in getattr(hex_obj, "units", []):
                 relation = _relation(player, getattr(unit, "owner", None))
                 if relation != "enemy" or unit.id in visibility.visible_enemy_unit_ids:
-                    units.append(_unit_view(unit, relation, include_capabilities=relation == "self"))
+                    visible_unit_objects.append(unit)
             for minefield in getattr(hex_obj, "minefields", []):
                 if is_minefield_visible(visibility, minefield):
                     minefields.append(_minefield_view(minefield, player))
+        bodies_by_system[system_name] = system_bodies
 
     presences = [
         {"system_name": system_name, "hex_coord": list(hex_coord)}
         for system_name, hex_coord in sorted(visibility.presence_hexes)
     ]
+    friendly_systems = {
+        str(unit.in_system)
+        for unit in visible_unit_objects
+        if _relation(player, getattr(unit, "owner", None)) in {"self", "ally"}
+    }
+    detailed_systems = set(friendly_systems)
+    for system_name in friendly_systems:
+        detailed_systems.update(
+            getattr(galaxy, "system_graph", {}).get(system_name, {}).keys()
+        )
+    detailed_systems.update(
+        str(unit.in_system)
+        for unit in visible_unit_objects
+        if _relation(player, getattr(unit, "owner", None)) == "enemy"
+    )
+    detailed_systems.update(system_name for system_name, _hex in visibility.presence_hexes)
+
+    exact_bodies = []
+    for system_name in sorted(galaxy.systems):
+        system = galaxy.systems[system_name]
+        system_bodies = bodies_by_system[system_name]
+        detailed = system_name in detailed_systems
+        exact_for_system = (
+            list(system_bodies)
+            if detailed
+            else [
+                body
+                for body in system_bodies
+                if is_star(body) or getattr(body, "owner", None) is not None
+            ]
+        )
+        exact_bodies.extend(exact_for_system)
+        system_data = {
+            "name": system_name,
+            "position": _position(getattr(system, "position", None)),
+            "radius": int(getattr(system, "radius", 0)),
+            "connections": [
+                {
+                    "system_name": destination,
+                    "maximum_hull": _enum_value(maximum_hull),
+                }
+                for destination, maximum_hull in sorted(
+                    getattr(galaxy, "system_graph", {}).get(system_name, {}).items()
+                )
+            ],
+            "navigation_anchor": _navigation_anchor(system, system_bodies),
+            "detail_level": "full" if detailed else "summary",
+        }
+        if detailed:
+            system_data["celestial_bodies"] = [
+                _body_view(body, player, include_system=False)
+                for body in exact_for_system
+            ]
+        else:
+            system_data["notable_bodies"] = [
+                _body_view(body, player, include_system=False)
+                for body in exact_for_system
+            ]
+            system_data["body_summary"] = _body_summary(system_bodies, player)
+        systems.append(system_data)
+
+    units = [
+        _unit_view(
+            unit,
+            _relation(player, getattr(unit, "owner", None)),
+            include_capabilities=_relation(player, getattr(unit, "owner", None)) == "self",
+            game=game,
+            player=player,
+            exact_bodies=exact_bodies,
+            visible_units=visible_unit_objects,
+        )
+        for unit in visible_unit_objects
+    ]
+    construction_templates = _construction_catalog(visible_unit_objects, player)
     memory_note = (
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -111,16 +180,48 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
             for other in getattr(game, "players", [])
         ],
         "systems": systems,
-        "celestial_bodies": bodies,
         "units": units,
         "visible_minefields": minefields,
         "undetailed_enemy_presence": presences,
         "visibility_note": memory_note,
         "command_reference": COMMAND_HELP,
+        "action_catalogs": {
+            "colonization_target_ids": [
+                int(body.id)
+                for body in exact_bodies
+                if is_colonizable_body(body) and getattr(body, "owner", None) is None
+            ],
+            "colonist_sources": [
+                {
+                    "target_id": int(body.id),
+                    "available_population": _rounded(getattr(body, "population", 0)),
+                }
+                for body in exact_bodies
+                if is_colonizable_body(body)
+                and is_self_owned(player, getattr(body, "owner", None))
+                and float(getattr(body, "population", 0)) > 0
+            ],
+            "mining_target_ids": [
+                int(body.id) for body in exact_bodies if is_mining_target(body)
+            ],
+            "antimatter_source_ids": [
+                int(body.id) for body in exact_bodies if is_star(body)
+            ],
+            "construction_templates": construction_templates,
+        },
     }
 
 
-def _unit_view(unit: Any, relation: str, *, include_capabilities: bool) -> dict[str, Any]:
+def _unit_view(
+    unit: Any,
+    relation: str,
+    *,
+    include_capabilities: bool,
+    game: Any,
+    player: Any,
+    exact_bodies: list[Any],
+    visible_units: list[Any],
+) -> dict[str, Any]:
     commander = getattr(unit, "commander_component", None)
     components = sorted(
         component.__class__.__name__ for component in getattr(unit, "components", {}).values()
@@ -145,24 +246,37 @@ def _unit_view(unit: Any, relation: str, *, include_capabilities: bool) -> dict[
         "stance": _enum_value(getattr(commander, "stance", None)),
     }
     if include_capabilities:
-        data["available_commands"] = _available_commands(unit)
-        data["ability_states"] = _ability_states(unit)
+        legal, options, conditional = command_guidance(
+            game,
+            player,
+            unit,
+            exact_bodies=exact_bodies,
+            visible_units=visible_units,
+        )
+        data["supported_commands"] = supported_commands(unit)
+        data["legal_commands"] = legal
+        data["command_options"] = options
+        data["conditional_commands"] = conditional
+        data["ability_states"] = ability_states(unit)
         data["capability_details"] = _capability_details(unit)
     return data
 
 
-def _body_view(body: Any, viewer: Any) -> dict[str, Any]:
+def _body_view(
+    body: Any, viewer: Any, *, include_system: bool = True
+) -> dict[str, Any]:
     owner = getattr(body, "owner", None)
     data = {
         "id": int(body.id),
         "type": body.__class__.__name__,
         "name": str(getattr(body, "name", body.__class__.__name__)),
-        "system_name": str(body.in_system),
         "hex_coord": list(body.in_hex),
         "position": _position(body.position),
         "owner_id": int(owner.id) if owner is not None else None,
         "owner_relation": _relation(viewer, owner) if owner is not None else "neutral",
     }
+    if include_system:
+        data["system_name"] = str(body.in_system)
     for name in (
         "population",
         "max_population",
@@ -188,62 +302,6 @@ def _minefield_view(minefield: Any, viewer: Any) -> dict[str, Any]:
         "type": _enum_value(minefield.minefield_type),
         "mines_remaining": int(minefield.mines_remaining),
     }
-
-
-def _available_commands(unit: Any) -> list[str]:
-    commands = ["cancel_orders", "set_stance"]
-    if getattr(unit, "engines_component", None):
-        commands.extend(["move", "patrol", "protect"])
-    if getattr(unit, "weapons_component", None):
-        commands.append("attack")
-    if getattr(unit, "colony_component", None):
-        commands.extend(["colonize", "load_colonists"])
-    if getattr(unit, "constructor_component", None):
-        commands.append("construct")
-    if getattr(unit, "repair_component", None):
-        commands.append("repair")
-    if getattr(unit, "mining_component", None):
-        commands.extend(["mine", "continuous_mine", "unload_resources"])
-    if getattr(unit, "harvester_component", None):
-        commands.extend(["transfer_antimatter", "continuous_resupply"])
-    hull_name = str(getattr(getattr(unit, "hull_size", None), "name", "")).lower()
-    if hull_name in {"tiny", "small", "strikecraft_wing"}:
-        commands.append("dock")
-    if getattr(unit, "hangar_component", None):
-        commands.append("deploy_unit")
-    if getattr(unit, "strikecraft_bay_component", None):
-        commands.extend(["deploy_unit", "deploy_all_wings"])
-    if getattr(unit, "trade_component", None):
-        commands.extend(["trade", "continuous_trade"])
-    if getattr(unit, "inhibitor_component", None):
-        commands.append("toggle_inhibitor")
-    if getattr(unit, "cloaking_component", None):
-        commands.append("toggle_cloaking")
-    if getattr(unit, "ability_component", None):
-        commands.append("use_ability")
-    if _component_by_name(unit, "MinelayerComponent") is not None:
-        commands.append("lay_minefield")
-    return sorted(set(commands))
-
-
-def _ability_states(unit: Any) -> list[dict[str, Any]]:
-    component = getattr(unit, "ability_component", None)
-    result = []
-    for ability_type, instance in getattr(component, "abilities", {}).items():
-        definition = getattr(instance, "definition", None)
-        result.append(
-            {
-                "ability": _enum_value(ability_type),
-                "ready": bool(getattr(instance, "is_ready", False)),
-                "requires_target_unit": bool(
-                    getattr(definition, "requires_target_unit", False)
-                ),
-                "requires_target_position": bool(
-                    getattr(definition, "requires_target_position", False)
-                ),
-            }
-        )
-    return result
 
 
 def _capability_details(unit: Any) -> dict[str, Any]:
@@ -272,26 +330,20 @@ def _capability_details(unit: Any) -> dict[str, Any]:
     if colony is not None:
         details["colony"] = {
             "population_cargo": _rounded(getattr(colony, "population_cargo", 0)),
-            "maximum_cargo": _rounded(
-                getattr(colony, "max_population_cargo", getattr(colony, "capacity", 0))
-            ),
+            "maximum_cargo": _rounded(getattr(colony, "max_cargo", 0)),
         }
     mining = getattr(unit, "mining_component", None)
     if mining is not None:
         details["mining"] = {
             "raw_metal_cargo": _rounded(getattr(mining, "raw_metal_cargo", 0)),
             "raw_crystal_cargo": _rounded(getattr(mining, "raw_crystal_cargo", 0)),
-            "cargo_capacity": _rounded(getattr(mining, "cargo_capacity", 0)),
+            "cargo_capacity": _rounded(getattr(mining, "max_cargo", 0)),
         }
     constructor = getattr(unit, "constructor_component", None)
     if constructor is not None:
         details["construction"] = {
-            "buildable_templates": [
-                {
-                    "template_name": buildable.unit_template_name,
-                    "credit_cost": int(buildable.cost_credits),
-                    "turns": int(buildable.time_to_build),
-                }
+            "buildable_template_names": [
+                buildable.unit_template_name
                 for buildable in getattr(constructor, "buildable_units", [])
             ]
         }
@@ -359,11 +411,68 @@ def _orders(commander: Any) -> list[dict[str, Any]]:
     return result
 
 
-def _component_by_name(unit: Any, name: str) -> Any | None:
-    for component in getattr(unit, "components", {}).values():
-        if component.__class__.__name__ == name:
-            return component
-    return None
+def _navigation_anchor(system: Any, bodies: list[Any]) -> dict[str, Any]:
+    anchor = next((body for body in bodies if is_star(body)), None)
+    if anchor is not None:
+        return {
+            "body_id": int(anchor.id),
+            "hex_coord": list(anchor.in_hex),
+            "position": _position(anchor.position),
+        }
+    hexes = sorted(getattr(system, "hexes", {}))
+    return {
+        "body_id": None,
+        "hex_coord": list(hexes[0]) if hexes else [0, 0],
+        "position": [0.0, 0.0],
+    }
+
+
+def _body_summary(bodies: list[Any], viewer: Any) -> dict[str, Any]:
+    type_counts = Counter(body.__class__.__name__ for body in bodies)
+    relation_counts = Counter(
+        _relation(viewer, getattr(body, "owner", None)) for body in bodies
+    )
+    neutral_colonizable = [
+        body
+        for body in bodies
+        if is_colonizable_body(body) and getattr(body, "owner", None) is None
+    ]
+    mining_counts = Counter()
+    for body in bodies:
+        if not is_mining_target(body):
+            continue
+        body_type = body.__class__.__name__
+        mining_counts["crystal" if body_type == "Comet" else "metal"] += 1
+    hazard_names = {"Nebula", "Storm", "DebrisField", "IceField"}
+    return {
+        "counts_by_type": dict(sorted(type_counts.items())),
+        "counts_by_owner_relation": dict(sorted(relation_counts.items())),
+        "neutral_colonizable_count": len(neutral_colonizable),
+        "neutral_colonizable_capacity": _rounded(
+            sum(float(getattr(body, "max_population", 0)) for body in neutral_colonizable)
+        ),
+        "mining_targets": dict(sorted(mining_counts.items())),
+        "hazards": {
+            name: type_counts[name]
+            for name in sorted(hazard_names)
+            if type_counts[name]
+        },
+    }
+
+
+def _construction_catalog(units: list[Any], player: Any) -> list[dict[str, Any]]:
+    catalog: dict[str, dict[str, Any]] = {}
+    for unit in units:
+        if not is_self_owned(player, getattr(unit, "owner", None)):
+            continue
+        constructor = getattr(unit, "constructor_component", None)
+        for buildable in getattr(constructor, "buildable_units", []) if constructor else []:
+            catalog[buildable.unit_template_name] = {
+                "template_name": buildable.unit_template_name,
+                "credit_cost": int(buildable.cost_credits),
+                "turns": int(buildable.time_to_build),
+            }
+    return [catalog[name] for name in sorted(catalog)]
 
 
 def _component_amount(component: Any) -> dict[str, float] | None:

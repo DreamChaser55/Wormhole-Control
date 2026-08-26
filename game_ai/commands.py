@@ -6,6 +6,13 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from .contracts import CommandBatch
+from .rules import (
+    compatible_docking_component,
+    is_colonizable_body,
+    is_mining_target,
+    is_self_owned,
+    is_star,
+)
 
 
 @dataclass(frozen=True)
@@ -21,6 +28,8 @@ class CommandResult:
     applied_count: int = 0
     receipts: tuple[str, ...] = ()
     errors: tuple[CommandError, ...] = ()
+    failure_stage: str | None = "preflight"
+    retryable: bool = True
 
 
 class _Rejected(ValueError):
@@ -35,6 +44,190 @@ class _Prepared:
     receipt: str
 
 
+class _BatchProjection:
+    """Track guaranteed batch effects without mutating authoritative state."""
+
+    def __init__(self, game: Any, player: Any):
+        self.game = game
+        self.player = player
+        self._cargo: dict[int, float] = {}
+        self._source_population: dict[int, float] = {}
+        self._credits = float(getattr(player, "credits", 0))
+        self._docking_slots: dict[int, int] = {}
+        self._reservations: dict[int, list[tuple[str, int, float]]] = {}
+        self._orders_scanned: set[int] = set()
+
+    def before(self, command: Any, units: list[Any]) -> None:
+        if command.type == "cancel_orders" or (
+            command.type not in {"set_stance", "toggle_inhibitor", "toggle_cloaking"}
+            and not command.queue
+        ):
+            for unit in units:
+                self._release_reservations(unit.id)
+                self._cargo[unit.id] = self._live_cargo(unit)
+
+    def cargo_for(self, unit: Any) -> float:
+        if unit.id not in self._cargo:
+            self._cargo[unit.id] = self._queued_cargo(unit)
+        return self._cargo[unit.id]
+
+    def validate_load(self, command: Any, units: list[Any], body: Any) -> None:
+        amount = float(command.amount or 0)
+        if amount <= 0:
+            raise _Rejected("invalid_value", "load_colonists requires a positive amount.")
+        for unit in units:
+            self.cargo_for(unit)
+        available = self._source_population.setdefault(
+            body.id, float(getattr(body, "population", 0))
+        )
+        required = amount * len(units)
+        if required > available:
+            raise _Rejected(
+                "insufficient_population",
+                f"Body {body.id} has only {available:g} colonists available; "
+                f"this command requires {required:g}.",
+            )
+        for unit in units:
+            colony = unit.colony_component
+            capacity = float(getattr(colony, "max_cargo", 0))
+            remaining = capacity - self.cargo_for(unit)
+            if amount > remaining:
+                raise _Rejected(
+                    "insufficient_capacity",
+                    f"Unit {unit.id} can load at most {max(0, remaining):g} colonists.",
+                )
+
+    def validate_construct(self, command: Any, units: list[Any]) -> None:
+        if not command.template_name:
+            return
+        costs = []
+        for unit in units:
+            constructor = getattr(unit, "constructor_component", None)
+            buildable = (
+                constructor.can_build(command.template_name) if constructor else None
+            )
+            if buildable is not None:
+                costs.append(float(buildable.cost_credits))
+        required = sum(costs)
+        if required > self._credits:
+            raise _Rejected(
+                "insufficient_resources",
+                f"Construction requires {required:g} credits but only "
+                f"{self._credits:g} remain in this batch.",
+            )
+
+    def validate_dock(self, command: Any, units: list[Any], target: Any) -> None:
+        components = [compatible_docking_component(unit, target) for unit in units]
+        if any(component is None for component in components):
+            raise _Rejected(
+                "invalid_target",
+                "The docking target has no compatible free carrier slots.",
+            )
+        component = components[0]
+        if any(candidate is not component for candidate in components):
+            raise _Rejected(
+                "invalid_target", "The selected units require different carrier bays."
+            )
+        key = id(component)
+        available = self._docking_slots.setdefault(
+            key,
+            int(getattr(component, "max_slots", 0))
+            - int(component.get_used_slots()),
+        )
+        if len(units) > available:
+            raise _Rejected(
+                "insufficient_capacity",
+                f"The docking target has only {available} compatible slots available.",
+            )
+
+    def record(self, command: Any, units: list[Any]) -> None:
+        if command.type == "load_colonists":
+            amount = float(command.amount or 0)
+            body = self.game.galaxy.get_celestial_body_by_id(command.target_id)
+            if body is not None:
+                self._source_population[body.id] = (
+                    self._source_population.get(
+                        body.id, float(getattr(body, "population", 0))
+                    )
+                    - amount * len(units)
+                )
+            for unit in units:
+                self._cargo[unit.id] = self.cargo_for(unit) + amount
+                self._reserve(unit.id, "population", body.id, amount)
+        elif command.type == "colonize":
+            for unit in units:
+                self._cargo[unit.id] = 0.0
+        elif command.type == "construct" and command.template_name:
+            for unit in units:
+                buildable = unit.constructor_component.can_build(command.template_name)
+                if buildable is not None:
+                    cost = float(buildable.cost_credits)
+                    self._credits -= cost
+                    self._reserve(unit.id, "credits", 0, cost)
+        elif command.type == "dock":
+            target = self.game.galaxy.get_unit_by_id(command.target_id)
+            if target is not None and units:
+                component = compatible_docking_component(units[0], target)
+                if component is not None:
+                    key = id(component)
+                    self._docking_slots[key] = self._docking_slots.get(
+                        key,
+                        int(getattr(component, "max_slots", 0))
+                        - int(component.get_used_slots()),
+                    ) - len(units)
+                    for unit in units:
+                        self._reserve(unit.id, "docking", key, 1)
+
+    @staticmethod
+    def _live_cargo(unit: Any) -> float:
+        return float(
+            getattr(getattr(unit, "colony_component", None), "population_cargo", 0)
+        )
+
+    def _queued_cargo(self, unit: Any) -> float:
+        cargo = self._live_cargo(unit)
+        commander = getattr(unit, "commander_component", None)
+        orders = []
+        current = getattr(commander, "current_order", None)
+        if current is not None:
+            orders.append(current)
+        orders.extend(list(getattr(commander, "orders_queue", []) or []))
+        for order in orders:
+            order_type = getattr(getattr(order, "order_type", None), "name", "")
+            status = getattr(getattr(order, "status", None), "name", "")
+            if status not in {"PENDING", "IN_PROGRESS"}:
+                continue
+            if order_type == "LOAD_COLONISTS":
+                parameters = getattr(order, "parameters", {})
+                amount = float(parameters.get("amount", 0))
+                cargo += amount
+                if unit.id not in self._orders_scanned:
+                    source_id = parameters.get("target_id")
+                    source = self.game.galaxy.get_celestial_body_by_id(source_id)
+                    if source is not None and amount > 0:
+                        self._source_population.setdefault(
+                            source.id, float(getattr(source, "population", 0))
+                        )
+                        self._source_population[source.id] -= amount
+                        self._reserve(unit.id, "population", source.id, amount)
+            elif order_type == "COLONIZE":
+                cargo = 0.0
+        self._orders_scanned.add(unit.id)
+        return cargo
+
+    def _reserve(self, unit_id: int, kind: str, key: int, amount: float) -> None:
+        self._reservations.setdefault(unit_id, []).append((kind, key, amount))
+
+    def _release_reservations(self, unit_id: int) -> None:
+        for kind, key, amount in self._reservations.pop(unit_id, []):
+            if kind == "population":
+                self._source_population[key] = self._source_population.get(key, 0) + amount
+            elif kind == "credits":
+                self._credits += amount
+            elif kind == "docking":
+                self._docking_slots[key] = self._docking_slots.get(key, 0) + int(amount)
+
+
 class CommandGateway:
     """Preflight a complete batch, then commit it on the game thread."""
 
@@ -44,9 +237,15 @@ class CommandGateway:
     def apply_batch(self, player: Any, batch: CommandBatch) -> CommandResult:
         prepared: list[_Prepared] = []
         errors: list[CommandError] = []
+        projection = _BatchProjection(self.game, player)
         for index, command in enumerate(batch.commands):
             try:
-                prepared.extend(self._prepare(player, command))
+                units = self._owned_units(player, command.unit_ids)
+                if not units:
+                    raise _Rejected("no_units", "At least one owned unit ID is required.")
+                projection.before(command, units)
+                prepared.extend(self._prepare(player, command, units, projection))
+                projection.record(command, units)
             except _Rejected as exc:
                 errors.append(CommandError(index, exc.code, str(exc)))
             except Exception:
@@ -58,7 +257,12 @@ class CommandGateway:
                     )
                 )
         if errors:
-            return CommandResult(accepted=False, errors=tuple(errors))
+            return CommandResult(
+                accepted=False,
+                errors=tuple(errors),
+                failure_stage="preflight",
+                retryable=True,
+            )
 
         try:
             for operation in prepared:
@@ -73,6 +277,8 @@ class CommandGateway:
                         f"The game rejected the prepared command batch: {exc}",
                     ),
                 ),
+                failure_stage="commit",
+                retryable=False,
             )
         if hasattr(self.game, "sidebar_needs_update"):
             self.game.sidebar_needs_update = True
@@ -82,13 +288,17 @@ class CommandGateway:
             accepted=True,
             applied_count=len(prepared),
             receipts=tuple(operation.receipt for operation in prepared),
+            failure_stage=None,
+            retryable=False,
         )
 
-    def _prepare(self, player: Any, command: Any) -> list[_Prepared]:
-        units = self._owned_units(player, command.unit_ids)
-        if not units:
-            raise _Rejected("no_units", "At least one owned unit ID is required.")
-
+    def _prepare(
+        self,
+        player: Any,
+        command: Any,
+        units: list[Any],
+        projection: _BatchProjection,
+    ) -> list[_Prepared]:
         if command.type == "cancel_orders":
             return [
                 _Prepared(
@@ -106,10 +316,19 @@ class CommandGateway:
             return self._prepare_cloaking(units)
 
         order_factory, receipt_action = self._order_factory(player, command)
+        if command.type == "load_colonists":
+            target_body = self._body(command.target_id)
+            projection.validate_load(command, units, target_body)
+        elif command.type == "construct":
+            projection.validate_construct(command, units)
+        elif command.type == "dock":
+            projection.validate_dock(
+                command, units, self._visible_unit(player, command.target_id)
+            )
         operations = []
         for unit in units:
             self._require_capability(unit, command.type)
-            self._validate_unit_command(unit, command)
+            self._validate_unit_command(unit, command, projection)
             order = order_factory(unit)
 
             def apply(unit=unit, order=order, queue=command.queue):
@@ -195,6 +414,10 @@ class CommandGateway:
                 f"Protect {target_unit.name}",
             )
         if command.type == "colonize":
+            if not is_colonizable_body(target_body):
+                raise _Rejected(
+                    "invalid_target", "The colonization target is not a habitable body."
+                )
             if getattr(target_body, "owner", None) is not None:
                 raise _Rejected("invalid_target", "The colonization target is already owned.")
             return (
@@ -205,7 +428,14 @@ class CommandGateway:
                 f"Colonize {target_body.name}",
             )
         if command.type == "load_colonists":
-            self._require_friendly(player, getattr(target_body, "owner", None))
+            if not is_colonizable_body(target_body):
+                raise _Rejected(
+                    "invalid_target", "Colonists can only be loaded from a colony body."
+                )
+            if not is_self_owned(player, getattr(target_body, "owner", None)):
+                raise _Rejected(
+                    "invalid_relation", "Colonists must be loaded from a self-owned body."
+                )
             if command.amount is None or command.amount <= 0:
                 raise _Rejected("invalid_value", "load_colonists requires a positive amount.")
             return (
@@ -242,6 +472,8 @@ class CommandGateway:
                 f"Repair {target_unit.name}",
             )
         if command.type in {"mine", "continuous_mine"}:
+            if not is_mining_target(target_body):
+                raise _Rejected("invalid_target", "The mining target is not mineable.")
             cls = MineOrder if command.type == "mine" else ContinuousMineOrder
             return (
                 lambda unit: cls(unit, {"target_id": target_body.id}),
@@ -249,6 +481,11 @@ class CommandGateway:
             )
         if command.type == "unload_resources":
             self._require_friendly(player, target_unit)
+            if not (
+                getattr(target_unit, "metal_refinery_component", None)
+                or getattr(target_unit, "crystal_refinery_component", None)
+            ):
+                raise _Rejected("invalid_target", "The unload target is not a refinery.")
             return (
                 lambda unit: UnloadResourcesOrder(
                     unit, {"target_unit_id": target_unit.id}
@@ -257,11 +494,14 @@ class CommandGateway:
             )
         if command.type == "dock":
             self._require_friendly(player, target_unit)
-            if not (
-                getattr(target_unit, "hangar_component", None)
-                or getattr(target_unit, "strikecraft_bay_component", None)
+            if not all(
+                compatible_docking_component(unit, target_unit) is not None
+                for unit in self._owned_units(player, command.unit_ids)
             ):
-                raise _Rejected("invalid_target", "The docking target is not a carrier.")
+                raise _Rejected(
+                    "invalid_target",
+                    "The docking target has no compatible free carrier slots.",
+                )
             return (
                 lambda unit: DockOrder(unit, {"target_carrier_id": target_unit.id}),
                 f"Dock with {target_unit.name}",
@@ -279,6 +519,17 @@ class CommandGateway:
             return (lambda unit: DeployAllWingsOrder(unit), "Deploy all wings")
         if command.type == "transfer_antimatter":
             self._require_friendly(player, target_unit)
+            target_storage = getattr(target_unit, "antimatter_component", None)
+            if target_storage is None:
+                raise _Rejected(
+                    "invalid_target", "The transfer target has no antimatter storage."
+                )
+            if float(getattr(target_storage, "current_amount", 0)) >= float(
+                getattr(target_storage, "max_capacity", 0)
+            ):
+                raise _Rejected(
+                    "invalid_target", "The transfer target's antimatter storage is full."
+                )
             return (
                 lambda unit: TransferAntimatterOrder(
                     unit, {"target_unit_id": target_unit.id}
@@ -286,6 +537,8 @@ class CommandGateway:
                 f"Transfer antimatter to {target_unit.name}",
             )
         if command.type == "continuous_resupply":
+            if not is_star(target_body):
+                raise _Rejected("invalid_target", "The resupply target is not a star.")
             return (
                 lambda unit: ContinuousResupplyOrder(
                     unit,
@@ -486,12 +739,18 @@ class CommandGateway:
                 f"Unit {unit.id} cannot perform {command_type}.",
             )
 
-    def _validate_unit_command(self, unit: Any, command: Any) -> None:
+    def _validate_unit_command(
+        self, unit: Any, command: Any, projection: _BatchProjection
+    ) -> None:
         if command.type == "colonize":
-            colony = unit.colony_component
-            if getattr(colony, "population_cargo", 0) <= 0:
+            if projection.cargo_for(unit) <= 0:
+                queue_hint = (
+                    " Queue a valid load_colonists command before colonize with "
+                    "colonize.queue=true, or omit colonize this turn."
+                )
                 raise _Rejected(
-                    "capability_unavailable", f"Unit {unit.id} has no colonists."
+                    "capability_unavailable",
+                    f"Unit {unit.id} has no colonists.{queue_hint}",
                 )
         elif command.type == "construct":
             constructor = unit.constructor_component
@@ -501,7 +760,7 @@ class CommandGateway:
                 )
         elif command.type == "dock":
             hull = getattr(getattr(unit, "hull_size", None), "name", "").lower()
-            if hull not in {"tiny", "small"}:
+            if hull not in {"tiny", "strikecraft_wing"}:
                 raise _Rejected(
                     "capability_unavailable", f"Unit {unit.id} is too large to dock."
                 )
@@ -528,6 +787,12 @@ class CommandGateway:
             if storage is None or getattr(storage, "current_amount", 0) <= 0:
                 raise _Rejected(
                     "capability_unavailable", f"Unit {unit.id} has no antimatter to transfer."
+                )
+        elif command.type == "continuous_resupply":
+            if getattr(unit, "antimatter_component", None) is None:
+                raise _Rejected(
+                    "capability_unavailable",
+                    f"Unit {unit.id} has no antimatter storage for resupply.",
                 )
         elif command.type == "use_ability":
             from unit_components import AbilityType

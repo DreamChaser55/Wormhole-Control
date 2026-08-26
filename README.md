@@ -147,7 +147,24 @@ and 40-command turn limit, so the selected level changes only Luna's reasoning
 effort. Older saves migrate Fast, Balanced, and Strategic selections to Low,
 Medium, and High respectively when loaded.
 
-Planning runs outside the Pygame thread. Returned command batches are preflighted against the same visibility-limited observation before the game is mutated. Open **AI Settings** from the in-game pause menu to configure 1–5 repair retries separately for each AI player (2 by default). A retry is an additional model request after the initial output, changes take effect on that AI's next turn, and the setting persists with normal game saves. After the configured retries are exhausted, API or validation failures leave the End Turn button available for manual recovery.
+Planning runs outside the Pygame thread. The version-2 observation distinguishes
+hardware-supported commands from currently legal actions, supplies bounded option
+lists, and keeps remote systems compact until friendly forces approach them.
+Returned command batches are preflighted atomically before the game is mutated;
+ordered dependencies such as loading colonists and then queueing colonization are
+validated together.
+
+Open **AI Settings** from the in-game pause menu to configure 1–5 repair retries
+separately for each AI player (2 by default). A retry is an additional model
+request after the initial output and receives the immediately preceding rejected
+plan plus its exact validation errors. Changes take effect on that AI's next turn
+and persist with normal game saves. The selected reasoning effort is retained for
+repairs. After the configured retries are exhausted, failures leave the End Turn
+button available for manual recovery.
+Each planning attempt writes bounded operational telemetry (model, reasoning,
+usage, latency, command summaries, validation errors, and retry outcome) without
+persisting prompts, observations, memory, analysis, raw model output, or SDK
+request bodies.
 
 See [Agentic AI Architecture](docs/AGENTIC_AI.md) for the full design and evaluation workflow.
 

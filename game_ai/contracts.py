@@ -63,7 +63,7 @@ class Command:
             raise ContractError("Each command must be an object.")
         command_type = raw.get("type")
         if command_type not in SUPPORTED_COMMANDS:
-            raise ContractError(f"Unsupported command type: {command_type!r}")
+            raise ContractError("Unsupported command type.")
 
         ids = raw.get("unit_ids") or []
         if not isinstance(ids, Sequence) or isinstance(ids, (str, bytes)):

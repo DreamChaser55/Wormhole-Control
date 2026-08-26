@@ -16,9 +16,10 @@ files, or arbitrary tools.
 4. The coordinator polls the future from `Game.update`.
 5. `CommandGateway` preflights the entire batch. Hidden and nonexistent targets
    deliberately return the same `target_unavailable` error.
-6. Accepted orders are committed on the Pygame thread. A rejected batch gets
-   another semantic repair request while the active AI player's snapshotted
-   retry budget remains; exhaustion becomes a recoverable UI error.
+6. Accepted orders are committed on the Pygame thread. A retryable rejection
+   gets another semantic request containing the immediately preceding plan and
+   its exact errors while the active AI player's snapshotted budget remains.
+   Commit and transport failures are not semantically retried.
 7. The memory patch and execution receipts are bounded, persisted, and the turn
    ends.
 
@@ -31,13 +32,22 @@ providers by default, so they do not consume API credits.
 player. It includes:
 
 - the active player's economy;
-- public system topology and celestial bodies;
+- public system topology, navigation anchors, detailed nearby bodies, and
+  summaries of remote neutral bodies;
 - owned and allied units;
 - enemy units only when detailed visibility permits them;
 - visible minefields;
 - undetailed enemy-presence hexes without count, identity, owner, or strength;
-- per-owned-unit legal actions, ability state, stances, cargo, construction
-  choices, and other public capability details.
+- per-owned-unit supported commands, currently legal commands, conditional
+  command sequences, bounded option values, ability state, cargo, and other
+  public capability details;
+- one deduplicated construction-template catalog.
+
+Observation schema 2 gives full body detail in systems containing friendly
+units, adjacent systems, and systems with visible enemy activity. Remote systems
+retain exact stars and colonized bodies while neutral objects are summarized.
+The model can move toward a system navigation anchor to receive exact target IDs
+on a later turn.
 
 The observation intentionally excludes enemy resources and hidden entity IDs.
 The command gateway independently recomputes visibility for enemy targets, so a
@@ -46,8 +56,10 @@ fabricated or remembered hidden ID cannot bypass fog of war.
 ## OpenAI adapter
 
 The adapter uses the current Responses API and strict `text.format` JSON Schema.
-It does not enable model tools and does not chain response IDs. Each turn is
-self-contained from the observation plus canonical memory.
+It does not enable model tools and does not chain response IDs. The initial
+request is self-contained from the observation plus canonical memory. Repair
+requests additionally include the latest rejected plan and errors; rejected
+memory patches are never applied.
 
 The Luna-only runtime is defined in `game_ai/runtime.py`:
 
@@ -89,6 +101,12 @@ colonization, colonist loading, construction, repair, mining, continuous
 mining, unloading, docking and carrier deployment, antimatter transfer/resupply, minefields, trade,
 continuous trade, stances, inhibitor/cloaking toggles, and abilities.
 
+The observation and gateway share side-effect-free legality rules. The gateway
+also projects guaranteed effects through a batch, allowing a valid
+`load_colonists` command to satisfy a later `colonize` command for the same unit
+when colonization is queued. A replacing command does not retain that projected
+prerequisite. The complete batch remains atomic at preflight.
+
 Retrofit remains a human editor transaction because it requires a versioned
 component-configuration schema and dynamic cost preview. Intelligence agent
 operations likewise remain on the engine/UI path until their hidden-information
@@ -98,16 +116,23 @@ model.
 ## Failure behavior
 
 - SDK retries transient transport failures up to two times.
-- Invalid command batches receive 1–5 model repair retries, configured per AI
-  player from the in-game **AI Settings** dialog and defaulting to 2. The
-  initial submission is not counted as a retry.
+- Invalid command batches and malformed model outputs receive 1–5 semantic
+  repair retries, configured per AI player from the in-game **AI Settings**
+  dialog and defaulting to 2. The initial submission is not counted as a retry.
+- Each semantic repair is a complete replacement response made with the
+  player's selected reasoning effort. The retry budget is not sent to the
+  model.
+- Transport, authentication, quota, timeout, and commit failures do not consume
+  semantic repairs.
 - The retry limit is snapshotted when an AI turn begins, so in-match edits take
   effect on that AI player's next turn.
 - Stale responses are discarded when campaign, agent, or turn changes.
 - On final failure, the error is shown and End Turn is re-enabled.
-- The API key and prompt contents are never logged.
-- Token counts, latency, model, response ID, and command outcomes are appended
-  to ignored `saves/ai_telemetry.jsonl`.
+- Third-party SDK request-body logging is suppressed; API keys, observations,
+  memory, prompts, analysis, and raw model output are never logged.
+- Every attempt appends bounded telemetry to ignored
+  `saves/ai_telemetry.jsonl`, including attempt index, model, reasoning, token
+  use, latency, command summaries, errors, and whether another retry followed.
 
 ## Evaluation
 
@@ -121,5 +146,13 @@ model.
 
 Inject `FakePlanningProvider` for deterministic CI. Live reasoning-effort
 comparisons are explicitly opt-in by constructing `OpenAIResponsesProvider`.
+`colony_opening_case` reproduces the zero-cargo opening decision, and
+`compare_reasoning_efforts` runs the same fixed cases at Low, Medium, and High
+without changing production settings.
+For an end-to-end semantic comparison, `colony_opening_gateway_case` builds a
+fresh executable game fixture for each run and `compare_gateway_reasoning_efforts`
+reports real gateway acceptance, attempts, repairs used, aggregate latency, and
+input/output tokens at each reasoning effort. Transport and commit failures are
+not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.

@@ -13,7 +13,7 @@ from game_ai.runtime import AgentRuntimeConfig
 from game_ai.prompts import SYSTEM_INSTRUCTIONS
 from game_ai.schema import responses_text_config
 
-from .base import PlanningRequest, PlanningResult
+from .base import PlanningOutputError, PlanningRequest, PlanningResult
 
 
 class OpenAIResponsesProvider:
@@ -57,24 +57,57 @@ class OpenAIResponsesProvider:
                 "turn": str(request.turn_number),
             },
             safety_identifier=_safe_identifier(request.agent_id),
-            prompt_cache_key="wormhole-control-turn-v1",
+            prompt_cache_key="wormhole-control-turn-v2",
         )
+        latency_seconds = perf_counter() - started
+        response_id = getattr(response, "id", None)
+        usage = _usage_dict(getattr(response, "usage", None))
         output_text = getattr(response, "output_text", None)
         if not output_text:
-            raise RuntimeError("OpenAI returned no structured turn output.")
+            raise PlanningOutputError(
+                "missing_output",
+                "OpenAI returned no structured turn output.",
+                provider="openai",
+                model=runtime_config.model,
+                reasoning_effort=runtime_config.reasoning_effort,
+                response_id=response_id,
+                usage=usage,
+                latency_seconds=latency_seconds,
+            )
         try:
             raw = json.loads(output_text)
         except json.JSONDecodeError as exc:
-            raise ContractError("OpenAI returned invalid JSON.") from exc
-        plan = TurnPlan.from_dict(raw, max_commands=runtime_config.max_commands)
+            raise PlanningOutputError(
+                "invalid_json",
+                "OpenAI returned invalid JSON.",
+                provider="openai",
+                model=runtime_config.model,
+                reasoning_effort=runtime_config.reasoning_effort,
+                response_id=response_id,
+                usage=usage,
+                latency_seconds=latency_seconds,
+            ) from exc
+        try:
+            plan = TurnPlan.from_dict(raw, max_commands=runtime_config.max_commands)
+        except ContractError as exc:
+            raise PlanningOutputError(
+                "invalid_contract",
+                str(exc),
+                provider="openai",
+                model=runtime_config.model,
+                reasoning_effort=runtime_config.reasoning_effort,
+                response_id=response_id,
+                usage=usage,
+                latency_seconds=latency_seconds,
+            ) from exc
         return PlanningResult(
             plan=plan,
             provider="openai",
             model=runtime_config.model,
             reasoning_effort=runtime_config.reasoning_effort,
-            response_id=getattr(response, "id", None),
-            usage=_usage_dict(getattr(response, "usage", None)),
-            latency_seconds=perf_counter() - started,
+            response_id=response_id,
+            usage=usage,
+            latency_seconds=latency_seconds,
         )
 
 
