@@ -131,7 +131,7 @@ class NewGameWizard:
         self._player_is_human: typing.List[bool] = []
         self._player_ai_reasoning_efforts: typing.List[str] = []
         self._player_team_buttons: typing.List[pygame_gui.elements.UIButton] = []
-        self._player_teams: typing.List[int] = [1, 2, 2]
+        self._player_teams: typing.List[int] = [1, 2, 3]
 
         # Slider references (value read via .get_current_value())
         self._num_systems_slider: typing.Optional[pygame_gui.elements.UIHorizontalSlider] = None
@@ -429,23 +429,24 @@ class NewGameWizard:
         # Human / AI toggle button
         human_btn_w = self._sx(96)
         human_x = color_x + color_block_w + self._sx(8)
-        is_human = True
+        is_human = (index == 0)
+        reasoning_effort = "medium" if is_human else "low"
         btn = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(human_x, y, human_btn_w, row_h),
-            text="Human",
+            text=self._player_type_label(is_human, reasoning_effort),
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_type_button_{index}",
         )
         self._player_human_buttons.append(btn)
         self._player_is_human.append(is_human)
-        self._player_ai_reasoning_efforts.append("medium")
+        self._player_ai_reasoning_efforts.append(reasoning_effort)
 
         # Team selector button (cycles Team 1 -> Team 2 -> ...)
         team_btn_w = self._sx(72)
         team_x = human_x + human_btn_w + self._sx(8)
         if index >= len(self._player_teams):
-            self._player_teams.append(2 if index > 0 else 1)
+            self._player_teams.append(index + 1)
         team_num = self._player_teams[index]
         team_btn = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(team_x, y, team_btn_w, row_h),

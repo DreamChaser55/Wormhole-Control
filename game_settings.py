@@ -52,8 +52,8 @@ def _default_player_configs() -> typing.List[PlayerConfig]:
     """Returns the three default player configurations."""
     return [
         PlayerConfig("Player 1", PLAYER_COLOR_PALETTE[0][1], is_human=True, team_id=1),
-        PlayerConfig("Player 2", PLAYER_COLOR_PALETTE[1][1], is_human=True, team_id=2),
-        PlayerConfig("Player 3", PLAYER_COLOR_PALETTE[2][1], is_human=True, team_id=2),
+        PlayerConfig("Player 2", PLAYER_COLOR_PALETTE[1][1], is_human=False, team_id=2, ai_reasoning_effort="low"),
+        PlayerConfig("Player 3", PLAYER_COLOR_PALETTE[2][1], is_human=False, team_id=3, ai_reasoning_effort="low"),
     ]
 
 
