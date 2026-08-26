@@ -220,6 +220,43 @@ def test_inhibition_field():
     assert not success_overlap_fail
     assert not emitter.is_active
 
+
+def test_inhibitor_state_check_reports_bounded_failure_codes():
+    unit = MockUnit()
+    emitter = HyperspaceInhibitionFieldEmitter(unit, radius=100.0)
+    mock_hex = MagicMock()
+    mock_hex.boundary_circle = Circle(Position(0, 0), 500.0)
+    mock_hex.dynamic_inhibition_zones = {}
+    mock_hex.get_all_inhibition_zones.return_value = []
+    galaxy = MagicMock()
+    galaxy.systems = {"Sol": MagicMock(hexes={(0, 0): mock_hex})}
+
+    assert emitter.check_state_change(True, galaxy).allowed
+
+    unit.position = Position(450, 0)
+    boundary = emitter.check_state_change(True, galaxy)
+    assert not boundary.allowed
+    assert boundary.code == "inhibitor_out_of_bounds"
+
+    unit.position = Position(0, 0)
+    mock_hex.get_all_inhibition_zones.return_value = [
+        Circle(Position(50, 0), 100.0)
+    ]
+    overlap = emitter.check_state_change(True, galaxy)
+    assert not overlap.allowed
+    assert overlap.code == "inhibitor_overlap"
+
+    unit.in_hex = None
+    unavailable = emitter.check_state_change(True, galaxy)
+    assert not unavailable.allowed
+    assert unavailable.code == "inhibitor_unavailable"
+
+    unit.in_hex = (0, 0)
+    emitter.current_hit_points = 0
+    destroyed = emitter.check_state_change(True, galaxy)
+    assert not destroyed.allowed
+    assert destroyed.code == "inhibitor_unavailable"
+
 def test_commander():
     unit = MockUnit()
     commander = Commander(unit)
@@ -1179,7 +1216,6 @@ def test_allowed_stances_restriction():
     commander.stance = UnitStance.ATTACK_SAME_SYSTEM
     commander.process_stance()
     assert commander.stance == UnitStance.ATTACK_SAME_SYSTEM
-
 
 
 

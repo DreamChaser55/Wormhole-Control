@@ -274,11 +274,20 @@ def command_guidance(
         }
         legal.add("lay_minefield")
 
-    for command_type in (
-        "toggle_inhibitor",
-        "toggle_cloaking",
-        "continuous_trade",
-    ):
+    inhibitor = getattr(unit, "inhibitor_component", None)
+    if "toggle_inhibitor" in supported and inhibitor is not None:
+        is_active = bool(getattr(inhibitor, "is_active", False))
+        check = inhibitor.check_state_change(not is_active, game.galaxy)
+        options["toggle_inhibitor"] = {
+            "current_state": "active" if is_active else "inactive",
+            "resulting_state": "inactive" if is_active else "active",
+            "available": check.allowed,
+            "unavailable_reason": None if check.allowed else check.code,
+        }
+        if check.allowed:
+            legal.add("toggle_inhibitor")
+
+    for command_type in ("toggle_cloaking", "continuous_trade"):
         if command_type in supported:
             legal.add(command_type)
 

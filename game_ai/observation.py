@@ -38,7 +38,10 @@ COMMAND_HELP = {
     "trade": "Trade once with active habitat unit target_id.",
     "continuous_trade": "Autonomously repeat trade routes.",
     "set_stance": "Set one of the listed stance values.",
-    "toggle_inhibitor": "Toggle the unit's hyperspace inhibitor.",
+    "toggle_inhibitor": (
+        "Flip the unit's hyperspace inhibitor to the resulting_state listed in "
+        "command_options; activation is legal only when its field fits and does not overlap."
+    ),
     "toggle_cloaking": "Toggle the unit's cloaking device.",
     "use_ability": "Use ability; target_id and/or position depend on ability.",
 }
@@ -156,7 +159,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -258,7 +261,7 @@ def _unit_view(
         data["command_options"] = options
         data["conditional_commands"] = conditional
         data["ability_states"] = ability_states(unit)
-        data["capability_details"] = _capability_details(unit)
+        data["capability_details"] = _capability_details(unit, game)
     return data
 
 
@@ -304,7 +307,7 @@ def _minefield_view(minefield: Any, viewer: Any) -> dict[str, Any]:
     }
 
 
-def _capability_details(unit: Any) -> dict[str, Any]:
+def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     commander = getattr(unit, "commander_component", None)
     details: dict[str, Any] = {
         "allowed_stances": [
@@ -346,6 +349,25 @@ def _capability_details(unit: Any) -> dict[str, Any]:
                 buildable.unit_template_name
                 for buildable in getattr(constructor, "buildable_units", [])
             ]
+        }
+    inhibitor = getattr(unit, "inhibitor_component", None)
+    if inhibitor is not None:
+        is_active = bool(getattr(inhibitor, "is_active", False))
+        activation_check = (
+            None
+            if is_active
+            else inhibitor.check_state_change(True, game.galaxy)
+        )
+        details["inhibitor"] = {
+            "is_active": is_active,
+            "radius": _rounded(getattr(inhibitor, "radius", 0)),
+            "antimatter_cost_per_turn": _rounded(
+                inhibitor.get_antimatter_cost_per_turn()
+            ),
+            "can_activate": not is_active and bool(activation_check.allowed),
+            "activation_blocker": (
+                None if is_active or activation_check.allowed else activation_check.code
+            ),
         }
     for name, component_name in (
         ("repair", "repair_component"),

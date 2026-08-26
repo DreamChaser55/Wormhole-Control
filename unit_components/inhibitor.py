@@ -1,9 +1,11 @@
 import logging
-from typing import TYPE_CHECKING
+from typing import Any, Iterable, Optional, TYPE_CHECKING
 import dataclasses
 
-from .base import UnitComponent
+from geometry import Circle, do_circles_intersect, is_circle_contained
+
 from constants import INHIBITOR_RADIUS_PER_HULL_POINT, INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS
+from .base import UnitComponent
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -11,6 +13,17 @@ if TYPE_CHECKING:
     from game import Game
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass(frozen=True)
+class InhibitorStateCheck:
+    """Side-effect-free result for a requested inhibitor state change."""
+
+    allowed: bool
+    code: Optional[str] = None
+    message: str = ""
+    proposed_field: Optional[Circle] = None
+
 
 class HyperspaceInhibitionFieldEmitter(UnitComponent):
     """A component that generates a hyperspace inhibition field, preventing jumps."""
@@ -109,6 +122,91 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         if self.is_active:
             self.turn_off()
 
+    def check_state_change(
+        self,
+        turn_on: bool,
+        galaxy_ref: 'Galaxy',
+        *,
+        existing_zones: Optional[Iterable[Circle]] = None,
+    ) -> InhibitorStateCheck:
+        """Validate a requested state without changing authoritative game state."""
+        if self.is_destroyed:
+            return InhibitorStateCheck(
+                False,
+                "inhibitor_unavailable",
+                "The inhibitor component is destroyed.",
+            )
+
+        current_hex = self._current_hex(galaxy_ref)
+        if current_hex is None:
+            return InhibitorStateCheck(
+                False,
+                "inhibitor_unavailable",
+                "The unit does not have a valid sector location.",
+            )
+
+        if not turn_on:
+            return InhibitorStateCheck(True)
+
+        proposed_field = Circle(center=self.unit.position, radius=self.radius)
+        if not is_circle_contained(proposed_field, current_hex.boundary_circle):
+            return InhibitorStateCheck(
+                False,
+                "inhibitor_out_of_bounds",
+                "The inhibitor field would cross the sector boundary.",
+                proposed_field,
+            )
+
+        zones = (
+            list(existing_zones)
+            if existing_zones is not None
+            else current_hex.get_all_inhibition_zones()
+        )
+        if any(do_circles_intersect(proposed_field, zone) for zone in zones):
+            return InhibitorStateCheck(
+                False,
+                "inhibitor_overlap",
+                "The inhibitor field would overlap an existing inhibition zone.",
+                proposed_field,
+            )
+
+        return InhibitorStateCheck(True, proposed_field=proposed_field)
+
+    def set_active(self, turn_on: bool, galaxy_ref: 'Galaxy') -> InhibitorStateCheck:
+        """Apply an explicitly requested state after authoritative validation."""
+        check = self.check_state_change(turn_on, galaxy_ref)
+        if not check.allowed:
+            logger.debug(
+                "[%s] SET_INHIBITOR: FAILED (%s).",
+                self.unit.name,
+                check.message,
+            )
+            return check
+
+        current_hex = self._current_hex(galaxy_ref)
+        if current_hex is None:
+            return InhibitorStateCheck(
+                False,
+                "inhibitor_unavailable",
+                "The unit does not have a valid sector location.",
+            )
+
+        if turn_on:
+            self.turn_on()
+            current_hex.dynamic_inhibition_zones[self.unit.id] = check.proposed_field
+        else:
+            current_hex.dynamic_inhibition_zones.pop(self.unit.id, None)
+            self.turn_off()
+        return check
+
+    def _current_hex(self, galaxy_ref: 'Galaxy') -> Any | None:
+        if not galaxy_ref or not self.unit.in_system or self.unit.in_hex is None:
+            return None
+        system = getattr(galaxy_ref, "systems", {}).get(self.unit.in_system)
+        if system is None:
+            return None
+        return getattr(system, "hexes", {}).get(self.unit.in_hex)
+
     def toggle(self, galaxy_ref: 'Galaxy') -> bool:
         """
         Directly toggles the hyperspace inhibition field on or off, performing
@@ -134,35 +232,4 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
                   boundary or overlapping with another field), or if the unit's
                   location data is invalid.
         """
-        from geometry import Circle, is_circle_contained, do_circles_intersect
-
-        if not galaxy_ref or not self.unit.in_system or self.unit.in_hex is None:
-            return False
-
-        if self.is_destroyed:
-            return False
-
-        current_hex = galaxy_ref.systems[self.unit.in_system].hexes[self.unit.in_hex]
-        
-        if self.is_active:
-            # Deactivate the field and clean up spatial registration.
-            if self.unit.id in current_hex.dynamic_inhibition_zones:
-                del current_hex.dynamic_inhibition_zones[self.unit.id]
-            self.turn_off()
-            return True
-        else:
-            # Activate the field after checking sector boundaries and overlap constraints.
-            proposed_field = Circle(center=self.unit.position, radius=self.radius)
-
-            if not is_circle_contained(proposed_field, current_hex.boundary_circle):
-                logger.debug(f"[{self.unit.name}] TOGGLE_INHIBITOR (Direct): FAILED (field would cross sector boundary).")
-                return False
-
-            for existing_zone in current_hex.get_all_inhibition_zones():
-                if do_circles_intersect(proposed_field, existing_zone):
-                    logger.debug(f"[{self.unit.name}] TOGGLE_INHIBITOR (Direct): FAILED (field would overlap with another).")
-                    return False
-            
-            self.turn_on()
-            current_hex.dynamic_inhibition_zones[self.unit.id] = proposed_field
-            return True
+        return self.set_active(not self.is_active, galaxy_ref).allowed

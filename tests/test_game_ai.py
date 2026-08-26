@@ -24,6 +24,7 @@ from game_ai.evaluation import (
     colony_opening_gateway_case,
     compare_gateway_reasoning_efforts,
     compare_reasoning_efforts,
+    inhibitor_overlap_case,
     run_evaluation,
     score_plan,
 )
@@ -398,6 +399,67 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         )
         return player, units, source, target, game
 
+    @staticmethod
+    def _inhibitor_fixture(
+        *, positions=((0, 0),), active_ids=(), static_zones=()
+    ):
+        from geometry import Circle, Position
+        from unit_components import HyperspaceInhibitionFieldEmitter
+
+        player = _Player(1, 1)
+        units = [_unit(10 + index, player) for index in range(len(positions))]
+        for unit, position in zip(units, positions):
+            unit.position = Position(*position)
+            component = HyperspaceInhibitionFieldEmitter(unit, radius=100.0)
+            unit.inhibitor_component = component
+            unit.components = {HyperspaceInhibitionFieldEmitter: component}
+
+        hex_obj = SimpleNamespace(
+            boundary_circle=Circle(Position(0, 0), 500.0),
+            static_inhibition_zones=list(static_zones),
+            dynamic_inhibition_zones={},
+            celestial_bodies=[],
+            units=units,
+            minefields=[],
+        )
+        hex_obj.get_all_inhibition_zones = lambda: (
+            hex_obj.static_inhibition_zones
+            + list(hex_obj.dynamic_inhibition_zones.values())
+        )
+        for unit in units:
+            if unit.id in active_ids:
+                unit.inhibitor_component.turn_on()
+                hex_obj.dynamic_inhibition_zones[unit.id] = Circle(
+                    unit.position, unit.inhibitor_component.radius
+                )
+
+        system = SimpleNamespace(
+            position=Position(0, 0),
+            radius=1,
+            hexes={(0, 0): hex_obj},
+        )
+
+        class Galaxy:
+            systems = {"Sol": system}
+            system_graph = {"Sol": {}}
+
+            @staticmethod
+            def get_unit_by_id(unit_id):
+                return next((unit for unit in units if unit.id == unit_id), None)
+
+            @staticmethod
+            def get_celestial_body_by_id(_body_id):
+                return None
+
+        game = SimpleNamespace(
+            galaxy=Galaxy(),
+            players=[player],
+            turn_number=3,
+            sidebar_needs_update=False,
+            visibility_dirty=False,
+        )
+        return player, units, hex_obj, game
+
     def test_hidden_enemy_is_omitted_but_presence_is_retained(self):
         viewer = _Player(1, 1)
         enemy = _Player(2, 2)
@@ -447,6 +509,126 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         result = CommandGateway(game).apply_batch(player, batch)
         self.assertFalse(result.accepted)
         self.assertEqual(unit.commander_component.clear_count, 0)
+
+    def test_blocked_inhibitor_is_not_advertised_as_legal(self):
+        from geometry import Circle, Position
+
+        player, units, _hex_obj, game = self._inhibitor_fixture(
+            static_zones=(Circle(Position(0, 0), 50.0),)
+        )
+        snapshot = SimpleNamespace(
+            visible_enemy_unit_ids=set(),
+            presence_hexes=set(),
+        )
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            observation = build_observation(game, player)
+
+        unit_view = observation["units"][0]
+        inhibitor = unit_view["capability_details"]["inhibitor"]
+        self.assertEqual(observation["schema_version"], 3)
+        self.assertIn("toggle_inhibitor", unit_view["supported_commands"])
+        self.assertNotIn("toggle_inhibitor", unit_view["legal_commands"])
+        self.assertFalse(inhibitor["can_activate"])
+        self.assertEqual(inhibitor["activation_blocker"], "inhibitor_overlap")
+        self.assertEqual(
+            unit_view["command_options"]["toggle_inhibitor"],
+            {
+                "current_state": "inactive",
+                "resulting_state": "active",
+                "available": False,
+                "unavailable_reason": "inhibitor_overlap",
+            },
+        )
+
+    def test_active_inhibitor_advertises_legal_deactivation(self):
+        player, units, _hex_obj, game = self._inhibitor_fixture(active_ids=(10,))
+        snapshot = SimpleNamespace(
+            visible_enemy_unit_ids=set(),
+            presence_hexes=set(),
+        )
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            observation = build_observation(game, player)
+
+        unit_view = observation["units"][0]
+        inhibitor = unit_view["capability_details"]["inhibitor"]
+        self.assertIn("toggle_inhibitor", unit_view["legal_commands"])
+        self.assertTrue(inhibitor["is_active"])
+        self.assertFalse(inhibitor["can_activate"])
+        self.assertIsNone(inhibitor["activation_blocker"])
+        self.assertEqual(
+            unit_view["command_options"]["toggle_inhibitor"]["resulting_state"],
+            "inactive",
+        )
+
+    def test_inhibitor_overlap_is_retryable_preflight_rejection(self):
+        from geometry import Circle, Position
+
+        player, units, _hex_obj, game = self._inhibitor_fixture(
+            static_zones=(Circle(Position(0, 0), 50.0),)
+        )
+        result = CommandGateway(game).apply_batch(
+            player,
+            CommandBatch(
+                commands=(
+                    Command(type="cancel_orders", unit_ids=(units[0].id,)),
+                    Command(type="toggle_inhibitor", unit_ids=(units[0].id,)),
+                )
+            ),
+        )
+
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.failure_stage, "preflight")
+        self.assertTrue(result.retryable)
+        self.assertEqual(result.errors[0].command_index, 1)
+        self.assertEqual(result.errors[0].code, "inhibitor_overlap")
+        self.assertEqual(units[0].commander_component.clear_count, 0)
+        self.assertFalse(units[0].inhibitor_component.is_active)
+
+    def test_projected_inhibitor_activations_cannot_overlap(self):
+        player, units, _hex_obj, game = self._inhibitor_fixture(
+            positions=((0, 0), (150, 0))
+        )
+        result = CommandGateway(game).apply_batch(
+            player,
+            CommandBatch(
+                commands=(
+                    Command(type="toggle_inhibitor", unit_ids=(units[0].id,)),
+                    Command(type="toggle_inhibitor", unit_ids=(units[1].id,)),
+                )
+            ),
+        )
+
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.errors[0].command_index, 1)
+        self.assertEqual(result.errors[0].code, "inhibitor_overlap")
+        self.assertTrue(all(not unit.inhibitor_component.is_active for unit in units))
+
+    def test_projected_deactivation_can_enable_later_activation(self):
+        player, units, hex_obj, game = self._inhibitor_fixture(
+            positions=((0, 0), (0, 0)), active_ids=(10,)
+        )
+        result = CommandGateway(game).apply_batch(
+            player,
+            CommandBatch(
+                commands=(
+                    Command(type="toggle_inhibitor", unit_ids=(units[0].id,)),
+                    Command(type="toggle_inhibitor", unit_ids=(units[1].id,)),
+                )
+            ),
+        )
+
+        self.assertTrue(result.accepted)
+        self.assertFalse(units[0].inhibitor_component.is_active)
+        self.assertTrue(units[1].inhibitor_component.is_active)
+        self.assertNotIn(units[0].id, hex_obj.dynamic_inhibition_zones)
+        self.assertIn(units[1].id, hex_obj.dynamic_inhibition_zones)
+        self.assertEqual(
+            result.receipts,
+            (
+                "Deactivated inhibitor on U10.",
+                "Activated inhibitor on U11.",
+            ),
+        )
 
     def test_colonist_load_can_feed_a_queued_colonize_command(self):
         player, units, source, target, game = self._colony_fixture()
@@ -679,7 +861,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
             observation = build_observation(game, player)
         unit_view = observation["units"][0]
-        self.assertEqual(observation["schema_version"], 2)
+        self.assertEqual(observation["schema_version"], 3)
         self.assertNotIn("celestial_bodies", observation)
         self.assertIn("colonize", unit_view["supported_commands"])
         self.assertNotIn("colonize", unit_view["legal_commands"])
@@ -1276,6 +1458,23 @@ class TestEvaluation(unittest.TestCase):
             [config.reasoning_effort for config in provider.runtime_configs],
             ["low", "medium", "high"],
         )
+
+    def test_inhibitor_overlap_fixture_forbids_invalid_busywork(self):
+        case = inhibitor_overlap_case()
+        wait_plan = TurnPlan("Hold position.", (), CommandBatch((), True), EMPTY_PATCH)
+        invalid_plan = TurnPlan(
+            "Activate defenses.",
+            (),
+            CommandBatch(
+                (Command(type="toggle_inhibitor", unit_ids=(625,)),), True
+            ),
+            EMPTY_PATCH,
+        )
+
+        self.assertTrue(score_plan(case, wait_plan).passed)
+        invalid_score = score_plan(case, invalid_plan)
+        self.assertFalse(invalid_score.passed)
+        self.assertEqual(invalid_score.forbidden_count, 1)
 
     def test_gateway_reasoning_comparison_tracks_repairs_and_acceptance(self):
         invalid = TurnPlan(

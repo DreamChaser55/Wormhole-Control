@@ -56,6 +56,11 @@ class _BatchProjection:
         self._docking_slots: dict[int, int] = {}
         self._reservations: dict[int, list[tuple[str, int, float]]] = {}
         self._orders_scanned: set[int] = set()
+        self._inhibitor_states: dict[int, bool] = {}
+        self._inhibitor_static_zones: dict[tuple[str, tuple[int, int]], list[Any]] = {}
+        self._inhibitor_dynamic_zones: dict[
+            tuple[str, tuple[int, int]], dict[int, Any]
+        ] = {}
 
     def before(self, command: Any, units: list[Any]) -> None:
         if command.type == "cancel_orders" or (
@@ -139,6 +144,55 @@ class _BatchProjection:
                 "insufficient_capacity",
                 f"The docking target has only {available} compatible slots available.",
             )
+
+    def plan_inhibitor_toggles(self, units: list[Any]) -> list[tuple[Any, bool]]:
+        """Validate and project a group of immediate inhibitor toggles atomically."""
+        for unit in units:
+            if getattr(unit, "inhibitor_component", None) is None:
+                raise _Rejected(
+                    "capability_unavailable", f"Unit {unit.id} has no inhibitor."
+                )
+            self._ensure_inhibitor_hex(unit)
+
+        projected_states = dict(self._inhibitor_states)
+        projected_dynamic = {
+            key: dict(zones) for key, zones in self._inhibitor_dynamic_zones.items()
+        }
+        planned: list[tuple[Any, bool]] = []
+
+        for unit in units:
+            component = unit.inhibitor_component
+
+            key = self._inhibitor_key(unit)
+            current_active = projected_states.setdefault(
+                unit.id, bool(getattr(component, "is_active", False))
+            )
+            turn_on = not current_active
+            existing_zones = (
+                self._inhibitor_static_zones[key]
+                + list(projected_dynamic[key].values())
+            )
+            check = component.check_state_change(
+                turn_on,
+                self.game.galaxy,
+                existing_zones=existing_zones,
+            )
+            if not check.allowed:
+                raise _Rejected(
+                    check.code or "inhibitor_unavailable",
+                    f"Unit {unit.id} cannot toggle its inhibitor: {check.message}",
+                )
+
+            if turn_on:
+                projected_dynamic[key][unit.id] = check.proposed_field
+            else:
+                projected_dynamic[key].pop(unit.id, None)
+            projected_states[unit.id] = turn_on
+            planned.append((unit, turn_on))
+
+        self._inhibitor_states = projected_states
+        self._inhibitor_dynamic_zones = projected_dynamic
+        return planned
 
     def record(self, command: Any, units: list[Any]) -> None:
         if command.type == "load_colonists":
@@ -227,6 +281,38 @@ class _BatchProjection:
             elif kind == "docking":
                 self._docking_slots[key] = self._docking_slots.get(key, 0) + int(amount)
 
+    def _ensure_inhibitor_hex(self, unit: Any) -> None:
+        key = self._inhibitor_key(unit)
+        if key in self._inhibitor_dynamic_zones:
+            return
+        system = getattr(self.game.galaxy, "systems", {}).get(key[0])
+        hex_obj = getattr(system, "hexes", {}).get(key[1]) if system else None
+        if hex_obj is None:
+            component = getattr(unit, "inhibitor_component", None)
+            check = (
+                component.check_state_change(False, self.game.galaxy)
+                if component is not None
+                else None
+            )
+            raise _Rejected(
+                getattr(check, "code", None) or "inhibitor_unavailable",
+                f"Unit {unit.id} cannot toggle its inhibitor: "
+                f"{getattr(check, 'message', 'The unit has no valid sector location.')}",
+            )
+        self._inhibitor_static_zones[key] = list(
+            getattr(hex_obj, "static_inhibition_zones", [])
+        )
+        self._inhibitor_dynamic_zones[key] = dict(
+            getattr(hex_obj, "dynamic_inhibition_zones", {})
+        )
+
+    @staticmethod
+    def _inhibitor_key(unit: Any) -> tuple[str, tuple[int, int]]:
+        hex_coord = getattr(unit, "in_hex", None)
+        if hex_coord is None:
+            return str(getattr(unit, "in_system", "")), ()
+        return str(getattr(unit, "in_system", "")), tuple(hex_coord)
+
 
 class CommandGateway:
     """Preflight a complete batch, then commit it on the game thread."""
@@ -311,7 +397,7 @@ class CommandGateway:
         if command.type == "set_stance":
             return self._prepare_stance(units, command.stance)
         if command.type == "toggle_inhibitor":
-            return self._prepare_inhibitor(units)
+            return self._prepare_inhibitor(units, projection)
         if command.type == "toggle_cloaking":
             return self._prepare_cloaking(units)
 
@@ -622,20 +708,20 @@ class CommandGateway:
             )
         return operations
 
-    def _prepare_inhibitor(self, units: list[Any]):
+    def _prepare_inhibitor(
+        self, units: list[Any], projection: _BatchProjection
+    ) -> list[_Prepared]:
         operations = []
-        for unit in units:
-            component = getattr(unit, "inhibitor_component", None)
-            if component is None:
-                raise _Rejected(
-                    "capability_unavailable", f"Unit {unit.id} has no inhibitor."
-                )
+        for unit, turn_on in projection.plan_inhibitor_toggles(units):
+            component = unit.inhibitor_component
 
-            def apply(component=component):
-                if not component.toggle(galaxy_ref=self.game.galaxy):
-                    raise RuntimeError("inhibitor toggle failed")
+            def apply(component=component, turn_on=turn_on):
+                result = component.set_active(turn_on, self.game.galaxy)
+                if not result.allowed:
+                    raise RuntimeError(result.code or "inhibitor state change failed")
 
-            operations.append(_Prepared(apply, f"Toggled inhibitor on {unit.name}."))
+            action = "Activated" if turn_on else "Deactivated"
+            operations.append(_Prepared(apply, f"{action} inhibitor on {unit.name}."))
         return operations
 
     def _prepare_cloaking(self, units: list[Any]):

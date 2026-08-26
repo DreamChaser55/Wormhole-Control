@@ -147,9 +147,10 @@ and 40-command turn limit, so the selected level changes only Luna's reasoning
 effort. Older saves migrate Fast, Balanced, and Strategic selections to Low,
 Medium, and High respectively when loaded.
 
-Planning runs outside the Pygame thread. The version-2 observation distinguishes
+Planning runs outside the Pygame thread. The version-3 observation distinguishes
 hardware-supported commands from currently legal actions, supplies bounded option
-lists, and keeps remote systems compact until friendly forces approach them.
+lists, reports inhibitor state and activation eligibility, and keeps remote
+systems compact until friendly forces approach them.
 Returned command batches are preflighted atomically before the game is mutated;
 ordered dependencies such as loading colonists and then queueing colonization are
 validated together.

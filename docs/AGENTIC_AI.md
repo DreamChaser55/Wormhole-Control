@@ -39,15 +39,16 @@ player. It includes:
 - visible minefields;
 - undetailed enemy-presence hexes without count, identity, owner, or strength;
 - per-owned-unit supported commands, currently legal commands, conditional
-  command sequences, bounded option values, ability state, cargo, and other
-  public capability details;
+  command sequences, bounded option values, ability state, cargo, inhibitor
+  state and activation eligibility, and other public capability details;
 - one deduplicated construction-template catalog.
 
-Observation schema 2 gives full body detail in systems containing friendly
+Observation schema 3 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
-on a later turn.
+on a later turn. Inhibitor blocker values are intentionally bounded and expose
+no identity or geometry for the conflicting inhibition zone.
 
 The observation intentionally excludes enemy resources and hidden entity IDs.
 The command gateway independently recomputes visibility for enemy targets, so a
@@ -104,8 +105,11 @@ continuous trade, stances, inhibitor/cloaking toggles, and abilities.
 The observation and gateway share side-effect-free legality rules. The gateway
 also projects guaranteed effects through a batch, allowing a valid
 `load_colonists` command to satisfy a later `colonize` command for the same unit
-when colonization is queued. A replacing command does not retain that projected
-prerequisite. The complete batch remains atomic at preflight.
+when colonization is queued. Inhibitor toggles likewise project active dynamic
+zones, so overlapping activations are rejected before commit and a preceding
+deactivation can make a later activation legal. A replacing command does not
+retain a projected colonization prerequisite. The complete batch remains atomic
+at preflight.
 
 Retrofit remains a human editor transaction because it requires a versioned
 component-configuration schema and dynamic cost preview. Intelligence agent

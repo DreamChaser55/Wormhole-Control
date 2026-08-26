@@ -182,7 +182,7 @@ def colony_opening_case() -> EvaluationCase:
     """Minimal regression fixture for the observed zero-cargo colony opening."""
 
     observation = {
-        "schema_version": 2,
+        "schema_version": 3,
         "turn_number": 1,
         "active_player": {
             "id": 1,
@@ -344,6 +344,59 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
         return request, lambda plan: gateway.apply_batch(player, plan.batch)
 
     return GatewayEvaluationCase("colony-opening-gateway", build)
+
+
+def inhibitor_overlap_case() -> EvaluationCase:
+    """Regression fixture for an inhibitor blocked by an existing field."""
+
+    observation = {
+        "schema_version": 3,
+        "turn_number": 3,
+        "active_player": {
+            "id": 1,
+            "name": "AI",
+            "team_id": 1,
+            "resources": {"credits": 1000, "metal": 0, "crystal": 0},
+        },
+        "systems": [],
+        "units": [
+            {
+                "id": 625,
+                "name": "Inhibitor Station",
+                "owner_id": 1,
+                "relation": "self",
+                "system_name": "Sol",
+                "hex_coord": [0, 0],
+                "position": [0, 0],
+                "supported_commands": ["cancel_orders", "toggle_inhibitor"],
+                "legal_commands": ["cancel_orders"],
+                "command_options": {
+                    "toggle_inhibitor": {
+                        "current_state": "inactive",
+                        "resulting_state": "active",
+                        "available": False,
+                        "unavailable_reason": "inhibitor_overlap",
+                    }
+                },
+                "conditional_commands": [],
+                "capability_details": {
+                    "inhibitor": {
+                        "is_active": False,
+                        "radius": 100,
+                        "antimatter_cost_per_turn": 2,
+                        "can_activate": False,
+                        "activation_blocker": "inhibitor_overlap",
+                    }
+                },
+            }
+        ],
+    }
+    return EvaluationCase(
+        "inhibitor-overlap",
+        PlanningRequest("evaluation", "inhibitor-agent", "AI", 3, observation, {}),
+        forbidden_command_types=frozenset({"toggle_inhibitor"}),
+        maximum_commands=4,
+    )
 
 
 def _run_gateway_case(provider, case, runtime_config) -> GatewayCaseScore:

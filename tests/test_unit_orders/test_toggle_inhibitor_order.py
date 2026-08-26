@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from geometry import Position, Circle
 from unit_orders import OrderStatus, ToggleInhibitorOrder
@@ -9,6 +10,7 @@ def test_toggle_inhibitor_order():
     unit = MockUnit()
     emitter = MagicMock()
     emitter.radius = 100.0
+    emitter.set_active.return_value = SimpleNamespace(allowed=True)
     unit.components[HyperspaceInhibitionFieldEmitter] = emitter
     
     order = ToggleInhibitorOrder(unit, {"turn_on": True})
@@ -25,5 +27,4 @@ def test_toggle_inhibitor_order():
     
     order.execute(galaxy)
     assert order.status == OrderStatus.COMPLETED
-    emitter.turn_on.assert_called_once()
-    assert unit.id in mock_hex.dynamic_inhibition_zones
+    emitter.set_active.assert_called_once_with(True, galaxy)

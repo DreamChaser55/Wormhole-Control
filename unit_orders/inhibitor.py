@@ -1,7 +1,6 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import Circle, is_circle_contained, do_circles_intersect
 from .base import Order, OrderStatus, OrderType
 
 if TYPE_CHECKING:
@@ -25,31 +24,16 @@ class ToggleInhibitorOrder(Order):
             self.status = OrderStatus.FAILED
             return
 
-        current_hex = galaxy_ref.systems[self.unit.in_system].hexes[self.unit.in_hex]
+        result = self.unit.inhibitor_component.set_active(turn_on, galaxy_ref)
+        if not result.allowed:
+            logger.debug(
+                "[%s (id:%s)] TOGGLE_INHIBITOR (%s): FAILED (%s).",
+                self.unit.name,
+                self.unit.id,
+                self.order_id,
+                result.message,
+            )
+            self.status = OrderStatus.FAILED
+            return
 
-        if turn_on:
-            inhibitor = self.unit.inhibitor_component
-            proposed_field = Circle(center=self.unit.position, radius=inhibitor.radius)
-
-            # The inhibitor field must fit entirely inside the hex boundary
-            # and cannot overlap with any other active inhibitor fields.
-            if not is_circle_contained(proposed_field, current_hex.boundary_circle):
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (field would cross sector boundary).")
-                self.status = OrderStatus.FAILED
-                return
-
-            for existing_zone in current_hex.get_all_inhibition_zones():
-                if do_circles_intersect(proposed_field, existing_zone):
-                    logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (field would overlap with another).")
-                    self.status = OrderStatus.FAILED
-                    return
-            
-            inhibitor.turn_on()
-            current_hex.dynamic_inhibition_zones[self.unit.id] = proposed_field
-            self.status = OrderStatus.COMPLETED
-        else:
-            if self.unit.id in current_hex.dynamic_inhibition_zones:
-                del current_hex.dynamic_inhibition_zones[self.unit.id]
-            
-            self.unit.inhibitor_component.turn_off()
-            self.status = OrderStatus.COMPLETED
+        self.status = OrderStatus.COMPLETED
