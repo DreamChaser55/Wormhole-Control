@@ -336,9 +336,8 @@ def test_is_mouse_over_gui_panels_retrofit_wizard():
     """Verifies that GUI_Handler.is_mouse_over_gui_panels detects RetrofitWizardWindow bounds."""
     from gui.handler import GUI_Handler
     gui = GUI_Handler.__new__(GUI_Handler)
-    gui.left_top_bar_panel = None
-    gui.left_bottom_bar_panel = None
-    gui.right_top_bar_panel = None
+    gui.top_bar_panel = None
+    gui.bottom_bar_panel = None
     gui.side_bar_info_panel = None
     gui.context_menu_panel = None
     gui.ingame_menu_panel = None
@@ -372,9 +371,8 @@ def test_is_mouse_over_gui_panels_unit_editor_and_dialogs():
     """Verifies that GUI_Handler.is_mouse_over_gui_panels detects UnitEditor, load/save, and modal dialogs."""
     from gui.handler import GUI_Handler
     gui = GUI_Handler.__new__(GUI_Handler)
-    gui.left_top_bar_panel = None
-    gui.left_bottom_bar_panel = None
-    gui.right_top_bar_panel = None
+    gui.top_bar_panel = None
+    gui.bottom_bar_panel = None
     gui.side_bar_info_panel = None
     gui.context_menu_panel = None
     gui.ingame_menu_panel = None

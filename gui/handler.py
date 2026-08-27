@@ -59,9 +59,8 @@ class GUI_Handler:
         self.save_file_paths: typing.Dict[str, str] = {}
 
         # In-Game UI
-        self.left_top_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
-        self.left_bottom_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
-        self.right_top_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
+        self.top_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
+        self.bottom_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.back_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.comms_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.communications_window: typing.Optional[CommunicationsWindow] = None
@@ -132,9 +131,8 @@ class GUI_Handler:
             self.new_game_wizard = None
         if self.main_menu_panel: self.main_menu_panel.kill(); self.main_menu_panel = None
         if self.about_panel: self.about_panel.kill(); self.about_panel = None
-        if self.left_top_bar_panel: self.left_top_bar_panel.kill(); self.left_top_bar_panel = None
-        if self.left_bottom_bar_panel: self.left_bottom_bar_panel.kill(); self.left_bottom_bar_panel = None
-        if self.right_top_bar_panel: self.right_top_bar_panel.kill(); self.right_top_bar_panel = None
+        if self.top_bar_panel: self.top_bar_panel.kill(); self.top_bar_panel = None
+        if self.bottom_bar_panel: self.bottom_bar_panel.kill(); self.bottom_bar_panel = None
         
         self.clear_side_bar_content()
         if self.side_bar_info_panel: self.side_bar_info_panel.kill(); self.side_bar_info_panel = None
@@ -188,9 +186,8 @@ class GUI_Handler:
         """Internal helper to hide all major UI panels."""
         if self.main_menu_panel: self.main_menu_panel.hide()
         if self.about_panel: self.about_panel.hide()
-        if self.left_top_bar_panel: self.left_top_bar_panel.hide()
-        if self.left_bottom_bar_panel: self.left_bottom_bar_panel.hide()
-        if self.right_top_bar_panel: self.right_top_bar_panel.hide()
+        if self.top_bar_panel: self.top_bar_panel.hide()
+        if self.bottom_bar_panel: self.bottom_bar_panel.hide()
         if self.side_bar_info_panel: self.side_bar_info_panel.hide()
         if self.context_menu_panel: self.context_menu_panel.hide()
         if self.ingame_menu_panel: self.ingame_menu_panel.hide()
@@ -234,12 +231,11 @@ class GUI_Handler:
 
     def show_game_ui(self):
         """Configures and shows the In-Game UI."""
-        if not self.left_top_bar_panel or not self.left_top_bar_panel.alive():
+        if not self.top_bar_panel or not self.top_bar_panel.alive():
              self.setup_game_ui()
         self.hide_all_panels()
-        if self.left_top_bar_panel: self.left_top_bar_panel.show()
-        if self.left_bottom_bar_panel: self.left_bottom_bar_panel.show()
-        if self.right_top_bar_panel: self.right_top_bar_panel.show()
+        if self.top_bar_panel: self.top_bar_panel.show()
+        if self.bottom_bar_panel: self.bottom_bar_panel.show()
         if self.side_bar_info_panel: self.side_bar_info_panel.show()
         self.update_back_button_visibility()
 
@@ -579,9 +575,8 @@ class GUI_Handler:
 
         # 7. Standard HUD and overlay panels
         panels = [
-            getattr(self, 'left_top_bar_panel', None),
-            getattr(self, 'left_bottom_bar_panel', None),
-            getattr(self, 'right_top_bar_panel', None),
+            getattr(self, 'top_bar_panel', None),
+            getattr(self, 'bottom_bar_panel', None),
             getattr(self, 'side_bar_info_panel', None),
             getattr(self, 'context_menu_panel', None),
             getattr(self, 'ingame_menu_panel', None),
@@ -695,4 +690,5 @@ class GUI_Handler:
     def is_retrofit_wizard_open(self) -> bool:
         """Returns True if the Retrofit Wizard is currently visible."""
         return bool(self.retrofit_wizard and self.retrofit_wizard.is_visible)
+
 

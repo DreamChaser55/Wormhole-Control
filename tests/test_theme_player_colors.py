@@ -38,11 +38,10 @@ def test_update_hud_panel_colors():
     mock_panel1 = MagicMock()
     mock_panel2 = MagicMock()
     mock_editor_panel = MagicMock()
-    mock_gui.left_top_bar_panel = mock_panel1
+    mock_gui.top_bar_panel = mock_panel1
     mock_gui.side_bar_info_panel = mock_panel2
     mock_gui.unit_editor_window._panel = mock_editor_panel
-    mock_gui.right_top_bar_panel = None
-    mock_gui.left_bottom_bar_panel = None
+    mock_gui.bottom_bar_panel = None
     mock_gui.ingame_menu_panel = None
     mock_gui.context_menu_panel = None
     mock_gui.main_menu_panel = None

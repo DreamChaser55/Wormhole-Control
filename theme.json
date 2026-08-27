@@ -229,7 +229,7 @@
             "border_colour": "#3A6D8CC8"
         }
     },
-    "#left_top_bar": {
+    "#top_bar": {
         "colours": {
             "dark_bg": "#121A2CD8"
         },
@@ -239,7 +239,7 @@
             "border_colour": "#3A6D8CC8"
         }
     },
-    "#right_top_bar": {
+    "#bottom_bar": {
         "colours": {
             "dark_bg": "#121A2CD8"
         },
