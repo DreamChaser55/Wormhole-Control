@@ -115,7 +115,6 @@ class CommandBatch:
 class TurnPlan:
     """Strict output expected from a planning provider."""
 
-    analysis_summary: str
     plan: tuple[str, ...]
     batch: CommandBatch
     memory_patch: dict[str, Any] = field(default_factory=dict)
@@ -124,9 +123,6 @@ class TurnPlan:
     def from_dict(cls, raw: Mapping[str, Any], *, max_commands: int = 32) -> "TurnPlan":
         if not isinstance(raw, Mapping):
             raise ContractError("Turn response must be an object.")
-        summary = raw.get("analysis_summary", "")
-        if not isinstance(summary, str):
-            raise ContractError("analysis_summary must be a string.")
         plan_raw = raw.get("plan", [])
         if not isinstance(plan_raw, list) or not all(isinstance(x, str) for x in plan_raw):
             raise ContractError("plan must be an array of strings.")
@@ -142,7 +138,6 @@ class TurnPlan:
         if not isinstance(end_turn, bool):
             raise ContractError("end_turn must be a boolean.")
         return cls(
-            analysis_summary=summary.strip()[:2000],
             plan=tuple(item.strip()[:500] for item in plan_raw[:12]),
             batch=CommandBatch(
                 commands=tuple(Command.from_dict(command) for command in commands_raw),
@@ -153,7 +148,6 @@ class TurnPlan:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "analysis_summary": self.analysis_summary,
             "plan": list(self.plan),
             "commands": [command.to_dict() for command in self.batch.commands],
             "memory_patch": self.memory_patch,

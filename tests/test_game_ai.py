@@ -80,7 +80,6 @@ class TestRuntimeConfiguration(unittest.TestCase):
 class TestContracts(unittest.TestCase):
     def test_turn_plan_round_trip_and_command_limit(self):
         raw = {
-            "analysis_summary": "Expand carefully.",
             "plan": ["Move the scout."],
             "commands": [
                 {
@@ -105,7 +104,7 @@ class TestContracts(unittest.TestCase):
             Command.from_dict({"type": "teleport", "unit_ids": [1]})
 
     def test_planning_request_serializes_repair_context_separately(self):
-        plan = TurnPlan("Retry.", (), CommandBatch((), True), EMPTY_PATCH)
+        plan = TurnPlan((), CommandBatch((), True), EMPTY_PATCH)
         request = PlanningRequest(
             "campaign",
             "agent",
@@ -266,7 +265,6 @@ class _FakeResponses:
 class TestOpenAIAdapter(unittest.TestCase):
     def test_responses_adapter_uses_strict_stateless_output(self):
         output = {
-            "analysis_summary": "Wait.",
             "plan": [],
             "commands": [],
             "memory_patch": EMPTY_PATCH,
@@ -1032,7 +1030,7 @@ class TestCoordinator(unittest.TestCase):
             gui=None,
             end_turn=lambda: ended.append(True),
         )
-        plan = TurnPlan("Consolidate.", (), CommandBatch((), True), EMPTY_PATCH)
+        plan = TurnPlan(("Consolidate.",), CommandBatch((), True), EMPTY_PATCH)
         provider = FakePlanningProvider([plan])
         coordinator = AgentTurnCoordinator(game, provider=provider)
         try:
@@ -1044,16 +1042,16 @@ class TestCoordinator(unittest.TestCase):
                 coordinator.update()
             self.assertEqual(ended, [True])
             self.assertIn("No commands issued.", player.ai_memory["receipts"][-1])
-            self.assertEqual(player.last_ai_report["summary"], "Consolidate.")
+            self.assertEqual(player.last_ai_report["plan"], ["Consolidate."])
             self.assertEqual(player.last_ai_report["reasoning_effort"], "low")
             self.assertEqual(provider.runtime_configs[0].reasoning_effort, "low")
         finally:
             coordinator.shutdown()
 
     def test_configured_repairs_forward_latest_errors_and_can_recover(self):
-        first_plan = TurnPlan("First.", (), CommandBatch((), True), EMPTY_PATCH)
-        second_plan = TurnPlan("Second.", (), CommandBatch((), True), EMPTY_PATCH)
-        accepted_plan = TurnPlan("Recovered.", (), CommandBatch((), True), EMPTY_PATCH)
+        first_plan = TurnPlan(("First.",), CommandBatch((), True), EMPTY_PATCH)
+        second_plan = TurnPlan(("Second.",), CommandBatch((), True), EMPTY_PATCH)
+        accepted_plan = TurnPlan(("Recovered.",), CommandBatch((), True), EMPTY_PATCH)
         player, _game, ended, provider, coordinator = self._coordinator_fixture(
             2, [first_plan, second_plan, accepted_plan]
         )
@@ -1109,12 +1107,12 @@ class TestCoordinator(unittest.TestCase):
                 second_plan,
             )
             self.assertEqual(ended, [True])
-            self.assertEqual(player.last_ai_report["summary"], "Recovered.")
+            self.assertEqual(player.last_ai_report["plan"], ["Recovered."])
         finally:
             coordinator.shutdown()
 
     def test_retry_limit_is_snapshotted_and_exhaustion_returns_manual_control(self):
-        plan = TurnPlan("Invalid.", (), CommandBatch((), True), EMPTY_PATCH)
+        plan = TurnPlan(("Invalid.",), CommandBatch((), True), EMPTY_PATCH)
         player, game, ended, provider, coordinator = self._coordinator_fixture(
             1, [plan, plan]
         )
@@ -1169,7 +1167,7 @@ class TestCoordinator(unittest.TestCase):
             coordinator.shutdown()
 
     def test_invalid_model_output_uses_repair_context_and_same_reasoning(self):
-        plan = TurnPlan("Recovered.", (), CommandBatch((), True), EMPTY_PATCH)
+        plan = TurnPlan(("Recovered.",), CommandBatch((), True), EMPTY_PATCH)
         player, _game, ended, _provider, coordinator = self._coordinator_fixture(
             1, []
         )
@@ -1295,7 +1293,7 @@ class TestCoordinator(unittest.TestCase):
             coordinator.shutdown()
 
     def test_commit_failure_is_not_retried(self):
-        plan = TurnPlan("Commit.", (), CommandBatch((), True), EMPTY_PATCH)
+        plan = TurnPlan(("Commit.",), CommandBatch((), True), EMPTY_PATCH)
         _player, _game, ended, provider, coordinator = self._coordinator_fixture(
             3, [plan]
         )
@@ -1329,7 +1327,7 @@ class TestCoordinator(unittest.TestCase):
             current_player=player,
             turn_number=4,
         )
-        plan = TurnPlan("Wait.", (), CommandBatch((), True), EMPTY_PATCH)
+        plan = TurnPlan(("Wait.",), CommandBatch((), True), EMPTY_PATCH)
         result = PlanningResult(
             plan=plan,
             provider="fake",
@@ -1368,7 +1366,7 @@ class TestCoordinator(unittest.TestCase):
 
         command = Command(type="cancel_orders", unit_ids=(1,))
         plan = TurnPlan(
-            "Retry.", (), CommandBatch((command,), True), EMPTY_PATCH
+            (), CommandBatch((command,), True), EMPTY_PATCH
         )
         _player, _game, ended, _provider, coordinator = self._coordinator_fixture(
             2, [plan, plan, plan]
@@ -1407,7 +1405,7 @@ class TestCoordinator(unittest.TestCase):
             self.assertEqual([record["status"] for record in records], ["rejected", "rejected", "accepted"])
             self.assertEqual(records[0]["command_summaries"][0]["type"], "cancel_orders")
             self.assertEqual(records[0]["error_details"][0]["command_index"], 0)
-            self.assertNotIn("analysis_summary", records[0])
+            self.assertNotIn("plan", records[0])
             self.assertNotIn("observation", records[0])
         finally:
             coordinator.shutdown()
@@ -1448,7 +1446,7 @@ class TestEvaluation(unittest.TestCase):
             amount=50,
         )
         plan = TurnPlan(
-            "Load first.", (), CommandBatch((command,), True), EMPTY_PATCH
+            ("Load first.",), CommandBatch((command,), True), EMPTY_PATCH
         )
         provider = FakePlanningProvider([plan, plan, plan])
         reports = compare_reasoning_efforts(provider, [case])
@@ -1461,10 +1459,9 @@ class TestEvaluation(unittest.TestCase):
 
     def test_inhibitor_overlap_fixture_forbids_invalid_busywork(self):
         case = inhibitor_overlap_case()
-        wait_plan = TurnPlan("Hold position.", (), CommandBatch((), True), EMPTY_PATCH)
+        wait_plan = TurnPlan(("Hold position.",), CommandBatch((), True), EMPTY_PATCH)
         invalid_plan = TurnPlan(
-            "Activate defenses.",
-            (),
+            ("Activate defenses.",),
             CommandBatch(
                 (Command(type="toggle_inhibitor", unit_ids=(625,)),), True
             ),
@@ -1478,8 +1475,7 @@ class TestEvaluation(unittest.TestCase):
 
     def test_gateway_reasoning_comparison_tracks_repairs_and_acceptance(self):
         invalid = TurnPlan(
-            "Colonize immediately.",
-            (),
+            ("Colonize immediately.",),
             CommandBatch(
                 (
                     Command(
@@ -1491,8 +1487,7 @@ class TestEvaluation(unittest.TestCase):
             EMPTY_PATCH,
         )
         repaired = TurnPlan(
-            "Load before colonizing.",
-            (),
+            ("Load before colonizing.",),
             CommandBatch(
                 (
                     Command(
@@ -1548,7 +1543,6 @@ class TestEvaluation(unittest.TestCase):
             forbidden_command_types=frozenset({"attack"}),
         )
         plan = TurnPlan(
-            "Scout",
             ("Scout",),
             CommandBatch((Command(type="move", unit_ids=(1,)),), True),
             {},
@@ -1560,7 +1554,7 @@ class TestEvaluation(unittest.TestCase):
     def test_evaluation_reports_effective_reasoning_effort(self):
         request = PlanningRequest("c", "a", "AI", 1, {}, {})
         case = EvaluationCase("wait", request)
-        plan = TurnPlan("Wait", (), CommandBatch((), True), EMPTY_PATCH)
+        plan = TurnPlan(("Wait",), CommandBatch((), True), EMPTY_PATCH)
         provider = FakePlanningProvider([plan])
 
         report = run_evaluation(

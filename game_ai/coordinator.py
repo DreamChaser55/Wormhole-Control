@@ -194,7 +194,6 @@ class AgentTurnCoordinator:
         memory.add_receipt(receipt, turn=int(getattr(self.game, "turn_number", 1)))
         player.ai_memory = memory.to_dict()
         player.last_ai_report = {
-            "summary": result.plan.analysis_summary,
             "plan": list(result.plan.plan),
             "receipts": list(command_result.receipts),
             "model": result.model,

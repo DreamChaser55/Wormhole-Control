@@ -38,7 +38,6 @@ TURN_PLAN_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "analysis_summary": {"type": "string", "maxLength": 2000},
         "plan": {
             "type": "array",
             "items": {"type": "string", "maxLength": 500},
@@ -84,7 +83,7 @@ TURN_PLAN_SCHEMA = {
         },
         "end_turn": {"type": "boolean", "const": True},
     },
-    "required": ["analysis_summary", "plan", "commands", "memory_patch", "end_turn"],
+    "required": ["plan", "commands", "memory_patch", "end_turn"],
 }
 
 
