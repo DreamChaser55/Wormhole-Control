@@ -53,6 +53,8 @@ def supported_commands(unit: Any) -> list[str]:
     commands = ["cancel_orders", "set_stance"]
     if getattr(unit, "engines_component", None):
         commands.extend(["move", "patrol", "protect"])
+        if getattr(unit, "weapons_component", None):
+            commands.append("defend")
     if getattr(unit, "weapons_component", None):
         commands.append("attack")
     if getattr(unit, "colony_component", None):
@@ -109,6 +111,8 @@ def command_guidance(
         legal.add("cancel_orders")
     if "move" in supported:
         legal.update({"move", "patrol"})
+    if "defend" in supported:
+        legal.add("defend")
 
     commander = getattr(unit, "commander_component", None)
     stances = [

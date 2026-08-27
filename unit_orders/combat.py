@@ -13,6 +13,74 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def resolve_component_type(comp_spec: Any) -> Optional[type]:
+    """Resolve a component class from a class object, class name, or normalized alias string."""
+    if comp_spec is None:
+        return None
+    if isinstance(comp_spec, type):
+        return comp_spec
+
+    import unit_components
+    if not isinstance(comp_spec, str):
+        return None
+
+    direct = getattr(unit_components, comp_spec, None)
+    if direct is not None and isinstance(direct, type):
+        return direct
+
+    normalized = comp_spec.lower().replace(" ", "").replace("_", "")
+    alias_map = {
+        "engines": getattr(unit_components, "Engines", None),
+        "engine": getattr(unit_components, "Engines", None),
+        "hyperdrive": getattr(unit_components, "Hyperdrive", None),
+        "weapons": getattr(unit_components, "Weapons", None),
+        "weapon": getattr(unit_components, "Weapons", None),
+        "defenses": getattr(unit_components, "Defenses", None),
+        "defense": getattr(unit_components, "Defenses", None),
+        "inhibitor": getattr(unit_components, "HyperspaceInhibitionFieldEmitter", None),
+        "hyperspaceinhibitionfieldemitter": getattr(unit_components, "HyperspaceInhibitionFieldEmitter", None),
+        "cloaking": getattr(unit_components, "CloakingDevice", None),
+        "cloakingdevice": getattr(unit_components, "CloakingDevice", None),
+        "sensors": getattr(unit_components, "Sensors", None),
+        "sensor": getattr(unit_components, "Sensors", None),
+        "constructor": getattr(unit_components, "Constructor", None),
+        "repair": getattr(unit_components, "RepairComponent", None),
+        "repaircomponent": getattr(unit_components, "RepairComponent", None),
+        "colony": getattr(unit_components, "ColonyComponent", None),
+        "colonycomponent": getattr(unit_components, "ColonyComponent", None),
+        "mining": getattr(unit_components, "MiningComponent", None),
+        "miningcomponent": getattr(unit_components, "MiningComponent", None),
+        "metalrefinery": getattr(unit_components, "MetalRefineryComponent", None),
+        "metalrefinerycomponent": getattr(unit_components, "MetalRefineryComponent", None),
+        "crystalrefinery": getattr(unit_components, "CrystalRefineryComponent", None),
+        "crystalrefinerycomponent": getattr(unit_components, "CrystalRefineryComponent", None),
+        "hangar": getattr(unit_components, "HangarComponent", None),
+        "hangarcomponent": getattr(unit_components, "HangarComponent", None),
+        "strikecraftbay": getattr(unit_components, "StrikecraftBayComponent", None),
+        "strikecraftbaycomponent": getattr(unit_components, "StrikecraftBayComponent", None),
+        "trade": getattr(unit_components, "TradeComponent", None),
+        "tradecomponent": getattr(unit_components, "TradeComponent", None),
+        "civilianhabitat": getattr(unit_components, "CivilianHabitatComponent", None),
+        "civilianhabitatcomponent": getattr(unit_components, "CivilianHabitatComponent", None),
+        "orbitaldefense": getattr(unit_components, "OrbitalDefenseComponent", None),
+        "orbitaldefensecomponent": getattr(unit_components, "OrbitalDefenseComponent", None),
+        "antimatter": getattr(unit_components, "AntimatterStorage", None),
+        "antimatterstorage": getattr(unit_components, "AntimatterStorage", None),
+        "harvester": getattr(unit_components, "AntimatterHarvester", None),
+        "antimatterharvester": getattr(unit_components, "AntimatterHarvester", None),
+        "minelayer": getattr(unit_components, "MinelayerComponent", None),
+        "minelayercomponent": getattr(unit_components, "MinelayerComponent", None),
+        "marines": getattr(unit_components, "MarinesComponent", None),
+        "marinescomponent": getattr(unit_components, "MarinesComponent", None),
+        "intelligence": getattr(unit_components, "IntelligenceComponent", None),
+        "intelligencecomponent": getattr(unit_components, "IntelligenceComponent", None),
+        "abilities": getattr(unit_components, "AbilityComponent", None),
+        "ability": getattr(unit_components, "AbilityComponent", None),
+        "abilitycomponent": getattr(unit_components, "AbilityComponent", None),
+    }
+    return alias_map.get(normalized)
+
+
 class AttackOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.ATTACK, parameters, parent_order)
@@ -31,6 +99,7 @@ class AttackOrder(Order):
                 lookup_success = True
         state_data["target_unit_id"] = target_unit_id
         state_data["target_name"] = target_name
+        state_data["target_component_type"] = self.parameters.get("target_component_type")
         state_data["lookup_attempted"] = lookup_attempted
         state_data["lookup_success"] = lookup_success
         return state_data
@@ -41,11 +110,7 @@ class AttackOrder(Order):
         target_unit_id = self.parameters["target_unit_id"]
         target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
 
-        target_component_type_str = self.parameters.get("target_component_type")
-        target_component_type = None
-        if target_component_type_str:
-            import unit_components
-            target_component_type = getattr(unit_components, target_component_type_str, None)
+        target_component_type = resolve_component_type(self.parameters.get("target_component_type"))
 
         if not target_unit:
             self.status = OrderStatus.FAILED
@@ -176,8 +241,7 @@ class AttackOrder(Order):
             return
             
         if target_component_type_str:
-            import unit_components
-            target_component_type = getattr(unit_components, target_component_type_str, None)
+            target_component_type = resolve_component_type(target_component_type_str)
             if target_component_type:
                 target_component = target_unit.get_component(target_component_type)
                 if not target_component or target_component.is_destroyed:

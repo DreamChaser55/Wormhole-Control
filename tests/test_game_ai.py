@@ -103,6 +103,35 @@ class TestContracts(unittest.TestCase):
         with self.assertRaises(ContractError):
             Command.from_dict({"type": "teleport", "unit_ids": [1]})
 
+    def test_defend_and_precision_attack_contracts_roundtrip(self):
+        raw = {
+            "plan": ["Defend post and snipe engines."],
+            "commands": [
+                {
+                    "type": "attack",
+                    "unit_ids": [1],
+                    "target_id": 2,
+                    "target_component": "Engines",
+                },
+                {
+                    "type": "defend",
+                    "unit_ids": [1],
+                    "system_name": "Sol",
+                    "hex_coord": [0, 0],
+                    "position": [100.0, 200.0],
+                },
+            ],
+            "memory_patch": EMPTY_PATCH,
+            "end_turn": True,
+        }
+        plan = TurnPlan.from_dict(raw)
+        self.assertEqual(plan.batch.commands[0].target_component, "Engines")
+        self.assertEqual(plan.batch.commands[1].type, "defend")
+        self.assertEqual(plan.batch.commands[1].position, (100.0, 200.0))
+        serialized = plan.to_dict()
+        self.assertEqual(serialized["commands"][0]["target_component"], "Engines")
+        self.assertEqual(serialized["commands"][1]["type"], "defend")
+
     def test_planning_request_serializes_repair_context_separately(self):
         plan = TurnPlan((), CommandBatch((), True), EMPTY_PATCH)
         request = PlanningRequest(
@@ -981,6 +1010,178 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             separators=(",", ":"),
         )
         self.assertLess(len(payload), 75_000)
+
+    @staticmethod
+    def _combat_fixture():
+        from geometry import Position
+        from unit_components import Engines, Weapons, Hyperdrive, HyperdriveType
+
+        player = _Player(1, 1)
+        enemy_player = _Player(2, 2)
+
+        my_unit = _unit(10, player)
+        my_unit.engines_component = Engines(my_unit, speed=50.0)
+        my_unit.weapons_component = Weapons(my_unit)
+        my_unit.components = {
+            Engines: my_unit.engines_component,
+            Weapons: my_unit.weapons_component,
+        }
+
+        enemy_unit = _unit(20, enemy_player)
+        enemy_unit.engines_component = Engines(enemy_unit, speed=50.0)
+        enemy_unit.weapons_component = Weapons(enemy_unit)
+        enemy_unit.hyperdrive_component = Hyperdrive(
+            enemy_unit, drive_type=HyperdriveType.BASIC, jump_range=5
+        )
+        enemy_unit.components = {
+            Engines: enemy_unit.engines_component,
+            Weapons: enemy_unit.weapons_component,
+            Hyperdrive: enemy_unit.hyperdrive_component,
+        }
+
+        units = [my_unit, enemy_unit]
+        units_by_id = {u.id: u for u in units}
+
+        class Galaxy:
+            systems = {
+                "Sol": SimpleNamespace(
+                    position=Position(0, 0),
+                    radius=1,
+                    hexes={(0, 0): SimpleNamespace(units=units, celestial_bodies=[])},
+                )
+            }
+            system_graph = {"Sol": {}}
+
+            @staticmethod
+            def get_unit_by_id(unit_id):
+                return units_by_id.get(unit_id)
+
+            @staticmethod
+            def get_celestial_body_by_id(_body_id):
+                return None
+
+        game = SimpleNamespace(
+            galaxy=Galaxy(),
+            players=[player, enemy_player],
+            sidebar_needs_update=False,
+            visibility_dirty=False,
+            turn_number=1,
+        )
+        return player, enemy_player, my_unit, enemy_unit, game
+
+    def test_attack_with_subsystem_targeting(self):
+        player, enemy_player, my_unit, enemy_unit, game = self._combat_fixture()
+        snapshot = SimpleNamespace(
+            visible_enemy_unit_ids={enemy_unit.id}, presence_hexes=set()
+        )
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            batch = CommandBatch(
+                commands=(
+                    Command(
+                        type="attack",
+                        unit_ids=(my_unit.id,),
+                        target_id=enemy_unit.id,
+                        target_component="Engines",
+                    ),
+                )
+            )
+            result = CommandGateway(game).apply_batch(player, batch)
+            self.assertTrue(result.accepted)
+            self.assertEqual(result.receipts, ("Attack U20 (Engines) for U10.",))
+            self.assertEqual(len(my_unit.commander_component.orders_queue), 1)
+            order = my_unit.commander_component.orders_queue[0]
+            self.assertEqual(order.parameters["target_component_type"], "Engines")
+
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            batch_alias = CommandBatch(
+                commands=(
+                    Command(
+                        type="attack",
+                        unit_ids=(my_unit.id,),
+                        target_id=enemy_unit.id,
+                        target_component="hyperdrive",
+                    ),
+                )
+            )
+            result_alias = CommandGateway(game).apply_batch(player, batch_alias)
+            self.assertTrue(result_alias.accepted)
+            self.assertEqual(result_alias.receipts, ("Attack U20 (Hyperdrive) for U10.",))
+
+    def test_attack_subsystem_targeting_rejections(self):
+        player, enemy_player, my_unit, enemy_unit, game = self._combat_fixture()
+        snapshot = SimpleNamespace(
+            visible_enemy_unit_ids={enemy_unit.id}, presence_hexes=set()
+        )
+        # 1. Non-existent component on enemy unit
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            batch_invalid_target = CommandBatch(
+                commands=(
+                    Command(
+                        type="attack",
+                        unit_ids=(my_unit.id,),
+                        target_id=enemy_unit.id,
+                        target_component="ColonyComponent",
+                    ),
+                )
+            )
+            result = CommandGateway(game).apply_batch(player, batch_invalid_target)
+            self.assertFalse(result.accepted)
+            self.assertEqual(result.errors[0].code, "invalid_target")
+
+        # 2. Bogus / unresolvable component name
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            batch_bogus = CommandBatch(
+                commands=(
+                    Command(
+                        type="attack",
+                        unit_ids=(my_unit.id,),
+                        target_id=enemy_unit.id,
+                        target_component="laser_cannon_mk2",
+                    ),
+                )
+            )
+            result = CommandGateway(game).apply_batch(player, batch_bogus)
+            self.assertFalse(result.accepted)
+            self.assertEqual(result.errors[0].code, "invalid_value")
+
+    def test_defend_command_execution(self):
+        player, enemy_player, my_unit, enemy_unit, game = self._combat_fixture()
+        # 1. Valid defend command with coordinates
+        batch_valid = CommandBatch(
+            commands=(
+                Command(
+                    type="defend",
+                    unit_ids=(my_unit.id,),
+                    system_name="Sol",
+                    hex_coord=(0, 0),
+                    position=(50.0, 50.0),
+                ),
+            )
+        )
+        result = CommandGateway(game).apply_batch(player, batch_valid)
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.receipts, ("Defend Sol (0, 0) for U10.",))
+        self.assertEqual(len(my_unit.commander_component.orders_queue), 1)
+
+        # 2. Missing coordinate fields
+        batch_missing = CommandBatch(
+            commands=(
+                Command(
+                    type="defend",
+                    unit_ids=(my_unit.id,),
+                    system_name="Sol",
+                ),
+            )
+        )
+        result_missing = CommandGateway(game).apply_batch(player, batch_missing)
+        self.assertFalse(result_missing.accepted)
+        self.assertEqual(result_missing.errors[0].code, "missing_field")
+
+        # 3. Unit without weapons cannot perform defend
+        my_unit.weapons_component = None
+        result_no_weapons = CommandGateway(game).apply_batch(player, batch_valid)
+        self.assertFalse(result_no_weapons.accepted)
+        self.assertEqual(result_no_weapons.errors[0].code, "capability_unavailable")
 
 
 class TestCoordinator(unittest.TestCase):

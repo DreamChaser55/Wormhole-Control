@@ -12,6 +12,7 @@ SUPPORTED_COMMANDS = frozenset(
         "move",
         "patrol",
         "attack",
+        "defend",
         "protect",
         "colonize",
         "load_colonists",
@@ -56,6 +57,7 @@ class Command:
     queue: bool = False
     ability: str | None = None
     minefield_type: str | None = None
+    target_component: str | None = None
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> "Command":
@@ -86,6 +88,7 @@ class Command:
             queue=bool(raw.get("queue", False)),
             ability=_optional_str(raw.get("ability"), "ability"),
             minefield_type=_optional_str(raw.get("minefield_type"), "minefield_type"),
+            target_component=_optional_str(raw.get("target_component"), "target_component"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -102,6 +105,7 @@ class Command:
             "queue": self.queue,
             "ability": self.ability,
             "minefield_type": self.minefield_type,
+            "target_component": self.target_component,
         }
 
 

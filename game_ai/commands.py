@@ -436,6 +436,7 @@ class CommandGateway:
             ContinuousMineOrder,
             ContinuousResupplyOrder,
             ContinuousTradeOrder,
+            DefendOrder,
             DeployAllWingsOrder,
             DeployUnitOrder,
             DockOrder,
@@ -451,6 +452,7 @@ class CommandGateway:
             UnloadResourcesOrder,
             UseAbilityOrder,
         )
+        from unit_orders.combat import resolve_component_type
 
         target_unit = None
         target_body = None
@@ -489,9 +491,81 @@ class CommandGateway:
             )
         if command.type == "attack":
             self._require_relation(player, target_unit, "enemy")
+            target_comp_type = None
+            receipt_suffix = ""
+            if command.target_component is not None:
+                resolved = resolve_component_type(command.target_component)
+                if resolved is None:
+                    raise _Rejected(
+                        "invalid_value",
+                        f"Unknown target component '{command.target_component}'.",
+                    )
+                has_component = True
+                if hasattr(target_unit, "get_component") and callable(target_unit.get_component):
+                    has_component = target_unit.get_component(resolved) is not None
+                elif hasattr(target_unit, "components") and isinstance(target_unit.components, dict):
+                    has_component = (
+                        resolved in target_unit.components
+                        or any(isinstance(c, resolved) for c in target_unit.components.values())
+                    )
+                if not has_component:
+                    raise _Rejected(
+                        "invalid_target",
+                        f"Target unit {target_unit.name} does not have component {command.target_component}.",
+                    )
+                target_comp_type = resolved.__name__
+                receipt_suffix = f" ({target_comp_type})"
+            attack_params = {"target_unit_id": target_unit.id}
+            if target_comp_type is not None:
+                attack_params["target_component_type"] = target_comp_type
             return (
-                lambda unit: AttackOrder(unit, {"target_unit_id": target_unit.id}),
-                f"Attack {target_unit.name}",
+                lambda unit: AttackOrder(unit, dict(attack_params)),
+                f"Attack {target_unit.name}{receipt_suffix}",
+            )
+        if command.type == "defend":
+            if command.target_id is not None:
+                body = (
+                    self.game.galaxy.get_celestial_body_by_id(command.target_id)
+                    if hasattr(self.game.galaxy, "get_celestial_body_by_id")
+                    else None
+                )
+                if body is not None:
+                    dest_params = {
+                        "destination_system_name": getattr(body, "in_system", None),
+                        "destination_hex_coord": getattr(body, "in_hex", None),
+                        "destination_position": getattr(body, "position", None),
+                        "target_id": body.id,
+                    }
+                    receipt_dest = getattr(body, "name", f"body {command.target_id}")
+                else:
+                    target_u = self._visible_unit(player, command.target_id)
+                    dest_params = {
+                        "destination_system_name": getattr(target_u, "in_system", None),
+                        "destination_hex_coord": getattr(target_u, "in_hex", None),
+                        "destination_position": getattr(target_u, "position", None),
+                        "target_id": target_u.id,
+                    }
+                    receipt_dest = getattr(target_u, "name", f"unit {command.target_id}")
+            elif (
+                command.system_name is not None
+                and command.hex_coord is not None
+                and command.position is not None
+            ):
+                destination = self._destination(command)
+                dest_params = {
+                    "destination_system_name": command.system_name,
+                    "destination_hex_coord": command.hex_coord,
+                    "destination_position": destination,
+                }
+                receipt_dest = f"{command.system_name} {command.hex_coord}"
+            else:
+                raise _Rejected(
+                    "missing_field",
+                    "defend requires system_name, hex_coord, and position, or target_id.",
+                )
+            return (
+                lambda unit: DefendOrder(unit, dict(dest_params)),
+                f"Defend {receipt_dest}",
             )
         if command.type == "protect":
             self._require_friendly(player, target_unit)
@@ -816,6 +890,15 @@ class CommandGateway:
                 "capability_unavailable",
                 f"Unit {unit.id} cannot perform {command_type}.",
             )
+        if command_type == "defend":
+            if (
+                getattr(unit, "engines_component", None) is None
+                or getattr(unit, "weapons_component", None) is None
+            ):
+                raise _Rejected(
+                    "capability_unavailable",
+                    f"Unit {unit.id} cannot perform defend (requires engines and weapons).",
+                )
         if command_type == "lay_minefield" and not any(
             component.__class__.__name__ == "MinelayerComponent"
             for component in getattr(unit, "components", {}).values()

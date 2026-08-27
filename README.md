@@ -175,7 +175,7 @@ See [Agentic AI Architecture](docs/AGENTIC_AI.md) for the full design and evalua
 ## Development & Testing
 
 ### Automated Test Suite
-Wormhole Control includes a comprehensive automated test suite consisting of **545 tests across 55 test modules** covering economy, combat, movement, AI logic, order trees, and GUI handlers:
+Wormhole Control includes a comprehensive automated test suite consisting of **799 tests across 70 test modules** covering economy, combat, movement, AI logic, order trees, and GUI handlers:
 
 ```bash
 pip install -r requirements-dev.txt

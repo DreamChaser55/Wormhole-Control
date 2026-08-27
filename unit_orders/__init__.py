@@ -2,6 +2,7 @@ from .base import OrderStatus, OrderType, Order
 from .movement import ReachWaypointOrder, MoveOrder, calculate_required_antimatter
 from .patrol import PatrolOrder
 from .combat import AttackOrder, ProtectOrder
+from .defend import DefendOrder
 from .inhibitor import ToggleInhibitorOrder
 from .colony import ColonizeOrder, LoadColonistsOrder
 from .construction import ConstructOrder
@@ -33,6 +34,7 @@ __all__ = [
     "PatrolOrder",
     "AttackOrder",
     "ProtectOrder",
+    "DefendOrder",
     "ToggleInhibitorOrder",
     "ColonizeOrder",
     "LoadColonistsOrder",

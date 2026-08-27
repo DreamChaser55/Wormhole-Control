@@ -32,6 +32,7 @@ COMMAND_PROPERTIES = {
     "queue": {"type": "boolean"},
     "ability": NULLABLE_STRING,
     "minefield_type": NULLABLE_STRING,
+    "target_component": NULLABLE_STRING,
 }
 
 TURN_PLAN_SCHEMA = {

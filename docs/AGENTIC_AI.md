@@ -97,7 +97,8 @@ serialization. Save JSON and memory sidecars use atomic replacement.
 
 ## Commands
 
-The strict contract currently supports movement, patrol, combat, protection,
+The strict contract currently supports movement, patrol, combat (with optional
+subsystem targeting via `target_component`), positional defense (`defend`), protection,
 colonization, colonist loading, construction, repair, mining, continuous
 mining, unloading, docking and carrier deployment, antimatter transfer/resupply, minefields, trade,
 continuous trade, stances, inhibitor/cloaking toggles, and abilities.

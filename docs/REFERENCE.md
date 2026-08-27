@@ -149,8 +149,9 @@ Wormhole Control/
     ├── abilities.py               # UseAbilityOrder implementation
     ├── antimatter.py              # TransferAntimatter and ContinuousResupply orders
     ├── colony.py                  # Colonize and LoadColonists orders
-    ├── combat.py                  # Attack, Defend, and Protect orders
+    ├── combat.py                  # Attack and Protect orders
     ├── construction.py            # ConstructOrder implementation
+    ├── defend.py                  # DefendOrder implementation (positional and perimeter defense)
     ├── hangar.py                  # Dock, DeployUnit, and DeployAllWings orders
     ├── inhibitor.py               # ToggleInhibitorOrder implementation
     ├── intelligence.py            # InfiltrateUnit, InfiltratePlanet, RelocateAgent, Sabotage, CISweep, EliminateAgent, ExtractAgent orders
