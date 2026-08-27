@@ -383,6 +383,10 @@ def serialize_game_state(game: Any) -> dict:
 
     players_data = [serialize_player(p) for p in game.players]
     galaxy_data = serialize_galaxy(game.galaxy) if game.galaxy else None
+    messages_data = [
+        m.to_dict() if hasattr(m, "to_dict") else dict(m)
+        for m in getattr(game, "messages", [])
+    ]
 
     return {
         "version": "2.2",
@@ -395,10 +399,12 @@ def serialize_game_state(game: Any) -> dict:
             "current_sector_coord": list(game.current_sector_coord) if game.current_sector_coord else None,
             "object_counter": object_counter,
             "player_counter": player_counter,
+            "message_counter": getattr(game, "message_counter", len(messages_data)),
             "campaign_id": getattr(game, "campaign_id", str(uuid.uuid4())),
         },
         "players": players_data,
-        "galaxy": galaxy_data
+        "galaxy": galaxy_data,
+        "messages": messages_data,
     }
 
 
@@ -966,6 +972,10 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
         # Clear active selections
         game.selected_objects = []
         game.hovered_object = None
+
+        # Reconstruct messages
+        game.messages = [dict(m) for m in data.get("messages", [])]
+        game.message_counter = state_info.get("message_counter", len(game.messages))
 
         # Reconstruct Players
         game.players = [deserialize_player(p_data) for p_data in data.get("players", [])]

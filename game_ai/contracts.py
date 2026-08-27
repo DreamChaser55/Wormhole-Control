@@ -33,6 +33,7 @@ SUPPORTED_COMMANDS = frozenset(
         "toggle_inhibitor",
         "toggle_cloaking",
         "use_ability",
+        "send_message",
     }
 )
 
@@ -58,6 +59,7 @@ class Command:
     ability: str | None = None
     minefield_type: str | None = None
     target_component: str | None = None
+    message: str | None = None
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> "Command":
@@ -89,6 +91,7 @@ class Command:
             ability=_optional_str(raw.get("ability"), "ability"),
             minefield_type=_optional_str(raw.get("minefield_type"), "minefield_type"),
             target_component=_optional_str(raw.get("target_component"), "target_component"),
+            message=_optional_str(raw.get("message"), "message"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -106,6 +109,7 @@ class Command:
             "ability": self.ability,
             "minefield_type": self.minefield_type,
             "target_component": self.target_component,
+            "message": self.message,
         }
 
 

@@ -45,6 +45,7 @@ COMMAND_HELP = {
     ),
     "toggle_cloaking": "Toggle the unit's cloaking device.",
     "use_ability": "Use ability; target_id and/or position depend on ability.",
+    "send_message": "Send a text message to player target_id with message text.",
 }
 
 
@@ -182,6 +183,17 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                 "relation": _relation(player, other),
             }
             for other in getattr(game, "players", [])
+        ],
+        "incoming_messages": [
+            {
+                "sender_id": int(msg.get("sender_id", 0)),
+                "sender_name": str(msg.get("sender_name", "")),
+                "turn_sent": int(msg.get("turn_sent", 1)),
+                "text": str(msg.get("text", "")),
+            }
+            for msg in getattr(game, "messages", [])
+            if msg.get("recipient_id") == getattr(player, "id", None)
+            and msg.get("turn_sent", 1) < turn
         ],
         "systems": systems,
         "units": units,

@@ -102,6 +102,12 @@ def handle_key_down(game, gui, event: pygame.event.Event) -> bool:
             gui.close_retrofit_wizard()
         return True
 
+    # Block game-world input when the communications window is open.
+    if hasattr(gui, 'is_communications_window_open') and gui.is_communications_window_open() is True:
+        if event.key == pygame.K_ESCAPE:
+            gui.close_communications_window()
+        return True
+
     if event.key == pygame.K_ESCAPE:
         if gui.is_mouse_over_context_menu((-1, -1)):
             gui.close_context_menu()
@@ -122,6 +128,8 @@ def handle_key_down(game, gui, event: pygame.event.Event) -> bool:
         game.view_mode = 'system'
         game.selected_objects.clear()
         game.update_view_specific_labels()
+    elif event.key == pygame.K_c and game.game_started:
+        gui.toggle_communications_window()
     elif event.key == pygame.K_e and game.game_started:
         game.end_turn()
 

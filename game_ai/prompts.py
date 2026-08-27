@@ -19,8 +19,13 @@ long-term memory when useful, and end the turn. Empty command lists are legal.
 Commands are applied in array order. queue=false replaces a unit's existing orders; queue=true
 appends. Conditional sequences must preserve their prerequisites; for example, colonize after
 load_colonists must use queue=true. Every command field is required by the output schema, but fields not used by a command
-must be null. Every command acts on at least one owned unit, so unit_ids must identify those units.
+must be null. Unit commands act on at least one owned unit in unit_ids, whereas player-level diplomatic
+commands like send_message use unit_ids=[] with target_id (recipient player ID) and message (text string).
 Always set end_turn=true.
+
+You can communicate with any player regardless of team or alliance using send_message (setting target_id to the
+recipient's player ID and message to your transmission text). Any messages sent to you by other players in previous turns
+are provided in incoming_messages.
 
 When repair_context is present, rejected_plan is your immediately preceding output and error
 indices refer to its zero-based commands array. Return a complete replacement plan that corrects

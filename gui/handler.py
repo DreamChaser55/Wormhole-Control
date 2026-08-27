@@ -14,6 +14,7 @@ from .theme_loader import build_ui_manager
 from . import layout_main_menu, layout_ingame_menu, layout_hud, text_layout, context_menu, event_router
 from .layout_new_game_wizard import NewGameWizard
 from .sidebar import view as sidebar_view
+from .communications_window import CommunicationsWindow
 if typing.TYPE_CHECKING:
     from game import Game
     from entities import Player, Unit
@@ -62,6 +63,8 @@ class GUI_Handler:
         self.left_bottom_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.right_top_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.back_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.comms_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.communications_window: typing.Optional[CommunicationsWindow] = None
         self.view_mode_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self.end_turn_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.player_turn_label: typing.Optional[pygame_gui.elements.UITextBox] = None
@@ -152,6 +155,10 @@ class GUI_Handler:
             self.retrofit_wizard.kill()
             self.retrofit_wizard = None
 
+        if self.communications_window:
+            self.communications_window.close()
+            self.communications_window = None
+
         if self.load_save_window:
             self.load_save_window.kill()
             self.load_save_window = None
@@ -160,7 +167,7 @@ class GUI_Handler:
         self.about_title = self.about_text = self.about_screen_back_button = None
         self.load_save_selection_list = self.load_save_confirm_button = self.load_save_cancel_button = None
         self.save_file_paths = {}
-        self.back_button = self.view_mode_label = self.end_turn_button = self.player_turn_label = self.player_color_indicator = None
+        self.back_button = self.comms_button = self.view_mode_label = self.end_turn_button = self.player_turn_label = self.player_color_indicator = None
         self.credits_label = self.metal_label = self.crystal_label = None
         self.context_menu_buttons = []
         self.context_menu_target = None
@@ -398,6 +405,37 @@ class GUI_Handler:
         if self.unit_editor_window:
             return self.unit_editor_window.process_event(event)
         return None
+
+    # --- Communications Window helpers ---
+    def open_communications_window(self) -> None:
+        """Opens or refreshes the Diplomatic Communications window."""
+        if self.communications_window is not None and self.communications_window.is_alive:
+            self.communications_window.refresh_message_log()
+            return
+        self.communications_window = CommunicationsWindow(self)
+        self.update_comms_button()
+
+    def close_communications_window(self) -> None:
+        """Closes and cleans up the active Communications window."""
+        if self.communications_window is not None:
+            self.communications_window.close()
+            self.communications_window = None
+        self.update_comms_button()
+
+    def toggle_communications_window(self) -> None:
+        """Toggles visibility of the Communications window."""
+        if self.is_communications_window_open():
+            self.close_communications_window()
+        else:
+            self.open_communications_window()
+
+    def is_communications_window_open(self) -> bool:
+        """Checks if the Communications window is currently open and alive."""
+        return self.communications_window is not None and self.communications_window.is_alive
+
+    def update_comms_button(self) -> None:
+        """Updates the comms button badge/label depending on unread messages."""
+        layout_hud.update_comms_button(self)
 
     # --- UI Update Methods ---
     def update_back_button_visibility(self):

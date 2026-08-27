@@ -59,7 +59,7 @@ def setup_game_ui(gui) -> None:
     )
 
     # --- Bottom Left Panel ---
-    bottom_panel_width = panel_width
+    bottom_panel_width = max(panel_width, int(470 * gui.scale_x))
     left_bottom_panel_rect = pygame.Rect(0, gui.screen_res.y - TOP_BAR_HEIGHT, bottom_panel_width, TOP_BAR_HEIGHT)
     gui.left_bottom_bar_panel = pygame_gui.elements.UIPanel(
         relative_rect=left_bottom_panel_rect,
@@ -69,7 +69,7 @@ def setup_game_ui(gui) -> None:
     )
 
     # --- Elements in Bottom Left Panel (single row layout) ---
-    menu_button_width = int(70 * gui.scale_x)
+    menu_button_width = int(60 * gui.scale_x)
     menu_button_rect = pygame.Rect(padding, padding, menu_button_width, -1)
     gui.menu_button = pygame_gui.elements.UIButton(
         relative_rect=menu_button_rect,
@@ -79,7 +79,17 @@ def setup_game_ui(gui) -> None:
         object_id='#menu_button'
     )
 
-    buttons_right = menu_button_rect.right
+    comms_button_width = int(95 * gui.scale_x)
+    comms_button_rect = pygame.Rect(menu_button_rect.right + padding, padding, comms_button_width, -1)
+    gui.comms_button = pygame_gui.elements.UIButton(
+        relative_rect=comms_button_rect,
+        text='Comms',
+        manager=gui.manager,
+        container=gui.left_bottom_bar_panel,
+        object_id='#comms_button'
+    )
+
+    buttons_right = comms_button_rect.right
     label_spacing = int(5 * gui.scale_x)
     remaining_width = bottom_panel_width - buttons_right - padding
     label_width = (remaining_width - 2 * label_spacing) // 3
@@ -321,3 +331,21 @@ def update_resource_display(gui, player: 'Player') -> None:
         gui.metal_label.set_text(f"Metal: {player.metal:.0f}")
     if gui.crystal_label:
         gui.crystal_label.set_text(f"Crystal: {player.crystal:.0f}")
+
+
+def update_comms_button(gui) -> None:
+    """Updates the comms button text and badge indicator if unread messages are waiting.
+
+    Args:
+        gui: Target GUI_Handler instance.
+    """
+    if not gui.comms_button:
+        return
+    current_player = getattr(gui.game_instance, 'current_player', None)
+    if not current_player:
+        return
+    unread = gui.game_instance.get_unread_messages_for_player(current_player.id)
+    if unread:
+        gui.comms_button.set_text(f"Comms ({len(unread)})")
+    else:
+        gui.comms_button.set_text("Comms")

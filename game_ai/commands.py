@@ -326,6 +326,9 @@ class CommandGateway:
         projection = _BatchProjection(self.game, player)
         for index, command in enumerate(batch.commands):
             try:
+                if command.type == "send_message":
+                    prepared.extend(self._prepare_send_message(player, command))
+                    continue
                 units = self._owned_units(player, command.unit_ids)
                 if not units:
                     raise _Rejected("no_units", "At least one owned unit ID is required.")
@@ -813,6 +816,38 @@ class CommandGateway:
 
             operations.append(_Prepared(apply, f"Toggled cloaking on {unit.name}."))
         return operations
+
+    def _prepare_send_message(self, player: Any, command: Any) -> list[_Prepared]:
+        target_id = command.target_id
+        if target_id is None:
+            raise _Rejected("missing_target", "send_message requires target_id (recipient player ID).")
+
+        recipient = None
+        for p in getattr(self.game, "players", []):
+            if getattr(p, "id", None) == target_id:
+                recipient = p
+                break
+        if recipient is None:
+            raise _Rejected("invalid_recipient", f"Player {target_id} does not exist.")
+
+        if getattr(player, "id", None) == target_id:
+            raise _Rejected("invalid_recipient", "Cannot send message to yourself.")
+
+        message_text = command.message
+        if not message_text or not str(message_text).strip():
+            raise _Rejected("empty_message", "send_message requires non-empty message text.")
+
+        clean_text = str(message_text).strip()[:500]
+
+        def apply(sender=player, recipient_id=target_id, text=clean_text):
+            self.game.send_message(sender, recipient_id, text)
+
+        return [
+            _Prepared(
+                apply=apply,
+                receipt=f"Sent transmission to {recipient.name}: '{clean_text}'.",
+            )
+        ]
 
     def _owned_units(self, player: Any, unit_ids: tuple[int, ...]) -> list[Any]:
         units = []

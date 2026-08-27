@@ -41,7 +41,13 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
     handled_by_manager = gui.manager.process_events(event)
     action_result = None
 
-    if event.type == pygame_gui.UI_BUTTON_PRESSED:
+    # Modal Communications window
+    if gui.communications_window and gui.communications_window.is_alive:
+        comms_action = gui.communications_window.process_event(event)
+        if comms_action is not None:
+            action_result = comms_action
+
+    if action_result is None and event.type == pygame_gui.UI_BUTTON_PRESSED:
         if DEBUG:
             logger.debug(f"[GUI_Handler DEBUG] UI_BUTTON_PRESSED: event.ui_element={event.ui_element}")
 
@@ -92,6 +98,9 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         elif gui.end_turn_button and event.ui_element == gui.end_turn_button:
             logger.debug("End Turn button pressed (GUI)")
             action_result = {'action': 'end_turn'}
+        elif gui.comms_button and event.ui_element == gui.comms_button:
+            logger.debug("Comms button pressed (GUI)")
+            action_result = {'action': 'toggle_comms'}
         elif gui.back_button and event.ui_element == gui.back_button:
             logger.debug("Back button pressed (GUI)")
             action_result = {'action': 'navigate_back'}
@@ -246,6 +255,9 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
             action_result = {'action': 'cancel_new_game_wizard'}
         elif gui.retrofit_wizard and event.ui_element is gui.retrofit_wizard.window:
             gui.close_retrofit_wizard()
+            action_result = {'action': 'ui_handled'}
+        elif gui.communications_window and event.ui_element is gui.communications_window.window:
+            gui.close_communications_window()
             action_result = {'action': 'ui_handled'}
 
     if action_result:

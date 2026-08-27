@@ -44,6 +44,15 @@ class TurnProcessor:
 
         self.game.update_player_turn_display()
         self.game.update_side_bar_content() # Update info box after changing turn
+
+        # If next player is human and has unread messages, or comms window is open, refresh/show comms
+        if getattr(next_player, 'is_human', True) and hasattr(self.game, 'gui') and self.game.gui:
+            unread = self.game.get_unread_messages_for_player(next_player.id)
+            if unread:
+                self.game.gui.open_communications_window()
+            elif self.game.gui.is_communications_window_open():
+                self.game.gui.communications_window.refresh_message_log()
+
         self.check_and_schedule_ai_turn()
 
     def check_and_schedule_ai_turn(self):

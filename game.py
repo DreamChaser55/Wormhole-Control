@@ -83,6 +83,10 @@ class Game:
         self.visibility: typing.Optional[VisibilitySnapshot] = None
         self.visibility_dirty: bool = True
 
+        # Inter-player communications
+        self.messages: typing.List[typing.Dict[str, typing.Any]] = []
+        self.message_counter: int = 0
+
         # Alpha Surface for drawing overlays (highlights and order lines)
         self.overlay_surface = pygame.Surface(SCREEN_RES.to_tuple(), pygame.SRCALPHA)
 
@@ -331,6 +335,8 @@ class Game:
         self.gui.update_player_color_indicator(Color(color)) # Convert tuple to pygame.Color
         self.gui.update_player_turn_theme(Color(color))
         self.gui.update_resource_display(current_player)
+        if hasattr(self.gui, 'update_comms_button'):
+            self.gui.update_comms_button()
 
 
 
@@ -422,6 +428,72 @@ class Game:
         self.view_mode = 'main_menu'
         self.gui.clear_and_reset()
         self.gui.show_main_menu()
+
+    def get_player_by_id(self, player_id: int) -> typing.Optional[Player]:
+        """Returns the Player matching player_id, or None."""
+        if not self.players:
+            return None
+        for p in self.players:
+            if getattr(p, "id", None) == player_id:
+                return p
+        return None
+
+    def send_message(self, sender: typing.Any, recipient_id: int, text: str) -> bool:
+        """Sends a text message from sender to recipient player.
+
+        Args:
+            sender: Sender Player instance or player_id int.
+            recipient_id (int): Target recipient player ID.
+            text (str): Message content.
+
+        Returns:
+            bool: True if message was sent successfully, False otherwise.
+        """
+        if not text or not str(text).strip():
+            return False
+        sender_player = sender if isinstance(sender, Player) else self.get_player_by_id(sender)
+        recipient_player = self.get_player_by_id(recipient_id)
+        if not sender_player or not recipient_player:
+            return False
+
+        self.message_counter += 1
+        msg = {
+            "id": self.message_counter,
+            "sender_id": int(sender_player.id),
+            "sender_name": str(sender_player.name),
+            "recipient_id": int(recipient_player.id),
+            "turn_sent": int(self.turn_number),
+            "text": str(text).strip()[:500],
+            "timestamp": "",
+            "read_by_recipient": False,
+        }
+        self.messages.append(msg)
+        logger.debug(f"[Comms] Message #{msg['id']} sent from {sender_player.name} to {recipient_player.name} (Turn {self.turn_number}): '{msg['text']}'")
+        return True
+
+    def get_messages_for_player(self, player_id: int) -> typing.List[typing.Dict[str, typing.Any]]:
+        """Returns all messages involving player_id (sent or received)."""
+        return [m for m in self.messages if m.get("recipient_id") == player_id or m.get("sender_id") == player_id]
+
+    def get_incoming_messages(self, player_id: int, before_turn: typing.Optional[int] = None) -> typing.List[typing.Dict[str, typing.Any]]:
+        """Returns messages addressed to player_id, optionally filtered to those sent before before_turn."""
+        msgs = [m for m in self.messages if m.get("recipient_id") == player_id]
+        if before_turn is not None:
+            msgs = [m for m in msgs if m.get("turn_sent", 1) < before_turn]
+        return msgs
+
+    def get_unread_messages_for_player(self, player_id: int, before_turn: typing.Optional[int] = None) -> typing.List[typing.Dict[str, typing.Any]]:
+        """Returns unread messages addressed to player_id."""
+        msgs = [m for m in self.messages if m.get("recipient_id") == player_id and not m.get("read_by_recipient", False)]
+        if before_turn is not None:
+            msgs = [m for m in msgs if m.get("turn_sent", 1) < before_turn]
+        return msgs
+
+    def mark_messages_as_read(self, player_id: int) -> None:
+        """Marks all incoming messages for player_id as read."""
+        for m in self.messages:
+            if m.get("recipient_id") == player_id:
+                m["read_by_recipient"] = True
 
 # Application entry point
 if __name__ == '__main__':

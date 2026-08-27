@@ -72,6 +72,45 @@ if TYPE_CHECKING:
     from galaxy import Galaxy
     from game import Game
 
+# --- Message Class ---
+@dataclasses.dataclass
+class Message:
+    """Represents an inter-player communication transmission."""
+    sender_id: int
+    sender_name: str
+    recipient_id: int
+    turn_sent: int
+    text: str
+    timestamp: str = ""
+    read_by_recipient: bool = False
+    id: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "sender_id": self.sender_id,
+            "sender_name": self.sender_name,
+            "recipient_id": self.recipient_id,
+            "turn_sent": self.turn_sent,
+            "text": self.text,
+            "timestamp": self.timestamp,
+            "read_by_recipient": self.read_by_recipient,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Message':
+        return cls(
+            id=data.get("id", 0),
+            sender_id=data.get("sender_id", 0),
+            sender_name=data.get("sender_name", ""),
+            recipient_id=data.get("recipient_id", 0),
+            turn_sent=data.get("turn_sent", 1),
+            text=data.get("text", ""),
+            timestamp=data.get("timestamp", ""),
+            read_by_recipient=data.get("read_by_recipient", False),
+        )
+
+
 # --- Player Class ---
 class Player:
     """Represents a player in the game (human or AI)."""

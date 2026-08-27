@@ -41,7 +41,8 @@ player. It includes:
 - per-owned-unit supported commands, currently legal commands, conditional
   command sequences, bounded option values, ability state, cargo, inhibitor
   state and activation eligibility, and other public capability details;
-- one deduplicated construction-template catalog.
+- one deduplicated construction-template catalog;
+- incoming messages transmitted by other players during previous turns (`incoming_messages`).
 
 Observation schema 3 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
@@ -100,7 +101,7 @@ The strict contract currently supports movement, patrol, combat (with optional
 subsystem targeting via `target_component`), positional defense (`defend`), protection,
 colonization, colonist loading, construction, repair, mining, continuous
 mining, unloading, docking and carrier deployment, antimatter transfer/resupply, minefields, trade,
-continuous trade, stances, inhibitor/cloaking toggles, and abilities.
+continuous trade, stances, inhibitor/cloaking toggles, diplomatic communications (`send_message`), and abilities.
 
 The observation and gateway share side-effect-free legality rules. The gateway
 also projects guaranteed effects through a batch, allowing a valid

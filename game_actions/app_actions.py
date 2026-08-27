@@ -122,6 +122,11 @@ def handle_navigate_back(game, action: dict) -> None:
         game.update_side_bar_content()
 
 
+def handle_toggle_comms(game, action: dict) -> None:
+    if hasattr(game, 'gui') and game.gui:
+        game.gui.toggle_communications_window()
+
+
 def handle_ui_handled(game, action: dict) -> None:
     pass
 
@@ -144,5 +149,6 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'load_game_file': handle_load_game_file,
     'quit_to_main_menu': handle_quit_to_main_menu,
     'navigate_back': handle_navigate_back,
+    'toggle_comms': handle_toggle_comms,
     'ui_handled': handle_ui_handled,
 }
