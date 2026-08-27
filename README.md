@@ -62,11 +62,9 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 Wormhole Control organizes space into three interconnected strategic perspectives:
 
-- **Galaxy View (`G`)**: Strategic overview of the known galaxy showing all star systems, player territory, and wormhole conduits connecting distant systems.
-- **System View (`S`)**: System-level hex map showing orbital sectors radiating outward from the central star, along with celestial bodies, jump routes, and sector-level fog of war.
-- **Sector View**: Tactical in-sector view providing a granular look at celestial objects, orbital structures, individual starships, weapon range circles, minefields, and real-time movement trajectories.
-
-The **Top HUD Bar** tracks Credits, Metal, Crystal, the current turn number, and active player indicator with faction-themed panel coloring. The **Collapsible Sidebar** provides detailed inspectors for selected objects, order queues, component statuses, and actionable command buttons.
+- **Galaxy View (`G`)**: Strategic overview of the known galaxy showing all star systems, and wormhole conduits connecting distant systems.
+- **System View (`S`)**: System-level hexgrid map showing orbital sectors radiating outward from the central star, along with celestial bodies, wormhole routes, and sector-level fog of war.
+- **Sector View**: Tactical view providing a granular look at celestial objects, orbital structures, individual starships, weapon range circles, minefields, and real-time movement trajectories in a specific sector.
 
 ---
 
@@ -77,39 +75,39 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 
 ### Resource Economy
 - **Credits**: General empire treasury generated from colonized populations and civilian habitats. Credits fund ship construction, space installations, and ongoing fleet upkeep.
-- **Metal**: Industrial mineral extracted from metal asteroids by mining ships. Refined at Metal Refineries to construct ship hulls and orbital infrastructure.
-- **Crystal**: Rare energy crystalline mineral harvested from comets. Refined at Crystal Refineries to build advanced sensors, weapons, and hyperdrives.
-- **Antimatter**: High-energy fuel stored in per-unit storage tanks. Powers sublight engine burn, hyperdrive jumps, cloaking fields, and special abilities. Antimatter can be gathered by **Antimatter Harvester** ships stationed near stars and transferred between ships in fleet formations.
+- **Metal**: Extracted from metal asteroids by mining ships. Refined at Metal Refineries to construct ship hulls and orbital infrastructure.
+- **Crystal**: Rare crystalline mineral harvested from comets. Refined at Crystal Refineries to build advanced sensors, weapons, and hyperdrives.
+- **Antimatter**: High-energy fuel stored in per-unit storage tanks. Powers sublight engine burn, hyperdrive jumps, cloaking fields, and special abilities. Antimatter can be gathered by **Antimatter Harvester** ships stationed near stars and transferred to other ships.
 
 ### Movement & FTL
 - **Sublight Propulsion**: Standard thruster movement within a sector hex powered by engines and antimatter.
 - **Hex Jumps**: Short-range hyperdrive jumps between adjacent sectors within the same star system (requires **Basic Hyperdrive**).
 - **Wormhole Traversal**: Long-range inter-system travel through natural spacetime wormholes (requires **Advanced Hyperdrive**).
 - **Tactical Microjumps**: Instant short-distance teleportation via special ability to bypass hazards or reposition in combat.
-- **Hyperspace Inhibition**: Dedicated inhibitor ships project interdiction fields that prevent enemy vessels from entering or exiting hyperspace within their radius.
+- **Hyperspace Inhibition**: Dedicated inhibitor ships project interdiction fields that prevent enemy vessels from entering or exiting hyperspace within their radius. Gravitational fields from massive celestial bodies also prevent hyperspace jumps in their vicitity.
 
 ### Combat & Warfare
-- **Hull Durability & Defenses**: Ships feature customizable Armor, Rechargeable Shields, and Point Defense (PD) systems to mitigate incoming damage.
-- **Weapon Systems**: Mount Mass Driver (kinetic), Beam (instant laser), or Missile (guided payload) turrets across Standard, Anti-Strikecraft, and Long-Range variants.
+- **Weapon Systems**: Mount Mass Driver (kinetic), Beam (laser), or Missile (guided payload) turrets across Standard, Anti-Strikecraft, and Long-Range variants.
+- **Hull Durability & Defenses**: Ships feature customizable Armor (counters mass drivers), Shields (counters beams), and Point Defense (counters missiles) systems to mitigate incoming damage.
 - **Unit Stances**: Configure automated engagement behavior (Do Nothing, Attack in Weapon Range, Attack in Sector, Attack in Jump Range, or Attack in System).
 - **Combat Experience (XP)**: Units gain experience from battle, ranking up to boost weapon damage, defensive ratings, sublight speed, and hyperdrive jump ranges.
 - **Boarding Actions**: Deploy specialized Marine strike teams to breach and capture enemy vessels.
 - **Minefields**: Minelayers can deploy Anti-Ship and Anti-Strikecraft minefields for tactical area denial.
-- **Strikecraft Wings**: Carriers deploy Fighter wings (air superiority / point defense) and Bomber wings (heavy anti-ship strikes).
+- **Strikecraft Wings**: Carriers deploy Fighter wings (air superiority) and Bomber wings (heavy anti-ship strikes).
 
 ### Detection & Intel
 - **Sensor Horizons**: Ships and stations project short-range visual circles and long-range inter-sector sensor detection.
 - **Fog of War & Sector Intel**: Unexplored regions remain hidden; explored sectors remember last-seen turn intel until refreshed by active sensors.
 - **Cloaking Devices**: Active cloaking fields hide ships from enemy inter-sector long-range sensors at the cost of continuous antimatter consumption. Basic cloaks shield individual ships, while Advanced cloaks project an area-of-effect stealth field hiding entire fleet formations.
 - **Nebula Concealment**: Starships stationed inside a nebula cloud are naturally concealed from enemy long-range (inter-sector) sensors, requiring enemy ships to move within short-range visual range to achieve detailed detection.
-- **Espionage & Counter-Intelligence**: Infiltrate enemy vessels and colonies with covert operatives to tap their sensor horizons and execute subsystem sabotage. Counter-Intelligence ships execute active sector sweeps via the component sidebar panel (100 credits, 25 AM, 3-turn cooldown) to detect and eliminate hostile spies.
+- **Espionage & Counter-Intelligence**: Infiltrate enemy vessels and colonies with covert operatives to tap their sensor horizons and execute subsystem sabotage. Counter-Intelligence ships can execute active sector sweeps to detect and eliminate hostile spies.
 
 ### Expansion & Infrastructure
 - **Colonization**: Dispatch colony ships to settle habitable planets, moons, and colonizable asteroids to grow population and tax revenues.
 - **Automated Logistics**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled.
 - **Orbital Construction**: Constructors assemble orbital defense platforms, shipyards, refineries, and stations.
-- **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses (+50 credits/turn), supported up to finite colony population limits (base 1, +1 per 25 population).
-- **Orbital Defense**: Deploy tactical defense modules in colonized sectors to project an area-of-effect aura (+20% attack damage, +20% defense mitigation) for friendly ships in radius, supported up to colony population limits (base 1, +1 per 25 population) with additive stacking.
+- **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses, supported up to finite colony population limits.
+- **Orbital Defense**: Deploy tactical defense modules in colonized sectors to project an area-of-effect attack/defense buff aura for friendly ships in radius, supported up to colony population limits with additive stacking.
 
 ---
 
