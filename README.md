@@ -101,6 +101,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Sensor Horizons**: Ships and stations project short-range visual circles and long-range inter-sector sensor detection.
 - **Fog of War & Sector Intel**: Unexplored regions remain hidden; explored sectors remember last-seen turn intel until refreshed by active sensors.
 - **Cloaking Devices**: Active cloaking fields hide ships from enemy inter-sector long-range sensors at the cost of continuous antimatter consumption. Basic cloaks shield individual ships, while Advanced cloaks project an area-of-effect stealth field hiding entire fleet formations.
+- **Nebula Concealment**: Starships stationed inside a nebula cloud are naturally concealed from enemy long-range (inter-sector) sensors, requiring enemy ships to move within short-range visual range to achieve detailed detection.
 - **Espionage & Counter-Intelligence**: Infiltrate enemy vessels and colonies with covert operatives to tap their sensor horizons and execute subsystem sabotage. Counter-Intelligence ships execute active sector sweeps via the component sidebar panel (100 credits, 25 AM, 3-turn cooldown) to detect and eliminate hostile spies.
 
 ### Expansion & Infrastructure

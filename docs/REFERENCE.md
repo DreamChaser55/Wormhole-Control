@@ -305,7 +305,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 - **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Inhibition radius: 900.0. **Collision Radius**: **0.0 px** (permeable).
 - **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Inhibition radius: 600.0. **Collision Radius**: **0.0 px** (permeable).
 - **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures. **Collision Radius**: **0.0 px** (permeable).
-- **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`). Visual radius: 1666.68. **Collision Radius**: **0.0 px** (permeable).
+- **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`). Visual radius: 1666.68. **Collision Radius**: **0.0 px** (permeable). Naturally conceals starships positioned within its cloud boundaries from enemy long-range (inter-sector) sensors.
 - **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`). Visual radius: 1666.68. **Collision Radius**: **0.0 px** (permeable).
 
 ### 6.4 Celestial Body Dimensions & Obstacle Classification Summary
@@ -322,7 +322,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 | `AsteroidField` | No | 0.00 (Permeable) | 900.0 | — | No |
 | `IceField` | No | 0.00 (Permeable) | 600.0 | — | No |
 | `DebrisField` | No | 0.00 (Permeable) | 0.0 | — | No |
-| `Nebula` | No | 0.00 (Permeable) | 0.0 | — | No |
+| `Nebula` | No | 0.00 (Permeable) | 0.0 | — | No (Long-Range Stealth) |
 | `Storm` | No | 0.00 (Permeable) | 0.0 | — | No |
 
 ---
@@ -400,7 +400,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 - **Event Bus (`events.py`)**: Decouples input handling, order queuing, and UI notifications using a lightweight publish/subscribe pattern.
 - **Order System (`order_system.py`)**: Manages hierarchical order lifecycles (parent orders and dynamically generated sub-orders), route pathfinding, jump safety checks, and continuous loops.
 - **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly and allied units within build range (500 px). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
-- **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, and persists last-known sector intel per player.
+- **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, conceals units inside nebulae from long-range sensors, and persists last-known sector intel per player.
 - **Diplomacy & Team System (`entities.py`, `game_settings.py`, `game_setup.py`, `save_manager.py`)**: Manages static multi-team configurations established during game setup. Evaluates relations (`is_allied_with`, `is_enemy_of`) to govern sensor sharing, tactical combat engagement, logistics sharing, area buffs, friendly fire prevention, and covert espionage targeting.
 - **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Real-time geometric pathfinding preventing sub-light vessels from clipping into solid celestial bodies (stars, planets, moons, asteroids, comets). Uses parametric line-circle intersection analysis, dual-tangent escape waypoint generation, and recursive obstacle resolution to steer ships safely around physical bodies with a $+50.0\text{ px}$ clearance margin, while permitting unhindered landings and departures.
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations.
@@ -472,6 +472,7 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
   - Long-range sector reconnaissance automatically records sector intel for all allied players.
 - **Fog of War**: Sector-view Fog of War cutouts dynamically reveal regions covered by friendly or allied sensor suites.
 - **Advanced Area Cloaking**: Units equipped with an active Advanced Cloaking Device (`CloakingType.ADVANCED`) extend long-range sensor stealth to all friendly and allied vessels located within their projection radius.
+- **Environmental Nebula Concealment**: Starships stationed inside a nebula cloud are naturally concealed from enemy long-range (inter-sector) sensors, requiring enemy vessels to close into short-range visual sensor distance to achieve detailed target identification.
 - **Minefield Awareness**: Minefields deployed by allied players are always visible and do not trigger on friendly or allied ships.
 
 ### 10.3 Combat, Targeting & Area Effects

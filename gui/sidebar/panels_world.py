@@ -209,7 +209,7 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
 
     elif isinstance(body, Nebula):
         data.append({'type': 'label', 'text': f"Type: {body.nebula_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': "Affects sensors and shields.", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': "Hides units from sensors.", 'object_id': '#sidebar_info_label', 'height': 20})
 
     elif isinstance(body, Storm):
         data.append({'type': 'label', 'text': f"Type: {body.storm_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})

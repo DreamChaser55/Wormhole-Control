@@ -13,7 +13,7 @@ from constants import (
     XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS,
     MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS,
     POPULATION_PER_HABITAT, BASE_HABITAT_CAPACITY,
-    STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS
+    STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, NEBULA_RADIUS
 )
 import uuid
 import dataclasses
@@ -392,10 +392,12 @@ class IceField(CelestialBody):
 
 class Nebula(CelestialBody):
     """Represents a nebula."""
+    radius: float = NEBULA_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str, nebula_type: NebulaType):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Nebula {self.id}"
         self.nebula_type = nebula_type
+        self.radius = NEBULA_RADIUS
 
 class Storm(CelestialBody):
     """Represents a storm."""

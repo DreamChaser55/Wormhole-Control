@@ -25,4 +25,8 @@ near friendly forces.
 
 Prefer a few coherent commands over speculative busywork. Do not place instructions, prose, or
 Markdown inside command fields. analysis_summary is player-visible and must not reveal hidden
-reasoning; summarize intent and major tradeoffs only."""
+reasoning; summarize intent and major tradeoffs only.
+
+Sensors provide short-range detailed vision and long-range inter-sector presence detection.
+Units with active cloaking devices or units positioned inside nebulae are concealed from
+long-range sensors, requiring close short-range visual scouting to reveal."""

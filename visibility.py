@@ -4,10 +4,11 @@ from typing import Set, Tuple, Dict, List, Optional, TYPE_CHECKING
 from utils import HexCoord
 from geometry import distance
 from hexgrid_utils import hexes_within_range
+from constants import NEBULA_RADIUS
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Player, Unit
+    from entities import Player, Unit, Nebula
 
 @dataclasses.dataclass
 class VisibilitySnapshot:
@@ -64,6 +65,8 @@ class VisibilityService:
         long_range_covered: Set[Tuple[str, HexCoord]] = set()
         # active_area_cloaks: (system_name, hex_coord) -> list of (emitter_owner, position, radius)
         active_area_cloaks: Dict[Tuple[str, HexCoord], List[Tuple[typing.Any, typing.Any, float]]] = {}
+        # nebulae_by_hex: (system_name, hex_coord) -> list of (position, radius)
+        nebulae_by_hex: Dict[Tuple[str, HexCoord], List[Tuple[typing.Any, float]]] = {}
 
         all_units: List['Unit'] = []
         for system_name, system in galaxy.systems.items():
@@ -108,6 +111,14 @@ class VisibilityService:
                                 active_area_cloaks[hex_key].append((unit.owner, unit.position, cloaking.area_radius))
 
                 for body in hex_obj.celestial_bodies:
+                    from entities import Nebula
+                    if isinstance(body, Nebula):
+                        hex_key = (system_name, hex_coord)
+                        if hex_key not in nebulae_by_hex:
+                            nebulae_by_hex[hex_key] = []
+                        neb_radius = getattr(body, 'radius', NEBULA_RADIUS)
+                        nebulae_by_hex[hex_key].append((body.position, neb_radius))
+
                     is_infiltrated_body = False
                     if hasattr(body, 'infiltrating_agents') and isinstance(body.infiltrating_agents, list):
                         is_infiltrated_body = any(ag.owner and _are_allies(ag.owner, viewer) for ag in body.infiltrating_agents)
@@ -153,6 +164,14 @@ class VisibilityService:
                                 is_cloaked = True
                                 break
 
+                # Check if this unit is inside a nebula (defeats long-range sensors only)
+                is_in_nebula = False
+                if unit_key in nebulae_by_hex:
+                    for neb_pos, neb_rad in nebulae_by_hex[unit_key]:
+                        if distance(neb_pos, unit.position) <= neb_rad:
+                            is_in_nebula = True
+                            break
+
                 is_detailed = False
                 if unit_key in short_range_by_hex:
                     for pos, radius in short_range_by_hex[unit_key]:
@@ -161,7 +180,7 @@ class VisibilityService:
                             break
                 if is_detailed:
                     snapshot.visible_enemy_unit_ids.add(unit.id)
-                elif unit_key in long_range_covered and not is_cloaked:
+                elif unit_key in long_range_covered and not is_cloaked and not is_in_nebula:
                     snapshot.presence_hexes.add(unit_key)
 
         return snapshot
@@ -202,4 +221,28 @@ def is_minefield_visible(snapshot: Optional[VisibilitySnapshot], minefield: typi
     if hasattr(minefield, 'is_revealed_to') and minefield.is_revealed_to(snapshot.viewer):
         return True
     return False
+
+
+def is_unit_in_nebula(unit: Optional['Unit'], galaxy: Optional['Galaxy'] = None) -> bool:
+    """Return True if the unit is currently located within a nebula cloud."""
+    if unit is None or not unit.in_system or unit.in_hex is None:
+        return False
+    if galaxy is None and hasattr(unit, 'game') and unit.game and hasattr(unit.game, 'galaxy'):
+        galaxy = unit.game.galaxy
+    if galaxy is None:
+        return False
+    system = galaxy.systems.get(unit.in_system)
+    if not system:
+        return False
+    hex_obj = system.hexes.get(unit.in_hex)
+    if not hex_obj:
+        return False
+    from entities import Nebula
+    for body in hex_obj.celestial_bodies:
+        if isinstance(body, Nebula):
+            neb_radius = getattr(body, 'radius', NEBULA_RADIUS)
+            if distance(body.position, unit.position) <= neb_radius:
+                return True
+    return False
+
 
