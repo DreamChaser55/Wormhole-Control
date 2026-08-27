@@ -90,10 +90,15 @@ class AgentMemory:
             ("Commitments", self.commitments),
             ("Beliefs", self.beliefs),
             ("Lessons", self.lessons),
-            ("Recent receipts", self.receipts),
         ):
             sections.extend(["", f"## {title}", ""])
             sections.extend([f"- {item}" for item in items] or ["- None recorded."])
+
+        sections.extend(["", "## Recent receipts", ""])
+        receipt_lines: list[str] = []
+        for receipt in self.receipts:
+            receipt_lines.extend(_format_receipt_entry(receipt))
+        sections.extend(receipt_lines or ["- None recorded."])
         return "\n".join(sections) + "\n"
 
 
@@ -144,3 +149,22 @@ def _int(value: Any, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _format_receipt_entry(entry: str) -> list[str]:
+    clean = _text(entry, 2000)
+    if not clean:
+        return []
+    if clean.startswith("Turn ") and ": " in clean:
+        turn_label, rest = clean.split(": ", 1)
+        actions = [act.strip() for act in rest.split(";") if act.strip()]
+        if not actions:
+            return [f"- {turn_label}:", "  - No commands issued."]
+        return [f"- {turn_label}:"] + [f"  - {act}" for act in actions]
+    actions = [act.strip() for act in clean.split(";") if act.strip()]
+    if not actions:
+        return []
+    if len(actions) == 1:
+        return [f"- {actions[0]}"]
+    return [f"- {act}" for act in actions]
+

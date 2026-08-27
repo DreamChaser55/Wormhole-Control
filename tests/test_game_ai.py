@@ -174,7 +174,50 @@ class TestMemory(unittest.TestCase):
             )
             text = path.read_text(encoding="utf-8")
             self.assertIn("# AI — Agent Memory", text)
-            self.assertIn("Scout moved.", text)
+            self.assertIn("- Turn 4:\n  - Scout moved.", text)
+
+    def test_receipts_markdown_formatting_multiline(self):
+        memory = AgentMemory()
+        memory.add_receipt("Move Scout.; Colonize Planet 1.; Build Ship.", turn=1)
+        memory.add_receipt("No commands issued.", turn=2)
+        memory.add_receipt("Attack Enemy A.; Defend Base.", turn=3)
+
+        markdown = memory.to_markdown(
+            player_name="Player 2",
+            campaign_id="test-campaign",
+            agent_id="test-agent",
+        )
+
+        expected_receipts_block = (
+            "## Recent receipts\n\n"
+            "- Turn 1:\n"
+            "  - Move Scout.\n"
+            "  - Colonize Planet 1.\n"
+            "  - Build Ship.\n"
+            "- Turn 2:\n"
+            "  - No commands issued.\n"
+            "- Turn 3:\n"
+            "  - Attack Enemy A.\n"
+            "  - Defend Base."
+        )
+        self.assertIn(expected_receipts_block, markdown)
+
+    def test_receipts_markdown_empty_and_fallback(self):
+        memory = AgentMemory()
+        markdown = memory.to_markdown(
+            player_name="Player 2",
+            campaign_id="test-campaign",
+            agent_id="test-agent",
+        )
+        self.assertIn("## Recent receipts\n\n- None recorded.", markdown)
+
+        memory.receipts = ["Direct Action 1; Direct Action 2"]
+        markdown_custom = memory.to_markdown(
+            player_name="Player 2",
+            campaign_id="test-campaign",
+            agent_id="test-agent",
+        )
+        self.assertIn("## Recent receipts\n\n- Direct Action 1\n- Direct Action 2", markdown_custom)
 
     def test_player_identity_reasoning_and_memory_survive_save_round_trip(self):
         import builtins
