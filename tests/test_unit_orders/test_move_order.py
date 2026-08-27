@@ -544,3 +544,83 @@ def test_turn_processor_failed_hex_jump_does_not_mutate_position():
     # Position must NOT be mutated to (500.0, 500.0)
     assert unit.position == Position(0.0, 0.0)
     assert hd.jump_status == JumpStatus.ERROR
+
+
+def test_direct_wormhole_same_sector_destination_sublight_move():
+    """
+    When jumping to a destination in another system via a direct wormhole, and the destination
+    is in the same sector as the exit wormhole but at a different (x, y) coordinate,
+    MoveOrder must schedule the wormhole jump followed by a sub-light move to the final coordinates.
+    """
+    unit = MockUnit()
+    unit.position = Position(100.0, 100.0)
+    unit.in_hex = (1, 1)
+    unit.in_system = "Sol"
+
+    hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5)
+    engines = Engines(unit, speed=50.0)
+    unit.add_component(hd)
+    unit.add_component(engines)
+
+    dest_system = "Alpha Centauri"
+    dest_hex = (0, 0)
+    dest_pos = Position(300.0, 300.0)
+
+    wh_entry = MagicMock()
+    wh_entry.id = 1
+    wh_entry.name = "Sol WH"
+    wh_entry.in_system = "Sol"
+    wh_entry.in_hex = (1, 1)
+    wh_entry.position = Position(100.0, 100.0)
+    wh_entry.exit_wormhole_id = 2
+
+    wh_exit = MagicMock()
+    wh_exit.id = 2
+    wh_exit.name = "AC WH"
+    wh_exit.in_system = "Alpha Centauri"
+    wh_exit.in_hex = (0, 0) # Same hex as dest_hex!
+    wh_exit.position = Position(0.0, 0.0) # Different position from dest_pos (300, 300)
+
+    galaxy = MagicMock()
+    galaxy.wormholes = {1: wh_entry, 2: wh_exit}
+
+    mock_ac_hex = MagicMock()
+    mock_ac_hex.get_all_inhibition_zones.return_value = []
+    mock_ac_hex.celestial_bodies = []
+
+    mock_ac_sys = MagicMock()
+    mock_ac_sys.hexes = {(0, 0): mock_ac_hex}
+
+    mock_sol_hex = MagicMock()
+    mock_sol_hex.get_all_inhibition_zones.return_value = []
+    mock_sol_sys = MagicMock()
+    mock_sol_sys.hexes = {(1, 1): mock_sol_hex}
+
+    galaxy.systems = {"Sol": mock_sol_sys, "Alpha Centauri": mock_ac_sys}
+
+    order = MoveOrder(unit, {
+        "destination_system_name": dest_system,
+        "destination_hex_coord": dest_hex,
+        "destination_position": dest_pos
+    })
+
+    with patch.object(order, "find_wormhole_to_system", return_value=wh_entry):
+        order.execute(galaxy)
+
+    # Sub-orders expected:
+    # 1. ReachWaypointOrder: move to entry wormhole in Sol (1, 1) at pos (100, 100)
+    # 2. ReachWaypointOrder: wormhole system jump to Alpha Centauri (0, 0) at exit WH pos (0, 0)
+    # 3. ReachWaypointOrder: sub-light move from (0, 0) to dest_pos (300, 300) in Alpha Centauri (0, 0)
+    assert len(order.sub_orders) == 3
+    assert order.sub_orders[0].parameters["destination_system_name"] == "Sol"
+    assert order.sub_orders[0].parameters["destination_hex_coord"] == (1, 1)
+    assert order.sub_orders[0].parameters["destination_position"] == Position(100.0, 100.0)
+
+    assert order.sub_orders[1].parameters["destination_system_name"] == "Alpha Centauri"
+    assert order.sub_orders[1].parameters["destination_hex_coord"] == (0, 0)
+    assert order.sub_orders[1].parameters["destination_position"] == Position(0.0, 0.0)
+
+    assert order.sub_orders[2].parameters["destination_system_name"] == "Alpha Centauri"
+    assert order.sub_orders[2].parameters["destination_hex_coord"] == (0, 0)
+    assert order.sub_orders[2].parameters["destination_position"] == Position(300.0, 300.0)
+

@@ -444,6 +444,10 @@ class MoveOrder(Order):
                 # Finally, navigate from the exit wormhole to the final destination.
                 if exit_wh.in_hex != dest_hex:
                     self.plan_hex_jump_sequence(exit_wh.in_hex, dest_hex, dest_position, dest_system, galaxy_ref)
+                elif distance(arrival_pos, dest_position) >= 0.01:
+                    self.handle_inhibited_waypoint(dest_hex, dest_position, is_final_destination=True, system_name=dest_system, galaxy_ref=galaxy_ref)
+
+
 
             else:
                 # If no direct wormhole exists, find a multi-system path using Dijkstra's algorithm.
@@ -538,6 +542,7 @@ class MoveOrder(Order):
                 # Plan the final leg within the destination system.
                 self.plan_hex_jump_sequence(current_leg_arrival_hex, dest_hex, dest_position, dest_system, galaxy_ref)
 
+
         # Intra-system travel: Jump to a different hex in the same system.
         elif current_hex != dest_hex:
             self.plan_hex_jump_sequence(current_hex, dest_hex, dest_position, current_system, galaxy_ref)
@@ -630,7 +635,37 @@ def calculate_required_antimatter(
         waypoints = find_hex_jump_path(start_h, end_h, effective_jump_range)
         return len(waypoints) * hex_jump_cost
 
+    def _get_landing_sublight_cost(sys_name: str, target_h: HexCoord, target_p: Optional[Position]) -> float:
+        if target_p is None:
+            return 0.0
+        sys_obj = galaxy_ref.systems.get(sys_name) if hasattr(galaxy_ref, 'systems') and galaxy_ref.systems else None
+        if not sys_obj:
+            return 0.0
+        hex_obj = sys_obj.hexes.get(target_h) if hasattr(sys_obj, 'hexes') and sys_obj.hexes else None
+        if not hex_obj:
+            return 0.0
+        zones = hex_obj.get_all_inhibition_zones() if hasattr(hex_obj, 'get_all_inhibition_zones') else []
+        for zone in zones:
+            if is_point_in_circle(target_p, zone):
+                adjusted_pos = get_closest_point_on_circle_edge(target_p, zone)
+                return _sublight_cost(adjusted_pos, target_p)
+        return 0.0
+
     total_antimatter = 0.0
+
+    # Account for departure escape cost if origin is currently inhibited and we are jumping out
+    if curr_system != destination_system_name or curr_hex != destination_hex_coord:
+        origin_sys_obj = galaxy_ref.systems.get(curr_system) if hasattr(galaxy_ref, 'systems') and galaxy_ref.systems else None
+        if origin_sys_obj:
+            origin_hex_obj = origin_sys_obj.hexes.get(curr_hex) if hasattr(origin_sys_obj, 'hexes') and origin_sys_obj.hexes else None
+            if origin_hex_obj:
+                zones = origin_hex_obj.get_all_inhibition_zones() if hasattr(origin_hex_obj, 'get_all_inhibition_zones') else []
+                for zone in zones:
+                    if is_point_in_circle(curr_pos, zone):
+                        escape_pos = get_closest_point_on_circle_edge(curr_pos, zone)
+                        total_antimatter += _sublight_cost(curr_pos, escape_pos)
+                        curr_pos = escape_pos
+                        break
 
     # Inter-system movement
     if curr_system != destination_system_name:
@@ -659,6 +694,7 @@ def calculate_required_antimatter(
             # Navigate to entry wormhole position/hex
             if curr_leg_arrival_hex != wh_for_leg.in_hex:
                 total_antimatter += _hex_jump_cost_seq(curr_leg_arrival_hex, wh_for_leg.in_hex)
+                total_antimatter += _get_landing_sublight_cost(leg_origin, wh_for_leg.in_hex, wh_for_leg.position)
             else:
                 total_antimatter += _sublight_cost(curr_leg_pos, wh_for_leg.position)
 
@@ -668,11 +704,25 @@ def calculate_required_antimatter(
             curr_leg_arrival_hex = exit_wh.in_hex
             curr_leg_pos = exit_wh.position
 
+            # Handle inhibited wormhole exit
+            dest_sys_obj = galaxy_ref.systems.get(leg_dest) if hasattr(galaxy_ref, 'systems') and galaxy_ref.systems else None
+            if dest_sys_obj:
+                exit_hex_obj = dest_sys_obj.hexes.get(exit_wh.in_hex) if hasattr(dest_sys_obj, 'hexes') and dest_sys_obj.hexes else None
+                if exit_hex_obj:
+                    zones = exit_hex_obj.get_all_inhibition_zones() if hasattr(exit_hex_obj, 'get_all_inhibition_zones') else []
+                    for zone in zones:
+                        if is_point_in_circle(curr_leg_pos, zone):
+                            safe_distance = zone.radius + 1.0
+                            turns = math.ceil(safe_distance / effective_speed) if effective_speed > 0 else 0
+                            total_antimatter += turns * sublight_cost_per_turn
+                            curr_leg_pos = Position(curr_leg_pos.x + safe_distance, curr_leg_pos.y)
+                            break
+
         # Final leg in destination system
         if curr_leg_arrival_hex != destination_hex_coord:
             total_antimatter += _hex_jump_cost_seq(curr_leg_arrival_hex, destination_hex_coord)
             if destination_position:
-                total_antimatter += _sublight_cost(Position(0.0, 0.0), destination_position)
+                total_antimatter += _get_landing_sublight_cost(destination_system_name, destination_hex_coord, destination_position)
         else:
             if destination_position:
                 total_antimatter += _sublight_cost(curr_leg_pos, destination_position)
@@ -681,7 +731,7 @@ def calculate_required_antimatter(
     elif curr_hex != destination_hex_coord:
         total_antimatter += _hex_jump_cost_seq(curr_hex, destination_hex_coord)
         if destination_position:
-            total_antimatter += _sublight_cost(Position(0.0, 0.0), destination_position)
+            total_antimatter += _get_landing_sublight_cost(curr_system, destination_hex_coord, destination_position)
 
     # Intra-hex sub-light movement
     else:
