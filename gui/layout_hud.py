@@ -26,8 +26,28 @@ def setup_game_ui(gui) -> None:
 
     padding = int(5 * gui.scale_y)
 
-    # --- Unified Top Bar Panel (Spans full window width) ---
-    top_panel_rect = pygame.Rect(0, 0, gui.screen_res.x, TOP_BAR_HEIGHT)
+    # --- Side Bar Info Panel (Spans full window height) ---
+    side_bar_info_panel_x = gui.screen_res.x - INFO_BOX_WIDTH
+    side_bar_info_panel_y = 0
+    side_bar_info_panel_h = gui.screen_res.y
+
+    side_bar_info_panel_rect = pygame.Rect(
+        side_bar_info_panel_x,
+        side_bar_info_panel_y,
+        INFO_BOX_WIDTH,
+        side_bar_info_panel_h
+    )
+
+    gui.side_bar_info_panel = pygame_gui.elements.UIPanel(
+        relative_rect=side_bar_info_panel_rect,
+        starting_height=1,
+        manager=gui.manager,
+        object_id='#side_bar_info_panel'
+    )
+
+    # --- Top Bar Panel (Spans to left edge of sidebar) ---
+    top_panel_width = side_bar_info_panel_x
+    top_panel_rect = pygame.Rect(0, 0, top_panel_width, TOP_BAR_HEIGHT)
     gui.top_bar_panel = pygame_gui.elements.UIPanel(
         relative_rect=top_panel_rect,
         starting_height=1,
@@ -61,7 +81,7 @@ def setup_game_ui(gui) -> None:
     # --- Right Section of Top Bar ---
     end_turn_button_width = int(100 * gui.scale_x)
     end_turn_button_rect = pygame.Rect(
-        gui.screen_res.x - end_turn_button_width - padding,
+        top_panel_width - end_turn_button_width - padding,
         padding,
         end_turn_button_width,
         -1
@@ -107,25 +127,6 @@ def setup_game_ui(gui) -> None:
         manager=gui.manager,
         container=gui.top_bar_panel,
         object_id='#turn_label'
-    )
-
-    # --- Side Bar Info Panel ---
-    side_bar_info_panel_x = gui.screen_res.x - INFO_BOX_WIDTH
-    side_bar_info_panel_y = TOP_BAR_HEIGHT
-    side_bar_info_panel_h = gui.screen_res.y - side_bar_info_panel_y
-
-    side_bar_info_panel_rect = pygame.Rect(
-        side_bar_info_panel_x,
-        side_bar_info_panel_y,
-        INFO_BOX_WIDTH,
-        side_bar_info_panel_h
-    )
-
-    gui.side_bar_info_panel = pygame_gui.elements.UIPanel(
-        relative_rect=side_bar_info_panel_rect,
-        starting_height=1,
-        manager=gui.manager,
-        object_id='#side_bar_info_panel'
     )
 
     # --- Expanded Bottom Bar Panel (Spans to left edge of sidebar) ---

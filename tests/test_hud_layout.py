@@ -31,15 +31,26 @@ def mock_gui():
     return gui
 
 
-def test_top_bar_spans_full_window_width(mock_gui):
+def test_top_bar_spans_to_sidebar_edge(mock_gui):
     setup_game_ui(mock_gui)
 
     assert mock_gui.top_bar_panel is not None
     top_rect = mock_gui.top_bar_panel.get_relative_rect()
     assert top_rect.left == 0
     assert top_rect.top == 0
-    assert top_rect.width == int(SCREEN_RES.x)
+    assert top_rect.width == int(SCREEN_RES.x) - INFO_BOX_WIDTH
     assert top_rect.height == TOP_BAR_HEIGHT
+
+
+def test_sidebar_spans_full_window_height(mock_gui):
+    setup_game_ui(mock_gui)
+
+    assert mock_gui.side_bar_info_panel is not None
+    side_rect = mock_gui.side_bar_info_panel.get_relative_rect()
+    assert side_rect.left == int(SCREEN_RES.x) - INFO_BOX_WIDTH
+    assert side_rect.top == 0
+    assert side_rect.width == INFO_BOX_WIDTH
+    assert side_rect.height == int(SCREEN_RES.y)
 
 
 def test_bottom_bar_spans_to_sidebar_edge(mock_gui):
@@ -74,8 +85,8 @@ def test_top_bar_elements_layout(mock_gui):
     indicator_rect = mock_gui.player_color_indicator.get_relative_rect()
     turn_rect = mock_gui.player_turn_label.get_relative_rect()
 
-    # End turn button anchored to the right
-    assert end_turn_rect.right <= int(SCREEN_RES.x)
+    # End turn button anchored to the right of the shortened top bar
+    assert end_turn_rect.right <= (int(SCREEN_RES.x) - INFO_BOX_WIDTH)
     assert turn_rect.right <= end_turn_rect.left
     assert indicator_rect.right <= turn_rect.left
     assert view_rect.right <= indicator_rect.left
