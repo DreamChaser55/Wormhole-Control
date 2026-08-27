@@ -51,12 +51,6 @@ from unit_orders import (
 logger = logging.getLogger(__name__)
 
 
-LEGACY_AI_PROFILE_EFFORTS = {
-    "fast": "low",
-    "balanced": "medium",
-    "strategic": "high",
-}
-
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -411,15 +405,9 @@ def serialize_game_state(game: Any) -> dict:
 # --- Deserialization Functions ---
 
 def deserialize_player(data: dict) -> Player:
-    if "ai_reasoning_effort" in data:
-        ai_reasoning_effort = normalize_reasoning_effort(
-            data.get("ai_reasoning_effort")
-        )
-    else:
-        legacy_profile = data.get("ai_profile")
-        ai_reasoning_effort = LEGACY_AI_PROFILE_EFFORTS.get(
-            legacy_profile, DEFAULT_REASONING_EFFORT
-        )
+    ai_reasoning_effort = normalize_reasoning_effort(
+        data.get("ai_reasoning_effort")
+    )
     player = Player(
         name=data.get("name", "Player"),
         color=tuple(data.get("color", (255, 255, 255))),

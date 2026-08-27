@@ -143,8 +143,7 @@ reasoning effort directly:
 
 The three levels share the same 7,000-output-token limit, 120-second timeout,
 and 40-command turn limit, so the selected level changes only Luna's reasoning
-effort. Older saves migrate Fast, Balanced, and Strategic selections to Low,
-Medium, and High respectively when loaded.
+effort.
 
 Planning runs outside the Pygame thread. The version-3 observation distinguishes
 hardware-supported commands from currently legal actions, supplies bounded option

@@ -205,33 +205,34 @@ class TestMemory(unittest.TestCase):
         self.assertEqual(serialized["ai_repair_retries"], 4)
         self.assertNotIn("ai_profile", serialized)
 
-    def test_legacy_profiles_migrate_to_luna_reasoning_efforts(self):
+    def test_player_deserialization_reasoning_effort_normalization(self):
         import builtins
         import typing
 
         builtins.typing = typing
         from save_manager import deserialize_player
 
-        for legacy_profile, expected_effort in (
-            ("fast", "low"),
+        for raw_effort, expected_effort in (
+            ("low", "low"),
+            ("LOW", "low"),
+            ("medium", "medium"),
+            ("high", "high"),
+            ("HIGH", "high"),
+            ("fast", "medium"),
             ("balanced", "medium"),
-            ("strategic", "high"),
+            ("strategic", "medium"),
             ("unknown", "medium"),
+            ("max", "medium"),
             (None, "medium"),
         ):
-            data = {"name": "Legacy AI", "is_human": False}
-            if legacy_profile is not None:
-                data["ai_profile"] = legacy_profile
+            data = {"name": "AI Player", "is_human": False}
+            if raw_effort is not None:
+                data["ai_reasoning_effort"] = raw_effort
             restored = deserialize_player(data)
             self.assertEqual(
                 restored.ai_reasoning_effort,
                 expected_effort,
             )
-
-        invalid_new_value = deserialize_player(
-            {"ai_reasoning_effort": "max", "ai_profile": "strategic"}
-        )
-        self.assertEqual(invalid_new_value.ai_reasoning_effort, "medium")
 
     def test_legacy_and_invalid_repair_retry_values_are_normalized(self):
         import builtins

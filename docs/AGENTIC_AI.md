@@ -86,10 +86,9 @@ Every campaign, player, and agent has a stable UUID. Save version 2.2 embeds:
 - selected `ai_repair_retries`;
 - bounded structured `ai_memory`.
 
-Older saves migrate automatically by generating missing identities and mapping
-Fast, Balanced, and Strategic AI profiles to Low, Medium, and High Luna
-reasoning respectively. The save is authoritative. The `memory.md` sidecar is
-generated for inspection and is not read back into the campaign.
+Missing identities migrate automatically upon save loading. The save is
+authoritative. The `memory.md` sidecar is generated for inspection and is not
+read back into the campaign.
 
 Memory contains strategy, objectives, commitments, beliefs, lessons, and the
 twenty most recent execution receipts. Text and list counts are bounded before
