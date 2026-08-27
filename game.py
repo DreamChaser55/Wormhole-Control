@@ -285,7 +285,7 @@ class Game:
         if self.view_mode == 'system' and self.current_system_name:
             self.gui.update_view_mode_label(f"{self.current_system_name} system")
         elif self.view_mode == 'sector' and self.current_sector_coord:
-            self.gui.update_view_mode_label(f"{self.current_sector_coord} sector in {self.current_system_name} system")
+            self.gui.update_view_mode_label(f"Sector ( {self.current_sector_coord.q} | {self.current_sector_coord.r} ) in {self.current_system_name} system")
         elif self.view_mode == 'galaxy':
             self.gui.update_view_mode_label("Galaxy map")
         else:
