@@ -7,7 +7,7 @@ from unit_components import (
     Turret, TurretType, TurretVariant, Weapons, ColonyComponent,
     Constructor, BuildableUnit, RepairComponent,
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
-    Defenses, AntimatterStorage, AntimatterHarvester
+    Defenses, AntimatterStorage, AntimatterHarvester, Sensors
 )
 from unit_orders import Order, OrderStatus, OrderType
 
@@ -29,6 +29,16 @@ class MockPlayer:
         self.crystal = 1000
         self.color = (255, 0, 0)
 
+    def is_allied_with(self, other):
+        if other is None:
+            return False
+        if self is other:
+            return True
+        return getattr(self, 'team_id', None) == getattr(other, 'team_id', None)
+
+    def is_enemy_of(self, other):
+        return not self.is_allied_with(other)
+
 class MockUnit:
     def __init__(self):
         self.id = 123
@@ -49,8 +59,9 @@ class MockUnit:
         self.current_hull_usage = 0
         # XP system
         self.experience_points = 0
-        # Default antimatter storage so tests can access antimatter_component without manual setup
+        # Default antimatter storage and sensors so tests can access components without manual setup
         self.add_component(AntimatterStorage(self))
+        self.add_component(Sensors(self, short_range_radius=2500.0, long_range_hexes=5))
         
     def add_component(self, component):
         self.components[type(component)] = component
@@ -62,6 +73,8 @@ class MockUnit:
     def engines_component(self): return self.get_component(Engines)
     @property
     def antimatter_component(self): return self.get_component(AntimatterStorage)
+    @property
+    def sensors_component(self): return self.get_component(Sensors)
     @property
     def hyperdrive_component(self): return self.get_component(Hyperdrive)
     @property
@@ -360,12 +373,28 @@ def test_commander_stances():
     commander = Commander(friendly)
     friendly.add_component(commander)
 
+    friendly_scout1 = MockUnit()
+    friendly_scout1.id = 101
+    friendly_scout1.name = "Friendly Scout 1"
+    friendly_scout1.owner = player_friendly
+    friendly_scout1.in_system = "Sol"
+    friendly_scout1.in_hex = (0, 1)
+
+    friendly_scout2 = MockUnit()
+    friendly_scout2.id = 102
+    friendly_scout2.name = "Friendly Scout 2"
+    friendly_scout2.owner = player_friendly
+    friendly_scout2.in_system = "Sol"
+    friendly_scout2.in_hex = (0, 5)
+
     # Setup mock galaxy and system structure
     mock_galaxy = MagicMock()
     friendly.in_galaxy = mock_galaxy
     friendly.game.galaxy = mock_galaxy
     mock_galaxy.get_unit_by_id.side_effect = lambda uid: {
         100: friendly,
+        101: friendly_scout1,
+        102: friendly_scout2,
         200: enemy_in_range,
         300: enemy_in_sector,
         400: enemy_in_jump_range,
@@ -373,21 +402,25 @@ def test_commander_stances():
     }.get(uid)
 
     mock_system = MagicMock()
-    mock_galaxy.systems.get.return_value = mock_system
+    mock_system.name = "Sol"
 
     # Set up hexes containing units
     hex_center = MagicMock()
     hex_center.units = [friendly, enemy_in_range, enemy_in_sector]
+    hex_center.celestial_bodies = []
     hex_jump = MagicMock()
-    hex_jump.units = [enemy_in_jump_range]
+    hex_jump.units = [friendly_scout1, enemy_in_jump_range]
+    hex_jump.celestial_bodies = []
     hex_far = MagicMock()
-    hex_far.units = [enemy_far]
+    hex_far.units = [friendly_scout2, enemy_far]
+    hex_far.celestial_bodies = []
 
     mock_system.hexes = {
         (0, 0): hex_center,
         (0, 1): hex_jump,
         (0, 5): hex_far
     }
+    mock_galaxy.systems = {"Sol": mock_system}
 
     # Test Stance: DO_NOTHING
     commander.stance = UnitStance.DO_NOTHING
@@ -422,6 +455,8 @@ def test_commander_stances():
 
     # If enemy_in_sector leaves the sector, the order should get cancelled
     enemy_in_sector.in_hex = (0, 1)
+    hex_center.units = [friendly, enemy_in_range]
+    hex_jump.units = [friendly_scout1, enemy_in_jump_range, enemy_in_sector]
     commander.update()
     assert commander.current_order is None
 
@@ -434,6 +469,8 @@ def test_commander_stances():
 
     # If the target moves too far away (e.g. to (0, 5)), the order should be cancelled
     enemy_in_jump_range.in_hex = (0, 5)
+    hex_jump.units = [friendly_scout1, enemy_in_sector]
+    hex_far.units = [friendly_scout2, enemy_far, enemy_in_jump_range]
     commander.update()
     assert commander.current_order is None
 
@@ -474,6 +511,13 @@ def test_weapons_and_turrets():
     
     # Update weapons: turret should fire
     mock_galaxy = MagicMock()
+    mock_system = MagicMock()
+    mock_system.name = "Sol"
+    hex_obj = MagicMock()
+    hex_obj.units = [unit, target]
+    hex_obj.celestial_bodies = []
+    mock_system.hexes = {(0, 0): hex_obj}
+    mock_galaxy.systems = {"Sol": mock_system}
     weapons.update(mock_galaxy)
     
     # Target takes damage

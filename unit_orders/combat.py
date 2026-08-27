@@ -248,9 +248,21 @@ class ProtectOrder(Order):
         # Any enemy that gets closer than 1000.0 to the protected ship is a valid target.
         detection_range = 1000.0
 
+        visibility_snapshot = None
+        if self.unit.owner and galaxy_ref:
+            from visibility import VisibilityService
+            turn_num = getattr(galaxy_ref, 'turn_number', 1)
+            if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
+                turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
+            visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
+
         from entities import are_enemies
+        from visibility import is_unit_visible
         for candidate in hex_obj.units:
             if are_enemies(self.unit.owner, candidate.owner) and candidate.current_hit_points > 0:
+                if visibility_snapshot is not None and not is_unit_visible(visibility_snapshot, candidate):
+                    continue
+
                 # Fighter/Bomber targeting rules
                 if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
                     wing_comp = self.unit.strikecraft_wing_component

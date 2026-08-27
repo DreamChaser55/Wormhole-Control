@@ -256,7 +256,7 @@ class Weapons(UnitComponent):
 
     def update(self, galaxy: 'Galaxy') -> None:
         """
-        Updates all turrets and fires if a target is set and is in the same system, hex, in range and the cooldown is over.
+        Updates all turrets and fires if a target is set, visible, in the same system, hex, in range and the cooldown is over.
         """
         if self.is_destroyed:
             return
@@ -264,12 +264,27 @@ class Weapons(UnitComponent):
         for turret in self.turrets:
             turret.update()
 
+        visibility_snapshot = None
+        if any(t.target for t in self.turrets) and self.unit.owner and galaxy:
+            from visibility import VisibilityService
+            turn_num = getattr(galaxy, 'turn_number', 1)
+            if hasattr(galaxy, 'game') and hasattr(galaxy.game, 'turn_number'):
+                turn_num = getattr(galaxy.game, 'turn_number', 1)
+            visibility_snapshot = VisibilityService.compute(galaxy, self.unit.owner, turn_number=turn_num)
+
         for turret in self.turrets:
             if turret.target:
                 if turret.target.current_hit_points <= 0:
                     turret.target = None
                     turret.target_component_type = None
                     continue
+
+                if visibility_snapshot is not None:
+                    from visibility import is_unit_visible
+                    if not is_unit_visible(visibility_snapshot, turret.target):
+                        turret.target = None
+                        turret.target_component_type = None
+                        continue
 
                 target_in_same_system = self.unit.in_system == turret.target.in_system
                 target_in_same_hex = self.unit.in_hex == turret.target.in_hex

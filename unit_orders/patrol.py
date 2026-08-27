@@ -110,9 +110,21 @@ class PatrolOrder(Order):
         closest_enemy = None
         min_dist = float('inf')
 
+        visibility_snapshot = None
+        if self.unit.owner and galaxy_ref:
+            from visibility import VisibilityService
+            turn_num = getattr(galaxy_ref, 'turn_number', 1)
+            if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
+                turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
+            visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
+
         from entities import are_enemies
+        from visibility import is_unit_visible
         for unit in hex_obj.units:
             if are_enemies(self.unit.owner, unit.owner) and unit.current_hit_points > 0:
+                if visibility_snapshot is not None and not is_unit_visible(visibility_snapshot, unit):
+                    continue
+
                 # Fighter/Bomber targeting rules
                 if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
                     wing_comp = self.unit.strikecraft_wing_component

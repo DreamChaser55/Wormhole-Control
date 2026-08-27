@@ -128,8 +128,15 @@ def test_process_combat():
     weapons.set_target(unit2)
     
     system = MagicMock()
+    system.name = "Sol"
+    hex_obj = MagicMock()
+    hex_obj.units = [unit1, unit2]
+    hex_obj.celestial_bodies = []
+    system.hexes = {(0, 0): hex_obj}
     system.get_all_units.return_value = [(unit1, (0, 0)), (unit2, (0, 0))]
     game.galaxy.systems = {"Sol": system}
+    unit1.in_galaxy = game.galaxy
+    unit2.in_galaxy = game.galaxy
     
     tp = TurnProcessor(game)
     tp._process_unit_updates(player1)

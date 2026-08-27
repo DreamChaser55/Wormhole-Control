@@ -83,7 +83,7 @@ class Commander(UnitComponent):
             attack_order.is_stance_order = True
             self.add_order(attack_order)
 
-    def is_target_valid_for_stance(self, target: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+    def is_target_valid_for_stance(self, target: 'Unit', galaxy_ref: 'Galaxy', visibility_snapshot: Optional[typing.Any] = None) -> bool:
         """Checks if the given target is still valid under the unit's current stance."""
         if self.stance not in self.get_allowed_stances():
             return False
@@ -93,6 +93,18 @@ class Commander(UnitComponent):
 
         if target.in_system != self.unit.in_system:
             return False
+
+        if visibility_snapshot is None and self.unit.owner and galaxy_ref:
+            from visibility import VisibilityService
+            turn_num = getattr(galaxy_ref, 'turn_number', 1)
+            if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
+                turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
+            visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
+
+        if visibility_snapshot is not None:
+            from visibility import is_unit_visible
+            if not is_unit_visible(visibility_snapshot, target):
+                return False
 
         if self.stance == UnitStance.ATTACK_WEAPON_RANGE:
             if target.in_hex != self.unit.in_hex:
@@ -135,11 +147,18 @@ class Commander(UnitComponent):
 
         return False
 
-    def find_stance_target(self, galaxy_ref: 'Galaxy') -> Optional['Unit']:
+    def find_stance_target(self, galaxy_ref: 'Galaxy', visibility_snapshot: Optional[typing.Any] = None) -> Optional['Unit']:
         """Scans the system for the closest eligible target matching the current stance."""
         system = galaxy_ref.systems.get(self.unit.in_system)
         if not system:
             return None
+
+        if visibility_snapshot is None and self.unit.owner:
+            from visibility import VisibilityService
+            turn_num = getattr(galaxy_ref, 'turn_number', 1)
+            if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
+                turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
+            visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
 
         candidates = []
         if self.stance in [UnitStance.ATTACK_WEAPON_RANGE, UnitStance.ATTACK_SAME_SECTOR]:
@@ -155,7 +174,7 @@ class Commander(UnitComponent):
             if candidate.owner == self.unit.owner or candidate.current_hit_points <= 0:
                 continue
 
-            if not self.is_target_valid_for_stance(candidate, galaxy_ref):
+            if not self.is_target_valid_for_stance(candidate, galaxy_ref, visibility_snapshot=visibility_snapshot):
                 continue
 
             h_dist = hex_distance(self.unit.in_hex, candidate.in_hex)
