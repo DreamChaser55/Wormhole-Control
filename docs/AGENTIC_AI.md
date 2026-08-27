@@ -90,9 +90,9 @@ Missing identities migrate automatically upon save loading. The save is
 authoritative. The `memory.md` sidecar is generated for inspection and is not
 read back into the campaign.
 
-Memory contains strategy, objectives, commitments, beliefs, lessons, and the
-twenty most recent execution receipts. Text and list counts are bounded before
-serialization. Save JSON and memory sidecars use atomic replacement.
+Memory contains strategy, objectives, commitments, beliefs, lessons, misc,
+and the twenty most recent execution receipts. Text and list counts are bounded
+before serialization. Save JSON and memory sidecars use atomic replacement.
 
 ## Commands
 

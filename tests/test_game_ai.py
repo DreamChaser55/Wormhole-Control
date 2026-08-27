@@ -48,6 +48,7 @@ EMPTY_PATCH = {
     "commitments": None,
     "beliefs": None,
     "lessons": None,
+    "misc": None,
 }
 
 
@@ -159,11 +160,13 @@ class TestMemory(unittest.TestCase):
             {
                 "strategy": "Expand",
                 "objectives": [f"Objective {index}" for index in range(20)],
+                "misc": [f"Misc Note {index}" for index in range(20)],
             },
             turn=4,
         )
         memory.add_receipt("Scout moved.", turn=4)
         self.assertEqual(len(memory.objectives), 12)
+        self.assertEqual(len(memory.misc), 16)
         with tempfile.TemporaryDirectory() as directory:
             path = write_memory_sidecar(
                 Path(directory),
@@ -174,7 +177,24 @@ class TestMemory(unittest.TestCase):
             )
             text = path.read_text(encoding="utf-8")
             self.assertIn("# AI — Agent Memory", text)
+            self.assertIn("## Misc\n\n- Misc Note 0", text)
             self.assertIn("- Turn 4:\n  - Scout moved.", text)
+
+    def test_memory_misc_field_roundtrip_and_defaults(self):
+        memory = AgentMemory()
+        self.assertEqual(memory.misc, [])
+        markdown = memory.to_markdown(
+            player_name="AI", campaign_id="camp", agent_id="ag"
+        )
+        self.assertIn("## Misc\n\n- None recorded.", markdown)
+
+        memory.apply_patch({"misc": ["Important reminder.", "Enemy spotted."]}, turn=2)
+        self.assertEqual(memory.misc, ["Important reminder.", "Enemy spotted."])
+        serialized = memory.to_dict()
+        self.assertEqual(serialized["misc"], ["Important reminder.", "Enemy spotted."])
+
+        restored = AgentMemory.from_dict(serialized)
+        self.assertEqual(restored.misc, ["Important reminder.", "Enemy spotted."])
 
     def test_receipts_markdown_formatting_multiline(self):
         memory = AgentMemory()

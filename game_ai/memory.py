@@ -20,6 +20,7 @@ class AgentMemory:
     commitments: list[str] = field(default_factory=list)
     beliefs: list[str] = field(default_factory=list)
     lessons: list[str] = field(default_factory=list)
+    misc: list[str] = field(default_factory=list)
     receipts: list[str] = field(default_factory=list)
     updated_turn: int = 0
 
@@ -33,6 +34,7 @@ class AgentMemory:
             commitments=_text_list(raw.get("commitments"), 12),
             beliefs=_text_list(raw.get("beliefs"), 16),
             lessons=_text_list(raw.get("lessons"), 16),
+            misc=_text_list(raw.get("misc"), 16),
             receipts=_text_list(raw.get("receipts"), 20, max_length=600),
             updated_turn=_int(raw.get("updated_turn"), 0),
         )
@@ -47,6 +49,7 @@ class AgentMemory:
             ("commitments", 12),
             ("beliefs", 16),
             ("lessons", 16),
+            ("misc", 16),
         ):
             if patch.get(field_name) is not None:
                 setattr(self, field_name, _text_list(patch.get(field_name), limit))
@@ -66,6 +69,7 @@ class AgentMemory:
             "commitments": list(self.commitments),
             "beliefs": list(self.beliefs),
             "lessons": list(self.lessons),
+            "misc": list(self.misc),
             "receipts": list(self.receipts),
             "updated_turn": self.updated_turn,
         }
@@ -90,6 +94,7 @@ class AgentMemory:
             ("Commitments", self.commitments),
             ("Beliefs", self.beliefs),
             ("Lessons", self.lessons),
+            ("Misc", self.misc),
         ):
             sections.extend(["", f"## {title}", ""])
             sections.extend([f"- {item}" for item in items] or ["- None recorded."])
