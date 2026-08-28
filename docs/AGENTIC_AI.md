@@ -126,7 +126,8 @@ model.
   dialog and defaulting to 2. The initial submission is not counted as a retry.
 - Each semantic repair is a complete replacement response made with the
   player's selected reasoning effort. The retry budget is not sent to the
-  model.
+  model. The HUD turn status label updates to show the active retry attempt
+  (e.g., `revising... retry 1/2`).
 - Transport, authentication, quota, timeout, and commit failures do not consume
   semantic repairs.
 - The retry limit is snapshotted when an AI turn begins, so in-match edits take

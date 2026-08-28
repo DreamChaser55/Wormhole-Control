@@ -1341,8 +1341,11 @@ class TestCoordinator(unittest.TestCase):
                     accepted,
                 ]
                 self.assertTrue(coordinator.start_current_turn())
+                self.assertEqual(coordinator.status_message, "thinking…")
                 self._finish_pending_request(coordinator)
+                self.assertEqual(coordinator.status_message, "revising... retry 1/2")
                 self._finish_pending_request(coordinator)
+                self.assertEqual(coordinator.status_message, "revising... retry 2/2")
                 self._finish_pending_request(coordinator)
 
             self.assertEqual(len(provider.requests), 3)

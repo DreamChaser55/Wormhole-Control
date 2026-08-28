@@ -138,7 +138,12 @@ class AgentTurnCoordinator:
             request.turn_number,
         )
         self.state = "repairing" if repairing else "thinking"
-        self.status_message = "revising…" if repairing else "thinking…"
+        if repairing:
+            self.status_message = (
+                f"revising... retry {self._repair_attempts_used}/{self._max_repair_retries}"
+            )
+        else:
+            self.status_message = "thinking…"
         self.last_error = ""
         self._set_end_turn_enabled(False)
         self._future = self._executor.submit(

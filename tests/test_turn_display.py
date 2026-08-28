@@ -70,10 +70,19 @@ def test_update_player_turn_display_ai_status():
     game.update_player_turn_display()
     game.gui.update_turn_label.assert_called_with("<font color='#ff0000'>Turn 2: AI Opponent (thinking…)</font>")
 
-    # Case 2: revising
+    # Case 2: revising (legacy plain string)
     game.ai_coordinator.status_message = "revising…"
     game.update_player_turn_display()
     game.gui.update_turn_label.assert_called_with("<font color='#ff0000'>Turn 2: AI Opponent (revising…)</font>")
+
+    # Case 2b: revising with retry counters (e.g. retry 1/2, 2/2)
+    game.ai_coordinator.status_message = "revising... retry 1/2"
+    game.update_player_turn_display()
+    game.gui.update_turn_label.assert_called_with("<font color='#ff0000'>Turn 2: AI Opponent (revising... retry 1/2)</font>")
+
+    game.ai_coordinator.status_message = "revising... retry 2/2"
+    game.update_player_turn_display()
+    game.gui.update_turn_label.assert_called_with("<font color='#ff0000'>Turn 2: AI Opponent (revising... retry 2/2)</font>")
 
     # Case 3: issuing
     game.ai_coordinator.status_message = "issuing…"
