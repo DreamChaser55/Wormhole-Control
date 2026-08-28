@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 
 MEMORY_VERSION = 1
+MAX_RECEIPTS_TOTAL_CHARS = 10_000
 
 
 @dataclass
@@ -35,7 +36,7 @@ class AgentMemory:
             beliefs=_text_list(raw.get("beliefs"), 16),
             lessons=_text_list(raw.get("lessons"), 16),
             misc=_text_list(raw.get("misc"), 16),
-            receipts=_text_list(raw.get("receipts"), 20, max_length=600),
+            receipts=_bound_receipts(raw.get("receipts")),
             updated_turn=_int(raw.get("updated_turn"), 0),
         )
 
@@ -56,9 +57,12 @@ class AgentMemory:
         self.updated_turn = max(0, int(turn))
 
     def add_receipt(self, text: str, *, turn: int) -> None:
-        clean = _text(text, 600)
+        clean = text.strip() if isinstance(text, str) else ""
         if clean:
-            self.receipts = (self.receipts + [f"Turn {turn}: {clean}"])[-20:]
+            self.receipts = _bound_receipts(
+                self.receipts + [f"Turn {turn}: {clean}"],
+                MAX_RECEIPTS_TOTAL_CHARS,
+            )
             self.updated_turn = max(0, int(turn))
 
     def to_dict(self) -> dict[str, Any]:
@@ -156,8 +160,27 @@ def _int(value: Any, default: int) -> int:
         return default
 
 
+def _bound_receipts(
+    value: Any,
+    max_total_chars: int = MAX_RECEIPTS_TOTAL_CHARS,
+) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    result: list[str] = []
+    for item in value:
+        if isinstance(item, str):
+            clean = item.strip()
+            if clean:
+                result.append(clean)
+    total_chars = sum(len(r) for r in result)
+    while total_chars > max_total_chars and result:
+        removed = result.pop(0)
+        total_chars -= len(removed)
+    return result
+
+
 def _format_receipt_entry(entry: str) -> list[str]:
-    clean = _text(entry, 2000)
+    clean = entry.strip() if isinstance(entry, str) else ""
     if not clean:
         return []
     if clean.startswith("Turn ") and ": " in clean:

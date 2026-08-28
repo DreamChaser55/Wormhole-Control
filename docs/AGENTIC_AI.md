@@ -92,8 +92,10 @@ authoritative. The `memory.md` sidecar is generated for inspection and is not
 read back into the campaign.
 
 Memory contains strategy, objectives, commitments, beliefs, lessons, misc,
-and the twenty most recent execution receipts. Text and list counts are bounded
-before serialization. Save JSON and memory sidecars use atomic replacement.
+and recent execution receipts bounded to 10,000 total characters. Individual turn
+receipts are retained whole, dropping the oldest turns in their entirety when the
+total limit is exceeded. Text and list counts are bounded before serialization.
+Save JSON and memory sidecars use atomic replacement.
 
 ## Commands
 

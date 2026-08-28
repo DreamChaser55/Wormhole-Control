@@ -239,6 +239,58 @@ class TestMemory(unittest.TestCase):
         )
         self.assertIn("## Recent receipts\n\n- Direct Action 1\n- Direct Action 2", markdown_custom)
 
+    def test_receipts_individual_turns_retained_in_full(self):
+        memory = AgentMemory()
+        # Build a turn receipt with 20 commands that significantly exceeds the old 600-char limit
+        actions = [f"Attack Player 2 Ship {idx} with Player 1 Destroyer {idx}." for idx in range(20)]
+        long_receipt = "; ".join(actions)
+        self.assertGreater(len(long_receipt), 800)
+
+        memory.add_receipt(long_receipt, turn=16)
+        self.assertEqual(len(memory.receipts), 1)
+        self.assertEqual(memory.receipts[0], f"Turn 16: {long_receipt}")
+
+        markdown = memory.to_markdown(
+            player_name="Player 1",
+            campaign_id="camp",
+            agent_id="ag",
+        )
+        for act in actions:
+            self.assertIn(f"  - {act}", markdown)
+
+    def test_receipts_total_size_bounded_evicts_oldest_turns_entirely(self):
+        memory = AgentMemory()
+        # Create 10 turns of 1,500 characters each (15,000 characters total)
+        for turn in range(1, 11):
+            body = f"Action for turn {turn}: " + ("x" * 1400)
+            memory.add_receipt(body, turn=turn)
+
+        total_chars = sum(len(r) for r in memory.receipts)
+        self.assertLessEqual(total_chars, 10_000)
+        # Verify older turns were removed completely in FIFO order
+        first_turn_str = memory.receipts[0]
+        self.assertTrue(first_turn_str.startswith("Turn "))
+        # The latest turns must be preserved in full
+        self.assertTrue(memory.receipts[-1].startswith("Turn 10: Action for turn 10: "))
+        self.assertEqual(len(memory.receipts[-1]), len("Turn 10: ") + len(f"Action for turn 10: " + ("x" * 1400)))
+        # Turn 1 and Turn 2 should have been evicted entirely
+        surviving_turns = [r.split(":")[0] for r in memory.receipts]
+        self.assertNotIn("Turn 1", surviving_turns)
+        self.assertNotIn("Turn 2", surviving_turns)
+
+    def test_receipts_from_dict_total_bounding(self):
+        # Deserializing raw receipts exceeding 10k chars should evict oldest turns entirely
+        raw_receipts = [
+            f"Turn {turn}: " + ("y" * 2000)
+            for turn in range(1, 8)  # 7 * ~2008 chars = ~14,056 chars
+        ]
+        memory = AgentMemory.from_dict({"receipts": raw_receipts})
+        total_chars = sum(len(r) for r in memory.receipts)
+        self.assertLessEqual(total_chars, 10_000)
+        self.assertNotIn("Turn 1: ", memory.receipts[0])
+        self.assertTrue(memory.receipts[-1].startswith("Turn 7: "))
+        self.assertEqual(len(memory.receipts[-1]), len(raw_receipts[-1]))
+
     def test_player_identity_reasoning_and_memory_survive_save_round_trip(self):
         import builtins
         import typing
