@@ -188,6 +188,7 @@ class TestCommunications(unittest.TestCase):
         # Check layout positioning: recipient dropdown is above conversation log, and log is above message input
         self.assertLess(comms_win.recipient_dropdown.rect.top, comms_win.log_text_box.rect.top)
         self.assertLess(comms_win.log_text_box.rect.top, comms_win.message_input.rect.top)
+        self.assertGreaterEqual(comms_win.log_text_box.rect.height, int(300 * gui.scale_y))
 
         # Check log text box has incoming message for active conversation thread
         self.assertIn("Hello Human Commander", comms_win.log_text_box.html_text)

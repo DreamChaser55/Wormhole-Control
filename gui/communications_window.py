@@ -50,18 +50,8 @@ class CommunicationsWindow:
         pad_y = int(8 * gui.scale_y)
         content_width = window_width - int(48 * gui.scale_x)
 
-        # Header Info Banner
-        header_height = int(32 * gui.scale_y)
-        self.header_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(pad_x, pad_y, content_width, header_height),
-            text="Subspace Comms Network — Send transmissions to any faction across space.",
-            manager=self.manager,
-            container=self.window,
-            object_id="#comms_header_label",
-        )
-
         # Recipient Selection Section
-        recipient_y = pad_y + header_height + int(4 * gui.scale_y)
+        recipient_y = pad_y
         row_height = int(34 * gui.scale_y)
         label_width = int(80 * gui.scale_x)
         self.recipient_label = pygame_gui.elements.UILabel(
@@ -112,8 +102,8 @@ class CommunicationsWindow:
         )
 
         # Transmission Log Text Box
-        log_y = recipient_y + row_height + int(6 * gui.scale_y)
-        log_height = int(280 * gui.scale_y)
+        log_y = recipient_y + row_height + int(8 * gui.scale_y)
+        log_height = int(318 * gui.scale_y)
         self.log_text_box = pygame_gui.elements.UITextBox(
             html_text="",
             relative_rect=pygame.Rect(pad_x, log_y, content_width, log_height),
