@@ -60,25 +60,12 @@ class CommunicationsWindow:
             object_id="#comms_header_label",
         )
 
-        # Transmission Log Text Box
-        log_y = pad_y + header_height + int(4 * gui.scale_y)
-        log_height = int(280 * gui.scale_y)
-        self.log_text_box = pygame_gui.elements.UITextBox(
-            html_text="",
-            relative_rect=pygame.Rect(pad_x, log_y, content_width, log_height),
-            manager=self.manager,
-            container=self.window,
-            object_id="#comms_log_text_box",
-        )
-
-        # Recipient Selection & Compose Section
-        controls_y = log_y + log_height + int(10 * gui.scale_y)
+        # Recipient Selection Section
+        recipient_y = pad_y + header_height + int(4 * gui.scale_y)
         row_height = int(34 * gui.scale_y)
-
-        # Recipient Label
         label_width = int(80 * gui.scale_x)
         self.recipient_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(pad_x, controls_y, label_width, row_height),
+            relative_rect=pygame.Rect(pad_x, recipient_y, label_width, row_height),
             text="Recipient:",
             manager=self.manager,
             container=self.window,
@@ -118,14 +105,25 @@ class CommunicationsWindow:
         self.recipient_dropdown = pygame_gui.elements.UIDropDownMenu(
             options_list=dropdown_options,
             starting_option=default_option,
-            relative_rect=pygame.Rect(dropdown_x, controls_y, dropdown_width, row_height),
+            relative_rect=pygame.Rect(dropdown_x, recipient_y, dropdown_width, row_height),
             manager=self.manager,
             container=self.window,
             object_id="#comms_recipient_dropdown",
         )
 
+        # Transmission Log Text Box
+        log_y = recipient_y + row_height + int(6 * gui.scale_y)
+        log_height = int(280 * gui.scale_y)
+        self.log_text_box = pygame_gui.elements.UITextBox(
+            html_text="",
+            relative_rect=pygame.Rect(pad_x, log_y, content_width, log_height),
+            manager=self.manager,
+            container=self.window,
+            object_id="#comms_log_text_box",
+        )
+
         # Message Input Row
-        input_y = controls_y + row_height + int(10 * gui.scale_y)
+        input_y = log_y + log_height + int(10 * gui.scale_y)
         btn_width = int(110 * gui.scale_x)
         input_width = content_width - btn_width - int(8 * gui.scale_x)
 
