@@ -24,8 +24,8 @@ commands like send_message use unit_ids=[] with target_id (recipient player ID) 
 Always set end_turn=true.
 
 You can communicate with any player regardless of team or alliance using send_message (setting target_id to the
-recipient's player ID and message to your transmission text). Any messages sent to you by other players in previous turns
-are provided in incoming_messages.
+recipient's player ID and message to your transmission text). Diplomatic communication history is provided in
+conversations, grouped by partner faction with full chronological message history of sent and received transmissions.
 
 When repair_context is present, rejected_plan is your immediately preceding output and error
 indices refer to its zero-based commands array. Return a complete replacement plan that corrects

@@ -25,7 +25,8 @@ from constants import (
 )
 from entities import (
     Player, GameObject, CelestialBody, Star, Planet, Moon, ColonizableAsteroid,
-    MetalAsteroid, AsteroidField, IceField, DebrisField, Nebula, Storm, Comet, Wormhole, Unit, Minefield
+    MetalAsteroid, AsteroidField, IceField, DebrisField, Nebula, Storm, Comet, Wormhole, Unit, Minefield,
+    Conversation, Message
 )
 from galaxy import Galaxy, StarSystem, Hex
 from unit_components import (
@@ -383,9 +384,8 @@ def serialize_game_state(game: Any) -> dict:
 
     players_data = [serialize_player(p) for p in game.players]
     galaxy_data = serialize_galaxy(game.galaxy) if game.galaxy else None
-    messages_data = [
-        m.to_dict() if hasattr(m, "to_dict") else dict(m)
-        for m in getattr(game, "messages", [])
+    conversations_data = [
+        conv.to_dict() for conv in getattr(game, "conversations", {}).values()
     ]
 
     return {
@@ -399,12 +399,12 @@ def serialize_game_state(game: Any) -> dict:
             "current_sector_coord": list(game.current_sector_coord) if game.current_sector_coord else None,
             "object_counter": object_counter,
             "player_counter": player_counter,
-            "message_counter": getattr(game, "message_counter", len(messages_data)),
+            "message_counter": getattr(game, "message_counter", 0),
             "campaign_id": getattr(game, "campaign_id", str(uuid.uuid4())),
         },
         "players": players_data,
         "galaxy": galaxy_data,
-        "messages": messages_data,
+        "conversations": conversations_data,
     }
 
 
@@ -973,9 +973,12 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
         game.selected_objects = []
         game.hovered_object = None
 
-        # Reconstruct messages
-        game.messages = [dict(m) for m in data.get("messages", [])]
-        game.message_counter = state_info.get("message_counter", len(game.messages))
+        # Reconstruct conversations
+        game.conversations = {}
+        for c_data in data.get("conversations", []):
+            conv = Conversation.from_dict(c_data)
+            game.conversations[conv.participant_ids] = conv
+        game.message_counter = state_info.get("message_counter", 0)
 
         # Reconstruct Players
         game.players = [deserialize_player(p_data) for p_data in data.get("players", [])]

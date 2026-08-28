@@ -3,7 +3,7 @@ import unittest
 import pygame
 
 from geometry import Position
-from entities import Player
+from entities import Player, Message
 from game import Game
 from game_ai.contracts import Command, CommandBatch, TurnPlan
 from game_ai.schema import responses_text_config, TURN_PLAN_SCHEMA
@@ -34,46 +34,33 @@ class TestGameAIComms(unittest.TestCase):
         self.game.current_player_index = 1
         self.game.turn_number = 2
 
-    def test_observation_incoming_messages(self):
-        # Message from Turn 1 to Player 1
-        self.game.messages = [
-            {
-                "id": 1,
-                "sender_id": self.player0.id,
-                "sender_name": "Player 1",
-                "recipient_id": self.player1.id,
-                "turn_sent": 1,
-                "text": "Hello AI from Turn 1",
-                "read_by_recipient": False,
-            },
-            {
-                "id": 2,
-                "sender_id": self.player0.id,
-                "sender_name": "Player 1",
-                "recipient_id": self.player1.id,
-                "turn_sent": 2,
-                "text": "Message from Turn 2 (current turn)",
-                "read_by_recipient": False,
-            },
-            {
-                "id": 3,
-                "sender_id": self.player1.id,
-                "sender_name": "Player 2",
-                "recipient_id": self.player2.id,
-                "turn_sent": 1,
-                "text": "Message to Player 3",
-                "read_by_recipient": False,
-            },
-        ]
+    def test_observation_conversations(self):
+        # Transmissions on Turn 1
+        self.game.turn_number = 1
+        self.game.send_message(self.player0, self.player1.id, "Hello AI from Turn 1")
+        self.game.send_message(self.player1, self.player0.id, "Greetings human commander")
+        self.game.send_message(self.player1, self.player2.id, "Message to Player 3")
+
+        # Transmission on Turn 2 (current turn)
+        self.game.turn_number = 2
+        self.game.send_message(self.player0, self.player1.id, "Message from Turn 2 (current turn)")
 
         obs = build_observation(self.game, self.player1)
-        self.assertIn("incoming_messages", obs)
-        incoming = obs["incoming_messages"]
-        self.assertEqual(len(incoming), 1)
-        self.assertEqual(incoming[0]["text"], "Hello AI from Turn 1")
-        self.assertEqual(incoming[0]["sender_id"], self.player0.id)
-        self.assertEqual(incoming[0]["sender_name"], "Player 1")
-        self.assertEqual(incoming[0]["turn_sent"], 1)
+        self.assertIn("conversations", obs)
+        conversations = obs["conversations"]
+        
+        # Player 1 has 2 conversations (with Player 0 and Player 2)
+        self.assertEqual(len(conversations), 2)
+        
+        # Check conversation with Player 0
+        p0_conv = next(c for c in conversations if c["partner_id"] == self.player0.id)
+        self.assertEqual(p0_conv["partner_name"], "Player 1")
+        # Should include Turn 1 messages (both incoming and outgoing), but NOT current Turn 2 message
+        self.assertEqual(len(p0_conv["messages"]), 2)
+        self.assertEqual(p0_conv["messages"][0]["text"], "Hello AI from Turn 1")
+        self.assertEqual(p0_conv["messages"][0]["sender_id"], self.player0.id)
+        self.assertEqual(p0_conv["messages"][1]["text"], "Greetings human commander")
+        self.assertEqual(p0_conv["messages"][1]["sender_id"], self.player1.id)
 
         # Check command_reference includes send_message
         self.assertIn("send_message", obs["command_reference"])
@@ -138,12 +125,14 @@ class TestGameAIComms(unittest.TestCase):
         self.assertEqual(result.applied_count, 1)
         self.assertIn("Sent transmission to Player 1: 'We propose open borders and trade.'.", result.receipts[0])
 
-        # Verify message added to game.messages
-        self.assertEqual(len(self.game.messages), 1)
-        msg = self.game.messages[0]
-        self.assertEqual(msg["sender_id"], self.player1.id)
-        self.assertEqual(msg["recipient_id"], self.player0.id)
-        self.assertEqual(msg["text"], "We propose open borders and trade.")
+        # Verify message added to conversation
+        conv = self.game.get_conversation(self.player1.id, self.player0.id)
+        self.assertIsNotNone(conv)
+        self.assertEqual(len(conv.messages), 1)
+        msg = conv.messages[0]
+        self.assertEqual(msg.sender_id, self.player1.id)
+        self.assertEqual(msg.recipient_id, self.player0.id)
+        self.assertEqual(msg.text, "We propose open borders and trade.")
 
     def test_command_gateway_send_message_validation(self):
         gateway = CommandGateway(self.game)

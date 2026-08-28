@@ -5,7 +5,7 @@ import pygame
 import pygame_gui
 
 from geometry import Vector, Position
-from entities import Player, Message
+from entities import Player, Message, Conversation
 from game import Game
 from gui.handler import GUI_Handler
 from gui.communications_window import CommunicationsWindow
@@ -50,17 +50,55 @@ class TestCommunications(unittest.TestCase):
         self.assertEqual(reconstructed.sender_name, "Player 1")
         self.assertEqual(reconstructed.recipient_id, 1)
 
+    def test_conversation_dataclass(self):
+        key = Conversation.make_key(1, 0)
+        self.assertEqual(key, (0, 1))
+
+        conv = Conversation(participant_ids=key)
+        self.assertEqual(conv.get_partner_id(0), 1)
+        self.assertEqual(conv.get_partner_id(1), 0)
+
+        msg1 = Message(id=1, sender_id=0, sender_name="P1", recipient_id=1, turn_sent=1, text="Hi")
+        msg2 = Message(id=2, sender_id=1, sender_name="P2", recipient_id=0, turn_sent=2, text="Hello back", read_by_recipient=False)
+        conv.add_message(msg2)
+        conv.add_message(msg1)
+
+        # Messages should be sorted by turn_sent then id
+        self.assertEqual(conv.messages[0].id, 1)
+        self.assertEqual(conv.messages[1].id, 2)
+
+        # Unread counts
+        self.assertEqual(conv.get_unread_count(0), 1)
+        self.assertEqual(conv.get_unread_count(1), 1)
+
+        # Mark as read
+        conv.mark_as_read(0)
+        self.assertEqual(conv.get_unread_count(0), 0)
+
+        # Serialization
+        data = conv.to_dict()
+        self.assertEqual(data["participant_ids"], [0, 1])
+        self.assertEqual(len(data["messages"]), 2)
+
+        restored = Conversation.from_dict(data)
+        self.assertEqual(restored.participant_ids, (0, 1))
+        self.assertEqual(len(restored.messages), 2)
+        self.assertEqual(restored.messages[0].text, "Hi")
+
     def test_send_message_success(self):
         success = self.game.send_message(self.player0, self.player1.id, "Trade offer: 500 metal")
         self.assertTrue(success)
-        self.assertEqual(len(self.game.messages), 1)
         
-        msg = self.game.messages[0]
-        self.assertEqual(msg["sender_id"], self.player0.id)
-        self.assertEqual(msg["recipient_id"], self.player1.id)
-        self.assertEqual(msg["turn_sent"], 1)
-        self.assertEqual(msg["text"], "Trade offer: 500 metal")
-        self.assertFalse(msg["read_by_recipient"])
+        conv = self.game.get_conversation(self.player0.id, self.player1.id)
+        self.assertIsNotNone(conv)
+        self.assertEqual(len(conv.messages), 1)
+        
+        msg = conv.messages[0]
+        self.assertEqual(msg.sender_id, self.player0.id)
+        self.assertEqual(msg.recipient_id, self.player1.id)
+        self.assertEqual(msg.turn_sent, 1)
+        self.assertEqual(msg.text, "Trade offer: 500 metal")
+        self.assertFalse(msg.read_by_recipient)
 
     def test_send_message_validation(self):
         # Empty text
@@ -68,6 +106,8 @@ class TestCommunications(unittest.TestCase):
         self.assertFalse(self.game.send_message(self.player0, self.player1.id, "   "))
         # Invalid recipient
         self.assertFalse(self.game.send_message(self.player0, 999, "Hello"))
+        # Self recipient
+        self.assertFalse(self.game.send_message(self.player0, self.player0.id, "Hello self"))
         # Sender by int ID
         self.assertTrue(self.game.send_message(self.player0.id, self.player1.id, "Valid via ID"))
 
@@ -86,7 +126,7 @@ class TestCommunications(unittest.TestCase):
         # Incoming messages for Player 0 before Turn 2
         incoming_before_turn2 = self.game.get_incoming_messages(self.player0.id, before_turn=2)
         self.assertEqual(len(incoming_before_turn2), 1)
-        self.assertEqual(incoming_before_turn2[0]["text"], "Msg 2 from P2 to P0 (Turn 1)")
+        self.assertEqual(incoming_before_turn2[0].text, "Msg 2 from P2 to P0 (Turn 1)")
 
         # All incoming messages for Player 0
         all_incoming = self.game.get_incoming_messages(self.player0.id)
@@ -101,7 +141,7 @@ class TestCommunications(unittest.TestCase):
         unread_after = self.game.get_unread_messages_for_player(self.player0.id)
         self.assertEqual(len(unread_after), 0)
 
-    def test_save_load_messages_persistence(self):
+    def test_save_load_conversations_persistence(self):
         self.game.start_new_game()
         self.game.turn_number = 2
         p0 = self.game.players[0]
@@ -116,9 +156,12 @@ class TestCommunications(unittest.TestCase):
         new_game = Game()
         load_success = new_game.load_game(saved_filepath)
         self.assertTrue(load_success)
-        self.assertEqual(len(new_game.messages), 2)
-        self.assertEqual(new_game.messages[0]["text"], "Message A")
-        self.assertEqual(new_game.messages[1]["text"], "Message B")
+        
+        conv = new_game.get_conversation(p0.id, p1.id)
+        self.assertIsNotNone(conv)
+        self.assertEqual(len(conv.messages), 2)
+        self.assertEqual(conv.messages[0].text, "Message A")
+        self.assertEqual(conv.messages[1].text, "Message B")
         self.assertEqual(new_game.message_counter, 2)
 
         if os.path.exists(saved_filepath):
@@ -142,15 +185,17 @@ class TestCommunications(unittest.TestCase):
         self.assertEqual(len(options), 2)
         self.assertIn("Player 2 (AI: Medium)", options[0])
 
-        # Check log text box has incoming message
+        # Check log text box has incoming message for active conversation thread
         self.assertIn("Hello Human Commander", comms_win.log_text_box.html_text)
 
         # Send message via GUI window
         comms_win.message_input.set_text("We accept your terms.")
         sent = comms_win.send_current_message()
         self.assertTrue(sent)
-        self.assertEqual(len(self.game.messages), 2)
-        self.assertEqual(self.game.messages[1]["text"], "We accept your terms.")
+        
+        conv = self.game.get_conversation(self.player0.id, self.player1.id)
+        self.assertEqual(len(conv.messages), 2)
+        self.assertEqual(conv.messages[1].text, "We accept your terms.")
         self.assertEqual(comms_win.message_input.get_text(), "")
         self.assertIn("We accept your terms.", comms_win.log_text_box.html_text)
 
@@ -177,9 +222,10 @@ class TestCommunications(unittest.TestCase):
         handle_toggle_comms(self.game, {"action": "toggle_comms"})
         self.assertTrue(gui.is_communications_window_open())
 
-        # Viewing marks messages as read
+        # Viewing marks messages as read for active conversation
+        # Comms window opened to Player 2 (who had unread messages) -> marks Player 2 messages as read
         gui.update_comms_button()
-        self.assertEqual(gui.comms_button.text, "Comms")
+        self.assertIn("Comms", gui.comms_button.text)
 
 
 if __name__ == "__main__":

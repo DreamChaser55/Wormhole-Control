@@ -90,6 +90,7 @@ class CommunicationsWindow:
         dropdown_options: typing.List[str] = []
         current_player = self.game.current_player
         current_id = getattr(current_player, "id", None)
+        default_option = None
 
         for p in getattr(self.game, "players", []):
             if p.id != current_id:
@@ -98,15 +99,25 @@ class CommunicationsWindow:
                 self.recipient_map[display_name] = p.id
                 dropdown_options.append(display_name)
 
+                # Prefer defaulting to a faction with unread messages
+                if current_id is not None:
+                    conv = self.game.get_conversation(current_id, p.id, create_if_missing=False)
+                    if conv and conv.get_unread_count(current_id) > 0:
+                        if default_option is None:
+                            default_option = display_name
+
         if not dropdown_options:
             dropdown_options = ["No other factions"]
             self.recipient_map["No other factions"] = -1
+            default_option = "No other factions"
+        elif default_option is None:
+            default_option = dropdown_options[0]
 
         dropdown_width = int(240 * gui.scale_x)
         dropdown_x = pad_x + label_width + int(6 * gui.scale_x)
         self.recipient_dropdown = pygame_gui.elements.UIDropDownMenu(
             options_list=dropdown_options,
-            starting_option=dropdown_options[0],
+            starting_option=default_option,
             relative_rect=pygame.Rect(dropdown_x, controls_y, dropdown_width, row_height),
             manager=self.manager,
             container=self.window,
@@ -143,60 +154,75 @@ class CommunicationsWindow:
         return bool(self.window and self.window.alive())
 
     def refresh_message_log(self) -> None:
-        """Refreshes the HTML text content in the message log textbox."""
+        """Refreshes the HTML text content in the message log textbox for the active Conversation thread."""
         if not self.log_text_box or not self.log_text_box.alive():
             return
 
         current_player = self.game.current_player
         current_id = getattr(current_player, "id", None)
-        all_messages = getattr(self.game, "messages", [])
+        if current_id is None:
+            return
 
-        # Filter messages involving current player
-        player_messages = [
-            m for m in all_messages
-            if m.get("recipient_id") == current_id or m.get("sender_id") == current_id
-        ]
+        recipient_id = -1
+        if self.recipient_dropdown:
+            raw = self.recipient_dropdown.selected_option
+            selected_display = raw[0] if isinstance(raw, tuple) else str(raw) if raw else None
+            if selected_display:
+                recipient_id = self.recipient_map.get(selected_display, -1)
 
-        if not player_messages:
+        if recipient_id < 0:
             self.log_text_box.set_text(
-                "<br><font color='#78909C'><i>[Subspace Log Empty] No transmissions recorded on this frequency yet.<br>"
-                "Select a recipient below and transmit a diplomatic message.</i></font>"
+                "<br><font color='#78909C'><i>[Subspace Log Empty] No other factions available for communication.</i></font>"
+            )
+            return
+
+        recipient_player = self.game.get_player_by_id(recipient_id)
+        partner_name = recipient_player.name if recipient_player else f"Player {recipient_id}"
+
+        conv = self.game.get_conversation(current_id, recipient_id, create_if_missing=False)
+        conversation_messages = conv.messages if conv else []
+
+        if not conversation_messages:
+            self.log_text_box.set_text(
+                f"<br><font color='#78909C'><i>[Secure Subspace Frequency Open] No transmissions recorded with {partner_name} yet.<br>"
+                f"Type a transmission below and click Transmit to initiate diplomatic contact.</i></font>"
             )
             return
 
         players_by_id = {p.id: p for p in getattr(self.game, "players", [])}
         html_lines = []
 
-        for msg in player_messages:
-            turn_sent = msg.get("turn_sent", 1)
-            sender_id = msg.get("sender_id", 0)
-            recipient_id = msg.get("recipient_id", 0)
-            text = msg.get("text", "").replace("<", "&lt;").replace(">", "&gt;")
+        for msg in conversation_messages:
+            turn_sent = getattr(msg, "turn_sent", 1)
+            sender_id = getattr(msg, "sender_id", 0)
+            recipient_player_id = getattr(msg, "recipient_id", 0)
+            raw_text = getattr(msg, "text", "")
+            text = str(raw_text).replace("<", "&lt;").replace(">", "&gt;")
 
             sender_player = players_by_id.get(sender_id)
-            recipient_player = players_by_id.get(recipient_id)
+            target_player = players_by_id.get(recipient_player_id)
 
             sender_name = sender_player.name if sender_player else f"Player {sender_id}"
-            recipient_name = recipient_player.name if recipient_player else f"Player {recipient_id}"
+            target_name = target_player.name if target_player else f"Player {recipient_player_id}"
 
             sender_color = _color_to_hex(getattr(sender_player, "color", (0, 229, 255)))
-            recipient_color = _color_to_hex(getattr(recipient_player, "color", (255, 255, 255)))
+            target_color = _color_to_hex(getattr(target_player, "color", (255, 255, 255)))
 
             if sender_id == current_id:
                 # Outgoing transmission
                 header = (
                     f"<b>[Turn {turn_sent}]</b> "
                     f"<font color='{sender_color}'><b>{sender_name} (You)</b></font> "
-                    f"➔ <font color='{recipient_color}'><b>{recipient_name}</b></font>:"
+                    f"➔ <font color='{target_color}'><b>{target_name}</b></font>:"
                 )
             else:
                 # Incoming transmission
-                is_new = not msg.get("read_by_recipient", False)
+                is_new = not getattr(msg, "read_by_recipient", False)
                 new_badge = " <font color='#FFEA00'><b>[NEW]</b></font>" if is_new else ""
                 header = (
                     f"<b>[Turn {turn_sent}]</b> "
                     f"<font color='{sender_color}'><b>{sender_name}</b></font>{new_badge} "
-                    f"➔ <font color='{recipient_color}'><b>{recipient_name} (You)</b></font>:"
+                    f"➔ <font color='{target_color}'><b>{target_name} (You)</b></font>:"
                 )
 
             html_lines.append(f"{header}<br>&nbsp;&nbsp;<font color='#ECEFF1'>{text}</font><br>")
@@ -204,9 +230,8 @@ class CommunicationsWindow:
         formatted_html = "<br>".join(html_lines)
         self.log_text_box.set_text(formatted_html)
 
-        # Mark incoming messages as read once viewed
-        if current_id is not None:
-            self.game.mark_messages_as_read(current_id)
+        # Mark this specific conversation's incoming messages as read once viewed
+        self.game.mark_conversation_as_read(current_id, recipient_id)
 
     def send_current_message(self) -> bool:
         """Sends the message currently typed in the text entry line to the selected recipient."""
@@ -257,6 +282,11 @@ class CommunicationsWindow:
         elif event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
             if self.message_input and event.ui_element == self.message_input:
                 self.send_current_message()
+                return {'action': 'ui_handled'}
+
+        elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+            if self.recipient_dropdown and event.ui_element == self.recipient_dropdown:
+                self.refresh_message_log()
                 return {'action': 'ui_handled'}
 
         elif event.type == pygame_gui.UI_WINDOW_CLOSE:

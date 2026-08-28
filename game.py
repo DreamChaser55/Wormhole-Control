@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 from constants import SCREEN_RES, FULLSCREEN, PROFILE, RED, BLUE, YELLOW
 from utils import HexCoord
 from geometry import Position
-from entities import Player, Unit, Order
+from entities import Player, Unit, Order, Conversation, Message
 from gui import GUI_Handler
 from renderer import Renderer
 from input_processor import InputProcessor
@@ -84,7 +84,7 @@ class Game:
         self.visibility_dirty: bool = True
 
         # Inter-player communications
-        self.messages: typing.List[typing.Dict[str, typing.Any]] = []
+        self.conversations: typing.Dict[typing.Tuple[int, int], Conversation] = {}
         self.message_counter: int = 0
 
         # Alpha Surface for drawing overlays (highlights and order lines)
@@ -438,8 +438,19 @@ class Game:
                 return p
         return None
 
+    def get_conversation(self, p1_id: int, p2_id: int, create_if_missing: bool = True) -> typing.Optional[Conversation]:
+        """Returns the Conversation between two players, creating it if needed."""
+        key = Conversation.make_key(p1_id, p2_id)
+        if key not in self.conversations and create_if_missing:
+            self.conversations[key] = Conversation(participant_ids=key)
+        return self.conversations.get(key)
+
+    def get_conversations_for_player(self, player_id: int) -> typing.List[Conversation]:
+        """Returns all Conversation objects involving player_id."""
+        return [conv for key, conv in self.conversations.items() if player_id in key]
+
     def send_message(self, sender: typing.Any, recipient_id: int, text: str) -> bool:
-        """Sends a text message from sender to recipient player.
+        """Sends a text message from sender to recipient player within their Conversation thread.
 
         Args:
             sender: Sender Player instance or player_id int.
@@ -456,44 +467,69 @@ class Game:
         if not sender_player or not recipient_player:
             return False
 
+        sender_id = int(sender_player.id)
+        target_id = int(recipient_player.id)
+        if sender_id == target_id:
+            return False
+
         self.message_counter += 1
-        msg = {
-            "id": self.message_counter,
-            "sender_id": int(sender_player.id),
-            "sender_name": str(sender_player.name),
-            "recipient_id": int(recipient_player.id),
-            "turn_sent": int(self.turn_number),
-            "text": str(text).strip()[:500],
-            "timestamp": "",
-            "read_by_recipient": False,
-        }
-        self.messages.append(msg)
-        logger.debug(f"[Comms] Message #{msg['id']} sent from {sender_player.name} to {recipient_player.name} (Turn {self.turn_number}): '{msg['text']}'")
+        msg = Message(
+            id=self.message_counter,
+            sender_id=sender_id,
+            sender_name=str(sender_player.name),
+            recipient_id=target_id,
+            turn_sent=int(self.turn_number),
+            text=str(text).strip()[:500],
+            timestamp="",
+            read_by_recipient=False,
+        )
+        conv = self.get_conversation(sender_id, target_id, create_if_missing=True)
+        if conv is not None:
+            conv.add_message(msg)
+
+        logger.debug(f"[Comms] Message #{msg.id} sent from {sender_player.name} to {recipient_player.name} (Turn {self.turn_number}): '{msg.text}'")
         return True
 
-    def get_messages_for_player(self, player_id: int) -> typing.List[typing.Dict[str, typing.Any]]:
+    def get_messages_for_player(self, player_id: int) -> typing.List[Message]:
         """Returns all messages involving player_id (sent or received)."""
-        return [m for m in self.messages if m.get("recipient_id") == player_id or m.get("sender_id") == player_id]
+        result: typing.List[Message] = []
+        for conv in self.get_conversations_for_player(player_id):
+            result.extend(conv.messages)
+        result.sort(key=lambda m: (m.turn_sent, m.id))
+        return result
 
-    def get_incoming_messages(self, player_id: int, before_turn: typing.Optional[int] = None) -> typing.List[typing.Dict[str, typing.Any]]:
+    def get_incoming_messages(self, player_id: int, before_turn: typing.Optional[int] = None) -> typing.List[Message]:
         """Returns messages addressed to player_id, optionally filtered to those sent before before_turn."""
-        msgs = [m for m in self.messages if m.get("recipient_id") == player_id]
-        if before_turn is not None:
-            msgs = [m for m in msgs if m.get("turn_sent", 1) < before_turn]
-        return msgs
+        result: typing.List[Message] = []
+        for conv in self.get_conversations_for_player(player_id):
+            for m in conv.messages:
+                if m.recipient_id == player_id:
+                    if before_turn is None or m.turn_sent < before_turn:
+                        result.append(m)
+        result.sort(key=lambda m: (m.turn_sent, m.id))
+        return result
 
-    def get_unread_messages_for_player(self, player_id: int, before_turn: typing.Optional[int] = None) -> typing.List[typing.Dict[str, typing.Any]]:
+    def get_unread_messages_for_player(self, player_id: int, before_turn: typing.Optional[int] = None) -> typing.List[Message]:
         """Returns unread messages addressed to player_id."""
-        msgs = [m for m in self.messages if m.get("recipient_id") == player_id and not m.get("read_by_recipient", False)]
-        if before_turn is not None:
-            msgs = [m for m in msgs if m.get("turn_sent", 1) < before_turn]
-        return msgs
+        result: typing.List[Message] = []
+        for conv in self.get_conversations_for_player(player_id):
+            for m in conv.messages:
+                if m.recipient_id == player_id and not m.read_by_recipient:
+                    if before_turn is None or m.turn_sent < before_turn:
+                        result.append(m)
+        result.sort(key=lambda m: (m.turn_sent, m.id))
+        return result
 
     def mark_messages_as_read(self, player_id: int) -> None:
-        """Marks all incoming messages for player_id as read."""
-        for m in self.messages:
-            if m.get("recipient_id") == player_id:
-                m["read_by_recipient"] = True
+        """Marks all incoming messages for player_id as read across all conversations."""
+        for conv in self.get_conversations_for_player(player_id):
+            conv.mark_as_read(player_id)
+
+    def mark_conversation_as_read(self, player_id: int, other_player_id: int) -> None:
+        """Marks incoming messages in a specific conversation as read."""
+        conv = self.get_conversation(player_id, other_player_id, create_if_missing=False)
+        if conv is not None:
+            conv.mark_as_read(player_id)
 
 # Application entry point
 if __name__ == '__main__':

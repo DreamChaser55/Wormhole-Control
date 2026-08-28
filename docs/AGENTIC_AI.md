@@ -42,7 +42,7 @@ player. It includes:
   command sequences, bounded option values, ability state, cargo, inhibitor
   state and activation eligibility, and other public capability details;
 - one deduplicated construction-template catalog;
-- incoming messages transmitted by other players during previous turns (`incoming_messages`).
+- diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
 Observation schema 3 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems

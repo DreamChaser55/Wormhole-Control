@@ -184,16 +184,33 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
             }
             for other in getattr(game, "players", [])
         ],
-        "incoming_messages": [
+        "conversations": [
             {
-                "sender_id": int(msg.get("sender_id", 0)),
-                "sender_name": str(msg.get("sender_name", "")),
-                "turn_sent": int(msg.get("turn_sent", 1)),
-                "text": str(msg.get("text", "")),
+                "partner_id": int(conv.get_partner_id(getattr(player, "id", None))),
+                "partner_name": str(
+                    getattr(
+                        game.get_player_by_id(conv.get_partner_id(getattr(player, "id", None))),
+                        "name",
+                        f"Player {conv.get_partner_id(getattr(player, 'id', None))}",
+                    )
+                ),
+                "messages": [
+                    {
+                        "sender_id": int(m.sender_id),
+                        "sender_name": str(m.sender_name),
+                        "turn_sent": int(m.turn_sent),
+                        "text": str(m.text),
+                    }
+                    for m in conv.messages
+                    if getattr(m, "turn_sent", 1) < turn
+                ],
             }
-            for msg in getattr(game, "messages", [])
-            if msg.get("recipient_id") == getattr(player, "id", None)
-            and msg.get("turn_sent", 1) < turn
+            for conv in (
+                game.get_conversations_for_player(getattr(player, "id", None))
+                if hasattr(game, "get_conversations_for_player")
+                else []
+            )
+            if any(getattr(m, "turn_sent", 1) < turn for m in conv.messages)
         ],
         "systems": systems,
         "units": units,
