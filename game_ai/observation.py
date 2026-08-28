@@ -46,6 +46,7 @@ COMMAND_HELP = {
     "toggle_cloaking": "Toggle the unit's cloaking device.",
     "use_ability": "Use ability; target_id and/or position depend on ability.",
     "send_message": "Send a text message to player target_id with message text.",
+    "message_developer": "Send feedback, suggestions, or bug reports to the game developer with message text.",
 }
 
 

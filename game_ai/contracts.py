@@ -34,6 +34,7 @@ SUPPORTED_COMMANDS = frozenset(
         "toggle_cloaking",
         "use_ability",
         "send_message",
+        "message_developer",
     }
 )
 

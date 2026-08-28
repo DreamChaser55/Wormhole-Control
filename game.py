@@ -2,6 +2,8 @@ import logging
 import sys
 import typing
 import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 import pygame
 from pygame import Color
 
@@ -86,6 +88,9 @@ class Game:
         # Inter-player communications
         self.conversations: typing.Dict[typing.Tuple[int, int], Conversation] = {}
         self.message_counter: int = 0
+
+        # AI developer feedback history
+        self.developer_feedback: typing.List[typing.Dict[str, typing.Any]] = []
 
         # Alpha Surface for drawing overlays (highlights and order lines)
         self.overlay_surface = pygame.Surface(SCREEN_RES.to_tuple(), pygame.SRCALPHA)
@@ -530,6 +535,56 @@ class Game:
         conv = self.get_conversation(player_id, other_player_id, create_if_missing=False)
         if conv is not None:
             conv.mark_as_read(player_id)
+
+    def record_developer_feedback(self, sender: typing.Any, text: str) -> bool:
+        """Records feedback, suggestions, or bug reports from a player/agent to the developer.
+
+        Persists the entry in human-readable Markdown to saves/ai_feedback.md and logs it.
+        """
+        if not text or not str(text).strip():
+            return False
+        sender_player = sender if isinstance(sender, Player) else self.get_player_by_id(sender)
+        player_name = str(sender_player.name) if sender_player else f"Player {sender}"
+        player_id = int(sender_player.id) if sender_player else int(sender)
+        agent_id = str(getattr(sender_player, "agent_id", f"player-{player_id}"))
+        campaign_id = str(getattr(self, "campaign_id", "unknown"))
+        turn_number = int(getattr(self, "turn_number", 1))
+        clean_text = str(text).strip()[:2000]
+
+        entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "campaign_id": campaign_id,
+            "turn_number": turn_number,
+            "player_id": player_id,
+            "player_name": player_name,
+            "agent_id": agent_id,
+            "message": clean_text,
+        }
+        self.developer_feedback.append(entry)
+
+        try:
+            import save_manager
+            feedback_path = Path(save_manager.SAVES_DIR) / "ai_feedback.md"
+            feedback_path.parent.mkdir(parents=True, exist_ok=True)
+
+            md_content = ""
+            if not feedback_path.exists() or feedback_path.stat().st_size == 0:
+                md_content += "# AI Developer Feedback Log\n\n"
+
+            md_content += (
+                f"## Turn {turn_number} — {player_name} (Agent: `{agent_id}`)\n"
+                f"- **Timestamp**: {entry['timestamp']}\n"
+                f"- **Campaign**: `{campaign_id}`\n"
+                f"- **Player**: {player_name} (ID: {player_id})\n\n"
+                f"### Message\n{clean_text}\n\n---\n\n"
+            )
+            with feedback_path.open("a", encoding="utf-8") as f:
+                f.write(md_content)
+        except Exception as exc:
+            logger.warning(f"Could not persist developer feedback: {exc}", exc_info=True)
+
+        logger.info(f"[Developer Feedback] Turn {turn_number} - {player_name} (Agent {agent_id}): {clean_text}")
+        return True
 
 # Application entry point
 if __name__ == '__main__':

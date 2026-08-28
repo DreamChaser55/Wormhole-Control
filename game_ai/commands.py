@@ -329,6 +329,9 @@ class CommandGateway:
                 if command.type == "send_message":
                     prepared.extend(self._prepare_send_message(player, command))
                     continue
+                if command.type == "message_developer":
+                    prepared.extend(self._prepare_message_developer(player, command))
+                    continue
                 units = self._owned_units(player, command.unit_ids)
                 if not units:
                     raise _Rejected("no_units", "At least one owned unit ID is required.")
@@ -846,6 +849,26 @@ class CommandGateway:
             _Prepared(
                 apply=apply,
                 receipt=f"Sent transmission to {recipient.name}: '{clean_text}'.",
+            )
+        ]
+
+    def _prepare_message_developer(self, player: Any, command: Any) -> list[_Prepared]:
+        message_text = command.message
+        if not message_text or not str(message_text).strip():
+            raise _Rejected("empty_message", "message_developer requires non-empty message text.")
+
+        clean_text = str(message_text).strip()[:2000]
+
+        def apply(sender=player, text=clean_text):
+            if hasattr(self.game, "record_developer_feedback"):
+                self.game.record_developer_feedback(sender, text)
+            else:
+                logger.info("[Developer Feedback] %s: %s", getattr(sender, "name", "AI"), text)
+
+        return [
+            _Prepared(
+                apply=apply,
+                receipt=f"Delivered message to game developer: '{clean_text}'.",
             )
         ]
 

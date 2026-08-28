@@ -101,7 +101,8 @@ The strict contract currently supports movement, patrol, combat (with optional
 subsystem targeting via `target_component`), positional defense (`defend`), protection,
 colonization, colonist loading, construction, repair, mining, continuous
 mining, unloading, docking and carrier deployment, antimatter transfer/resupply, minefields, trade,
-continuous trade, stances, inhibitor/cloaking toggles, diplomatic communications (`send_message`), and abilities.
+continuous trade, stances, inhibitor/cloaking toggles, diplomatic communications (`send_message`),
+developer feedback (`message_developer`), and abilities.
 
 The observation and gateway share side-effect-free legality rules. The gateway
 also projects guaranteed effects through a batch, allowing a valid
@@ -139,6 +140,9 @@ model.
 - Every attempt appends bounded telemetry to ignored
   `saves/ai_telemetry.jsonl`, including attempt index, model, reasoning, token
   use, latency, command summaries, errors, and whether another retry followed.
+- Developer feedback transmissions (`message_developer`) are appended as
+  human-readable Markdown entries to ignored `saves/ai_feedback.md` and logged to
+  `game.log`.
 
 ## Evaluation
 

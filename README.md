@@ -163,7 +163,9 @@ button available for manual recovery.
 Each planning attempt writes bounded operational telemetry (model, reasoning,
 usage, latency, command summaries, validation errors, and retry outcome) without
 persisting prompts, observations, memory, analysis, raw model output, or SDK
-request bodies.
+request bodies. AI agents can also message the game developer (`message_developer`)
+to report gameplay bugs, rule confusions, or balance suggestions directly to
+`saves/ai_feedback.md`.
 
 See [Agentic AI Architecture](docs/AGENTIC_AI.md) for the full design and evaluation workflow.
 

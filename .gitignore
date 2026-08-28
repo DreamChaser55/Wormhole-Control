@@ -135,3 +135,5 @@ Thumbs.db
 # Agentic AI runtime artifacts
 saves/agent_memory/
 saves/ai_telemetry.jsonl
+saves/ai_feedback.md
+
