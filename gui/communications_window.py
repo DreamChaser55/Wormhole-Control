@@ -218,10 +218,10 @@ class CommunicationsWindow:
             else:
                 # Incoming transmission
                 is_new = not getattr(msg, "read_by_recipient", False)
-                new_badge = " <font color='#FFEA00'><b>[NEW]</b></font>" if is_new else ""
+                new_badge = " <font color='#FFFFFF'><b>[NEW]</b></font>" if is_new else ""
                 header = (
-                    f"<b>[Turn {turn_sent}]</b> "
-                    f"<font color='{sender_color}'><b>{sender_name}</b></font>{new_badge} "
+                    f"<b>[Turn {turn_sent}]</b>{new_badge} "
+                    f"<font color='{sender_color}'><b>{sender_name}</b></font> "
                     f"➔ <font color='{target_color}'><b>{target_name} (You)</b></font>:"
                 )
 
