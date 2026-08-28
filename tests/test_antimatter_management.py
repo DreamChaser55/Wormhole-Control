@@ -93,7 +93,7 @@ def test_sublight_movement_fails_without_antimatter():
     unit.position = Position(0, 0)
     
     am_comp = AntimatterStorage(unit)
-    am_comp.current_amount = 1.0  # Less than cost per turn (2.0)
+    am_comp.current_amount = 0.5  # Less than cost per turn (1.0)
     
     engines = Engines(unit, speed=100.0)
     engines.move_target = Position(100.0, 0.0)
@@ -114,7 +114,7 @@ def test_sublight_movement_fails_without_antimatter():
     
     # Unit should NOT move, and antimatter should NOT be consumed
     assert unit.position.x == 0.0
-    assert am_comp.current_amount == 1.0
+    assert am_comp.current_amount == 0.5
 
 def test_hex_jump_consumes_antimatter():
     game = MagicMock()
@@ -163,7 +163,7 @@ def test_hex_jump_fails_without_antimatter():
     unit.in_hex = (0, 0)
     
     am_comp = AntimatterStorage(unit)
-    am_comp.current_amount = 10.0  # Less than HYPERDRIVE_HEX_JUMP_COST (20)
+    am_comp.current_amount = 5.0  # Less than HYPERDRIVE_HEX_JUMP_COST (10.0)
     
     hyperdrive = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5)
     hyperdrive.hex_jump_target = ((0, 2), Position(0, 200))
@@ -189,7 +189,7 @@ def test_hex_jump_fails_without_antimatter():
     tp._process_movement(player)
     
     # Jump should fail and not consume antimatter
-    assert am_comp.current_amount == 10.0
+    assert am_comp.current_amount == 5.0
     assert hyperdrive.jump_status == hyperdrive.jump_status.ERROR
 
 def test_ability_antimatter_consumption():
@@ -286,7 +286,7 @@ def test_system_jump_fails_without_antimatter():
     unit.in_system = "Sol"
     
     am_comp = AntimatterStorage(unit)
-    am_comp.current_amount = 40.0  # Less than HYPERDRIVE_SYSTEM_JUMP_COST (50)
+    am_comp.current_amount = 15.0  # Less than HYPERDRIVE_SYSTEM_JUMP_COST (25.0)
     
     hyperdrive = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5)
     
@@ -327,5 +327,5 @@ def test_system_jump_fails_without_antimatter():
     tp._process_movement(player)
     
     # Jump should fail and not consume antimatter
-    assert am_comp.current_amount == 40.0
+    assert am_comp.current_amount == 15.0
     assert hyperdrive.jump_status == hyperdrive.jump_status.ERROR

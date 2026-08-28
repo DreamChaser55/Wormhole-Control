@@ -16,24 +16,24 @@ from unit_components import Hyperdrive, HyperdriveType, AntimatterStorage
 
 def test_hyperdrive_jump_cost_by_hull_size():
     # Medium is baseline (1.0x)
-    assert get_hyperdrive_system_jump_cost(HullSize.MEDIUM) == pytest.approx(50.0)
-    assert get_hyperdrive_hex_jump_cost(HullSize.MEDIUM) == pytest.approx(20.0)
+    assert get_hyperdrive_system_jump_cost(HullSize.MEDIUM) == pytest.approx(25.0)
+    assert get_hyperdrive_hex_jump_cost(HullSize.MEDIUM) == pytest.approx(10.0)
 
     # Tiny is 0.6x
-    assert get_hyperdrive_system_jump_cost(HullSize.TINY) == pytest.approx(30.0)
-    assert get_hyperdrive_hex_jump_cost(HullSize.TINY) == pytest.approx(12.0)
+    assert get_hyperdrive_system_jump_cost(HullSize.TINY) == pytest.approx(15.0)
+    assert get_hyperdrive_hex_jump_cost(HullSize.TINY) == pytest.approx(6.0)
 
     # Small is 0.8x
-    assert get_hyperdrive_system_jump_cost(HullSize.SMALL) == pytest.approx(40.0)
-    assert get_hyperdrive_hex_jump_cost(HullSize.SMALL) == pytest.approx(16.0)
+    assert get_hyperdrive_system_jump_cost(HullSize.SMALL) == pytest.approx(20.0)
+    assert get_hyperdrive_hex_jump_cost(HullSize.SMALL) == pytest.approx(8.0)
 
     # Large is 1.5x
-    assert get_hyperdrive_system_jump_cost(HullSize.LARGE) == pytest.approx(75.0)
-    assert get_hyperdrive_hex_jump_cost(HullSize.LARGE) == pytest.approx(30.0)
+    assert get_hyperdrive_system_jump_cost(HullSize.LARGE) == pytest.approx(37.5)
+    assert get_hyperdrive_hex_jump_cost(HullSize.LARGE) == pytest.approx(15.0)
 
     # Huge is 2.0x
-    assert get_hyperdrive_system_jump_cost(HullSize.HUGE) == pytest.approx(100.0)
-    assert get_hyperdrive_hex_jump_cost(HullSize.HUGE) == pytest.approx(40.0)
+    assert get_hyperdrive_system_jump_cost(HullSize.HUGE) == pytest.approx(50.0)
+    assert get_hyperdrive_hex_jump_cost(HullSize.HUGE) == pytest.approx(20.0)
 
 
 def test_calc_hangar_hull_cost():
