@@ -142,7 +142,8 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         if isinstance(body, Planet):
             data.append({'type': 'label', 'text': f"Type: {body.planet_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
         owner_name = body.owner.name if body.owner else "Uninhabited"
-        data.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': '#sidebar_info_label', 'height': 25})
+        owner_style_id = f'#player_{owner_name.lower().replace(" ", "_")}_label' if body.owner else '#sidebar_info_label'
+        data.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_style_id, 'height': 25})
 
         current_player = game.players[game.current_player_index] if game.players else None
         if current_player and hasattr(body, 'has_infiltrating_agent_from') and body.has_infiltrating_agent_from(current_player):

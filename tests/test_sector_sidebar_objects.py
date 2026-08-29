@@ -202,3 +202,70 @@ def test_handle_gui_action_remove_minefield():
     assert game.hovered_object is None
     assert game.sector_view_mouse_hover_object is None
     assert game.sidebar_needs_update is True
+
+
+def test_build_celestial_body_panel_owner_style():
+    from gui.sidebar.panels_world import build_celestial_body_panel
+    from entities import Moon, ColonizableAsteroid
+
+    p1 = Player(name="Player 1", color=(0, 0, 255))
+    custom_player = Player(name="Red Empire", color=(255, 0, 0))
+    mock_game = MagicMock()
+    mock_game.players = [p1, custom_player]
+    mock_game.current_player_index = 0
+    mock_game.galaxy = None
+
+    # 1. Uninhabited planet
+    planet_uninhabited = Planet(in_hex=(0, 0), in_system="Sol", planet_type=PlanetType.TERRAN)
+    planet_uninhabited.owner = None
+    data = build_celestial_body_panel(mock_game, planet_uninhabited)
+    owner_labels = [d for d in data if d.get('type') == 'label' and d.get('text', '').startswith("Owner:")]
+    assert len(owner_labels) == 1
+    assert owner_labels[0]['text'] == "Owner: Uninhabited"
+    assert owner_labels[0]['object_id'] == "#sidebar_info_label"
+
+    # 2. Inhabited planet owned by Player 1
+    planet_owned = Planet(in_hex=(0, 0), in_system="Sol", planet_type=PlanetType.TERRAN)
+    planet_owned.owner = p1
+    data = build_celestial_body_panel(mock_game, planet_owned)
+    owner_labels = [d for d in data if d.get('type') == 'label' and d.get('text', '').startswith("Owner:")]
+    assert len(owner_labels) == 1
+    assert owner_labels[0]['text'] == "Owner: Player 1"
+    assert owner_labels[0]['object_id'] == "#player_player_1_label"
+
+    # 3. Inhabited moon owned by custom-named player
+    moon = Moon(in_hex=(0, 0), in_system="Sol")
+    moon.owner = custom_player
+    data = build_celestial_body_panel(mock_game, moon)
+    owner_labels = [d for d in data if d.get('type') == 'label' and d.get('text', '').startswith("Owner:")]
+    assert len(owner_labels) == 1
+    assert owner_labels[0]['text'] == "Owner: Red Empire"
+    assert owner_labels[0]['object_id'] == "#player_red_empire_label"
+
+    # 4. Uninhabited colonizable asteroid
+    asteroid_uninhibited = ColonizableAsteroid(in_hex=(0, 0), in_system="Sol")
+    asteroid_uninhibited.owner = None
+    data = build_celestial_body_panel(mock_game, asteroid_uninhibited)
+    owner_labels = [d for d in data if d.get('type') == 'label' and d.get('text', '').startswith("Owner:")]
+    assert len(owner_labels) == 1
+    assert owner_labels[0]['text'] == "Owner: Uninhabited"
+    assert owner_labels[0]['object_id'] == "#sidebar_info_label"
+
+
+def test_apply_player_theme_registers_buttons_and_labels():
+    from gui.sidebar.builder import _apply_player_button_theme
+
+    p1 = Player(name="Blue Force", color=(0, 128, 255))
+    mock_game = MagicMock()
+    mock_game.players = [p1]
+    mock_theme = MagicMock()
+    mock_game.gui.manager.get_theme.return_value = mock_theme
+
+    _apply_player_button_theme(mock_game)
+
+    mock_theme.load_theme.assert_called_once()
+    theme_dict = mock_theme.load_theme.call_args[0][0]
+    assert "#player_blue_force_button" in theme_dict
+    assert "#player_blue_force_label" in theme_dict
+    assert theme_dict["#player_blue_force_label"]["colours"]["normal_text"] == "#0080ff"
+

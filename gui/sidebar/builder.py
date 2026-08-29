@@ -14,17 +14,26 @@ logger = logging.getLogger(__name__)
 
 
 def _apply_player_button_theme(game) -> None:
-    """Loads player-colored button styles into the GUI theme manager."""
+    """Loads player-colored button and label styles into the GUI theme manager."""
     if game.players and hasattr(game.gui, 'manager') and game.gui.manager:
         theme_dict = {}
         for p in game.players:
             obj_id = f'#player_{p.name.lower().replace(" ", "_")}_button'
+            lbl_id = f'#player_{p.name.lower().replace(" ", "_")}_label'
             hex_col = color_to_hex(p.color)
             theme_dict[obj_id] = {
                 "colours": {
                     "normal_text": hex_col,
                     "hovered_text": hex_col,
                     "active_text": hex_col
+                },
+                "misc": {
+                    "text_horiz_alignment": "left"
+                }
+            }
+            theme_dict[lbl_id] = {
+                "colours": {
+                    "normal_text": hex_col
                 },
                 "misc": {
                     "text_horiz_alignment": "left"
