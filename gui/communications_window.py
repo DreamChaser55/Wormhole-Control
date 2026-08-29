@@ -62,6 +62,21 @@ class CommunicationsWindow:
             object_id="#comms_recipient_label",
         )
 
+        indicator_size = int(18 * min(gui.scale_x, gui.scale_y))
+        indicator_x = pad_x + label_width + int(6 * gui.scale_x)
+        indicator_y = recipient_y + (row_height - indicator_size) // 2
+
+        self.indicator_size = indicator_size
+        blank_surface = pygame.Surface((indicator_size, indicator_size))
+        blank_surface.fill((120, 120, 120))
+        self.recipient_color_indicator = pygame_gui.elements.UIImage(
+            relative_rect=pygame.Rect(indicator_x, indicator_y, indicator_size, indicator_size),
+            image_surface=blank_surface,
+            manager=self.manager,
+            container=self.window,
+            object_id="#comms_recipient_color_indicator",
+        )
+
         # Build other players list for dropdown
         self.recipient_map: typing.Dict[str, int] = {}
         dropdown_options: typing.List[str] = []
@@ -91,7 +106,7 @@ class CommunicationsWindow:
             default_option = dropdown_options[0]
 
         dropdown_width = int(240 * gui.scale_x)
-        dropdown_x = pad_x + label_width + int(6 * gui.scale_x)
+        dropdown_x = indicator_x + indicator_size + int(8 * gui.scale_x)
         self.recipient_dropdown = pygame_gui.elements.UIDropDownMenu(
             options_list=dropdown_options,
             starting_option=default_option,
@@ -141,6 +156,20 @@ class CommunicationsWindow:
         """Returns True if the underlying window element is active and alive."""
         return bool(self.window and self.window.alive())
 
+    def _update_recipient_color_indicator(self, color: typing.Any) -> None:
+        """Updates the colored square indicator with the recipient player's color."""
+        if not hasattr(self, 'recipient_color_indicator') or not self.recipient_color_indicator or not self.recipient_color_indicator.alive():
+            return
+        try:
+            valid_color = pygame.Color(color)
+        except (ValueError, TypeError):
+            valid_color = pygame.Color(120, 120, 120)
+
+        surf = pygame.Surface((self.indicator_size, self.indicator_size))
+        surf.fill(valid_color)
+        pygame.draw.rect(surf, (20, 25, 35), surf.get_rect(), 1)
+        self.recipient_color_indicator.set_image(surf)
+
     def refresh_message_log(self) -> None:
         """Refreshes the HTML text content in the message log textbox for the active Conversation thread."""
         if not self.log_text_box or not self.log_text_box.alive():
@@ -157,6 +186,12 @@ class CommunicationsWindow:
             selected_display = raw[0] if isinstance(raw, tuple) else str(raw) if raw else None
             if selected_display:
                 recipient_id = self.recipient_map.get(selected_display, -1)
+
+        recipient_player = self.game.get_player_by_id(recipient_id) if recipient_id >= 0 else None
+        if recipient_player and hasattr(recipient_player, "color"):
+            self._update_recipient_color_indicator(recipient_player.color)
+        else:
+            self._update_recipient_color_indicator((120, 120, 120))
 
         if recipient_id < 0:
             self.log_text_box.set_text(
@@ -289,3 +324,4 @@ class CommunicationsWindow:
         if self.window and self.window.alive():
             self.window.kill()
         self.window = None
+        self.recipient_color_indicator = None

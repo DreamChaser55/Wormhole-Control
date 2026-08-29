@@ -185,10 +185,32 @@ class TestCommunications(unittest.TestCase):
         self.assertEqual(len(options), 2)
         self.assertIn("Player 2 (AI: Medium)", options[0])
 
+        # Check recipient color indicator existence and positioning
+        self.assertIsNotNone(comms_win.recipient_color_indicator)
+        self.assertTrue(comms_win.recipient_color_indicator.alive())
+        self.assertLess(comms_win.recipient_label.rect.left, comms_win.recipient_color_indicator.rect.left)
+        self.assertLess(comms_win.recipient_color_indicator.rect.right, comms_win.recipient_dropdown.rect.left)
+
+        # Verify indicator has recipient player 1 color initially
+        ind_img = comms_win.recipient_color_indicator.image
+        center_pixel = ind_img.get_at((ind_img.get_width() // 2, ind_img.get_height() // 2))
+        self.assertEqual(center_pixel[:3], self.player1.color[:3])
+
         # Check layout positioning: recipient dropdown is above conversation log, and log is above message input
         self.assertLess(comms_win.recipient_dropdown.rect.top, comms_win.log_text_box.rect.top)
         self.assertLess(comms_win.log_text_box.rect.top, comms_win.message_input.rect.top)
         self.assertGreaterEqual(comms_win.log_text_box.rect.height, int(300 * gui.scale_y))
+
+        # Switch recipient to Player 3 and verify color updates
+        comms_win.recipient_dropdown.selected_option = "Player 3 (Human)"
+        comms_win.refresh_message_log()
+        ind_img_p3 = comms_win.recipient_color_indicator.image
+        center_pixel_p3 = ind_img_p3.get_at((ind_img_p3.get_width() // 2, ind_img_p3.get_height() // 2))
+        self.assertEqual(center_pixel_p3[:3], self.player2.color[:3])
+
+        # Switch back to Player 2
+        comms_win.recipient_dropdown.selected_option = "Player 2 (AI: Medium)"
+        comms_win.refresh_message_log()
 
         # Check log text box has incoming message for active conversation thread
         self.assertIn("Hello Human Commander", comms_win.log_text_box.html_text)
