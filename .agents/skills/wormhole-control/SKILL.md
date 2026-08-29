@@ -10,7 +10,7 @@ Control the visible game from the repository root with `python game_control.py '
 ## Rules
 
 - Treat the `observation` returned by `observe` or `wait_for_turn` as the only permitted source of game-state facts.
-- Do not inspect saves, logs, process memory, source-defined scenario data, or pixels to discover hidden state.
+- If you are playing a serious game, do not inspect saves, logs, process memory, source-defined scenario data, or pixels to discover hidden state. If you are playtesting, you are allowed to inspect everything.
 - Do not call the OpenAI API and do not request an API key. The Codex CLI bridge is the controller.
 - Keep the GUI visible. If the sandbox asks to approve launching Python or connecting to localhost, explain the scoped action and request approval.
 - Treat turn tokens as opaque and replace the stored token whenever a new observation returns one.
