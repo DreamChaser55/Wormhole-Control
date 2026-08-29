@@ -561,3 +561,16 @@ Inhibition fields cannot overlap, so a target or candidate position can be
 contained by at most one field. Protect orders maintain the standard 150.0 logical unit standoff perimeter. Attack, Dock, Repair, Refit, resource
 transfer, trade, intelligence, and unit-targeted ability orders preserve their
 existing operational ranges by supplying those ranges as the standoff distance.
+
+### 11.4 Celestial Body Standoff Arrival (Colonization & Colonist Transfers)
+Orders targeting solid celestial bodies (`ColonizeOrder` and `LoadColonistsOrder`) create target-aware approach movement through `MoveOrder.for_celestial_approach(...)`. The move stores `target_celestial_id` and `standoff_distance` (`DEFAULT_STANDOFF_DISTANCE = 150.0` logical units), calculating the arrival coordinate on the standoff perimeter:
+
+$$R_{\text{standoff}} = r_{\text{body}} + \text{DEFAULT\_STANDOFF\_DISTANCE}$$
+
+where $r_{\text{body}}$ is the body's physical collision radius (e.g. `PLANET_RADIUS = 375.0`, `MOON_RADIUS = 83.34`, `ASTEROID_RADIUS = 50.01`).
+
+- **Operational Distance Requirement**: The game demands that the colonizer vessel be within $r_{\text{body}} + \text{DEFAULT\_STANDOFF\_DISTANCE}$ before unloading or embarking population. If outside this range, approach movement sub-orders are automatically planned and executed first.
+- **Same sector (sub-light)**: The standoff destination is the point on the body's standoff circle along the mover-target ray closest to the ship.
+- **Different sector (intra-system jump)**: The standoff destination is chosen on the side of the celestial body facing the origin sector hex, along the inter-hex displacement vector.
+- **Different system (inter-system jump)**: The standoff destination is chosen on the side facing the entry wormhole in the destination system.
+- **Collision Safety**: Because the plotted arrival point lies strictly outside the solid body's collision circle, vessels fly directly to the standoff perimeter without penetrating the planet surface or triggering collisions.

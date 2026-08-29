@@ -12,12 +12,12 @@ from geometry import (
     position_at_distance_from_target
 )
 from pathfinding import find_intersystem_path, find_hex_jump_path
-from constants import XP_JUMP_RANGE_BONUS, SECTOR_CIRCLE_RADIUS_LOGICAL
+from constants import XP_JUMP_RANGE_BONUS, SECTOR_CIRCLE_RADIUS_LOGICAL, DEFAULT_STANDOFF_DISTANCE
 from .base import Order, OrderStatus, OrderType
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from entities import Unit, CelestialBody
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +235,29 @@ class MoveOrder(Order):
             "approach_position_resolved": False,
         }, parent_order=parent_order)
 
+    @classmethod
+    def for_celestial_approach(
+        cls,
+        unit: 'Unit',
+        target_body: 'CelestialBody',
+        standoff_distance: float = DEFAULT_STANDOFF_DISTANCE,
+        parent_order: Optional[Order] = None,
+    ) -> 'MoveOrder':
+        """Create a move whose final position is resolved around a target celestial body.
+
+        The target location is captured for display and serialization, but the
+        route planner refreshes it when the order first executes.  This keeps
+        callers from independently reproducing the same arrival geometry.
+        """
+        return cls(unit, {
+            "destination_system_name": target_body.in_system,
+            "destination_hex_coord": target_body.in_hex,
+            "destination_position": Position(target_body.position.x, target_body.position.y),
+            "target_celestial_id": target_body.id,
+            "standoff_distance": standoff_distance,
+            "approach_position_resolved": False,
+        }, parent_order=parent_order)
+
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
         self.plan_route(galaxy_ref=galaxy_ref)
@@ -375,6 +398,105 @@ class MoveOrder(Order):
         )
         return True
 
+    def _resolve_celestial_approach_destination(self, galaxy_ref: 'Galaxy') -> bool:
+        """Resolve an optional target-celestial move to a point on its standoff circle."""
+        target_celestial_id = self.parameters.get("target_celestial_id")
+        if target_celestial_id is None:
+            return True
+        if self.parameters.get("approach_position_resolved"):
+            return True
+
+        target_body = galaxy_ref.get_celestial_body_by_id(target_celestial_id)
+        if not target_body:
+            self.status = OrderStatus.FAILED
+            logger.debug(
+                f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                f"FAILED (target celestial body {target_celestial_id} no longer exists)."
+            )
+            return False
+
+        try:
+            standoff_distance = float(self.parameters.get("standoff_distance", DEFAULT_STANDOFF_DISTANCE))
+        except (TypeError, ValueError):
+            standoff_distance = DEFAULT_STANDOFF_DISTANCE
+        if not math.isfinite(standoff_distance) or standoff_distance < 0.0:
+            self.status = OrderStatus.FAILED
+            logger.debug(
+                f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                f"FAILED (invalid standoff distance {self.parameters.get('standoff_distance')})."
+            )
+            return False
+
+        target_radius = getattr(target_body, 'collision_radius', getattr(target_body, 'radius', 0.0))
+        total_standoff = target_radius + standoff_distance
+
+        system = galaxy_ref.systems.get(target_body.in_system)
+        destination_hex_obj = system.hexes.get(target_body.in_hex) if system else None
+        if not destination_hex_obj:
+            self.status = OrderStatus.FAILED
+            logger.debug(
+                f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                f"FAILED (target sector {target_body.in_system}:{target_body.in_hex} not found)."
+            )
+            return False
+
+        target_position = target_body.position
+        boundary_circle = getattr(destination_hex_obj, "boundary_circle", None)
+        if not isinstance(boundary_circle, Circle):
+            boundary_circle = Circle(Position(0.0, 0.0), SECTOR_CIRCLE_RADIUS_LOGICAL)
+
+        same_sector = (
+            self.unit.in_system == target_body.in_system
+            and self.unit.in_hex == target_body.in_hex
+        )
+
+        if same_sector:
+            resolved_position = position_at_distance_from_target(
+                self.unit.position,
+                target_position,
+                total_standoff,
+            )
+        else:
+            # Arriving from another sector or system:
+            # Determine incoming approach direction based on hex layout
+            if self.unit.in_system == target_body.in_system:
+                from hexgrid_utils import hex_to_pixel
+                p_orig = hex_to_pixel(self.unit.in_hex[0], self.unit.in_hex[1])
+                p_dest = hex_to_pixel(target_body.in_hex[0], target_body.in_hex[1])
+                diff = p_orig - p_dest
+                direction = diff.normalize() if diff.magnitude_sq() > 1e-9 else Vector(1.0, 0.0)
+            else:
+                # Inter-system travel: Find entry wormhole in destination system if available
+                direct_wh = self.find_wormhole_to_system(self.unit.in_system, target_body.in_system, galaxy_ref, self.unit.hull_size)
+                if direct_wh and direct_wh.exit_wormhole_id:
+                    exit_wh = galaxy_ref.wormholes.get(direct_wh.exit_wormhole_id)
+                    if exit_wh:
+                        from hexgrid_utils import hex_to_pixel
+                        p_orig = hex_to_pixel(exit_wh.in_hex[0], exit_wh.in_hex[1])
+                        p_dest = hex_to_pixel(target_body.in_hex[0], target_body.in_hex[1])
+                        diff = p_orig - p_dest
+                        direction = diff.normalize() if diff.magnitude_sq() > 1e-9 else Vector(1.0, 0.0)
+                    else:
+                        direction = Vector(1.0, 0.0)
+                else:
+                    direction = Vector(1.0, 0.0)
+
+            resolved_position = target_position + (direction * total_standoff)
+
+        if not is_point_in_circle(resolved_position, boundary_circle):
+            resolved_position = clamp_point_to_circle(resolved_position, boundary_circle)
+
+        self.parameters["destination_system_name"] = target_body.in_system
+        self.parameters["destination_hex_coord"] = target_body.in_hex
+        self.parameters["destination_position"] = resolved_position
+        self.parameters["approach_position_resolved"] = True
+        logger.debug(
+            f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+            f"Resolved target-celestial standoff destination for {target_body.name} "
+            f"at distance {total_standoff:.2f}: {resolved_position}."
+        )
+        return True
+
     def handle_inhibited_waypoint(self, target_hex: HexCoord, target_pos: Position, is_final_destination: bool, system_name: str, galaxy_ref: 'Galaxy'):
         destination_hex_obj = galaxy_ref.systems[system_name].hexes.get(target_hex)
         if not destination_hex_obj:
@@ -509,6 +631,9 @@ class MoveOrder(Order):
         current_position = self.unit.position
 
         if not self._resolve_unit_approach_destination(galaxy_ref):
+            return
+
+        if not self._resolve_celestial_approach_destination(galaxy_ref):
             return
 
         dest_system = self.parameters["destination_system_name"]

@@ -1,6 +1,8 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
+from geometry import distance
+from constants import DEFAULT_STANDOFF_DISTANCE
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 
@@ -36,16 +38,20 @@ class ColonizeOrder(Order):
             logger.debug(f"COLONIZE order failed: Unit {self.unit.name} has no ColonyComponent.")
             return
 
-        at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
+        target_radius = getattr(target, 'collision_radius', getattr(target, 'radius', 0.0))
+        max_allowed_distance = target_radius + DEFAULT_STANDOFF_DISTANCE
 
-        if not at_location:
+        at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
+        in_range = at_location and (distance(self.unit.position, target.position) <= max_allowed_distance + 0.01)
+
+        if not in_range:
             if not self.has_active_sub_orders():
-                move_params = {
-                    "destination_system_name": target.in_system,
-                    "destination_hex_coord": target.in_hex,
-                    "destination_position": target.position
-                }
-                move_order = MoveOrder(self.unit, move_params, parent_order=self)
+                move_order = MoveOrder.for_celestial_approach(
+                    self.unit,
+                    target,
+                    DEFAULT_STANDOFF_DISTANCE,
+                    parent_order=self,
+                )
                 self.add_sub_order(move_order)
 
                 colonize_sub_order = ColonizeOrder(self.unit, self.parameters, parent_order=self)
@@ -70,10 +76,12 @@ class ColonizeOrder(Order):
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
             return
-        target_id = self.parameters["target_id"]
-        target = self.unit.game.galaxy.get_celestial_body_by_id(target_id)
-        if target and target.owner == self.unit.owner:
-            self.status = OrderStatus.COMPLETED
+        if not self.sub_orders:
+            target_id = self.parameters.get("target_id")
+            if target_id is not None and getattr(self.unit, 'game', None) and getattr(self.unit.game, 'galaxy', None):
+                target = self.unit.game.galaxy.get_celestial_body_by_id(target_id)
+                if target and target.owner == self.unit.owner:
+                    self.status = OrderStatus.COMPLETED
 
 
 class LoadColonistsOrder(Order):
@@ -103,20 +111,25 @@ class LoadColonistsOrder(Order):
             logger.debug(f"LOAD_COLONISTS order failed: Unit {self.unit.name} has no ColonyComponent.")
             return
 
-        at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
+        target_radius = getattr(target, 'collision_radius', getattr(target, 'radius', 0.0))
+        max_allowed_distance = target_radius + DEFAULT_STANDOFF_DISTANCE
 
-        if not at_location:
+        at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
+        in_range = at_location and (distance(self.unit.position, target.position) <= max_allowed_distance + 0.01)
+
+        if not in_range:
             if not self.has_active_sub_orders():
-                move_params = {
-                    "destination_system_name": target.in_system,
-                    "destination_hex_coord": target.in_hex,
-                    "destination_position": target.position
-                }
-                move_order = MoveOrder(self.unit, move_params, parent_order=self)
+                move_order = MoveOrder.for_celestial_approach(
+                    self.unit,
+                    target,
+                    DEFAULT_STANDOFF_DISTANCE,
+                    parent_order=self,
+                )
                 self.add_sub_order(move_order)
                 
                 load_params = {
                     "target_id": target.id,
+                    "target_name": getattr(target, 'name', None),
                     "amount": amount
                 }
                 load_order = LoadColonistsOrder(self.unit, load_params, parent_order=self)
