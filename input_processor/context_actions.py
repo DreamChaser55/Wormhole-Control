@@ -166,10 +166,19 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                     shift_pressed
                 ))
 
-        elif extracted_action_id == "dock_at_carrier":
+        elif extracted_action_id in ("dock_at_carrier", "dock_in_hangar", "dock_in_strikecraft_bay"):
             if isinstance(target, Unit):
+                if extracted_action_id == "dock_in_hangar":
+                    dockable_units = [u for u in selected_units if getattr(target, 'hangar_component', None) and target.hangar_component.can_dock(u)]
+                    units_to_dock = dockable_units if dockable_units else selected_units
+                elif extracted_action_id == "dock_in_strikecraft_bay":
+                    dockable_units = [u for u in selected_units if getattr(target, 'strikecraft_bay_component', None) and target.strikecraft_bay_component.can_dock(u)]
+                    units_to_dock = dockable_units if dockable_units else selected_units
+                else:
+                    units_to_dock = selected_units
+
                 game.event_bus.publish(DockEvent(
-                    selected_units,
+                    units_to_dock,
                     target,
                     shift_pressed
                 ))

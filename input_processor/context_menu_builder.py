@@ -339,12 +339,17 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                     if (is_metal_refinery or is_crystal_refinery) and has_correct_cargo_miners:
                         options.append(("Unload Resources", "unload_resources"))
 
-                    can_dock_at_carrier = (
-                        (target_object.hangar_component and any(target_object.hangar_component.can_dock(a) for a in actors)) or
-                        (target_object.strikecraft_bay_component and any(target_object.strikecraft_bay_component.can_dock(a) for a in actors))
+                    can_dock_in_hangar = bool(
+                        target_object.hangar_component and any(target_object.hangar_component.can_dock(a) for a in actors)
                     )
-                    if can_dock_at_carrier:
-                        options.append(("Dock at Carrier", "dock_at_carrier"))
+                    if can_dock_in_hangar:
+                        options.append(("Dock in Hangar", "dock_in_hangar"))
+
+                    can_dock_in_bay = bool(
+                        target_object.strikecraft_bay_component and any(target_object.strikecraft_bay_component.can_dock(a) for a in actors)
+                    )
+                    if can_dock_in_bay:
+                        options.append(("Dock in Strikecraft Bay", "dock_in_strikecraft_bay"))
 
                     refit_options = get_refit_context_options(game, actors, target_object)
                     if refit_options:

@@ -41,14 +41,24 @@ def has_operational_engines(unit: Any) -> bool:
     return effective_speed > 0 if isinstance(effective_speed, (int, float)) else True
 
 
-def compatible_docking_component(unit: Any, target: Any) -> Any | None:
-    if _hull_name(unit) == "strikecraft_wing":
-        component = getattr(target, "strikecraft_bay_component", None)
-    else:
-        component = getattr(target, "hangar_component", None)
+def compatible_hangar_component(unit: Any, target: Any) -> Any | None:
+    component = getattr(target, "hangar_component", None)
     if component is None or not hasattr(component, "can_dock"):
         return None
     return component if component.can_dock(unit) else None
+
+
+def compatible_strikecraft_bay_component(unit: Any, target: Any) -> Any | None:
+    component = getattr(target, "strikecraft_bay_component", None)
+    if component is None or not hasattr(component, "can_dock"):
+        return None
+    return component if component.can_dock(unit) else None
+
+
+def compatible_docking_component(unit: Any, target: Any) -> Any | None:
+    if _hull_name(unit) == "strikecraft_wing":
+        return compatible_strikecraft_bay_component(unit, target)
+    return compatible_hangar_component(unit, target)
 
 
 def is_self_owned(player: Any, owner: Any) -> bool:
@@ -89,8 +99,10 @@ def supported_commands(unit: Any) -> list[str]:
         unit, "antimatter_component", None
     ):
         commands.append("continuous_resupply")
-    if _hull_name(unit) in {"tiny", "strikecraft_wing"}:
-        commands.append("dock")
+    if _hull_name(unit) == "tiny":
+        commands.append("dock_in_hangar")
+    elif _hull_name(unit) == "strikecraft_wing":
+        commands.append("dock_in_strikecraft_bay")
     if getattr(unit, "hangar_component", None):
         commands.append("deploy_unit")
     if getattr(unit, "strikecraft_bay_component", None):
@@ -166,11 +178,17 @@ def command_guidance(
             if getattr(candidate, "metal_refinery_component", None)
             or getattr(candidate, "crystal_refinery_component", None)
         ],
-        "dock": [
+        "dock_in_hangar": [
             candidate.id
             for candidate in friendly_units
             if candidate is not unit
-            and compatible_docking_component(unit, candidate) is not None
+            and compatible_hangar_component(unit, candidate) is not None
+        ],
+        "dock_in_strikecraft_bay": [
+            candidate.id
+            for candidate in friendly_units
+            if candidate is not unit
+            and compatible_strikecraft_bay_component(unit, candidate) is not None
         ],
         "transfer_antimatter": [
             candidate.id

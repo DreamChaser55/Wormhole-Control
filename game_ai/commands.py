@@ -8,6 +8,8 @@ from typing import Any, Callable
 from .contracts import CommandBatch
 from .rules import (
     compatible_docking_component,
+    compatible_hangar_component,
+    compatible_strikecraft_bay_component,
     has_operational_engines,
     is_colonizable_body,
     is_mining_target,
@@ -122,6 +124,46 @@ class _BatchProjection:
                 f"{self._credits:g} remain in this batch.",
             )
 
+    def validate_dock_in_hangar(self, command: Any, units: list[Any], target: Any) -> None:
+        components = [compatible_hangar_component(unit, target) for unit in units]
+        if any(component is None for component in components):
+            raise _Rejected(
+                "invalid_target",
+                "The target carrier has no compatible free hangar slots.",
+            )
+        component = components[0]
+        key = id(component)
+        available = self._docking_slots.setdefault(
+            key,
+            int(getattr(component, "max_slots", 0))
+            - int(component.get_used_slots()),
+        )
+        if len(units) > available:
+            raise _Rejected(
+                "insufficient_capacity",
+                f"The target carrier has only {available} compatible hangar slots available.",
+            )
+
+    def validate_dock_in_strikecraft_bay(self, command: Any, units: list[Any], target: Any) -> None:
+        components = [compatible_strikecraft_bay_component(unit, target) for unit in units]
+        if any(component is None for component in components):
+            raise _Rejected(
+                "invalid_target",
+                "The target carrier has no compatible free strikecraft bay slots.",
+            )
+        component = components[0]
+        key = id(component)
+        available = self._docking_slots.setdefault(
+            key,
+            int(getattr(component, "max_slots", 0))
+            - int(component.get_used_slots()),
+        )
+        if len(units) > available:
+            raise _Rejected(
+                "insufficient_capacity",
+                f"The target carrier has only {available} compatible strikecraft bay slots available.",
+            )
+
     def validate_dock(self, command: Any, units: list[Any], target: Any) -> None:
         components = [compatible_docking_component(unit, target) for unit in units]
         if any(component is None for component in components):
@@ -219,10 +261,15 @@ class _BatchProjection:
                     cost = float(buildable.cost_credits)
                     self._credits -= cost
                     self._reserve(unit.id, "credits", 0, cost)
-        elif command.type == "dock":
+        elif command.type in {"dock", "dock_in_hangar", "dock_in_strikecraft_bay"}:
             target = self.game.galaxy.get_unit_by_id(command.target_id)
             if target is not None and units:
-                component = compatible_docking_component(units[0], target)
+                if command.type == "dock_in_hangar":
+                    component = compatible_hangar_component(units[0], target)
+                elif command.type == "dock_in_strikecraft_bay":
+                    component = compatible_strikecraft_bay_component(units[0], target)
+                else:
+                    component = compatible_docking_component(units[0], target)
                 if component is not None:
                     key = id(component)
                     self._docking_slots[key] = self._docking_slots.get(
@@ -414,6 +461,14 @@ class CommandGateway:
             projection.validate_load(command, units, target_body)
         elif command.type == "construct":
             projection.validate_construct(command, units)
+        elif command.type == "dock_in_hangar":
+            projection.validate_dock_in_hangar(
+                command, units, self._visible_unit(player, command.target_id)
+            )
+        elif command.type == "dock_in_strikecraft_bay":
+            projection.validate_dock_in_strikecraft_bay(
+                command, units, self._visible_unit(player, command.target_id)
+            )
         elif command.type == "dock":
             projection.validate_dock(
                 command, units, self._visible_unit(player, command.target_id)
@@ -469,6 +524,8 @@ class CommandGateway:
             "repair",
             "unload_resources",
             "dock",
+            "dock_in_hangar",
+            "dock_in_strikecraft_bay",
             "transfer_antimatter",
             "trade",
         } or (command.type == "use_ability" and command.target_id is not None):
@@ -658,6 +715,34 @@ class CommandGateway:
                     unit, {"target_unit_id": target_unit.id}
                 ),
                 f"Unload at {target_unit.name}",
+            )
+        if command.type == "dock_in_hangar":
+            self._require_friendly(player, target_unit)
+            if not all(
+                compatible_hangar_component(unit, target_unit) is not None
+                for unit in self._owned_units(player, command.unit_ids)
+            ):
+                raise _Rejected(
+                    "invalid_target",
+                    "The docking target has no compatible free hangar slots.",
+                )
+            return (
+                lambda unit: DockOrder(unit, {"target_carrier_id": target_unit.id}),
+                f"Dock in Hangar of {target_unit.name}",
+            )
+        if command.type == "dock_in_strikecraft_bay":
+            self._require_friendly(player, target_unit)
+            if not all(
+                compatible_strikecraft_bay_component(unit, target_unit) is not None
+                for unit in self._owned_units(player, command.unit_ids)
+            ):
+                raise _Rejected(
+                    "invalid_target",
+                    "The docking target has no compatible free strikecraft bay slots.",
+                )
+            return (
+                lambda unit: DockOrder(unit, {"target_carrier_id": target_unit.id}),
+                f"Dock in Strikecraft Bay of {target_unit.name}",
             )
         if command.type == "dock":
             self._require_friendly(player, target_unit)
@@ -989,6 +1074,20 @@ class CommandGateway:
             if not command.template_name or not constructor.can_build(command.template_name):
                 raise _Rejected(
                     "invalid_value", f"Unit {unit.id} cannot build that template."
+                )
+        elif command.type == "dock_in_hangar":
+            hull = getattr(getattr(unit, "hull_size", None), "name", "").lower()
+            if hull != "tiny":
+                raise _Rejected(
+                    "capability_unavailable",
+                    f"Unit {unit.id} cannot dock in a hangar (only tiny ships supported).",
+                )
+        elif command.type == "dock_in_strikecraft_bay":
+            hull = getattr(getattr(unit, "hull_size", None), "name", "").lower()
+            if hull != "strikecraft_wing":
+                raise _Rejected(
+                    "capability_unavailable",
+                    f"Unit {unit.id} cannot dock in a strikecraft bay (only strikecraft wings supported).",
                 )
         elif command.type == "dock":
             hull = getattr(getattr(unit, "hull_size", None), "name", "").lower()

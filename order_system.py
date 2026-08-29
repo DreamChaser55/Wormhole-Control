@@ -435,10 +435,10 @@ class OrderSystem:
 
     def handle_dock(self, event: DockEvent):
         for unit in event.units:
-            if unit.hull_size not in (HullSize.TINY, HullSize.SMALL):
+            if unit.hull_size not in (HullSize.TINY, HullSize.SMALL, HullSize.STRIKECRAFT_WING):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
-                        f"Unit <b>{unit.name}</b> (Hull Size: {unit.hull_size.name}) cannot dock. Only Tiny and Small hull sizes are supported.",
+                        f"Unit <b>{unit.name}</b> (Hull Size: {unit.hull_size.name}) cannot dock. Only Tiny, Small, and Strikecraft Wing hull sizes are supported.",
                         title="Invalid Dock Target"
                     )
                 continue
