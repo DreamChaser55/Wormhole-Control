@@ -9,6 +9,7 @@ from entities import (
 )
 from unit_components import AntimatterStorage, ColonyComponent, MiningComponent
 from unit_orders import MoveOrder, ColonizeOrder, OrderStatus
+from utils import generate_short_id
 from save_manager import (
     serialize_player, deserialize_player,
     serialize_celestial_body, deserialize_celestial_body,
@@ -165,5 +166,41 @@ class TestSaveLoad(unittest.TestCase):
         if os.path.exists(saved_filepath):
             os.remove(saved_filepath)
 
+    def test_short_id_generation(self):
+        token = generate_short_id()
+        self.assertEqual(len(token), 8)
+        self.assertTrue(all(c in "0123456789abcdef" for c in token))
+
+        token_custom = generate_short_id(prefix="camp-", length=6)
+        self.assertTrue(token_custom.startswith("camp-"))
+        self.assertEqual(len(token_custom), 11)
+
+        # Uniqueness check across samples
+        samples = {generate_short_id() for _ in range(100)}
+        self.assertEqual(len(samples), 100)
+
+    def test_short_ids_in_player_and_game(self):
+        from game import Game
+        player = Player("AI Pilot", (100, 150, 200), is_human=False)
+        self.assertEqual(len(player.persistent_id), 8)
+        self.assertEqual(len(player.agent_id), 8)
+        self.assertTrue(all(c in "0123456789abcdef" for c in player.persistent_id))
+        self.assertTrue(all(c in "0123456789abcdef" for c in player.agent_id))
+
+        game = Game()
+        self.assertEqual(len(game.campaign_id), 8)
+        self.assertTrue(all(c in "0123456789abcdef" for c in game.campaign_id))
+
+        game.start_new_game()
+        self.assertEqual(len(game.campaign_id), 8)
+        self.assertTrue(all(c in "0123456789abcdef" for c in game.campaign_id))
+
+        # Check serialization preserves short IDs
+        serialized = serialize_player(player)
+        self.assertEqual(serialized["persistent_id"], player.persistent_id)
+        self.assertEqual(serialized["agent_id"], player.agent_id)
+
+
 if __name__ == "__main__":
     unittest.main()
+

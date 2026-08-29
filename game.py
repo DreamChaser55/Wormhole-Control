@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Local module imports
 from constants import SCREEN_RES, FULLSCREEN, PROFILE, RED, BLUE, YELLOW
-from utils import HexCoord
+from utils import HexCoord, generate_short_id
 from geometry import Position
 from entities import Player, Unit, Order, Conversation, Message
 from gui import GUI_Handler
@@ -79,7 +79,7 @@ class Game:
         self.players: typing.List[Player] = []
         self.current_player_index = 0
         self.turn_number = 1
-        self.campaign_id = str(uuid.uuid4())
+        self.campaign_id = generate_short_id()
 
         # Visibility / Fog of War State
         self.visibility: typing.Optional[VisibilitySnapshot] = None

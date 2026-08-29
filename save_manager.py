@@ -9,9 +9,10 @@ Hex grids, CelestialBodies, Units, UnitComponents, and Orders.
 import json
 import logging
 import os
-import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any, Tuple
+
+from utils import generate_short_id
 
 from geometry import Position, Vector
 from game_ai.runtime import (
@@ -123,8 +124,8 @@ def serialize_player(player: Player) -> dict:
         "color": list(player.color),
         "is_human": player.is_human,
         "team_id": getattr(player, "team_id", player.id + 1),
-        "persistent_id": getattr(player, "persistent_id", None) or str(uuid.uuid4()),
-        "agent_id": getattr(player, "agent_id", None) or str(uuid.uuid4()),
+        "persistent_id": getattr(player, "persistent_id", None) or generate_short_id(),
+        "agent_id": getattr(player, "agent_id", None) or generate_short_id(),
         "ai_reasoning_effort": normalize_reasoning_effort(
             getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT)
         ),
@@ -400,7 +401,7 @@ def serialize_game_state(game: Any) -> dict:
             "object_counter": object_counter,
             "player_counter": player_counter,
             "message_counter": getattr(game, "message_counter", 0),
-            "campaign_id": getattr(game, "campaign_id", str(uuid.uuid4())),
+            "campaign_id": getattr(game, "campaign_id", None) or generate_short_id(),
         },
         "players": players_data,
         "galaxy": galaxy_data,
@@ -964,7 +965,7 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
         game.current_player_index = state_info.get("current_player_index", 0)
         game.view_mode = state_info.get("view_mode", "galaxy")
         game.current_system_name = state_info.get("current_system_name")
-        game.campaign_id = state_info.get("campaign_id") or str(uuid.uuid4())
+        game.campaign_id = state_info.get("campaign_id") or generate_short_id()
 
         sec_coord = state_info.get("current_sector_coord")
         game.current_sector_coord = tuple(sec_coord) if sec_coord else None

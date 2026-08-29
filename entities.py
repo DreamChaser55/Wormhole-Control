@@ -4,7 +4,7 @@ logger = logging.getLogger(__name__)
 
 import typing
 from typing import Dict, Optional, Any, Tuple, TYPE_CHECKING, List
-from utils import HexCoord
+from utils import HexCoord, generate_short_id
 from geometry import Position, distance, Vector
 from constants import (
     WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS,
@@ -238,8 +238,8 @@ class Player:
         self.color = color
         self.is_human = is_human
         self.team_id: int = team_id if team_id is not None else (self.id + 1)
-        self.persistent_id: str = persistent_id or str(uuid.uuid4())
-        self.agent_id: str = agent_id or str(uuid.uuid4())
+        self.persistent_id: str = persistent_id or generate_short_id()
+        self.agent_id: str = agent_id or generate_short_id()
         self.ai_reasoning_effort: str = normalize_reasoning_effort(
             ai_reasoning_effort
         )

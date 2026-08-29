@@ -79,7 +79,7 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable UUID. Save version 2.2 embeds:
+Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 2.2 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;

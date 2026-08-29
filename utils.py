@@ -6,6 +6,7 @@ import typing
 import os
 import sys
 import time
+import uuid
 
 # Type definitions
 class HexCoord(typing.NamedTuple):
@@ -107,5 +108,12 @@ def color_to_hex(color) -> str:
     except Exception:
         pass
     return "#A0A0B0"
+
+
+def generate_short_id(prefix: str = "", length: int = 8) -> str:
+    """Generates a concise hexadecimal identifier string (8 chars by default)."""
+    token = uuid.uuid4().hex[:length]
+    return f"{prefix}{token}" if prefix else token
+
 
 

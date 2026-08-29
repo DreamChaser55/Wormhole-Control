@@ -10,7 +10,7 @@ from galaxy import Galaxy, StarSystem
 from geometry import Position
 from game_ai.runtime import DEFAULT_REASONING_EFFORT, DEFAULT_REPAIR_RETRIES
 from unit_components import instantiate_unit_from_template
-from utils import HexCoord
+from utils import HexCoord, generate_short_id
 from game_settings import GameSettings, _default_player_configs
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
     logger.debug("Starting new game setup...")
     if hasattr(game, 'ai_coordinator'):
         game.ai_coordinator.reset()
-    game.campaign_id = str(uuid.uuid4())
+    game.campaign_id = generate_short_id()
 
     # Set up game UI first to ensure galaxy_generation_rect is defined before galaxy generation
     game.gui.show_game_ui()
