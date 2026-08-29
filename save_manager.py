@@ -10,7 +10,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any, Tuple
 
 from geometry import Position, Vector
@@ -1064,11 +1064,72 @@ def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
                     player_name=str(player.name),
                     memory=AgentMemory.from_dict(getattr(player, "ai_memory", None)),
                 )
+
+        # Write campaign communications sidecar
+        conv_list = list(getattr(game, "conversations", {}).values())
+        write_comms_sidecar(
+            Path(SAVES_DIR),
+            campaign_id=str(getattr(game, "campaign_id", "unknown")),
+            conversations=conv_list,
+            players=getattr(game, "players", []),
+        )
     except Exception:
-        logger.warning("Could not write AI memory sidecars.", exc_info=True)
+        logger.warning("Could not write sidecars.", exc_info=True)
 
     logger.debug(f"Game saved successfully to {filepath}")
     return filepath
+
+
+def write_comms_sidecar(
+    root: Any,
+    *,
+    campaign_id: str,
+    conversations: List[Conversation],
+    players: List[Player],
+) -> Any:
+    """Atomically write the campaign comms.md sidecar below the save directory."""
+    from pathlib import Path
+    root_path = Path(root)
+    target_dir = root_path / "comms" / campaign_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / "comms.md"
+    temporary = target.with_suffix(".md.tmp")
+
+    players_by_id = {p.id: p for p in players}
+    all_messages: List[Message] = []
+    for conv in conversations:
+        all_messages.extend(conv.messages)
+    all_messages.sort(key=lambda m: (m.turn_sent, m.id))
+
+    lines = [
+        "# Inter-Player Communications Log",
+        "",
+        "> Canonical log of in-game transmissions between players.",
+        "",
+        f"- **Campaign**: `{campaign_id}`",
+        f"- **Generated**: `{datetime.now(timezone.utc).isoformat()}`",
+        f"- **Total Transmissions**: {len(all_messages)}",
+        "",
+        "---",
+        "",
+    ]
+
+    if not all_messages:
+        lines.append("*No in-game transmissions recorded.*")
+    else:
+        current_turn = None
+        for msg in all_messages:
+            if current_turn != msg.turn_sent:
+                current_turn = msg.turn_sent
+                lines.extend([f"## Turn {current_turn}", ""])
+            sender = players_by_id.get(msg.sender_id)
+            recipient = players_by_id.get(msg.recipient_id)
+            lines.append(msg.to_markdown(sender, recipient))
+            lines.append("")
+
+    temporary.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+    temporary.replace(target)
+    return target
 
 
 def load_game_from_file(game: Any, filepath: str) -> bool:

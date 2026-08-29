@@ -485,7 +485,7 @@ class Game:
             recipient_id=target_id,
             turn_sent=int(self.turn_number),
             text=str(text).strip()[:500],
-            timestamp="",
+            timestamp=datetime.now(timezone.utc).isoformat(),
             read_by_recipient=False,
         )
         conv = self.get_conversation(sender_id, target_id, create_if_missing=True)
@@ -493,7 +493,92 @@ class Game:
             conv.add_message(msg)
 
         logger.debug(f"[Comms] Message #{msg.id} sent from {sender_player.name} to {recipient_player.name} (Turn {self.turn_number}): '{msg.text}'")
+
+        # Persist transmission in real-time to saves/comms.md
+        self.record_comms_transmission(msg, sender_player, recipient_player)
         return True
+
+    def record_comms_transmission(self, message: Message, sender_player: typing.Optional[Player] = None, recipient_player: typing.Optional[Player] = None) -> bool:
+        """Appends a single in-game communications transmission to saves/comms.md."""
+        try:
+            import save_manager
+            comms_path = Path(save_manager.SAVES_DIR) / "comms.md"
+            comms_path.parent.mkdir(parents=True, exist_ok=True)
+
+            md_content = ""
+            if not comms_path.exists() or comms_path.stat().st_size == 0:
+                md_content += (
+                    "# Inter-Player Communications Log\n\n"
+                    "> Canonical log of in-game transmissions between players.\n\n"
+                    "---\n\n"
+                )
+
+            sender = sender_player or self.get_player_by_id(message.sender_id)
+            recipient = recipient_player or self.get_player_by_id(message.recipient_id)
+            campaign_id = str(getattr(self, "campaign_id", "unknown"))
+
+            lines = [
+                f"## Turn {message.turn_sent} — Campaign `{campaign_id}`",
+                "",
+                message.to_markdown(sender, recipient),
+                "",
+            ]
+            md_content += "\n".join(lines)
+
+            with comms_path.open("a", encoding="utf-8") as f:
+                f.write(md_content)
+            return True
+        except Exception as exc:
+            logger.warning(f"Could not persist comms message to markdown: {exc}", exc_info=True)
+            return False
+
+    def export_comms_to_markdown(self, target_path: typing.Optional[typing.Union[str, Path]] = None) -> Path:
+        """Exports all in-game player communications for the current campaign to a Markdown file."""
+        import save_manager
+        campaign_id = str(getattr(self, "campaign_id", "unknown"))
+        if target_path is None:
+            target_path = Path(save_manager.SAVES_DIR) / "comms" / campaign_id / "comms.md"
+        else:
+            target_path = Path(target_path)
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        players_by_id = {p.id: p for p in self.players}
+
+        all_messages: typing.List[Message] = []
+        for conv in self.conversations.values():
+            all_messages.extend(conv.messages)
+        all_messages.sort(key=lambda m: (m.turn_sent, m.id))
+
+        lines = [
+            "# Inter-Player Communications Log",
+            "",
+            "> Canonical log of in-game transmissions between players.",
+            "",
+            f"- **Campaign**: `{campaign_id}`",
+            f"- **Generated**: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- **Total Transmissions**: {len(all_messages)}",
+            "",
+            "---",
+            "",
+        ]
+
+        if not all_messages:
+            lines.append("*No in-game transmissions recorded.*")
+        else:
+            current_turn = None
+            for msg in all_messages:
+                if current_turn != msg.turn_sent:
+                    current_turn = msg.turn_sent
+                    lines.extend([f"## Turn {current_turn}", ""])
+                sender = players_by_id.get(msg.sender_id)
+                recipient = players_by_id.get(msg.recipient_id)
+                lines.append(msg.to_markdown(sender, recipient))
+                lines.append("")
+
+        temporary = target_path.with_suffix(".md.tmp")
+        temporary.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+        temporary.replace(target_path)
+        return target_path
 
     def get_messages_for_player(self, player_id: int) -> typing.List[Message]:
         """Returns all messages involving player_id (sent or received)."""

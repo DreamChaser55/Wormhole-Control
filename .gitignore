@@ -136,4 +136,7 @@ Thumbs.db
 saves/agent_memory/
 saves/ai_telemetry.jsonl
 saves/ai_feedback.md
+saves/comms.md
+saves/comms/
+
 

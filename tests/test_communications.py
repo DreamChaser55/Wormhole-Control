@@ -1,4 +1,6 @@
 import os
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import MagicMock, patch
 import pygame
@@ -253,6 +255,87 @@ class TestCommunications(unittest.TestCase):
         # Comms window opened to Player 2 (who had unread messages) -> marks Player 2 messages as read
         gui.update_comms_button()
         self.assertIn("Comms", gui.comms_button.text)
+
+    def test_message_and_conversation_markdown_formatting(self):
+        msg = Message(
+            id=42,
+            sender_id=self.player0.id,
+            sender_name="Player 1",
+            recipient_id=self.player1.id,
+            turn_sent=3,
+            text="Diplomatic envoy dispatched.",
+            timestamp="2026-08-29T12:00:00Z",
+        )
+        md = msg.to_markdown(self.player0, self.player1)
+        self.assertIn("### Transmission #42: **Player 1** ➔ **Player 2**", md)
+        self.assertIn("- **Turn**: 3", md)
+        self.assertIn("- **Timestamp**: `2026-08-29T12:00:00Z`", md)
+        self.assertIn(f"Player 1 (ID: {self.player0.id}", md)
+        self.assertIn(f"Player 2 (ID: {self.player1.id}", md)
+        self.assertIn("> Diplomatic envoy dispatched.", md)
+
+        conv = Conversation(participant_ids=(self.player0.id, self.player1.id))
+        conv.add_message(msg)
+        conv_md = conv.to_markdown({self.player0.id: self.player0, self.player1.id: self.player1})
+        self.assertIn("## Thread: Player 1 & Player 2", conv_md)
+        self.assertIn("Diplomatic envoy dispatched.", conv_md)
+
+    def test_send_message_records_to_markdown(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_saves = Path(temp_dir)
+            with patch("save_manager.SAVES_DIR", str(temp_saves)):
+                self.game.campaign_id = "test-campaign-123"
+                self.game.turn_number = 4
+                self.game.send_message(self.player0, self.player1.id, "Real-time logged message")
+
+                comms_file = temp_saves / "comms.md"
+                self.assertTrue(comms_file.exists())
+                content = comms_file.read_text(encoding="utf-8")
+                self.assertIn("# Inter-Player Communications Log", content)
+                self.assertIn("Turn 4 — Campaign `test-campaign-123`", content)
+                self.assertIn("Real-time logged message", content)
+
+    def test_export_comms_to_markdown(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.game.campaign_id = "test-campaign-export"
+            self.game.turn_number = 1
+            self.game.send_message(self.player0, self.player1.id, "First turn transmission")
+            self.game.turn_number = 2
+            self.game.send_message(self.player1, self.player0.id, "Second turn reply")
+
+            export_path = Path(temp_dir) / "exported_comms.md"
+            result_path = self.game.export_comms_to_markdown(export_path)
+            self.assertEqual(result_path, export_path)
+            self.assertTrue(export_path.exists())
+
+            content = export_path.read_text(encoding="utf-8")
+            self.assertIn("# Inter-Player Communications Log", content)
+            self.assertIn("Campaign**: `test-campaign-export`", content)
+            self.assertIn("Total Transmissions**: 2", content)
+            self.assertIn("## Turn 1", content)
+            self.assertIn("First turn transmission", content)
+            self.assertIn("## Turn 2", content)
+            self.assertIn("Second turn reply", content)
+
+    def test_save_game_creates_comms_sidecar(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_saves = Path(temp_dir)
+            with patch("save_manager.SAVES_DIR", str(temp_saves)):
+                self.game.start_new_game()
+                self.game.campaign_id = "test-camp-sidecar"
+                self.game.turn_number = 3
+                p0 = self.game.players[0]
+                p1 = self.game.players[1]
+                self.game.send_message(p0, p1.id, "Sidecar comms test message")
+
+                save_path = self.game.save_game("test_sidecar_save.json")
+                self.assertTrue(os.path.exists(save_path))
+
+                sidecar_path = temp_saves / "comms" / "test-camp-sidecar" / "comms.md"
+                self.assertTrue(sidecar_path.exists())
+                content = sidecar_path.read_text(encoding="utf-8")
+                self.assertIn("# Inter-Player Communications Log", content)
+                self.assertIn("Sidecar comms test message", content)
 
 
 if __name__ == "__main__":

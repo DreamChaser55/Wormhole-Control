@@ -101,7 +101,7 @@ Wormhole Control/
 │       ├── sector_celestial_renderer.py # Stars, planets, moons, nebulae, and storms
 │       ├── sector_entity_renderer.py # Units, hull icons, health bars, and minefields
 │       └── sector_overlay_renderer.py # Selection boxes, range circles, and fog of war
-├── saves/                         # Saved game files (*.json)
+├── saves/                         # Saved game files (*.json), AI memory sidecars, and comms logs (*.md)
 ├── tests/                         # Automated test suite
 │   ├── __init__.py
 │   └── test_*.py                  # Unit and integration test suites
@@ -512,6 +512,11 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 - **Colonist Transfers**: Colony transports (`LoadColonistsOrder`) can embark population from allied colonies.
 - **Hostile Abilities**: Targeted hostile abilities (`CaptureUnit`, `DrainAntimatter`, `DesignateTarget`) automatically disallow targeting allied ships.
 - **Context Menus**: Right-click context menus dynamically adapt based on diplomacy, displaying cooperative options (Protect, Repair, Refit, Refuel, CI Sweep) for allies, and hostile options (Attack, Infiltrate, Sabotage) for enemies.
+
+### 10.6 Inter-Player Communications & Markdown Persistence
+- **Transmission Threads (`Conversation`)**: Diplomatic messages between pairs of players are tracked in chronological order within `Conversation` entities (`Message` dataclass).
+- **Real-Time Markdown Logging**: Every transmission sent via the Comms menu or AI agents (`send_message`) is appended in real-time to `saves/comms.md` with turn number, ISO 8601 UTC timestamp, sender/recipient names, IDs, team affiliations, and message text.
+- **Campaign Save Sidecars**: When saving campaigns (`save_game_to_file`), complete campaign transmission logs are atomically exported to `saves/comms/<campaign_id>/comms.md`.
 
 ---
 

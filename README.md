@@ -129,6 +129,7 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 - **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory.
 - **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match.
 - **AI Memory**: Canonical long-term memory is embedded in each save. A readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`.
+- **Comms Log**: In-game player communications are logged in real-time to `saves/comms.md`. Campaign-specific transmission logs are also generated at `saves/comms/<campaign>/comms.md` during saves.
 
 ## Agentic AI
 

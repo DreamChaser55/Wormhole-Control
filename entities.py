@@ -16,6 +16,7 @@ from constants import (
     STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, NEBULA_RADIUS
 )
 import uuid
+from datetime import datetime, timezone
 import dataclasses
 from enum import Enum, auto
 from collections import deque
@@ -85,6 +86,34 @@ class Message:
     read_by_recipient: bool = False
     id: int = 0
 
+    def __post_init__(self):
+        if not self.timestamp:
+            self.timestamp = datetime.now(timezone.utc).isoformat()
+
+    def to_markdown(self, sender_player: Optional['Player'] = None, recipient_player: Optional['Player'] = None) -> str:
+        s_name = sender_player.name if sender_player else self.sender_name or f"Player {self.sender_id}"
+        s_type = "Human" if (sender_player and sender_player.is_human) else ("AI" if sender_player else "")
+        s_team = f", Team: {sender_player.team_id}" if (sender_player and getattr(sender_player, 'team_id', None) is not None) else ""
+        s_desc = f"{s_name} (ID: {self.sender_id}{s_team}{f', {s_type}' if s_type else ''})"
+
+        r_name = recipient_player.name if recipient_player else f"Player {self.recipient_id}"
+        r_type = "Human" if (recipient_player and recipient_player.is_human) else ("AI" if recipient_player else "")
+        r_team = f", Team: {recipient_player.team_id}" if (recipient_player and getattr(recipient_player, 'team_id', None) is not None) else ""
+        r_desc = f"{r_name} (ID: {self.recipient_id}{r_team}{f', {r_type}' if r_type else ''})"
+
+        lines = [
+            f"### Transmission #{self.id}: **{s_name}** ➔ **{r_name}**",
+            f"- **Turn**: {self.turn_sent}",
+            f"- **Timestamp**: `{self.timestamp}`",
+            f"- **Sender**: {s_desc}",
+            f"- **Recipient**: {r_desc}",
+            "",
+            f"> {self.text}",
+            "",
+            "---",
+        ]
+        return "\n".join(lines)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -146,6 +175,26 @@ class Conversation:
         for m in self.messages:
             if m.recipient_id == viewer_id:
                 m.read_by_recipient = True
+
+    def to_markdown(self, players_by_id: Optional[Dict[int, 'Player']] = None) -> str:
+        p_dict = players_by_id or {}
+        p1 = p_dict.get(self.participant_ids[0])
+        p2 = p_dict.get(self.participant_ids[1])
+        p1_name = p1.name if p1 else f"Player {self.participant_ids[0]}"
+        p2_name = p2.name if p2 else f"Player {self.participant_ids[1]}"
+
+        sections = [
+            f"## Thread: {p1_name} & {p2_name}",
+            "",
+        ]
+        if not self.messages:
+            sections.append("*No transmissions recorded in this thread.*")
+        else:
+            for msg in self.messages:
+                sender_p = p_dict.get(msg.sender_id)
+                recip_p = p_dict.get(msg.recipient_id)
+                sections.append(msg.to_markdown(sender_p, recip_p))
+        return "\n".join(sections)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
