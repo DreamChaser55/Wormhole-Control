@@ -16,7 +16,7 @@ from unit_components import (
     AbilityComponent, AbilityType
 )
 from events import (
-    IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent, ColonizeEvent, RepairUnitEvent,
+    IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent, ColonizeEvent, RepairUnitEvent,
     MineEvent, DockEvent, ContinuousResupplyEvent, LayMinefieldEvent
 )
 from unit_orders import MoveOrder, UseAbilityOrder
@@ -53,6 +53,51 @@ class TestInGameErrorDialogs(unittest.TestCase):
         dlg = self.gui.active_dialogs[-1]
         self.assertIn("No Engines", dlg.window_display_title)
         self.assertIn("no sub-light engines", dlg.text_block.html_text)
+
+    def test_destroyed_engines_block_move_and_patrol_orders(self):
+        unit = Unit(
+            owner=self.player, position=Position(0, 0), in_hex=HexCoord(0, 0),
+            in_system="Sol", name="Disabled Scout", hull_size=HullSize.SMALL, game=self.game
+        )
+        engines = Engines(unit, speed=100)
+        engines.current_hit_points = 0
+        unit.add_component(engines)
+
+        self.game.order_system.handle_issue_move_order(
+            IssueMoveOrderEvent([unit], "Sol", HexCoord(0, 0), Position(100, 100), False)
+        )
+        self.game.order_system.handle_issue_patrol_order(
+            IssuePatrolOrderEvent([unit], "Sol", HexCoord(0, 0), Position(100, 100), False)
+        )
+
+        self.assertEqual(unit.commander_component.get_active_orders_count(), 0)
+        self.assertGreaterEqual(len(self.gui.active_dialogs), 2)
+        for dlg in self.gui.active_dialogs[-2:]:
+            self.assertIn("Engines Destroyed", dlg.window_display_title)
+            self.assertIn("until they are repaired", dlg.text_block.html_text)
+
+    def test_context_menu_hides_sublight_actions_for_destroyed_engines(self):
+        from input_processor.context_menu_builder import build_sector_context_menu_options
+
+        unit = Unit(
+            owner=self.player, position=Position(0, 0), in_hex=HexCoord(0, 0),
+            in_system="Sol", name="Disabled Scout", hull_size=HullSize.SMALL, game=self.game
+        )
+        engines = Engines(unit, speed=100)
+        engines.current_hit_points = 0
+        unit.add_component(engines)
+        self.game.selected_objects = [unit]
+
+        options, _ = build_sector_context_menu_options(self.game, None, Position(100, 100))
+        action_ids = {action_id for _label, action_id in options}
+        self.assertNotIn("issue_move_order", action_ids)
+        self.assertNotIn("issue_patrol_order", action_ids)
+
+        engines.current_hit_points = 1
+        options, _ = build_sector_context_menu_options(self.game, None, Position(100, 100))
+        action_ids = {action_id for _label, action_id in options}
+        self.assertIn("issue_move_order", action_ids)
+        self.assertIn("issue_patrol_order", action_ids)
 
     def test_interhex_jump_without_hyperdrive_shows_warning(self):
         unit = Unit(

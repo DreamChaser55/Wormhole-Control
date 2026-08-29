@@ -84,6 +84,32 @@ def test_process_movement_sublight():
     assert unit.position.x == 10.0
     assert unit.position.y == 0.0
 
+
+def test_process_movement_clears_stale_target_for_destroyed_engines():
+    from unit_components import Engines
+
+    game = MagicMock()
+    player = MockPlayer("Player 1")
+    unit = MockUnit()
+    unit.owner = player
+    unit.position = Position(0.0, 0.0)
+
+    engines = Engines(unit, speed=10.0)
+    unit.add_component(engines)
+    engines.current_hit_points = 0
+    engines.move_target = Position(100.0, 0.0)
+    starting_antimatter = unit.antimatter_component.current_amount
+
+    system = MagicMock()
+    system.get_all_units.return_value = [(unit, (0, 0))]
+    game.galaxy.systems = {"Sol": system}
+
+    TurnProcessor(game)._process_movement(player)
+
+    assert unit.position == Position(0.0, 0.0)
+    assert unit.antimatter_component.current_amount == starting_antimatter
+    assert engines.move_target is None
+
 def test_process_population_growth():
     game = MagicMock()
     planet = MagicMock(spec=Planet)
@@ -480,5 +506,4 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
 
         start_new_game(game, settings=settings)
         assert game.pending_ai_turn_end_time == 2500
-
 

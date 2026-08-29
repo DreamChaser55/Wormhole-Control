@@ -42,6 +42,24 @@ def test_move_order_plan_route_same_hex():
     assert sub.parameters["destination_position"] == Position(10, 0)
 
 
+def test_move_order_rejects_destroyed_engines_for_same_hex_travel():
+    unit = MockUnit()
+    engines = Engines(unit, speed=50.0)
+    engines.current_hit_points = 0
+    unit.add_component(engines)
+
+    order = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(10, 0),
+    })
+    order.execute(MagicMock())
+
+    assert order.status == OrderStatus.FAILED
+    assert not order.sub_orders
+    assert engines.move_target is None
+
+
 def test_unit_approach_same_sector_uses_nearer_line_circle_intersection():
     unit = MockUnit()
     unit.in_system = "Sol"

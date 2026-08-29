@@ -352,7 +352,11 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     }
     engines = getattr(unit, "engines_component", None)
     if engines is not None:
-        details["engines"] = {"speed": _rounded(getattr(engines, "speed", 0))}
+        details["engines"] = {
+            "speed": _rounded(getattr(engines, "speed", 0)),
+            "effective_speed": _rounded(getattr(engines, "effective_speed", 0)),
+            "destroyed": bool(getattr(engines, "is_destroyed", False)),
+        }
     hyperdrive = getattr(unit, "hyperdrive_component", None)
     if hyperdrive is not None:
         details["hyperdrive"] = {

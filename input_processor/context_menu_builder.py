@@ -236,7 +236,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
 
     if any(actors):
         if target_coords is not None:
-            if any(a.engines_component and a.engines_component.speed > 0 for a in actors):
+            if any(a.engines_component and a.engines_component.is_operational for a in actors):
                 options.append(("Move Here", "issue_move_order"))
                 options.append(("Patrol Here", "issue_patrol_order"))
 

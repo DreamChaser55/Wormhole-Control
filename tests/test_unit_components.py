@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from geometry import Position, Circle, Vector
 from unit_components import (
-    Engines, Hyperdrive, HyperdriveType, JumpStatus,
+    Engines, Hyperdrive, HyperdriveType, JumpStatus, SabotageType,
     HyperspaceInhibitionFieldEmitter, Commander, UnitStance,
     Turret, TurretType, TurretVariant, Weapons, ColonyComponent,
     Constructor, BuildableUnit, RepairComponent,
@@ -168,6 +168,28 @@ def test_engines():
     engines = Engines(unit, speed=100.0)
     assert engines.speed == 100.0
     assert engines.move_target is None
+
+
+def test_destroyed_engines_are_inoperable_until_repaired():
+    unit = MockUnit()
+    unit.is_sabotaged = lambda sabotage_type: sabotage_type == SabotageType.ENGINES
+    engines = Engines(unit, speed=100.0)
+
+    assert engines.is_operational
+    assert engines.effective_speed == 50.0
+
+    engines.move_target = Position(100.0, 0.0)
+    engines.current_hit_points = 0
+    engines.on_destroyed()
+
+    assert engines.is_destroyed
+    assert not engines.is_operational
+    assert engines.effective_speed == 0.0
+    assert engines.move_target is None
+
+    engines.current_hit_points = 1
+    assert engines.is_operational
+    assert engines.effective_speed == 50.0
 
 def test_hyperdrive_recharge():
     unit = MockUnit()
@@ -1261,6 +1283,10 @@ def test_allowed_stances_restriction():
     commander.process_stance()
     assert commander.stance == UnitStance.ATTACK_SAME_SYSTEM
 
+    # Destroyed engines remove all mobile stances, even with a hyperdrive.
+    engines.current_hit_points = 0
+    allowed = commander.get_allowed_stances()
+    assert allowed == [UnitStance.DO_NOTHING, UnitStance.ATTACK_WEAPON_RANGE]
 
 
 

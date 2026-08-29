@@ -214,6 +214,11 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps (activated via the component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to protect friendly and allied assets and eliminate discovered enemy agents. |
 | — | *Always Present* | Commander | — | — | Core component present on all ships; manages order queues and combat stances. |
 
+An Engines component is operational only while it has hit points remaining and
+provides a positive effective speed. Destroyed Engines immediately halt and
+invalidate sub-light movement until repaired above 0 HP. This does not disable
+hex or wormhole jumps performed by an otherwise operational Hyperdrive.
+
 ---
 
 ## 4. Special Abilities

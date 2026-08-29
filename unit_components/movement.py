@@ -66,6 +66,9 @@ class Engines(UnitComponent):
 
     @property
     def effective_speed(self) -> float:
+        if self.is_destroyed:
+            return 0.0
+
         spd = self.speed
         if hasattr(self.unit, 'is_sabotaged'):
             from .enums import SabotageType
@@ -74,6 +77,15 @@ class Engines(UnitComponent):
         if hasattr(self.unit, 'experience_points') and self.unit.experience_points > 0:
             spd *= self.unit.xp_multiplier(XP_SPEED_BONUS)
         return spd
+
+    @property
+    def is_operational(self) -> bool:
+        """Whether these engines can currently provide sub-light movement."""
+        return not self.is_destroyed and self.effective_speed > 0.0
+
+    def on_destroyed(self) -> None:
+        """Immediately stop any active sub-light movement target."""
+        self.move_target = None
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

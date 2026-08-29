@@ -23,6 +23,24 @@ def is_star(body: Any) -> bool:
     return isinstance(body, Star)
 
 
+def has_operational_engines(unit: Any) -> bool:
+    """Return whether a unit's installed engines can provide sub-light movement."""
+    engines = getattr(unit, "engines_component", None)
+    if engines is None:
+        return False
+
+    operational = getattr(engines, "is_operational", None)
+    if isinstance(operational, bool):
+        return operational
+    if getattr(engines, "is_destroyed", False) is True:
+        return False
+
+    effective_speed = getattr(engines, "effective_speed", None)
+    if not isinstance(effective_speed, (int, float)):
+        effective_speed = getattr(engines, "speed", None)
+    return effective_speed > 0 if isinstance(effective_speed, (int, float)) else True
+
+
 def compatible_docking_component(unit: Any, target: Any) -> Any | None:
     if _hull_name(unit) == "strikecraft_wing":
         component = getattr(target, "strikecraft_bay_component", None)
@@ -51,7 +69,7 @@ def relation(player: Any, owner: Any) -> str:
 
 def supported_commands(unit: Any) -> list[str]:
     commands = ["cancel_orders", "set_stance"]
-    if getattr(unit, "engines_component", None):
+    if has_operational_engines(unit):
         commands.extend(["move", "patrol", "protect"])
         if getattr(unit, "weapons_component", None):
             commands.append("defend")

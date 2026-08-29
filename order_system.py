@@ -83,6 +83,35 @@ class OrderSystem:
             return False
         return True
 
+    def validate_engines_for_unit(self, unit, order_label: str) -> bool:
+        """Validate that a unit can accept an order requiring sub-light engines."""
+        engines = unit.engines_component
+        if not engines:
+            if getattr(self.game, 'gui', None):
+                self.game.gui.show_warning_dialog(
+                    f"Unit <b>{unit.name}</b> has no sub-light engines and cannot execute {order_label} orders.",
+                    title="No Engines"
+                )
+            return False
+
+        if engines.is_destroyed:
+            if getattr(self.game, 'gui', None):
+                self.game.gui.show_warning_dialog(
+                    f"Unit <b>{unit.name}</b> has destroyed Engines and cannot execute {order_label} orders until they are repaired.",
+                    title="Engines Destroyed"
+                )
+            return False
+
+        if not engines.is_operational:
+            if getattr(self.game, 'gui', None):
+                self.game.gui.show_warning_dialog(
+                    f"Unit <b>{unit.name}</b> has no operational sub-light engines and cannot execute {order_label} orders.",
+                    title="Engines Offline"
+                )
+            return False
+
+        return True
+
     def handle_cancel_orders(self, event: CancelOrdersEvent):
         for unit in event.units:
             if unit.commander_component:
@@ -92,12 +121,7 @@ class OrderSystem:
 
     def handle_issue_move_order(self, event: IssueMoveOrderEvent):
         for unit in event.units:
-            if not unit.engines_component:
-                if getattr(self.game, 'gui', None):
-                    self.game.gui.show_warning_dialog(
-                        f"Unit <b>{unit.name}</b> has no sub-light engines and cannot execute move orders.",
-                        title="No Engines"
-                    )
+            if not self.validate_engines_for_unit(unit, "move"):
                 continue
             # Jumping to a different sector or system requires a hyperdrive.
             needs_hyperdrive = (event.system_name != unit.in_system or event.sector_coord != unit.in_hex)
@@ -125,12 +149,7 @@ class OrderSystem:
 
     def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
         for unit in event.units:
-            if not unit.engines_component:
-                if getattr(self.game, 'gui', None):
-                    self.game.gui.show_warning_dialog(
-                        f"Unit <b>{unit.name}</b> has no sub-light engines and cannot execute patrol orders.",
-                        title="No Engines"
-                    )
+            if not self.validate_engines_for_unit(unit, "patrol"):
                 continue
             if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
                 continue
@@ -737,6 +756,5 @@ class OrderSystem:
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True
         self.game.sidebar_needs_update = True
-
 
 

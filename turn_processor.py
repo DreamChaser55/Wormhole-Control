@@ -154,6 +154,14 @@ class TurnProcessor:
                         units_to_move.append((unit, ("hex_jump", (target_hex_for_jump, target_position_for_jump))))
 
                 elif unit.engines_component and unit.engines_component.move_target:
+                    if not unit.engines_component.is_operational:
+                        unit.engines_component.move_target = None
+                        logger.debug(
+                            f"   {unit.name} cannot move sub-light: Engines are destroyed or offline. "
+                            "Movement target cleared."
+                        )
+                        continue
+
                     from custom_unit_templates import get_sublight_antimatter_cost_per_turn
                     raw_eff = getattr(unit.engines_component, 'effective_speed', None)
                     if isinstance(raw_eff, (int, float)):

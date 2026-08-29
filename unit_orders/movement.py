@@ -84,9 +84,13 @@ class ReachWaypointOrder(Order):
             
         # Sub-light engine movement is used within the same hex. Hyperdrive targets are cleared.
         elif current_system == dest_system and current_hex == dest_hex:
-            if not self.unit.engines_component:
+            engines = self.unit.engines_component
+            if not engines or not engines.is_operational:
                 self.status = OrderStatus.FAILED
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot move in sector, no engines).")
+                if engines:
+                    engines.move_target = None
+                reason = "no engines" if not engines else "engines are destroyed or offline"
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot move in sector, {reason}).")
                 return
 
             if distance(self.unit.position, dest_position) < 0.01:
@@ -174,6 +178,25 @@ class ReachWaypointOrder(Order):
         dest_system = self.parameters["destination_system_name"]
         dest_hex = self.parameters["destination_hex_coord"]
         dest_position: Position = self.parameters["destination_position"]
+
+        is_active_sublight_leg = (
+            current_system == dest_system
+            and current_hex == dest_hex
+            and distance(current_position, dest_position) >= 0.01
+        )
+        if is_active_sublight_leg:
+            engines = self.unit.engines_component
+            if not engines or not engines.is_operational:
+                if engines:
+                    engines.move_target = None
+                self.status = OrderStatus.FAILED
+                reason = "no engines" if not engines else "engines are destroyed or offline"
+                logger.debug(
+                    f"[{self.unit.name} (id:{self.unit.id})] "
+                    f"ReachWaypointOrder.check_completion_conditions: {self.order_type.name} "
+                    f"(id:{self.order_id}): FAILED (cannot continue sub-light movement, {reason})."
+                )
+                return
         
         if current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:
             if self.unit.engines_component:
@@ -694,9 +717,13 @@ class MoveOrder(Order):
         
         # Intra-hex travel: Move directly using sub-light engines.
         else:
-            if not self.unit.engines_component:
+            engines = self.unit.engines_component
+            if not engines or not engines.is_operational:
                 self.status = OrderStatus.FAILED
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, no engines).")
+                if engines:
+                    engines.move_target = None
+                reason = "no engines" if not engines else "engines are destroyed or offline"
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, {reason}).")
                 return
             
             obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex)

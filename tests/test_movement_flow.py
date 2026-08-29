@@ -177,6 +177,100 @@ def test_integration_sublight_movement_flow():
     assert move_order.status == OrderStatus.COMPLETED
     assert engines.move_target is None
 
+
+def test_destroying_engines_fails_active_sublight_move_without_spending_antimatter():
+    game = MagicMock()
+    galaxy = SimpleGalaxy()
+    game.galaxy = galaxy
+
+    player = MockPlayer()
+    game.players = [player]
+    game.current_player_index = 0
+
+    unit = MockUnit()
+    unit.owner = player
+    unit.game = game
+    unit.in_galaxy = galaxy
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(0, 0)
+
+    engines = Engines(unit, speed=50.0)
+    commander = Commander(unit)
+    unit.add_component(engines)
+    unit.add_component(commander)
+    galaxy.systems["Sol"].add_unit(unit)
+
+    move_order = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(100, 0),
+    })
+    commander.add_order(move_order)
+    assert engines.move_target == Position(100, 0)
+
+    starting_antimatter = unit.antimatter_component.current_amount
+    unit.take_component_damage(Engines, engines.max_hit_points)
+    assert engines.move_target is None
+
+    TurnProcessor(game).process_turn()
+
+    assert unit.position == Position(0, 0)
+    assert unit.antimatter_component.current_amount == starting_antimatter
+    assert move_order.status == OrderStatus.FAILED
+    assert commander.current_order is None
+
+    engines.current_hit_points = 1
+    repaired_move = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (0, 0),
+        "destination_position": Position(50, 0),
+    })
+    commander.add_order(repaired_move)
+    TurnProcessor(game).process_turn()
+
+    assert unit.position == Position(50, 0)
+    assert repaired_move.status == OrderStatus.COMPLETED
+
+
+def test_destroyed_engines_do_not_block_hyperdrive_only_jump():
+    game = MagicMock()
+    galaxy = SimpleGalaxy()
+    game.galaxy = galaxy
+
+    player = MockPlayer()
+    game.players = [player]
+    game.current_player_index = 0
+
+    unit = MockUnit()
+    unit.owner = player
+    unit.game = game
+    unit.in_galaxy = galaxy
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(0, 0)
+
+    engines = Engines(unit, speed=50.0)
+    engines.current_hit_points = 0
+    unit.add_component(engines)
+    unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
+    commander = Commander(unit)
+    unit.add_component(commander)
+    galaxy.systems["Sol"].add_unit(unit)
+
+    move_order = MoveOrder(unit, {
+        "destination_system_name": "Sol",
+        "destination_hex_coord": (1, 0),
+        "destination_position": Position(25, 25),
+    })
+    commander.add_order(move_order)
+
+    TurnProcessor(game).process_turn()
+
+    assert unit.in_hex == (1, 0)
+    assert unit.position == Position(25, 25)
+    assert move_order.status == OrderStatus.COMPLETED
+
 def test_integration_wormhole_jump_flow():
     game = MagicMock()
     galaxy = SimpleGalaxy()
@@ -559,4 +653,3 @@ def test_wormhole_diameter_restrictions_movement_planning():
     commander_h.add_order(move_order_h)
     # Routing should fail because HUGE ship is larger than MEDIUM wormhole
     assert move_order_h.status == OrderStatus.FAILED
-

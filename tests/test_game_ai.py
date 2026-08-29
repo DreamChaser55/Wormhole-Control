@@ -1204,6 +1204,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             result = CommandGateway(game).apply_batch(player, batch)
             self.assertTrue(result.accepted)
             self.assertEqual(result.receipts, ("Attack U20 (Engines) for U10.",))
+
             self.assertEqual(len(my_unit.commander_component.orders_queue), 1)
             order = my_unit.commander_component.orders_queue[0]
             self.assertEqual(order.parameters["target_component_type"], "Engines")
@@ -1222,6 +1223,42 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             result_alias = CommandGateway(game).apply_batch(player, batch_alias)
             self.assertTrue(result_alias.accepted)
             self.assertEqual(result_alias.receipts, ("Attack U20 (Hyperdrive) for U10.",))
+
+    def test_destroyed_engines_are_not_advertised_and_reject_move_preflight(self):
+        player, _enemy_player, my_unit, enemy_unit, game = self._combat_fixture()
+        my_unit.engines_component.current_hit_points = 0
+        snapshot = SimpleNamespace(
+            visible_enemy_unit_ids={enemy_unit.id}, presence_hexes=set()
+        )
+
+        with patch("visibility.VisibilityService.compute", return_value=snapshot):
+            observation = build_observation(game, player)
+
+        unit_view = next(unit for unit in observation["units"] if unit["id"] == my_unit.id)
+        for command_type in ("move", "patrol", "protect", "defend"):
+            self.assertNotIn(command_type, unit_view["supported_commands"])
+            self.assertNotIn(command_type, unit_view["legal_commands"])
+        self.assertEqual(
+            unit_view["capability_details"]["engines"],
+            {"speed": 50.0, "effective_speed": 0.0, "destroyed": True},
+        )
+
+        result = CommandGateway(game).apply_batch(
+            player,
+            CommandBatch(
+                commands=(
+                    Command(
+                        type="move",
+                        unit_ids=(my_unit.id,),
+                        system_name="Sol",
+                        hex_coord=(0, 0),
+                        position=(50.0, 50.0),
+                    ),
+                )
+            ),
+        )
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.errors[0].code, "capability_unavailable")
 
     def test_attack_subsystem_targeting_rejections(self):
         player, enemy_player, my_unit, enemy_unit, game = self._combat_fixture()

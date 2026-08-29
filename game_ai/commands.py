@@ -8,6 +8,7 @@ from typing import Any, Callable
 from .contracts import CommandBatch
 from .rules import (
     compatible_docking_component,
+    has_operational_engines,
     is_colonizable_body,
     is_mining_target,
     is_self_owned,
@@ -929,6 +930,7 @@ class CommandGateway:
         requirements = {
             "move": "engines_component",
             "patrol": "engines_component",
+            "protect": "engines_component",
             "attack": "weapons_component",
             "colonize": "colony_component",
             "load_colonists": "colony_component",
@@ -943,14 +945,17 @@ class CommandGateway:
             "use_ability": "ability_component",
         }
         attribute = requirements.get(command_type)
-        if attribute and getattr(unit, attribute, None) is None:
+        if attribute and (
+            getattr(unit, attribute, None) is None
+            or (attribute == "engines_component" and not has_operational_engines(unit))
+        ):
             raise _Rejected(
                 "capability_unavailable",
                 f"Unit {unit.id} cannot perform {command_type}.",
             )
         if command_type == "defend":
             if (
-                getattr(unit, "engines_component", None) is None
+                not has_operational_engines(unit)
                 or getattr(unit, "weapons_component", None) is None
             ):
                 raise _Rejected(

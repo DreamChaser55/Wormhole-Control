@@ -39,7 +39,7 @@ class Commander(UnitComponent):
     def get_allowed_stances(self) -> list[UnitStance]:
         """Gets the list of allowed stances for this unit based on its components."""
         allowed = [UnitStance.DO_NOTHING, UnitStance.ATTACK_WEAPON_RANGE]
-        if self.unit.engines_component is not None:
+        if self.unit.engines_component is not None and self.unit.engines_component.is_operational:
             allowed.append(UnitStance.ATTACK_SAME_SECTOR)
             if self.unit.hyperdrive_component is not None:
                 allowed.append(UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE)
