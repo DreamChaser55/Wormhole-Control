@@ -9,7 +9,7 @@ from typing import Any, Mapping
 
 
 MEMORY_VERSION = 1
-MAX_RECEIPTS_TOTAL_CHARS = 10_000
+MAX_RECEIPTS_TOTAL_CHARS = 8_000
 
 
 @dataclass
