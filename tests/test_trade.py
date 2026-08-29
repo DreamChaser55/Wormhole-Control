@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
 
@@ -23,7 +24,7 @@ from save_manager import serialize_unit, deserialize_unit, serialize_order, dese
 
 class TestTradeComponent(unittest.TestCase):
     def setUp(self):
-        self.player = Player(name="Test Trader", color=RED, is_human=True)
+        self.player = Player(name="Test Trader", color=RED, controller=PlayerController.HUMAN)
         self.player.credits = 500.0
 
         self.galaxy = Galaxy()
@@ -231,7 +232,7 @@ class TestTradeComponent(unittest.TestCase):
 
 class TestTradeOrders(unittest.TestCase):
     def setUp(self):
-        self.player = Player(name="Test Trader", color=RED, is_human=True)
+        self.player = Player(name="Test Trader", color=RED, controller=PlayerController.HUMAN)
         self.player.credits = 100.0
 
         self.galaxy = Galaxy()
@@ -349,7 +350,7 @@ class TestTradeOrders(unittest.TestCase):
 
 class TestTradeSerializationAndCatalog(unittest.TestCase):
     def setUp(self):
-        self.player = Player(name="Test Player", color=RED, is_human=True)
+        self.player = Player(name="Test Player", color=RED, controller=PlayerController.HUMAN)
         self.galaxy = Galaxy()
         self.system = StarSystem(name="Sol", position=None, radius=3)
         self.galaxy.systems["Sol"] = self.system

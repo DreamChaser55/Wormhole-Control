@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import pytest
 from geometry import Position
 from utils import HexCoord
@@ -27,12 +28,12 @@ class MockGame:
 
 @pytest.fixture
 def setup_universe():
-    player = Player(name="Player 1", color=(0, 0, 255), is_human=True)
+    player = Player(name="Player 1", color=(0, 0, 255), controller=PlayerController.HUMAN)
     player.credits = 5000
     player.metal = 1000
     player.crystal = 1000
 
-    enemy_player = Player(name="Player 2", color=(255, 0, 0), is_human=False)
+    enemy_player = Player(name="Player 2", color=(255, 0, 0), controller=PlayerController.OPENAI)
     enemy_player.credits = 5000
     enemy_player.metal = 1000
     enemy_player.crystal = 1000

@@ -16,6 +16,7 @@ from constants import (
     UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS,
     ENGINE_ANTIMATTER_COST_PER_TURN, HYPERDRIVE_SYSTEM_JUMP_COST, HYPERDRIVE_HEX_JUMP_COST
 )
+from player_controller import PlayerController
 
 
 class TurnProcessor:
@@ -46,7 +47,7 @@ class TurnProcessor:
         self.game.update_side_bar_content() # Update info box after changing turn
 
         # If next player is human and has unread messages, or comms window is open, refresh/show comms
-        if getattr(next_player, 'is_human', True) and hasattr(self.game, 'gui') and self.game.gui:
+        if next_player.controller == PlayerController.HUMAN and hasattr(self.game, 'gui') and self.game.gui:
             unread = self.game.get_unread_messages_for_player(next_player.id)
             if unread:
                 self.game.gui.open_communications_window()
@@ -60,7 +61,7 @@ class TurnProcessor:
         if not getattr(self.game, 'players', None) or not (0 <= getattr(self.game, 'current_player_index', 0) < len(self.game.players)):
             return
         current_player = self.game.players[self.game.current_player_index]
-        if not getattr(current_player, 'is_human', True):
+        if current_player.controller == PlayerController.OPENAI:
             logger.debug(f"Scheduling agentic AI turn for {current_player.name}")
             self.game.pending_ai_turn_end_time = pygame.time.get_ticks() + 500
         else:
@@ -320,7 +321,7 @@ class TurnProcessor:
                                         logger.debug(f"   Wormhole instability damages {unit.name}'s hull for {damage_amount} damage.")
                                         unit.take_damage(damage_amount)
 
-                                    if getattr(self.game, 'gui', None) and getattr(unit.owner, 'is_human', False):
+                                    if getattr(self.game, 'gui', None) and unit.owner.controller == PlayerController.HUMAN:
                                         self.game.gui.show_warning_dialog(
                                             f"Unit <b>{unit.name}</b> sustained structural damage jumping through unstable wormhole <b>{entry_wormhole.name}</b> ({damage_amount} damage)!",
                                             title="Wormhole Damage"
@@ -495,7 +496,7 @@ class TurnProcessor:
                 total_upkeep += unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
 
         if total_upkeep > 0:
-            if current_player.credits < total_upkeep and getattr(self.game, 'gui', None) and getattr(current_player, 'is_human', False):
+            if current_player.credits < total_upkeep and getattr(self.game, 'gui', None) and current_player.controller == PlayerController.HUMAN:
                 self.game.gui.show_warning_dialog(
                     f"Treasury depleted! Unable to fully pay total unit upkeep of <b>{total_upkeep:.0f}</b> credits.",
                     title="Upkeep Shortage"
@@ -535,7 +536,7 @@ class TurnProcessor:
 
                         if distance(unit.position, minefield.position) <= minefield.detonation_radius:
                             minefield.detonate_against(unit)
-                            if getattr(self.game, 'gui', None) and getattr(unit.owner, 'is_human', False):
+                            if getattr(self.game, 'gui', None) and unit.owner.controller == PlayerController.HUMAN:
                                 self.game.gui.show_warning_dialog(
                                     f"Unit <b>{unit.name}</b> triggered an enemy minefield in sector <b>{hex_coord}</b>!",
                                     title="Minefield Detonation"

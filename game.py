@@ -1,4 +1,5 @@
 import logging
+import argparse
 import sys
 import typing
 import uuid
@@ -33,6 +34,8 @@ from visibility import (
     is_minefield_visible as vis_is_minefield_visible
 )
 from game_ai.coordinator import AgentTurnCoordinator
+from game_control_protocol import ControlService
+from player_controller import PlayerController
 
 # Subsystem modules
 import game_camera
@@ -44,7 +47,7 @@ import game_actions
 # --- Game Class ---
 class Game:
     """Main game class, handles initialization, game loop, drawing, and input."""
-    def __init__(self):
+    def __init__(self, *, control_port: typing.Optional[int] = None):
         pygame.init()
         pygame.display.set_caption("Wormhole Control")
         if FULLSCREEN:
@@ -109,6 +112,11 @@ class Game:
         # Instantiate the TurnProcessor
         self.turn_manager = TurnProcessor(self)
         self.ai_coordinator = AgentTurnCoordinator(self)
+        self.control_service = ControlService(self, port=control_port)
+        try:
+            self.control_service.start()
+        except OSError:
+            logger.error("Could not start the Codex control server.", exc_info=True)
 
         # Initialize the main menu UI
         self.gui.show_main_menu()
@@ -174,7 +182,7 @@ class Game:
         if input_locked and action.get('action') not in {
             'toggle_ingame_menu', 'save_game', 'load_game_file',
             'quit_to_main_menu', 'show_main_menu', 'quit',
-            'update_ai_repair_retries',
+            'update_ai_repair_retries', 'end_turn',
         }:
             return
         game_actions.handle_gui_action(self, action)
@@ -184,8 +192,13 @@ class Game:
         return bool(
             self.game_started
             and current is not None
-            and not current.is_human
-            and (self.pending_ai_turn_end_time > 0 or self.ai_coordinator.is_busy)
+            and (
+                current.controller == PlayerController.CODEX
+                or (
+                    current.controller == PlayerController.OPENAI
+                    and (self.pending_ai_turn_end_time > 0 or self.ai_coordinator.is_busy)
+                )
+            )
         )
 
     def update_sector_camera(self, dt: float):
@@ -237,6 +250,8 @@ class Game:
 
     def update(self, time_delta: float):
         """Called every frame. Updates the UI. Game logic updates are done in TurnProcessor.process_turn(), which is called at the end of each turn."""
+        self.control_service.pump()
+
         if self.game_started and (self.visibility_dirty or self.visibility is None):
             self.recompute_visibility()
 
@@ -264,7 +279,7 @@ class Game:
                 self.pending_ai_turn_end_time = 0
                 if not self.ai_coordinator.start_current_turn():
                     current = self.current_player
-                    if current is not None and not current.is_human:
+                    if current is not None and current.controller == PlayerController.OPENAI:
                         logger.warning("AI coordinator did not start; ending turn as fallback.")
                         self.end_turn()
 
@@ -331,10 +346,12 @@ class Game:
 
         turn_num = getattr(self, 'turn_number', 1)
         ai_status = ""
-        if not getattr(current_player, 'is_human', True):
+        if current_player.controller == PlayerController.OPENAI:
             coordinator = getattr(self, 'ai_coordinator', None)
             status = getattr(coordinator, 'status_message', '') or "AI"
             ai_status = f" ({status})"
+        elif current_player.controller == PlayerController.CODEX:
+            ai_status = " (waiting for Codex)"
         self.gui.update_turn_label(f"<font color='{color_hex}'>Turn {turn_num}: {current_player.name}{ai_status}</font>")
         # Update color indicator panel's background and dynamic panel theme hue
         self.gui.update_player_color_indicator(Color(color)) # Convert tuple to pygame.Color
@@ -357,17 +374,22 @@ class Game:
         """Main game loop."""
         if not self.is_running: # Check if init failed
              logger.debug("Game initialization failed. Exiting.")
+             self.control_service.shutdown()
+             self.ai_coordinator.shutdown()
              pygame.quit()
              sys.exit()
 
-        while self.is_running:
-            time_delta = self.clock.tick(60) / 1000.0
+        try:
+            while self.is_running:
+                time_delta = self.clock.tick(60) / 1000.0
 
-            self.handle_input(time_delta)
-            self.update(time_delta)
-            self.draw()
-
-        pygame.quit()
+                self.handle_input(time_delta)
+                self.update(time_delta)
+                self.draw()
+        finally:
+            self.control_service.shutdown()
+            self.ai_coordinator.shutdown()
+            pygame.quit()
         sys.exit()
 
     def save_game(self, filename: typing.Optional[str] = None) -> typing.Optional[str]:
@@ -673,8 +695,18 @@ class Game:
 
 # Application entry point
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Run Wormhole Control.")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="localhost Codex control port (overrides WORMHOLE_CONTROL_PORT)",
+    )
+    arguments = parser.parse_args()
+    if arguments.port is not None and not 1 <= arguments.port <= 65535:
+        parser.error("--port must be between 1 and 65535")
     setup_logging(log_to_file=True)
     logger.debug("Initializing Game...")
-    game = Game()
+    game = Game(control_port=arguments.port)
     logger.debug("Starting Game Loop...")
     game.run()

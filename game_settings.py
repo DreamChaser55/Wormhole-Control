@@ -8,6 +8,7 @@ from game_ai.runtime import (
     normalize_reasoning_effort,
     normalize_repair_retries,
 )
+from player_controller import PlayerController
 
 # ---------------------------------------------------------------------------
 # Preset player colour palette (name → RGB tuple)
@@ -34,12 +35,13 @@ class PlayerConfig:
     """Per-player configuration selected in the New Game Wizard."""
     name: str
     color: typing.Tuple[int, int, int]
-    is_human: bool = True
+    controller: PlayerController = PlayerController.HUMAN
     team_id: int = 1
     ai_reasoning_effort: str = DEFAULT_REASONING_EFFORT
     ai_repair_retries: int = DEFAULT_REPAIR_RETRIES
 
     def __post_init__(self) -> None:
+        self.controller = PlayerController(self.controller)
         self.ai_reasoning_effort = normalize_reasoning_effort(
             self.ai_reasoning_effort
         )
@@ -51,9 +53,9 @@ class PlayerConfig:
 def _default_player_configs() -> typing.List[PlayerConfig]:
     """Returns the three default player configurations."""
     return [
-        PlayerConfig("Player 1", PLAYER_COLOR_PALETTE[0][1], is_human=True, team_id=1),
-        PlayerConfig("Player 2", PLAYER_COLOR_PALETTE[1][1], is_human=False, team_id=2, ai_reasoning_effort="low"),
-        PlayerConfig("Player 3", PLAYER_COLOR_PALETTE[2][1], is_human=False, team_id=3, ai_reasoning_effort="low"),
+        PlayerConfig("Player 1", PLAYER_COLOR_PALETTE[0][1], controller=PlayerController.HUMAN, team_id=1),
+        PlayerConfig("Player 2", PLAYER_COLOR_PALETTE[1][1], controller=PlayerController.OPENAI, team_id=2, ai_reasoning_effort="low"),
+        PlayerConfig("Player 3", PLAYER_COLOR_PALETTE[2][1], controller=PlayerController.OPENAI, team_id=3, ai_reasoning_effort="low"),
     ]
 
 

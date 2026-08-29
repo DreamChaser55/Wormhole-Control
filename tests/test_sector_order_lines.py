@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 from unittest.mock import MagicMock, patch
 from entities import Unit, Player, OrderType
 from constants import HullSize, BLUE
@@ -10,8 +11,8 @@ from rendering.galaxy_renderer import GalaxyViewRenderer
 def test_draw_sector_view_draws_lines_for_all_turn_player_units():
     # 1. Setup mock game, players, and renderer
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
-    player2 = Player("Player 2", (255, 0, 0), is_human=True)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
+    player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.HUMAN)
     game.players = [player1, player2]
     game.current_player_index = 0  # Player 1's turn
     game.current_system_name = "Sol"
@@ -81,8 +82,8 @@ def test_draw_sector_view_draws_lines_for_all_turn_player_units():
 
 def test_system_view_order_lines_only_for_active_player():
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
-    player2 = Player("Player 2", (255, 0, 0), is_human=True)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
+    player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.HUMAN)
     game.players = [player1, player2]
     game.current_player_index = 0  # Player 1's turn
     game.current_system_name = "Sol"
@@ -142,8 +143,8 @@ def test_system_view_order_lines_only_for_active_player():
 
 def test_galaxy_view_order_lines_only_for_active_player():
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
-    player2 = Player("Player 2", (255, 0, 0), is_human=True)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
+    player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.HUMAN)
     game.players = [player1, player2]
     game.current_player_index = 0  # Player 1's turn
     game.current_system_name = "Sol"
@@ -203,7 +204,7 @@ def test_galaxy_view_order_lines_only_for_active_player():
 def test_draw_sector_view_draws_four_corner_selection_brackets():
     # Setup mock game, player, and renderer
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0
     game.current_system_name = "Sol"
@@ -272,7 +273,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets():
 def test_draw_sector_view_draws_turn_notches():
     # Setup mock game, player, and renderer
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0
     game.current_system_name = "Sol"
@@ -417,7 +418,7 @@ def test_system_view_wormhole_lines():
 def test_draw_sector_view_patrol_order_path():
     # 1. Setup mock game, player, and renderer
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0  # Player 1's turn
     game.current_system_name = "Sol"
@@ -532,7 +533,7 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
     """Verify that a movement order with sub-orders (e.g. avoidance waypoints)
     draws a single sequential path unit -> W1 -> W2 -> D without extra lines to D."""
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0
     game.current_system_name = "Sol"
@@ -643,8 +644,8 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
 def test_sector_view_attack_with_move_sub_order_sequential():
     """Verify that an attack order with a movement sub-order draws unit -> move_pos -> target."""
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
-    player2 = Player("Player 2", (255, 0, 0), is_human=False)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
+    player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.OPENAI)
     game.players = [player1, player2]
     game.current_player_index = 0
     game.current_system_name = "Sol"
@@ -707,7 +708,7 @@ def test_sector_view_attack_with_move_sub_order_sequential():
 def test_sector_view_queued_orders_without_sub_orders_sequential():
     """Verify that current order and queued order without sub-orders chain sequentially."""
     game = MagicMock()
-    player1 = Player("Player 1", BLUE, is_human=True)
+    player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0
     game.current_system_name = "Sol"

@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 """
 tests/test_game_ai_docking.py
 
@@ -31,7 +32,7 @@ from game_ai.commands import CommandGateway
 
 @pytest.fixture
 def ai_dock_setup():
-    p1 = Player("Player 1", (0, 0, 255), is_human=False)
+    p1 = Player("Player 1", (0, 0, 255), controller=PlayerController.OPENAI)
     galaxy = Galaxy()
     system = StarSystem(name="Sol", position=Position(0, 0), radius=3)
     galaxy.systems = {"Sol": system}

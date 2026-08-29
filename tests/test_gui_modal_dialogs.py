@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import os
 import unittest
 import pygame
@@ -74,24 +75,24 @@ class TestGUIModalDialogs(unittest.TestCase):
         self.assertEqual(len(self.gui.active_dialogs), 0)
 
     def test_ai_settings_button_is_disabled_without_ai_players(self):
-        self.game.players = [Player("Human", (10, 20, 30), is_human=True)]
+        self.game.players = [Player("Human", (10, 20, 30), controller=PlayerController.HUMAN)]
         self.gui.show_ingame_menu()
         self.assertIsNotNone(self.gui.ai_settings_button)
         self.assertFalse(self.gui.ai_settings_button.is_enabled)
 
     def test_ai_settings_dialog_bounds_cancel_and_atomic_apply(self):
-        human = Player("Human", (10, 20, 30), is_human=True)
+        human = Player("Human", (10, 20, 30), controller=PlayerController.HUMAN)
         ai_one = Player(
             "AI One",
             (40, 50, 60),
-            is_human=False,
+            controller=PlayerController.OPENAI,
             agent_id="ai-one",
             ai_repair_retries=2,
         )
         ai_two = Player(
             "AI Two",
             (70, 80, 90),
-            is_human=False,
+            controller=PlayerController.OPENAI,
             agent_id="ai-two",
             ai_repair_retries=4,
         )
@@ -439,24 +440,25 @@ class TestGUIModalDialogs(unittest.TestCase):
         action = event_router.process_event(self.gui, event)
         self.assertEqual(action['action'], 'start_new_game_with_settings')
 
-    def test_wizard_cycles_and_preserves_luna_reasoning_effort(self):
+    def test_wizard_cycles_and_preserves_controller_and_reasoning_effort(self):
         self.gui.show_new_game_wizard()
         wizard = self.gui.new_game_wizard
-        button = wizard._player_human_buttons[0]
+        button = wizard._player_type_buttons[0]
 
         expected_states = (
-            (False, "medium", "AI: Medium"),
-            (False, "high", "AI: High"),
-            (False, "low", "AI: Low"),
-            (True, "medium", "Human"),
+            (PlayerController.CODEX, "medium", "Codex"),
+            (PlayerController.OPENAI, "medium", "AI: Medium"),
+            (PlayerController.OPENAI, "high", "AI: High"),
+            (PlayerController.OPENAI, "low", "AI: Low"),
+            (PlayerController.HUMAN, "medium", "Human"),
         )
-        for is_human, reasoning_effort, label in expected_states:
+        for controller, reasoning_effort, label in expected_states:
             event = pygame.event.Event(
                 pygame_gui.UI_BUTTON_PRESSED,
                 {"ui_element": button},
             )
             wizard.process_event(event)
-            self.assertEqual(wizard._player_is_human[0], is_human)
+            self.assertEqual(wizard._player_controllers[0], controller)
             self.assertEqual(
                 wizard._player_ai_reasoning_efforts[0], reasoning_effort
             )
@@ -469,13 +471,13 @@ class TestGUIModalDialogs(unittest.TestCase):
             )
         )
         wizard._full_rebuild()
-        self.assertFalse(wizard._player_is_human[0])
+        self.assertEqual(wizard._player_controllers[0], PlayerController.CODEX)
         self.assertEqual(wizard._player_ai_reasoning_efforts[0], "medium")
-        self.assertEqual(wizard._player_human_buttons[0].text, "AI: Medium")
+        self.assertEqual(wizard._player_type_buttons[0].text, "Codex")
 
         action = wizard._build_start_action()
         player_config = action["settings"].player_configs[0]
-        self.assertFalse(player_config.is_human)
+        self.assertEqual(player_config.controller, PlayerController.CODEX)
         self.assertEqual(player_config.ai_reasoning_effort, "medium")
 
     def test_wizard_invalid_radius_and_distance_error_dialogs(self):

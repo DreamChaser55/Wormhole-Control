@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import pytest
 from unittest.mock import MagicMock, patch
 import pygame
@@ -20,6 +21,7 @@ class MockPlayer:
             self.id = MockPlayer._counter
             MockPlayer._counter += 1
         self.name = name
+        self.controller = PlayerController.HUMAN
         self.team_id = team_id if team_id is not None else self.id
         self.color = (0, 200, 255)
 

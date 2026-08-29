@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import os
 import unittest
 import pygame
@@ -27,7 +28,7 @@ class TestSaveLoad(unittest.TestCase):
         pygame.display.set_mode((1, 1))
 
     def test_player_round_trip(self):
-        player = Player("Test Player", (0, 128, 255), is_human=True)
+        player = Player("Test Player", (0, 128, 255), controller=PlayerController.HUMAN)
         player.ai_repair_retries = 5
         player.credits = 15000.0
         player.metal = 5000.0
@@ -39,11 +40,18 @@ class TestSaveLoad(unittest.TestCase):
         self.assertEqual(deserialized.id, player.id)
         self.assertEqual(deserialized.name, "Test Player")
         self.assertEqual(deserialized.color, (0, 128, 255))
-        self.assertTrue(deserialized.is_human)
+        self.assertEqual(deserialized.controller, PlayerController.HUMAN)
         self.assertEqual(deserialized.credits, 15000.0)
         self.assertEqual(deserialized.metal, 5000.0)
         self.assertEqual(deserialized.crystal, 2500.0)
         self.assertEqual(deserialized.ai_repair_retries, 5)
+
+    def test_codex_controller_round_trip_uses_new_schema(self):
+        player = Player("Codex", (12, 34, 56), controller=PlayerController.CODEX)
+        serialized = serialize_player(player)
+        self.assertEqual(serialized["controller"], "codex")
+        restored = deserialize_player(serialized)
+        self.assertEqual(restored.controller, PlayerController.CODEX)
 
     def test_celestial_bodies_round_trip(self):
         player = Player("Owner", (255, 0, 0))
@@ -149,7 +157,7 @@ class TestSaveLoad(unittest.TestCase):
         game = Game()
         game.start_new_game()
         # Set player 0 to AI and save
-        game.players[0].is_human = False
+        game.players[0].controller = PlayerController.OPENAI
         game.current_player_index = 0
 
         test_filename = "test_ai_load_save.json"
@@ -181,7 +189,7 @@ class TestSaveLoad(unittest.TestCase):
 
     def test_short_ids_in_player_and_game(self):
         from game import Game
-        player = Player("AI Pilot", (100, 150, 200), is_human=False)
+        player = Player("AI Pilot", (100, 150, 200), controller=PlayerController.OPENAI)
         self.assertEqual(len(player.persistent_id), 8)
         self.assertEqual(len(player.agent_id), 8)
         self.assertTrue(all(c in "0123456789abcdef" for c in player.persistent_id))
@@ -203,4 +211,3 @@ class TestSaveLoad(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

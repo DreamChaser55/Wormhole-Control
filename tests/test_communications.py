@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import os
 import tempfile
 from pathlib import Path
@@ -25,9 +26,9 @@ class TestCommunications(unittest.TestCase):
 
     def setUp(self):
         self.game = Game()
-        self.player0 = Player("Player 1", (0, 128, 255), is_human=True)
-        self.player1 = Player("Player 2", (255, 0, 0), is_human=False)
-        self.player2 = Player("Player 3", (0, 255, 0), is_human=True)
+        self.player0 = Player("Player 1", (0, 128, 255), controller=PlayerController.HUMAN)
+        self.player1 = Player("Player 2", (255, 0, 0), controller=PlayerController.OPENAI)
+        self.player2 = Player("Player 3", (0, 255, 0), controller=PlayerController.HUMAN)
         self.game.players = [self.player0, self.player1, self.player2]
         self.game.current_player_index = 0
         self.game.turn_number = 1

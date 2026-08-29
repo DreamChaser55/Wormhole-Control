@@ -9,6 +9,7 @@ from game_ai.runtime import (
     MIN_REPAIR_RETRIES,
     normalize_repair_retries,
 )
+from player_controller import PlayerController
 
 _INGAME_MENU_BUTTONS = [
     ('resume_button', 'Resume', '#resume_button'),
@@ -28,7 +29,7 @@ class AISettingsDialog:
         self.ai_players = [
             player
             for player in getattr(gui.game_instance, "players", [])
-            if not getattr(player, "is_human", True)
+            if player.controller == PlayerController.OPENAI
         ]
         self.values = {
             str(player.agent_id): normalize_repair_retries(
@@ -252,7 +253,7 @@ def refresh_ai_settings_button(gui) -> None:
     if button is None:
         return
     has_ai_players = any(
-        not getattr(player, "is_human", True)
+        player.controller == PlayerController.OPENAI
         for player in getattr(gui.game_instance, "players", [])
     )
     if has_ai_players:

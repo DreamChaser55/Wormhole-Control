@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import json
 import os
 import tempfile
@@ -302,7 +303,7 @@ class TestMemory(unittest.TestCase):
         player = Player(
             "Luna High",
             (12, 34, 56),
-            is_human=False,
+            controller=PlayerController.OPENAI,
             persistent_id="player-stable",
             agent_id="agent-stable",
             ai_reasoning_effort="high",
@@ -340,7 +341,7 @@ class TestMemory(unittest.TestCase):
             ("max", "medium"),
             (None, "medium"),
         ):
-            data = {"name": "AI Player", "is_human": False}
+            data = {"name": "AI Player", "controller": PlayerController.OPENAI.value}
             if raw_effort is not None:
                 data["ai_reasoning_effort"] = raw_effort
             restored = deserialize_player(data)
@@ -349,31 +350,29 @@ class TestMemory(unittest.TestCase):
                 expected_effort,
             )
 
-    def test_legacy_and_invalid_repair_retry_values_are_normalized(self):
+    def test_new_save_schema_requires_controller_and_normalizes_repair_retries(self):
         import builtins
         import typing
 
         builtins.typing = typing
         from save_manager import deserialize_player
 
+        with self.assertRaises(KeyError):
+            deserialize_player({"name": "Old schema"})
         self.assertEqual(
-            deserialize_player({"name": "Legacy AI"}).ai_repair_retries,
-            DEFAULT_REPAIR_RETRIES,
-        )
-        self.assertEqual(
-            deserialize_player({"ai_repair_retries": 0}).ai_repair_retries,
+            deserialize_player({"controller": "openai", "ai_repair_retries": 0}).ai_repair_retries,
             MIN_REPAIR_RETRIES,
         )
         self.assertEqual(
-            deserialize_player({"ai_repair_retries": 100}).ai_repair_retries,
+            deserialize_player({"controller": "openai", "ai_repair_retries": 100}).ai_repair_retries,
             MAX_REPAIR_RETRIES,
         )
         self.assertEqual(
-            deserialize_player({"ai_repair_retries": "bad"}).ai_repair_retries,
+            deserialize_player({"controller": "openai", "ai_repair_retries": "bad"}).ai_repair_retries,
             DEFAULT_REPAIR_RETRIES,
         )
 
-    def test_game_state_uses_save_version_2_2(self):
+    def test_game_state_uses_save_version_3(self):
         import builtins
         import typing
 
@@ -390,7 +389,7 @@ class TestMemory(unittest.TestCase):
             current_sector_coord=None,
             campaign_id="campaign",
         )
-        self.assertEqual(serialize_game_state(game)["version"], "2.2")
+        self.assertEqual(serialize_game_state(game)["version"], "3.0")
 
 
 class _FakeResponses:
@@ -1341,7 +1340,7 @@ class TestCoordinator(unittest.TestCase):
     @staticmethod
     def _coordinator_fixture(repair_retries, plans):
         player = _Player(1, 1)
-        player.is_human = False
+        player.controller = PlayerController.OPENAI
         player.agent_id = "agent-1"
         player.ai_reasoning_effort = "medium"
         player.ai_repair_retries = repair_retries
@@ -1369,7 +1368,7 @@ class TestCoordinator(unittest.TestCase):
 
     def test_fake_provider_completes_turn_and_persists_receipt(self):
         player = _Player(1, 1)
-        player.is_human = False
+        player.controller = PlayerController.OPENAI
         player.agent_id = "agent-1"
         player.ai_reasoning_effort = "low"
         player.ai_memory = {}

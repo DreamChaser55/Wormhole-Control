@@ -1,7 +1,7 @@
 """New Game Wizard – UIWindow-based multi-section configuration panel.
 
 The wizard collects:
-  * Players   – count (2-6), per-player name / colour / human-vs-AI
+  * Players   – count (2-6), per-player name / colour / controller type
   * Galaxy    – number of systems, system size, wormhole density,
                 min/max system distance
   * Economy   – starting credits / metal / crystal / population
@@ -25,6 +25,7 @@ from game_settings import (
     PlayerConfig,
     PLAYER_COLOR_PALETTE,
 )
+from player_controller import PlayerController
 
 logger = logging.getLogger(__name__)
 
@@ -127,8 +128,8 @@ class NewGameWizard:
         self._player_color_prev_btns: typing.List[pygame_gui.elements.UIButton] = []
         self._player_color_next_btns: typing.List[pygame_gui.elements.UIButton] = []
         self._player_color_swatches: typing.List[pygame_gui.elements.UIPanel] = []
-        self._player_human_buttons: typing.List[pygame_gui.elements.UIButton] = []
-        self._player_is_human: typing.List[bool] = []
+        self._player_type_buttons: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_controllers: typing.List[PlayerController] = []
         self._player_ai_reasoning_efforts: typing.List[str] = []
         self._player_team_buttons: typing.List[pygame_gui.elements.UIButton] = []
         self._player_teams: typing.List[int] = [1, 2, 3]
@@ -346,8 +347,8 @@ class NewGameWizard:
         self._player_color_prev_btns = []
         self._player_color_next_btns = []
         self._player_color_swatches = []
-        self._player_human_buttons = []
-        self._player_is_human = []
+        self._player_type_buttons = []
+        self._player_controllers = []
         self._player_ai_reasoning_efforts = []
         self._player_team_buttons = []
 
@@ -426,25 +427,25 @@ class NewGameWizard:
 
         color_block_w = cycle_btn_w * 2 + swatch_w
 
-        # Human / AI toggle button
-        human_btn_w = self._sx(96)
-        human_x = color_x + color_block_w + self._sx(8)
-        is_human = (index == 0)
-        reasoning_effort = "medium" if is_human else "low"
+        # Controller type button
+        type_btn_w = self._sx(96)
+        type_x = color_x + color_block_w + self._sx(8)
+        controller = PlayerController.HUMAN if index == 0 else PlayerController.OPENAI
+        reasoning_effort = "medium" if index == 0 else "low"
         btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(human_x, y, human_btn_w, row_h),
-            text=self._player_type_label(is_human, reasoning_effort),
+            relative_rect=pygame.Rect(type_x, y, type_btn_w, row_h),
+            text=self._player_type_label(controller, reasoning_effort),
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_type_button_{index}",
         )
-        self._player_human_buttons.append(btn)
-        self._player_is_human.append(is_human)
+        self._player_type_buttons.append(btn)
+        self._player_controllers.append(controller)
         self._player_ai_reasoning_efforts.append(reasoning_effort)
 
         # Team selector button (cycles Team 1 -> Team 2 -> ...)
         team_btn_w = self._sx(72)
-        team_x = human_x + human_btn_w + self._sx(8)
+        team_x = type_x + type_btn_w + self._sx(8)
         if index >= len(self._player_teams):
             self._player_teams.append(index + 1)
         team_num = self._player_teams[index]
@@ -474,9 +475,11 @@ class NewGameWizard:
             self._player_team_buttons[player_index].set_text(f"Team {new_team}")
 
     @staticmethod
-    def _player_type_label(is_human: bool, reasoning_effort: str) -> str:
-        if is_human:
+    def _player_type_label(controller: PlayerController, reasoning_effort: str) -> str:
+        if controller == PlayerController.HUMAN:
             return "Human"
+        if controller == PlayerController.CODEX:
+            return "Codex"
         labels = {
             "low": "AI: Low",
             "medium": "AI: Medium",
@@ -686,8 +689,8 @@ class NewGameWizard:
         self._player_color_prev_btns = []
         self._player_color_swatches = []
         self._player_color_next_btns = []
-        self._player_human_buttons = []
-        self._player_is_human = []
+        self._player_type_buttons = []
+        self._player_controllers = []
         self._player_ai_reasoning_efforts = []
         self._player_team_buttons = []
 
@@ -709,7 +712,7 @@ class NewGameWizard:
             "player_colors": [
                 PLAYER_COLOR_PALETTE[idx][0] for idx in self._player_color_indices
             ],
-            "player_humans": list(self._player_is_human),
+            "player_controllers": [controller.value for controller in self._player_controllers],
             "player_ai_reasoning_efforts": list(
                 self._player_ai_reasoning_efforts
             ),
@@ -730,7 +733,7 @@ class NewGameWizard:
         """Restores widget values from a snapshot dict (best-effort)."""
         player_names = snap.get("player_names", [])
         player_colors = snap.get("player_colors", [])  # list of color name strings
-        player_humans = snap.get("player_humans", [])
+        player_controllers = snap.get("player_controllers", [])
         player_ai_reasoning_efforts = snap.get(
             "player_ai_reasoning_efforts", []
         )
@@ -748,18 +751,19 @@ class NewGameWizard:
                 )
                 if found_idx is not None:
                     self._player_color_indices[i] = found_idx
-        for i, is_h in enumerate(player_humans):
-            if i < len(self._player_is_human):
-                self._player_is_human[i] = is_h
-                if self._player_human_buttons[i]:
+        for i, raw_controller in enumerate(player_controllers):
+            if i < len(self._player_controllers):
+                controller = PlayerController(raw_controller)
+                self._player_controllers[i] = controller
+                if self._player_type_buttons[i]:
                     reasoning_effort = (
                         player_ai_reasoning_efforts[i]
                         if i < len(player_ai_reasoning_efforts)
                         else "medium"
                     )
                     self._player_ai_reasoning_efforts[i] = reasoning_effort
-                    self._player_human_buttons[i].set_text(
-                        self._player_type_label(is_h, reasoning_effort)
+                    self._player_type_buttons[i].set_text(
+                        self._player_type_label(controller, reasoning_effort)
                     )
         for i, team_num in enumerate(player_teams):
             if i < len(self._player_teams):
@@ -879,23 +883,25 @@ class NewGameWizard:
                     self._cycle_player_color(i, +1)
                     return None
 
-            # Human/AI toggle buttons
-            for i, btn in enumerate(self._player_human_buttons):
+            # Controller type buttons
+            for i, btn in enumerate(self._player_type_buttons):
                 if element is btn:
-                    is_human = self._player_is_human[i]
+                    controller = self._player_controllers[i]
                     reasoning_effort = self._player_ai_reasoning_efforts[i]
-                    if is_human:
-                        is_human, reasoning_effort = False, "medium"
+                    if controller == PlayerController.HUMAN:
+                        controller = PlayerController.CODEX
+                    elif controller == PlayerController.CODEX:
+                        controller, reasoning_effort = PlayerController.OPENAI, "medium"
                     elif reasoning_effort == "medium":
                         reasoning_effort = "high"
                     elif reasoning_effort == "high":
                         reasoning_effort = "low"
                     else:
-                        is_human, reasoning_effort = True, "medium"
-                    self._player_is_human[i] = is_human
+                        controller, reasoning_effort = PlayerController.HUMAN, "medium"
+                    self._player_controllers[i] = controller
                     self._player_ai_reasoning_efforts[i] = reasoning_effort
                     btn.set_text(
-                        self._player_type_label(is_human, reasoning_effort)
+                        self._player_type_label(controller, reasoning_effort)
                     )
                     return None
 
@@ -956,7 +962,7 @@ class NewGameWizard:
                 color = pal_entry[1]
             else:
                 color = PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1]
-            is_human = self._player_is_human[i] if i < len(self._player_is_human) else True
+            controller = self._player_controllers[i] if i < len(self._player_controllers) else PlayerController.HUMAN
             ai_reasoning_effort = (
                 self._player_ai_reasoning_efforts[i]
                 if i < len(self._player_ai_reasoning_efforts)
@@ -966,7 +972,7 @@ class NewGameWizard:
             player_configs.append(PlayerConfig(
                 name=name,
                 color=color,
-                is_human=is_human,
+                controller=controller,
                 team_id=team_id,
                 ai_reasoning_effort=ai_reasoning_effort,
             ))

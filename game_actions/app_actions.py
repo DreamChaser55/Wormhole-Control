@@ -3,6 +3,7 @@ import logging
 import typing
 
 from game_ai.runtime import normalize_repair_retries
+from player_controller import PlayerController
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ def handle_update_ai_repair_retries(game, action: dict) -> None:
     if not isinstance(values, dict):
         return
     for player in getattr(game, "players", []):
-        if getattr(player, "is_human", True):
+        if player.controller != PlayerController.OPENAI:
             continue
         agent_id = str(getattr(player, "agent_id", ""))
         if agent_id in values:

@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
 
@@ -24,8 +25,8 @@ from save_manager import serialize_unit, deserialize_unit
 
 class TestOrbitalDefenseComponent(unittest.TestCase):
     def setUp(self):
-        self.player = Player(name="Test Player", color=RED, is_human=True)
-        self.enemy = Player(name="Enemy Player", color=BLUE, is_human=False)
+        self.player = Player(name="Test Player", color=RED, controller=PlayerController.HUMAN)
+        self.enemy = Player(name="Enemy Player", color=BLUE, controller=PlayerController.OPENAI)
 
         self.galaxy = Galaxy()
         self.system = StarSystem(name="Sol", position=None, radius=3)

@@ -25,6 +25,7 @@ from .runtime import (
     get_runtime_config,
     normalize_repair_retries,
 )
+from player_controller import PlayerController
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +64,13 @@ class AgentTurnCoordinator:
         if self._future is not None or not getattr(self.game, "game_started", False):
             return False
         player = getattr(self.game, "current_player", None)
-        if player is None or getattr(player, "is_human", True):
+        if player is None or player.controller != PlayerController.OPENAI:
             return False
         observation = build_observation(self.game, player)
         memory = AgentMemory.from_dict(getattr(player, "ai_memory", None))
         request = PlanningRequest(
-            campaign_id=str(getattr(self.game, "campaign_id", "legacy-campaign")),
-            agent_id=str(getattr(player, "agent_id", f"legacy-player-{player.id}")),
+            campaign_id=str(self.game.campaign_id),
+            agent_id=str(player.agent_id),
             player_name=str(player.name),
             turn_number=int(getattr(self.game, "turn_number", 1)),
             observation=observation,
@@ -259,11 +260,11 @@ class AgentTurnCoordinator:
         if player is None or self._turn_token is None:
             return False
         current = (
-            str(getattr(self.game, "campaign_id", "legacy-campaign")),
-            str(getattr(player, "agent_id", f"legacy-player-{player.id}")),
+            str(self.game.campaign_id),
+            str(player.agent_id),
             int(getattr(self.game, "turn_number", 1)),
         )
-        return current == self._turn_token and not getattr(player, "is_human", True)
+        return current == self._turn_token and player.controller == PlayerController.OPENAI
 
     def _write_memory(self, player: Any, memory: AgentMemory) -> None:
         try:

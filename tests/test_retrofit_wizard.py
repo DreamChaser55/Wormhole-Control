@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 """
 test_retrofit_wizard.py
 
@@ -44,7 +45,7 @@ class MockGame:
 
 @pytest.fixture
 def wizard_setup():
-    player = Player(name="Player 1", color=(0, 0, 255), is_human=True)
+    player = Player(name="Player 1", color=(0, 0, 255), controller=PlayerController.HUMAN)
     player.credits = 5000
 
     galaxy = Galaxy()

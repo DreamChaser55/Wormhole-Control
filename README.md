@@ -8,7 +8,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 ## Status
 
-**Wormhole Control is an active prototype.** The game supports single-machine hot-seat multiplayer for 2 to 6 players and agentic OpenAI-powered opponents. AI players receive only player-visible state, formulate a turn plan, issue validated engine commands, update persistent strategy memory, and end their turn.
+**Wormhole Control is an active prototype.** The game supports single-machine hot-seat multiplayer for 2 to 6 human, Codex-controlled, or agentic OpenAI-powered players. Automated players receive only player-visible state and issue validated engine commands.
 
 ---
 
@@ -18,7 +18,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 - **Python 3.9+** (Verified working on Python 3.14.3)
 - **pygame-ce** (Verified working on 2.5.7)
 - **pygame_gui** (Verified working on 0.6.14)
-- **OpenAI Python SDK** (for AI players)
+- **OpenAI Python SDK** (only for built-in OpenAI players)
 
 ### Installation & Launch
 
@@ -34,7 +34,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 3. **Start a campaign:**
    - Click **New Game** to open the **New Game Wizard**.
-   - Configure player count (2–6), custom names, faction colors, and human/AI thinking level. The player-type button cycles through Human, AI: Medium, AI: High, and AI: Low.
+   - Configure player count (2–6), custom names, faction colors, and controller type. The player-type button cycles through Human, Codex, AI: Medium, AI: High, and AI: Low.
    - Adjust galaxy generation parameters (system count, radius, wormhole connectivity) and starting economies.
    - Click **Start Game** to generate the galaxy and begin turn 1.
 
@@ -128,7 +128,7 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 
 - **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory.
 - **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match.
-- **AI Memory**: Canonical long-term memory is embedded in each save. A readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`.
+- **AI Memory**: Built-in OpenAI players keep canonical long-term memory in each save. A readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`.
 - **Comms Log**: In-game player communications are logged in real-time to `saves/comms.md`. Campaign-specific transmission logs are also generated at `saves/comms/<campaign>/comms.md` during saves.
 
 ## Agentic AI
@@ -169,6 +169,16 @@ to report gameplay bugs, rule confusions, or balance suggestions directly to
 `saves/ai_feedback.md`.
 
 See [Agentic AI Architecture](docs/AGENTIC_AI.md) for the full design and evaluation workflow.
+
+## Codex-Controlled Player
+
+Codex can launch the visible game, create a campaign containing exactly one Codex player, observe fog-of-war-safe state, submit incremental atomic command batches, and end turns through the loopback-only JSON bridge:
+
+```powershell
+python .\game_control.py '{"action":"status"}'
+```
+
+No API key is required because the bridge makes no OpenAI API calls. See the [Codex Control Protocol v1 guide](docs/CODEX_CONTROL.md) for setup schemas, the play loop, PowerShell/stdin examples, port configuration, errors, retries, and sandbox guidance.
 
 ---
 

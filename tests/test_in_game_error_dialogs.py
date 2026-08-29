@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import os
 import unittest
 import pygame
@@ -34,7 +35,7 @@ class TestInGameErrorDialogs(unittest.TestCase):
         self.game.start_new_game()
         self.gui = self.game.gui
         self.player = self.game.players[0]
-        self.player.is_human = True
+        self.player.controller = PlayerController.HUMAN
 
     def tearDown(self):
         if self.gui:
@@ -214,7 +215,7 @@ class TestInGameErrorDialogs(unittest.TestCase):
             owner=self.player, position=Position(0, 0), in_hex=HexCoord(0, 0),
             in_system="Sol", name="Boarding Craft", hull_size=HullSize.MEDIUM, game=self.game
         )
-        enemy_player = Player("Enemy", (255, 0, 0), is_human=False)
+        enemy_player = Player("Enemy", (255, 0, 0), controller=PlayerController.OPENAI)
         target_unit = Unit(
             owner=enemy_player, position=Position(5, 5), in_hex=HexCoord(0, 0),
             in_system="Sol", name="Enemy Frigate", hull_size=HullSize.MEDIUM, game=self.game

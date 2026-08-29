@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any, Tuple
 
 from utils import generate_short_id
+from player_controller import PlayerController
 
 from geometry import Position, Vector
 from game_ai.runtime import (
@@ -122,7 +123,7 @@ def serialize_player(player: Player) -> dict:
         "id": player.id,
         "name": player.name,
         "color": list(player.color),
-        "is_human": player.is_human,
+        "controller": player.controller.value,
         "team_id": getattr(player, "team_id", player.id + 1),
         "persistent_id": getattr(player, "persistent_id", None) or generate_short_id(),
         "agent_id": getattr(player, "agent_id", None) or generate_short_id(),
@@ -390,7 +391,7 @@ def serialize_game_state(game: Any) -> dict:
     ]
 
     return {
-        "version": "2.2",
+        "version": "3.0",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -418,7 +419,7 @@ def deserialize_player(data: dict) -> Player:
     player = Player(
         name=data.get("name", "Player"),
         color=tuple(data.get("color", (255, 255, 255))),
-        is_human=data.get("is_human", True),
+        controller=PlayerController(data["controller"]),
         team_id=data.get("team_id", None),
         persistent_id=data.get("persistent_id"),
         agent_id=data.get("agent_id"),
@@ -1057,7 +1058,7 @@ def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
         from game_ai.memory import AgentMemory, write_memory_sidecar
 
         for player in game.players:
-            if not getattr(player, "is_human", True):
+            if player.controller == PlayerController.OPENAI:
                 write_memory_sidecar(
                     Path(SAVES_DIR),
                     campaign_id=str(game.campaign_id),

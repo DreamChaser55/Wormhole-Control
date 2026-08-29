@@ -26,6 +26,7 @@ from game_ai.runtime import (
     normalize_reasoning_effort,
     normalize_repair_retries,
 )
+from player_controller import PlayerController
 from unit_orders import (
     Order, OrderStatus, OrderType,
     MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
@@ -92,12 +93,12 @@ class Message:
 
     def to_markdown(self, sender_player: Optional['Player'] = None, recipient_player: Optional['Player'] = None) -> str:
         s_name = sender_player.name if sender_player else self.sender_name or f"Player {self.sender_id}"
-        s_type = "Human" if (sender_player and sender_player.is_human) else ("AI" if sender_player else "")
+        s_type = sender_player.controller.display_name if sender_player else ""
         s_team = f", Team: {sender_player.team_id}" if (sender_player and getattr(sender_player, 'team_id', None) is not None) else ""
         s_desc = f"{s_name} (ID: {self.sender_id}{s_team}{f', {s_type}' if s_type else ''})"
 
         r_name = recipient_player.name if recipient_player else f"Player {self.recipient_id}"
-        r_type = "Human" if (recipient_player and recipient_player.is_human) else ("AI" if recipient_player else "")
+        r_type = recipient_player.controller.display_name if recipient_player else ""
         r_team = f", Team: {recipient_player.team_id}" if (recipient_player and getattr(recipient_player, 'team_id', None) is not None) else ""
         r_desc = f"{r_name} (ID: {self.recipient_id}{r_team}{f', {r_type}' if r_type else ''})"
 
@@ -217,14 +218,14 @@ class Conversation:
 
 # --- Player Class ---
 class Player:
-    """Represents a player in the game (human or AI)."""
+    """Represents a player and the controller responsible for its turns."""
     player_counter = 0
 
     def __init__(
         self,
         name: str,
         color: tuple,
-        is_human: bool = True,
+        controller: PlayerController = PlayerController.HUMAN,
         team_id: Optional[int] = None,
         persistent_id: Optional[str] = None,
         agent_id: Optional[str] = None,
@@ -236,7 +237,7 @@ class Player:
         Player.player_counter += 1
         self.name = name if name else f"Player {self.id}"
         self.color = color
-        self.is_human = is_human
+        self.controller = PlayerController(controller)
         self.team_id: int = team_id if team_id is not None else (self.id + 1)
         self.persistent_id: str = persistent_id or generate_short_id()
         self.agent_id: str = agent_id or generate_short_id()

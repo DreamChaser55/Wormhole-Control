@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import pytest
 from entities import Player, Unit, Minefield, HullSize
 from geometry import Position
@@ -10,8 +11,8 @@ from visibility import VisibilityService
 class MockGame:
     def __init__(self):
         self.players = [
-            Player("Player 1", (0, 0, 255), is_human=True),
-            Player("Player 2", (255, 0, 0), is_human=False)
+            Player("Player 1", (0, 0, 255), controller=PlayerController.HUMAN),
+            Player("Player 2", (255, 0, 0), controller=PlayerController.OPENAI)
         ]
         self.current_player_index = 0
         self.turn_number = 1

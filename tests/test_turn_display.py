@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import pytest
 from unittest.mock import MagicMock
 from pygame import Color
@@ -31,6 +32,7 @@ def test_update_player_turn_display_missing_color():
     class MockPlayerNoColor:
         def __init__(self):
             self.name = "Mock No Color"
+            self.controller = PlayerController.HUMAN
     
     player = MockPlayerNoColor()
     game.players = [player]
@@ -60,7 +62,7 @@ def test_update_player_turn_display_multiplayer():
 
 def test_update_player_turn_display_ai_status():
     game = DummyGame()
-    ai_player = Player("AI Opponent", (255, 0, 0), is_human=False)
+    ai_player = Player("AI Opponent", (255, 0, 0), controller=PlayerController.OPENAI)
     game.players = [ai_player]
     game.turn_number = 2
     game.ai_coordinator = MagicMock()

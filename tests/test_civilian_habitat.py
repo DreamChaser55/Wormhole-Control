@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
 
@@ -12,7 +13,7 @@ from gui.unit_editor_gui.catalog import COMPONENT_ROWS, COMPONENT_DESCRIPTIONS
 
 class TestCivilianHabitatComponent(unittest.TestCase):
     def setUp(self):
-        self.player = Player(name="Test Player", color=RED, is_human=True)
+        self.player = Player(name="Test Player", color=RED, controller=PlayerController.HUMAN)
         self.player.credits = 1000.0
 
         self.galaxy = Galaxy()

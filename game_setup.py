@@ -22,7 +22,7 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
     Args:
         game: Target game instance.
         settings: Optional :class:`GameSettings` produced by the New Game Wizard.
-            When *None*, default settings are used for backwards compatibility.
+            When *None*, the current defaults are used.
 
     Returns:
         bool: True if initialization succeeded, False otherwise.
@@ -53,7 +53,7 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
         Player(
             cfg.name,
             cfg.color,
-            is_human=cfg.is_human,
+            controller=cfg.controller,
             team_id=cfg.team_id,
             ai_reasoning_effort=getattr(
                 cfg, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT

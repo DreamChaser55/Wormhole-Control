@@ -3,6 +3,7 @@ import logging
 import typing
 import pygame
 import pygame_gui
+from player_controller import PlayerController
 
 if typing.TYPE_CHECKING:
     from gui.handler import GUI_Handler
@@ -86,7 +87,11 @@ class CommunicationsWindow:
 
         for p in getattr(self.game, "players", []):
             if p.id != current_id:
-                p_type = "Human" if getattr(p, "is_human", True) else f"AI: {getattr(p, 'ai_reasoning_effort', 'medium').capitalize()}"
+                p_type = (
+                    f"AI: {getattr(p, 'ai_reasoning_effort', 'medium').capitalize()}"
+                    if p.controller == PlayerController.OPENAI
+                    else p.controller.display_name
+                )
                 display_name = f"{p.name} ({p_type})"
                 self.recipient_map[display_name] = p.id
                 dropdown_options.append(display_name)

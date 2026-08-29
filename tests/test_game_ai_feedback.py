@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import os
 import tempfile
 import unittest
@@ -30,8 +31,8 @@ class TestGameAIFeedback(unittest.TestCase):
         self.galaxy.systems["Sol"] = sys1
         self.game.galaxy = self.galaxy
 
-        self.player0 = Player("Player 1", (0, 128, 255), is_human=True)
-        self.player1 = Player("Player 2", (255, 0, 0), is_human=False)
+        self.player0 = Player("Player 1", (0, 128, 255), controller=PlayerController.HUMAN)
+        self.player1 = Player("Player 2", (255, 0, 0), controller=PlayerController.OPENAI)
         self.game.players = [self.player0, self.player1]
         self.game.current_player_index = 1
         self.game.turn_number = 3

@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import pytest
 from entities import Player, Unit, Position, Planet, Minefield, HullSize
 from galaxy import Galaxy, StarSystem, Hex, CelestialBody
@@ -23,9 +24,9 @@ def make_unit(name: str, owner: Player, system: str = "Sol", hex_coord: HexCoord
 
 
 def test_player_diplomacy_relations():
-    p1 = Player("P1", (255, 0, 0), is_human=True, team_id=1)
-    p2 = Player("P2", (0, 255, 0), is_human=False, team_id=1)
-    p3 = Player("P3", (0, 0, 255), is_human=False, team_id=2)
+    p1 = Player("P1", (255, 0, 0), controller=PlayerController.HUMAN, team_id=1)
+    p2 = Player("P2", (0, 255, 0), controller=PlayerController.OPENAI, team_id=1)
+    p3 = Player("P3", (0, 0, 255), controller=PlayerController.OPENAI, team_id=2)
 
     # Ally tests
     assert p1.is_allied_with(p1) is True
@@ -62,8 +63,8 @@ def test_game_settings_team_validation():
     # Valid: 2 distinct teams
     settings_valid = GameSettings(
         player_configs=[
-            PlayerConfig(name="P1", color=(255, 0, 0), is_human=True, team_id=1),
-            PlayerConfig(name="P2", color=(0, 255, 0), is_human=False, team_id=2),
+            PlayerConfig(name="P1", color=(255, 0, 0), controller=PlayerController.HUMAN, team_id=1),
+            PlayerConfig(name="P2", color=(0, 255, 0), controller=PlayerController.OPENAI, team_id=2),
         ]
     )
     assert settings_valid.validate() == []
@@ -72,14 +73,14 @@ def test_game_settings_team_validation():
     with pytest.raises(ValueError, match="at least two different teams"):
         GameSettings(
             player_configs=[
-                PlayerConfig(name="P1", color=(255, 0, 0), is_human=True, team_id=1),
-                PlayerConfig(name="P2", color=(0, 255, 0), is_human=False, team_id=1),
+                PlayerConfig(name="P1", color=(255, 0, 0), controller=PlayerController.HUMAN, team_id=1),
+                PlayerConfig(name="P2", color=(0, 255, 0), controller=PlayerController.OPENAI, team_id=1),
             ]
         )
 
 
 def test_player_serialization_team_id():
-    p = Player("Alice", (100, 150, 200), is_human=True, team_id=3)
+    p = Player("Alice", (100, 150, 200), controller=PlayerController.HUMAN, team_id=3)
     p.credits = 12345.0
     data = serialize_player(p)
     assert data["team_id"] == 3

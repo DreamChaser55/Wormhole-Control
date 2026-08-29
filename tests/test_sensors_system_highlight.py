@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 """Tests for sensors inter-sector range hexgrid highlight in System View."""
 from unittest.mock import MagicMock, patch
 import pytest
@@ -13,7 +14,7 @@ from unit_components import Sensors
 @pytest.fixture
 def system_renderer_setup():
     game = MagicMock()
-    player = Player("Player 1", BLUE, is_human=True)
+    player = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player]
     game.current_player_index = 0
     game.current_system_name = "Sol"

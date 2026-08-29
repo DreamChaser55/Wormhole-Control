@@ -1,3 +1,4 @@
+from player_controller import PlayerController
 import pytest
 from unittest.mock import MagicMock, patch
 from turn_processor import TurnProcessor, TAX_RATE
@@ -10,7 +11,7 @@ def test_end_turn_advances_player():
     game = MagicMock()
     player1 = MockPlayer("Player 1")
     player2 = MockPlayer("Player 2")
-    player2.is_human = True
+    player2.controller = PlayerController.HUMAN
     game.players = [player1, player2]
     game.current_player_index = 0
     
@@ -409,8 +410,8 @@ def test_turn_number_increment():
     game.turn_number = 1
     player1 = MockPlayer("Player 1")
     player2 = MockPlayer("Player 2")
-    player1.is_human = True
-    player2.is_human = True
+    player1.controller = PlayerController.HUMAN
+    player2.controller = PlayerController.HUMAN
     game.players = [player1, player2]
     game.current_player_index = 0
 
@@ -433,9 +434,9 @@ def test_global_round_execution_order_and_population_growth():
     player1 = MockPlayer("Player 1")
     player2 = MockPlayer("Player 2")
     player3 = MockPlayer("Player 3")
-    player1.is_human = True
-    player2.is_human = True
-    player3.is_human = True
+    player1.controller = PlayerController.HUMAN
+    player2.controller = PlayerController.HUMAN
+    player3.controller = PlayerController.HUMAN
     game.players = [player1, player2, player3]
     game.current_player_index = 0
 
@@ -468,9 +469,9 @@ def test_global_round_execution_order_and_population_growth():
 def test_check_and_schedule_ai_turn():
     game = MagicMock()
     ai_player = MockPlayer("AI Player")
-    ai_player.is_human = False
+    ai_player.controller = PlayerController.OPENAI
     human_player = MockPlayer("Human Player")
-    human_player.is_human = True
+    human_player.controller = PlayerController.HUMAN
 
     game.players = [ai_player, human_player]
     game.current_player_index = 0
@@ -505,8 +506,8 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
     game.check_and_schedule_ai_turn = check_ai
 
     settings = GameSettings(player_configs=[
-        PlayerConfig("AI Player 1", (255, 0, 0), is_human=False, team_id=1),
-        PlayerConfig("Human Player 2", (0, 0, 255), is_human=True, team_id=2),
+        PlayerConfig("AI Player 1", (255, 0, 0), controller=PlayerController.OPENAI, team_id=1),
+        PlayerConfig("Human Player 2", (0, 0, 255), controller=PlayerController.HUMAN, team_id=2),
     ])
 
     with patch('game_setup.Galaxy') as mock_galaxy_cls, \
