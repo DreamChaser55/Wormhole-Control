@@ -122,6 +122,8 @@ def test_handle_gui_action_unload_resources_nearest():
         "Sol": {"Vega": HullSize.HUGE},
         "Vega": {"Sol": HullSize.HUGE}
     }
+    miner.game = game
+    miner.in_galaxy = game.galaxy
     
     # Execute handle_gui_action with shift_pressed=False
     from game import Game

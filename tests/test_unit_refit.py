@@ -274,7 +274,7 @@ def test_refit_remove_hangar_with_docked_units_fails(setup_universe):
 def test_refit_out_of_range_approaches_target(setup_universe):
     game, galaxy, player, _, constructor_unit, target_unit = setup_universe
 
-    # Place constructor far away from target (> 500 px)
+    # Place constructor far away from target (> 500 logical units)
     constructor_unit.position = Position(2000, 2000)
     constructor_unit.add_component(Engines(constructor_unit, speed=200, hull_cost=10.0))
 
@@ -290,6 +290,8 @@ def test_refit_out_of_range_approaches_target(setup_universe):
     # Sub-orders should be spawned: MoveOrder + RefitOrder
     assert len(order.sub_orders) == 2
     assert order.sub_orders[0].order_type == OrderType.MOVE
+    assert order.sub_orders[0].parameters["target_unit_id"] == target_unit.id
+    assert order.sub_orders[0].parameters["standoff_distance"] == constructor_unit.constructor_component.build_range - 5.0
     assert order.sub_orders[1].order_type == OrderType.REFIT_UNIT
 
 
@@ -553,4 +555,3 @@ def test_finish_refit_safeguard_prevents_over_capacity(setup_universe):
     # The safeguard should prevent Defenses from being added
     assert target_unit.get_component(Defenses) is None
     assert constructor_unit.constructor_component.current_refit_target is None
-

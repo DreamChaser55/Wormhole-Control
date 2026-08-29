@@ -3,7 +3,7 @@ import typing
 from typing import Dict, Optional, Any, List, Tuple, TYPE_CHECKING
 
 from constants import TRADE_ARRIVAL_RANGE
-from geometry import distance, position_at_distance_from_target
+from geometry import distance
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 
@@ -58,19 +58,12 @@ class TradeOrder(Order):
 
         if not in_range:
             if not self.has_active_sub_orders():
-                if at_location:
-                    dest_pos = position_at_distance_from_target(
-                        self.unit.position, target_unit.position, max(10.0, TRADE_ARRIVAL_RANGE - 10.0)
-                    )
-                else:
-                    dest_pos = target_unit.position
-
-                move_params = {
-                    "destination_system_name": target_unit.in_system,
-                    "destination_hex_coord": target_unit.in_hex,
-                    "destination_position": dest_pos
-                }
-                move_order = MoveOrder(self.unit, move_params, parent_order=self)
+                move_order = MoveOrder.for_unit_approach(
+                    self.unit,
+                    target_unit,
+                    max(10.0, TRADE_ARRIVAL_RANGE - 10.0),
+                    parent_order=self,
+                )
                 self.add_sub_order(move_order)
 
                 trade_sub_order = TradeOrder(self.unit, self.parameters, parent_order=self)

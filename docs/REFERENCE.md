@@ -220,7 +220,12 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 
 There are **10 special abilities** in the game, registered in `unit_components/abilities/registry.py`. Each ability requires a specific component installed on the unit design.
 
-| Ability | Cooldown (Turns) | Duration (Turns) | Range (px) | AM Cost | Required Component | Target Type | Description |
+Unless explicitly described as screen-space rendering, tactical positions,
+distances, and radii are measured in **logical sector units**. Each sector has a
+logical radius of 5000 units; renderers convert those values to screen pixels
+according to resolution and camera zoom.
+
+| Ability | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Required Component | Target Type | Description |
 |---|---|---|---|---|---|---|---|
 | **Adaptive Forcefield** | 8 | 3 | 0 (self) | 20 | Defenses (`has_defenses`) | None (Self) | Temporarily raises defensive mitigation against incoming attacks. |
 | **Cluster Warhead** | 5 | 0 | 500.0 | 30 | Weapons (`has_weapon_bays`) | Position | Detonates an area-of-effect cluster warhead at the designated coordinate. |
@@ -265,11 +270,11 @@ The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can
 | `LAY_MINEFIELD` | Deploys an anti-ship or anti-strikecraft minefield at the unit's current position. |
 | `TRADE` | Travels to a designated active Civilian Habitat in another sector and conducts trade, earning credits based on distance. |
 | `CONTINUOUS_TRADE` | Automated merchant cycle: travels between active Civilian Habitat modules in different sectors to maximize trade revenue continuously. |
-| `INFILTRATE_UNIT` | Deploys a covert agent onto an enemy vessel within operational range (500 px). |
+| `INFILTRATE_UNIT` | Deploys a covert agent onto an enemy vessel within operational range (500 logical units). |
 | `INFILTRATE_PLANET` | Deploys a covert agent onto an enemy colonized celestial body within operational range. |
 | `RELOCATE_AGENT` | Moves an embedded agent from their current host to another enemy unit or colony in operational range. |
 | `SABOTAGE` | Commands an embedded agent to sabotage host unit subsystems or colonial infrastructure. |
-| `CI_SWEEP` | Counter-Intelligence ship performs an active sector sweep (activated via component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to detect enemy spies on friendly and allied assets within operational range (500 px). |
+| `CI_SWEEP` | Counter-Intelligence ship performs an active sector sweep (activated via component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to detect enemy spies on friendly and allied assets within operational range (500 logical units). |
 | `ELIMINATE_AGENT` | Counter-Intelligence ship neutralizes and removes a discovered enemy agent from a friendly or allied unit or colony. |
 | `EXTRACT_AGENT` | Recovers an embedded agent back into the parent Intelligence unit. |
 
@@ -278,7 +283,7 @@ The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can
 ## 6. Universe Objects & Celestial Bodies
 
 ### 6.1 Central Stars (`StarType`)
-Every star system contains a central star with a unique antimatter harvesting rate multiplier (`constants.py: STAR_HARVEST_MULTIPLIERS`). Central stars are solid celestial obstacles with a physical **Collision Radius** of **500.01 px** (`STAR_RADIUS`):
+Every star system contains a central star with a unique antimatter harvesting rate multiplier (`constants.py: STAR_HARVEST_MULTIPLIERS`). Central stars are solid celestial obstacles with a physical **Collision Radius** of **500.01 logical units** (`STAR_RADIUS`):
 
 | Star Type | Enum Member | Harvest Multiplier | Color (RGB) | Inhibition Radius | Collision Radius |
 |---|---|---|---|---|---|
@@ -295,23 +300,23 @@ Every star system contains a central star with a unique antimatter harvesting ra
 | **Black Hole** | `BLACK_HOLE` | **0.1×** | (75, 35, 100) | 2700.0 | 500.01 |
 
 ### 6.2 Planets & Colonizable Bodies
-- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 2400.0. **Collision Radius**: **375.0 px** (`PLANET_RADIUS`).
-- **Moons (`Moon`)**: Colonizable satellites supporting up to **50.0 population** with a growth rate of **1.0% per turn**. Inhibition radius: 1800.0. **Collision Radius**: **83.34 px** (`MOON_RADIUS`).
-- **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts supporting up to **20.0 population** with a growth rate of **0.5% per turn**. Inhibition radius: 1200.0. **Collision Radius**: **50.01 px** (`ASTEROID_RADIUS`).
+- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 2400.0 logical units. **Collision Radius**: **375.0 logical units** (`PLANET_RADIUS`).
+- **Moons (`Moon`)**: Colonizable satellites supporting up to **50.0 population** with a growth rate of **1.0% per turn**. Inhibition radius: 1800.0 logical units. **Collision Radius**: **83.34 logical units** (`MOON_RADIUS`).
+- **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts supporting up to **20.0 population** with a growth rate of **0.5% per turn**. Inhibition radius: 1200.0 logical units. **Collision Radius**: **50.01 logical units** (`ASTEROID_RADIUS`).
 
 ### 6.3 Resource & Spatial Phenomena
-- **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1200.0. **Collision Radius**: **50.01 px** (`ASTEROID_RADIUS`).
-- **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 600.0. **Collision Radius**: **50.01 px** (`COMET_RADIUS`).
-- **Wormholes (`Wormhole`)**: Natural spacetime conduits linking star systems. Traversal requires an Advanced Hyperdrive. Visual radius: 291.66. Inhibition radius: 1500.0. **Collision Radius**: **0.0 px** (permeable).
-- **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Inhibition radius: 900.0. **Collision Radius**: **0.0 px** (permeable).
-- **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Inhibition radius: 600.0. **Collision Radius**: **0.0 px** (permeable).
-- **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures. **Collision Radius**: **0.0 px** (permeable).
-- **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`). Visual radius: 1666.68. **Collision Radius**: **0.0 px** (permeable). Naturally conceals starships positioned within its cloud boundaries from enemy long-range (inter-sector) sensors.
-- **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`). Visual radius: 1666.68. **Collision Radius**: **0.0 px** (permeable).
+- **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1200.0 logical units. **Collision Radius**: **50.01 logical units** (`ASTEROID_RADIUS`).
+- **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 600.0 logical units. **Collision Radius**: **50.01 logical units** (`COMET_RADIUS`).
+- **Wormholes (`Wormhole`)**: Natural spacetime conduits linking star systems. Traversal requires an Advanced Hyperdrive. Visual radius: 291.66 logical units. Inhibition radius: 1500.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
+- **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Inhibition radius: 900.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
+- **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Inhibition radius: 600.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
+- **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures. **Collision Radius**: **0.0 logical units** (permeable).
+- **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`). Visual radius: 1666.68 logical units. **Collision Radius**: **0.0 logical units** (permeable). Naturally conceals starships positioned within its cloud boundaries from enemy long-range (inter-sector) sensors.
+- **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`). Visual radius: 1666.68 logical units. **Collision Radius**: **0.0 logical units** (permeable).
 
 ### 6.4 Celestial Body Dimensions & Obstacle Classification Summary
 
-| Entity Class | Solid Obstacle? | Collision Radius (`px`) | Inhibition Radius (`px`) | Harvest / Resource Yield | Colonizable |
+| Entity Class | Solid Obstacle? | Collision Radius (logical units) | Inhibition Radius (logical units) | Harvest / Resource Yield | Colonizable |
 |---|---|---|---|---|---|
 | `Star` | **Yes** | 500.01 (`STAR_RADIUS`) | 2700.0 | 0.1× – 2.5× Antimatter | No |
 | `Planet` | **Yes** | 375.00 (`PLANET_RADIUS`) | 2400.0 | — | Yes (Max 100 pop) |
@@ -400,10 +405,10 @@ Every star system contains a central star with a unique antimatter harvesting ra
 
 - **Event Bus (`events.py`)**: Decouples input handling, order queuing, and UI notifications using a lightweight publish/subscribe pattern.
 - **Order System (`order_system.py`)**: Manages hierarchical order lifecycles (parent orders and dynamically generated sub-orders), route pathfinding, jump safety checks, and continuous loops.
-- **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly and allied units within build range (500 px). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
+- **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly and allied units within build range (500 logical units). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
 - **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, conceals units inside nebulae from long-range sensors, and persists last-known sector intel per player.
 - **Diplomacy & Team System (`entities.py`, `game_settings.py`, `game_setup.py`, `save_manager.py`)**: Manages static multi-team configurations established during game setup. Evaluates relations (`is_allied_with`, `is_enemy_of`) to govern sensor sharing, tactical combat engagement, logistics sharing, area buffs, friendly fire prevention, and covert espionage targeting.
-- **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Real-time geometric pathfinding preventing sub-light vessels from clipping into solid celestial bodies (stars, planets, moons, asteroids, comets). Uses parametric line-circle intersection analysis, dual-tangent escape waypoint generation, and recursive obstacle resolution to steer ships safely around physical bodies with a $+50.0\text{ px}$ clearance margin, while permitting unhindered landings and departures.
+- **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Real-time geometric pathfinding preventing sub-light vessels from clipping into solid celestial bodies (stars, planets, moons, asteroids, comets). Uses parametric line-circle intersection analysis, dual-tangent escape waypoint generation, and recursive obstacle resolution to steer ships safely around physical bodies with a 50.0-logical-unit clearance margin, while permitting unhindered landings and departures.
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations.
 - **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
 
@@ -422,7 +427,7 @@ The Intelligence system introduces covert operations, espionage, sensor reconnai
   - Embedded field operative with fields: `id`, `owner`, `source_unit_id`, `target_type` (`"UNIT"` or `"CELESTIAL_BODY"`), `target_id`, `is_discovered`, `active_sabotage`, and `turns_active`.
 
 ### 9.2 Agent Deployment & Operational Lifecycle
-- **Deployment Range**: Standard operational range is **500.0 px**.
+- **Deployment Range**: Standard operational range is **500.0 logical units**.
 - **Real-Time Execution**: When issuing an intelligence command within operational range in the same sector, the order executes immediately in the current frame without requiring the turn to end. If outside range, an approach `MoveOrder` is automatically generated and executed.
 - **Relocation & Extraction**: Agents can transition directly between enemy hosts in range via `RelocateAgentOrder` or be recovered back into an Intelligence vessel via `ExtractAgentOrder`.
 
@@ -430,7 +435,7 @@ The Intelligence system introduces covert operations, espionage, sensor reconnai
 - **Covert Sensor Reconnaissance**: Embedded agents grant their owner full access to the host unit or colony's sensor horizon.
 - **Visibility & Rendering**:
   - `VisibilityService` incorporates short-range and long-range sensor coverage of all infiltrated targets.
-  - Sector view Fog-of-War cutouts immediately reveal the area around infiltrated enemy units and celestial bodies (500 px radius for colonies).
+  - Sector view Fog-of-War cutouts immediately reveal the area around infiltrated enemy units and celestial bodies (500-logical-unit radius for colonies).
   - Range circles (weapons, sensors) and system-view long-range highlights are fully rendered for selected infiltrated enemy units.
 
 ### 9.4 Subsystem & Colonial Sabotage
@@ -445,8 +450,8 @@ Agents can execute 8 distinct sabotage operations against their host:
 8. **Growth (`GROWTH`)**: Halts population growth on the host colony.
 
 ### 9.5 Counter-Intelligence, Discovery & Stealth
-- **Active CI Sweeps (`CISweepOrder`)**: A vessel equipped with a Counter-Intelligence suite performs an area-of-effect sector sweep within operational range (500 px) activated via the Intelligence component panel in the sidebar. The sweep reveals all enemy agents embedded on friendly and allied ships or colonies in range, setting `agent.is_discovered = True`. Sweeps cost **100 credits** from the treasury, **25 AM** from the ship's tanks, and trigger a **3-turn cooldown** on the vessel. Passive turn-tick detection is not present—enemy agents remain hidden unless actively swept.
-- **Elimination (`EliminateAgentOrder`)**: Counter-Intelligence ships within 500 px operational range can neutralize and remove any discovered enemy agent from friendly and allied assets.
+- **Active CI Sweeps (`CISweepOrder`)**: A vessel equipped with a Counter-Intelligence suite performs an area-of-effect sector sweep within operational range (500 logical units) activated via the Intelligence component panel in the sidebar. The sweep reveals all enemy agents embedded on friendly and allied ships or colonies in range, setting `agent.is_discovered = True`. Sweeps cost **100 credits** from the treasury, **25 AM** from the ship's tanks, and trigger a **3-turn cooldown** on the vessel. Passive turn-tick detection is not present—enemy agents remain hidden unless actively swept.
+- **Elimination (`EliminateAgentOrder`)**: Counter-Intelligence ships within the 500-logical-unit operational range can neutralize and remove any discovered enemy agent from friendly and allied assets.
 - **Covert Component Concealment**: The `IntelligenceComponent` is completely hidden from enemy players. When an enemy player inspects a hostile vessel, the component is completely omitted from the sidebar (both the *Basic Info* component overview and the *Components* dropdown inspector) and is hidden from the attack context menu. Friendly and allied players retain full visibility and inspector access.
 - **Visual & UI Indicators**:
   - Infiltrated ships and planets display `[INFILTRATED]` (cyan) or `[SABOTAGED: <TYPE>]` (orange) badges in sector view and cyan spy indicators in system view.
@@ -468,7 +473,7 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 
 ### 10.2 Sensor Sharing, Visibility & Stealth
 - **Allied Sensor Fusion (`visibility.py`)**:
-  - Short-range sensor horizons (pixels) and long-range radar hex coverage are fully shared across all allied players.
+  - Short-range sensor horizons (logical sector units) and long-range radar hex coverage are fully shared across all allied players.
   - Infiltrated enemy units or celestial bodies also provide shared sensor vision to the infiltrating player and all of their allies.
   - Long-range sector reconnaissance automatically records sector intel for all allied players.
 - **Fog of War**: Sector-view Fog of War cutouts dynamically reveal regions covered by friendly or allied sensor suites.
@@ -508,7 +513,7 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 ## 11. Celestial Collision Avoidance
 
 ### 11.1 Overview & Purpose
-In Wormhole Control, ships moving at sub-light speeds navigate tactical sector space ($5000\text{ px}$ radius circle per hex). To preserve spatial immersion and tactical realism, units never fly straight through physical solid bodies (such as stars, planets, moons, asteroids, or comets). 
+In Wormhole Control, ships moving at sub-light speeds navigate tactical sector space (a 5000-logical-unit radius circle per hex). To preserve spatial immersion and tactical realism, units never fly straight through physical solid bodies (such as stars, planets, moons, asteroids, or comets).
 
 The collision avoidance system automatically detects obstructed sub-light trajectories in real-time, calculates optimal curved bypass trajectories using geometric tangent math, and injects intermediate waypoint sub-orders into unit order queues without requiring manual player micro-management.
 
@@ -516,15 +521,38 @@ The collision avoidance system automatically detects obstructed sub-light trajec
 Every celestial entity defines a `collision_radius: float` attribute (`entities.py`):
 
 1. **Solid Celestial Obstacles (`collision_radius > 0.0`)**:
-   - **Central Star (`Star`)**: `STAR_RADIUS = 500.01 px`
-   - **Planets (`Planet`)**: `PLANET_RADIUS = 375.00 px`
-   - **Moons (`Moon`)**: `MOON_RADIUS = 83.34 px`
-   - **Asteroids (`ColonizableAsteroid`, `MetalAsteroid`)**: `ASTEROID_RADIUS = 50.01 px`
-   - **Comets (`Comet`)**: `COMET_RADIUS = 50.01 px`
+   - **Central Star (`Star`)**: `STAR_RADIUS = 500.01` logical units
+   - **Planets (`Planet`)**: `PLANET_RADIUS = 375.00` logical units
+   - **Moons (`Moon`)**: `MOON_RADIUS = 83.34` logical units
+   - **Asteroids (`ColonizableAsteroid`, `MetalAsteroid`)**: `ASTEROID_RADIUS = 50.01` logical units
+   - **Comets (`Comet`)**: `COMET_RADIUS = 50.01` logical units
 
 2. **Permeable Spatial Phenomena (`collision_radius = 0.0`)**:
    - **Nebulae, Space Storms, Wormholes, Asteroid Fields, Ice Fields, Debris Fields**: Non-solid entities that do not obstruct sub-light flight. Ships pass straight through them.
 
 3. **Safety Margin**:
-   - When checking for collisions and computing avoidance waypoints, the navigation engine adds a safety margin buffer $\text{margin} = 50.0\text{ px}$ around the obstacle's physical radius:
+   - When checking for collisions and computing avoidance waypoints, the navigation engine adds a 50.0-logical-unit safety margin around the obstacle's physical radius:
    $$R_{\text{expanded}} = r_{\text{body}} + \text{margin}$$
+
+### 11.3 Target-Unit Standoff Arrival
+Orders that must approach another unit create target-aware movement through
+`MoveOrder.for_unit_approach(...)`. The move stores `target_unit_id` and
+`standoff_distance`, resolves the final tactical coordinate when route planning
+begins, and persists that coordinate as `destination_position`.
+
+- **Same sector (sub-light)**: The destination is the point on the target's
+  standoff circle that lies on the mover-target line and is closest to the
+  moving unit.
+- **Different sector, inhibited target**: The destination lies on the line from
+  the inhibition-field center through the target, on the outward side of the
+  target's standoff circle. The jump lands just outside the field and the ship
+  covers only the remaining distance by sub-light movement.
+- **Different sector, uninhibited target**: The destination is a random point
+  on the standoff circle that remains inside the sector and outside every
+  inhibition field. The resolved random point is retained for the lifetime of
+  that `MoveOrder`.
+
+Inhibition fields cannot overlap, so a target or candidate position can be
+contained by at most one field. Attack, Protect, Dock, Repair, Refit, resource
+transfer, trade, intelligence, and unit-targeted ability orders preserve their
+existing operational ranges by supplying those ranges as the standoff distance.

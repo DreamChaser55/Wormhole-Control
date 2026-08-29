@@ -69,9 +69,9 @@ class MissileBatteriesAbility(AbilityInstance):
         spawned_ids = []
         for i in range(num_platforms):
             angle = (2 * math.pi / num_platforms) * i
-            px = component.unit.position.x + deploy_radius * math.cos(angle)
-            py = component.unit.position.y + deploy_radius * math.sin(angle)
-            platform_pos = Position(px, py)
+            candidate_x = component.unit.position.x + deploy_radius * math.cos(angle)
+            candidate_y = component.unit.position.y + deploy_radius * math.sin(angle)
+            platform_pos = Position(candidate_x, candidate_y)
 
             platform = Unit(
                 owner=component.unit.owner,

@@ -57,26 +57,28 @@ class InfiltrateUnitOrder(Order):
         # Check if in same system and hex
         if self.unit.in_system != target_unit.in_system or self.unit.in_hex != target_unit.in_hex:
             if not self.has_active_sub_orders():
-                dest_pos = position_at_distance_from_target(target_unit.position, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
-                move_sub_order = MoveOrder(
+                move_sub_order = MoveOrder.for_unit_approach(
                     self.unit,
-                    parameters={"system": target_unit.in_system, "hex": target_unit.in_hex, "position": dest_pos},
-                    parent_order=self
+                    target_unit,
+                    INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
+                    parent_order=self,
                 )
                 self.add_sub_order(move_sub_order)
+                self.add_sub_order(InfiltrateUnitOrder(self.unit, self.parameters, parent_order=self))
             return
 
         # In same sector: check distance
         dist = distance(self.unit.position, target_unit.position)
         if dist > INTELLIGENCE_OPERATIONAL_RANGE:
             if not self.has_active_sub_orders():
-                dest_pos = position_at_distance_from_target(target_unit.position, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
-                move_sub_order = MoveOrder(
+                move_sub_order = MoveOrder.for_unit_approach(
                     self.unit,
-                    parameters={"system": target_unit.in_system, "hex": target_unit.in_hex, "position": dest_pos},
-                    parent_order=self
+                    target_unit,
+                    INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
+                    parent_order=self,
                 )
                 self.add_sub_order(move_sub_order)
+                self.add_sub_order(InfiltrateUnitOrder(self.unit, self.parameters, parent_order=self))
             return
 
         # Within operational range: deploy agent
@@ -86,6 +88,10 @@ class InfiltrateUnitOrder(Order):
             logger.info(f"[{self.unit.name}] Successfully infiltrated enemy unit {target_unit.name} with Agent {agent.id}!")
         else:
             self.status = OrderStatus.FAILED
+
+    def check_completion_conditions(self) -> None:
+        if self.status == OrderStatus.IN_PROGRESS and not self.sub_orders:
+            self.status = OrderStatus.COMPLETED
 
 
 class InfiltratePlanetOrder(Order):
@@ -415,6 +421,7 @@ class EliminateAgentOrder(Order):
         host_pos = None
         host_sys = None
         host_hex = None
+        host_is_unit = False
 
         for sys_name, sys_obj in galaxy_ref.systems.items():
             for u, u_hex in sys_obj.get_all_units():
@@ -426,6 +433,7 @@ class EliminateAgentOrder(Order):
                             host_pos = u.position
                             host_sys = sys_name
                             host_hex = u_hex
+                            host_is_unit = True
                             break
             if agent:
                 break
@@ -449,25 +457,46 @@ class EliminateAgentOrder(Order):
 
         if self.unit.in_system != host_sys or self.unit.in_hex != host_hex:
             if not self.has_active_sub_orders():
-                dest_pos = position_at_distance_from_target(host_pos, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
-                move_sub_order = MoveOrder(
-                    self.unit,
-                    parameters={"system": host_sys, "hex": host_hex, "position": dest_pos},
-                    parent_order=self
-                )
+                if host_is_unit:
+                    move_sub_order = MoveOrder.for_unit_approach(
+                        self.unit,
+                        host_target,
+                        INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
+                        parent_order=self,
+                    )
+                else:
+                    move_sub_order = MoveOrder(self.unit, {
+                        "destination_system_name": host_sys,
+                        "destination_hex_coord": host_hex,
+                        "destination_position": host_pos,
+                    }, parent_order=self)
                 self.add_sub_order(move_sub_order)
+                self.add_sub_order(EliminateAgentOrder(self.unit, self.parameters, parent_order=self))
             return
 
         dist = distance(self.unit.position, host_pos)
         if dist > INTELLIGENCE_OPERATIONAL_RANGE:
             if not self.has_active_sub_orders():
-                dest_pos = position_at_distance_from_target(host_pos, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
-                move_sub_order = MoveOrder(
-                    self.unit,
-                    parameters={"system": host_sys, "hex": host_hex, "position": dest_pos},
-                    parent_order=self
-                )
+                if host_is_unit:
+                    move_sub_order = MoveOrder.for_unit_approach(
+                        self.unit,
+                        host_target,
+                        INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
+                        parent_order=self,
+                    )
+                else:
+                    dest_pos = position_at_distance_from_target(
+                        self.unit.position,
+                        host_pos,
+                        INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
+                    )
+                    move_sub_order = MoveOrder(self.unit, {
+                        "destination_system_name": host_sys,
+                        "destination_hex_coord": host_hex,
+                        "destination_position": dest_pos,
+                    }, parent_order=self)
                 self.add_sub_order(move_sub_order)
+                self.add_sub_order(EliminateAgentOrder(self.unit, self.parameters, parent_order=self))
             return
 
         # Eliminate agent
@@ -480,6 +509,10 @@ class EliminateAgentOrder(Order):
 
         self.status = OrderStatus.COMPLETED
         logger.info(f"[{self.unit.name}] Successfully neutralized and eliminated Agent {agent.id} from {host_target.name}!")
+
+    def check_completion_conditions(self) -> None:
+        if self.status == OrderStatus.IN_PROGRESS and not self.sub_orders:
+            self.status = OrderStatus.COMPLETED
 
 
 class ExtractAgentOrder(Order):
@@ -508,6 +541,7 @@ class ExtractAgentOrder(Order):
         host_pos = None
         host_sys = None
         host_hex = None
+        host_is_unit = False
 
         for sys_name, sys_obj in galaxy_ref.systems.items():
             for u, u_hex in sys_obj.get_all_units():
@@ -519,6 +553,7 @@ class ExtractAgentOrder(Order):
                             host_pos = u.position
                             host_sys = sys_name
                             host_hex = u_hex
+                            host_is_unit = True
                             break
             if agent:
                 break
@@ -542,25 +577,46 @@ class ExtractAgentOrder(Order):
 
         if self.unit.in_system != host_sys or self.unit.in_hex != host_hex:
             if not self.has_active_sub_orders():
-                dest_pos = position_at_distance_from_target(host_pos, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
-                move_sub_order = MoveOrder(
-                    self.unit,
-                    parameters={"system": host_sys, "hex": host_hex, "position": dest_pos},
-                    parent_order=self
-                )
+                if host_is_unit:
+                    move_sub_order = MoveOrder.for_unit_approach(
+                        self.unit,
+                        host_target,
+                        INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
+                        parent_order=self,
+                    )
+                else:
+                    move_sub_order = MoveOrder(self.unit, {
+                        "destination_system_name": host_sys,
+                        "destination_hex_coord": host_hex,
+                        "destination_position": host_pos,
+                    }, parent_order=self)
                 self.add_sub_order(move_sub_order)
+                self.add_sub_order(ExtractAgentOrder(self.unit, self.parameters, parent_order=self))
             return
 
         dist = distance(self.unit.position, host_pos)
         if dist > INTELLIGENCE_OPERATIONAL_RANGE:
             if not self.has_active_sub_orders():
-                dest_pos = position_at_distance_from_target(host_pos, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
-                move_sub_order = MoveOrder(
-                    self.unit,
-                    parameters={"system": host_sys, "hex": host_hex, "position": dest_pos},
-                    parent_order=self
-                )
+                if host_is_unit:
+                    move_sub_order = MoveOrder.for_unit_approach(
+                        self.unit,
+                        host_target,
+                        INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
+                        parent_order=self,
+                    )
+                else:
+                    dest_pos = position_at_distance_from_target(
+                        self.unit.position,
+                        host_pos,
+                        INTELLIGENCE_OPERATIONAL_RANGE - 50.0,
+                    )
+                    move_sub_order = MoveOrder(self.unit, {
+                        "destination_system_name": host_sys,
+                        "destination_hex_coord": host_hex,
+                        "destination_position": dest_pos,
+                    }, parent_order=self)
                 self.add_sub_order(move_sub_order)
+                self.add_sub_order(ExtractAgentOrder(self.unit, self.parameters, parent_order=self))
             return
 
         success = intel_comp.retrieve_agent(agent)
@@ -569,3 +625,7 @@ class ExtractAgentOrder(Order):
             logger.info(f"[{self.unit.name}] Successfully extracted Agent {agent.id} back into unit.")
         else:
             self.status = OrderStatus.FAILED
+
+    def check_completion_conditions(self) -> None:
+        if self.status == OrderStatus.IN_PROGRESS and not self.sub_orders:
+            self.status = OrderStatus.COMPLETED

@@ -1,4 +1,5 @@
 import logging
+import math
 from unittest.mock import MagicMock, patch
 from geometry import Position, Circle, distance as geo_distance, is_point_in_circle as geo_in_circle
 from unit_orders import OrderStatus, OrderType, MoveOrder, ReachWaypointOrder
@@ -10,6 +11,15 @@ from constants import HullSize
 from events import JumpInterhexEvent, EventBus
 from order_system import OrderSystem
 from turn_processor import TurnProcessor
+from save_manager import serialize_order, deserialize_order
+
+
+def _approach_hex(zones=None, boundary_radius=5000.0):
+    hex_obj = MagicMock()
+    hex_obj.get_all_inhibition_zones.return_value = list(zones or [])
+    hex_obj.boundary_circle = Circle(Position(0.0, 0.0), boundary_radius)
+    hex_obj.celestial_bodies = []
+    return hex_obj
 
 
 def test_move_order_plan_route_same_hex():
@@ -30,6 +40,265 @@ def test_move_order_plan_route_same_hex():
     sub = order.sub_orders[0]
     assert sub.order_type == OrderType.REACH_WAYPOINT
     assert sub.parameters["destination_position"] == Position(10, 0)
+
+
+def test_unit_approach_same_sector_uses_nearer_line_circle_intersection():
+    unit = MockUnit()
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(0.0, 0.0)
+    unit.add_component(Engines(unit, speed=50.0))
+
+    target = MockUnit()
+    target.id = 501
+    target.name = "Target"
+    target.in_system = "Sol"
+    target.in_hex = (0, 0)
+    target.position = Position(100.0, 0.0)
+
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.return_value = target
+    system = MagicMock()
+    system.hexes = {(0, 0): _approach_hex()}
+    galaxy.systems = {"Sol": system}
+
+    order = MoveOrder.for_unit_approach(unit, target, 30.0)
+    order.execute(galaxy)
+
+    assert order.parameters["target_unit_id"] == target.id
+    assert order.parameters["standoff_distance"] == 30.0
+    assert order.parameters["approach_position_resolved"] is True
+    assert order.parameters["destination_position"] == Position(70.0, 0.0)
+    assert order.sub_orders[-1].parameters["destination_position"] == Position(70.0, 0.0)
+
+
+def test_unit_approach_different_sector_inhibited_uses_outward_intersection():
+    unit = MockUnit()
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(0.0, 0.0)
+    unit.add_component(Engines(unit, speed=50.0))
+    unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
+
+    target = MockUnit()
+    target.id = 502
+    target.name = "Inhibited Target"
+    target.in_system = "Sol"
+    target.in_hex = (0, 1)
+    target.position = Position(50.0, 0.0)
+
+    zone = Circle(Position(0.0, 0.0), 100.0)
+    system = MagicMock()
+    system.hexes = {
+        (0, 0): _approach_hex(),
+        (0, 1): _approach_hex([zone]),
+    }
+    galaxy = MagicMock()
+    galaxy.systems = {"Sol": system}
+    galaxy.get_unit_by_id.return_value = target
+
+    order = MoveOrder.for_unit_approach(unit, target, 30.0)
+    order.execute(galaxy)
+
+    assert order.parameters["destination_position"] == Position(80.0, 0.0)
+    assert len(order.sub_orders) == 2
+    landing = order.sub_orders[0].parameters["destination_position"]
+    assert landing.x > 100.0
+    assert abs(landing.y) < 1e-9
+    assert not geo_in_circle(landing, zone)
+    assert order.sub_orders[1].parameters["destination_position"] == Position(80.0, 0.0)
+
+
+def test_unit_approach_different_sector_uninhibited_uses_random_circle_point_once():
+    unit = MockUnit()
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(0.0, 0.0)
+    unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
+
+    target = MockUnit()
+    target.id = 503
+    target.name = "Open Target"
+    target.in_system = "Sol"
+    target.in_hex = (0, 1)
+    target.position = Position(100.0, 100.0)
+
+    system = MagicMock()
+    system.hexes = {(0, 0): _approach_hex(), (0, 1): _approach_hex()}
+    galaxy = MagicMock()
+    galaxy.systems = {"Sol": system}
+    galaxy.get_unit_by_id.return_value = target
+
+    order = MoveOrder.for_unit_approach(unit, target, 30.0)
+    with patch("unit_orders.movement.random.uniform", return_value=math.pi / 2.0) as random_angle:
+        order.execute(galaxy)
+        order._resolve_unit_approach_destination(galaxy)
+
+    resolved = order.parameters["destination_position"]
+    assert abs(resolved.x - 100.0) < 1e-9
+    assert abs(resolved.y - 130.0) < 1e-9
+    assert abs(geo_distance(resolved, target.position) - 30.0) < 1e-9
+    random_angle.assert_called_once()
+
+
+def test_unit_approach_uninhibited_rejects_illegal_random_candidate():
+    unit = MockUnit()
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.position = Position(0.0, 0.0)
+    unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
+
+    target = MockUnit()
+    target.id = 504
+    target.name = "Open Target"
+    target.in_system = "Sol"
+    target.in_hex = (0, 1)
+    target.position = Position(0.0, 0.0)
+
+    nearby_zone = Circle(Position(30.0, 0.0), 10.0)
+    system = MagicMock()
+    system.hexes = {(0, 0): _approach_hex(), (0, 1): _approach_hex([nearby_zone])}
+    galaxy = MagicMock()
+    galaxy.systems = {"Sol": system}
+    galaxy.get_unit_by_id.return_value = target
+
+    order = MoveOrder.for_unit_approach(unit, target, 30.0)
+    with patch("unit_orders.movement.random.uniform", side_effect=[0.0, math.pi / 2.0]):
+        order.execute(galaxy)
+
+    resolved = order.parameters["destination_position"]
+    assert abs(resolved.x) < 1e-9
+    assert abs(resolved.y - 30.0) < 1e-9
+    assert not geo_in_circle(resolved, nearby_zone)
+
+
+def test_unit_approach_field_center_uses_deterministic_axis_fallback():
+    unit = MockUnit()
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
+
+    target = MockUnit()
+    target.id = 505
+    target.name = "Centered Target"
+    target.in_system = "Sol"
+    target.in_hex = (0, 1)
+    target.position = Position(0.0, 0.0)
+
+    zone = Circle(Position(0.0, 0.0), 100.0)
+    system = MagicMock()
+    system.hexes = {(0, 0): _approach_hex(), (0, 1): _approach_hex([zone])}
+    galaxy = MagicMock()
+    galaxy.systems = {"Sol": system}
+    galaxy.get_unit_by_id.return_value = target
+
+    order = MoveOrder.for_unit_approach(unit, target, 30.0)
+    order.execute(galaxy)
+
+    assert order.parameters["destination_position"] == Position(30.0, 0.0)
+
+
+def test_unit_approach_fails_for_missing_target_or_unavailable_circle():
+    unit = MockUnit()
+    target = MockUnit()
+    target.id = 506
+    target.in_system = "Sol"
+    target.in_hex = (0, 1)
+    target.position = Position(0.0, 0.0)
+
+    missing_galaxy = MagicMock()
+    missing_galaxy.get_unit_by_id.return_value = None
+    missing_order = MoveOrder.for_unit_approach(unit, target, 30.0)
+    missing_order.execute(missing_galaxy)
+    assert missing_order.status == OrderStatus.FAILED
+
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
+    system = MagicMock()
+    system.hexes = {
+        (0, 0): _approach_hex(boundary_radius=100.0),
+        (0, 1): _approach_hex(boundary_radius=100.0),
+    }
+    unavailable_galaxy = MagicMock()
+    unavailable_galaxy.systems = {"Sol": system}
+    unavailable_galaxy.get_unit_by_id.return_value = target
+    unavailable_order = MoveOrder.for_unit_approach(unit, target, 300.0)
+    with patch("unit_orders.movement.random.uniform", return_value=0.0):
+        unavailable_order.execute(unavailable_galaxy)
+    assert unavailable_order.status == OrderStatus.FAILED
+    assert not unavailable_order.sub_orders
+
+
+def test_unit_approach_fails_cleanly_for_invalid_distance():
+    unit = MockUnit()
+    target = MockUnit()
+    target.id = 508
+
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.return_value = target
+
+    order = MoveOrder.for_unit_approach(unit, target, "invalid")
+    order.execute(galaxy)
+
+    assert order.status == OrderStatus.FAILED
+    assert not order.sub_orders
+
+
+def test_inhibited_unit_approach_does_not_substitute_inward_boundary_point():
+    unit = MockUnit()
+    unit.in_system = "Sol"
+    unit.in_hex = (0, 0)
+    unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
+
+    target = MockUnit()
+    target.id = 509
+    target.in_system = "Sol"
+    target.in_hex = (0, 1)
+    target.position = Position(90.0, 0.0)
+
+    zone = Circle(Position(0.0, 0.0), 100.0)
+    system = MagicMock()
+    system.hexes = {
+        (0, 0): _approach_hex(boundary_radius=100.0),
+        (0, 1): _approach_hex([zone], boundary_radius=100.0),
+    }
+    galaxy = MagicMock()
+    galaxy.systems = {"Sol": system}
+    galaxy.get_unit_by_id.return_value = target
+
+    order = MoveOrder.for_unit_approach(unit, target, 30.0)
+    order.execute(galaxy)
+
+    assert order.status == OrderStatus.FAILED
+    assert not order.sub_orders
+
+
+def test_unit_approach_parameters_round_trip_through_order_serialization():
+    unit = MockUnit()
+    target = MockUnit()
+    target.id = 507
+    target.in_system = "Sol"
+    target.in_hex = (2, 3)
+    target.position = Position(125.0, -75.0)
+
+    pending = MoveOrder.for_unit_approach(unit, target, 45.0)
+    restored_pending = deserialize_order(serialize_order(pending), unit, unit.game)
+
+    assert restored_pending.parameters["target_unit_id"] == target.id
+    assert restored_pending.parameters["standoff_distance"] == 45.0
+    assert restored_pending.parameters["approach_position_resolved"] is False
+    assert restored_pending.parameters["destination_hex_coord"] == (2, 3)
+    assert restored_pending.parameters["destination_position"] == Position(125.0, -75.0)
+
+    pending.status = OrderStatus.IN_PROGRESS
+    pending.parameters["approach_position_resolved"] = True
+    pending.parameters["destination_position"] = Position(80.0, -75.0)
+    restored_active = deserialize_order(serialize_order(pending), unit, unit.game)
+
+    assert restored_active.status == OrderStatus.IN_PROGRESS
+    assert restored_active.parameters["approach_position_resolved"] is True
+    assert restored_active.parameters["destination_position"] == Position(80.0, -75.0)
 
 
 def test_move_order_plan_route_hex_jump_within_range():
@@ -623,4 +892,3 @@ def test_direct_wormhole_same_sector_destination_sublight_move():
     assert order.sub_orders[2].parameters["destination_system_name"] == "Alpha Centauri"
     assert order.sub_orders[2].parameters["destination_hex_coord"] == (0, 0)
     assert order.sub_orders[2].parameters["destination_position"] == Position(300.0, 300.0)
-

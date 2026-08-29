@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import distance, position_at_distance_from_target
+from geometry import distance
 from constants import HullSize
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
@@ -61,17 +61,12 @@ class DockOrder(Order):
         in_range = in_same_system_and_hex and (distance(self.unit.position, target_carrier.position) <= docking_range)
 
         if not in_range:
-            if in_same_system_and_hex:
-                dest_pos = position_at_distance_from_target(self.unit.position, target_carrier.position, docking_range - 5.0)
-            else:
-                dest_pos = target_carrier.position
-
-            move_params = {
-                "destination_system_name": target_carrier.in_system,
-                "destination_hex_coord": target_carrier.in_hex,
-                "destination_position": dest_pos
-            }
-            move_order = MoveOrder(self.unit, move_params, parent_order=self)
+            move_order = MoveOrder.for_unit_approach(
+                self.unit,
+                target_carrier,
+                docking_range - 5.0,
+                parent_order=self,
+            )
             self.add_sub_order(move_order)
 
             dock_sub_order = DockOrder(self.unit, self.parameters, parent_order=self)

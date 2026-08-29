@@ -113,17 +113,12 @@ class UnloadResourcesOrder(Order):
 
         if not in_range:
             if not self.has_active_sub_orders():
-                if at_location:
-                    dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, unload_range - 5.0)
-                else:
-                    dest_pos = target_unit.position
-
-                move_params = {
-                    "destination_system_name": target_unit.in_system,
-                    "destination_hex_coord": target_unit.in_hex,
-                    "destination_position": dest_pos
-                }
-                move_order = MoveOrder(self.unit, move_params, parent_order=self)
+                move_order = MoveOrder.for_unit_approach(
+                    self.unit,
+                    target_unit,
+                    unload_range - 5.0,
+                    parent_order=self,
+                )
                 self.add_sub_order(move_order)
 
                 unload_sub_order = UnloadResourcesOrder(self.unit, self.parameters, parent_order=self)

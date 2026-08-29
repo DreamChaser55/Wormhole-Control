@@ -71,20 +71,20 @@ def test_protect_order_follow_movement():
     order.execute(galaxy)
     order.update(galaxy)
     
-    # Should spawn follow MoveOrder to (100, 10)
+    # Should spawn a follow MoveOrder 30 logical units short of the protected unit.
     assert len(order.sub_orders) == 1
     move_sub = order.sub_orders[0]
     assert move_sub.order_type == OrderType.MOVE
-    assert move_sub.parameters["destination_position"] == Position(100, 10)
+    assert move_sub.parameters["destination_position"] == Position(70, 10)
     
     # Simulate target moving to (150, 10)
     target.position = Position(150, 10)
     order.update(galaxy)
     
-    # Since destination is far, it should cancel previous and spawn a new move to (150, 10)
+    # Since the target moved, recalculate the 30-logical-unit standoff point.
     assert len(order.sub_orders) == 1
     move_sub = order.sub_orders[0]
-    assert move_sub.parameters["destination_position"] == Position(150, 10)
+    assert move_sub.parameters["destination_position"] == Position(120, 10)
     
     # Simulate protector getting close (distance <= 30.0)
     protector.position = Position(130, 10)
@@ -155,7 +155,7 @@ def test_protect_order_combat_engagement():
     # Attack sub-order should be cleared, and follow MoveOrder to target should spawn
     assert len(order.sub_orders) == 1
     assert order.sub_orders[0].order_type == OrderType.MOVE
-    assert order.sub_orders[0].parameters["destination_position"] == Position(50, 10)
+    assert order.sub_orders[0].parameters["destination_position"] == Position(20, 10)
 
 
 def test_protect_order_target_range_limit():

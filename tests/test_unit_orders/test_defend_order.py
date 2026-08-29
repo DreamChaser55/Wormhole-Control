@@ -81,7 +81,7 @@ def test_defend_order_combat_engagement_and_resume():
     enemy.max_hit_points = 50
     enemy.in_system = "Sol"
     enemy.in_hex = (0, 0)
-    enemy.position = Position(300, 100)  # Distance 200 from guarded position (inside 500px radius)
+    enemy.position = Position(300, 100)  # 200 logical units from guarded position (inside 500-unit radius)
 
     galaxy = MagicMock()
     defender.game.galaxy = galaxy

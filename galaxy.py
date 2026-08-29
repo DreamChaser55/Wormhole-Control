@@ -139,7 +139,7 @@ class StarSystem:
 
         Args:
             name: Unique name for the system (e.g., 'Sol'), also used as the identifier.
-            position: Position object representing the system's position in the galaxy view (pixel coords).
+            position: Position object representing the system's logical position in the galaxy view.
             radius: The radius of the hexagonal grid within the system.
         """
         self.name = name
@@ -569,11 +569,11 @@ class Galaxy:
         min_angle_diff = float('inf')
 
         for q, r in candidates:
-            # Compute axial hex coordinates' relative pixel-like positions to estimate angle.
+            # Project axial hex coordinates to relative Cartesian positions to estimate angle.
             # Using pointy-top hex grid layout projection:
             # x = SQRT3 * q + SQRT3/2 * r
             # y = 1.5 * r
-            # (See hex_to_pixel in hexgrid_utils.py)
+            # This matches the pointy-top projection used by hexgrid_utils.py.
             hex_x = SQRT3 * q + (SQRT3 / 2.0) * r
             hex_y = 1.5 * r
             hex_angle = math.atan2(hex_y, hex_x)

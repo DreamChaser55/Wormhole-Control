@@ -8,10 +8,11 @@ from utils import HexCoord
 from geometry import (
     Position, Vector, distance, hex_distance, is_point_in_circle,
     get_closest_point_on_circle_edge, clamp_point_to_circle, Circle,
-    segment_intersects_circle, compute_avoidance_waypoints
+    segment_intersects_circle, compute_avoidance_waypoints,
+    position_at_distance_from_target
 )
 from pathfinding import find_intersystem_path, find_hex_jump_path
-from constants import XP_JUMP_RANGE_BONUS
+from constants import XP_JUMP_RANGE_BONUS, SECTOR_CIRCLE_RADIUS_LOGICAL
 from .base import Order, OrderStatus, OrderType
 
 if TYPE_CHECKING:
@@ -188,6 +189,29 @@ class MoveOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.MOVE, parameters, parent_order)
 
+    @classmethod
+    def for_unit_approach(
+        cls,
+        unit: 'Unit',
+        target_unit: 'Unit',
+        standoff_distance: float,
+        parent_order: Optional[Order] = None,
+    ) -> 'MoveOrder':
+        """Create a move whose final position is resolved around a target unit.
+
+        The target location is captured for display and serialization, but the
+        route planner refreshes it when the order first executes.  This keeps
+        callers from independently reproducing the same arrival geometry.
+        """
+        return cls(unit, {
+            "destination_system_name": target_unit.in_system,
+            "destination_hex_coord": target_unit.in_hex,
+            "destination_position": Position(target_unit.position.x, target_unit.position.y),
+            "target_unit_id": target_unit.id,
+            "standoff_distance": standoff_distance,
+            "approach_position_resolved": False,
+        }, parent_order=parent_order)
+
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
         self.plan_route(galaxy_ref=galaxy_ref)
@@ -210,6 +234,124 @@ class MoveOrder(Order):
         else:
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): IN_PROGRESS (sub-orders not finished and/or unit has not reached destination).")
 
+    def _resolve_unit_approach_destination(self, galaxy_ref: 'Galaxy') -> bool:
+        """Resolve an optional target-unit move to a point on its standoff circle."""
+        target_unit_id = self.parameters.get("target_unit_id")
+        if target_unit_id is None:
+            return True
+        if self.parameters.get("approach_position_resolved"):
+            return True
+
+        target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
+        if not target_unit:
+            self.status = OrderStatus.FAILED
+            logger.debug(
+                f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                f"FAILED (target unit {target_unit_id} no longer exists)."
+            )
+            return False
+
+        try:
+            standoff_distance = float(self.parameters.get("standoff_distance"))
+        except (TypeError, ValueError):
+            standoff_distance = 0.0
+        if not math.isfinite(standoff_distance) or standoff_distance <= 0.0:
+            self.status = OrderStatus.FAILED
+            logger.debug(
+                f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                f"FAILED (invalid standoff distance {self.parameters.get('standoff_distance')})."
+            )
+            return False
+
+        system = galaxy_ref.systems.get(target_unit.in_system)
+        destination_hex_obj = system.hexes.get(target_unit.in_hex) if system else None
+        if not destination_hex_obj:
+            self.status = OrderStatus.FAILED
+            logger.debug(
+                f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                f"FAILED (target sector {target_unit.in_system}:{target_unit.in_hex} not found)."
+            )
+            return False
+
+        target_position = target_unit.position
+        boundary_circle = getattr(destination_hex_obj, "boundary_circle", None)
+        if not isinstance(boundary_circle, Circle):
+            boundary_circle = Circle(Position(0.0, 0.0), SECTOR_CIRCLE_RADIUS_LOGICAL)
+        same_sector = (
+            self.unit.in_system == target_unit.in_system
+            and self.unit.in_hex == target_unit.in_hex
+        )
+
+        if same_sector:
+            resolved_position = position_at_distance_from_target(
+                self.unit.position,
+                target_position,
+                standoff_distance,
+            )
+            if not is_point_in_circle(resolved_position, boundary_circle):
+                self.status = OrderStatus.FAILED
+                logger.debug(
+                    f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                    "FAILED (same-sector standoff point lies outside the sector)."
+                )
+                return False
+        else:
+            inhibition_zones = destination_hex_obj.get_all_inhibition_zones()
+            containing_zone = next(
+                (zone for zone in inhibition_zones if is_point_in_circle(target_position, zone)),
+                None,
+            )
+
+            if containing_zone:
+                outward = target_position - containing_zone.center
+                if outward.magnitude_sq() < 1e-9:
+                    outward = Vector(1.0, 0.0)
+                else:
+                    outward = outward.normalize()
+
+                resolved_position = target_position + (outward * standoff_distance)
+                if not is_point_in_circle(resolved_position, boundary_circle):
+                    self.status = OrderStatus.FAILED
+                    logger.debug(
+                        f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                        "FAILED (outward inhibited standoff point lies outside the sector)."
+                    )
+                    return False
+            else:
+                resolved_position = None
+                max_attempts = 128
+                for _ in range(max_attempts):
+                    angle = random.uniform(0.0, 2.0 * math.pi)
+                    candidate = target_position + Vector(
+                        math.cos(angle) * standoff_distance,
+                        math.sin(angle) * standoff_distance,
+                    )
+                    if not is_point_in_circle(candidate, boundary_circle):
+                        continue
+                    if any(is_point_in_circle(candidate, zone) for zone in inhibition_zones):
+                        continue
+                    resolved_position = candidate
+                    break
+
+                if resolved_position is None:
+                    self.status = OrderStatus.FAILED
+                    logger.debug(
+                        f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                        "FAILED (could not find an uninhibited standoff point after 128 attempts)."
+                    )
+                    return False
+
+        self.parameters["destination_system_name"] = target_unit.in_system
+        self.parameters["destination_hex_coord"] = target_unit.in_hex
+        self.parameters["destination_position"] = resolved_position
+        self.parameters["approach_position_resolved"] = True
+        logger.debug(
+            f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+            f"Resolved target-unit standoff destination for {target_unit.name} "
+            f"at distance {standoff_distance:.2f}: {resolved_position}."
+        )
+        return True
+
     def handle_inhibited_waypoint(self, target_hex: HexCoord, target_pos: Position, is_final_destination: bool, system_name: str, galaxy_ref: 'Galaxy'):
         destination_hex_obj = galaxy_ref.systems[system_name].hexes.get(target_hex)
         if not destination_hex_obj:
@@ -219,7 +361,7 @@ class MoveOrder(Order):
         zones = destination_hex_obj.get_all_inhibition_zones()
 
         if is_final_destination:
-            # Final destination: snap to edge of the first overlapping zone, then add a
+            # Final destination: snap to the edge of its containing zone, then add a
             # sub-light follow-up move so the unit ultimately reaches its exact target.
             for zone in zones:
                 if is_point_in_circle(target_pos, zone):
@@ -342,6 +484,9 @@ class MoveOrder(Order):
         current_system = self.unit.in_system
         current_hex = self.unit.in_hex
         current_position = self.unit.position
+
+        if not self._resolve_unit_approach_destination(galaxy_ref):
+            return
 
         dest_system = self.parameters["destination_system_name"]
         dest_hex = self.parameters["destination_hex_coord"]

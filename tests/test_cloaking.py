@@ -199,7 +199,7 @@ def test_basic_cloaking_defeats_long_range_sensors(galaxy_setup):
     assert hex_has_presence(snapshot, "Alpha", (0, 0)) is False
     assert is_unit_visible(snapshot, enemy_stealth) is False
 
-    # Case C: P1 moves within short range (1000 px) -> DETAILED visibility overrides cloak
+    # Case C: P1 moves within short range (1000 logical units) -> DETAILED visibility overrides cloak
     enemy_stealth.position = Position(1000, 0)
     snapshot = VisibilityService.compute(galaxy, p1)
     assert is_unit_visible(snapshot, enemy_stealth) is True
@@ -214,13 +214,13 @@ def test_advanced_area_cloaking_hides_fleet(galaxy_setup):
     sensor_ship.add_component(Sensors(sensor_ship, short_range_radius=1000.0, long_range_hexes=1, hull_cost=5))
 
     # P2 Fleet: 1 Cloak Carrier (Advanced) + 2 Escorts with NO cloaking devices
-    # All stationed at (3500, 0), outside P1's 1000 px short range
+    # All stationed at (3500, 0), outside P1's 1000-logical-unit short range
     emitter_ship = Unit(p2, Position(3500, 0), in_hex=(0, 0), in_system="Alpha", name="CloakFlagship", hull_size=HullSize.LARGE, game=mock_game)
     adv_cloak = CloakingDevice(emitter_ship, device_type=CloakingType.ADVANCED, area_radius=DEFAULT_ADVANCED_CLOAKING_RADIUS)
     emitter_ship.add_component(adv_cloak)
 
-    escort_in_radius = Unit(p2, Position(3700, 0), in_hex=(0, 0), in_system="Alpha", name="EscortA", hull_size=HullSize.SMALL, game=mock_game) # 200 px away <= 500
-    escort_out_of_radius = Unit(p2, Position(4500, 0), in_hex=(0, 0), in_system="Alpha", name="EscortB", hull_size=HullSize.SMALL, game=mock_game) # 1000 px away > 500
+    escort_in_radius = Unit(p2, Position(3700, 0), in_hex=(0, 0), in_system="Alpha", name="EscortA", hull_size=HullSize.SMALL, game=mock_game) # 200 logical units away <= 500
+    escort_out_of_radius = Unit(p2, Position(4500, 0), in_hex=(0, 0), in_system="Alpha", name="EscortB", hull_size=HullSize.SMALL, game=mock_game) # 1000 logical units away > 500
 
     system.hexes[(0, 0)].units.extend([sensor_ship, emitter_ship, escort_in_radius, escort_out_of_radius])
 

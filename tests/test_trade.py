@@ -3,7 +3,8 @@ from unittest.mock import MagicMock
 
 from constants import (
     HullSize, RED, TRADE_BASE_HULL_COST, TRADE_BASE_INCOME,
-    TRADE_INCOME_PER_DISTANCE_UNIT, TRADE_INTERSYSTEM_HOP_DISTANCE
+    TRADE_INCOME_PER_DISTANCE_UNIT, TRADE_INTERSYSTEM_HOP_DISTANCE,
+    TRADE_ARRIVAL_RANGE,
 )
 from entities import Player, Unit, Planet
 from geometry import Position
@@ -306,6 +307,19 @@ class TestTradeOrders(unittest.TestCase):
         self.assertEqual(self.trade_comp.trades_completed, 1)
         expected_income = TRADE_BASE_INCOME + 2.0 * TRADE_INCOME_PER_DISTANCE_UNIT
         self.assertEqual(self.player.credits, 100.0 + expected_income)
+
+    def test_trade_order_uses_target_approach_when_travelling(self):
+        order = TradeOrder(self.trader, {"target_unit_id": self.hab2.id})
+        order.execute(self.galaxy)
+
+        self.assertEqual(len(order.sub_orders), 2)
+        approach = order.sub_orders[0]
+        self.assertEqual(approach.order_type, OrderType.MOVE)
+        self.assertEqual(approach.parameters["target_unit_id"], self.hab2.id)
+        self.assertEqual(
+            approach.parameters["standoff_distance"],
+            max(10.0, TRADE_ARRIVAL_RANGE - 10.0),
+        )
 
     def test_continuous_trade_order_loop(self):
         # Start continuous trade order

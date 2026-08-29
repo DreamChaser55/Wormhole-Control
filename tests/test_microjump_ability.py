@@ -200,7 +200,7 @@ def test_microjump_fails_insufficient_antimatter():
 
 def test_microjump_succeeds_anywhere_in_sector():
     unit, game = create_test_unit(position=Position(-2000, -2000))
-    # Target across the sector (long distance ~4000 px)
+    # Target across the sector (long distance of about 4000 logical units)
     target_pos = Position(2000, 2000)
 
     success = unit.ability_component.activate(
@@ -259,4 +259,3 @@ def test_microjump_order_fails_different_sector():
     assert unit.antimatter_component.current_amount == 100.0
     assert len(game.gui.warning_dialogs) == 1
     assert "Target position is in a different sector" in game.gui.warning_dialogs[0][0]
-

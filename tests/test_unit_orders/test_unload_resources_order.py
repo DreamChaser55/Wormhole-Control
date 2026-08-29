@@ -47,6 +47,8 @@ def test_unload_resources_order():
     
     assert len(order_out_of_range.sub_orders) == 2
     assert order_out_of_range.sub_orders[0].order_type == OrderType.MOVE
+    assert order_out_of_range.sub_orders[0].parameters["target_unit_id"] == target.id
+    assert order_out_of_range.sub_orders[0].parameters["standoff_distance"] == 295.0
     assert order_out_of_range.sub_orders[1].order_type == OrderType.UNLOAD_RESOURCES
 
 
@@ -137,6 +139,12 @@ def test_order_system_handle_unload_resources():
     # Mock game and event bus
     game = MagicMock()
     event_bus = MagicMock()
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.return_value = target_refinery
+    game.galaxy = galaxy
+    for unit in (unit_metal, unit_crystal):
+        unit.in_galaxy = galaxy
+        unit.game.galaxy = galaxy
     
     order_system = OrderSystem(game, event_bus)
     

@@ -526,7 +526,7 @@ def deserialize_order(data: dict, unit: Unit, game: Any) -> Optional[Order]:
         if isinstance(v, list) and len(v) == 2 and isinstance(v[0], (int, float)) and isinstance(v[1], (int, float)):
             if k in ("destination_position", "target_position", "waypoint"):
                 params[k] = Position(v[0], v[1])
-            elif k in ("destination_hex", "target_hex"):
+            elif k in ("destination_hex", "target_hex", "destination_hex_coord", "target_hex_coord"):
                 params[k] = tuple(v)
 
     order = order_cls(unit=unit, parameters=params)

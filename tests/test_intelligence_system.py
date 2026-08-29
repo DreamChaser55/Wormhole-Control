@@ -59,6 +59,7 @@ from unit_orders import (
     EliminateAgentOrder,
     ExtractAgentOrder,
     OrderStatus,
+    OrderType,
 )
 from visibility import VisibilityService
 from galaxy import Galaxy, StarSystem
@@ -160,6 +161,36 @@ def test_unit_infiltration_and_sensor_sharing(test_setup):
     snap_after = VisibilityService.compute(galaxy, p1)
     assert enemy_ship.id in snap_after.visible_enemy_unit_ids
     assert ("Sol", (0, 0)) in snap_after.presence_hexes or len(snap_after.visible_enemy_unit_ids) > 0
+
+
+def test_unit_infiltration_approaches_then_executes_action(test_setup):
+    p1, p2, galaxy, system, game = test_setup
+
+    spy_unit = Unit(p1, Position(0, 0), (0, 0), "Sol", "Spy Ship", HullSize.MEDIUM, game)
+    intel_comp = IntelligenceComponent(spy_unit, agents_count=1, agents_capacity=1)
+    spy_unit.add_component(intel_comp)
+    system.hexes[(0, 0)].add_unit(spy_unit)
+
+    enemy_ship = Unit(p2, Position(600, 0), (0, 0), "Sol", "Enemy Ship", HullSize.MEDIUM, game)
+    system.hexes[(0, 0)].add_unit(enemy_ship)
+
+    order = InfiltrateUnitOrder(spy_unit, {"target_unit_id": enemy_ship.id})
+    order.execute(galaxy)
+
+    assert len(order.sub_orders) == 2
+    approach = order.sub_orders[0]
+    assert approach.order_type == OrderType.MOVE
+    assert approach.parameters["target_unit_id"] == enemy_ship.id
+    assert approach.parameters["standoff_distance"] == 450.0
+    assert order.sub_orders[1].order_type == OrderType.INFILTRATE_UNIT
+
+    # Simulate completion of the movement leg at its same-sector standoff point.
+    spy_unit.position = Position(150, 0)
+    approach.status = OrderStatus.COMPLETED
+    order.update(galaxy)
+
+    assert order.status == OrderStatus.COMPLETED
+    assert enemy_ship.has_infiltrating_agent_from(p1)
 
 
 def test_unit_system_sabotages(test_setup):
@@ -858,5 +889,3 @@ def test_ci_sweep_gui_action_handling(test_setup):
     assert ci_ship.antimatter_component.current_amount == init_am - CI_SWEEP_ANTIMATTER_COST
     assert ci_comp.ci_cooldown_remaining == CI_SWEEP_COOLDOWN_TURNS
     assert ci_comp.is_ci_ready is False
-
-

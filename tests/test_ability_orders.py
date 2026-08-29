@@ -93,6 +93,8 @@ def test_use_ability_order_unit_target_out_of_range():
     assert order.status == OrderStatus.IN_PROGRESS
     assert len(order.sub_orders) == 2
     assert order.sub_orders[0].order_type == OrderType.MOVE
+    assert order.sub_orders[0].parameters["target_unit_id"] == target.id
+    assert order.sub_orders[0].parameters["standoff_distance"] == 395.0
     assert order.sub_orders[1].order_type == OrderType.USE_ABILITY
 
 def test_use_ability_order_position_target_in_range():

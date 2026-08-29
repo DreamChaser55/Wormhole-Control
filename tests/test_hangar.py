@@ -117,6 +117,8 @@ def test_dock_order():
     # Since it is out of range, it should spawn MoveOrder and DockOrder suborders
     assert len(order.sub_orders) == 2
     assert order.sub_orders[0].order_type == OrderType.MOVE
+    assert order.sub_orders[0].parameters["target_unit_id"] == carrier.id
+    assert order.sub_orders[0].parameters["standoff_distance"] == 95.0
     assert order.sub_orders[1].order_type == OrderType.DOCK
 
     # In range
@@ -227,4 +229,3 @@ def test_hangar_deploy_offset():
     # Ship position should be inside sector radius
     ship_dist_from_center = math.hypot(ship.position.x, ship.position.y)
     assert ship_dist_from_center <= SECTOR_CIRCLE_RADIUS_LOGICAL
-

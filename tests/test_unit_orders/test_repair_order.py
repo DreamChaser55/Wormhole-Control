@@ -46,6 +46,8 @@ def test_repair_order():
     # Should spawn MoveOrder and RepairOrder suborders
     assert len(order_out_of_range.sub_orders) == 2
     assert order_out_of_range.sub_orders[0].order_type == OrderType.MOVE
+    assert order_out_of_range.sub_orders[0].parameters["target_unit_id"] == target.id
+    assert order_out_of_range.sub_orders[0].parameters["standoff_distance"] == 95.0
     assert order_out_of_range.sub_orders[1].order_type == OrderType.REPAIR
 
 

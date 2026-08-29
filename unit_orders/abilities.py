@@ -188,13 +188,12 @@ class UseAbilityOrder(Order):
 
             if not in_range:
                 if not self.has_active_sub_orders():
-                    dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, defn.range - 5.0)
-                    move_params = {
-                        "destination_system_name": target_unit.in_system,
-                        "destination_hex_coord": target_unit.in_hex,
-                        "destination_position": dest_pos,
-                    }
-                    self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+                    self.add_sub_order(MoveOrder.for_unit_approach(
+                        self.unit,
+                        target_unit,
+                        defn.range - 5.0,
+                        parent_order=self,
+                    ))
                     # Re-queue this ability order to fire once in range
                     self.add_sub_order(UseAbilityOrder(self.unit, self.parameters, parent_order=self))
                 return

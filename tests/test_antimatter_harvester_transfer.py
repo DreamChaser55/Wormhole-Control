@@ -158,6 +158,31 @@ def test_transfer_antimatter_order_moves_am_when_in_range():
     assert source.antimatter_component.current_amount == 100.0 - expected_transfer
 
 
+def test_transfer_antimatter_order_uses_target_approach_when_out_of_range():
+    player = MockPlayer()
+    source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
+    target = make_unit(
+        player,
+        position=Position(ANTIMATTER_TRANSFER_RANGE + 100.0, 0),
+        in_hex=(0, 0),
+    )
+
+    source.antimatter_component.current_amount = 100.0
+    target.antimatter_component.current_amount = 0.0
+
+    galaxy = MagicMock()
+    galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    source.game.galaxy = galaxy
+
+    order = TransferAntimatterOrder(source, {"target_unit_id": target.id})
+    order.execute(galaxy)
+
+    assert len(order.sub_orders) == 1
+    approach = order.sub_orders[0]
+    assert approach.parameters["target_unit_id"] == target.id
+    assert approach.parameters["standoff_distance"] == ANTIMATTER_TRANSFER_RANGE - 5.0
+
+
 def test_transfer_antimatter_order_fails_for_unfriendly_target():
     player = MockPlayer()
     enemy_player = MockPlayer()

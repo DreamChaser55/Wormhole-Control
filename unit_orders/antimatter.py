@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import distance, position_at_distance_from_target
+from geometry import distance
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 
@@ -101,17 +101,12 @@ class TransferAntimatterOrder(Order):
         in_range = in_same_system_and_hex and (distance(self.unit.position, target_unit.position) <= transfer_range)
 
         if not in_range:
-            if in_same_system_and_hex:
-                dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, transfer_range - 5.0)
-            else:
-                dest_pos = target_unit.position
-
-            move_params = {
-                "destination_system_name": target_unit.in_system,
-                "destination_hex_coord": target_unit.in_hex,
-                "destination_position": dest_pos
-            }
-            self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+            self.add_sub_order(MoveOrder.for_unit_approach(
+                self.unit,
+                target_unit,
+                transfer_range - 5.0,
+                parent_order=self,
+            ))
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
         super().update(galaxy_ref)
@@ -137,17 +132,12 @@ class TransferAntimatterOrder(Order):
 
         if not in_range:
             # Target moved away since we last checked; re-approach.
-            if in_same_system_and_hex:
-                dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, transfer_range - 5.0)
-            else:
-                dest_pos = target_unit.position
-
-            move_params = {
-                "destination_system_name": target_unit.in_system,
-                "destination_hex_coord": target_unit.in_hex,
-                "destination_position": dest_pos
-            }
-            self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+            self.add_sub_order(MoveOrder.for_unit_approach(
+                self.unit,
+                target_unit,
+                transfer_range - 5.0,
+                parent_order=self,
+            ))
             return
 
         self._do_transfer_tick(target_unit)
@@ -341,4 +331,3 @@ class ContinuousResupplyOrder(Order):
         # No sub-orders pending — time to decide what to do next.
         galaxy_ref = self.unit.game.galaxy
         self._decide_next_step(galaxy_ref)
-

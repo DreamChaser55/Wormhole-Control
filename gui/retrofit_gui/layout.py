@@ -282,7 +282,7 @@ def _build_component_detail_groups(
     wizard._details_groups["Defenses"].extend([lbl_arm, wizard._armor_entry, lbl_sh, wizard._shields_entry, lbl_pd, wizard._pd_entry])
 
     # 6. Sensors
-    lbl_sr = make_label(pygame.Rect(pad, y, w, small_h), "Short-Range Radius (px):", mgr, pan)
+    lbl_sr = make_label(pygame.Rect(pad, y, w, small_h), "Short-Range Radius (logical):", mgr, pan)
     wizard._sensor_short_range_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), str(int(DEFAULT_SENSOR_SHORT_RANGE)), mgr, pan)
     y_s = y + small_h + 2 + entry_h + pad
     lbl_lr = make_label(pygame.Rect(pad, y_s, w, small_h), "Long-Range (hexes):", mgr, pan)
@@ -306,7 +306,7 @@ def _build_component_detail_groups(
     lbl_rr = make_label(pygame.Rect(pad, y, w, small_h), "Repair Rate (HP/turn):", mgr, pan)
     wizard._repair_rate_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), "10", mgr, pan)
     y_r = y + small_h + entry_h + pad
-    lbl_rrange = make_label(pygame.Rect(pad, y_r, w, small_h), "Repair Range (px):", mgr, pan)
+    lbl_rrange = make_label(pygame.Rect(pad, y_r, w, small_h), "Repair Range (logical):", mgr, pan)
     wizard._repair_range_entry = make_entry(pygame.Rect(pad, y_r + small_h + 2, w, entry_h), "200", mgr, pan)
     wizard._details_groups["RepairComponent"].extend([lbl_rr, wizard._repair_rate_entry, lbl_rrange, wizard._repair_range_entry])
 
@@ -314,7 +314,7 @@ def _build_component_detail_groups(
     lbl_mr = make_label(pygame.Rect(pad, y, w, small_h), "Mining Rate (units/turn):", mgr, pan)
     wizard._mining_rate_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), "10", mgr, pan)
     y_m = y + small_h + entry_h + pad
-    lbl_mrange = make_label(pygame.Rect(pad, y_m, w, small_h), "Mining Range (px):", mgr, pan)
+    lbl_mrange = make_label(pygame.Rect(pad, y_m, w, small_h), "Mining Range (logical):", mgr, pan)
     wizard._mining_range_entry = make_entry(pygame.Rect(pad, y_m + small_h + 2, w, entry_h), "200", mgr, pan)
     y_m += small_h + entry_h + pad
     lbl_mcargo = make_label(pygame.Rect(pad, y_m, w, small_h), "Max Cargo Storage:", mgr, pan)
@@ -322,7 +322,7 @@ def _build_component_detail_groups(
     wizard._details_groups["MiningComponent"].extend([lbl_mr, wizard._mining_rate_entry, lbl_mrange, wizard._mining_range_entry, lbl_mcargo, wizard._mining_max_cargo_entry])
 
     # 11. Inhibitor Field
-    lbl_inhr = make_label(pygame.Rect(pad, y, w, small_h), "Inhibitor Field Radius (px):", mgr, pan)
+    lbl_inhr = make_label(pygame.Rect(pad, y, w, small_h), "Inhibitor Field Radius (logical):", mgr, pan)
     wizard._inhibitor_radius_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), "100", mgr, pan)
     wizard._details_groups["HyperspaceInhibitionFieldEmitter"].extend([lbl_inhr, wizard._inhibitor_radius_entry])
 

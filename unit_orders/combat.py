@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from geometry import Position, distance, position_at_distance_from_target
+from geometry import distance
 from constants import HullSize
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
@@ -133,14 +133,12 @@ class AttackOrder(Order):
             min_turret_range = min(turret.range for turret in self.unit.weapons_component.turrets)
 
             if not in_the_same_system_and_hex or not in_range:
-                dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, min_turret_range - 5.0)
-
-                move_params = {
-                    "destination_system_name": target_unit.in_system,
-                    "destination_hex_coord": target_unit.in_hex,
-                    "destination_position": dest_pos
-                }
-                move_order = MoveOrder(self.unit, move_params, parent_order=self)
+                move_order = MoveOrder.for_unit_approach(
+                    self.unit,
+                    target_unit,
+                    min_turret_range - 5.0,
+                    parent_order=self,
+                )
                 self.add_sub_order(move_order)
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
@@ -198,9 +196,11 @@ class AttackOrder(Order):
                     if dest_system != target_unit.in_system or dest_hex != target_unit.in_hex:
                         target_moved = True
                     elif dest_pos:
-                        current_offset = distance(dest_pos, target_unit.position)
-                        if abs(current_offset - (min_turret_range - 5.0)) > 15.0:
-                            target_moved = True
+                        approach_resolved = current_sub.parameters.get("approach_position_resolved", True)
+                        if approach_resolved:
+                            current_offset = distance(dest_pos, target_unit.position)
+                            if abs(current_offset - (min_turret_range - 5.0)) > 15.0:
+                                target_moved = True
 
                     if target_moved:
                         logger.debug(f"[{self.unit.name}] Target {target_unit.name} moved. Recalculating path.")
@@ -216,13 +216,12 @@ class AttackOrder(Order):
         # If we don't have a movement order, check if we need to move
         if not has_movement_order:
             if not in_the_same_system_and_hex or not in_range:
-                dest_pos = position_at_distance_from_target(self.unit.position, target_unit.position, min_turret_range - 5.0)
-                move_params = {
-                    "destination_system_name": target_unit.in_system,
-                    "destination_hex_coord": target_unit.in_hex,
-                    "destination_position": dest_pos
-                }
-                move_order = MoveOrder(self.unit, move_params, parent_order=self)
+                move_order = MoveOrder.for_unit_approach(
+                    self.unit,
+                    target_unit,
+                    min_turret_range - 5.0,
+                    parent_order=self,
+                )
                 self.add_sub_order(move_order)
 
         super().update(galaxy_ref)
@@ -430,9 +429,12 @@ class ProtectOrder(Order):
                         dest_pos = current_sub.parameters.get("destination_position")
 
                         # If protected unit changed system/hex, or moved significantly from movement destination:
+                        planned_standoff = float(current_sub.parameters.get("standoff_distance", 30.0))
+                        approach_resolved = current_sub.parameters.get("approach_position_resolved", True)
                         if (dest_system != target_unit.in_system or
                                 dest_hex != target_unit.in_hex or
-                                (dest_pos and distance(dest_pos, target_unit.position) > 15.0)):
+                                (dest_pos and approach_resolved and
+                                 abs(distance(dest_pos, target_unit.position) - planned_standoff) > 15.0)):
                             logger.debug(f"[{self.unit.name}] Protected unit {target_unit.name} moved. Recalculating path.")
                             current_sub.cancel()
                             self.sub_orders.popleft()
@@ -456,12 +458,12 @@ class ProtectOrder(Order):
                     dist_to_target = distance(self.unit.position, target_unit.position) if in_same_system_and_hex else float('inf')
 
                     if not in_same_system_and_hex or dist_to_target > 30.0:
-                        move_params = {
-                            "destination_system_name": target_unit.in_system,
-                            "destination_hex_coord": target_unit.in_hex,
-                            "destination_position": Position(target_unit.position.x, target_unit.position.y)
-                        }
-                        self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+                        self.add_sub_order(MoveOrder.for_unit_approach(
+                            self.unit,
+                            target_unit,
+                            30.0,
+                            parent_order=self,
+                        ))
 
         super().update(galaxy_ref)
 
