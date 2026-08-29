@@ -347,6 +347,13 @@ Every star system contains a central star with a unique antimatter harvesting ra
 - `ATTACK_INTRA_SYSTEM_JUMP_RANGE`: Jump to engage hostile units in adjacent sectors within basic hyperdrive range.
 - `ATTACK_SAME_SYSTEM`: Jump to engage hostile units anywhere within the star system.
 
+All turret fire requires an `IN_PROGRESS` Attack order in the unit's current
+order hierarchy. Direct Attack orders remain authoritative while executing their
+approach movement. Automated stances create current Attack orders, while Patrol,
+Protect, and Defend authorize fire only through their active front Attack
+sub-order. A cached turret target or queued Attack order alone never authorizes
+fire; replacing an engagement with another order immediately clears the target.
+
 ### Turret Types & Variants (`TurretType` × `TurretVariant` — 3 × 3)
 - **Turret Types**:
   - `MASS_DRIVER`: Kinetic projectile weaponry with solid damage and velocity.

@@ -8,7 +8,7 @@ from .base import UnitComponent
 from .enums import UnitStance, TurretVariant, WingType
 from geometry import distance, hex_distance
 from constants import HullSize, XP_JUMP_RANGE_BONUS
-from unit_orders import Order, OrderStatus
+from unit_orders import Order, OrderStatus, OrderType
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -71,17 +71,13 @@ class Commander(UnitComponent):
 
         target = self.find_stance_target(galaxy_ref)
         if not target:
-            if self.stance == UnitStance.ATTACK_WEAPON_RANGE:
-                weapons.clear_target()
+            weapons.clear_target()
             return
 
-        if self.stance == UnitStance.ATTACK_WEAPON_RANGE:
-            weapons.set_target(target)
-        else:
-            from unit_orders import AttackOrder
-            attack_order = AttackOrder(self.unit, {"target_unit_id": target.id})
-            attack_order.is_stance_order = True
-            self.add_order(attack_order)
+        from unit_orders import AttackOrder
+        attack_order = AttackOrder(self.unit, {"target_unit_id": target.id})
+        attack_order.is_stance_order = True
+        self.add_order(attack_order)
 
     def is_target_valid_for_stance(self, target: 'Unit', galaxy_ref: 'Galaxy', visibility_snapshot: Optional[typing.Any] = None) -> bool:
         """Checks if the given target is still valid under the unit's current stance."""
@@ -339,6 +335,41 @@ class Commander(UnitComponent):
         if self.current_order is None:
             self.start_next_order()
 
+    def get_active_attack_order(self) -> Optional[Order]:
+        """Return the Attack order authorized to control the unit's turrets.
+
+        A direct Attack remains authoritative while it runs its own movement
+        sub-orders.  Patrol, Protect, and Defend may also authorize their active
+        front Attack sub-order.  Queued and finished orders never authorize fire.
+        """
+        current = self.current_order
+        if not current or current.status != OrderStatus.IN_PROGRESS:
+            return None
+
+        if current.order_type == OrderType.ATTACK:
+            return current
+
+        if current.order_type not in {
+            OrderType.PATROL,
+            OrderType.PROTECT,
+            OrderType.DEFEND,
+        } or not current.sub_orders:
+            return None
+
+        active_sub_order = current.sub_orders[0]
+        if (
+            active_sub_order.order_type == OrderType.ATTACK
+            and active_sub_order.status == OrderStatus.IN_PROGRESS
+        ):
+            return active_sub_order
+        return None
+
+    def _clear_weapon_target(self) -> None:
+        """Clear any cached turret target after current-order authority ends."""
+        weapons = self.unit.weapons_component
+        if weapons:
+            weapons.clear_target()
+
     def cancel_order(self, order_id: str) -> bool:
         """Cancel and remove a specific order by its ID.
 
@@ -351,6 +382,7 @@ class Commander(UnitComponent):
         if self.current_order and self.current_order.order_id == order_id:
             self.current_order.cancel()
             self.current_order = None
+            self._clear_weapon_target()
             self.start_next_order()
             return True
 
@@ -370,6 +402,7 @@ class Commander(UnitComponent):
         for order in self.orders_queue:
             order.cancel()
         self.orders_queue.clear()
+        self._clear_weapon_target()
 
         if self.unit.engines_component:
             self.unit.engines_component.move_target = None
@@ -402,6 +435,7 @@ class Commander(UnitComponent):
             if not target_unit or not self.is_target_valid_for_stance(target_unit, galaxy_ref):
                 self.current_order.cancel()
                 self.current_order = None
+                self._clear_weapon_target()
 
         if not self.current_order:
             self.start_next_order()
@@ -435,6 +469,7 @@ class Commander(UnitComponent):
 
         if order_is_finished:
             self.current_order = None
+            self._clear_weapon_target()
             self.start_next_order()
             if not self.current_order:
                 self.process_stance()
@@ -443,6 +478,7 @@ class Commander(UnitComponent):
         """Starts the next order from the queue if available."""
         if not self.current_order and self.orders_queue:
             self.current_order = self.orders_queue.popleft()
+            self._clear_weapon_target()
             
             galaxy_ref: Optional['Galaxy'] = getattr(self.unit, 'in_galaxy', None)
 

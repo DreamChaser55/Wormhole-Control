@@ -226,7 +226,9 @@ def test_weapons_update_clears_target_if_visibility_is_lost():
     p2_enemy = create_combat_ship(galaxy, p2, "P2 Target", (0, 0), pos=(100, 0), short_range=500.0, long_range=0)
 
     # Lock target
-    p1_ship.weapons_component.set_target(p2_enemy)
+    p1_ship.commander_component.add_order(
+        AttackOrder(p1_ship, {"target_unit_id": p2_enemy.id})
+    )
     assert p1_ship.weapons_component.turrets[0].target == p2_enemy
 
     # Disable / destroy P1 sensors so P1 loses all visibility

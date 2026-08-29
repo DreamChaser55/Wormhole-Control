@@ -9,7 +9,7 @@ from unit_components import (
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
     Defenses, AntimatterStorage, AntimatterHarvester, Sensors
 )
-from unit_orders import Order, OrderStatus, OrderType
+from unit_orders import AttackOrder, Order, OrderStatus, OrderType
 
 from constants import HullSize
 
@@ -453,7 +453,9 @@ def test_commander_stances():
     # Test Stance: ATTACK_WEAPON_RANGE
     commander.stance = UnitStance.ATTACK_WEAPON_RANGE
     commander.update()
-    assert commander.current_order is None
+    assert commander.current_order is not None
+    assert commander.current_order.order_type == OrderType.ATTACK
+    assert getattr(commander.current_order, 'is_stance_order', False)
     assert turret.target == enemy_in_range
 
     # If the target moves out of range or dies, it should clear and find no target
@@ -464,6 +466,8 @@ def test_commander_stances():
     # Move target back
     enemy_in_range.position = Position(10, 0)
     commander.update()
+    assert commander.current_order is not None
+    assert commander.current_order.order_type == OrderType.ATTACK
     assert turret.target == enemy_in_range
 
     # Test Stance: ATTACK_SAME_SECTOR
@@ -540,6 +544,11 @@ def test_weapons_and_turrets():
     hex_obj.celestial_bodies = []
     mock_system.hexes = {(0, 0): hex_obj}
     mock_galaxy.systems = {"Sol": mock_system}
+    commander = Commander(unit)
+    unit.add_component(commander)
+    attack_order = AttackOrder(unit, {"target_unit_id": target.id})
+    attack_order.status = OrderStatus.IN_PROGRESS
+    commander.current_order = attack_order
     weapons.update(mock_galaxy)
     
     # Target takes damage
@@ -1287,6 +1296,5 @@ def test_allowed_stances_restriction():
     engines.current_hit_points = 0
     allowed = commander.get_allowed_stances()
     assert allowed == [UnitStance.DO_NOTHING, UnitStance.ATTACK_WEAPON_RANGE]
-
 
 

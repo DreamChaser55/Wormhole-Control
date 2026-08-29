@@ -23,6 +23,75 @@ class DummyGame:
         self.current_player_index = 0
         self.system_view_mouse_hover_hex = None
 
+
+def test_missile_platform_auto_targeting_uses_current_attack_order():
+    from unit_components import Turret, TurretType
+    from unit_components.abilities.missile_batteries import MissileBatteriesAbility
+
+    platform = Unit(
+        owner=MockPlayer("Platform Owner"),
+        position=Position(0, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Missile Platform",
+        hull_size=HullSize.TINY,
+        game=DummyGame(),
+    )
+    weapons = Weapons(platform)
+    weapons.add_turret(
+        Turret(
+            turret_type=TurretType.MISSILE,
+            damage=15.0,
+            range=350.0,
+            cooldown=2,
+            parent_unit=platform,
+        )
+    )
+    platform.add_component(weapons)
+
+    enemy = Unit(
+        owner=MockPlayer("Enemy"),
+        position=Position(100, 0),
+        in_hex=(0, 0),
+        in_system="Sol",
+        name="Enemy",
+        hull_size=HullSize.MEDIUM,
+        game=platform.game,
+    )
+
+    galaxy = MagicMock()
+    platform.game.galaxy = galaxy
+    platform.in_galaxy = galaxy
+    enemy.game.galaxy = galaxy
+    enemy.in_galaxy = galaxy
+    hex_obj = MagicMock()
+    hex_obj.units = [platform, enemy]
+    system = MagicMock()
+    system.hexes = {(0, 0): hex_obj}
+    galaxy.systems = {"Sol": system}
+    galaxy.get_unit_by_id.side_effect = lambda uid: {
+        platform.id: platform,
+        enemy.id: enemy,
+    }.get(uid)
+
+    component = MagicMock()
+    component.unit = platform
+    ability = MissileBatteriesAbility()
+    ability.spawned_unit_ids = [platform.id]
+
+    ability._auto_target_platforms(component, galaxy)
+
+    current = platform.commander_component.current_order
+    assert current is not None
+    assert current.order_type == OrderType.ATTACK
+    assert current.parameters["target_unit_id"] == enemy.id
+    assert platform.weapons_component.turrets[0].target is enemy
+
+    hex_obj.units = [platform]
+    ability._auto_target_platforms(component, galaxy)
+    assert platform.commander_component.current_order is None
+    assert platform.weapons_component.turrets[0].target is None
+
 def test_use_ability_order_no_target():
     player = MockPlayer()
     game = DummyGame()

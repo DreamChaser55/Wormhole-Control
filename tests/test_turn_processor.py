@@ -124,7 +124,8 @@ def test_process_population_growth():
 
 
 def test_process_combat():
-    from unit_components import Weapons, Turret, TurretType
+    from unit_components import Commander, Weapons, Turret, TurretType
+    from unit_orders import AttackOrder, OrderStatus
     game = MagicMock()
     player1 = MockPlayer("Player 1")
     player2 = MockPlayer("Player 2")
@@ -133,8 +134,10 @@ def test_process_combat():
     
     unit1 = MockUnit()
     unit1.owner = player1
+    unit1.game = game
     unit2 = MockUnit()
     unit2.owner = player2
+    unit2.game = game
     
     weapons = Weapons(unit1)
     turret = Turret(
@@ -146,12 +149,17 @@ def test_process_combat():
     )
     weapons.add_turret(turret)
     unit1.add_component(weapons)
+    commander = Commander(unit1)
+    unit1.add_component(commander)
     
     unit1.position = Position(0, 0)
     unit2.position = Position(10, 0)
     unit2.current_hit_points = 100
     
     weapons.set_target(unit2)
+    attack_order = AttackOrder(unit1, {"target_unit_id": unit2.id})
+    attack_order.status = OrderStatus.IN_PROGRESS
+    commander.current_order = attack_order
     
     system = MagicMock()
     system.name = "Sol"
@@ -161,6 +169,10 @@ def test_process_combat():
     system.hexes = {(0, 0): hex_obj}
     system.get_all_units.return_value = [(unit1, (0, 0)), (unit2, (0, 0))]
     game.galaxy.systems = {"Sol": system}
+    game.galaxy.get_unit_by_id.side_effect = lambda uid: {
+        unit1.id: unit1,
+        unit2.id: unit2,
+    }.get(uid)
     unit1.in_galaxy = game.galaxy
     unit2.in_galaxy = game.galaxy
     
@@ -506,4 +518,3 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
 
         start_new_game(game, settings=settings)
         assert game.pending_ai_turn_end_time == 2500
-

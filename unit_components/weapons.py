@@ -256,13 +256,29 @@ class Weapons(UnitComponent):
 
     def update(self, galaxy: 'Galaxy') -> None:
         """
-        Updates all turrets and fires if a target is set, visible, in the same system, hex, in range and the cooldown is over.
+        Updates all turrets and fires only when the current order hierarchy has
+        an active Attack order for the turret's cached target.
         """
         if self.is_destroyed:
             return
 
         for turret in self.turrets:
             turret.update()
+
+        commander = self.unit.commander_component
+        active_attack = commander.get_active_attack_order() if commander else None
+        if active_attack is None:
+            self.clear_target()
+            return
+
+        authorized_target_id = active_attack.parameters.get("target_unit_id")
+        for turret in self.turrets:
+            if (
+                turret.target is not None
+                and turret.target.id != authorized_target_id
+            ):
+                turret.target = None
+                turret.target_component_type = None
 
         visibility_snapshot = None
         if any(t.target for t in self.turrets) and self.unit.owner and galaxy:
