@@ -199,3 +199,14 @@ def test_submenu_navigation_and_back():
     action_select = handle_button_index(gui, 0)
     assert action_select == {'action': 'context_menu_select', 'action_id': 'move_here', 'target': 'TargetHex'}
     assert gui.context_menu_panel is None
+
+
+def test_is_mouse_over_context_menu_accepts_tuple_and_position():
+    gui = MagicMock()
+    gui.context_menu_panel.visible = True
+    gui.context_menu_panel.get_abs_rect.return_value = pygame.Rect(100, 100, 200, 200)
+
+    assert is_mouse_over_context_menu(gui, Position(150, 150)) is True
+    assert is_mouse_over_context_menu(gui, (150, 150)) is True
+    assert is_mouse_over_context_menu(gui, Position(50, 50)) is False
+    assert is_mouse_over_context_menu(gui, (-1, -1)) is False

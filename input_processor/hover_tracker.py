@@ -146,3 +146,53 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                             hovered_obj = mf
 
             game.sector_view_mouse_hover_object = hovered_obj
+
+
+def get_units_under_mouse(game, mouse_pos: Position) -> typing.List[Unit]:
+    """Returns all visible units in the current sector whose selection/click circle contains mouse_pos,
+    ordered by distance from mouse_pos (closest first).
+
+    Args:
+        game: Target Game instance.
+        mouse_pos (Position): Mouse screen coordinates.
+
+    Returns:
+        List[Unit]: Matching visible units under the cursor.
+    """
+    if getattr(game, 'view_mode', None) != 'sector':
+        return []
+    if not getattr(game, 'current_system_name', None) or getattr(game, 'current_sector_coord', None) is None:
+        return []
+    if not getattr(game, 'galaxy', None) or not game.galaxy.systems:
+        return []
+
+    system = game.galaxy.systems.get(game.current_system_name)
+    if not system or game.current_sector_coord not in system.hexes:
+        return []
+
+    hex_obj = system.hexes[game.current_sector_coord]
+    if not hex_obj or not hex_obj.units:
+        return []
+
+    zoom = game.sector_zoom if isinstance(getattr(game, 'sector_zoom', 1.0), (int, float)) else 1.0
+    pan_offset = game.sector_pan_offset if isinstance(getattr(game, 'sector_pan_offset', None), Position) else Position(0, 0)
+
+    matching_units: typing.List[typing.Tuple[float, Unit]] = []
+    for unit in hex_obj.units:
+        if not game.is_unit_visible(unit):
+            continue
+        pixel_pos = sector_coords_to_pixels(unit.position, zoom, pan_offset)
+        scale_factor = HULL_BASE_ICON_SCALES[unit.hull_size]
+        effective_icon_size = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
+        obj_radius = sector_radius_to_pixels(effective_icon_size, zoom)
+        actual_click_radius = obj_radius * SECTOR_OBJECT_CLICK_RADIUS_MULT
+        click_radius_sq = (max(actual_click_radius, 5.0)) ** 2
+        if click_radius_sq < 5 ** 2:
+            click_radius_sq = 5 ** 2
+        dist_sq_val = distance_sq(mouse_pos, pixel_pos)
+
+        if dist_sq_val < click_radius_sq:
+            matching_units.append((dist_sq_val, unit))
+
+    matching_units.sort(key=lambda item: item[0])
+    return [unit for _, unit in matching_units]

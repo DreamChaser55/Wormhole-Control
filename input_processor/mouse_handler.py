@@ -9,7 +9,9 @@ from events import UseAbilityEvent
 from input_processor.context_menu_builder import (
     build_system_context_menu_options,
     build_sector_context_menu_options,
+    build_sector_unit_disambiguation_menu,
 )
+from input_processor.hover_tracker import get_units_under_mouse
 
 logger = logging.getLogger(__name__)
 
@@ -286,13 +288,19 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
             pan_offset = Position(0, 0)
 
         if is_pixel_in_sector(position, zoom, pan_offset):
-            clicked_object = game.sector_view_mouse_hover_object
             clicked_sector_coord = pixels_to_sector_coords(position, zoom, pan_offset)
             if is_right_click:
-                options, target = build_sector_context_menu_options(game, clicked_object, clicked_sector_coord)
-                gui.open_context_menu(position, options, target)
+                units_under_mouse = get_units_under_mouse(game, position)
+                if len(units_under_mouse) >= 2:
+                    options, target = build_sector_unit_disambiguation_menu(game, units_under_mouse, clicked_sector_coord)
+                    gui.open_context_menu(position, options, target)
+                else:
+                    clicked_object = units_under_mouse[0] if len(units_under_mouse) == 1 else game.sector_view_mouse_hover_object
+                    options, target = build_sector_context_menu_options(game, clicked_object, clicked_sector_coord)
+                    gui.open_context_menu(position, options, target)
 
             elif is_left_click:
+                clicked_object = game.sector_view_mouse_hover_object
                 if clicked_object:
                     if shift_pressed:
                         if isinstance(clicked_object, Unit):

@@ -171,7 +171,10 @@ def open_context_menu(gui, position: Position, options: typing.List[ContextMenuO
     for i, (text, action_id) in enumerate(options):
         if isinstance(action_id, list):
             display_text = f"{text} \u25b8"
-            gui.context_menu_submenus[i] = action_id
+            gui.context_menu_submenus[i] = (action_id, target)
+        elif isinstance(action_id, tuple) and len(action_id) == 2 and isinstance(action_id[0], list):
+            display_text = f"{text} \u25b8"
+            gui.context_menu_submenus[i] = (action_id[0], action_id[1])
         else:
             display_text = text
 
@@ -191,18 +194,19 @@ def open_context_menu(gui, position: Position, options: typing.List[ContextMenuO
         gui.context_menu_buttons.append(button)
 
 
-def is_mouse_over_context_menu(gui, mouse_pos: Position) -> bool:
+def is_mouse_over_context_menu(gui, mouse_pos: typing.Union[Position, typing.Tuple[int, int], typing.Sequence[int]]) -> bool:
     """Determines if mouse coordinates lie within the open context menu bounds.
 
     Args:
         gui: Target GUI_Handler instance.
-        mouse_pos (Position): Mouse screen coordinates to test.
+        mouse_pos (Position or tuple): Mouse screen coordinates to test.
 
     Returns:
         bool: True if mouse collides with open context menu panel.
     """
     if getattr(gui, 'context_menu_panel', None) and gui.context_menu_panel.visible:
-        return gui.context_menu_panel.get_abs_rect().collidepoint(mouse_pos.to_tuple())
+        pos_tuple = mouse_pos.to_tuple() if hasattr(mouse_pos, 'to_tuple') else tuple(mouse_pos)
+        return gui.context_menu_panel.get_abs_rect().collidepoint(pos_tuple)
     return False
 
 
@@ -220,32 +224,41 @@ def handle_button_index(gui, index: int) -> typing.Optional[dict]:
         parent_options = gui.context_menu_options
         panel_rect = gui.context_menu_panel.get_abs_rect()
         parent_pos = Position(panel_rect.x, panel_rect.y)
-        sub_options = gui.context_menu_submenus[index]
-        target = gui.context_menu_target
+        submenu_data = gui.context_menu_submenus[index]
+        if isinstance(submenu_data, tuple) and len(submenu_data) == 2 and isinstance(submenu_data[0], list):
+            sub_options, sub_target = submenu_data
+        else:
+            sub_options = submenu_data
+            sub_target = gui.context_menu_target
+
         back_option = ("Back", "__submenu_back__")
         full_sub_options = [back_option] + sub_options
 
         if not hasattr(gui, 'context_menu_history') or gui.context_menu_history is None:
             gui.context_menu_history = []
-        gui.context_menu_history.append((parent_options, parent_pos))
+        gui.context_menu_history.append((parent_options, parent_pos, gui.context_menu_target))
         gui.context_menu_parent_options = parent_options
         gui.context_menu_parent_position = parent_pos
 
-        open_context_menu(gui, parent_pos, full_sub_options, target)
+        open_context_menu(gui, parent_pos, full_sub_options, sub_target)
         return {'action': 'ui_handled'}
 
     elif index < len(getattr(gui, 'context_menu_options', [])):
         text, action_id = gui.context_menu_options[index]
         if action_id == "__submenu_back__":
-            target = gui.context_menu_target
+            parent_target = gui.context_menu_target
             if getattr(gui, 'context_menu_history', None) and len(gui.context_menu_history) > 0:
-                parent_options, parent_pos = gui.context_menu_history.pop()
+                history_entry = gui.context_menu_history.pop()
+                if len(history_entry) >= 3:
+                    parent_options, parent_pos, parent_target = history_entry[:3]
+                else:
+                    parent_options, parent_pos = history_entry[:2]
             else:
                 parent_options = getattr(gui, 'context_menu_parent_options', None)
                 parent_pos = getattr(gui, 'context_menu_parent_position', None) or Position(0, 0)
 
             if parent_options:
-                open_context_menu(gui, parent_pos, parent_options, target)
+                open_context_menu(gui, parent_pos, parent_options, parent_target)
             else:
                 close_context_menu(gui)
             return {'action': 'ui_handled'}

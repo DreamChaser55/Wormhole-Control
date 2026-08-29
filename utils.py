@@ -14,8 +14,9 @@ class HexCoord(typing.NamedTuple):
     r: int
 
 ContextMenuOption = typing.Union[
-    typing.Tuple[str, str],                                    # Flat option: (label, action_id)
-    typing.Tuple[str, typing.List[typing.Tuple[str, str]]]     # Submenu parent: (label, [(label, action_id), ...])
+    typing.Tuple[str, str],                                                  # Flat option: (label, action_id)
+    typing.Tuple[str, typing.List[typing.Any]],                              # Submenu parent: (label, [(label, action_id), ...])
+    typing.Tuple[str, typing.Tuple[typing.List[typing.Any], typing.Any]]     # Submenu with custom target: (label, (sub_options, sub_target))
 ]
 
 def resource_path(relative_path):

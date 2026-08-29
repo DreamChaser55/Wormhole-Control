@@ -443,3 +443,31 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                 options.append(("Resupply (continuously)", "continuous_resupply"))
 
     return options, target
+
+
+def build_sector_unit_disambiguation_menu(
+    game,
+    units: typing.List[Unit],
+    clicked_sector_coord: Position
+) -> typing.Tuple[typing.List[typing.Any], typing.Any]:
+    """Constructs a disambiguation context menu listing multiple units under the cursor.
+
+    Each option in the disambiguation menu represents a unit and navigates into that unit's
+    specific context menu when selected.
+
+    Args:
+        game: Target Game instance.
+        units (list[Unit]): List of units overlapping under the mouse cursor.
+        clicked_sector_coord (Position): Logical sector coordinates of the click.
+
+    Returns:
+        tuple: (options_list, target).
+    """
+    options = []
+    for unit in units:
+        unit_options, _ = build_sector_context_menu_options(game, unit, clicked_sector_coord)
+        owner_str = f" ({unit.owner.name})" if getattr(unit, 'owner', None) and getattr(unit.owner, 'name', None) else ""
+        label = f"{unit.name}{owner_str}"
+        options.append((label, (unit_options, unit)))
+
+    return options, units
