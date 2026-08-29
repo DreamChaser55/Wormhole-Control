@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
-from constants import HullSize
+from constants import HullSize, DEFAULT_STANDOFF_DISTANCE
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 
@@ -429,7 +429,7 @@ class ProtectOrder(Order):
                         dest_pos = current_sub.parameters.get("destination_position")
 
                         # If protected unit changed system/hex, or moved significantly from movement destination:
-                        planned_standoff = float(current_sub.parameters.get("standoff_distance", 30.0))
+                        planned_standoff = float(current_sub.parameters.get("standoff_distance", DEFAULT_STANDOFF_DISTANCE))
                         approach_resolved = current_sub.parameters.get("approach_position_resolved", True)
                         if (dest_system != target_unit.in_system or
                                 dest_hex != target_unit.in_hex or
@@ -444,7 +444,7 @@ class ProtectOrder(Order):
                     # Cancel movement order if we are already close enough
                     if self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex:
                         dist_to_target = distance(self.unit.position, target_unit.position)
-                        if dist_to_target <= 30.0:
+                        if dist_to_target <= DEFAULT_STANDOFF_DISTANCE:
                             logger.debug(f"[{self.unit.name}] Close enough to protected unit {target_unit.name}. Stopping movement.")
                             if self.sub_orders:
                                 self.sub_orders[0].cancel()
@@ -457,11 +457,11 @@ class ProtectOrder(Order):
                     in_same_system_and_hex = (self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex)
                     dist_to_target = distance(self.unit.position, target_unit.position) if in_same_system_and_hex else float('inf')
 
-                    if not in_same_system_and_hex or dist_to_target > 30.0:
+                    if not in_same_system_and_hex or dist_to_target > DEFAULT_STANDOFF_DISTANCE:
                         self.add_sub_order(MoveOrder.for_unit_approach(
                             self.unit,
                             target_unit,
-                            30.0,
+                            DEFAULT_STANDOFF_DISTANCE,
                             parent_order=self,
                         ))
 

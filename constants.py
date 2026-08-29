@@ -13,7 +13,6 @@ if os.name == 'nt':
             ctypes.windll.user32.SetProcessDPIAware()
         except Exception:
             pass
-
 from typing import Dict, Optional, Tuple
 
 from geometry import Vector, Position
@@ -81,6 +80,7 @@ STORM_COMPOSE_MAX_DIAMETER = 384
 # Game Mechanics Constants
 DEFAULT_HYPERDRIVE_RECHARGE_DURATION: int = 3
 DEFAULT_JUMP_RANGE: int = 5 # in hexes
+DEFAULT_STANDOFF_DISTANCE: float = 150.0  # Logical distance maintained when following or escorting a target unit
 UPKEEP_COST_PER_HULL_POINT: float = 0.01  # Credits per used hull point per turn
 TAX_RATE: float = 0.1  # 10% tax rate
 POPULATION_PER_HABITAT: float = 25.0  # Population required per supported civilian habitat module

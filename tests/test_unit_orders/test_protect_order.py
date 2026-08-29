@@ -53,7 +53,7 @@ def test_protect_order_follow_movement():
     target.owner = MockPlayer("Player1")
     target.in_system = "Sol"
     target.in_hex = (0, 0)
-    target.position = Position(100, 10)
+    target.position = Position(300, 10)
     
     protector.owner = target.owner
     
@@ -71,23 +71,23 @@ def test_protect_order_follow_movement():
     order.execute(galaxy)
     order.update(galaxy)
     
-    # Should spawn a follow MoveOrder 30 logical units short of the protected unit.
+    # Should spawn a follow MoveOrder 150 logical units short of the protected unit.
     assert len(order.sub_orders) == 1
     move_sub = order.sub_orders[0]
     assert move_sub.order_type == OrderType.MOVE
-    assert move_sub.parameters["destination_position"] == Position(70, 10)
+    assert move_sub.parameters["destination_position"] == Position(150, 10)
     
-    # Simulate target moving to (150, 10)
-    target.position = Position(150, 10)
+    # Simulate target moving to (400, 10)
+    target.position = Position(400, 10)
     order.update(galaxy)
     
-    # Since the target moved, recalculate the 30-logical-unit standoff point.
+    # Since the target moved, recalculate the 150-logical-unit standoff point.
     assert len(order.sub_orders) == 1
     move_sub = order.sub_orders[0]
-    assert move_sub.parameters["destination_position"] == Position(120, 10)
+    assert move_sub.parameters["destination_position"] == Position(250, 10)
     
-    # Simulate protector getting close (distance <= 30.0)
-    protector.position = Position(130, 10)
+    # Simulate protector getting close (distance <= 150.0)
+    protector.position = Position(260, 10)
     # The sub-order might still be in progress, updating should cancel it since we are close
     order.update(galaxy)
     assert len(order.sub_orders) == 0
@@ -117,7 +117,7 @@ def test_protect_order_combat_engagement():
     target.owner = MockPlayer("Player1")
     target.in_system = "Sol"
     target.in_hex = (0, 0)
-    target.position = Position(50, 10)
+    target.position = Position(250, 10)
     
     protector.owner = target.owner
     
@@ -155,7 +155,7 @@ def test_protect_order_combat_engagement():
     # Attack sub-order should be cleared, and follow MoveOrder to target should spawn
     assert len(order.sub_orders) == 1
     assert order.sub_orders[0].order_type == OrderType.MOVE
-    assert order.sub_orders[0].parameters["destination_position"] == Position(20, 10)
+    assert order.sub_orders[0].parameters["destination_position"] == Position(100, 10)
 
 
 def test_protect_order_target_range_limit():

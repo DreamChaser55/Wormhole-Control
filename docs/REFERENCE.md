@@ -537,7 +537,7 @@ Every celestial entity defines a `collision_radius: float` attribute (`entities.
 ### 11.3 Target-Unit Standoff Arrival
 Orders that must approach another unit create target-aware movement through
 `MoveOrder.for_unit_approach(...)`. The move stores `target_unit_id` and
-`standoff_distance`, resolves the final tactical coordinate when route planning
+`standoff_distance` (defaulting to `DEFAULT_STANDOFF_DISTANCE = 150.0` logical units for escort/protect orders), resolves the final tactical coordinate when route planning
 begins, and persists that coordinate as `destination_position`.
 
 - **Same sector (sub-light)**: The destination is the point on the target's
@@ -553,6 +553,6 @@ begins, and persists that coordinate as `destination_position`.
   that `MoveOrder`.
 
 Inhibition fields cannot overlap, so a target or candidate position can be
-contained by at most one field. Attack, Protect, Dock, Repair, Refit, resource
+contained by at most one field. Protect orders maintain the standard 150.0 logical unit standoff perimeter. Attack, Dock, Repair, Refit, resource
 transfer, trade, intelligence, and unit-targeted ability orders preserve their
 existing operational ranges by supplying those ranges as the standoff distance.
