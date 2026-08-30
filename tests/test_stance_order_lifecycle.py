@@ -317,6 +317,11 @@ def test_observation_and_sidebar_keep_standing_and_explicit_sections_compatible(
     )
     sidebar = commander.get_sidebar_data(game)
     labels = [item.get("text") for item in sidebar if item.get("type") == "label"]
-    assert "Standing Order:" in labels
-    assert "Explicit Current Order: None" in labels
-    assert "Queued Explicit Orders" in labels
+    assert "Stance Order:" in labels
+    assert "Current Order: None" in labels
+    assert "Queued Orders" in labels
+
+    commander.add_order(Order(attacker, OrderType.TOGGLE_INHIBITOR))
+    sidebar = commander.get_sidebar_data(game)
+    labels = [item.get("text") for item in sidebar if item.get("type") == "label"]
+    assert "Current Order:" in labels

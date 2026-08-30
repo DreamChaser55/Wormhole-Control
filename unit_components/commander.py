@@ -167,7 +167,7 @@ class Commander(UnitComponent):
 
         data.append({
             'type': 'label',
-            'text': "Standing Order:",
+            'text': "Stance Order:",
             'object_id': '#sidebar_section_header_label',
             'height': 25,
             'indent_level': 0,
@@ -184,7 +184,7 @@ class Commander(UnitComponent):
         if current_order:
             data.append({
                 'type': 'label', 
-                'text': "Explicit Current Order:",
+                'text': "Current Order:",
                 'object_id': '#sidebar_section_header_label', 
                 'height': 25,
                 'indent_level': 0
@@ -198,10 +198,10 @@ class Commander(UnitComponent):
                 'object_id': '#order_text_box'
             })
         else:
-            data.append({'type': 'label', 'text': "Explicit Current Order: None", 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 0})
+            data.append({'type': 'label', 'text': "Current Order: None", 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 0})
 
         # Queued Orders Section Header
-        data.append({'type': 'label', 'text': "Queued Explicit Orders", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
+        data.append({'type': 'label', 'text': "Queued Orders", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
     
         queued_order_count = len(self.orders_queue)
         section_key = f"{self.unit.id}_orders_queue" 
