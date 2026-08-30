@@ -108,38 +108,54 @@ class AttackOrder(Order):
         super().execute(galaxy_ref)
 
         target_unit_id = self.parameters["target_unit_id"]
-        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
+        galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
+        target_unit = galaxy.get_unit_by_id(target_unit_id) if galaxy else None
 
         target_component_type = resolve_component_type(self.parameters.get("target_component_type"))
 
-        if not target_unit:
+        from entities import are_enemies
+        weapons = self.unit.weapons_component
+        if not target_unit or not are_enemies(self.unit.owner, target_unit.owner):
+            self.status = OrderStatus.FAILED
+            if weapons:
+                # A rejected attack must not leave a lock inherited from a
+                # previous foreground/standing engagement.
+                weapons.clear_target()
+            return
+
+        if not weapons:
             self.status = OrderStatus.FAILED
             return
-        
-        if self.unit.weapons_component:
-            self.unit.weapons_component.set_target(target_unit, target_component_type)
+        eligible_turrets = weapons.eligible_turrets_for(target_unit)
+        if not isinstance(eligible_turrets, (list, tuple)):
+            eligible_turrets = list(getattr(weapons, "turrets", []))
+        if not eligible_turrets:
+            self.status = OrderStatus.FAILED
+            weapons.clear_target()
+            return
+        weapons.set_target(target_unit, target_component_type)
 
-            if self.unit.in_system != target_unit.in_system or self.unit.in_hex != target_unit.in_hex:
-                in_the_same_system_and_hex = False
-            else:
-                in_the_same_system_and_hex = True
+        if self.unit.in_system != target_unit.in_system or self.unit.in_hex != target_unit.in_hex:
+            in_the_same_system_and_hex = False
+        else:
+            in_the_same_system_and_hex = True
 
-            in_range = False
-            for turret in self.unit.weapons_component.turrets:
-                if distance(self.unit.position, target_unit.position) < turret.range:
-                    in_range = True
-                    break
+        in_range = False
+        for turret in eligible_turrets:
+            if distance(self.unit.position, target_unit.position) < turret.range:
+                in_range = True
+                break
             
-            min_turret_range = min(turret.range for turret in self.unit.weapons_component.turrets)
+        min_turret_range = min(turret.range for turret in eligible_turrets)
 
-            if not in_the_same_system_and_hex or not in_range:
-                move_order = MoveOrder.for_unit_approach(
-                    self.unit,
-                    target_unit,
-                    min_turret_range - 5.0,
-                    parent_order=self,
-                )
-                self.add_sub_order(move_order)
+        if not in_the_same_system_and_hex or not in_range:
+            move_order = MoveOrder.for_unit_approach(
+                self.unit,
+                target_unit,
+                max(1.0, min_turret_range - 5.0),
+                parent_order=self,
+            )
+            self.add_sub_order(move_order)
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -147,24 +163,43 @@ class AttackOrder(Order):
             return
 
         target_unit_id = self.parameters.get("target_unit_id")
-        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id else None
+        galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
+        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id and galaxy else None
 
-        if not target_unit or target_unit.current_hit_points <= 0:
-            super().update(galaxy_ref)
+        from entities import are_enemies
+        if (
+            not target_unit
+            or target_unit.current_hit_points <= 0
+            or not are_enemies(self.unit.owner, target_unit.owner)
+        ):
+            for child in list(self.sub_orders):
+                child.cancel()
+            self.sub_orders.clear()
+            self.status = OrderStatus.COMPLETED
+            if self._owns_weapon_engagement() and self.unit.weapons_component:
+                self.unit.weapons_component.clear_target()
             return
 
         weapons = self.unit.weapons_component
-        if not weapons or not weapons.turrets:
-            super().update(galaxy_ref)
+        eligible_turrets = weapons.eligible_turrets_for(target_unit) if weapons else []
+        if weapons and not isinstance(eligible_turrets, (list, tuple)):
+            eligible_turrets = list(getattr(weapons, "turrets", []))
+        if not weapons or not eligible_turrets:
+            for child in list(self.sub_orders):
+                child.cancel()
+            self.sub_orders.clear()
+            self.status = OrderStatus.FAILED
+            if self._owns_weapon_engagement() and weapons:
+                weapons.clear_target()
             return
 
-        min_turret_range = min(turret.range for turret in weapons.turrets)
+        min_turret_range = min(turret.range for turret in eligible_turrets)
 
         in_the_same_system_and_hex = (self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex)
         
         in_range = False
         if in_the_same_system_and_hex:
-            for turret in weapons.turrets:
+            for turret in eligible_turrets:
                 if distance(self.unit.position, target_unit.position) < turret.range:
                     in_range = True
                     break
@@ -184,11 +219,6 @@ class AttackOrder(Order):
                     logger.debug(f"[{self.unit.name}] Target {target_unit.name} is in weapon range. Cancelling movement.")
                     current_sub.cancel()
                     self.sub_orders.popleft()
-                    if self.unit.engines_component:
-                        self.unit.engines_component.move_target = None
-                    if self.unit.hyperdrive_component:
-                        self.unit.hyperdrive_component.hex_jump_target = None
-                        self.unit.hyperdrive_component.wormhole_jump_target = None
                     has_movement_order = False
                 else:
                     # Otherwise, check if target has moved away from our movement destination parameters
@@ -206,11 +236,6 @@ class AttackOrder(Order):
                         logger.debug(f"[{self.unit.name}] Target {target_unit.name} moved. Recalculating path.")
                         current_sub.cancel()
                         self.sub_orders.popleft()
-                        if self.unit.engines_component:
-                            self.unit.engines_component.move_target = None
-                        if self.unit.hyperdrive_component:
-                            self.unit.hyperdrive_component.hex_jump_target = None
-                            self.unit.hyperdrive_component.wormhole_jump_target = None
                         has_movement_order = False
 
         # If we don't have a movement order, check if we need to move
@@ -219,7 +244,7 @@ class AttackOrder(Order):
                 move_order = MoveOrder.for_unit_approach(
                     self.unit,
                     target_unit,
-                    min_turret_range - 5.0,
+                    max(1.0, min_turret_range - 5.0),
                     parent_order=self,
                 )
                 self.add_sub_order(move_order)
@@ -230,12 +255,21 @@ class AttackOrder(Order):
         if self.status != OrderStatus.IN_PROGRESS:
             return
         target_unit_id = self.parameters["target_unit_id"]
-        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
+        galaxy_ref = (
+            getattr(getattr(self.unit, "game", None), "galaxy", None)
+            or getattr(self.unit, "in_galaxy", None)
+        )
+        target_unit = galaxy_ref.get_unit_by_id(target_unit_id) if galaxy_ref else None
         target_component_type_str = self.parameters.get("target_component_type")
 
-        if not target_unit or target_unit.current_hit_points <= 0:
+        from entities import are_enemies
+        if (
+            not target_unit
+            or target_unit.current_hit_points <= 0
+            or not are_enemies(self.unit.owner, target_unit.owner)
+        ):
             self.status = OrderStatus.COMPLETED
-            if self.unit.weapons_component:
+            if self._owns_weapon_engagement() and self.unit.weapons_component:
                 self.unit.weapons_component.clear_target()
             return
             
@@ -245,8 +279,38 @@ class AttackOrder(Order):
                 target_component = target_unit.get_component(target_component_type)
                 if not target_component or target_component.is_destroyed:
                     self.status = OrderStatus.COMPLETED
-                    if self.unit.weapons_component:
+                    if self._owns_weapon_engagement() and self.unit.weapons_component:
                         self.unit.weapons_component.clear_target()
+
+    def _owns_weapon_engagement(self) -> bool:
+        commander = getattr(self.unit, "commander_component", None)
+        method = getattr(commander, "is_order_on_active_front_chain", None) if commander else None
+        if callable(method):
+            result = method(self)
+            if isinstance(result, bool):
+                return result
+        active_attack = getattr(commander, "get_active_attack_order", None) if commander else None
+        return bool(callable(active_attack) and active_attack() is self)
+
+    def cancel(self) -> None:
+        owns_engagement = self._owns_weapon_engagement()
+        super().cancel()
+        if owns_engagement and self.unit.weapons_component:
+            self.unit.weapons_component.clear_target()
+
+    def resume(self, galaxy_ref: 'Galaxy') -> None:
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        target_id = self.parameters.get("target_unit_id")
+        target = galaxy_ref.get_unit_by_id(target_id) if target_id else None
+        weapons = self.unit.weapons_component
+        from entities import are_enemies
+        if target and weapons and are_enemies(self.unit.owner, target.owner) and weapons.eligible_turrets_for(target):
+            weapons.set_target(target, resolve_component_type(self.parameters.get("target_component_type")))
+        elif weapons:
+            self.status = OrderStatus.FAILED
+            weapons.clear_target()
+        super().resume(galaxy_ref)
 
 
 class ProtectOrder(Order):
@@ -274,24 +338,24 @@ class ProtectOrder(Order):
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
         target_unit_id = self.parameters.get("target_unit_id")
-        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id else None
+        galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
+        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id and galaxy else None
 
         if not target_unit:
             self.status = OrderStatus.FAILED
             logger.debug(f"PROTECT order failed: Target unit {target_unit_id} not found.")
             return
 
-        if target_unit.owner != self.unit.owner:
+        from entities import are_allies
+        if not are_allies(self.unit.owner, target_unit.owner):
             self.status = OrderStatus.FAILED
-            logger.debug(f"PROTECT order failed: Target unit {target_unit.name} is not friendly.")
+            logger.debug(f"PROTECT order failed: Target unit {target_unit.name} is not allied.")
             return
 
     def _find_nearby_enemy(self, galaxy_ref: 'Galaxy', target_unit: 'Unit') -> Optional['Unit']:
         weapons = self.unit.weapons_component
         if not weapons or weapons.is_destroyed or not weapons.turrets:
             return None
-
-        from unit_components import TurretVariant, WingType
 
         # The protector must be in the same system and hex as the protected unit to search for enemies
         if self.unit.in_system != target_unit.in_system or self.unit.in_hex != target_unit.in_hex:
@@ -314,9 +378,11 @@ class ProtectOrder(Order):
         visibility_snapshot = None
         if self.unit.owner and galaxy_ref:
             from visibility import VisibilityService
-            turn_num = getattr(galaxy_ref, 'turn_number', 1)
-            if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
-                turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
+            turn_num = getattr(getattr(self.unit, 'game', None), 'turn_number', None)
+            if turn_num is None:
+                turn_num = getattr(galaxy_ref, 'turn_number', 1)
+                if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
+                    turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
             visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
 
         from entities import are_enemies
@@ -326,25 +392,7 @@ class ProtectOrder(Order):
                 if visibility_snapshot is not None and not is_unit_visible(visibility_snapshot, candidate):
                     continue
 
-                # Fighter/Bomber targeting rules
-                if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
-                    wing_comp = self.unit.strikecraft_wing_component
-                    if wing_comp:
-                        if wing_comp.wing_type == WingType.FIGHTER:
-                            if candidate.hull_size != HullSize.STRIKECRAFT_WING:
-                                continue
-                        elif wing_comp.wing_type == WingType.BOMBER:
-                            if candidate.hull_size == HullSize.STRIKECRAFT_WING:
-                                continue
-
-                can_target = False
-                for t in weapons.turrets:
-                    if candidate.hull_size == HullSize.STRIKECRAFT_WING and t.variant != TurretVariant.ANTI_STRIKECRAFT:
-                        continue
-                    can_target = True
-                    break
-
-                if not can_target:
+                if not weapons.eligible_turrets_for(candidate):
                     continue
 
                 dist_to_protector = distance(self.unit.position, candidate.position)
@@ -363,9 +411,21 @@ class ProtectOrder(Order):
             return
 
         target_unit_id = self.parameters.get("target_unit_id")
-        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id else None
+        galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
+        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id and galaxy else None
 
-        if not target_unit or target_unit.current_hit_points <= 0:
+        from entities import are_allies
+        if (
+            not target_unit
+            or target_unit.current_hit_points <= 0
+            or not are_allies(self.unit.owner, target_unit.owner)
+        ):
+            # The protected unit may disappear or change diplomacy while an
+            # approach/attack child still owns an actuator.  Unwind the whole
+            # subtree before completing so no stale pursuit can continue.
+            for child in list(self.sub_orders):
+                child.cancel()
+            self.sub_orders.clear()
             self.status = OrderStatus.COMPLETED
             if self.unit.weapons_component:
                 self.unit.weapons_component.clear_target()
@@ -378,11 +438,13 @@ class ProtectOrder(Order):
             if current_sub.order_type == OrderType.ATTACK:
                 has_attack_order = True
                 enemy_id = current_sub.parameters.get("target_unit_id")
-                enemy_unit = self.unit.game.galaxy.get_unit_by_id(enemy_id) if enemy_id else None
+                enemy_unit = galaxy.get_unit_by_id(enemy_id) if enemy_id and galaxy else None
+                from entities import are_enemies
 
                 is_in_range = False
                 if (enemy_unit and 
                         enemy_unit.current_hit_points > 0 and 
+                        are_enemies(self.unit.owner, enemy_unit.owner) and
                         enemy_unit.in_system == self.unit.in_system and 
                         enemy_unit.in_hex == self.unit.in_hex and
                         target_unit.in_system == self.unit.in_system and
@@ -395,8 +457,6 @@ class ProtectOrder(Order):
                     logger.debug(f"[{self.unit.name}] Protect attack target lost, dead, or out of threat range. Resuming protection.")
                     current_sub.cancel()
                     self.sub_orders.popleft()
-                    if self.unit.weapons_component:
-                        self.unit.weapons_component.clear_target()
                     has_attack_order = False
 
         if not has_attack_order:
@@ -408,11 +468,6 @@ class ProtectOrder(Order):
                 for sub in list(self.sub_orders):
                     sub.cancel()
                 self.sub_orders.clear()
-                if self.unit.engines_component:
-                    self.unit.engines_component.move_target = None
-                if self.unit.hyperdrive_component:
-                    self.unit.hyperdrive_component.hex_jump_target = None
-                    self.unit.hyperdrive_component.wormhole_jump_target = None
 
                 # Spawn attack order
                 attack_params = {"target_unit_id": nearby_enemy.id}
@@ -449,8 +504,6 @@ class ProtectOrder(Order):
                             if self.sub_orders:
                                 self.sub_orders[0].cancel()
                                 self.sub_orders.popleft()
-                            if self.unit.engines_component:
-                                self.unit.engines_component.move_target = None
                             has_movement_order = False
 
                 if not has_movement_order:

@@ -124,9 +124,13 @@ class GalaxyViewRenderer:
 
                 system_for_next_order_chain = selected_unit.in_system 
 
-                if selected_unit.commander_component.current_order:
+                active_root = (
+                    selected_unit.commander_component.current_order
+                    or selected_unit.commander_component.get_active_order_root()
+                )
+                if active_root:
                     system_for_next_order_chain, waypoint_global_sequence_counter = self.collect_all_system_waypoints_recursive(
-                        selected_unit.commander_component.current_order,
+                        active_root,
                         system_for_next_order_chain, 
                         True, 
                         all_collected_waypoints, 

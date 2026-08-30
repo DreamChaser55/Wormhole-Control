@@ -89,7 +89,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 ### Combat & Warfare
 - **Weapon Systems**: Mount Mass Driver (kinetic), Beam (laser), or Missile (guided payload) turrets across Standard, Anti-Strikecraft, and Long-Range variants.
 - **Hull Durability & Defenses**: Ships feature customizable Armor (counters mass drivers), Shields (counters beams), and Point Defense (counters missiles) systems to mitigate incoming damage.
-- **Unit Stances**: Configure automated engagement behavior (Do Nothing, Attack in Weapon Range, Attack in Sector, Attack in Jump Range, or Attack in System).
+- **Unit Stances**: Configure a persistent standing engagement policy (Do Nothing, Attack in Weapon Range, Attack in Sector, Attack in Jump Range, or Attack in System). Explicit orders temporarily suspend stance pursuits and always take priority; the stance resumes when explicit work finishes. **Stop Unit** cancels everything and selects Do Nothing.
 - **Combat Experience (XP)**: Units gain experience from battle, ranking up to boost weapon damage, defensive ratings, sublight speed, and hyperdrive jump ranges.
 - **Boarding Actions**: Deploy specialized Marine strike teams to breach and capture enemy vessels.
 - **Minefields**: Minelayers can deploy Anti-Ship and Anti-Strikecraft minefields for tactical area denial.
@@ -126,7 +126,7 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 
 ## Saving & Loading
 
-- **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory.
+- **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory. Save format 3.1 records the selected stance and preserves explicit current/queued orders separately.
 - **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match.
 - **AI Memory**: Built-in OpenAI players keep canonical long-term memory in each save. A readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`.
 - **Comms Log**: In-game player communications are logged in real-time to `saves/comms.md`. Campaign-specific transmission logs are also generated at `saves/comms/<campaign>/comms.md` during saves.

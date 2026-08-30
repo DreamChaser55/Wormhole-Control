@@ -90,8 +90,7 @@ class CaptureUnitAbility(AbilityInstance):
 
         # Reset targets and stance of the captured unit to prevent unwanted behaviors
         if target_unit.commander_component:
-            target_unit.commander_component.clear_orders()
-            target_unit.commander_component.stance = UnitStance.DO_NOTHING
+            target_unit.commander_component.stop_and_idle()
 
         if target_unit.weapons_component:
             target_unit.weapons_component.clear_target()

@@ -446,7 +446,7 @@ class SectorOverlayRenderer:
                     sub_order,
                     unit,
                     all_waypoints_sequence,
-                    is_current=(is_current and order == unit.commander_component.current_order)
+                    is_current=is_current,
                 )
             return
 
@@ -457,7 +457,7 @@ class SectorOverlayRenderer:
                     sub_order,
                     unit,
                     all_waypoints_sequence,
-                    is_current=(is_current and order == unit.commander_component.current_order)
+                    is_current=is_current,
                 )
             return
 
@@ -526,8 +526,12 @@ class SectorOverlayRenderer:
     def collect_all_waypoints(self, unit, is_current_order=False):
         all_waypoints_sequence = []
         
-        if unit.commander_component.current_order:
-            self.collect_waypoints_from_order(unit.commander_component.current_order, unit, all_waypoints_sequence, True)
+        active_root = (
+            unit.commander_component.current_order
+            or unit.commander_component.get_active_order_root()
+        )
+        if active_root:
+            self.collect_waypoints_from_order(active_root, unit, all_waypoints_sequence, True)
         
         for queued_order in list(unit.commander_component.orders_queue):
             self.collect_waypoints_from_order(queued_order, unit, all_waypoints_sequence, False)
@@ -853,4 +857,3 @@ class SectorOverlayRenderer:
 
             self.overlay_surface.blit(tip_bg, (tip_x, tip_y))
             self.overlay_surface.blit(tip_surf, (tip_x + 5, tip_y + 3))
-

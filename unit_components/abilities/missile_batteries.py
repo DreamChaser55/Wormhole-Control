@@ -107,6 +107,7 @@ class MissileBatteriesAbility(AbilityInstance):
     def _auto_target_platforms(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
         """Issue Attack orders against the nearest enemy for active missile platforms."""
         from unit_orders import AttackOrder
+        from entities import are_enemies
 
         system = galaxy.systems.get(component.unit.in_system)
         if not system:
@@ -124,7 +125,7 @@ class MissileBatteriesAbility(AbilityInstance):
             min_dist = float('inf')
             max_range = max((t.range for t in platform.weapons_component.turrets), default=0)
             for candidate in hex_obj.units:
-                if candidate.owner == platform.owner or candidate.current_hit_points <= 0:
+                if not are_enemies(platform.owner, candidate.owner) or candidate.current_hit_points <= 0:
                     continue
                 d = distance(platform.position, candidate.position)
                 if d <= max_range and d < min_dist:
@@ -141,7 +142,7 @@ class MissileBatteriesAbility(AbilityInstance):
 
             if closest_enemy is None:
                 if commander:
-                    commander.clear_orders()
+                    commander.clear_explicit_orders()
                 else:
                     platform.weapons_component.clear_target()
                 continue
@@ -150,7 +151,7 @@ class MissileBatteriesAbility(AbilityInstance):
                 continue
 
             if commander:
-                commander.clear_orders()
+                commander.clear_explicit_orders()
                 commander.add_order(
                     AttackOrder(platform, {"target_unit_id": closest_enemy.id})
                 )

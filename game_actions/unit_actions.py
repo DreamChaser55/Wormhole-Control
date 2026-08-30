@@ -141,7 +141,7 @@ def handle_unload_resources_nearest(game, action: dict) -> None:
 
         if orders_to_add:
             if not shift_pressed and unit.commander_component:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             for order in orders_to_add:
                 if unit.commander_component:
                     unit.commander_component.add_order(order)
@@ -186,7 +186,7 @@ def handle_set_stance(game, action: dict) -> None:
             if matching_stance is not None:
                 allowed_stances = unit.commander_component.get_allowed_stances()
                 if matching_stance in allowed_stances:
-                    unit.commander_component.stance = matching_stance
+                    unit.commander_component.set_stance(matching_stance)
                     logger.debug(f"Unit {unit.name} (id:{unit.id}) stance set to {matching_stance.name}.")
                 else:
                     logger.warning(f"Unit {unit.name} (id:{unit.id}) stance {matching_stance.name} is not allowed.")
@@ -213,7 +213,7 @@ def handle_cycle_stance(game, action: dict) -> None:
                     current_stance = allowed_stances[0]
                 current_idx = allowed_stances.index(current_stance)
                 next_idx = (current_idx + 1) % len(allowed_stances)
-                unit.commander_component.stance = allowed_stances[next_idx]
+                unit.commander_component.set_stance(allowed_stances[next_idx])
                 logger.debug(f"Unit {unit.name} (id:{unit.id}) stance cycled to {unit.commander_component.stance.name}.")
     game.sidebar_needs_update = True
 

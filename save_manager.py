@@ -11,6 +11,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any, Tuple
+from enum import Enum
 
 from utils import generate_short_id
 from player_controller import PlayerController
@@ -38,7 +39,8 @@ from unit_components import (
     MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
     StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
     MinelayerComponent, MarinesComponent, CloakingDevice, IntelligenceComponent,
-    instantiate_unit_from_template, instantiate_component_for_unit, get_component_class_by_name
+    instantiate_unit_from_template, instantiate_component_for_unit, get_component_class_by_name,
+    UnitStance
 )
 from unit_orders import (
     Order, OrderStatus, OrderType,
@@ -48,7 +50,7 @@ from unit_orders import (
     UseAbilityOrder, ProtectOrder, ContinuousMineOrder, TransferAntimatterOrder,
     ContinuousResupplyOrder, LayMinefieldOrder, RefitOrder, TradeOrder, ContinuousTradeOrder,
     InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder,
-    CISweepOrder, EliminateAgentOrder, ExtractAgentOrder
+    CISweepOrder, EliminateAgentOrder, ExtractAgentOrder, ORDER_CLASS_REGISTRY
 )
 
 logger = logging.getLogger(__name__)
@@ -73,37 +75,7 @@ CELESTIAL_CLASSES = {
     "Wormhole": Wormhole,
 }
 
-# Map of OrderType string names to Order classes
-ORDER_CLASSES = {
-    "MOVE": MoveOrder,
-    "REACH_WAYPOINT": ReachWaypointOrder,
-    "ATTACK": AttackOrder,
-    "COLONIZE": ColonizeOrder,
-    "LOAD_COLONISTS": LoadColonistsOrder,
-    "CONSTRUCT": ConstructOrder,
-    "TOGGLE_INHIBITOR": ToggleInhibitorOrder,
-    "PATROL": PatrolOrder,
-    "REPAIR": RepairOrder,
-    "MINE": MineOrder,
-    "UNLOAD_RESOURCES": UnloadResourcesOrder,
-    "DOCK": DockOrder,
-    "DEPLOY_UNIT": DeployUnitOrder,
-    "USE_ABILITY": UseAbilityOrder,
-    "PROTECT": ProtectOrder,
-    "CONTINUOUS_MINE": ContinuousMineOrder,
-    "TRANSFER_ANTIMATTER": TransferAntimatterOrder,
-    "CONTINUOUS_RESUPPLY": ContinuousResupplyOrder,
-    "REFIT_UNIT": RefitOrder,
-    "TRADE": TradeOrder,
-    "CONTINUOUS_TRADE": ContinuousTradeOrder,
-    "INFILTRATE_UNIT": InfiltrateUnitOrder,
-    "INFILTRATE_PLANET": InfiltratePlanetOrder,
-    "RELOCATE_AGENT": RelocateAgentOrder,
-    "SABOTAGE": SabotageOrder,
-    "CI_SWEEP": CISweepOrder,
-    "ELIMINATE_AGENT": EliminateAgentOrder,
-    "EXTRACT_AGENT": ExtractAgentOrder,
-}
+ORDER_CLASSES = {order_type.name: order_cls for order_type, order_cls in ORDER_CLASS_REGISTRY.items()}
 
 
 
@@ -185,26 +157,107 @@ def serialize_celestial_body(body: CelestialBody) -> dict:
     return data
 
 
+def _encode_order_value(value: Any) -> Any:
+    """Recursively encode order parameters without losing container types."""
+    if isinstance(value, Vector):
+        return {"__type__": "position", "x": value.x, "y": value.y}
+    if isinstance(value, Enum):
+        return {"__type__": "enum", "enum": value.__class__.__name__, "value": value.value}
+    if isinstance(value, type):
+        return {"__type__": "class", "name": value.__name__}
+    if isinstance(value, tuple):
+        return {"__type__": "tuple", "items": [_encode_order_value(item) for item in value]}
+    if isinstance(value, list):
+        return [_encode_order_value(item) for item in value]
+    if isinstance(value, dict):
+        if all(isinstance(key, str) for key in value):
+            return {key: _encode_order_value(item) for key, item in value.items()}
+        return {
+            "__type__": "dict",
+            "items": [
+                [_encode_order_value(key), _encode_order_value(item)]
+                for key, item in value.items()
+            ],
+        }
+    if isinstance(value, set):
+        return {"__type__": "set", "items": [_encode_order_value(item) for item in value]}
+    return value
+
+
+def _decode_known_enum(enum_name: str, value: Any) -> Any:
+    import constants as constants_module
+    import unit_components.enums as component_enums
+    import unit_orders.base as order_enums
+    import player_controller as controller_enums
+    for module in (constants_module, component_enums, order_enums, controller_enums):
+        enum_cls = getattr(module, enum_name, None)
+        if isinstance(enum_cls, type) and issubclass(enum_cls, Enum):
+            try:
+                return enum_cls(value)
+            except (TypeError, ValueError):
+                try:
+                    return enum_cls[str(value)]
+                except (KeyError, TypeError):
+                    break
+    logger.warning("Unknown serialized enum %s=%r; preserving raw value.", enum_name, value)
+    return value
+
+
+_POSITION_PARAMETER_KEYS = {"destination_position", "target_position", "waypoint", "position", "start_position"}
+_HEX_PARAMETER_KEYS = {"destination_hex", "target_hex", "destination_hex_coord", "target_hex_coord", "hex_coord", "start_hex_coord"}
+
+
+def _decode_order_value(value: Any, key_hint: Optional[str] = None) -> Any:
+    """Decode tagged 3.1 values and legacy untagged position/hex arrays."""
+    if isinstance(value, dict):
+        type_tag = value.get("__type__")
+        if type_tag == "position":
+            return Position(value["x"], value["y"])
+        if type_tag == "enum":
+            return _decode_known_enum(value.get("enum", ""), value.get("value"))
+        if type_tag == "class":
+            return value.get("name")
+        if type_tag == "tuple":
+            return tuple(_decode_order_value(item) for item in value.get("items", []))
+        if type_tag == "set":
+            return set(_decode_order_value(item) for item in value.get("items", []))
+        if type_tag == "dict":
+            return {
+                _decode_order_value(pair[0]): _decode_order_value(pair[1])
+                for pair in value.get("items", [])
+                if isinstance(pair, list) and len(pair) == 2
+            }
+        return {key: _decode_order_value(item, str(key)) for key, item in value.items()}
+    if isinstance(value, list):
+        decoded = [_decode_order_value(item) for item in value]
+        if len(decoded) == 2 and all(isinstance(item, (int, float)) for item in decoded):
+            if key_hint in _POSITION_PARAMETER_KEYS:
+                return Position(decoded[0], decoded[1])
+            if key_hint in _HEX_PARAMETER_KEYS:
+                return tuple(decoded)
+        return decoded
+    return value
+
+
 def serialize_order(order: Order) -> dict:
-    params = {}
-    if hasattr(order, "parameters") and isinstance(order.parameters, dict):
-        for k, v in order.parameters.items():
-            if isinstance(v, Position) or isinstance(v, Vector):
-                params[k] = [v.x, v.y]
-            elif isinstance(v, (tuple, list)):
-                params[k] = list(v)
-            else:
-                params[k] = v
+    params = _encode_order_value(getattr(order, "parameters", {}))
 
     order_type_str = order.order_type.name if hasattr(order, "order_type") and order.order_type else "UNKNOWN"
     status_str = order.status.name if hasattr(order, "status") and order.status else "PENDING"
 
-    sub_orders = [serialize_order(so) for so in getattr(order, "sub_orders", [])]
+    # A standing stance is a persistent policy; its Attack/Move descendants
+    # are transient and must be reacquired after loading rather than persisted.
+    sub_orders = (
+        []
+        if order_type_str == OrderType.STANCE.name
+        else [serialize_order(so) for so in getattr(order, "sub_orders", [])]
+    )
 
     return {
         "order_type": order_type_str,
         "status": status_str,
         "parameters": params,
+        "runtime_state": _encode_order_value(order.get_persistence_state()),
         "sub_orders": sub_orders
     }
 
@@ -301,9 +354,14 @@ def serialize_components(unit: Unit) -> dict:
 
 
 def serialize_unit(unit: Unit) -> dict:
-    orders_data = []
-    if unit.commander_component and hasattr(unit.commander_component, "orders"):
-        orders_data = [serialize_order(o) for o in unit.commander_component.orders]
+    commander_data = None
+    if unit.commander_component:
+        commander = unit.commander_component
+        commander_data = {
+            "stance": commander.stance.value,
+            "current_order": serialize_order(commander.current_order) if commander.current_order else None,
+            "orders_queue": [serialize_order(order) for order in commander.orders_queue],
+        }
 
     return {
         "id": unit.id,
@@ -325,7 +383,7 @@ def serialize_unit(unit: Unit) -> dict:
         "is_temporary": unit.is_temporary,
         "infiltrating_agents": [a.to_dict() for a in getattr(unit, 'infiltrating_agents', [])],
         "components": serialize_components(unit),
-        "orders": orders_data
+        "commander": commander_data,
     }
 
 
@@ -391,7 +449,7 @@ def serialize_game_state(game: Any) -> dict:
     ]
 
     return {
-        "version": "3.0",
+        "version": "3.1",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -522,27 +580,87 @@ def deserialize_order(data: dict, unit: Unit, game: Any) -> Optional[Order]:
         logger.warning(f"Unknown Order class for order_type: {order_type_str}")
         return None
 
-    params = dict(data.get("parameters", {}))
-    # Convert list positions back to Position objects if present
-    for k, v in list(params.items()):
-        if isinstance(v, list) and len(v) == 2 and isinstance(v[0], (int, float)) and isinstance(v[1], (int, float)):
-            if k in ("destination_position", "target_position", "waypoint"):
-                params[k] = Position(v[0], v[1])
-            elif k in ("destination_hex", "target_hex", "destination_hex_coord", "target_hex_coord"):
-                params[k] = tuple(v)
+    params = _decode_order_value(data.get("parameters", {}))
+    if not isinstance(params, dict):
+        logger.warning("Invalid parameters for order_type %s", order_type_str)
+        return None
 
     order = order_cls(unit=unit, parameters=params)
     status_str = data.get("status", "PENDING")
     if hasattr(OrderStatus, status_str):
         order.status = OrderStatus[status_str]
+    runtime_state = _decode_order_value(data.get("runtime_state", {}))
+    if isinstance(runtime_state, dict):
+        order.restore_persistence_state(runtime_state)
 
-    for sub_data in data.get("sub_orders", []):
+    # Stance descendants are deliberately transient.  Ignore any such payload
+    # from hand-authored or pre-3.1 saves and let the policy reacquire safely.
+    serialized_sub_orders = [] if order_type_str == OrderType.STANCE.name else data.get("sub_orders", [])
+    for sub_data in serialized_sub_orders:
         sub_order = deserialize_order(sub_data, unit, game)
         if sub_order:
             sub_order.parent_order = order
             order.sub_orders.append(sub_order)
 
     return order
+
+
+def _iter_unit_tree(root: Unit):
+    """Yield a deployed or docked unit and every recursively docked child."""
+    yield root
+    for component in (root.hangar_component, root.strikecraft_bay_component):
+        if component:
+            for docked in component.docked_units:
+                yield from _iter_unit_tree(docked)
+
+
+def _restore_saved_commander(unit: Unit, game: Any) -> None:
+    if not hasattr(unit, "_saved_commander_data") or not unit.commander_component:
+        return
+    commander_data = unit._saved_commander_data
+    commander = unit.commander_component
+    # Route all legacy/current forms through the Commander compatibility
+    # parser (stable values, enum names, and ``UnitStance.NAME`` strings).
+    raw_stance = commander_data.get("stance", UnitStance.DO_NOTHING.value)
+    try:
+        commander.set_stance(raw_stance)
+    except (TypeError, ValueError):
+        commander.set_stance(UnitStance.DO_NOTHING)
+
+    current_order = None
+    queued_orders = []
+    # A few 3.0 payloads put the legacy order list beside an otherwise empty
+    # commander object. Treat that list the same as a fully absent commander
+    # payload so current-vs-queued semantics remain deterministic.
+    legacy_orders = commander_data.get("legacy_orders")
+    if legacy_orders is None:
+        # Some transitional 3.0 writers nested the old list under the
+        # Commander object instead of placing it beside the unit payload.
+        legacy_orders = commander_data.get("orders")
+    if legacy_orders is None and not commander_data.get("current_order") and not commander_data.get("orders_queue"):
+        legacy_orders = getattr(unit, "_legacy_orders", None)
+
+    if legacy_orders is not None:
+        restored = [
+            order
+            for raw in legacy_orders
+            if (order := deserialize_order(raw, unit, game)) is not None
+        ]
+        if restored:
+            current_order, *queued_orders = restored
+    else:
+        current_data = commander_data.get("current_order")
+        if current_data:
+            current_order = deserialize_order(current_data, unit, game)
+        queued_orders = [
+            order
+            for raw in commander_data.get("orders_queue", [])
+            if (order := deserialize_order(raw, unit, game)) is not None
+        ]
+    commander.restore_explicit_orders(current_order, queued_orders, getattr(game, "galaxy", None))
+    delattr(unit, "_saved_commander_data")
+    if hasattr(unit, "_legacy_orders"):
+        delattr(unit, "_legacy_orders")
 
 
 def _build_unit_from_template(template_name: str, owner: Player, position: Position, in_hex: Tuple[int, int], in_system: str, game: Any, custom_name: str) -> Unit:
@@ -857,8 +975,23 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
         from unit_components import Agent
         unit.infiltrating_agents = [Agent.from_dict(ad, players_by_id, unit) for ad in data["infiltrating_agents"]]
 
-    # Note: Commander orders will be restored after all units are in place so references can be mapped.
-    unit._saved_orders_data = data.get("orders", [])
+    # Commander state is restored after all units exist so target references resolve.
+    if "commander" in data:
+        unit._saved_commander_data = data.get("commander") or {}
+        # Preserve legacy arrays even when a partially migrated save already
+        # contains a commander key.
+        if (
+            data.get("orders")
+            and not unit._saved_commander_data.get("current_order")
+            and not unit._saved_commander_data.get("orders_queue")
+        ):
+            unit._legacy_orders = data.get("orders", [])
+    else:
+        # 3.0 compatibility: absent data means Do Nothing; tolerate legacy order arrays.
+        unit._saved_commander_data = {
+            "stance": UnitStance.DO_NOTHING.value,
+            "legacy_orders": data.get("orders", []),
+        }
 
     return unit
 
@@ -946,6 +1079,7 @@ def deserialize_galaxy(data: dict, players_by_id: Dict[int, Player], game: Any) 
 
     for sys_data in data.get("systems", []):
         sys_obj = deserialize_star_system(sys_data, players_by_id, game)
+        sys_obj.in_galaxy = galaxy
         galaxy.systems[sys_obj.name] = sys_obj
 
         # Collect wormholes
@@ -996,17 +1130,11 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
                 for body in hex_obj.celestial_bodies:
                     if body.id > max_object_id:
                         max_object_id = body.id
-                for unit in hex_obj.units:
-                    if unit.id > max_object_id:
-                        max_object_id = unit.id
-
-                    if hasattr(unit, "_saved_orders_data") and unit.commander_component:
-                        unit.commander_component.clear_orders()
-                        for order_data in unit._saved_orders_data:
-                            order = deserialize_order(order_data, unit, game)
-                            if order:
-                                unit.commander_component.add_order(order)
-                        delattr(unit, "_saved_orders_data")
+                for root_unit in hex_obj.units:
+                    for unit in _iter_unit_tree(root_unit):
+                        max_object_id = max(max_object_id, unit.id)
+                        unit.in_galaxy = game.galaxy
+                        _restore_saved_commander(unit, game)
 
         # Update global object and player counters to prevent ID collisions
         max_player_id = max([p.id for p in game.players]) if game.players else 0
@@ -1017,6 +1145,14 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
         game.visibility = None
         game.visibility_dirty = True
         game.recompute_visibility()
+        # Reacquire transient standing engagements only for deployed units.
+        # Docked ships retain their policy but are not active in the galaxy until
+        # they are launched from a carrier.
+        for system_obj in game.galaxy.systems.values():
+            for unit, _ in system_obj.get_all_units():
+                commander = getattr(unit, "commander_component", None)
+                if commander and commander.current_order is None and not commander.orders_queue:
+                    commander.process_stance()
         game.update_side_bar_content()
         game.update_player_turn_display()
         if hasattr(game, 'check_and_schedule_ai_turn'):

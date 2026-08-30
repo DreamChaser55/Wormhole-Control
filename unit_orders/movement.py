@@ -71,15 +71,14 @@ class ReachWaypointOrder(Order):
             
         # Hex jumps require a hyperdrive. Sub-light movement engines are disabled.
         if current_system == dest_system and current_hex != dest_hex:
-            if not self.unit.hyperdrive_component:
+            if not self.unit.hyperdrive_component or not self.unit.hyperdrive_component.is_functional:
                 self.status = OrderStatus.FAILED
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump hex, no hyperdrive).")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump hex, no functional hyperdrive).")
                 return
                 
-            self.unit.hyperdrive_component.hex_jump_target = (dest_hex, dest_position)
-            self.unit.hyperdrive_component.wormhole_jump_target = None
+            self.unit.hyperdrive_component.set_hex_jump_target((dest_hex, dest_position), self.order_id)
             if self.unit.engines_component:
-                self.unit.engines_component.move_target = None
+                self.unit.engines_component.clear_move_target(self.order_id)
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating HEX JUMP to {dest_hex}:{dest_position} in {dest_system}.")
             
         # Sub-light engine movement is used within the same hex. Hyperdrive targets are cleared.
@@ -88,17 +87,16 @@ class ReachWaypointOrder(Order):
             if not engines or not engines.is_operational:
                 self.status = OrderStatus.FAILED
                 if engines:
-                    engines.move_target = None
+                    engines.clear_move_target(self.order_id)
                 reason = "no engines" if not engines else "engines are destroyed or offline"
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot move in sector, {reason}).")
                 return
 
             if distance(self.unit.position, dest_position) < 0.01:
                 self.status = OrderStatus.COMPLETED
-                self.unit.engines_component.move_target = None
+                self.unit.engines_component.clear_move_target(self.order_id)
                 if self.unit.hyperdrive_component:
-                    self.unit.hyperdrive_component.hex_jump_target = None
-                    self.unit.hyperdrive_component.wormhole_jump_target = None
+                    self.unit.hyperdrive_component.clear_jump_target(self.order_id)
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): COMPLETED (already at sub-light destination {dest_position} in {dest_system}:{dest_hex}).")
                 return
 
@@ -121,16 +119,19 @@ class ReachWaypointOrder(Order):
                     self.sub_orders[0].execute(galaxy_ref=galaxy_ref)
                 return
 
-            self.unit.engines_component.move_target = dest_position
+            self.unit.engines_component.set_move_target(dest_position, self.order_id)
             if self.unit.hyperdrive_component:
-                self.unit.hyperdrive_component.hex_jump_target = None
-                self.unit.hyperdrive_component.wormhole_jump_target = None
+                self.unit.hyperdrive_component.clear_jump_target(self.order_id)
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating sub-light move to {dest_position} in {dest_system}:{dest_hex}.")
             
         # Inter-system travel requires navigating via a wormhole connecting the two systems.
         else: # current_system != dest_system
             from unit_components import HyperdriveType
-            if not self.unit.hyperdrive_component or self.unit.hyperdrive_component.drive_type != HyperdriveType.ADVANCED:
+            if (
+                not self.unit.hyperdrive_component
+                or not self.unit.hyperdrive_component.is_functional
+                or self.unit.hyperdrive_component.drive_type != HyperdriveType.ADVANCED
+            ):
                 self.status = OrderStatus.FAILED
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump to different system, no advanced hyperdrive).")
                 return
@@ -150,22 +151,36 @@ class ReachWaypointOrder(Order):
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (no wormhole from {current_system} to {dest_system}).")
                 return
                 
-            self.unit.hyperdrive_component.wormhole_jump_target = wormhole
-            self.unit.hyperdrive_component.hex_jump_target = None
+            self.unit.hyperdrive_component.set_wormhole_jump_target(wormhole, self.order_id)
             if self.unit.engines_component:
-                self.unit.engines_component.move_target = None
+                self.unit.engines_component.clear_move_target(self.order_id)
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Initiating SYSTEM JUMP via wormhole {wormhole.name} to {dest_system}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
             return
 
+        destination_requires_jump = (
+            self.unit.in_system != self.parameters.get("destination_system_name")
+            or self.unit.in_hex != self.parameters.get("destination_hex_coord")
+        )
+        if destination_requires_jump:
+            drive = self.unit.hyperdrive_component
+            if not drive or not drive.is_functional:
+                if drive:
+                    drive.clear_jump_target(self.order_id)
+                self.status = OrderStatus.FAILED
+                logger.debug(
+                    f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): "
+                    "FAILED (functional hyperdrive unavailable)."
+                )
+                return
+
         from unit_components.movement import JumpStatus
         if self.unit.hyperdrive_component and self.unit.hyperdrive_component.jump_status == JumpStatus.ERROR:
             if self.unit.engines_component:
-                self.unit.engines_component.move_target = None
-            self.unit.hyperdrive_component.hex_jump_target = None
-            self.unit.hyperdrive_component.wormhole_jump_target = None
+                self.unit.engines_component.clear_move_target(self.order_id)
+            self.unit.hyperdrive_component.clear_jump_target(self.order_id)
             self.unit.hyperdrive_component.jump_status = JumpStatus.READY
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): FAILED (hyperdrive reported ERROR state).")
@@ -188,7 +203,7 @@ class ReachWaypointOrder(Order):
             engines = self.unit.engines_component
             if not engines or not engines.is_operational:
                 if engines:
-                    engines.move_target = None
+                    engines.clear_move_target(self.order_id)
                 self.status = OrderStatus.FAILED
                 reason = "no engines" if not engines else "engines are destroyed or offline"
                 logger.debug(
@@ -200,12 +215,45 @@ class ReachWaypointOrder(Order):
         
         if current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:
             if self.unit.engines_component:
-                self.unit.engines_component.move_target = None
+                self.unit.engines_component.clear_move_target(self.order_id)
             if self.unit.hyperdrive_component:
-                self.unit.hyperdrive_component.hex_jump_target = None
-                self.unit.hyperdrive_component.wormhole_jump_target = None
+                self.unit.hyperdrive_component.clear_jump_target(self.order_id)
             self.status = OrderStatus.COMPLETED
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): COMPLETED (arrived at waypoint: {dest_position}:Hex{dest_hex}:{dest_system})")
+
+    def cancel(self) -> None:
+        super().cancel()
+        if self.unit.engines_component:
+            self.unit.engines_component.clear_move_target(self.order_id)
+        if self.unit.hyperdrive_component:
+            self.unit.hyperdrive_component.clear_jump_target(self.order_id)
+
+    def resume(self, galaxy_ref: 'Galaxy') -> None:
+        """Restore the active actuator binding without replanning the route."""
+        super().resume(galaxy_ref)
+        if self.status != OrderStatus.IN_PROGRESS or self.sub_orders:
+            return
+        dest_system = self.parameters.get("destination_system_name")
+        dest_hex = self.parameters.get("destination_hex_coord")
+        dest_position = self.parameters.get("destination_position")
+        if dest_system is None or dest_hex is None or dest_position is None:
+            return
+        if self.unit.in_system == dest_system and self.unit.in_hex == dest_hex:
+            engines = self.unit.engines_component
+            if engines and engines.is_operational and distance(self.unit.position, dest_position) >= 0.01:
+                engines.set_move_target(dest_position, self.order_id)
+            return
+        drive = self.unit.hyperdrive_component
+        if not drive or not drive.is_functional:
+            return
+        if self.unit.in_system == dest_system:
+            drive.set_hex_jump_target((dest_hex, dest_position), self.order_id)
+            return
+        from unit_components import HyperdriveType
+        if drive.drive_type == HyperdriveType.ADVANCED:
+            wormhole = self.find_wormhole_to_system(self.unit.in_system, dest_system, galaxy_ref, self.unit.hull_size)
+            if wormhole:
+                drive.set_wormhole_jump_target(wormhole, self.order_id)
 
 
 class MoveOrder(Order):
@@ -846,7 +894,7 @@ class MoveOrder(Order):
             if not engines or not engines.is_operational:
                 self.status = OrderStatus.FAILED
                 if engines:
-                    engines.move_target = None
+                    engines.clear_move_target(self.order_id)
                 reason = "no engines" if not engines else "engines are destroyed or offline"
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, {reason}).")
                 return

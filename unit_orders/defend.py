@@ -138,8 +138,6 @@ class DefendOrder(Order):
 
         from entities import are_enemies
         from visibility import is_unit_visible
-        from unit_components import TurretVariant, WingType
-
         guard_radius = float(self.parameters.get("guard_radius", DEFAULT_DEFEND_GUARD_RADIUS))
         closest_enemy = None
         min_dist = float('inf')
@@ -149,23 +147,7 @@ class DefendOrder(Order):
                 if visibility_snapshot is not None and not is_unit_visible(visibility_snapshot, candidate):
                     continue
 
-                # Fighter / Bomber targeting restrictions
-                if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
-                    wing_comp = getattr(self.unit, "strikecraft_wing_component", None)
-                    if wing_comp:
-                        if wing_comp.wing_type == WingType.FIGHTER and candidate.hull_size != HullSize.STRIKECRAFT_WING:
-                            continue
-                        elif wing_comp.wing_type == WingType.BOMBER and candidate.hull_size == HullSize.STRIKECRAFT_WING:
-                            continue
-
-                can_target = False
-                for t in weapons.turrets:
-                    if candidate.hull_size == HullSize.STRIKECRAFT_WING and t.variant != TurretVariant.ANTI_STRIKECRAFT:
-                        continue
-                    can_target = True
-                    break
-
-                if not can_target:
+                if not weapons.eligible_turrets_for(candidate):
                     continue
 
                 dist_to_defended = distance(dest_pos, candidate.position)
@@ -185,6 +167,9 @@ class DefendOrder(Order):
 
         dest_system, dest_hex, dest_pos = self._resolve_destination(galaxy_ref)
         if dest_system is None or dest_hex is None or dest_pos is None:
+            for child in list(self.sub_orders):
+                child.cancel()
+            self.sub_orders.clear()
             self.status = OrderStatus.FAILED
             return
 
@@ -200,11 +185,13 @@ class DefendOrder(Order):
                 enemy_unit = None
                 if galaxy_ref and hasattr(galaxy_ref, "get_unit_by_id"):
                     enemy_unit = galaxy_ref.get_unit_by_id(enemy_id) if enemy_id else None
+                from entities import are_enemies
 
                 is_in_range = False
                 if (
                     enemy_unit
                     and enemy_unit.current_hit_points > 0
+                    and are_enemies(self.unit.owner, enemy_unit.owner)
                     and enemy_unit.in_system == dest_system
                     and enemy_unit.in_hex == dest_hex
                 ):
@@ -216,8 +203,6 @@ class DefendOrder(Order):
                     logger.debug(f"[{self.unit.name}] Defend target lost, destroyed, or left perimeter. Resuming position guard.")
                     current_sub.cancel()
                     self.sub_orders.popleft()
-                    if self.unit.weapons_component:
-                        self.unit.weapons_component.clear_target()
                     has_attack_order = False
 
         if not has_attack_order:
@@ -228,11 +213,6 @@ class DefendOrder(Order):
                 for sub in list(self.sub_orders):
                     sub.cancel()
                 self.sub_orders.clear()
-                if self.unit.engines_component:
-                    self.unit.engines_component.move_target = None
-                if self.unit.hyperdrive_component:
-                    self.unit.hyperdrive_component.hex_jump_target = None
-                    self.unit.hyperdrive_component.wormhole_jump_target = None
 
                 attack_params = {"target_unit_id": nearby_enemy.id}
                 self.add_sub_order(AttackOrder(self.unit, attack_params, parent_order=self))
@@ -258,8 +238,6 @@ class DefendOrder(Order):
                     if self.sub_orders:
                         self.sub_orders[0].cancel()
                         self.sub_orders.popleft()
-                    if self.unit.engines_component:
-                        self.unit.engines_component.move_target = None
                     has_movement_order = False
 
                 if not has_movement_order and (not in_same_system_and_hex or dist_to_target > 30.0):

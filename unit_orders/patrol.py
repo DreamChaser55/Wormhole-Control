@@ -92,12 +92,26 @@ class PatrolOrder(Order):
             state_data["parameters"]["waypoints"] = self.parameters["waypoints"]
         return state_data
 
+    def get_persistence_state(self) -> Dict[str, Any]:
+        return {
+            "start_system_name": self.start_system_name,
+            "start_hex_coord": self.start_hex_coord,
+            "start_position": self.start_position,
+            "patrol_phase": self.patrol_phase,
+            "current_waypoint_index": self.current_waypoint_index,
+        }
+
+    def restore_persistence_state(self, state: Dict[str, Any]) -> None:
+        self.start_system_name = state.get("start_system_name")
+        self.start_hex_coord = state.get("start_hex_coord")
+        self.start_position = state.get("start_position")
+        self.patrol_phase = state.get("patrol_phase", "TO_TARGET")
+        self.current_waypoint_index = int(state.get("current_waypoint_index", 0))
+
     def _find_nearby_enemy(self, galaxy_ref: 'Galaxy') -> Optional['Unit']:
         weapons = self.unit.weapons_component
         if not weapons or weapons.is_destroyed or not weapons.turrets:
             return None
-
-        from unit_components import TurretVariant
 
         system = galaxy_ref.systems.get(self.unit.in_system)
         if not system:
@@ -113,9 +127,11 @@ class PatrolOrder(Order):
         visibility_snapshot = None
         if self.unit.owner and galaxy_ref:
             from visibility import VisibilityService
-            turn_num = getattr(galaxy_ref, 'turn_number', 1)
-            if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
-                turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
+            turn_num = getattr(getattr(self.unit, 'game', None), 'turn_number', None)
+            if turn_num is None:
+                turn_num = getattr(galaxy_ref, 'turn_number', 1)
+                if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
+                    turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
             visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
 
         from entities import are_enemies
@@ -125,30 +141,10 @@ class PatrolOrder(Order):
                 if visibility_snapshot is not None and not is_unit_visible(visibility_snapshot, unit):
                     continue
 
-                # Fighter/Bomber targeting rules
-                if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
-                    wing_comp = self.unit.strikecraft_wing_component
-                    if wing_comp:
-                        from unit_components import WingType
-                        if wing_comp.wing_type == WingType.FIGHTER:
-                            if unit.hull_size != HullSize.STRIKECRAFT_WING:
-                                continue
-                        elif wing_comp.wing_type == WingType.BOMBER:
-                            if unit.hull_size == HullSize.STRIKECRAFT_WING:
-                                continue
-
-                # Find maximum range of turrets that can target this unit
-                can_target = False
-                max_range_for_unit = 0.0
-                for t in weapons.turrets:
-                    if unit.hull_size == HullSize.STRIKECRAFT_WING and t.variant != TurretVariant.ANTI_STRIKECRAFT:
-                        continue
-                    can_target = True
-                    if t.range > max_range_for_unit:
-                        max_range_for_unit = t.range
-
-                if not can_target:
+                eligible_turrets = weapons.eligible_turrets_for(unit)
+                if not eligible_turrets:
                     continue
+                max_range_for_unit = max(t.range for t in eligible_turrets)
 
                 dist = distance(self.unit.position, unit.position)
                 if dist <= max_range_for_unit and dist < min_dist:
@@ -169,17 +165,21 @@ class PatrolOrder(Order):
             if current_sub.order_type == OrderType.ATTACK:
                 has_attack_order = True
                 target_id = current_sub.parameters.get("target_unit_id")
-                target_unit = self.unit.game.galaxy.get_unit_by_id(target_id) if target_id else None
+                galaxy = (
+                    getattr(getattr(self.unit, "game", None), "galaxy", None)
+                    or galaxy_ref
+                )
+                target_unit = galaxy.get_unit_by_id(target_id) if target_id and galaxy else None
+                from entities import are_enemies
                 if (not target_unit or 
                     target_unit.current_hit_points <= 0 or 
+                    not are_enemies(self.unit.owner, target_unit.owner) or
                     target_unit.in_system != self.unit.in_system or 
                     target_unit.in_hex != self.unit.in_hex):
                     # Target is dead, missing, or fled the sector. Cancel the attack order.
                     logger.debug(f"[{self.unit.name}] Patrol target lost, dead, or fled. Resuming patrol.")
                     current_sub.cancel()
                     self.sub_orders.popleft()
-                    if self.unit.weapons_component:
-                        self.unit.weapons_component.clear_target()
                     # Re-route to current waypoint destination
                     self._spawn_move_to_current_waypoint()
                     has_attack_order = False
@@ -193,11 +193,6 @@ class PatrolOrder(Order):
                 for sub in list(self.sub_orders):
                     sub.cancel()
                 self.sub_orders.clear()
-                if self.unit.engines_component:
-                    self.unit.engines_component.move_target = None
-                if self.unit.hyperdrive_component:
-                    self.unit.hyperdrive_component.hex_jump_target = None
-                    self.unit.hyperdrive_component.wormhole_jump_target = None
 
                 # Spawn attack order
                 attack_params = {"target_unit_id": nearby_enemy.id}

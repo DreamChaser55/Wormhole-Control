@@ -1,14 +1,13 @@
 import logging
 import typing
-from typing import Optional, Deque, TYPE_CHECKING
+from typing import Optional, Deque, TYPE_CHECKING, Iterable
 from collections import deque
 import dataclasses
 
 from .base import UnitComponent
 from .enums import UnitStance, TurretVariant, WingType
-from geometry import distance, hex_distance
-from constants import HullSize, XP_JUMP_RANGE_BONUS
 from unit_orders import Order, OrderStatus, OrderType
+from unit_orders import StanceOrder
 
 if TYPE_CHECKING:
     from entities import Unit
@@ -28,169 +27,68 @@ class Commander(UnitComponent):
     SIDEBAR_ORDER: int = 0
     current_order: Optional[Order] = None
     orders_queue: Deque[Order] = dataclasses.field(default_factory=deque)
-    stance: UnitStance = UnitStance.DO_NOTHING
+    standing_order: StanceOrder = dataclasses.field(init=False)
+    _stance: UnitStance = dataclasses.field(init=False, default=UnitStance.DO_NOTHING)
 
     def __init__(self, unit: 'Unit'):
         super().__init__(unit, hull_cost=0)
         self.current_order = None
         self.orders_queue = deque()
-        self.stance = UnitStance.DO_NOTHING
+        self._stance = UnitStance.DO_NOTHING
+        self.standing_order = StanceOrder(unit, {"stance": self._stance.value})
+
+    @property
+    def stance(self) -> UnitStance:
+        """Compatibility property; assignments use the stance lifecycle safely."""
+        return self._stance
+
+    @stance.setter
+    def stance(self, stance: UnitStance) -> None:
+        self.set_stance(stance)
 
     def get_allowed_stances(self) -> list[UnitStance]:
         """Gets the list of allowed stances for this unit based on its components."""
         allowed = [UnitStance.DO_NOTHING, UnitStance.ATTACK_WEAPON_RANGE]
         if self.unit.engines_component is not None and self.unit.engines_component.is_operational:
             allowed.append(UnitStance.ATTACK_SAME_SECTOR)
-            if self.unit.hyperdrive_component is not None:
+            if (
+                self.unit.hyperdrive_component is not None
+                and self.unit.hyperdrive_component.is_functional
+            ):
                 allowed.append(UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE)
                 allowed.append(UnitStance.ATTACK_SAME_SYSTEM)
         return allowed
 
     def process_stance(self) -> None:
-        """Processes the unit's stance when it has no active or queued orders."""
-        allowed_stances = self.get_allowed_stances()
-        if self.stance not in allowed_stances:
-            logger.warning(f"Unit {self.unit.name} (id:{self.unit.id}) has stance {self.stance} which is not allowed. Resetting to DO_NOTHING.")
-            self.stance = UnitStance.DO_NOTHING
-
-        if self.stance == UnitStance.DO_NOTHING:
-            if self.unit.weapons_component:
-                self.unit.weapons_component.clear_target()
+        """Update the standing policy while no explicit order is active."""
+        if self.current_order or self.orders_queue:
             return
-
-        if self.unit.is_disabled:
-            return
-
-        galaxy_ref: Optional['Galaxy'] = getattr(self.unit, 'in_galaxy', None)
-        if not galaxy_ref:
-            return
-
-        weapons = self.unit.weapons_component
-        if not weapons or weapons.is_destroyed or not weapons.turrets:
-            return
-
-        target = self.find_stance_target(galaxy_ref)
-        if not target:
-            weapons.clear_target()
-            return
-
-        from unit_orders import AttackOrder
-        attack_order = AttackOrder(self.unit, {"target_unit_id": target.id})
-        attack_order.is_stance_order = True
-        self.add_order(attack_order)
+        galaxy_ref: Optional['Galaxy'] = (
+            getattr(self.unit, 'in_galaxy', None)
+            or getattr(getattr(self.unit, 'game', None), 'galaxy', None)
+        )
+        if galaxy_ref:
+            self.standing_order.update(galaxy_ref)
 
     def is_target_valid_for_stance(self, target: 'Unit', galaxy_ref: 'Galaxy', visibility_snapshot: Optional[typing.Any] = None) -> bool:
-        """Checks if the given target is still valid under the unit's current stance."""
-        if self.stance not in self.get_allowed_stances():
-            return False
-
-        if target.current_hit_points <= 0 or target.owner == self.unit.owner:
-            return False
-
-        if target.in_system != self.unit.in_system:
-            return False
-
-        if visibility_snapshot is None and self.unit.owner and galaxy_ref:
-            from visibility import VisibilityService
-            turn_num = getattr(galaxy_ref, 'turn_number', 1)
-            if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
-                turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
-            visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
-
-        if visibility_snapshot is not None:
-            from visibility import is_unit_visible
-            if not is_unit_visible(visibility_snapshot, target):
-                return False
-
-        if self.stance == UnitStance.ATTACK_WEAPON_RANGE:
-            if target.in_hex != self.unit.in_hex:
-                return False
-
-            weapons = self.unit.weapons_component
-            if not weapons or weapons.is_destroyed:
-                return False
-
-            dist = distance(self.unit.position, target.position)
-            for t in weapons.turrets:
-                if target.hull_size == HullSize.STRIKECRAFT_WING and t.variant != TurretVariant.ANTI_STRIKECRAFT:
-                    continue
-                # Attacker is a strikecraft wing:
-                if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
-                    wing_comp = self.unit.strikecraft_wing_component
-                    if wing_comp:
-                        if wing_comp.wing_type == WingType.FIGHTER:
-                            if target.hull_size != HullSize.STRIKECRAFT_WING:
-                                continue
-                        elif wing_comp.wing_type == WingType.BOMBER:
-                            if target.hull_size == HullSize.STRIKECRAFT_WING:
-                                continue
-                if dist <= t.range:
-                    return True
-            return False
-
-        elif self.stance == UnitStance.ATTACK_SAME_SECTOR:
-            return target.in_hex == self.unit.in_hex
-
-        elif self.stance == UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE:
-            if not self.unit.hyperdrive_component:
-                return target.in_hex == self.unit.in_hex
-
-            effective_jump_range = int(self.unit.hyperdrive_component.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
-            return hex_distance(self.unit.in_hex, target.in_hex) <= effective_jump_range
-
-        elif self.stance == UnitStance.ATTACK_SAME_SYSTEM:
-            return True
-
-        return False
+        """Compatibility wrapper around the first-class standing order."""
+        return self.standing_order.is_target_valid(target, galaxy_ref, visibility_snapshot)
 
     def find_stance_target(self, galaxy_ref: 'Galaxy', visibility_snapshot: Optional[typing.Any] = None) -> Optional['Unit']:
-        """Scans the system for the closest eligible target matching the current stance."""
-        system = galaxy_ref.systems.get(self.unit.in_system)
-        if not system:
-            return None
-
-        if visibility_snapshot is None and self.unit.owner:
-            from visibility import VisibilityService
-            turn_num = getattr(galaxy_ref, 'turn_number', 1)
-            if hasattr(galaxy_ref, 'game') and hasattr(galaxy_ref.game, 'turn_number'):
-                turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
-            visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
-
-        candidates = []
-        if self.stance in [UnitStance.ATTACK_WEAPON_RANGE, UnitStance.ATTACK_SAME_SECTOR]:
-            hex_obj = system.hexes.get(self.unit.in_hex)
-            if hex_obj:
-                candidates = hex_obj.units
-        else:
-            for hex_obj in system.hexes.values():
-                candidates.extend(hex_obj.units)
-
-        eligible_targets = []
-        for candidate in candidates:
-            if candidate.owner == self.unit.owner or candidate.current_hit_points <= 0:
-                continue
-
-            if not self.is_target_valid_for_stance(candidate, galaxy_ref, visibility_snapshot=visibility_snapshot):
-                continue
-
-            h_dist = hex_distance(self.unit.in_hex, candidate.in_hex)
-            p_dist = distance(self.unit.position, candidate.position)
-            dist_score = h_dist * 1000000.0 + p_dist
-
-            eligible_targets.append((dist_score, candidate))
-
-        if not eligible_targets:
-            return None
-
-        eligible_targets.sort(key=lambda x: x[0])
-        return eligible_targets[0][1]
+        """Compatibility wrapper around the first-class standing order."""
+        return self.standing_order.find_target(galaxy_ref, visibility_snapshot)
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_basic_sidebar_data(game_state)
         if self.is_destroyed:
             return data
         orders_count = self.get_active_orders_count()
-        curr_name = self.current_order.order_type.name.replace('_', ' ').title() if self.current_order else "None"
+        if self.current_order:
+            curr_name = self.current_order.order_type.name.replace('_', ' ').title()
+        elif self.standing_order.has_engagement:
+            curr_name = "Standing Attack"
+        else:
+            curr_name = "None"
         obj_id = '#sidebar_status_active_label' if orders_count > 0 else '#sidebar_value_label'
         data.append({
             'type': 'label',
@@ -267,12 +165,26 @@ class Commander(UnitComponent):
                 'indent_level': 0
             })
 
+        data.append({
+            'type': 'label',
+            'text': "Standing Order:",
+            'object_id': '#sidebar_section_header_label',
+            'height': 25,
+            'indent_level': 0,
+        })
+        data.append({
+            'type': 'text_box',
+            'html_text': game_state._generate_order_data_recursive(self.standing_order, 0),
+            'height': 120 if self.standing_order.has_engagement else 45,
+            'object_id': '#order_text_box',
+        })
+
         # Display Current Order (always visible if exists)
         current_order = self.current_order
         if current_order:
             data.append({
                 'type': 'label', 
-                'text': "Current Order:", 
+                'text': "Explicit Current Order:",
                 'object_id': '#sidebar_section_header_label', 
                 'height': 25,
                 'indent_level': 0
@@ -286,10 +198,10 @@ class Commander(UnitComponent):
                 'object_id': '#order_text_box'
             })
         else:
-            data.append({'type': 'label', 'text': "Current Order: None", 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 0})
+            data.append({'type': 'label', 'text': "Explicit Current Order: None", 'object_id': '#sidebar_info_label', 'height': 20, 'indent_level': 0})
 
         # Queued Orders Section Header
-        data.append({'type': 'label', 'text': "Queued Orders", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
+        data.append({'type': 'label', 'text': "Queued Explicit Orders", 'object_id': '#sidebar_section_header_label', 'height': 28, 'indent_level': 0})
     
         queued_order_count = len(self.orders_queue)
         section_key = f"{self.unit.id}_orders_queue" 
@@ -325,15 +237,166 @@ class Commander(UnitComponent):
         return data
 
     def add_order(self, order: Order) -> None:
-        """Add a new order to the queue.
-
-        Args:
-            order: The order to add to the queue
-        """
+        """Add an explicit order, suspending any transient stance engagement."""
+        self.suspend_stance_activity("explicit order started")
         self.orders_queue.append(order)
 
         if self.current_order is None:
             self.start_next_order()
+
+    def set_stance(self, stance: UnitStance) -> None:
+        """Replace the standing policy without interrupting explicit work."""
+        if not isinstance(stance, UnitStance):
+            try:
+                stance = UnitStance(stance)
+            except (TypeError, ValueError):
+                raw_name = str(stance)
+                if raw_name.startswith("UnitStance."):
+                    raw_name = raw_name.rsplit(".", 1)[-1]
+                try:
+                    stance = UnitStance[raw_name.upper()]
+                except (KeyError, TypeError) as exc:
+                    raise ValueError(f"Unknown unit stance: {stance!r}") from exc
+        old_stance = getattr(self, "_stance", UnitStance.DO_NOTHING)
+        old_order = getattr(self, "standing_order", None)
+        # A normal assignment of the same policy is idempotent, but do not
+        # leave a standing order permanently cancelled if an integration
+        # cancelled/replaced the root directly.  Recreate the root in that
+        # case so the compatibility ``stance`` property remains safe.
+        if (
+            old_order
+            and old_stance == stance
+            and old_order.status in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}
+        ):
+            return
+        if old_order:
+            old_order.cancel()
+        self._stance = stance
+        self.standing_order = StanceOrder(self.unit, {"stance": stance.value})
+        logger.debug(
+            "[%s (id:%s)] Commander: stance changed from %s to %s.",
+            self.unit.name,
+            self.unit.id,
+            old_stance.value,
+            stance.value,
+        )
+        # Changing a stance must not interrupt a foreground explicit attack.
+        # Its weapon lock remains authoritative until that order completes;
+        # only an idle unit should have its cached target cleared here.
+        if (
+            stance == UnitStance.DO_NOTHING
+            and not self.current_order
+            and self.unit.weapons_component
+        ):
+            self.unit.weapons_component.clear_target()
+
+    def get_active_order_root(self) -> Order:
+        """Return the explicit foreground root, otherwise the standing root."""
+        return self.current_order or self.standing_order
+
+    def get_observable_active_order(self) -> Optional[Order]:
+        """Keep observation schema v3 by exposing the stance's Attack child."""
+        return self.current_order or self.standing_order.active_attack
+
+    def suspend_stance_activity(self, reason: str = "suspended") -> None:
+        """Cancel only the transient engagement while retaining its policy."""
+        if self.standing_order.has_engagement:
+            logger.debug(
+                "[%s (id:%s)] Commander: suspending stance activity (%s).",
+                self.unit.name,
+                self.unit.id,
+                reason,
+            )
+            self.standing_order.cancel_engagement(reason)
+
+    def clear_explicit_orders(self) -> None:
+        """Cancel foreground work while preserving the selected stance."""
+        if self.current_order:
+            self.current_order.cancel()
+            self.current_order = None
+        for order in self.orders_queue:
+            order.cancel()
+        self.orders_queue.clear()
+        if not self.standing_order.has_engagement:
+            self._clear_weapon_target()
+
+    def stop_and_idle(self) -> None:
+        """Cancel all work, clear component state, and select Do Nothing."""
+        self.clear_explicit_orders()
+        self.suspend_stance_activity("unit stopped")
+        self.set_stance(UnitStance.DO_NOTHING)
+        if self.unit.engines_component:
+            self.unit.engines_component.clear_move_target()
+        if self.unit.hyperdrive_component:
+            self.unit.hyperdrive_component.clear_jump_target()
+        self._clear_weapon_target()
+
+    def clear_orders(self) -> None:
+        """Backward-compatible stop operation; new code should use an explicit API."""
+        self.stop_and_idle()
+
+    def restore_explicit_orders(
+        self,
+        current_order: Optional[Order],
+        queued_orders: Iterable[Order],
+        galaxy_ref: Optional['Galaxy'] = None,
+    ) -> None:
+        """Restore serialized foreground roots without replaying side effects."""
+        self.suspend_stance_activity("loaded explicit order")
+        self.current_order = current_order
+        self.orders_queue = deque(queued_orders)
+        if galaxy_ref is None:
+            galaxy_ref = getattr(self.unit, "in_galaxy", None)
+        if not self.current_order:
+            # A malformed or hand-authored save may contain only queued roots.
+            # Promote the first one immediately so it still outranks the
+            # standing stance during the next movement phase.
+            if self.orders_queue:
+                if galaxy_ref:
+                    self.start_next_order()
+                else:
+                    self.current_order = self.orders_queue.popleft()
+            return
+        if not galaxy_ref:
+            return
+        if self.current_order.status == OrderStatus.PENDING:
+            self.current_order.execute(galaxy_ref)
+        elif self.current_order.status == OrderStatus.IN_PROGRESS:
+            self.current_order.resume(galaxy_ref)
+
+    def _active_front_chain(self) -> Iterable[Order]:
+        root = self.get_active_order_root()
+        current: Optional[Order] = root
+        while current is not None and current.status in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}:
+            yield current
+            sub_orders = getattr(current, "sub_orders", None)
+            if not sub_orders:
+                break
+            child = sub_orders[0]
+            if child.status not in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}:
+                break
+            current = child
+
+    def is_order_on_active_front_chain(self, target: Optional[Order]) -> bool:
+        """Return whether ``target`` is the active root/front-child path.
+
+        Cancellation needs this status-agnostic traversal because ``Order.cancel``
+        marks a parent cancelled before recursively cancelling its children. The
+        normal authority traversal intentionally filters cancelled orders; this
+        helper is only for deciding which child may release component state while
+        that cancellation is being unwound.
+        """
+        if target is None:
+            return False
+        current: Optional[Order] = self.get_active_order_root()
+        while current is not None:
+            if current is target:
+                return True
+            sub_orders = getattr(current, "sub_orders", None)
+            if not sub_orders:
+                return False
+            current = sub_orders[0]
+        return False
 
     def get_active_attack_order(self) -> Optional[Order]:
         """Return the Attack order authorized to control the unit's turrets.
@@ -342,26 +405,9 @@ class Commander(UnitComponent):
         sub-orders.  Patrol, Protect, and Defend may also authorize their active
         front Attack sub-order.  Queued and finished orders never authorize fire.
         """
-        current = self.current_order
-        if not current or current.status != OrderStatus.IN_PROGRESS:
-            return None
-
-        if current.order_type == OrderType.ATTACK:
-            return current
-
-        if current.order_type not in {
-            OrderType.PATROL,
-            OrderType.PROTECT,
-            OrderType.DEFEND,
-        } or not current.sub_orders:
-            return None
-
-        active_sub_order = current.sub_orders[0]
-        if (
-            active_sub_order.order_type == OrderType.ATTACK
-            and active_sub_order.status == OrderStatus.IN_PROGRESS
-        ):
-            return active_sub_order
+        for order in self._active_front_chain():
+            if order.order_type == OrderType.ATTACK and order.status == OrderStatus.IN_PROGRESS:
+                return order
         return None
 
     def _clear_weapon_target(self) -> None:
@@ -393,61 +439,94 @@ class Commander(UnitComponent):
                 return True
         return False
 
-    def clear_orders(self) -> None:
-        """Cancel and clear all orders for this unit."""
-        if self.current_order:
-            self.current_order.cancel()
-            self.current_order = None
-
-        for order in self.orders_queue:
-            order.cancel()
-        self.orders_queue.clear()
-        self._clear_weapon_target()
-
-        if self.unit.engines_component:
-            self.unit.engines_component.move_target = None
-        if self.unit.hyperdrive_component:
-            self.unit.hyperdrive_component.hex_jump_target = None
-            self.unit.hyperdrive_component.wormhole_jump_target = None
-
     def get_active_orders_count(self) -> int:
         """Get the total number of active orders (current + queued).
 
         Returns:
             The number of active orders
         """
-        return len(self.orders_queue) + (1 if self.current_order else 0)
+        return (
+            len(self.orders_queue)
+            + (1 if self.current_order else 0)
+            + (1 if self.standing_order.has_engagement else 0)
+        )
+
+    def prepare_for_movement(self) -> None:
+        """Invalidate stance scope and reject actuator targets without an active owner."""
+        galaxy_ref: Optional['Galaxy'] = (
+            getattr(self.unit, "in_galaxy", None)
+            or getattr(getattr(self.unit, "game", None), "galaxy", None)
+        )
+        # Capability loss invalidates the selected standing policy even while an
+        # explicit foreground order is running; the explicit order itself is not
+        # interrupted, but the stale stance cannot resume later.
+        if self.stance not in self.get_allowed_stances():
+            self.set_stance(UnitStance.DO_NOTHING)
+        elif galaxy_ref and not self.current_order:
+            self.standing_order.validate_engagement(galaxy_ref)
+        elif galaxy_ref and getattr(self.current_order, "order_type", None) == OrderType.ATTACK:
+            target_id = self.current_order.parameters.get("target_unit_id")
+            target = galaxy_ref.get_unit_by_id(target_id) if target_id is not None else None
+            from entities import are_enemies
+            weapons = self.unit.weapons_component
+            if (
+                target is None
+                or target.current_hit_points <= 0
+                or not are_enemies(self.unit.owner, target.owner)
+                or not weapons
+                or not weapons.eligible_turrets_for(target)
+            ):
+                self.cancel_order(self.current_order.order_id)
+
+        # A Do Nothing standing policy must not leave a stale weapon lock from
+        # an order that was removed by an external integration.
+        if not self.current_order and self.stance == UnitStance.DO_NOTHING:
+            self._clear_weapon_target()
+
+        active_ids = {
+            order.order_id
+            for order in self._active_front_chain()
+            if order.status == OrderStatus.IN_PROGRESS
+            and order.order_type == OrderType.REACH_WAYPOINT
+        }
+        engines = self.unit.engines_component
+        if engines and engines.move_target is not None and engines.move_target_order_id not in active_ids:
+            logger.debug(
+                "[%s (id:%s)] Commander: clearing orphaned engine target owned by order %s.",
+                self.unit.name,
+                self.unit.id,
+                engines.move_target_order_id,
+            )
+            engines.clear_move_target()
+        drive = self.unit.hyperdrive_component
+        if (
+            drive
+            and (drive.hex_jump_target is not None or drive.wormhole_jump_target is not None)
+            and drive.jump_target_order_id not in active_ids
+        ):
+            logger.debug(
+                "[%s (id:%s)] Commander: clearing orphaned hyperdrive target owned by order %s.",
+                self.unit.name,
+                self.unit.id,
+                drive.jump_target_order_id,
+            )
+            drive.clear_jump_target()
 
     def update(self) -> None:
         """Process the current order and update its status.
 
         This method should be called on each game update cycle.
         """
-        # If we have a stance-generated order, validate if the target is still valid under our current stance.
-        # If not, cancel the order.
-        if self.current_order and getattr(self.current_order, 'is_stance_order', False):
-            target_unit_id = self.current_order.parameters.get("target_unit_id")
-            target_unit = None
-            galaxy_ref = getattr(self.unit, 'in_galaxy', None)
-            if galaxy_ref and target_unit_id:
-                target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
-            
-            if not target_unit or not self.is_target_valid_for_stance(target_unit, galaxy_ref):
-                self.current_order.cancel()
-                self.current_order = None
-                self._clear_weapon_target()
-
         if not self.current_order:
             self.start_next_order()
             if not self.current_order:
                 self.process_stance()
                 return
 
-        if not self.current_order:
-            self.process_stance()
-            return
-
-        galaxy_ref: Optional['Galaxy'] = getattr(self.unit, 'in_galaxy', None)
+        galaxy_ref: Optional['Galaxy'] = (
+            getattr(self.unit, 'in_galaxy', None)
+            or getattr(getattr(self.unit, 'game', None), 'galaxy', None)
+        )
 
         if galaxy_ref:
             self.current_order.update(galaxy_ref=galaxy_ref)
@@ -472,6 +551,7 @@ class Commander(UnitComponent):
             self._clear_weapon_target()
             self.start_next_order()
             if not self.current_order:
+                logger.debug("[%s (id:%s)] Commander: resuming standing stance.", self.unit.name, self.unit.id)
                 self.process_stance()
 
     def start_next_order(self) -> None:
@@ -480,10 +560,16 @@ class Commander(UnitComponent):
             self.current_order = self.orders_queue.popleft()
             self._clear_weapon_target()
             
-            galaxy_ref: Optional['Galaxy'] = getattr(self.unit, 'in_galaxy', None)
+            galaxy_ref: Optional['Galaxy'] = (
+                getattr(self.unit, 'in_galaxy', None)
+                or getattr(getattr(self.unit, 'game', None), 'galaxy', None)
+            )
 
             if galaxy_ref:
-                self.current_order.execute(galaxy_ref=galaxy_ref)
+                if self.current_order.status == OrderStatus.PENDING:
+                    self.current_order.execute(galaxy_ref=galaxy_ref)
+                elif self.current_order.status == OrderStatus.IN_PROGRESS:
+                    self.current_order.resume(galaxy_ref=galaxy_ref)
                 if self.current_order and self.current_order.status == OrderStatus.IN_PROGRESS:
                     self.current_order.update(galaxy_ref=galaxy_ref)
             else:

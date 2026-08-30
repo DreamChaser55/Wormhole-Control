@@ -55,6 +55,7 @@ class OrderType(Enum):
     CI_SWEEP = auto()            # Counter-intelligence scan on friendly units/planets in range to discover agents
     ELIMINATE_AGENT = auto()     # Eliminate a discovered enemy agent on a friendly unit/planet in range
     EXTRACT_AGENT = auto()       # Extract an agent back to a friendly unit with intelligence capacity
+    STANCE = auto()              # Persistent standing policy that owns a transient Attack subtree
 
 
 
@@ -161,6 +162,25 @@ class Order:
         self.status = OrderStatus.CANCELLED
         for sub_order in self.sub_orders:
             sub_order.cancel()
+
+    def get_persistence_state(self) -> Dict[str, Any]:
+        """Return mutable runtime state which is not part of ``parameters``."""
+        return {}
+
+    def restore_persistence_state(self, state: Dict[str, Any]) -> None:
+        """Restore mutable runtime state saved by :meth:`get_persistence_state`."""
+        return
+
+    def resume(self, galaxy_ref: 'Galaxy') -> None:
+        """Rebind runtime state after loading without executing side effects again.
+
+        Most orders only need their active front child resumed. Orders which own
+        component state (weapons or movement actuators) override this hook.
+        """
+        if self.status == OrderStatus.IN_PROGRESS and self.sub_orders:
+            child = self.sub_orders[0]
+            if child.status == OrderStatus.IN_PROGRESS:
+                child.resume(galaxy_ref)
     
     def check_completion_conditions(self) -> None:
         """Check order-specific completion conditions and update status."""

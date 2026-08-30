@@ -2,21 +2,27 @@ from player_controller import PlayerController
 import os
 import unittest
 import pygame
+import json
+from collections import deque
 from geometry import Position, Vector
 from constants import HullSize, StarType, PlanetType, NebulaType, StormType
 from entities import (
     Player, GameObject, Star, Planet, Moon, ColonizableAsteroid,
     MetalAsteroid, AsteroidField, IceField, DebrisField, Nebula, Storm, Comet, Wormhole, Unit
 )
-from unit_components import AntimatterStorage, ColonyComponent, MiningComponent
-from unit_orders import MoveOrder, ColonizeOrder, OrderStatus
+from unit_components import AntimatterStorage, ColonyComponent, MiningComponent, UnitStance
+from unit_orders import (
+    AttackOrder, MoveOrder, ColonizeOrder, OrderStatus, OrderType, PatrolOrder,
+    ORDER_CLASS_REGISTRY,
+)
 from utils import generate_short_id
 from save_manager import (
     serialize_player, deserialize_player,
     serialize_celestial_body, deserialize_celestial_body,
     serialize_unit, deserialize_unit,
+    serialize_order, deserialize_order,
     serialize_game_state, deserialize_game_state,
-    save_game_to_file, load_game_from_file, list_save_files
+    save_game_to_file, load_game_from_file, list_save_files, _restore_saved_commander
 )
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -112,6 +118,109 @@ class TestSaveLoad(unittest.TestCase):
         self.assertEqual(deserialized.damage_reduction, 0.25)
         self.assertEqual(deserialized.antimatter_component.current_amount, 45.0)
 
+    def test_commander_payload_separates_stance_current_and_queue(self):
+        player = Player("Fleet Cmd", (0, 255, 0))
+        unit = Unit(player, Position(0, 0), (0, 0), "Sol", "Flagship", HullSize.HUGE, None)
+        commander = unit.commander_component
+        commander.set_stance(UnitStance.ATTACK_SAME_SECTOR)
+
+        current = MoveOrder(unit, {
+            "destination_system_name": "Sol",
+            "destination_hex_coord": (0, 0),
+            "destination_position": Position(100, 0),
+        })
+        current.status = OrderStatus.IN_PROGRESS
+        queued = AttackOrder(unit, {"target_unit_id": 12345})
+        commander.current_order = current
+        commander.orders_queue = deque([queued])
+
+        transient = AttackOrder(unit, {"target_unit_id": 99999}, parent_order=commander.standing_order)
+        commander.standing_order.add_sub_order(transient)
+        payload = serialize_unit(unit)["commander"]
+
+        self.assertEqual(payload["stance"], "attack_same_sector")
+        self.assertEqual(payload["current_order"]["order_type"], "MOVE")
+        self.assertEqual([item["order_type"] for item in payload["orders_queue"]], ["ATTACK"])
+        self.assertNotIn("standing_order", payload)
+        self.assertNotEqual(payload["current_order"]["order_type"], "STANCE")
+
+    def test_nested_order_parameters_and_patrol_runtime_round_trip(self):
+        player = Player("Fleet Cmd", (0, 255, 0))
+        unit = Unit(player, Position(0, 0), (0, 0), "Sol", "Patroller", HullSize.MEDIUM, None)
+        patrol = PatrolOrder(unit, {
+            "waypoints": [
+                {"system_name": "Sol", "hex_coord": (1, -1), "position": Position(10.5, 20.5)},
+                {"system_name": "Sol", "hex_coord": (2, -1), "position": Position(30.5, 40.5)},
+            ],
+            "metadata": {"formation": ("line", 2), "stance_hint": UnitStance.ATTACK_SAME_SECTOR},
+        })
+        patrol.status = OrderStatus.IN_PROGRESS
+        patrol.start_system_name = "Sol"
+        patrol.start_hex_coord = (0, 0)
+        patrol.start_position = Position(1.0, 2.0)
+        patrol.patrol_phase = "TO_START"
+        patrol.current_waypoint_index = 2
+
+        serialized = serialize_order(patrol)
+        json.dumps(serialized)
+        restored = deserialize_order(serialized, unit, None)
+
+        self.assertIsInstance(restored, PatrolOrder)
+        self.assertEqual(restored.parameters["waypoints"][0]["hex_coord"], (1, -1))
+        self.assertEqual(restored.parameters["waypoints"][1]["position"], Position(30.5, 40.5))
+        self.assertEqual(restored.parameters["metadata"]["formation"], ("line", 2))
+        self.assertEqual(restored.parameters["metadata"]["stance_hint"], UnitStance.ATTACK_SAME_SECTOR)
+        self.assertEqual(restored.start_system_name, "Sol")
+        self.assertEqual(restored.start_hex_coord, (0, 0))
+        self.assertEqual(restored.start_position, Position(1.0, 2.0))
+        self.assertEqual(restored.patrol_phase, "TO_START")
+        self.assertEqual(restored.current_waypoint_index, 2)
+
+    def test_order_registry_covers_every_order_type(self):
+        self.assertEqual(set(ORDER_CLASS_REGISTRY), set(OrderType))
+
+    def test_legacy_commander_orders_restore_current_then_queue(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        player = Player("Legacy", (0, 255, 0))
+        game = SimpleNamespace(galaxy=MagicMock())
+        unit = Unit(player, Position(0, 0), (0, 0), "Sol", "Legacy Ship", HullSize.MEDIUM, game)
+        current = MoveOrder(unit, {
+            "destination_system_name": "Sol",
+            "destination_hex_coord": (0, 0),
+            "destination_position": Position(50, 0),
+        })
+        current.status = OrderStatus.IN_PROGRESS
+        queued = AttackOrder(unit, {"target_unit_id": 123})
+        payload = serialize_unit(unit)
+        payload.pop("commander")
+        payload["orders"] = [serialize_order(current), serialize_order(queued)]
+
+        restored = deserialize_unit(payload, {player.id: player}, game)
+        _restore_saved_commander(restored, game)
+
+        self.assertEqual(restored.commander_component.stance, UnitStance.DO_NOTHING)
+        self.assertEqual(restored.commander_component.current_order.order_type, OrderType.MOVE)
+        self.assertEqual([order.order_type for order in restored.commander_component.orders_queue], [OrderType.ATTACK])
+
+    def test_version_3_without_commander_data_loads_idle(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        player = Player("Legacy", (0, 255, 0))
+        game = SimpleNamespace(galaxy=MagicMock())
+        unit = Unit(player, Position(0, 0), (0, 0), "Sol", "Legacy Ship", HullSize.MEDIUM, game)
+        payload = serialize_unit(unit)
+        payload.pop("commander")
+
+        restored = deserialize_unit(payload, {player.id: player}, game)
+        _restore_saved_commander(restored, game)
+
+        self.assertEqual(restored.commander_component.stance, UnitStance.DO_NOTHING)
+        self.assertIsNone(restored.commander_component.current_order)
+        self.assertFalse(restored.commander_component.orders_queue)
+
     def test_full_game_save_load(self):
         from game import Game
         game = Game()
@@ -121,6 +230,14 @@ class TestSaveLoad(unittest.TestCase):
         game.turn_number = 7
         game.players[0].credits = 8888.0
         saved_systems_count = len(game.galaxy.systems)
+        stance_unit = next(
+            unit
+            for system in game.galaxy.systems.values()
+            for unit, _ in system.get_all_units()
+            if unit.commander_component
+        )
+        stance_unit.commander_component.set_stance(UnitStance.ATTACK_WEAPON_RANGE)
+        stance_unit_id = stance_unit.id
 
         test_filename = "test_autotest_save.json"
         saved_filepath = game.save_game(test_filename)
@@ -134,6 +251,9 @@ class TestSaveLoad(unittest.TestCase):
         self.assertEqual(new_game.turn_number, 7)
         self.assertEqual(new_game.players[0].credits, 8888.0)
         self.assertEqual(len(new_game.galaxy.systems), saved_systems_count)
+        restored_stance_unit = new_game.galaxy.get_unit_by_id(stance_unit_id)
+        self.assertEqual(restored_stance_unit.commander_component.stance, UnitStance.ATTACK_WEAPON_RANGE)
+        self.assertIs(restored_stance_unit.in_galaxy, new_game.galaxy)
 
         # Cleanup
         if os.path.exists(saved_filepath):

@@ -254,12 +254,34 @@ class Weapons(UnitComponent):
         """
         self.turrets.append(turret)
 
+    def eligible_turrets_for(self, target_unit: Optional['Unit']) -> list[Turret]:
+        """Return the turrets whose hull/wing rules permit this target."""
+        if not target_unit or self.is_destroyed:
+            return []
+        eligible = []
+        for turret in self.turrets:
+            if (
+                target_unit.hull_size == HullSize.STRIKECRAFT_WING
+                and turret.variant != TurretVariant.ANTI_STRIKECRAFT
+            ):
+                continue
+            if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
+                wing = self.unit.strikecraft_wing_component
+                if wing:
+                    if wing.wing_type == WingType.FIGHTER and target_unit.hull_size != HullSize.STRIKECRAFT_WING:
+                        continue
+                    if wing.wing_type == WingType.BOMBER and target_unit.hull_size == HullSize.STRIKECRAFT_WING:
+                        continue
+            eligible.append(turret)
+        return eligible
+
     def update(self, galaxy: 'Galaxy') -> None:
         """
         Updates all turrets and fires only when the current order hierarchy has
         an active Attack order for the turret's cached target.
         """
         if self.is_destroyed:
+            self.clear_target()
             return
 
         for turret in self.turrets:
@@ -290,6 +312,15 @@ class Weapons(UnitComponent):
 
         for turret in self.turrets:
             if turret.target:
+                from entities import are_enemies
+                if not are_enemies(self.unit.owner, turret.target.owner):
+                    turret.target = None
+                    turret.target_component_type = None
+                    continue
+                if turret not in self.eligible_turrets_for(turret.target):
+                    turret.target = None
+                    turret.target_component_type = None
+                    continue
                 if turret.target.current_hit_points <= 0:
                     turret.target = None
                     turret.target_component_type = None
@@ -312,26 +343,17 @@ class Weapons(UnitComponent):
 
     def set_target(self, target_unit: 'Unit', target_component_type: Optional[type] = None) -> None:
         """Sets the target of the turrets to the specified unit and optionally a specific component."""
+        from entities import are_enemies
+        eligible_ids = {id(turret) for turret in self.eligible_turrets_for(target_unit)} if (
+            target_unit and are_enemies(self.unit.owner, target_unit.owner)
+        ) else set()
         for turret in self.turrets:
-            if target_unit:
-                # Standard and Long Range turrets cannot target strikecraft (strikecraft wings)
-                if target_unit.hull_size == HullSize.STRIKECRAFT_WING and turret.variant != TurretVariant.ANTI_STRIKECRAFT:
-                    continue
-
-                # Attacker is a strikecraft wing:
-                if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
-                    wing_comp = self.unit.strikecraft_wing_component
-                    if wing_comp:
-                        if wing_comp.wing_type == WingType.FIGHTER:
-                            # Fighters can only attack strikecraft wings
-                            if target_unit.hull_size != HullSize.STRIKECRAFT_WING:
-                                continue
-                        elif wing_comp.wing_type == WingType.BOMBER:
-                            # Bombers can only attack non-strikecraft units
-                            if target_unit.hull_size == HullSize.STRIKECRAFT_WING:
-                                continue
-            turret.target = target_unit
-            turret.target_component_type = target_component_type
+            if id(turret) in eligible_ids:
+                turret.target = target_unit
+                turret.target_component_type = target_component_type
+            else:
+                turret.target = None
+                turret.target_component_type = None
     
     def clear_target(self) -> None:
         """Clears the target of the turrets."""

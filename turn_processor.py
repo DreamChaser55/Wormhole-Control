@@ -128,35 +128,60 @@ class TurnProcessor:
 
     def _process_movement(self, current_player):
         for system_name, system in self.game.galaxy.systems.items():
-            units_to_move: typing.List[typing.Tuple['Unit', typing.Tuple[str, typing.Union['HexCoord', str, typing.Tuple['HexCoord', 'Position']]]]] = []
+            units_to_move: typing.List[typing.Tuple['Unit', tuple]] = []
 
             all_units_in_system = system.get_all_units()[:]
             for unit, current_hex in all_units_in_system:
                 if unit.owner != current_player:
                     continue
 
+                commander = unit.commander_component
+                if commander:
+                    commander.prepare_for_movement()
+
                 # Units disabled by Ion Bolt cannot move
                 if unit.is_disabled:
                     logger.debug(f"   {unit.name} is disabled (Ion Bolt) — movement skipped.")
                     continue
+
+                if (
+                    unit.hyperdrive_component
+                    and not unit.hyperdrive_component.is_functional
+                    and (
+                        unit.hyperdrive_component.hex_jump_target
+                        or unit.hyperdrive_component.wormhole_jump_target
+                    )
+                ):
+                    unit.hyperdrive_component.clear_jump_target(
+                        unit.hyperdrive_component.jump_target_order_id
+                    )
+                    logger.debug(f"   {unit.name} cannot jump: Hyperdrive is destroyed or sabotaged. Target cleared.")
                 
                 if unit.hyperdrive_component and unit.hyperdrive_component.wormhole_jump_target:
                     target_wormhole_obj = unit.hyperdrive_component.wormhole_jump_target
+                    target_order_id = unit.hyperdrive_component.jump_target_order_id
                     target_sys_name_for_jump = target_wormhole_obj.exit_system_name
                     exit_wh_id_for_jump = target_wormhole_obj.exit_wormhole_id
                     if target_sys_name_for_jump and exit_wh_id_for_jump and target_sys_name_for_jump in self.game.galaxy.systems:
-                        units_to_move.append((unit, ("system_jump", target_sys_name_for_jump)))
+                        units_to_move.append((unit, ("system_jump", target_sys_name_for_jump, target_order_id)))
                     else:
                         logger.debug(f"  Wormhole Jump Failed (Queuing): Invalid target system ({target_sys_name_for_jump}) or incomplete exit wormhole data ({exit_wh_id_for_jump}) for {unit.name}")
+                        unit.hyperdrive_component.clear_jump_target(target_order_id)
 
                 elif unit.hyperdrive_component and unit.hyperdrive_component.hex_jump_target:
                     target_hex_for_jump, target_position_for_jump = unit.hyperdrive_component.hex_jump_target
+                    target_order_id = unit.hyperdrive_component.jump_target_order_id
                     if target_hex_for_jump != current_hex and target_hex_for_jump in system.hexes:
-                        units_to_move.append((unit, ("hex_jump", (target_hex_for_jump, target_position_for_jump))))
+                        units_to_move.append((unit, ("hex_jump", (target_hex_for_jump, target_position_for_jump), target_order_id)))
+                    else:
+                        # A stale or already-reached waypoint must not survive
+                        # into another turn and become an orphaned actuator.
+                        unit.hyperdrive_component.clear_jump_target(target_order_id)
 
                 elif unit.engines_component and unit.engines_component.move_target:
+                    target_order_id = unit.engines_component.move_target_order_id
                     if not unit.engines_component.is_operational:
-                        unit.engines_component.move_target = None
+                        unit.engines_component.clear_move_target(target_order_id)
                         logger.debug(
                             f"   {unit.name} cannot move sub-light: Engines are destroyed or offline. "
                             "Movement target cleared."
@@ -198,10 +223,10 @@ class TurnProcessor:
                         logger.debug(f"   {unit.name} arrived at destination {target_pos_in_sector}")
                         unit.position = target_pos_in_sector
                         if unit.engines_component:
-                            unit.engines_component.move_target = None
+                            unit.engines_component.clear_move_target(target_order_id)
 
             for unit, movement_details in units_to_move:
-                movement_type, movement_data = movement_details
+                movement_type, movement_data, expected_order_id = movement_details
                 origin_system = self.game.galaxy.systems[unit.in_system]
                 if not origin_system:
                     logger.debug(f"   FATAL Error: Could not find origin system {unit.in_system} for unit {unit.id}. Skipping move.")
@@ -211,6 +236,17 @@ class TurnProcessor:
                     logger.debug(f"   LOGIC ERROR: Unit {unit.name} in units_to_move for jump but has no hyperdrive_component. Skipping.")
                     continue
                 hd_comp = unit.hyperdrive_component
+                if (
+                    expected_order_id is not None
+                    and hd_comp.jump_target_order_id != expected_order_id
+                ):
+                    logger.debug(
+                        "   %s jump snapshot ignored: target ownership changed from %s to %s.",
+                        unit.name,
+                        expected_order_id,
+                        hd_comp.jump_target_order_id,
+                    )
+                    continue
 
                 if movement_type == "system_jump":
                     if hd_comp.jump_status == JumpStatus.CHARGING:
@@ -245,24 +281,24 @@ class TurnProcessor:
                     elif not target_system:
                         logger.debug(f"   Error: Wormhole destination system {target_sys_name} not found. Jump aborted for {unit.name}.")
                         hd_comp.jump_status = JumpStatus.ERROR
-                        hd_comp.wormhole_jump_target = None
+                        hd_comp.clear_jump_target(expected_order_id)
                     else:
                         entry_wormhole = hd_comp.wormhole_jump_target
                         exit_wh_id = entry_wormhole.exit_wormhole_id
                         if not exit_wh_id:
                             logger.debug(f"   Error: Entry wormhole {entry_wormhole.id} for unit {unit.name} has no exit_wormhole_id. Aborting jump.")
                             hd_comp.jump_status = JumpStatus.ERROR
-                            hd_comp.wormhole_jump_target = None
+                            hd_comp.clear_jump_target(expected_order_id)
                         else:
                             exit_wormhole_obj_for_exec = self.game.galaxy.wormholes[exit_wh_id]
                             if not exit_wormhole_obj_for_exec:
                                 logger.debug(f"   Error: Exit wormhole object with ID {exit_wh_id} not found in galaxy. Aborting jump for {unit.name}.")
                                 hd_comp.jump_status = JumpStatus.ERROR
-                                hd_comp.wormhole_jump_target = None
+                                hd_comp.clear_jump_target(expected_order_id)
                             elif exit_wormhole_obj_for_exec.in_system != target_sys_name:
                                 logger.debug(f"   Error: Exit wormhole {exit_wormhole_obj_for_exec.id} (in system {exit_wormhole_obj_for_exec.in_system}) does not actually lead to target system {target_sys_name}. Aborting jump for {unit.name}.")
                                 hd_comp.jump_status = JumpStatus.ERROR
-                                hd_comp.wormhole_jump_target = None
+                                hd_comp.clear_jump_target(expected_order_id)
                             else:
                                 arrival_hex = exit_wormhole_obj_for_exec.in_hex
                                 can_jump = True
@@ -275,7 +311,7 @@ class TurnProcessor:
                         if am_comp and am_comp.current_amount < sys_jump_cost:
                             logger.debug(f"   {unit.name} system jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{sys_jump_cost:.1f}).")
                             hd_comp.jump_status = JumpStatus.ERROR
-                            hd_comp.wormhole_jump_target = None
+                            hd_comp.clear_jump_target(expected_order_id)
                             continue
 
                         moved = self.game.galaxy.move_unit_between_systems(
@@ -327,16 +363,16 @@ class TurnProcessor:
                                             title="Wormhole Damage"
                                         )
 
-                            hd_comp.start_recharge() # Clears targets and sets status to CHARGING
+                            hd_comp.start_recharge(expected_order_id) # Clears this jump's target and sets status to CHARGING
                         else:
                             logger.debug(f"   Error during final wormhole jump execution for {unit.name}. Jump aborted.")
                             hd_comp.jump_status = JumpStatus.ERROR
                             if hd_comp.wormhole_jump_target: # Ensure target is cleared on failure
-                                 hd_comp.wormhole_jump_target = None
+                                 hd_comp.clear_jump_target(expected_order_id)
                     elif hd_comp.jump_status == JumpStatus.JUMPING: # If can_jump became false after setting to JUMPING
                         hd_comp.jump_status = JumpStatus.ERROR 
                         if hd_comp.wormhole_jump_target: # Ensure target is cleared
-                             hd_comp.wormhole_jump_target = None
+                             hd_comp.clear_jump_target(expected_order_id)
                 
                 elif movement_type == "hex_jump":
                     if hd_comp.jump_status == JumpStatus.CHARGING:
@@ -369,14 +405,14 @@ class TurnProcessor:
                     if target_hex not in origin_system.hexes:
                         logger.debug(f"   Error: Unit {unit.name} hex_jump_target {target_hex} is invalid for system {origin_system.name}. Aborting.")
                         hd_comp.jump_status = JumpStatus.ERROR
-                        hd_comp.hex_jump_target = None
+                        hd_comp.clear_jump_target(expected_order_id)
                         continue
 
                     effective_jump_range = int(hd_comp.jump_range * unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
                     if unit.in_hex and hex_distance(unit.in_hex, target_hex) > effective_jump_range:
                         logger.debug(f"   Error: Unit {unit.name} hex_jump to {target_hex} exceeds jump range of {effective_jump_range}. Aborting.")
                         hd_comp.jump_status = JumpStatus.ERROR
-                        hd_comp.hex_jump_target = None
+                        hd_comp.clear_jump_target(expected_order_id)
                         continue
 
                     jump_inhibited = False
@@ -389,7 +425,7 @@ class TurnProcessor:
                                 break
                     if jump_inhibited:
                         hd_comp.jump_status = JumpStatus.ERROR
-                        hd_comp.hex_jump_target = None
+                        hd_comp.clear_jump_target(expected_order_id)
                         continue
 
                     destination_hex_obj = origin_system.hexes[target_hex]
@@ -401,7 +437,7 @@ class TurnProcessor:
                                 break
                     if jump_inhibited:
                         hd_comp.jump_status = JumpStatus.ERROR
-                        hd_comp.hex_jump_target = None
+                        hd_comp.clear_jump_target(expected_order_id)
                         continue
                         
                     # Check/consume antimatter for hex jump
@@ -411,7 +447,7 @@ class TurnProcessor:
                     if am_comp and am_comp.current_amount < hex_jump_cost:
                         logger.debug(f"   {unit.name} hex jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{hex_jump_cost:.1f}).")
                         hd_comp.jump_status = JumpStatus.ERROR
-                        hd_comp.hex_jump_target = None
+                        hd_comp.clear_jump_target(expected_order_id)
                         continue
 
                     moved = origin_system.move_unit_between_hexes(unit=unit, destination_hex=target_hex)
@@ -420,12 +456,12 @@ class TurnProcessor:
                         if am_comp:
                             am_comp.consume(hex_jump_cost)
                         logger.debug(f"   {unit.name}(id:{unit.id}) completed hex jump to {target_hex}:{target_pos} in {origin_system.name} system.")
-                        hd_comp.start_recharge() # Clears targets and sets status to CHARGING
+                        hd_comp.start_recharge(expected_order_id) # Clears this jump's target and sets status to CHARGING
                     else:
                         logger.debug(f"   Error during hex jump processing for {unit.name} to {target_hex}. Jump aborted.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         if hd_comp.hex_jump_target: # Ensure target is cleared on failure
-                             hd_comp.hex_jump_target = None
+                             hd_comp.clear_jump_target(expected_order_id)
 
     def _process_population_growth(self):
         for system in self.game.galaxy.systems.values():

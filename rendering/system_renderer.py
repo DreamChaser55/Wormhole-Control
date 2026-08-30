@@ -572,9 +572,13 @@ class SystemViewRenderer:
             current_system_name = unit.in_system
             sequence_counter = 0
             
-            if unit.commander_component.current_order:
+            active_root = (
+                unit.commander_component.current_order
+                or unit.commander_component.get_active_order_root()
+            )
+            if active_root:
                 current_position, current_system_name, sequence_counter = collect_all_hex_waypoints(
-                    unit.commander_component.current_order, 
+                    active_root,
                     current_position,
                     current_system_name,
                     sequence_counter, 

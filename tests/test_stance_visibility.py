@@ -144,10 +144,11 @@ def test_stance_targets_visible_enemy_in_short_range_and_different_sector_with_s
     # Process stance
     p1_ship.commander_component.update()
 
-    # P1 battleship should acquire an AttackOrder targeting p2_enemy
-    assert p1_ship.commander_component.current_order is not None
-    assert getattr(p1_ship.commander_component.current_order, 'is_stance_order', False) is True
-    assert p1_ship.commander_component.current_order.parameters["target_unit_id"] == p2_enemy.id
+    # Explicit work remains empty; the standing order owns the engagement.
+    assert p1_ship.commander_component.current_order is None
+    attack = p1_ship.commander_component.standing_order.active_attack
+    assert attack is not None
+    assert attack.parameters["target_unit_id"] == p2_enemy.id
 
 
 def test_stance_ignores_cloaked_enemy_outside_visual_radius():
@@ -207,8 +208,7 @@ def test_stance_order_cancelled_when_target_slips_into_fog_of_war():
 
     # Initial update creates stance order
     p1_ship.commander_component.update()
-    assert p1_ship.commander_component.current_order is not None
-    assert getattr(p1_ship.commander_component.current_order, 'is_stance_order', False) is True
+    assert p1_ship.commander_component.standing_order.active_attack is not None
 
     # Scout gets destroyed or moves away, leaving (0, 1) in Fog of War
     galaxy.systems["Sol"].hexes[(0, 1)].units.remove(p1_scout)
@@ -216,6 +216,7 @@ def test_stance_order_cancelled_when_target_slips_into_fog_of_war():
     # Next update should detect target is no longer visible and cancel the stance order
     p1_ship.commander_component.update()
     assert p1_ship.commander_component.current_order is None
+    assert p1_ship.commander_component.standing_order.active_attack is None
 
 
 def test_weapons_update_clears_target_if_visibility_is_lost():
@@ -257,9 +258,10 @@ def test_stance_infiltrated_target_visible():
     assert is_unit_visible(snap, p2_enemy) is True
 
     p1_ship.commander_component.update()
-    assert p1_ship.commander_component.current_order is not None
-    assert getattr(p1_ship.commander_component.current_order, 'is_stance_order', False) is True
-    assert p1_ship.commander_component.current_order.parameters["target_unit_id"] == p2_enemy.id
+    assert p1_ship.commander_component.current_order is None
+    attack = p1_ship.commander_component.standing_order.active_attack
+    assert attack is not None
+    assert attack.parameters["target_unit_id"] == p2_enemy.id
 
 
 def test_patrol_order_respects_visibility():

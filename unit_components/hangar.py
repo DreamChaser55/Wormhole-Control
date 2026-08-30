@@ -102,7 +102,8 @@ class HangarComponent(UnitComponent):
         
         self.docked_units.append(unit)
         if unit.commander_component:
-            unit.commander_component.clear_orders()
+            unit.commander_component.clear_explicit_orders()
+            unit.commander_component.suspend_stance_activity("docked")
             
         logger.debug(f"Unit {unit.name} docked into carrier {self.unit.name}.")
         return True

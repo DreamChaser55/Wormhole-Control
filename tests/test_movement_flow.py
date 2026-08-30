@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from turn_processor import TurnProcessor
-from unit_orders import MoveOrder, OrderStatus, ReachWaypointOrder
+from unit_orders import MoveOrder, Order, OrderStatus, OrderType, ReachWaypointOrder
 from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus
 from tests.test_unit_components import MockPlayer, MockUnit
 
@@ -502,13 +502,16 @@ def test_unstable_wormhole_damage():
     engines.current_hit_points = 50
     
     hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5, recharge_duration=3)
-    hd.wormhole_jump_target = wh_sol
     hd.jump_status = JumpStatus.READY
     
     commander = Commander(unit)
     unit.add_component(engines)
     unit.add_component(hd)
     unit.add_component(commander)
+    navigation_owner = Order(unit, OrderType.REACH_WAYPOINT)
+    navigation_owner.status = OrderStatus.IN_PROGRESS
+    commander.current_order = navigation_owner
+    hd.set_wormhole_jump_target(wh_sol, navigation_owner.order_id)
     
     galaxy.systems["Sol"].add_unit(unit)
     
@@ -539,7 +542,7 @@ def test_unstable_wormhole_damage():
     # Set engines current hit points to 5, so 20 damage will destroy engines (takes 5 damage) and spillover 15 to hull
     engines.current_hit_points = 5
     unit.current_hit_points = 100
-    hd.wormhole_jump_target = wh_sol
+    hd.set_wormhole_jump_target(wh_sol, navigation_owner.order_id)
     hd.jump_status = JumpStatus.READY
     # Move unit back to Sol for another jump
     galaxy.move_unit_between_systems(unit, "Vega", "Sol", (1, 1))

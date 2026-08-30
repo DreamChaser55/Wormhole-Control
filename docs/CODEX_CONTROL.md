@@ -164,7 +164,7 @@ Requires the current `turn_token` and 1–40 command objects accepted by the exi
   "turn_token": "opaque-value",
   "commands": [
     {"type":"move","unit_ids":[17],"system_name":"Sol","hex_coord":[1,0],"position":[0,0]},
-    {"type":"set_stance","unit_ids":[17],"stance":"ATTACK_IN_WEAPON_RANGE"}
+    {"type":"set_stance","unit_ids":[17],"stance":"attack_weapon_range"}
   ]
 }
 ```

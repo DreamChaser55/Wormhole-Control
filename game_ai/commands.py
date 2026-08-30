@@ -41,6 +41,32 @@ class _Rejected(ValueError):
         self.code = code
 
 
+def _clear_explicit_orders(commander: Any) -> None:
+    method = getattr(commander, "clear_explicit_orders", None)
+    if callable(method):
+        method()
+    else:  # Compatibility for integrations implementing the pre-3.1 surface.
+        commander.clear_orders()
+
+
+def _stop_and_idle(commander: Any) -> None:
+    method = getattr(commander, "stop_and_idle", None)
+    if callable(method):
+        method()
+        return
+    commander.clear_orders()
+    from unit_components import UnitStance
+    commander.stance = UnitStance.DO_NOTHING
+
+
+def _set_stance(commander: Any, stance: Any) -> None:
+    method = getattr(commander, "set_stance", None)
+    if callable(method):
+        method(stance)
+    else:
+        commander.stance = stance
+
+
 @dataclass
 class _Prepared:
     apply: Callable[[], None]
@@ -442,8 +468,8 @@ class CommandGateway:
         if command.type == "cancel_orders":
             return [
                 _Prepared(
-                    apply=lambda unit=unit: unit.commander_component.clear_orders(),
-                    receipt=f"Cleared orders for {unit.name}.",
+                    apply=lambda unit=unit: _stop_and_idle(unit.commander_component),
+                    receipt=f"Stopped {unit.name} and set its stance to Do Nothing.",
                 )
                 for unit in units
             ]
@@ -481,7 +507,7 @@ class CommandGateway:
 
             def apply(unit=unit, order=order, queue=command.queue):
                 if not queue:
-                    unit.commander_component.clear_orders()
+                    _clear_explicit_orders(unit.commander_component)
                 unit.commander_component.add_order(order)
 
             operations.append(
@@ -866,9 +892,7 @@ class CommandGateway:
                 )
             operations.append(
                 _Prepared(
-                    apply=lambda unit=unit, stance=stance: setattr(
-                        unit.commander_component, "stance", stance
-                    ),
+                    apply=lambda unit=unit, stance=stance: _set_stance(unit.commander_component, stance),
                     receipt=f"Set {unit.name} stance to {stance.value}.",
                 )
             )

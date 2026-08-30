@@ -115,8 +115,8 @@ class OrderSystem:
     def handle_cancel_orders(self, event: CancelOrdersEvent):
         for unit in event.units:
             if unit.commander_component:
-                unit.commander_component.clear_orders()
-                logger.debug(f"  Unit {unit.name} orders cancelled via event.")
+                unit.commander_component.stop_and_idle()
+                logger.debug(f"  Unit {unit.name} stopped and stance reset via event.")
         self.game.sidebar_needs_update = True
 
     def handle_issue_move_order(self, event: IssueMoveOrderEvent):
@@ -141,7 +141,7 @@ class OrderSystem:
             }
             move_order = MoveOrder(unit, move_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
                 logger.debug(f"  Unit {unit.name} orders cancelled.")
             unit.commander_component.add_order(move_order)
             logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
@@ -173,7 +173,7 @@ class OrderSystem:
                 }
                 patrol_order = PatrolOrder(unit, patrol_params)
                 if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
+                    unit.commander_component.clear_explicit_orders()
                     logger.debug(f"  Unit {unit.name} orders cancelled.")
                 unit.commander_component.add_order(patrol_order)
                 logger.debug(f"  Unit {unit.name} ordered to patrol to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
@@ -198,7 +198,7 @@ class OrderSystem:
                     continue
                 move_order = MoveOrder(unit, move_params)
                 if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
+                    unit.commander_component.clear_explicit_orders()
                     logger.debug(f"  Unit {unit.name} orders cancelled.")
                 unit.commander_component.add_order(move_order)
                 logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.target_hex}:{move_params['destination_position']} via event.")
@@ -231,7 +231,7 @@ class OrderSystem:
                         continue
                     move_order = MoveOrder(unit, move_params)
                     if not event.shift_pressed:
-                        unit.commander_component.clear_orders()
+                        unit.commander_component.clear_explicit_orders()
                         logger.debug(f"  Unit {unit.name} orders cancelled.")
                     unit.commander_component.add_order(move_order)
                     logger.debug(f"  Unit {unit.name} ordered to move via wormhole {target_wormhole.name} to {exit_system_name}:{exit_wormhole.in_hex}:{exit_wormhole.position} via event.")
@@ -250,7 +250,7 @@ class OrderSystem:
                 attack_params["target_component_type"] = event.target_component_type_str
             attack_order = AttackOrder(unit, attack_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(attack_order)
             logger.debug(f"  Unit {unit.name} ordered to attack {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
@@ -278,7 +278,7 @@ class OrderSystem:
             }
             colonize_order = ColonizeOrder(unit, colonize_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(colonize_order)
             logger.debug(f"  Unit {unit.name} ordered to colonize {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
@@ -299,7 +299,7 @@ class OrderSystem:
             }
             load_order = LoadColonistsOrder(unit, load_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(load_order)
             logger.debug(f"  Unit {unit.name} ordered to load {event.amount} colonists from planet {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
@@ -312,7 +312,7 @@ class OrderSystem:
             }
             construct_order = ConstructOrder(unit, construct_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(construct_order)
             logger.debug(f"  Unit {unit.name} ordered to construct {event.unit_template_name} at {event.target_position} via event.")
         self.game.sidebar_needs_update = True
@@ -329,7 +329,7 @@ class OrderSystem:
             repair_params = {"target_unit_id": event.target_unit.id}
             repair_order = RepairOrder(unit, repair_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(repair_order)
             logger.debug(f"  Unit {unit.name} ordered to repair {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
@@ -353,7 +353,7 @@ class OrderSystem:
             }
             refit_order = RefitOrder(unit, refit_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(refit_order)
             logger.debug(f"  Unit {unit.name} ordered to refit {event.target_unit.name} ({event.action} {event.component_type}) via event.")
         self.game.sidebar_needs_update = True
@@ -363,7 +363,7 @@ class OrderSystem:
             protect_params = {"target_unit_id": event.target_unit.id}
             protect_order = ProtectOrder(unit, protect_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(protect_order)
             logger.debug(f"  Unit {unit.name} ordered to protect {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
@@ -380,7 +380,7 @@ class OrderSystem:
             mine_params = {"target_id": event.target_body.id}
             mine_order = MineOrder(unit, mine_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(mine_order)
             logger.debug(f"  Unit {unit.name} ordered to mine {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
@@ -397,7 +397,7 @@ class OrderSystem:
             mine_params = {"target_id": event.target_body.id}
             continuous_mine_order = ContinuousMineOrder(unit, mine_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(continuous_mine_order)
             logger.debug(f"  Unit {unit.name} ordered to continuous mine {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
@@ -428,7 +428,7 @@ class OrderSystem:
             unload_params = {"target_unit_id": event.target_unit.id}
             unload_order = UnloadResourcesOrder(unit, unload_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(unload_order)
             logger.debug(f"  Unit {unit.name} ordered to unload resources to {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
@@ -445,7 +445,7 @@ class OrderSystem:
             dock_params = {"target_carrier_id": event.target_carrier.id}
             dock_order = DockOrder(unit, dock_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(dock_order)
             logger.debug(f"  Unit {unit.name} ordered to dock to {event.target_carrier.name} via event.")
         self.game.sidebar_needs_update = True
@@ -465,7 +465,7 @@ class OrderSystem:
                 ability_params["target_hex_coord"] = getattr(event, "target_hex_coord", None)
             ability_order = UseAbilityOrder(unit, ability_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(ability_order)
             logger.debug(f"  Unit {unit.name} ordered to use ability {event.ability_type_str} via event.")
         self.game.sidebar_needs_update = True
@@ -479,7 +479,7 @@ class OrderSystem:
                 transfer_params = {"target_unit_id": event.target_unit.id}
                 transfer_order = TransferAntimatterOrder(unit, transfer_params)
                 if not event.shift_pressed:
-                    unit.commander_component.clear_orders()
+                    unit.commander_component.clear_explicit_orders()
                 unit.commander_component.add_order(transfer_order)
                 logger.debug(f"  Unit {unit.name} ordered to transfer antimatter to {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
@@ -501,7 +501,7 @@ class OrderSystem:
             }
             resupply_order = ContinuousResupplyOrder(unit, resupply_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(resupply_order)
             logger.debug(f"  Unit {unit.name} ordered to continuously resupply from star {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
@@ -520,7 +520,7 @@ class OrderSystem:
                 continue
             lay_order = LayMinefieldOrder(unit, minefield_type=mtype)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(lay_order)
             logger.debug(f"  Unit {unit.name} ordered to lay {mtype} minefield via event.")
         self.game.sidebar_needs_update = True
@@ -538,7 +538,7 @@ class OrderSystem:
             trade_params = {"target_unit_id": event.target_unit.id}
             trade_order = TradeOrder(unit, trade_params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(trade_order)
             logger.debug(f"  Unit {unit.name} ordered to trade with {event.target_unit.name} via event.")
         self.game.sidebar_needs_update = True
@@ -555,7 +555,7 @@ class OrderSystem:
                 continue
             continuous_trade_order = ContinuousTradeOrder(unit)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(continuous_trade_order)
             logger.debug(f"  Unit {unit.name} ordered to continuous trade via event.")
         self.game.sidebar_needs_update = True
@@ -580,7 +580,7 @@ class OrderSystem:
                 continue
             order = InfiltrateUnitOrder(unit, {"target_unit_id": event.target_unit.id})
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
             logger.debug(f"  Unit {unit.name} ordered to infiltrate {event.target_unit.name} via event.")
 
@@ -619,7 +619,7 @@ class OrderSystem:
             }
             order = InfiltratePlanetOrder(unit, params)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
             logger.debug(f"  Unit {unit.name} ordered to infiltrate {getattr(event.target_body, 'name', 'colony')} via event.")
 
@@ -712,7 +712,7 @@ class OrderSystem:
 
             order = CISweepOrder(unit)
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
             logger.debug(f"  Unit {unit.name} ordered CI Sweep via event.")
             if getattr(self.game, 'galaxy', None):
@@ -733,7 +733,7 @@ class OrderSystem:
                 continue
             order = EliminateAgentOrder(unit, {"agent_id": event.agent_id})
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
             logger.debug(f"  Unit {unit.name} ordered to eliminate Agent {event.agent_id} via event.")
             if getattr(self.game, 'galaxy', None):
@@ -749,12 +749,11 @@ class OrderSystem:
                 continue
             order = ExtractAgentOrder(unit, {"agent_id": event.agent_id})
             if not event.shift_pressed:
-                unit.commander_component.clear_orders()
+                unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
             logger.debug(f"  Unit {unit.name} ordered to extract Agent {event.agent_id} via event.")
             if getattr(self.game, 'galaxy', None):
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True
         self.game.sidebar_needs_update = True
-
 

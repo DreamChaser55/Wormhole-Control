@@ -17,7 +17,7 @@ from .rules import (
 
 
 COMMAND_HELP = {
-    "cancel_orders": "Clear current and queued orders.",
+    "cancel_orders": "Stop all activity and set the stance to Do Nothing.",
     "move": "Move to system_name, hex_coord, and position.",
     "patrol": "Patrol toward system_name, hex_coord, and position.",
     "attack": "Attack visible enemy target_id (optional target_component to focus fire on a specific subsystem).",
@@ -453,7 +453,8 @@ def _public_scalar_attributes(component: Any) -> dict[str, Any]:
 def _orders(commander: Any) -> list[dict[str, Any]]:
     if commander is None:
         return []
-    active = getattr(commander, "current_order", None)
+    get_observable = getattr(commander, "get_observable_active_order", None)
+    active = get_observable() if callable(get_observable) else getattr(commander, "current_order", None)
     queued = list(getattr(commander, "orders_queue", []) or [])
     result = []
     for state, order in ([("active", active)] if active is not None else []) + [

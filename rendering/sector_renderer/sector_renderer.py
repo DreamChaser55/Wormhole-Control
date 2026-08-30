@@ -368,9 +368,15 @@ class SectorViewRenderer:
 
                 if is_turn_player_unit:
                     has_commander_orders = (
-                        unit_obj.commander_component and (
-                            unit_obj.commander_component.current_order or
-                            unit_obj.commander_component.orders_queue
+                        unit_obj.commander_component
+                        and (
+                            unit_obj.commander_component.current_order
+                            or unit_obj.commander_component.orders_queue
+                            or getattr(
+                                getattr(unit_obj.commander_component, "standing_order", None),
+                                "has_engagement",
+                                False,
+                            )
                         )
                     )
                     if has_commander_orders:
@@ -420,8 +426,11 @@ class SectorViewRenderer:
                 )
                 if is_external_unit and candidate_unit.commander_component:
                     has_orders_to_current_sector = False
-                    if candidate_unit.commander_component.current_order:
-                        order = candidate_unit.commander_component.current_order
+                    order = (
+                        candidate_unit.commander_component.current_order
+                        or candidate_unit.commander_component.get_active_order_root()
+                    )
+                    if order:
                         if self._order_targets_sector(order, self.game.current_system_name, self.game.current_sector_coord):
                             has_orders_to_current_sector = True
                         for sub_order in order.sub_orders:

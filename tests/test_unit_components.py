@@ -455,9 +455,9 @@ def test_commander_stances():
     # Test Stance: ATTACK_WEAPON_RANGE
     commander.stance = UnitStance.ATTACK_WEAPON_RANGE
     commander.update()
-    assert commander.current_order is not None
-    assert commander.current_order.order_type == OrderType.ATTACK
-    assert getattr(commander.current_order, 'is_stance_order', False)
+    assert commander.current_order is None
+    assert commander.standing_order.active_attack is not None
+    assert commander.standing_order.active_attack.order_type == OrderType.ATTACK
     assert turret.target == enemy_in_range
 
     # If the target moves out of range or dies, it should clear and find no target
@@ -468,8 +468,8 @@ def test_commander_stances():
     # Move target back
     enemy_in_range.position = Position(10, 0)
     commander.update()
-    assert commander.current_order is not None
-    assert commander.current_order.order_type == OrderType.ATTACK
+    assert commander.standing_order.active_attack is not None
+    assert commander.standing_order.active_attack.order_type == OrderType.ATTACK
     assert turret.target == enemy_in_range
 
     # Test Stance: ATTACK_SAME_SECTOR
@@ -477,9 +477,8 @@ def test_commander_stances():
     commander.stance = UnitStance.ATTACK_SAME_SECTOR
     weapons.clear_target()
     commander.update()
-    assert commander.current_order is not None
-    assert getattr(commander.current_order, 'is_stance_order', False)
-    assert commander.current_order.parameters["target_unit_id"] == enemy_in_sector.id
+    assert commander.standing_order.active_attack is not None
+    assert commander.standing_order.active_attack.parameters["target_unit_id"] == enemy_in_sector.id
 
     # If enemy_in_sector leaves the sector, the order should get cancelled
     enemy_in_sector.in_hex = (0, 1)
@@ -487,13 +486,14 @@ def test_commander_stances():
     hex_jump.units = [friendly_scout1, enemy_in_jump_range, enemy_in_sector]
     commander.update()
     assert commander.current_order is None
+    assert commander.standing_order.active_attack is None
 
     # Test Stance: ATTACK_INTRA_SYSTEM_JUMP_RANGE
     enemy_in_sector.current_hit_points = 0 # dead
     commander.stance = UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE
     commander.update()
-    assert commander.current_order is not None
-    assert commander.current_order.parameters["target_unit_id"] == enemy_in_jump_range.id
+    assert commander.standing_order.active_attack is not None
+    assert commander.standing_order.active_attack.parameters["target_unit_id"] == enemy_in_jump_range.id
 
     # If the target moves too far away (e.g. to (0, 5)), the order should be cancelled
     enemy_in_jump_range.in_hex = (0, 5)
@@ -501,13 +501,14 @@ def test_commander_stances():
     hex_far.units = [friendly_scout2, enemy_far, enemy_in_jump_range]
     commander.update()
     assert commander.current_order is None
+    assert commander.standing_order.active_attack is None
 
     # Test Stance: ATTACK_SAME_SYSTEM
     enemy_in_jump_range.current_hit_points = 0 # dead
     commander.stance = UnitStance.ATTACK_SAME_SYSTEM
     commander.update()
-    assert commander.current_order is not None
-    assert commander.current_order.parameters["target_unit_id"] == enemy_far.id
+    assert commander.standing_order.active_attack is not None
+    assert commander.standing_order.active_attack.parameters["target_unit_id"] == enemy_far.id
 
 def test_weapons_and_turrets():
     unit = MockUnit()
@@ -1298,5 +1299,4 @@ def test_allowed_stances_restriction():
     engines.current_hit_points = 0
     allowed = commander.get_allowed_stances()
     assert allowed == [UnitStance.DO_NOTHING, UnitStance.ATTACK_WEAPON_RANGE]
-
 

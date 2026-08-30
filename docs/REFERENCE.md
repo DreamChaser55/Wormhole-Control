@@ -247,7 +247,7 @@ according to resolution and camera zoom.
 
 ## 5. Order Types
 
-The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can be issued to units:
+The `OrderType` enum (`unit_orders/base.py`) defines **32 order types**. Thirty-one are explicit or internal action types; `STANCE` is the persistent standing-order root:
 
 | Order Type | Description |
 |---|---|
@@ -255,6 +255,7 @@ The `OrderType` enum (`unit_orders/base.py`) defines **29 order types** that can
 | `MOVE` | High-level multi-leg movement across positions, hexes, or star systems via wormholes. |
 | `PATROL` | Repeatedly patrols a looping sequence of waypoint coordinates. |
 | `ATTACK` | Moves into weapon range and engages a designated enemy unit until destroyed. |
+| `STANCE` | Persistent standing engagement policy. Owns at most one transient `ATTACK` child and is not placed in the explicit queue. |
 | `DEFEND` | Holds position at a target location or guards a friendly/allied unit against incoming hostiles. |
 | `PROTECT` | Escorts a friendly or allied unit, matching its movement and intercepting hostile attackers. |
 | `TOGGLE_INHIBITOR` | Activates or deactivates the ship's hyperspace inhibition field emitter. |
@@ -347,12 +348,24 @@ Every star system contains a central star with a unique antimatter harvesting ra
 - `ATTACK_INTRA_SYSTEM_JUMP_RANGE`: Jump to engage hostile units in adjacent sectors within basic hyperdrive range.
 - `ATTACK_SAME_SYSTEM`: Jump to engage hostile units anywhere within the star system.
 
-All turret fire requires an `IN_PROGRESS` Attack order in the unit's current
-order hierarchy. Direct Attack orders remain authoritative while executing their
-approach movement. Automated stances create current Attack orders, while Patrol,
-Protect, and Defend authorize fire only through their active front Attack
-sub-order. A cached turret target or queued Attack order alone never authorizes
-fire; replacing an engagement with another order immediately clears the target.
+Each Commander keeps two independent layers. `current_order` and `orders_queue`
+contain only explicit player/AI work. A persistent `StanceOrder` is the standing
+policy and may own the transient hierarchy `STANCE → ATTACK → MOVE →
+REACH_WAYPOINT`. Any explicit order suspends that engagement and starts
+immediately when there is no other explicit current order; Shift only queues an
+explicit order behind other explicit orders. Changing stance never interrupts
+foreground work, and the new policy takes effect once the explicit queue is
+empty. **Stop Unit** and the public `cancel_orders` command cancel both layers,
+clear fire/navigation targets, and select `DO_NOTHING`.
+
+All turret fire requires an `IN_PROGRESS` Attack order on the active root's
+front-child chain. Direct Attack orders remain authoritative while executing
+their approach movement. Stance, Patrol, Protect, and Defend authorize fire only
+through their active front Attack child. A cached turret target, a queued Attack,
+or a suspended/cancelled subtree never authorizes fire. Stance targets must remain
+visible enemies inside the selected vigilance boundary; leaving it recursively
+cancels the pursuit before movement is resolved. Direct Attack orders are not
+restricted by the selected stance boundary.
 
 ### Turret Types & Variants (`TurretType` × `TurretVariant` — 3 × 3)
 - **Turret Types**:
@@ -524,6 +537,18 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 - **Transmission Threads (`Conversation`)**: Diplomatic messages between pairs of players are tracked in chronological order within `Conversation` entities (`Message` dataclass).
 - **Real-Time Markdown Logging**: Every transmission sent via the Comms menu or AI agents (`send_message`) is appended in real-time to `saves/comms.md` with turn number, ISO 8601 UTC timestamp, sender/recipient names, IDs, team affiliations, and message text.
 - **Campaign Save Sidecars**: When saving campaigns (`save_game_to_file`), complete campaign transmission logs are atomically exported to `saves/comms/<campaign_id>/comms.md`.
+
+### 10.7 Save Format 3.1 Order Persistence
+
+Each serialized unit has a dedicated Commander payload containing the stable
+lowercase stance value, one explicit `current_order`, and an ordered
+`orders_queue`. The transient stance engagement tree is intentionally omitted and
+is reacquired from current visibility after loading. Explicit order parameters
+and runtime state are encoded recursively; active Attack and waypoint orders
+resume by rebinding weapons and movement ownership without replaying ability,
+construction, refit, charge, or refund side effects. Version 3.0 saves without a
+Commander payload load as Do Nothing, while a legacy `orders` array restores its
+first viable root as current and the remainder as queued.
 
 ---
 
