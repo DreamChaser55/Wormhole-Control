@@ -1,4 +1,4 @@
-# Codex Control Protocol v1
+# Codex Control Protocol v2
 
 Wormhole Control exposes a loopback-only JSON service so Codex can play one visible GUI campaign without calling the OpenAI API. The game remains authoritative: socket workers parse and queue requests, while `Game.update()` performs every read and mutation on the Pygame thread.
 
@@ -28,7 +28,7 @@ For requests that are inconvenient to quote, pipe one JSON object through stdin:
 '@ | python .\game_control.py -
 ```
 
-The CLI adds `protocol_version: 1` and a random `request_id` when omitted. Supplying request IDs yourself is recommended for mutating actions so an identical request can be retried safely.
+The CLI adds `protocol_version: 2` and a random `request_id` when omitted. Supplying request IDs yourself is recommended for mutating actions so an identical request can be retried safely.
 
 ## Transport and process behavior
 
@@ -36,7 +36,7 @@ The CLI adds `protocol_version: 1` and a random `request_id` when omitted. Suppl
 - Port: pass `--port PORT` to either script or set `WORMHOLE_CONTROL_PORT`. An explicit CLI flag wins.
 - Framing: one UTF-8 JSON object followed by a newline, with one response per connection.
 - Request limit: 1 MiB. Protocol responses may be larger because observations contain visible game state.
-- Version: every direct socket request must contain `"protocol_version": 1`.
+- Version: every direct socket request must contain `"protocol_version": 2`.
 - Shutdown: exiting the GUI closes the listener and resolves pending requests with `server_stopping`.
 
 `game_control.py` writes exactly one compact JSON response to stdout. Launch and error diagnostics go to stderr. Its exit statuses are:
@@ -55,7 +55,7 @@ Request:
 
 ```json
 {
-  "protocol_version": 1,
+  "protocol_version": 2,
   "request_id": "stable-client-generated-id",
   "action": "status"
 }
@@ -66,7 +66,7 @@ Every response contains the echoed protocol version, request ID, action, success
 ```json
 {
   "service": "wormhole-control",
-  "protocol_version": 1,
+  "protocol_version": 2,
   "request_id": "stable-client-generated-id",
   "action": "status",
   "ok": true,
@@ -148,7 +148,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":3}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":4}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -169,7 +169,16 @@ Requires the current `turn_token` and 1–40 command objects accepted by the exi
 }
 ```
 
-On success, `data` contains `accepted`, `applied_count`, `receipts`, and the unchanged token. On gateway rejection, `error.details` contains indexed validation errors and `data.applied_count` is zero. Supported command shapes and visible option lists are carried in each observation; see [Agentic AI Architecture](AGENTIC_AI.md) for additional command-gateway context.
+On success, `data` contains `accepted`, `applied_count`, `receipts`, `operation_results`,
+`failure_stage: null`, `retryable: false`, `may_have_partial_effects: false`,
+`requires_observation: false`, and the unchanged token. Preflight rejection has
+`failure_stage: "preflight"`, indexed errors in `error.details`, and zero applied operations.
+Unexpected commit failure has `failure_stage: "commit"`, `retryable: false`, retained
+successful receipts, and applied/failed/unattempted operation results. `applied_count`
+counts successfully completed operations; the failing operation may itself have mutated
+state. Its effects are marked uncertain. The previous mutation token is invalidated,
+`turn_token` is null, and a successful fresh observation is required before another
+command or socket end-turn. No rollback or automatic semantic retry is performed. Supported command shapes and visible option lists are carried in each observation; see [Agentic AI Architecture](AGENTIC_AI.md) for additional command-gateway context.
 
 ### `end_turn`
 
@@ -217,3 +226,60 @@ Common codes include:
 ## Codex sandbox permissions
 
 The normal control command starts a visible local GUI process and connects to a localhost socket. A restricted Codex environment may ask the user to approve those actions. Request approval for the specific Python launch/control command and port; do not disable the sandbox, bind a public interface, inspect saves to recover game state, or substitute an OpenAI API key. The controller itself makes no OpenAI API call and requires no API key.
+
+## Command discovery and order control
+
+Read `observation.command_catalog`: it contains command contract version 2, shared field
+schemas, required fields, defaults, group/batch limits, capability requirements, and queue
+semantics. Do not inspect implementation code to discover commands. Sparse commands default
+`queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
+unknown fields, duplicate/boolean/fractional IDs and non-finite coordinates are rejected.
+Old protocol versions are rejected with an explicit client-upgrade error.
+
+Friendly units separate `standing_order`, `current_order` and `queued_orders`. The old
+`orders` array is gone. Use public UUID `order_id` values for editing, not internal integers.
+Explicit work suspends stance combat, including explicit Move. Changing stance preserves
+work. `cancel_orders` is full Stop; `clear_explicit_orders` preserves the selected stance.
+Continuous orders can block later queue entries until cancelled. Receipts confirm issuance;
+`order_history` supplies bounded, persistent terminal outcomes with retention metadata.
+
+Example command objects (wrap in a `command` request with a fresh request ID and token):
+
+```json
+{"type":"patrol","unit_ids":[17],"waypoints":[
+  {"system_name":"Sol","hex_coord":[0,0],"position":[500,0]},
+  {"system_name":"Sol","hex_coord":[0,1],"position":[100,200]}
+]}
+```
+
+```json
+{"type":"append_patrol_waypoints","unit_ids":[17],"order_id":"observed-public-uuid","waypoints":[
+  {"system_name":"Sol","hex_coord":[0,1],"position":[400,200]}
+]}
+```
+
+```json
+{"type":"cancel_order","unit_ids":[17],"order_id":"observed-public-uuid"}
+```
+
+```json
+{"type":"clear_explicit_orders","unit_ids":[17]}
+```
+
+Patrol routes accept 1–16 waypoints or a single complete destination triplet. They return to
+the position captured when the patrol starts and repeat. Appending preserves the current
+leg. `queue=true` always creates another explicit root. Internal/stance orders cannot be
+cancelled individually. `order_unavailable` means the order is no longer editable for that
+owned unit; observe current roots rather than guessing identities.
+
+## Recovery distinctions
+
+- **Preflight/output rejection:** no command effects occurred. Correct the plan using the
+  indexed errors and submit a new intentional request ID. The token remains valid.
+- **Partial commit failure:** earlier successful operations remain applied, the failed
+  operation may have uncertain effects, and later operations were not attempted. Observe
+  successfully before another mutation or end-turn (`observation_required` otherwise).
+- **Uncertain transport outcome:** replay the identical payload with its original request
+  ID; never retry changed content under that ID. Cached failure responses are replayed too.
+  Cache retention is the last 256 mutation responses in this running service; after restart
+  or eviction, observe/reconcile before attempting an uncertain action again.

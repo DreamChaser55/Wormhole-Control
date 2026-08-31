@@ -258,22 +258,20 @@ class Weapons(UnitComponent):
         """Return the turrets whose hull/wing rules permit this target."""
         if not target_unit or self.is_destroyed:
             return []
-        eligible = []
-        for turret in self.turrets:
-            if (
-                target_unit.hull_size == HullSize.STRIKECRAFT_WING
-                and turret.variant != TurretVariant.ANTI_STRIKECRAFT
-            ):
-                continue
-            if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
-                wing = self.unit.strikecraft_wing_component
-                if wing:
-                    if wing.wing_type == WingType.FIGHTER and target_unit.hull_size != HullSize.STRIKECRAFT_WING:
-                        continue
-                    if wing.wing_type == WingType.BOMBER and target_unit.hull_size == HullSize.STRIKECRAFT_WING:
-                        continue
-            eligible.append(turret)
-        return eligible
+        return [t for t in self.turrets if self.turret_accepts_hull(t, target_unit.hull_size)]
+
+    def turret_accepts_hull(self, turret: Turret, hull_size: HullSize) -> bool:
+        """Hardware target-class policy, independent of current operational state."""
+        if hull_size == HullSize.STRIKECRAFT_WING and turret.variant != TurretVariant.ANTI_STRIKECRAFT:
+            return False
+        if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
+            wing = self.unit.strikecraft_wing_component
+            if wing:
+                if wing.wing_type == WingType.FIGHTER and hull_size != HullSize.STRIKECRAFT_WING:
+                    return False
+                if wing.wing_type == WingType.BOMBER and hull_size == HullSize.STRIKECRAFT_WING:
+                    return False
+        return True
 
     def update(self, galaxy: 'Galaxy') -> None:
         """

@@ -33,6 +33,7 @@ class Commander(UnitComponent):
     def __init__(self, unit: 'Unit'):
         super().__init__(unit, hull_cost=0)
         self.current_order = None
+        self._restored_pending = None
         self.orders_queue = deque()
         self._stance = UnitStance.DO_NOTHING
         self.standing_order = StanceOrder(unit, {"stance": self._stance.value})
@@ -239,6 +240,7 @@ class Commander(UnitComponent):
     def add_order(self, order: Order) -> None:
         """Add an explicit order, suspending any transient stance engagement."""
         self.suspend_stance_activity("explicit order started")
+        order.register_explicit_root()
         self.orders_queue.append(order)
 
         if self.current_order is None:
@@ -345,24 +347,30 @@ class Commander(UnitComponent):
         self.suspend_stance_activity("loaded explicit order")
         self.current_order = current_order
         self.orders_queue = deque(queued_orders)
+        for root in [current_order, *self.orders_queue]:
+            if root is not None:
+                root.register_explicit_root(restored=True)
+        if self.current_order is None and self.orders_queue:
+            self.current_order = self.orders_queue.popleft()
+        constructor = self.unit.constructor_component
+        self._restored_pending = self.current_order if self.current_order and self.current_order.status == OrderStatus.PENDING else None
+        if constructor and self.current_order:
+            for node in self._active_front_chain():
+                if node.order_type == OrderType.CONSTRUCT and constructor.current_construction_target:
+                    constructor.construction_order_id = node.public_id
+                    if node._legacy_charge:
+                        build = constructor.can_build(constructor.current_construction_target[0])
+                        node._charged_credits = build.cost_credits if build else 0
+                        node._charged_player_id = self.unit.owner.id
+                elif node.order_type == OrderType.REFIT_UNIT and constructor.current_refit_target:
+                    constructor.refit_order_id = node.public_id
+                    if node._legacy_charge:
+                        node._charged_credits = constructor.current_refit_target.get("cost_credits", 0)
+                        node._charged_player_id = self.unit.owner.id
         if galaxy_ref is None:
             galaxy_ref = getattr(self.unit, "in_galaxy", None)
-        if not self.current_order:
-            # A malformed or hand-authored save may contain only queued roots.
-            # Promote the first one immediately so it still outranks the
-            # standing stance during the next movement phase.
-            if self.orders_queue:
-                if galaxy_ref:
-                    self.start_next_order()
-                else:
-                    self.current_order = self.orders_queue.popleft()
-            return
-        if not galaxy_ref:
-            return
-        if self.current_order.status == OrderStatus.PENDING:
-            self.current_order.execute(galaxy_ref)
-        elif self.current_order.status == OrderStatus.IN_PROGRESS:
-            self.current_order.resume(galaxy_ref)
+        if self.current_order and galaxy_ref and self.current_order.status == OrderStatus.IN_PROGRESS:
+            self.current_order.resume(galaxy_ref=galaxy_ref)
 
     def _active_front_chain(self) -> Iterable[Order]:
         root = self.get_active_order_root()
@@ -529,6 +537,9 @@ class Commander(UnitComponent):
         )
 
         if galaxy_ref:
+            if self.current_order is self._restored_pending and self.current_order.status == OrderStatus.PENDING:
+                self._restored_pending = None
+                self.current_order.execute(galaxy_ref=galaxy_ref)
             self.current_order.update(galaxy_ref=galaxy_ref)
         else:
             unit_name = getattr(self.unit, 'name', f"Unit ID {getattr(self.unit, 'id', 'Unknown')}")

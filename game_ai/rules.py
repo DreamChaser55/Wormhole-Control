@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from typing import Any, Iterable
+from .command_spec import COMMAND_SPECS
+from component_visibility import public_target_components
 
 
 def is_colonizable_body(body: Any) -> bool:
@@ -77,9 +79,50 @@ def relation(player: Any, owner: Any) -> str:
     return "enemy"
 
 
+def detailed_system_names(galaxy, player, visible_units, presence_hexes):
+    """Shared exact-body disclosure boundary for observations and target validation."""
+    friendly = {str(unit.in_system) for unit in visible_units
+                if relation(player, getattr(unit, "owner", None)) in {"self", "ally"}}
+    detailed = set(friendly)
+    for name in friendly:
+        detailed.update(getattr(galaxy, "system_graph", {}).get(name, {}).keys())
+    detailed.update(str(unit.in_system) for unit in visible_units
+                    if relation(player, getattr(unit, "owner", None)) == "enemy")
+    detailed.update(name for name, _ in presence_hexes)
+    return detailed
+
+
+def body_is_public(game, player, body, selected_units=()):
+    if is_star(body) or getattr(body, "owner", None) is not None:
+        return True
+    units = [u for system in getattr(game.galaxy, "systems", {}).values()
+             for sector in system.hexes.values() for u in getattr(sector, "units", [])]
+    friendly = [u for u in [*units, *selected_units] if relation(player, u.owner) in {"self", "ally"}]
+    if body.in_system in detailed_system_names(game.galaxy, player, friendly, ()):
+        return True
+    from visibility import VisibilityService
+    snapshot = VisibilityService.compute(game.galaxy, player, turn_number=getattr(game, "turn_number", 1))
+    visible = [u for u in units if relation(player, u.owner) != "enemy" or u.id in snapshot.visible_enemy_unit_ids]
+    return body.in_system in detailed_system_names(game.galaxy, player, visible, snapshot.presence_hexes)
+
+
+def capability_blocker(unit, command_type):
+    if command_type == "lay_minefield":
+        component = _component_by_name(unit, "MinelayerComponent")
+        if component is None or getattr(component, "is_destroyed", False) is True:
+            return "capability_unavailable"
+    for attribute in COMMAND_SPECS[command_type].capability:
+        component = getattr(unit, attribute, None)
+        if component is None or getattr(component, "is_destroyed", False) is True:
+            return "capability_unavailable"
+        if attribute == "engines_component" and not has_operational_engines(unit):
+            return "engines_unavailable"
+    return None
+
+
 def supported_commands(unit: Any) -> list[str]:
-    commands = ["cancel_orders", "set_stance"]
-    if has_operational_engines(unit):
+    commands = ["cancel_orders", "clear_explicit_orders", "cancel_order", "append_patrol_waypoints", "set_stance"]
+    if getattr(unit, "engines_component", None) is not None:
         commands.extend(["move", "patrol", "protect"])
         if getattr(unit, "weapons_component", None):
             commands.append("defend")
@@ -138,7 +181,7 @@ def command_guidance(
     conditional: list[dict[str, Any]] = []
 
     if "cancel_orders" in supported:
-        legal.add("cancel_orders")
+        legal.update({"cancel_orders", "clear_explicit_orders"})
     if "move" in supported:
         legal.update({"move", "patrol"})
     if "defend" in supported:
@@ -168,8 +211,16 @@ def command_guidance(
         if relation(player, getattr(candidate, "owner", None)) == "enemy"
     ]
 
+    commander_roots = [getattr(commander, "current_order", None), *list(getattr(commander, "orders_queue", []))]
+    roots = [root for root in commander_roots if root is not None and getattr(root.status, "name", "") in {"PENDING", "IN_PROGRESS"}]
+    options["cancel_order"] = {"order_ids": [root.public_id for root in roots]}
+    options["append_patrol_waypoints"] = {"order_ids": [root.public_id for root in roots if root.order_type.name == "PATROL" and len(root.parameters.get("waypoints", [])) < 16]}
+    for kind in ("cancel_order", "append_patrol_waypoints"):
+        if options[kind]["order_ids"]:
+            legal.add(kind)
+
     target_options = {
-        "attack": [candidate.id for candidate in enemy_units],
+        "attack": [candidate.id for candidate in enemy_units if not callable(getattr(getattr(unit, "weapons_component", None), "eligible_turrets_for", None)) or unit.weapons_component.eligible_turrets_for(candidate)],
         "protect": [candidate.id for candidate in friendly_units],
         "repair": [candidate.id for candidate in friendly_units],
         "unload_resources": [
@@ -211,6 +262,9 @@ def command_guidance(
             options[command_type] = {"target_ids": target_ids}
             if target_ids:
                 legal.add(command_type)
+
+    if "attack" in options:
+        options["attack"]["target_components"] = {str(candidate.id): public_target_components(candidate) for candidate in enemy_units if candidate.id in options["attack"]["target_ids"]}
 
     colony = getattr(unit, "colony_component", None)
     if colony is not None:
@@ -336,6 +390,12 @@ def command_guidance(
         if storage is None or float(getattr(storage, "current_amount", 0)) <= 0:
             legal.discard("transfer_antimatter")
 
+    legal = {kind for kind in legal if not capability_blocker(unit, kind)}
+    conditional = [entry for entry in conditional if not capability_blocker(unit, entry["type"])]
+    cloak = getattr(unit, "cloaking_component", None)
+    if cloak is not None:
+        active = bool(getattr(cloak, "is_active", False))
+        options["toggle_cloaking"] = {"current_state": "active" if active else "inactive", "resulting_state": "inactive" if active else "active", "available": not capability_blocker(unit, "toggle_cloaking")}
     return sorted(legal), options, conditional
 
 

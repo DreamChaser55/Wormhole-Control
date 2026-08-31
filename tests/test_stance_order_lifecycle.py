@@ -292,7 +292,7 @@ def test_stance_pursuit_waypoints_are_rendered_as_current_through_all_levels():
 
 
 def test_observation_and_sidebar_keep_standing_and_explicit_sections_compatible():
-    from game_ai.observation import _orders
+    from game_ai.order_view import order_layers
 
     galaxy, player, enemy_player = create_test_galaxy()
     attacker = create_combat_ship(galaxy, player, "Guard", (0, 0), short_range=2000.0)
@@ -301,12 +301,11 @@ def test_observation_and_sidebar_keep_standing_and_explicit_sections_compatible(
     commander.set_stance(UnitStance.ATTACK_WEAPON_RANGE)
     commander.update()
 
-    observed = _orders(commander)
-    assert observed == [{
-        "state": "active",
-        "type": str(OrderType.ATTACK.value),
-        "status": str(OrderStatus.IN_PROGRESS.value),
-    }]
+    observed = order_layers(attacker, "self", set(), set())
+    assert observed["current_order"] is None
+    assert observed["standing_order"]["engagement"]["type"] == "attack"
+    assert observed["standing_order"]["engagement"]["status"] == "in_progress"
+    assert observed["standing_order"]["engagement"]["origin"] == "stance"
 
     gui = SimpleNamespace(is_section_expanded=lambda _key: False)
     game = SimpleNamespace(

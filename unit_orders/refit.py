@@ -208,8 +208,12 @@ class RefitOrder(Order):
                 cost_credits=cost_credits,
                 time_to_build=time_to_build
             )
-            if not success:
-                self.status = OrderStatus.FAILED
+            if success:
+                self.unit.constructor_component.refit_order_id = self.public_id
+                self._charged_credits = max(0, int(cost_credits or 0))
+                self._charged_player_id = self.unit.owner.id
+            else:
+                self.fail("refit_unavailable")
 
         elif action == "REMOVE":
             if comp_cls not in target_unit.components:
@@ -255,8 +259,12 @@ class RefitOrder(Order):
                 cost_credits=0,
                 time_to_build=time_to_build
             )
-            if not success:
-                self.status = OrderStatus.FAILED
+            if success:
+                self.unit.constructor_component.refit_order_id = self.public_id
+                self._charged_credits = 0
+                self._charged_player_id = self.unit.owner.id
+            else:
+                self.fail("refit_unavailable")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -267,12 +275,7 @@ class RefitOrder(Order):
 
     def cancel(self) -> None:
         constructor = self.unit.constructor_component
-        if constructor and constructor.current_refit_target:
-            cost_credits = constructor.current_refit_target.get("cost_credits", 0)
-            if cost_credits > 0:
-                player = next((p for p in self.unit.game.players if p.id == self.unit.owner.id), self.unit.owner)
-                if player:
-                    player.credits += cost_credits
-                    logger.debug(f"Refunded {cost_credits} credits to {player.name} for cancelled refit.")
+        if constructor and constructor.current_refit_target and getattr(constructor, "refit_order_id", None) == self.public_id:
+            self.refund_charge()
             constructor.cancel_refit()
         super().cancel()

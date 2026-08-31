@@ -19,6 +19,8 @@ from .adapters.base import (
 )
 from .commands import CommandGateway, CommandResult
 from .contracts import TurnPlan
+from .command_spec import command_catalog
+from geometry import Position
 from .runtime import get_runtime_config
 
 
@@ -182,7 +184,8 @@ def colony_opening_case() -> EvaluationCase:
     """Minimal regression fixture for the observed zero-cargo colony opening."""
 
     observation = {
-        "schema_version": 3,
+        "schema_version": 4,
+        "command_catalog": command_catalog(),
         "turn_number": 1,
         "active_player": {
             "id": 1,
@@ -302,6 +305,7 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
         player = Player()
         unit = SimpleNamespace(
             id=101,
+            in_system="Sol", in_hex=(0, 0), position=Position(2000, 0),
             name="Colony Ship",
             owner=player,
             colony_component=SimpleNamespace(population_cargo=0, max_cargo=100),
@@ -350,7 +354,8 @@ def inhibitor_overlap_case() -> EvaluationCase:
     """Regression fixture for an inhibitor blocked by an existing field."""
 
     observation = {
-        "schema_version": 3,
+        "schema_version": 4,
+        "command_catalog": command_catalog(),
         "turn_number": 3,
         "active_player": {
             "id": 1,
@@ -396,6 +401,39 @@ def inhibitor_overlap_case() -> EvaluationCase:
         PlanningRequest("evaluation", "inhibitor-agent", "AI", 3, observation, {}),
         forbidden_command_types=frozenset({"toggle_inhibitor"}),
         maximum_commands=4,
+    )
+
+
+def order_control_cases() -> tuple[EvaluationCase, ...]:
+    """Deterministic contract fixtures for preserving work, stance and patrol choices."""
+    from copy import deepcopy
+
+    base = {
+        "schema_version": 4, "command_catalog": command_catalog(), "turn_number": 1,
+        "active_player": {"id": 1, "name": "AI", "team_id": 1},
+        "systems": [{"name": "Sol", "navigation_anchor": {"hex_coord": [0, 0], "position": [0, 0]}}],
+        "units": [{"id": 101, "relation": "self", "system_name": "Sol", "hex_coord": [0, 0],
+            "position": [0, 0], "standing_order": {"stance": "do_nothing", "suspended": False, "engagement": None},
+            "current_order": None, "queued_orders": [],
+            "supported_commands": ["patrol", "set_stance", "clear_explicit_orders", "cancel_orders"],
+            "legal_commands": ["patrol", "set_stance", "clear_explicit_orders", "cancel_orders"],
+            "command_options": {"set_stance": {"values": ["do_nothing", "attack_weapon_range", "attack_same_sector"]}}}],
+        "order_history": {"events": [], "latest_event_id": 0, "oldest_event_id": None, "omitted_count": 0},
+    }
+    preserve = deepcopy(base)
+    preserve["units"][0]["current_order"] = {
+        "order_id": "00000000000000000000000000000001", "type": "patrol", "status": "in_progress",
+        "origin": "explicit", "cancellable": True, "editable": True,
+        "parameters": {"waypoints": [{"system_name": "Sol", "hex_coord": [0, 0], "position": [500, 0]}]},
+    }
+    preserve["units"][0]["standing_order"]["suspended"] = True
+    return (
+        EvaluationCase("preserve-useful-patrol", PlanningRequest("evaluation", "orders", "AI", 1, preserve, {}),
+                       forbidden_command_types=frozenset({"cancel_orders", "clear_explicit_orders", "cancel_order", "move", "patrol"})),
+        EvaluationCase("select-stance", PlanningRequest("evaluation", "orders", "AI", 1, deepcopy(base), {}),
+                       required_command_types=frozenset({"set_stance"})),
+        EvaluationCase("construct-patrol-route", PlanningRequest("evaluation", "orders", "AI", 1, deepcopy(base), {}),
+                       required_command_types=frozenset({"patrol"})),
     )
 
 

@@ -23,18 +23,18 @@ class MineOrder(Order):
 
         target_id = self.parameters.get("target_id")
         if not target_id:
-            self.status = OrderStatus.FAILED
+            self.fail("invalid_parameters")
             logger.debug(f"MINE order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)
         if not target:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"MINE order failed: Celestial body with ID {target_id} not found.")
             return
 
         if not getattr(self.unit, 'mining_component', None):
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"MINE order failed: Unit {self.unit.name} has no MiningComponent.")
             return
 
@@ -84,12 +84,12 @@ class UnloadResourcesOrder(Order):
         target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
 
         if not target_unit:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"UNLOAD_RESOURCES order failed: Target unit {target_unit_id} not found.")
             return
 
         if not getattr(self.unit, 'mining_component', None):
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"UNLOAD_RESOURCES order failed: Unit {self.unit.name} has no MiningComponent.")
             return
 
@@ -97,7 +97,7 @@ class UnloadResourcesOrder(Order):
         is_crystal_refinery = bool(getattr(target_unit, 'crystal_refinery_component', None))
 
         if not (is_metal_refinery or is_crystal_refinery):
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"UNLOAD_RESOURCES order failed: Target {target_unit.name} has no refinery components.")
             return
 
@@ -157,18 +157,18 @@ class ContinuousMineOrder(Order):
 
         target_id = self.parameters.get("target_id")
         if not target_id:
-            self.status = OrderStatus.FAILED
+            self.fail("invalid_parameters")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)
         if not target:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Celestial body with ID {target_id} not found.")
             return
 
         if not getattr(self.unit, 'mining_component', None):
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Unit has no MiningComponent.")
             return
 
@@ -176,7 +176,7 @@ class ContinuousMineOrder(Order):
         if mining_comp.get_cargo_fullness() >= 1.0:
             refinery = self._find_closest_refinery(galaxy_ref)
             if not refinery:
-                self.status = OrderStatus.FAILED
+                self.fail("execution_failed")
                 logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Cargo full but no refinery found.")
                 return
             self._spawn_unload_order(refinery.id)
@@ -258,7 +258,7 @@ class ContinuousMineOrder(Order):
             if mining_comp.get_cargo_fullness() >= 1.0:
                 refinery = self._find_closest_refinery(galaxy_ref)
                 if not refinery:
-                    self.status = OrderStatus.FAILED
+                    self.fail("execution_failed")
                     logger.debug(f"[{self.unit.name}] ContinuousMineOrder failed: cargo full, no refinery found.")
                     return
                 self._spawn_unload_order(refinery.id)

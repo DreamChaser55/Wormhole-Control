@@ -414,6 +414,8 @@ class Constructor(UnitComponent):
         self.current_construction_target = None
         self.construction_progress = 0
         self.time_to_build = 0
+        self.construction_order_id = None
+        self.refit_order_id = None
         self.current_refit_target = None
         self.refit_progress = 0
         self.refit_time = 0
@@ -532,6 +534,7 @@ class Constructor(UnitComponent):
         if self.current_construction_target:
             logger.debug(f"Construction of {self.current_construction_target[0]} cancelled.")
             # NOTE: Resource refund should be handled by the Order
+            self.construction_order_id = None
             self.current_construction_target = None
             self.construction_progress = 0
             self.time_to_build = 0
@@ -568,6 +571,7 @@ class Constructor(UnitComponent):
         """Cancels the current refit operation."""
         if self.current_refit_target:
             logger.debug(f"Refit on unit {self.current_refit_target.get('target_unit_id')} cancelled.")
+            self.refit_order_id = None
             self.current_refit_target = None
             self.refit_progress = 0
             self.refit_time = 0

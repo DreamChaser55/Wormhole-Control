@@ -389,7 +389,7 @@ class TestMemory(unittest.TestCase):
             current_sector_coord=None,
             campaign_id="campaign",
         )
-        self.assertEqual(serialize_game_state(game)["version"], "3.1")
+        self.assertEqual(serialize_game_state(game)["version"], "3.2")
 
 
 class _FakeResponses:
@@ -426,7 +426,7 @@ class TestOpenAIAdapter(unittest.TestCase):
         self.assertEqual(responses.kwargs["reasoning"], {"effort": "high"})
         self.assertEqual(result.reasoning_effort, "high")
         self.assertNotIn("tools", responses.kwargs)
-        self.assertEqual(responses.kwargs["prompt_cache_key"], "wormhole-control-turn-v2")
+        self.assertEqual(responses.kwargs["prompt_cache_key"], "wormhole-control-turn-v3")
         self.assertNotIn("previous_response_id", responses.kwargs)
 
     def test_responses_adapter_classifies_invalid_output_as_repairable(self):
@@ -512,6 +512,8 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         player = _Player(1, 1)
         units = [_unit(10 + index, player) for index in range(unit_count)]
         for unit in units:
+            from geometry import Position
+            unit.position = Position(2000, 0)  # Loading is pending travel in this fixture.
             unit.colony_component = SimpleNamespace(
                 population_cargo=0,
                 max_cargo=100,
@@ -667,7 +669,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
         unit_view = observation["units"][0]
         inhibitor = unit_view["capability_details"]["inhibitor"]
-        self.assertEqual(observation["schema_version"], 3)
+        self.assertEqual(observation["schema_version"], 4)
         self.assertIn("toggle_inhibitor", unit_view["supported_commands"])
         self.assertNotIn("toggle_inhibitor", unit_view["legal_commands"])
         self.assertFalse(inhibitor["can_activate"])
@@ -1003,7 +1005,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
             observation = build_observation(game, player)
         unit_view = observation["units"][0]
-        self.assertEqual(observation["schema_version"], 3)
+        self.assertEqual(observation["schema_version"], 4)
         self.assertNotIn("celestial_bodies", observation)
         self.assertIn("colonize", unit_view["supported_commands"])
         self.assertNotIn("colonize", unit_view["legal_commands"])
@@ -1137,6 +1139,8 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         my_unit = _unit(10, player)
         my_unit.engines_component = Engines(my_unit, speed=50.0)
         my_unit.weapons_component = Weapons(my_unit)
+        from unit_components import Turret, TurretType
+        my_unit.weapons_component.add_turret(Turret(TurretType.MASS_DRIVER, 20, 300, 1, my_unit))
         my_unit.components = {
             Engines: my_unit.engines_component,
             Weapons: my_unit.weapons_component,
@@ -1202,7 +1206,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             )
             result = CommandGateway(game).apply_batch(player, batch)
             self.assertTrue(result.accepted)
-            self.assertEqual(result.receipts, ("Attack U20 (Engines) for U10.",))
+            self.assertEqual(result.receipts, ("attack issued for unit 10.",))
 
             self.assertEqual(len(my_unit.commander_component.orders_queue), 1)
             order = my_unit.commander_component.orders_queue[0]
@@ -1221,7 +1225,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             )
             result_alias = CommandGateway(game).apply_batch(player, batch_alias)
             self.assertTrue(result_alias.accepted)
-            self.assertEqual(result_alias.receipts, ("Attack U20 (Hyperdrive) for U10.",))
+            self.assertEqual(result_alias.receipts, ("attack issued for unit 10.",))
 
     def test_destroyed_engines_are_not_advertised_and_reject_move_preflight(self):
         player, _enemy_player, my_unit, enemy_unit, game = self._combat_fixture()
@@ -1235,7 +1239,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
         unit_view = next(unit for unit in observation["units"] if unit["id"] == my_unit.id)
         for command_type in ("move", "patrol", "protect", "defend"):
-            self.assertNotIn(command_type, unit_view["supported_commands"])
+            self.assertIn(command_type, unit_view["supported_commands"])
             self.assertNotIn(command_type, unit_view["legal_commands"])
         self.assertEqual(
             unit_view["capability_details"]["engines"],
@@ -1278,7 +1282,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             )
             result = CommandGateway(game).apply_batch(player, batch_invalid_target)
             self.assertFalse(result.accepted)
-            self.assertEqual(result.errors[0].code, "invalid_target")
+            self.assertEqual(result.errors[0].code, "target_unavailable")
 
         # 2. Bogus / unresolvable component name
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
@@ -1294,7 +1298,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             )
             result = CommandGateway(game).apply_batch(player, batch_bogus)
             self.assertFalse(result.accepted)
-            self.assertEqual(result.errors[0].code, "invalid_value")
+            self.assertEqual(result.errors[0].code, "target_unavailable")
 
     def test_defend_command_execution(self):
         player, enemy_player, my_unit, enemy_unit, game = self._combat_fixture()
@@ -1312,7 +1316,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         )
         result = CommandGateway(game).apply_batch(player, batch_valid)
         self.assertTrue(result.accepted)
-        self.assertEqual(result.receipts, ("Defend Sol (0, 0) for U10.",))
+        self.assertEqual(result.receipts, ("defend issued for unit 10.",))
         self.assertEqual(len(my_unit.commander_component.orders_queue), 1)
 
         # 2. Missing coordinate fields
@@ -1327,7 +1331,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         )
         result_missing = CommandGateway(game).apply_batch(player, batch_missing)
         self.assertFalse(result_missing.accepted)
-        self.assertEqual(result_missing.errors[0].code, "missing_field")
+        self.assertEqual(result_missing.errors[0].code, "invalid_command_contract")
 
         # 3. Unit without weapons cannot perform defend
         my_unit.weapons_component = None

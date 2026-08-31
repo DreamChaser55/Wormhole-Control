@@ -123,7 +123,7 @@ class StanceOrder(Order):
             drive = self.unit.hyperdrive_component
             if not drive or not drive.is_functional:
                 return "functional hyperdrive unavailable"
-            effective_range = int(drive.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
+            effective_range = drive.effective_jump_range
             if hex_distance(self.unit.in_hex, target.in_hex) > effective_range:
                 return "target left jump vigilance range"
         elif self.stance == UnitStance.ATTACK_SAME_SYSTEM:

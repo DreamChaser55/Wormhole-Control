@@ -73,7 +73,7 @@ class TransferAntimatterOrder(Order):
         super().execute(galaxy_ref)
 
         if not self.unit.antimatter_component:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"TRANSFER_ANTIMATTER order failed: Unit {self.unit.name} has no AntimatterStorage.")
             return
 
@@ -81,18 +81,18 @@ class TransferAntimatterOrder(Order):
         target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
 
         if not target_unit:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"TRANSFER_ANTIMATTER order failed: Target unit {target_unit_id} not found.")
             return
 
         from entities import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"TRANSFER_ANTIMATTER order failed: Target unit {target_unit.name} is not friendly/allied.")
             return
 
         if not target_unit.antimatter_component:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"TRANSFER_ANTIMATTER order failed: Target unit {target_unit.name} has no AntimatterStorage.")
             return
 
@@ -268,7 +268,7 @@ class ContinuousResupplyOrder(Order):
         """Choose whether to go harvest or go transfer, and spawn the sub-order."""
         star = self._get_star(galaxy_ref)
         if not star:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY: target star not found, order failed.")
             return
 
@@ -299,24 +299,24 @@ class ContinuousResupplyOrder(Order):
         super().execute(galaxy_ref)
 
         if not self.unit.harvester_component:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: unit has no AntimatterHarvester component.")
             return
 
         if not self.unit.antimatter_component:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: unit has no AntimatterStorage component.")
             return
 
         target_id = self.parameters.get("target_id")
         if not target_id:
-            self.status = OrderStatus.FAILED
+            self.fail("invalid_parameters")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: no target_id.")
             return
 
         star = self._get_star(galaxy_ref)
         if not star:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: target star (id={target_id}) not found.")
             return
 

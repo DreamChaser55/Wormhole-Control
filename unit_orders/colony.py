@@ -13,6 +13,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def within_colony_range(unit, target):
+    """Shared, side-effect-free proximity used by execution and batch projection."""
+    radius = getattr(target, "collision_radius", getattr(target, "radius", 0.0))
+    return (unit.in_system == target.in_system and unit.in_hex == target.in_hex
+            and distance(unit.position, target.position) <= radius + DEFAULT_STANDOFF_DISTANCE + 0.01)
+
+
 class ColonizeOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.COLONIZE, parameters, parent_order)
@@ -22,27 +29,23 @@ class ColonizeOrder(Order):
 
         target_id = self.parameters.get("target_id")
         if not target_id:
-            self.status = OrderStatus.FAILED
+            self.fail("invalid_parameters")
             logger.debug(f"COLONIZE order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)
 
         if not target:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"COLONIZE order failed: Celestial body with ID {target_id} not found.")
             return
 
         if not self.unit.colony_component:
-            self.status = OrderStatus.FAILED
+            self.fail("capability_unavailable")
             logger.debug(f"COLONIZE order failed: Unit {self.unit.name} has no ColonyComponent.")
             return
 
-        target_radius = getattr(target, 'collision_radius', getattr(target, 'radius', 0.0))
-        max_allowed_distance = target_radius + DEFAULT_STANDOFF_DISTANCE
-
-        at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
-        in_range = at_location and (distance(self.unit.position, target.position) <= max_allowed_distance + 0.01)
+        in_range = within_colony_range(self.unit, target)
 
         if not in_range:
             if not self.has_active_sub_orders():
@@ -60,7 +63,7 @@ class ColonizeOrder(Order):
 
         cargo = self.unit.colony_component.population_cargo
         if cargo <= 0:
-            self.status = OrderStatus.FAILED
+            self.fail("insufficient_population")
             logger.debug(f"COLONIZE order failed: No population in cargo to unload.")
             return
 
@@ -70,7 +73,7 @@ class ColonizeOrder(Order):
             self.status = OrderStatus.COMPLETED
             logger.debug(f"COLONIZE order completed: Unit {self.unit.name} successfully colonized {target.name}.")
         else:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"COLONIZE order failed: Unload population failed for unit {self.unit.name} on {target.name}.")
 
     def check_completion_conditions(self) -> None:
@@ -95,27 +98,23 @@ class LoadColonistsOrder(Order):
         amount = self.parameters.get("amount", 50)
 
         if not target_id:
-            self.status = OrderStatus.FAILED
+            self.fail("invalid_parameters")
             logger.debug(f"LOAD_COLONISTS order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)
 
         if not target:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"LOAD_COLONISTS order failed: Celestial body with ID {target_id} not found.")
             return
 
         if not self.unit.colony_component:
-            self.status = OrderStatus.FAILED
+            self.fail("capability_unavailable")
             logger.debug(f"LOAD_COLONISTS order failed: Unit {self.unit.name} has no ColonyComponent.")
             return
 
-        target_radius = getattr(target, 'collision_radius', getattr(target, 'radius', 0.0))
-        max_allowed_distance = target_radius + DEFAULT_STANDOFF_DISTANCE
-
-        at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
-        in_range = at_location and (distance(self.unit.position, target.position) <= max_allowed_distance + 0.01)
+        in_range = within_colony_range(self.unit, target)
 
         if not in_range:
             if not self.has_active_sub_orders():
@@ -141,7 +140,7 @@ class LoadColonistsOrder(Order):
         if success:
             self.status = OrderStatus.COMPLETED
         else:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"LOAD_COLONISTS order failed for unit {self.unit.name}.")
 
     def check_completion_conditions(self) -> None:

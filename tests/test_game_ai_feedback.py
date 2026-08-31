@@ -101,19 +101,19 @@ class TestGameAIFeedback(unittest.TestCase):
         cmd_empty = Command(type="message_developer", message="")
         res1 = gateway.apply_batch(self.player1, CommandBatch(commands=(cmd_empty,)))
         self.assertFalse(res1.accepted)
-        self.assertEqual(res1.errors[0].code, "empty_message")
+        self.assertEqual(res1.errors[0].code, "invalid_command_contract")
 
         # Whitespace-only message string
         cmd_ws = Command(type="message_developer", message="   \n\t  ")
         res2 = gateway.apply_batch(self.player1, CommandBatch(commands=(cmd_ws,)))
         self.assertFalse(res2.accepted)
-        self.assertEqual(res2.errors[0].code, "empty_message")
+        self.assertEqual(res2.errors[0].code, "invalid_command_contract")
 
         # None message
         cmd_none = Command(type="message_developer", message=None)
         res3 = gateway.apply_batch(self.player1, CommandBatch(commands=(cmd_none,)))
         self.assertFalse(res3.accepted)
-        self.assertEqual(res3.errors[0].code, "empty_message")
+        self.assertEqual(res3.errors[0].code, "invalid_command_contract")
 
     def test_command_gateway_execution_and_markdown_persistence(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -157,9 +157,9 @@ class TestGameAIFeedback(unittest.TestCase):
 
     def test_observation_contains_message_developer_reference(self):
         obs = build_observation(self.game, self.player1)
-        self.assertIn("command_reference", obs)
-        self.assertIn("message_developer", obs["command_reference"])
-        self.assertIn("developer", obs["command_reference"]["message_developer"].lower())
+        self.assertIn("command_catalog", obs)
+        self.assertIn("message_developer", obs["command_catalog"]["commands"])
+        self.assertIn("developer", obs["command_catalog"]["commands"]["message_developer"]["description"].lower())
 
     def test_system_prompt_contains_message_developer_guidance(self):
         self.assertIn("message_developer", SYSTEM_INSTRUCTIONS)

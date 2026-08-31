@@ -65,14 +65,14 @@ class ReachWaypointOrder(Order):
         current_hex = self.unit.in_hex
         
         if dest_system is None or dest_hex is None or dest_position is None:
-            self.status = OrderStatus.FAILED
+            self.fail("invalid_parameters")
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (incomplete destination parameters).")
             return
             
         # Hex jumps require a hyperdrive. Sub-light movement engines are disabled.
         if current_system == dest_system and current_hex != dest_hex:
             if not self.unit.hyperdrive_component or not self.unit.hyperdrive_component.is_functional:
-                self.status = OrderStatus.FAILED
+                self.fail("execution_failed")
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump hex, no functional hyperdrive).")
                 return
                 
@@ -132,7 +132,7 @@ class ReachWaypointOrder(Order):
                 or not self.unit.hyperdrive_component.is_functional
                 or self.unit.hyperdrive_component.drive_type != HyperdriveType.ADVANCED
             ):
-                self.status = OrderStatus.FAILED
+                self.fail("execution_failed")
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (cannot jump to different system, no advanced hyperdrive).")
                 return
                 
@@ -169,7 +169,7 @@ class ReachWaypointOrder(Order):
             if not drive or not drive.is_functional:
                 if drive:
                     drive.clear_jump_target(self.order_id)
-                self.status = OrderStatus.FAILED
+                self.fail("execution_failed")
                 logger.debug(
                     f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): "
                     "FAILED (functional hyperdrive unavailable)."
@@ -182,7 +182,7 @@ class ReachWaypointOrder(Order):
                 self.unit.engines_component.clear_move_target(self.order_id)
             self.unit.hyperdrive_component.clear_jump_target(self.order_id)
             self.unit.hyperdrive_component.jump_status = JumpStatus.READY
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] ReachWaypointOrder.check_completion_conditions: {self.order_type.name} (id:{self.order_id}): FAILED (hyperdrive reported ERROR state).")
             return
 
@@ -338,7 +338,7 @@ class MoveOrder(Order):
 
         target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
         if not target_unit:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(
                 f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                 f"FAILED (target unit {target_unit_id} no longer exists)."
@@ -350,7 +350,7 @@ class MoveOrder(Order):
         except (TypeError, ValueError):
             standoff_distance = 0.0
         if not math.isfinite(standoff_distance) or standoff_distance <= 0.0:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(
                 f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                 f"FAILED (invalid standoff distance {self.parameters.get('standoff_distance')})."
@@ -360,7 +360,7 @@ class MoveOrder(Order):
         system = galaxy_ref.systems.get(target_unit.in_system)
         destination_hex_obj = system.hexes.get(target_unit.in_hex) if system else None
         if not destination_hex_obj:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(
                 f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                 f"FAILED (target sector {target_unit.in_system}:{target_unit.in_hex} not found)."
@@ -383,7 +383,7 @@ class MoveOrder(Order):
                 standoff_distance,
             )
             if not is_point_in_circle(resolved_position, boundary_circle):
-                self.status = OrderStatus.FAILED
+                self.fail("execution_failed")
                 logger.debug(
                     f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                     "FAILED (same-sector standoff point lies outside the sector)."
@@ -405,7 +405,7 @@ class MoveOrder(Order):
 
                 resolved_position = target_position + (outward * standoff_distance)
                 if not is_point_in_circle(resolved_position, boundary_circle):
-                    self.status = OrderStatus.FAILED
+                    self.fail("execution_failed")
                     logger.debug(
                         f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                         "FAILED (outward inhibited standoff point lies outside the sector)."
@@ -428,7 +428,7 @@ class MoveOrder(Order):
                     break
 
                 if resolved_position is None:
-                    self.status = OrderStatus.FAILED
+                    self.fail("execution_failed")
                     logger.debug(
                         f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                         "FAILED (could not find an uninhibited standoff point after 128 attempts)."
@@ -456,7 +456,7 @@ class MoveOrder(Order):
 
         target_body = galaxy_ref.get_celestial_body_by_id(target_celestial_id)
         if not target_body:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(
                 f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                 f"FAILED (target celestial body {target_celestial_id} no longer exists)."
@@ -468,7 +468,7 @@ class MoveOrder(Order):
         except (TypeError, ValueError):
             standoff_distance = DEFAULT_STANDOFF_DISTANCE
         if not math.isfinite(standoff_distance) or standoff_distance < 0.0:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(
                 f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                 f"FAILED (invalid standoff distance {self.parameters.get('standoff_distance')})."
@@ -481,7 +481,7 @@ class MoveOrder(Order):
         system = galaxy_ref.systems.get(target_body.in_system)
         destination_hex_obj = system.hexes.get(target_body.in_hex) if system else None
         if not destination_hex_obj:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(
                 f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                 f"FAILED (target sector {target_body.in_system}:{target_body.in_hex} not found)."
@@ -645,7 +645,7 @@ class MoveOrder(Order):
     def plan_hex_jump_sequence(self, start_hex: HexCoord, end_hex: HexCoord, end_pos: Position, system_name: str, galaxy_ref: 'Galaxy') -> None:
         logger.debug(f"  [plan_route->plan_hex_jump_sequence] Planning hex jump sequence from {start_hex} to {end_hex} in system {system_name}.")
         if not self.unit.hyperdrive_component:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MoveOrder.plan_hex_jump_sequence: FAILED (no hyperdrive).")
             return
 
@@ -670,7 +670,7 @@ class MoveOrder(Order):
     def plan_route(self, galaxy_ref: 'Galaxy') -> None:
         logger.debug(f"\n--- Planning route for {self.unit.name} (id:{self.unit.id}) ---")
         if not self.unit or not galaxy_ref:
-            self.status = OrderStatus.FAILED
+            self.fail("path_unavailable")
             logger.debug(f"[{self.unit.name if self.unit else 'Unknown Unit'}] MOVE(id:{self.order_id}): plan_route: FAILED (no unit or galaxy_ref).")
             return
 
@@ -691,7 +691,7 @@ class MoveOrder(Order):
         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: From: {current_system}:{current_hex}:{current_position} | To: {dest_system}:{dest_hex}:{dest_position}")
 
         if dest_system is None or dest_hex is None or dest_position is None:
-            self.status = OrderStatus.FAILED
+            self.fail("invalid_parameters")
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (incomplete destination parameters).")
             return
 
@@ -720,7 +720,7 @@ class MoveOrder(Order):
         if current_system != dest_system:
             from unit_components import HyperdriveType
             if not self.unit.hyperdrive_component or self.unit.hyperdrive_component.drive_type != HyperdriveType.ADVANCED:
-                self.status = OrderStatus.FAILED
+                self.fail("path_unavailable")
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot jump system, no advanced hyperdrive).")
                 gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                 if gui:
@@ -737,7 +737,7 @@ class MoveOrder(Order):
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct wormhole from {current_system} to {dest_system} found: {direct_wormhole.name}. Planning a single inter-system jump.")
                 exit_wh = galaxy_ref.wormholes[direct_wormhole.exit_wormhole_id]
                 if not exit_wh:
-                    self.status = OrderStatus.FAILED
+                    self.fail("path_unavailable")
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (could not find exit for direct wormhole {direct_wormhole.id} in {dest_system}).")
                     return
 
@@ -828,14 +828,14 @@ class MoveOrder(Order):
                     wormhole_for_leg = self.find_wormhole_to_system(leg_origin_system, leg_destination_system, galaxy_ref, self.unit.hull_size)
                     if not wormhole_for_leg:
                         self.sub_orders.clear()
-                        self.status = OrderStatus.FAILED
+                        self.fail("path_unavailable")
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no wormhole for leg {leg_origin_system} -> {leg_destination_system}).")
                         return
 
                     exit_wormhole_for_leg = galaxy_ref.wormholes[wormhole_for_leg.exit_wormhole_id]
                     if not exit_wormhole_for_leg:
                         self.sub_orders.clear()
-                        self.status = OrderStatus.FAILED
+                        self.fail("path_unavailable")
                         logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (pathfinding error - no exit for wormhole {wormhole_for_leg.id}).")
                         return
 

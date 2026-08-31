@@ -538,7 +538,7 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 - **Real-Time Markdown Logging**: Every transmission sent via the Comms menu or AI agents (`send_message`) is appended in real-time to `saves/comms.md` with turn number, ISO 8601 UTC timestamp, sender/recipient names, IDs, team affiliations, and message text.
 - **Campaign Save Sidecars**: When saving campaigns (`save_game_to_file`), complete campaign transmission logs are atomically exported to `saves/comms/<campaign_id>/comms.md`.
 
-### 10.7 Save Format 3.1 Order Persistence
+### 10.7 Save Format 3.2 Order Persistence
 
 Each serialized unit has a dedicated Commander payload containing the stable
 lowercase stance value, one explicit `current_order`, and an ordered
@@ -611,3 +611,43 @@ where $r_{\text{body}}$ is the body's physical collision radius (e.g. `PLANET_RA
 - **Different sector (intra-system jump)**: The standoff destination is chosen on the side of the celestial body facing the origin sector hex, along the inter-hex displacement vector.
 - **Different system (inter-system jump)**: The standoff destination is chosen on the side facing the entry wormhole in the destination system.
 - **Collision Safety**: Because the plotted arrival point lies strictly outside the solid body's collision circle, vessels fly directly to the standoff perimeter without penetrating the planet surface or triggering collisions.
+
+
+## AI order control (observation 4, command contract 2)
+
+Both GPT-5.6 Luna and the Codex socket controller use the same command registry,
+observation builder, visibility policy and preflight/commit gateway. Socket protocol 2
+rejects older clients; [CODEX_CONTROL.md](CODEX_CONTROL.md) contains examples and recovery rules.
+
+Friendly observations separate standing policy/engagement from explicit current and queued
+orders. Explicit Move suppresses stance combat; changing stance preserves explicit work.
+`cancel_order` cancels one UUID-identified current/queued root. `clear_explicit_orders`
+clears explicit work while preserving stance, whereas `cancel_orders` remains full Stop.
+Internal/stance roots cannot be edited individually. Pending construction/refit cancellation
+releases only the owning order's job/charge, once; it cannot refund another active job.
+
+AI `patrol` accepts a complete single destination or 1–16 waypoints. It visits the route,
+returns to its captured start and repeats. `append_patrol_waypoints` extends a named current
+or queued patrol without interrupting its active leg. Ordinary `queue=true` creates a
+separate patrol; human Shift-patrol extension is unchanged. Continuous roots report queue
+blocking as guidance rather than forbidding intentional queued work.
+
+Tactical observations include actual turret range/cooldown/target classes, base/effective
+sensor and hyperdrive ranges, jump status/functionality, support ranges, defend radius and
+cloak status/upkeep. Supported hardware is distinguished from current issuance legality.
+Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
+nonexistent target guesses receive indistinguishable public errors. Hidden target-derived
+movement geometry is redacted; explicit player coordinates remain order intent. No raw
+persistence or sidebar state is serialized into AI observations.
+
+Preflight is atomic. Commit exceptions can leave partial effects: results identify completed,
+failed (uncertain), and unattempted operations, with accurate command indices. There is no
+rollback or automatic retry. Codex must obtain a fresh observation; Luna offers manual recovery
+and never applies a rejected memory patch. Command issuance is distinct from completion.
+
+Save 3.2 preserves public UUIDs (including serialized descendants and docked units) plus each
+player's last 128 lifecycle events, further limited to 32,000 serialized characters. Events
+record completed/failed/cancelled roots exactly once with bounded reason codes and monotonic
+IDs. Legacy saves receive new UUIDs and empty journals. Stance engagements remain transient.
+Expanded observation suborders are limited to 32 nodes per unit/depth 6; all explicit root IDs
+remain available. Waypoint previews are limited to 16; omitted counts are explicit.

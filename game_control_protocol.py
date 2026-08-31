@@ -26,7 +26,7 @@ from player_controller import PlayerController
 
 logger = logging.getLogger(__name__)
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 SERVICE_NAME = "wormhole-control"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 47653
@@ -142,6 +142,7 @@ class ControlService:
         self._cache: OrderedDict[str, tuple[str, dict[str, Any]]] = OrderedDict()
         self._token_identity: tuple[Any, ...] | None = None
         self._token_value: str | None = None
+        self._requires_observation = False
         self._server: _ThreadingControlServer | None = None
         self._thread: threading.Thread | None = None
 
@@ -255,8 +256,8 @@ class ControlService:
         return response
 
     def _validate_envelope(self, payload: dict[str, Any]) -> tuple[str, str]:
-        if payload.get("protocol_version") != PROTOCOL_VERSION:
-            raise ProtocolError("unsupported_protocol", f"protocol_version must be {PROTOCOL_VERSION}.")
+        if type(payload.get("protocol_version")) is not int or payload["protocol_version"] != PROTOCOL_VERSION:
+            raise ProtocolError("unsupported_protocol", f"Upgrade your client: protocol_version must be {PROTOCOL_VERSION}; legacy order observations are not supported.")
         action = payload.get("action")
         if action not in {"status", "new_game", "observe", "command", "end_turn", "wait_for_turn"}:
             raise ProtocolError("unknown_action", "Unknown control action.")
@@ -298,16 +299,31 @@ class ControlService:
         raw_commands = payload.get("commands")
         if not isinstance(raw_commands, list) or not 1 <= len(raw_commands) <= MAX_COMMANDS:
             raise ProtocolError("invalid_commands", f"commands must contain 1-{MAX_COMMANDS} objects.")
-        try:
-            commands = tuple(Command.from_dict(raw) for raw in raw_commands)
-        except ContractError as exc:
-            raise ProtocolError("invalid_command_contract", str(exc)) from exc
-        result = CommandGateway(self.game).apply_batch(player, CommandBatch(commands, end_turn=False))
+        commands, errors = [], []
+        for index, raw in enumerate(raw_commands):
+            try:
+                commands.append(Command.from_dict(raw))
+            except ContractError as exc:
+                errors.append({"command_index": index, "code": "invalid_command_contract", "message": str(exc)})
+        if errors:
+            return self.envelope_error(action, request_id, "invalid_command_contract", "Invalid command objects.", errors,
+                data={"accepted": False, "applied_count": 0, "failure_stage": "preflight", "retryable": True,
+                      "receipts": [], "operation_results": [], "may_have_partial_effects": False,
+                      "requires_observation": False, "turn_token": self._turn_token(player)})
+        result = CommandGateway(self.game).apply_batch(player, CommandBatch(tuple(commands), end_turn=False))
+        if result.requires_observation:
+            self._requires_observation = True
+            self._token_value = secrets.token_urlsafe(24)
         data = {
             "accepted": result.accepted,
+            "failure_stage": result.failure_stage,
+            "retryable": result.retryable,
+            "operation_results": list(result.operation_results),
+            "may_have_partial_effects": result.may_have_partial_effects,
+            "requires_observation": result.requires_observation,
             "applied_count": result.applied_count,
             "receipts": list(result.receipts),
-            "turn_token": self._turn_token(player),
+            "turn_token": None if self._requires_observation else self._turn_token(player),
         }
         if result.accepted:
             return self._success(action, request_id, data)
@@ -388,6 +404,8 @@ class ControlService:
         return player
 
     def _require_turn_token(self, payload: dict[str, Any], player: Any) -> str:
+        if self._requires_observation:
+            raise ProtocolError("observation_required", "A commit failed; successfully observe current state before another command or end_turn.")
         supplied = payload.get("turn_token")
         expected = self._turn_token(player)
         if not isinstance(supplied, str) or supplied != expected:
@@ -408,7 +426,9 @@ class ControlService:
         return cast(str, self._token_value)
 
     def _observation_data(self, player: Any) -> dict[str, Any]:
-        return {"turn_token": self._turn_token(player), "observation": build_observation(self.game, player)}
+        observation = build_observation(self.game, player)
+        self._requires_observation = False
+        return {"turn_token": self._turn_token(player), "observation": observation}
 
     def _public_state(self) -> dict[str, Any]:
         started = bool(getattr(self.game, "game_started", False))

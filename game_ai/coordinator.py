@@ -17,6 +17,7 @@ from .adapters.base import (
 )
 from .adapters.openai_responses import OpenAIResponsesProvider
 from .commands import CommandGateway, CommandResult
+from .contracts import TurnPlan, ContractError
 from .memory import AgentMemory, write_memory_sidecar
 from .observation import build_observation
 from .runtime import (
@@ -155,6 +156,12 @@ class AgentTurnCoordinator:
         player = self.game.current_player
         self.state = "applying"
         self.status_message = "issuing…"
+        try:
+            TurnPlan.from_dict(result.plan.to_dict())
+        except (ContractError, TypeError, ValueError) as exc:
+            self._handle_output_error(PlanningOutputError("invalid_contract", str(exc), provider=result.provider,
+                model=result.model, reasoning_effort=result.reasoning_effort))
+            return
         command_result = CommandGateway(self.game).apply_batch(player, result.plan.batch)
         if not command_result.accepted:
             will_retry = bool(
@@ -183,8 +190,13 @@ class AgentTurnCoordinator:
                 )
                 self._submit(self._repair_request(repair_context), repairing=True)
                 return
+            if command_result.failure_stage == "commit":
+                player.last_ai_report = {"receipts": list(command_result.receipts),
+                    "operation_results": list(command_result.operation_results), "failure_stage": "commit",
+                    "applied_count": command_result.applied_count, "may_have_partial_effects": True,
+                    "requires_observation": True}
             messages = "; ".join(error.message for error in command_result.errors)
-            self._fail(f"AI commands were rejected: {messages}")
+            self._fail(f"AI command failure ({command_result.failure_stage}): {messages}")
             return
 
         memory = AgentMemory.from_dict(getattr(player, "ai_memory", None))
@@ -201,6 +213,7 @@ class AgentTurnCoordinator:
         player.ai_memory = memory.to_dict()
         player.last_ai_report = {
             "plan": list(result.plan.plan),
+            "operation_results": list(command_result.operation_results),
             "receipts": list(command_result.receipts),
             "model": result.model,
             "reasoning_effort": result.reasoning_effort,
@@ -313,6 +326,10 @@ class AgentTurnCoordinator:
                 for index, command in enumerate(result.plan.batch.commands)
             ],
             "applied_operations": command_result.applied_count,
+            "failure_stage": command_result.failure_stage,
+            "operation_outcomes": {state: sum(op["status"] == state for op in command_result.operation_results)
+                                   for state in ("applied", "failed", "unattempted")},
+            "may_have_partial_effects": command_result.may_have_partial_effects,
             "errors": [error.code for error in command_result.errors],
             "error_details": [
                 {

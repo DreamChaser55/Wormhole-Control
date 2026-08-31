@@ -6,6 +6,8 @@ Provides JSON serialization and deserialization for Players, Galaxy, StarSystems
 Hex grids, CelestialBodies, Units, UnitComponents, and Orders.
 """
 
+from order_history import bounded_history
+
 import json
 import logging
 import os
@@ -106,6 +108,8 @@ def serialize_player(player: Player) -> dict:
             getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)
         ),
         "ai_memory": getattr(player, "ai_memory", {}),
+        "order_history": bounded_history(getattr(player, "order_history", [])),
+        "order_event_sequence": getattr(player, "order_event_sequence", 0),
         "credits": player.credits,
         "metal": player.metal,
         "crystal": player.crystal,
@@ -254,6 +258,9 @@ def serialize_order(order: Order) -> dict:
     )
 
     return {
+        "public_id": order.public_id,
+        "failure_reason": order.failure_reason,
+        "outcome_recorded": order._outcome_recorded,
         "order_type": order_type_str,
         "status": status_str,
         "parameters": params,
@@ -449,7 +456,7 @@ def serialize_game_state(game: Any) -> dict:
     ]
 
     return {
-        "version": "3.1",
+        "version": "3.2",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -487,6 +494,8 @@ def deserialize_player(data: dict) -> Player:
         ),
         ai_memory=data.get("ai_memory", {}),
     )
+    player.order_history = bounded_history(data.get("order_history", []))
+    player.order_event_sequence = max(int(data.get("order_event_sequence", 0)), max((e["event_id"] for e in player.order_history), default=0))
     player.id = data.get("id", player.id)
     if "team_id" in data:
         player.team_id = data["team_id"]
@@ -586,6 +595,13 @@ def deserialize_order(data: dict, unit: Unit, game: Any) -> Optional[Order]:
         return None
 
     order = order_cls(unit=unit, parameters=params)
+    import uuid
+    try:
+        order.public_id = uuid.UUID(data.get("public_id", "")).hex
+    except (ValueError, TypeError, AttributeError):
+        pass
+    order.failure_reason = data.get("failure_reason")
+    order._outcome_recorded = bool(data.get("outcome_recorded", False))
     status_str = data.get("status", "PENDING")
     if hasattr(OrderStatus, status_str):
         order.status = OrderStatus[status_str]

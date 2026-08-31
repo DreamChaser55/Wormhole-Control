@@ -148,6 +148,10 @@ class Hyperdrive(UnitComponent):
     recharge_time_remaining: int = 0
     RECHARGE_DURATION: int = DEFAULT_HYPERDRIVE_RECHARGE_DURATION
 
+    @property
+    def effective_jump_range(self):
+        return int(self.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
+
     def __init__(self, unit: 'Unit', drive_type: HyperdriveType = HyperdriveType.BASIC, hull_cost: Optional[float] = None, recharge_duration: int = DEFAULT_HYPERDRIVE_RECHARGE_DURATION, jump_range: int = DEFAULT_JUMP_RANGE):
         if hull_cost is None:
             hull_cost = 5.0 if drive_type == HyperdriveType.BASIC else 10.0
@@ -225,7 +229,7 @@ class Hyperdrive(UnitComponent):
 
         xp = self.unit.experience_points
         if xp > 0:
-            effective_range = int(self.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
+            effective_range = self.effective_jump_range
             bonus_pct = int((effective_range / self.jump_range - 1.0) * 100) if self.jump_range else 0
             range_text = f"Jump Range: {self.jump_range} (+{bonus_pct}% XP → {effective_range})"
         else:
@@ -245,7 +249,7 @@ class Hyperdrive(UnitComponent):
         elif self.jump_status == JumpStatus.JUMPING:
             status_str = "Jumping"
             obj_id = '#sidebar_status_active_label'
-        effective_range = int(self.jump_range * self.unit.xp_multiplier(XP_JUMP_RANGE_BONUS))
+        effective_range = self.effective_jump_range
         data.append({
             'type': 'label',
             'text': f"• FTL Jump: {self.drive_type.value} ({status_str}, Rng {effective_range})",

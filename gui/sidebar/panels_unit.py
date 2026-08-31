@@ -2,6 +2,7 @@
 import typing
 from constants import MAX_UNIT_XP, UPKEEP_COST_PER_HULL_POINT
 from entities import Unit, are_enemies
+from component_visibility import component_is_public
 from unit_components import IntelligenceComponent
 
 
@@ -141,7 +142,7 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         data.append({'type': 'label', 'text': "Component Overview:", 'object_id': '#sidebar_section_header_label', 'height': 25})
         installed_components = [
             comp for comp in unit.components.values()
-            if not (is_enemy and isinstance(comp, IntelligenceComponent))
+            if component_is_public(comp, enemy=is_enemy)
         ]
         installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
         for comp in installed_components:
@@ -153,7 +154,7 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
 
         installed_components = [
             comp for comp in unit.components.values()
-            if not (is_enemy and isinstance(comp, IntelligenceComponent))
+            if component_is_public(comp, enemy=is_enemy)
         ]
         installed_components.sort(key=lambda c: getattr(c, 'SIDEBAR_ORDER', 100))
 

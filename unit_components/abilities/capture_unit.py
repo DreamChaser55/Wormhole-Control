@@ -85,6 +85,8 @@ class CaptureUnitAbility(AbilityInstance):
             return False
 
         # Transfer ownership
+        from order_history import interrupt_unit_orders
+        interrupt_unit_orders(target_unit, "ownership_lost")
         old_owner = target_unit.owner
         target_unit.owner = component.unit.owner
 

@@ -248,6 +248,8 @@ class Player:
             ai_repair_retries
         )
         self.ai_memory: Dict[str, Any] = dict(ai_memory or {})
+        self.order_history = []
+        self.order_event_sequence = 0
         self.last_ai_report: Dict[str, Any] = {}
         self.credits = 20000
         self.metal = 10000
@@ -968,6 +970,8 @@ class Unit(GameObject):
 
     def destroy(self) -> None:
         """Handles the destruction of the unit."""
+        from order_history import interrupt_unit_orders
+        interrupt_unit_orders(self, "unit_destroyed")
         logger.debug(f"Unit '{self.name}' has been destroyed.")
         if self.hangar_component:
             for docked_unit in list(self.hangar_component.docked_units):

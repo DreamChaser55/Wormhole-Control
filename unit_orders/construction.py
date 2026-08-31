@@ -18,7 +18,7 @@ class ConstructOrder(Order):
         super().execute(galaxy_ref)
 
         if not self.unit.constructor_component:
-            self.status = OrderStatus.FAILED
+            self.fail("capability_unavailable")
             logger.debug(f"CONSTRUCT order failed: Unit {self.unit.name} has no ConstructorComponent.")
             return
 
@@ -26,7 +26,7 @@ class ConstructOrder(Order):
         target_pos = self.parameters.get("target_position")
 
         if not unit_template_name or not target_pos:
-            self.status = OrderStatus.FAILED
+            self.fail("invalid_parameters")
             logger.debug(f"CONSTRUCT order failed: Missing parameters.")
             return
 
@@ -34,17 +34,17 @@ class ConstructOrder(Order):
         buildable = constructor.can_build(unit_template_name)
 
         if not buildable:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"CONSTRUCT order failed: {self.unit.name} cannot build {unit_template_name}.")
             return
 
         player = next((p for p in self.unit.game.players if p.id == self.unit.owner.id), None)
         if not player:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"CONSTRUCT order failed: Could not find player with id {self.unit.owner.id}.")
             return
         if player.credits < buildable.cost_credits:
-            self.status = OrderStatus.FAILED
+            self.fail("insufficient_resources")
             logger.debug(f"CONSTRUCT order failed: Not enough credits.")
             if self.unit and getattr(self.unit, 'game', None) and self.unit.game.gui:
                 self.unit.game.gui.show_warning_dialog(
@@ -54,8 +54,12 @@ class ConstructOrder(Order):
             return
 
         success = constructor.start_construction(unit_template_name, target_pos, galaxy_ref)
-        if not success:
-            self.status = OrderStatus.FAILED
+        if success:
+            constructor.construction_order_id = self.public_id
+            self._charged_credits = buildable.cost_credits
+            self._charged_player_id = self.unit.owner.id
+        else:
+            self.fail("construction_unavailable")
 
     def check_completion_conditions(self) -> None:
         constructor = self.unit.constructor_component
@@ -64,13 +68,7 @@ class ConstructOrder(Order):
 
     def cancel(self) -> None:
         constructor = self.unit.constructor_component
-        if constructor and constructor.current_construction_target:
-            unit_template_name = constructor.current_construction_target[0]
-            buildable = constructor.can_build(unit_template_name)
-            if buildable:
-                player = next((p for p in self.unit.game.players if p.id == self.unit.owner.id), None)
-                if player:
-                    player.credits += buildable.cost_credits
-                    logger.debug(f"Refunded {buildable.cost_credits} credits to player {player.name} for cancelled construction of {unit_template_name}.")
+        if constructor and constructor.current_construction_target and getattr(constructor, "construction_order_id", None) == self.public_id:
+            self.refund_charge()
             constructor.cancel_construction()
         super().cancel()

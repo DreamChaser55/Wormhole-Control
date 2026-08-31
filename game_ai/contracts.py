@@ -6,39 +6,9 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
 
-SUPPORTED_COMMANDS = frozenset(
-    {
-        "cancel_orders",
-        "move",
-        "patrol",
-        "attack",
-        "defend",
-        "protect",
-        "colonize",
-        "load_colonists",
-        "construct",
-        "repair",
-        "mine",
-        "continuous_mine",
-        "unload_resources",
-        "dock_in_hangar",
-        "dock_in_strikecraft_bay",
-        "deploy_unit",
-        "deploy_all_wings",
-        "transfer_antimatter",
-        "continuous_resupply",
-        "lay_minefield",
-        "trade",
-        "continuous_trade",
-        "set_stance",
-        "toggle_inhibitor",
-        "toggle_cloaking",
-        "use_ability",
-        "send_message",
-        "message_developer",
-    }
-)
+from .command_spec import COMMAND_SPECS, COMMAND_PROPERTIES, validate_command
 
+SUPPORTED_COMMANDS = frozenset(COMMAND_SPECS)
 
 class ContractError(ValueError):
     """Raised when an AI payload violates the turn contract."""
@@ -63,38 +33,20 @@ class Command:
     target_component: str | None = None
     message: str | None = None
 
+    order_id: str | None = None
+    waypoints: tuple[dict[str, Any], ...] | None = None
+
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> "Command":
-        if not isinstance(raw, Mapping):
-            raise ContractError("Each command must be an object.")
-        command_type = raw.get("type")
-        if command_type not in SUPPORTED_COMMANDS:
-            raise ContractError("Unsupported command type.")
-
-        ids = raw.get("unit_ids") or []
-        if not isinstance(ids, Sequence) or isinstance(ids, (str, bytes)):
-            raise ContractError("command.unit_ids must be an array of integer IDs.")
-        try:
-            unit_ids = tuple(int(value) for value in ids)
-        except (TypeError, ValueError) as exc:
-            raise ContractError("command.unit_ids must contain only integer IDs.") from exc
-
-        return cls(
-            type=str(command_type),
-            unit_ids=unit_ids,
-            target_id=_optional_int(raw.get("target_id"), "target_id"),
-            system_name=_optional_str(raw.get("system_name"), "system_name"),
-            hex_coord=_optional_pair(raw.get("hex_coord"), int, "hex_coord"),
-            position=_optional_pair(raw.get("position"), float, "position"),
-            template_name=_optional_str(raw.get("template_name"), "template_name"),
-            amount=_optional_float(raw.get("amount"), "amount"),
-            stance=_optional_str(raw.get("stance"), "stance"),
-            queue=bool(raw.get("queue", False)),
-            ability=_optional_str(raw.get("ability"), "ability"),
-            minefield_type=_optional_str(raw.get("minefield_type"), "minefield_type"),
-            target_component=_optional_str(raw.get("target_component"), "target_component"),
-            message=_optional_str(raw.get("message"), "message"),
-        )
+        validate_command(raw)
+        values = {key: raw[key] for key in COMMAND_PROPERTIES if key in raw}
+        values["unit_ids"] = tuple(raw.get("unit_ids", []))
+        for key in ("hex_coord", "position"):
+            if values.get(key) is not None:
+                values[key] = tuple(values[key])
+        if values.get("waypoints") is not None:
+            values["waypoints"] = tuple({"system_name": w["system_name"], "hex_coord": tuple(w["hex_coord"]), "position": tuple(w["position"])} for w in values["waypoints"])
+        return cls(**values)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -112,6 +64,8 @@ class Command:
             "minefield_type": self.minefield_type,
             "target_component": self.target_component,
             "message": self.message,
+            "order_id": self.order_id,
+            "waypoints": [{"system_name": w["system_name"], "hex_coord": list(w["hex_coord"]), "position": list(w["position"])} for w in self.waypoints] if self.waypoints is not None else None,
         }
 
 
@@ -130,9 +84,11 @@ class TurnPlan:
     memory_patch: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, raw: Mapping[str, Any], *, max_commands: int = 32) -> "TurnPlan":
+    def from_dict(cls, raw: Mapping[str, Any], *, max_commands: int = 40, strict: bool = False) -> "TurnPlan":
         if not isinstance(raw, Mapping):
             raise ContractError("Turn response must be an object.")
+        if set(raw) != {"plan", "commands", "memory_patch", "end_turn"}:
+            raise ContractError("Turn response requires plan, commands, memory_patch and end_turn only.")
         plan_raw = raw.get("plan", [])
         if not isinstance(plan_raw, list) or not all(isinstance(x, str) for x in plan_raw):
             raise ContractError("plan must be an array of strings.")
@@ -142,11 +98,27 @@ class TurnPlan:
         if len(commands_raw) > max_commands:
             raise ContractError(f"A turn may contain at most {max_commands} commands.")
         patch = raw.get("memory_patch", {})
+        if len(plan_raw) > 12 or any(len(item) > 500 for item in plan_raw):
+            raise ContractError("plan exceeds its limits.")
         if not isinstance(patch, dict):
             raise ContractError("memory_patch must be an object.")
+        limits = {"strategy": 3000, "objectives": 12, "commitments": 12, "beliefs": 16, "lessons": 16, "misc": 16}
+        if set(patch) - limits.keys():
+            raise ContractError("Unknown memory field.")
+        for key, value in patch.items():
+            if value is None:
+                continue
+            valid = isinstance(value, str) and len(value) <= 3000 if key == "strategy" else isinstance(value, list) and len(value) <= limits[key] and all(isinstance(v, str) and len(v) <= 500 for v in value)
+            if not valid:
+                raise ContractError("Invalid memory patch.")
         end_turn = raw.get("end_turn", True)
-        if not isinstance(end_turn, bool):
-            raise ContractError("end_turn must be a boolean.")
+        if end_turn is not True:
+            raise ContractError("end_turn must be true.")
+        if strict:
+            if set(patch) != set(limits):
+                raise ContractError("All memory patch fields are required; use null for unchanged fields.")
+            if any(not isinstance(command, Mapping) or set(command) != set(COMMAND_PROPERTIES) for command in commands_raw):
+                raise ContractError("All command fields are required; use null for unused fields.")
         return cls(
             plan=tuple(item.strip()[:500] for item in plan_raw[:12]),
             batch=CommandBatch(
@@ -163,44 +135,3 @@ class TurnPlan:
             "memory_patch": self.memory_patch,
             "end_turn": self.batch.end_turn,
         }
-
-
-def _optional_int(value: Any, field_name: str) -> int | None:
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        raise ContractError(f"command.{field_name} must be an integer or null.")
-    try:
-        return int(value)
-    except (TypeError, ValueError) as exc:
-        raise ContractError(f"command.{field_name} must be an integer or null.") from exc
-
-
-def _optional_float(value: Any, field_name: str) -> float | None:
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        raise ContractError(f"command.{field_name} must be a number or null.")
-    try:
-        return float(value)
-    except (TypeError, ValueError) as exc:
-        raise ContractError(f"command.{field_name} must be a number or null.") from exc
-
-
-def _optional_str(value: Any, field_name: str) -> str | None:
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ContractError(f"command.{field_name} must be a string or null.")
-    return value
-
-
-def _optional_pair(value: Any, cast: type, field_name: str):
-    if value is None:
-        return None
-    if not isinstance(value, (list, tuple)) or len(value) != 2:
-        raise ContractError(f"command.{field_name} must be a two-item array or null.")
-    try:
-        return cast(value[0]), cast(value[1])
-    except (TypeError, ValueError) as exc:
-        raise ContractError(f"command.{field_name} contains invalid values.") from exc

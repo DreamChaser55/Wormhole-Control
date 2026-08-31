@@ -64,7 +64,7 @@ class TestGameAIComms(unittest.TestCase):
         self.assertEqual(p0_conv["messages"][1]["sender_id"], self.player1.id)
 
         # Check command_reference includes send_message
-        self.assertIn("send_message", obs["command_reference"])
+        self.assertIn("send_message", obs["command_catalog"]["commands"])
 
     def test_command_contract_and_schema(self):
         raw_command = {
@@ -142,7 +142,7 @@ class TestGameAIComms(unittest.TestCase):
         cmd_no_target = Command(type="send_message", target_id=None, message="Hello")
         res1 = gateway.apply_batch(self.player1, CommandBatch(commands=(cmd_no_target,)))
         self.assertFalse(res1.accepted)
-        self.assertEqual(res1.errors[0].code, "missing_target")
+        self.assertEqual(res1.errors[0].code, "invalid_command_contract")
 
         # Invalid target_id (non-existent)
         cmd_invalid_target = Command(type="send_message", target_id=999, message="Hello")
@@ -160,7 +160,7 @@ class TestGameAIComms(unittest.TestCase):
         cmd_empty_msg = Command(type="send_message", target_id=self.player0.id, message="")
         res4 = gateway.apply_batch(self.player1, CommandBatch(commands=(cmd_empty_msg,)))
         self.assertFalse(res4.accepted)
-        self.assertEqual(res4.errors[0].code, "empty_message")
+        self.assertEqual(res4.errors[0].code, "invalid_command_contract")
 
 
 if __name__ == "__main__":

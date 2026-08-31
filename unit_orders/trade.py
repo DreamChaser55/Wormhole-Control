@@ -26,30 +26,30 @@ class TradeOrder(Order):
 
         target_unit_id = self.parameters.get("target_unit_id")
         if not target_unit_id:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"[{self.unit.name}] TRADE order failed: no target_unit_id.")
             return
 
         target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
         if not target_unit:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"[{self.unit.name}] TRADE order failed: target unit {target_unit_id} not found.")
             return
 
         trade_comp = getattr(self.unit, 'trade_component', None)
         if not trade_comp or trade_comp.is_destroyed:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name}] TRADE order failed: unit has no functioning TradeComponent.")
             return
 
         hab_comp = getattr(target_unit, 'civilian_habitat_component', None)
         if not hab_comp or hab_comp.is_destroyed:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"[{self.unit.name}] TRADE order failed: target {target_unit.name} has no functioning CivilianHabitatComponent.")
             return
 
         if not hab_comp.is_active(galaxy_ref):
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"[{self.unit.name}] TRADE order failed: target {target_unit.name} civilian habitat is inactive.")
             return
 
@@ -75,7 +75,7 @@ class TradeOrder(Order):
             self.status = OrderStatus.COMPLETED
             logger.debug(f"[{self.unit.name}] TRADE order completed: {msg}")
         else:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name}] TRADE order failed: {msg}")
 
     def check_completion_conditions(self) -> None:
@@ -104,7 +104,7 @@ class TradeOrder(Order):
                 self.status = OrderStatus.COMPLETED
                 logger.debug(f"[{self.unit.name}] TRADE order completed on arrival: {msg}")
             else:
-                self.status = OrderStatus.FAILED
+                self.fail("execution_failed")
                 logger.debug(f"[{self.unit.name}] TRADE order failed on arrival: {msg}")
 
 
@@ -120,7 +120,7 @@ class ContinuousTradeOrder(Order):
 
         trade_comp = getattr(self.unit, 'trade_component', None)
         if not trade_comp or trade_comp.is_destroyed:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_TRADE order failed: unit has no TradeComponent.")
             return
 
@@ -146,7 +146,7 @@ class ContinuousTradeOrder(Order):
 
         all_active = self._get_active_habitats(galaxy_ref)
         if not all_active:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_TRADE failed: No active Civilian Habitats found in galaxy.")
             return
 

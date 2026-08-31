@@ -39,7 +39,7 @@ class _ArgumentParser(argparse.ArgumentParser):
 
 def _parser() -> argparse.ArgumentParser:
     parser = _ArgumentParser(
-        description="Send one JSON control request to Wormhole Control.",
+        description=f"Send one protocol v{PROTOCOL_VERSION} JSON control request to Wormhole Control.",
         epilog="Pass '-' or omit REQUEST_JSON to read the request from stdin.",
     )
     parser.add_argument("request_json", nargs="?", help="JSON request object, or '-' for stdin")
@@ -101,6 +101,8 @@ def _send(payload: dict[str, Any], port: int, *, connect_timeout: float = 1.0) -
         )
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         raise ClientError("The listening service did not return Wormhole Control JSON.") from exc
+    if isinstance(response, dict) and response.get("service") == SERVICE_NAME and response.get("protocol_version") != PROTOCOL_VERSION:
+        raise ClientError(f"Protocol mismatch: update both game and controller to protocol {PROTOCOL_VERSION}.")
     if (
         not isinstance(response, dict)
         or response.get("service") != SERVICE_NAME

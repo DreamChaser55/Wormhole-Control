@@ -116,7 +116,7 @@ class AttackOrder(Order):
         from entities import are_enemies
         weapons = self.unit.weapons_component
         if not target_unit or not are_enemies(self.unit.owner, target_unit.owner):
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             if weapons:
                 # A rejected attack must not leave a lock inherited from a
                 # previous foreground/standing engagement.
@@ -124,13 +124,13 @@ class AttackOrder(Order):
             return
 
         if not weapons:
-            self.status = OrderStatus.FAILED
+            self.fail("capability_unavailable")
             return
         eligible_turrets = weapons.eligible_turrets_for(target_unit)
         if not isinstance(eligible_turrets, (list, tuple)):
             eligible_turrets = list(getattr(weapons, "turrets", []))
         if not eligible_turrets:
-            self.status = OrderStatus.FAILED
+            self.fail("capability_unavailable")
             weapons.clear_target()
             return
         weapons.set_target(target_unit, target_component_type)
@@ -342,13 +342,13 @@ class ProtectOrder(Order):
         target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id and galaxy else None
 
         if not target_unit:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"PROTECT order failed: Target unit {target_unit_id} not found.")
             return
 
         from entities import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"PROTECT order failed: Target unit {target_unit.name} is not allied.")
             return
 

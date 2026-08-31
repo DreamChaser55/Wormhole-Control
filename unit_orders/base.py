@@ -1,4 +1,5 @@
 import logging
+import uuid
 import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING, Deque
 from enum import Enum, auto
@@ -69,6 +70,14 @@ class Order:
 
     def __init__(self, unit: 'Unit', order_type: OrderType, parameters: Dict[str, Any] = None, parent_order: Optional['Order'] = None):
         self.unit = unit
+        self.public_id = uuid.uuid4().hex
+        self._journal_root = False
+        self._outcome_recorded = False
+        self._issuing_player = None
+        self.failure_reason = None
+        self._charged_credits = 0
+        self._charged_player_id = None
+        self._legacy_charge = False
         self.order_id = Order.order_counter
         Order.order_counter += 1
         self.order_type = order_type
@@ -76,6 +85,27 @@ class Order:
         self.status = OrderStatus.PENDING
         self.sub_orders: Deque['Order'] = deque()
         self.parent_order = parent_order
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        self._status = value
+        if value in {OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED}:
+            from order_history import record_outcome
+            record_outcome(self)
+
+    def fail(self, reason="execution_failed"):
+        self.failure_reason = reason
+        self.status = OrderStatus.FAILED
+
+    def register_explicit_root(self, *, restored=False):
+        self._journal_root = True
+        self._issuing_player = self.unit.owner
+        if restored and self.status in {OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED}:
+            self._outcome_recorded = True
 
     def get_state_data(self) -> Dict[str, Any]:
         """Returns raw structured state data for this order."""
@@ -135,7 +165,7 @@ class Order:
                 current_sub_order.update(galaxy_ref=galaxy_ref)
 
             if current_sub_order.status == OrderStatus.FAILED:
-                self.status = OrderStatus.FAILED
+                self.fail(current_sub_order.failure_reason or "suborder_failed")
                 for sub in list(self.sub_orders):
                     sub.cancel()
                 self.sub_orders.clear()
@@ -165,11 +195,33 @@ class Order:
 
     def get_persistence_state(self) -> Dict[str, Any]:
         """Return mutable runtime state which is not part of ``parameters``."""
-        return {}
+        return {"charged_credits": self._charged_credits, "charged_player_id": self._charged_player_id}
 
     def restore_persistence_state(self, state: Dict[str, Any]) -> None:
         """Restore mutable runtime state saved by :meth:`get_persistence_state`."""
-        return
+        self._charged_credits = state.get("charged_credits", 0)
+        self._charged_player_id = state.get("charged_player_id")
+        self._legacy_charge = "charged_credits" not in state
+
+    def refundable_credits(self, player_id):
+        """Credits this subtree owns in active component jobs; used by preflight."""
+        constructor = getattr(self.unit, "constructor_component", None)
+        owns = constructor and (
+            (getattr(constructor, "construction_order_id", None) == self.public_id and constructor.current_construction_target)
+            or (getattr(constructor, "refit_order_id", None) == self.public_id and constructor.current_refit_target))
+        own_amount = self._charged_credits if owns and self._charged_player_id == player_id else 0
+        return own_amount + sum(child.refundable_credits(player_id) for child in self.sub_orders)
+
+    def refund_charge(self):
+        """Release only this order's charge once, to its original payer."""
+        player_id = self._charged_player_id
+        players = getattr(getattr(self.unit, "game", None), "players", [])
+        player = next((p for p in players if p.id == player_id), None)
+        if player is None and self.unit.owner.id == player_id:
+            player = self.unit.owner
+        if player is not None:
+            player.credits += self._charged_credits
+            self._charged_credits = 0
 
     def resume(self, galaxy_ref: 'Galaxy') -> None:
         """Rebind runtime state after loading without executing side effects again.

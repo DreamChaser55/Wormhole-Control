@@ -38,7 +38,7 @@ class RepairOrder(Order):
         super().execute(galaxy_ref)
 
         if not self.unit.repair_component:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"REPAIR order failed: Unit {self.unit.name} has no RepairComponent.")
             return
 
@@ -46,13 +46,13 @@ class RepairOrder(Order):
         target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
 
         if not target_unit:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"REPAIR order failed: Target unit {target_unit_id} not found.")
             return
 
         from entities import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"REPAIR order failed: Target unit {target_unit.name} is not friendly/allied.")
             return
 

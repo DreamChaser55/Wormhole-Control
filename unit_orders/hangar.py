@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+DOCKING_RANGE = 100.0
+
 
 class DockOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
@@ -36,7 +38,7 @@ class DockOrder(Order):
         target_carrier = self.unit.game.galaxy.get_unit_by_id(target_carrier_id)
 
         if not target_carrier:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"DOCK order failed: Target carrier {target_carrier_id} not found.")
             return
 
@@ -47,16 +49,16 @@ class DockOrder(Order):
             docking_component = target_carrier.hangar_component
 
         if not docking_component:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no compatible hangar/strikecraftbay for {self.unit.name}.")
             return
 
         if not docking_component.can_dock(self.unit):
-            self.status = OrderStatus.FAILED
+            self.fail("insufficient_capacity")
             logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no space/slots for {self.unit.name}.")
             return
 
-        docking_range = 100.0
+        docking_range = DOCKING_RANGE
         in_same_system_and_hex = (self.unit.in_system == target_carrier.in_system and self.unit.in_hex == target_carrier.in_hex)
         in_range = in_same_system_and_hex and (distance(self.unit.position, target_carrier.position) <= docking_range)
 
@@ -78,7 +80,7 @@ class DockOrder(Order):
             self.status = OrderStatus.COMPLETED
             logger.debug(f"Unit {self.unit.name} successfully docked to {target_carrier.name}.")
         else:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"Docking of {self.unit.name} to {target_carrier.name} failed.")
 
     def check_completion_conditions(self) -> None:
@@ -114,7 +116,7 @@ class DeployUnitOrder(Order):
         super().execute(galaxy_ref)
 
         if not self.unit.hangar_component and not self.unit.strikecraft_bay_component:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"DEPLOY_UNIT order failed: Unit {self.unit.name} has no HangarComponent or StrikecraftBayComponent.")
             return
 
@@ -136,7 +138,7 @@ class DeployUnitOrder(Order):
                     break
 
         if not docked_unit:
-            self.status = OrderStatus.FAILED
+            self.fail("target_unavailable")
             logger.debug(f"DEPLOY_UNIT order failed: Docked unit {docked_unit_id} not found in hangar or strikecraft bay.")
             return
 
@@ -145,7 +147,7 @@ class DeployUnitOrder(Order):
             self.status = OrderStatus.COMPLETED
             logger.debug(f"Unit {docked_unit.name} successfully deployed from {self.unit.name}.")
         else:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"Deployment of {docked_unit.name} from {self.unit.name} failed.")
 
     def check_completion_conditions(self) -> None:
@@ -167,7 +169,7 @@ class DeployAllWingsOrder(Order):
         super().execute(galaxy_ref)
 
         if not self.unit.strikecraft_bay_component:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"DEPLOY_ALL_WINGS order failed: Unit {self.unit.name} has no StrikecraftBayComponent.")
             return
 
@@ -188,7 +190,7 @@ class DeployAllWingsOrder(Order):
             self.status = OrderStatus.COMPLETED
             logger.debug(f"Successfully deployed {success_count} fighter wings from {self.unit.name}.")
         else:
-            self.status = OrderStatus.FAILED
+            self.fail("execution_failed")
             logger.debug(f"Failed to deploy any fighter wings from {self.unit.name}.")
 
     def check_completion_conditions(self) -> None:

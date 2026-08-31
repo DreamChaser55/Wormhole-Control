@@ -126,7 +126,7 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 
 ## Saving & Loading
 
-- **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory. Save format 3.1 records the selected stance and preserves explicit current/queued orders separately.
+- **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory. Save format 3.2 preserves stances, explicit current/queued orders, public order UUIDs, and bounded per-player outcome history; older saves still load.
 - **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match.
 - **AI Memory**: Built-in OpenAI players keep canonical long-term memory in each save. A readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`.
 - **Comms Log**: In-game player communications are logged in real-time to `saves/comms.md`. Campaign-specific transmission logs are also generated at `saves/comms/<campaign>/comms.md` during saves.
@@ -168,24 +168,33 @@ request bodies. AI agents can also message the game developer (`message_develope
 to report gameplay bugs, rule confusions, or balance suggestions directly to
 `saves/ai_feedback.md`.
 
+Both AI interfaces use observation schema **4** and command contract **2**. Friendly
+units expose separate standing, current, and queued orders, tactical ranges, and
+persistent completion/failure/cancellation history. The command catalog is included
+in observations. AI patrols accept explicit routes; `cancel_order` cancels one
+explicit root, and `clear_explicit_orders` preserves stance. `cancel_orders` remains
+full Stop. Unexpected commit exceptions stop the batch without rollback: completed
+operations are reported, the failing operation may have partial effects, and Codex
+must observe again before issuing commands or ending its turn.
+
 See [Agentic AI Architecture](docs/AGENTIC_AI.md) for the full design and evaluation workflow.
 
 ## Codex-Controlled Player
 
-Codex can launch the visible game, create a campaign containing exactly one Codex player, observe fog-of-war-safe state, submit incremental atomic command batches, and end turns through the loopback-only JSON bridge:
+Codex can launch the visible game, create a campaign containing exactly one Codex player, observe fog-of-war-safe state, submit incremental command batches with atomic preflight, and end turns through the loopback-only JSON bridge:
 
 ```powershell
 python .\game_control.py '{"action":"status"}'
 ```
 
-No API key is required because the bridge makes no OpenAI API calls. See the [Codex Control Protocol v1 guide](docs/CODEX_CONTROL.md) for setup schemas, the play loop, PowerShell/stdin examples, port configuration, errors, retries, and sandbox guidance.
+No API key is required because the bridge makes no OpenAI API calls. See the [Codex Control Protocol v2 guide](docs/CODEX_CONTROL.md) for setup schemas, the play loop, PowerShell/stdin examples, port configuration, errors, retries, and sandbox guidance.
 
 ---
 
 ## Development & Testing
 
 ### Automated Test Suite
-Wormhole Control includes a comprehensive automated test suite consisting of **799 tests across 70 test modules** covering economy, combat, movement, AI logic, order trees, and GUI handlers:
+Wormhole Control includes a comprehensive automated test suite consisting of an extensive offline regression suite covering economy, combat, movement, AI logic, order trees, and GUI handlers:
 
 ```bash
 pip install -r requirements-dev.txt

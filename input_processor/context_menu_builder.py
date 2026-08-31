@@ -265,15 +265,11 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                 if is_enemy_target:
                     if any(a.weapons_component for a in actors):
                         options.append(("Attack Hull", "attack_unit"))
-                        if target_object.engines_component:
-                            options.append(("Attack Engines", "attack_unit_Engines"))
-                        if target_object.hyperdrive_component:
-                            options.append(("Attack Hyperdrive", "attack_unit_Hyperdrive"))
-                        if target_object.weapons_component:
-                            options.append(("Attack Weapons", "attack_unit_Weapons"))
-                        if target_object.inhibitor_component:
-                            options.append(("Attack Inhibitor", "attack_unit_HyperspaceInhibitionFieldEmitter"))
-                        # Note: Covert components (e.g. IntelligenceComponent) are hidden from enemy attack menus
+                        from component_visibility import public_components
+                        for component in public_components(target_object, enemy=True):
+                            component_type = type(component).__name__
+                            label = getattr(component, "DISPLAY_NAME", component_type)
+                            options.append((f"Attack {label}", f"attack_unit_{component_type}"))
 
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
                     if has_intel_actors:

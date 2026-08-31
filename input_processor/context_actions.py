@@ -117,6 +117,10 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
             if isinstance(target, Unit):
                 parts = extracted_action_id.split("_", 2)
                 target_component_type_str = parts[2] if len(parts) == 3 else None
+                if target_component_type_str:
+                    from component_visibility import public_target_components
+                    if target_component_type_str not in public_target_components(target):
+                        return
                 game.event_bus.publish(AttackUnitEvent(
                     selected_units,
                     target,

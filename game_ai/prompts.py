@@ -16,8 +16,20 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Commands are applied in array order. queue=false replaces a unit's existing orders; queue=true
-appends. Conditional sequences must preserve their prerequisites; for example, colonize after
+Observations use schema 4 and the command_catalog describes contract 2. Owned/allied units
+separate standing_order, current_order and queued_orders. Keep useful explicit work: changing
+stance preserves it; explicit work suspends stance engagement and stance resumes afterwards.
+Explicit Move suppresses stance combat. cancel_orders is full Stop (including Do Nothing stance);
+clear_explicit_orders preserves stance. cancel_order removes just the named public explicit root.
+Internal suborders and stance engagements cannot be edited individually.
+
+Commands are applied in array order. For orders, queue=false replaces explicit work; queue=true
+appends a separate root. Immediate commands require queue=false and never replace work.
+Continuous orders block later queue entries until cancelled; this is guidance, not an error.
+Patrol accepts 1-16 complete waypoints, returns to its captured start, and repeats. queue=true
+never extends a patrol. Use append_patrol_waypoints with its observed public order_id to extend it.
+Issuance receipts mean a command was applied, not that the order completed. Consult order_history
+for terminal outcomes. Legal means issuable now, not guaranteed to finish successfully. Conditional sequences must preserve their prerequisites; for example, colonize after
 load_colonists must use queue=true. Every command field is required by the output schema, but fields not used by a command
 must be null. Unit commands act on at least one owned unit in unit_ids, whereas player-level
 commands like send_message (with target_id) and message_developer (without target_id) use unit_ids=[] with message (text string).

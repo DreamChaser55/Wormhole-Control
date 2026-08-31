@@ -44,7 +44,7 @@ player. It includes:
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 3 gives full body detail in systems containing friendly
+Observation schema 4 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -79,7 +79,7 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 2.2 embeds:
+Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 3.2 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
@@ -111,8 +111,8 @@ also projects guaranteed effects through a batch, allowing a valid
 `load_colonists` command to satisfy a later `colonize` command for the same unit
 when colonization is queued. Inhibitor toggles likewise project active dynamic
 zones, so overlapping activations are rejected before commit and a preceding
-deactivation can make a later activation legal. A replacing command does not
-retain a projected colonization prerequisite. The complete batch remains atomic
+deactivation can make a later activation legal. Replacing pending work releases only its reservations; it cannot undo a colonist load
+that already completed synchronously. Preserve queued prerequisites with `queue=true`. The complete batch remains atomic
 at preflight.
 
 Retrofit remains a human editor transaction because it requires a versioned
@@ -168,3 +168,87 @@ input/output tokens at each reasoning effort. Transport and commit failures are
 not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
+
+## Shared order contract (observation 4 / commands 2 / socket 2)
+
+`game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
+capabilities and descriptions. It generates the strict OpenAI command schema and the
+socket observation's deduplicated `command_catalog`. Socket commands may omit optional
+fields; OpenAI output must include every schema field (unused fields are null).
+Validation rejects unknown fields, coercible strings, boolean/fractional IDs, duplicate
+units, non-finite coordinates, inappropriate parameters, and batches/groups above
+40 commands / 12 units. Immediate commands require `queue=false`. The coordinator
+validates the complete turn plan, including `end_turn=true`, before mutation, even for
+injected providers. Model, reasoning, timeout and token budgets are unchanged.
+
+Owned/allied units expose `standing_order`, `current_order` and `queued_orders`; the
+legacy flattened `orders` array is removed. Types and statuses are readable strings.
+Standing policy records suspension and its transient engagement. Explicit roots have
+opaque UUID `order_id` values, separate from internal integer actuator ownership IDs.
+All explicit root identities remain visible. Expanded suborders are limited to 32
+nodes per unit and depth 6, prioritizing the active chain; waypoint previews contain
+at most 16 entries, with omitted counts. Continuous orders identify blocked queue
+entries as guidance. Progress contains actual engine phase/counters, never invented ETAs.
+
+Explicit work suspends stance attacks; explicit Move also suppresses stance combat.
+Changing stance preserves explicit work. Clearing explicit work resumes the selected
+policy when idle. Stop cancels both layers and selects Do Nothing. Commands:
+
+| Command | Required fields besides type/unit_ids | Meaning |
+|---|---|---|
+| `cancel_order` | `order_id` (exactly one owned unit) | Cancel one current/queued explicit root. |
+| `clear_explicit_orders` | none | Cancel explicit work, preserve stance. |
+| `append_patrol_waypoints` | `order_id`, `waypoints` (one owned unit) | Extend a current/queued patrol while preserving its leg. |
+| `patrol` | `waypoints` OR complete system/hex/position | Traverse 1–16 waypoints, return to captured start, repeat. |
+
+`queue=true` creates a separate patrol, never an extension. Routes may contain at most
+16 waypoints through AI commands. Human Shift-patrol behavior is unchanged. Internal
+suborders and stance roots cannot be edited individually. Unavailable or foreign order
+IDs produce `order_unavailable`; UUID possession grants no authority.
+
+Friendly capabilities expose actual turret types, variants, ranges, cooldowns and target
+classes, sensor and hyperdrive base/effective ranges, drive functionality/status, support
+ranges, defend radius, and cloak state/activation/upkeep. Engine helpers supply effective
+values (including XP and sabotage). Hardware support is distinct from current legality;
+"legal" means issuable now, not guaranteed eventual success.
+
+`component_visibility.py` supplies the shared disclosure/subsystem policy for AI and UI.
+Enemy Intelligence components are neither listed nor precision-targetable. Hidden and
+nonexistent subsystem guesses return the same error. Public order serializers never dump
+raw parameters, persistence or sidebar state. Hidden target references and their derived
+movement geometry are redacted recursively; player-issued fixed coordinates remain intent.
+Outcome history contains no target references, names, coordinates or raw exceptions.
+
+## Commit guarantees and lifecycle feedback
+
+Preflight projects order-associated population, construction and docking reservations,
+replacement, cancellation, route edits and toggles in array order. It creates no authoritative
+orders, charges, component targets or lifecycle events. Construction/refit jobs bind their
+charge and cancellation ownership to the initiating order; cancelling a pending sibling
+cannot cancel/refund the active job. Refunds go to the original payer at most once.
+
+Commit executes prepared per-unit/player operations sequentially. Results include
+`accepted`, `failure_stage`, `retryable`, `applied_count`, `operation_results`, receipts,
+indexed errors, `may_have_partial_effects` and `requires_observation`. **applied_count counts
+successfully completed operations**, not all mutations. Operations identify command index,
+unit, command type, order ID, and applied/failed/unattempted status. On an exception, later
+operations are unattempted and the failing operation's effects are uncertain. Dirty flags
+are set even on failure. There is no rollback or automatic retry. Luna records partial
+results for manual recovery and does not apply the rejected memory patch. Only preflight
+and output rejections receive semantic repair requests. Telemetry adds failure stage and
+operation outcome counts without prompts, raw observations, analysis or secrets.
+
+`order_history.py` records explicit-root completed/failed/cancelled outcomes exactly once,
+including synchronous outcomes, later-turn failures, replacement, destruction and capture.
+Child failure codes reach the root. Destruction/capture recording does not invoke refunds.
+Issuance receipts are separate from terminal outcomes. Each player (regardless of controller)
+retains at most 128 events and 32,000 serialized characters, dropping oldest whole events.
+Monotonic event IDs and retention metadata identify duplicates and missing history. An
+observation exposes only its active player's journal, not an ally's entire history.
+
+Save 3.2 preserves order UUIDs recursively, history/counter, terminal-recording state and
+job charges. Legacy orders get new UUIDs and empty histories. Restored active orders rebind
+actuators/job ownership without replaying startup or refunds; pending orders start on a
+subsequent update. Recursively docked units restore too; stance engagements are reacquired.
+The strict response schema is `wormhole_control_turn_v2`, and prompt cache key is
+`wormhole-control-turn-v3`. No live API call is required for regression testing.

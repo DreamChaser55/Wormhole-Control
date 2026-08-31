@@ -7,6 +7,7 @@ from typing import Any
 
 from .rules import (
     ability_states,
+    detailed_system_names,
     command_guidance,
     is_colonizable_body,
     is_mining_target,
@@ -16,39 +17,12 @@ from .rules import (
 )
 
 
-COMMAND_HELP = {
-    "cancel_orders": "Stop all activity and set the stance to Do Nothing.",
-    "move": "Move to system_name, hex_coord, and position.",
-    "patrol": "Patrol toward system_name, hex_coord, and position.",
-    "attack": "Attack visible enemy target_id (optional target_component to focus fire on a specific subsystem).",
-    "defend": "Move to and defend system_name, hex_coord, position, or target_id against hostile intruders.",
-    "protect": "Protect friendly target_id.",
-    "colonize": "Colonize unowned body target_id with carried population.",
-    "load_colonists": "Load amount colonists from friendly body target_id.",
-    "construct": "Construct template_name at position.",
-    "repair": "Repair friendly unit target_id.",
-    "mine": "Mine body target_id once.",
-    "continuous_mine": "Repeatedly mine body target_id and unload.",
-    "unload_resources": "Unload raw cargo into friendly refinery target_id.",
-    "dock_in_hangar": "Dock a tiny ship into friendly carrier hangar target_id.",
-    "dock_in_strikecraft_bay": "Dock a strikecraft wing into friendly carrier strikecraft bay target_id.",
-    "deploy_unit": "Carrier deploys docked unit target_id.",
-    "deploy_all_wings": "Carrier deploys all docked strikecraft wings.",
-    "transfer_antimatter": "Transfer antimatter to friendly unit target_id.",
-    "continuous_resupply": "Repeatedly harvest antimatter from star target_id.",
-    "lay_minefield": "Lay anti_ship or anti_strikecraft minefield.",
-    "trade": "Trade once with active habitat unit target_id.",
-    "continuous_trade": "Autonomously repeat trade routes.",
-    "set_stance": "Set one of the listed stance values.",
-    "toggle_inhibitor": (
-        "Flip the unit's hyperspace inhibitor to the resulting_state listed in "
-        "command_options; activation is legal only when its field fits and does not overlap."
-    ),
-    "toggle_cloaking": "Toggle the unit's cloaking device.",
-    "use_ability": "Use ability; target_id and/or position depend on ability.",
-    "send_message": "Send a text message to player target_id with message text.",
-    "message_developer": "Send feedback, suggestions, or bug reports to the game developer with message text.",
-}
+from .command_spec import COMMAND_SPECS, command_catalog
+from .order_view import order_layers, enum_name
+from component_visibility import public_components
+from order_history import history_view
+
+COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
 def build_observation(game: Any, player: Any) -> dict[str, Any]:
@@ -85,22 +59,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         {"system_name": system_name, "hex_coord": list(hex_coord)}
         for system_name, hex_coord in sorted(visibility.presence_hexes)
     ]
-    friendly_systems = {
-        str(unit.in_system)
-        for unit in visible_unit_objects
-        if _relation(player, getattr(unit, "owner", None)) in {"self", "ally"}
-    }
-    detailed_systems = set(friendly_systems)
-    for system_name in friendly_systems:
-        detailed_systems.update(
-            getattr(galaxy, "system_graph", {}).get(system_name, {}).keys()
-        )
-    detailed_systems.update(
-        str(unit.in_system)
-        for unit in visible_unit_objects
-        if _relation(player, getattr(unit, "owner", None)) == "enemy"
-    )
-    detailed_systems.update(system_name for system_name, _hex in visibility.presence_hexes)
+    detailed_systems = detailed_system_names(galaxy, player, visible_unit_objects, visibility.presence_hexes)
 
     exact_bodies = []
     for system_name in sorted(galaxy.systems):
@@ -163,7 +122,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -219,7 +178,9 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "visible_minefields": minefields,
         "undetailed_enemy_presence": presences,
         "visibility_note": memory_note,
-        "command_reference": COMMAND_HELP,
+        "command_catalog": command_catalog(),
+        "order_history": history_view(player),
+        "command_legality_note": "Legal means issuable now; future execution can still fail. Hardware support does not imply present legality.",
         "action_catalogs": {
             "colonization_target_ids": [
                 int(body.id)
@@ -259,7 +220,7 @@ def _unit_view(
 ) -> dict[str, Any]:
     commander = getattr(unit, "commander_component", None)
     components = sorted(
-        component.__class__.__name__ for component in getattr(unit, "components", {}).values()
+        component.__class__.__name__ for component in public_components(unit, enemy=relation == "enemy")
     )
     data = {
         "id": int(unit.id),
@@ -277,9 +238,10 @@ def _unit_view(
         "disabled": bool(getattr(unit, "is_disabled", False)),
         "components": components,
         "antimatter": _component_amount(getattr(unit, "antimatter_component", None)),
-        "orders": _orders(commander),
-        "stance": _enum_value(getattr(commander, "stance", None)),
+        **order_layers(unit, relation, {u.id for u in visible_units}, {b.id for b in exact_bodies}),
     }
+    if relation in {"self", "ally"}:
+        data["capability_details"] = _capability_details(unit, game)
     if include_capabilities:
         legal, options, conditional = command_guidance(
             game,
@@ -293,7 +255,6 @@ def _unit_view(
         data["command_options"] = options
         data["conditional_commands"] = conditional
         data["ability_states"] = ability_states(unit)
-        data["capability_details"] = _capability_details(unit, game)
     return data
 
 
@@ -362,9 +323,48 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     if hyperdrive is not None:
         details["hyperdrive"] = {
             "type": _enum_value(getattr(hyperdrive, "drive_type", None)),
-            "jump_range": _rounded(getattr(hyperdrive, "jump_range", 0)),
+            "base_jump_range": _rounded(getattr(hyperdrive, "jump_range", 0)),
+            "effective_jump_range": _rounded(getattr(hyperdrive, "effective_jump_range", 0)),
+            "functional": bool(getattr(hyperdrive, "is_functional", False)),
+            "destroyed": bool(getattr(hyperdrive, "is_destroyed", False)),
             "status": _enum_value(getattr(hyperdrive, "jump_status", None)),
         }
+    from unit_orders.defend import DEFAULT_DEFEND_GUARD_RADIUS
+    from constants import HullSize, TRADE_ARRIVAL_RANGE, ANTIMATTER_TRANSFER_RANGE, DEFAULT_STANDOFF_DISTANCE
+    from unit_orders.hangar import DOCKING_RANGE
+    details["defend_radius"] = DEFAULT_DEFEND_GUARD_RADIUS
+    sensors = getattr(unit, "sensors_component", None)
+    if sensors is not None:
+        details["sensors"] = {name: getattr(sensors, name) for name in (
+            "short_range_radius", "effective_short_range_radius", "long_range_hexes", "effective_long_range_hexes", "is_destroyed")}
+    weapons = getattr(unit, "weapons_component", None)
+    if weapons is not None:
+        details["weapons"] = {"operational": not bool(weapons.is_destroyed), "turrets": [
+            {"type": enum_name(t.turret_type), "variant": enum_name(t.variant), "range": t.range,
+             "cooldown": t.cooldown, "cooldown_remaining": t.current_cooldown,
+             "eligible_target_classes": [enum_name(h) for h in HullSize if weapons.turret_accepts_hull(t, h)]}
+            for t in weapons.turrets]}
+    cloak = getattr(unit, "cloaking_component", None)
+    if cloak is not None:
+        details["cloaking"] = {"type": enum_name(cloak.device_type), "active": cloak.is_active,
+            "destroyed": cloak.is_destroyed, "can_activate": not cloak.is_destroyed and not cloak.is_active,
+            "radius": cloak.area_radius, "antimatter_upkeep": cloak.get_antimatter_cost_per_turn()}
+    ranges = {}
+    for component_name, field in (("repair_component", "repair_range"), ("mining_component", "mining_range"),
+                                 ("harvester_component", "harvest_range"), ("constructor_component", "build_range"),
+                                 ("metal_refinery_component", "unload_range"), ("crystal_refinery_component", "unload_range")):
+        component = getattr(unit, component_name, None)
+        if component is not None:
+            ranges[component_name] = {"range": getattr(component, field, None), "operational": not bool(component.is_destroyed)}
+    if getattr(unit, "trade_component", None) is not None:
+        ranges["trade_component"] = {"range": TRADE_ARRIVAL_RANGE}
+    ranges["docking"] = {"range": DOCKING_RANGE}
+    ranges["protect"] = {"standoff_distance": DEFAULT_STANDOFF_DISTANCE}
+    if getattr(unit, "colony_component", None) is not None:
+        ranges["colony"] = {"distance_from_body_surface": DEFAULT_STANDOFF_DISTANCE}
+    if getattr(unit, "antimatter_component", None) is not None:
+        ranges["transfer_antimatter"] = {"range": ANTIMATTER_TRANSFER_RANGE}
+    details["support_ranges"] = ranges
     colony = getattr(unit, "colony_component", None)
     if colony is not None:
         details["colony"] = {
@@ -447,26 +447,6 @@ def _public_scalar_attributes(component: Any) -> dict[str, Any]:
             result[name] = value
         elif isinstance(value, (int, float)):
             result[name] = _rounded(value)
-    return result
-
-
-def _orders(commander: Any) -> list[dict[str, Any]]:
-    if commander is None:
-        return []
-    get_observable = getattr(commander, "get_observable_active_order", None)
-    active = get_observable() if callable(get_observable) else getattr(commander, "current_order", None)
-    queued = list(getattr(commander, "orders_queue", []) or [])
-    result = []
-    for state, order in ([("active", active)] if active is not None else []) + [
-        ("queued", order) for order in queued
-    ]:
-        result.append(
-            {
-                "state": state,
-                "type": _enum_value(getattr(order, "order_type", None)),
-                "status": _enum_value(getattr(order, "status", None)),
-            }
-        )
     return result
 
 
