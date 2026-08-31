@@ -38,13 +38,14 @@ class IssueMoveOrderEvent(Event):
         self.shift_pressed = shift_pressed
 
 class IssuePatrolOrderEvent(Event):
-    def __init__(self, units: list, system_name: str, sector_coord: typing.Any, destination: typing.Any, shift_pressed: bool = False, ctrl_pressed: bool = False):
+    def __init__(self, units: list, system_name: str, sector_coord: typing.Any, destination: typing.Any, shift_pressed: bool = False, add_waypoint: bool = False, ctrl_pressed: bool = False):
         self.units = units
         self.system_name = system_name
         self.sector_coord = sector_coord
         self.destination = destination
         self.shift_pressed = shift_pressed
-        self.ctrl_pressed = ctrl_pressed
+        self.add_waypoint = add_waypoint or ctrl_pressed
+        self.ctrl_pressed = self.add_waypoint
 
 class JumpInterhexEvent(Event):
     def __init__(self, units: list, system_name: str, target_hex: typing.Any, shift_pressed: bool):

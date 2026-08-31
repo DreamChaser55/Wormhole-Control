@@ -157,13 +157,6 @@ def _get_shift_pressed() -> bool:
         return False
 
 
-def _get_ctrl_pressed() -> bool:
-    try:
-        return bool(pygame.key.get_mods() & pygame.KMOD_CTRL)
-    except Exception:
-        return False
-
-
 def handle_mouse_click(game, gui, button: int, position: Position) -> None:
     """Handles mouse click events that occur over the main game canvas (outside UI elements).
 

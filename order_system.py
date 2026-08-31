@@ -148,14 +148,14 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
-        ctrl_pressed = getattr(event, 'ctrl_pressed', False)
+        add_waypoint = getattr(event, 'add_waypoint', getattr(event, 'ctrl_pressed', False))
         for unit in event.units:
             if not self.validate_engines_for_unit(unit, "patrol"):
                 continue
             if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
                 continue
             existing_patrol = None
-            if ctrl_pressed:
+            if add_waypoint:
                 if unit.commander_component.orders_queue:
                     last_order = unit.commander_component.orders_queue[-1]
                     if last_order.order_type == OrderType.PATROL:
@@ -163,7 +163,7 @@ class OrderSystem:
                 if not existing_patrol and unit.commander_component.current_order and unit.commander_component.current_order.order_type == OrderType.PATROL:
                     existing_patrol = unit.commander_component.current_order
 
-            if ctrl_pressed and existing_patrol:
+            if add_waypoint and existing_patrol:
                 existing_patrol.add_waypoint(event.system_name, event.sector_coord, event.destination)
                 logger.debug(f"  Added waypoint to existing patrol order for unit {unit.name}: {event.system_name}:{event.sector_coord}:{event.destination}")
             else:

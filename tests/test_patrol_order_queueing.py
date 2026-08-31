@@ -57,7 +57,7 @@ def test_patrol_order_shift_queues_new_order_when_patrolling():
         sector_coord=(0, 0),
         destination=Position(100, 100),
         shift_pressed=False,
-        ctrl_pressed=False
+        add_waypoint=False
     )
     game.order_system.handle_issue_patrol_order(event1)
     
@@ -75,7 +75,7 @@ def test_patrol_order_shift_queues_new_order_when_patrolling():
         sector_coord=(0, 0),
         destination=Position(200, 200),
         shift_pressed=True,
-        ctrl_pressed=False
+        add_waypoint=False
     )
     game.order_system.handle_issue_patrol_order(event2)
 
@@ -104,7 +104,7 @@ def test_patrol_order_no_shift_clears_and_replaces():
         sector_coord=(0, 0),
         destination=Position(100, 100),
         shift_pressed=False,
-        ctrl_pressed=False
+        add_waypoint=False
     )
     game.order_system.handle_issue_patrol_order(event1)
     original_patrol = unit.commander_component.current_order
@@ -116,7 +116,7 @@ def test_patrol_order_no_shift_clears_and_replaces():
         sector_coord=(0, 0),
         destination=Position(300, 300),
         shift_pressed=False,
-        ctrl_pressed=False
+        add_waypoint=False
     )
     game.order_system.handle_issue_patrol_order(event2)
 
@@ -127,8 +127,8 @@ def test_patrol_order_no_shift_clears_and_replaces():
     assert len(unit.commander_component.orders_queue) == 0
 
 
-def test_patrol_order_ctrl_adds_waypoint_to_current_patrol():
-    """Verify that Ctrl + Patrol appends a waypoint to the active PatrolOrder."""
+def test_patrol_order_add_waypoint_to_current_patrol():
+    """Verify that add_waypoint=True appends a waypoint to the active PatrolOrder."""
     game = MockGame()
     unit = _create_test_unit(game.players[0])
     
@@ -139,19 +139,19 @@ def test_patrol_order_ctrl_adds_waypoint_to_current_patrol():
         sector_coord=(0, 0),
         destination=Position(100, 100),
         shift_pressed=False,
-        ctrl_pressed=False
+        add_waypoint=False
     )
     game.order_system.handle_issue_patrol_order(event1)
     active_patrol = unit.commander_component.current_order
 
-    # 2. Issue patrol with Ctrl pressed
+    # 2. Add waypoint to active patrol
     event2 = IssuePatrolOrderEvent(
         units=[unit],
         system_name="Sol",
         sector_coord=(0, 0),
         destination=Position(200, 200),
         shift_pressed=False,
-        ctrl_pressed=True
+        add_waypoint=True
     )
     game.order_system.handle_issue_patrol_order(event2)
 
@@ -163,8 +163,8 @@ def test_patrol_order_ctrl_adds_waypoint_to_current_patrol():
     assert len(unit.commander_component.orders_queue) == 0
 
 
-def test_patrol_order_ctrl_adds_waypoint_to_queued_patrol():
-    """Verify that Ctrl + Patrol appends a waypoint to the last queued PatrolOrder if current is not Patrol."""
+def test_patrol_order_add_waypoint_to_queued_patrol():
+    """Verify that add_waypoint=True appends a waypoint to the last queued PatrolOrder if current is not Patrol."""
     game = MockGame()
     unit = _create_test_unit(game.players[0])
     
@@ -184,14 +184,14 @@ def test_patrol_order_ctrl_adds_waypoint_to_queued_patrol():
     })
     unit.commander_component.add_order(queued_patrol)
 
-    # 3. Ctrl + Patrol to (200, 200)
+    # 3. Add waypoint to queued patrol
     event = IssuePatrolOrderEvent(
         units=[unit],
         system_name="Sol",
         sector_coord=(0, 0),
         destination=Position(200, 200),
         shift_pressed=False,
-        ctrl_pressed=True
+        add_waypoint=True
     )
     game.order_system.handle_issue_patrol_order(event)
 
@@ -202,8 +202,8 @@ def test_patrol_order_ctrl_adds_waypoint_to_queued_patrol():
     assert queued_patrol.parameters["waypoints"][1]["position"] == Position(200, 200)
 
 
-def test_patrol_order_ctrl_fallback_when_no_patrol():
-    """Verify that Ctrl + Patrol gracefully creates a new PatrolOrder if unit has no active patrol."""
+def test_patrol_order_add_waypoint_fallback_when_no_patrol():
+    """Verify that add_waypoint=True gracefully creates a new PatrolOrder if unit has no active patrol."""
     game = MockGame()
     unit = _create_test_unit(game.players[0])
     
@@ -213,7 +213,7 @@ def test_patrol_order_ctrl_fallback_when_no_patrol():
         sector_coord=(0, 0),
         destination=Position(100, 100),
         shift_pressed=False,
-        ctrl_pressed=True
+        add_waypoint=True
     )
     game.order_system.handle_issue_patrol_order(event)
 
@@ -251,7 +251,7 @@ def test_context_menu_add_patrol_waypoint_option():
 
 
 def test_handle_context_menu_action_add_patrol_waypoint():
-    """Verify selecting 'add_patrol_waypoint' from context menu dispatches IssuePatrolOrderEvent with ctrl_pressed=True."""
+    """Verify selecting 'add_patrol_waypoint' from context menu dispatches IssuePatrolOrderEvent with add_waypoint=True."""
     game = MockGame()
     unit = _create_test_unit(game.players[0])
     game.selected_objects = [unit]
@@ -265,12 +265,12 @@ def test_handle_context_menu_action_add_patrol_waypoint():
     event = published_events[0]
     assert isinstance(event, IssuePatrolOrderEvent)
     assert event.destination == Position(150, 150)
-    assert event.ctrl_pressed is True
+    assert event.add_waypoint is True
     assert event.shift_pressed is False
 
 
-def test_handle_context_menu_action_issue_patrol_order_with_ctrl():
-    """Verify selecting 'issue_patrol_order' with Ctrl held down sets ctrl_pressed=True."""
+def test_handle_context_menu_action_issue_patrol_order_does_not_add_waypoint():
+    """Verify selecting 'issue_patrol_order' dispatches IssuePatrolOrderEvent with add_waypoint=False."""
     game = MockGame()
     unit = _create_test_unit(game.players[0])
     game.selected_objects = [unit]
@@ -278,13 +278,12 @@ def test_handle_context_menu_action_issue_patrol_order_with_ctrl():
     published_events = []
     game.event_bus.publish = lambda event: published_events.append(event)
 
-    with patch('input_processor.context_actions._get_ctrl_pressed', return_value=True), \
-         patch('input_processor.context_actions._get_shift_pressed', return_value=False):
+    with patch('input_processor.context_actions._get_shift_pressed', return_value=False):
         handle_context_menu_action(game, "issue_patrol_order", Position(250, 250))
 
     assert len(published_events) == 1
     event = published_events[0]
     assert isinstance(event, IssuePatrolOrderEvent)
     assert event.destination == Position(250, 250)
-    assert event.ctrl_pressed is True
+    assert event.add_waypoint is False
     assert event.shift_pressed is False

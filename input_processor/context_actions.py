@@ -24,13 +24,6 @@ def _get_shift_pressed() -> bool:
         return False
 
 
-def _get_ctrl_pressed() -> bool:
-    try:
-        return bool(pygame.key.get_mods() & pygame.KMOD_CTRL)
-    except Exception:
-        return False
-
-
 def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None:
     """Executes the action selected by the user from a right-click context menu.
 
@@ -41,11 +34,10 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
     """
     current_player = game.players[game.current_player_index]
     shift_pressed = _get_shift_pressed()
-    ctrl_pressed = _get_ctrl_pressed()
 
     selected_units = [obj for obj in game.selected_objects if isinstance(obj, Unit) and obj.owner == current_player]
 
-    logger.debug(f"Context Action: '{action_id}', Target: {target}, Actors: {[u.name for u in selected_units]}, SHIFT: {shift_pressed}, CTRL: {ctrl_pressed}")
+    logger.debug(f"Context Action: '{action_id}', Target: {target}, Actors: {[u.name for u in selected_units]}, SHIFT: {shift_pressed}")
 
     # Robustly extract action_id if it is nested (from context menu with sub-options)
     extracted_action_id = action_id
@@ -102,7 +94,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                     game.current_sector_coord,
                     target,
                     shift_pressed=shift_pressed,
-                    ctrl_pressed=ctrl_pressed
+                    add_waypoint=False
                 ))
 
         elif extracted_action_id == "add_patrol_waypoint":
@@ -113,7 +105,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                     game.current_sector_coord,
                     target,
                     shift_pressed=False,
-                    ctrl_pressed=True
+                    add_waypoint=True
                 ))
 
         elif extracted_action_id == "jump_interhex":
