@@ -8,6 +8,7 @@ from entities import (
     MetalAsteroid, Comet, Wormhole, AsteroidField
 )
 from unit_components import HyperdriveType
+from unit_orders import OrderType
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +239,15 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
         if target_coords is not None:
             if any(a.engines_component and a.engines_component.is_operational for a in actors):
                 options.append(("Move Here", "issue_move_order"))
+                has_patrol = any(
+                    (getattr(a, 'commander_component', None) and (
+                        (a.commander_component.current_order and a.commander_component.current_order.order_type == OrderType.PATROL) or
+                        any(o.order_type == OrderType.PATROL for o in a.commander_component.orders_queue)
+                    ))
+                    for a in actors
+                )
+                if has_patrol:
+                    options.append(("Add Patrol Waypoint", "add_patrol_waypoint"))
                 options.append(("Patrol Here", "issue_patrol_order"))
 
             ability_options = get_ability_context_options(game, actors, target_is_unit=False)

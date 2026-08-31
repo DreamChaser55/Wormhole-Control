@@ -48,6 +48,8 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 | **Shift + Left Click** | Add / remove unit from multi-unit selection |
 | **Left Drag** | Draw selection box to select multiple units |
 | **Right Click** | Open contextual action menu or issue direct unit command |
+| **Shift + Order** | Queue new order behind current/existing orders (all order types) |
+| **Ctrl + Patrol** | Add waypoint to active/queued Patrol order (or use "Add Patrol Waypoint" menu option) |
 | **Middle Mouse Drag** | Pan tactical camera |
 | **Mouse Wheel** | Zoom camera in / out |
 | **G** | Switch to **Galaxy View** |

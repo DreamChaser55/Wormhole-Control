@@ -202,7 +202,8 @@ policy when idle. Stop cancels both layers and selects Do Nothing. Commands:
 | `patrol` | `waypoints` OR complete system/hex/position | Traverse 1–16 waypoints, return to captured start, repeat. |
 
 `queue=true` creates a separate patrol, never an extension. Routes may contain at most
-16 waypoints through AI commands. Human Shift-patrol behavior is unchanged. Internal
+16 waypoints through AI commands. For human players, `Ctrl` (or "Add Patrol Waypoint") extends
+patrol routes, while `Shift` consistently queues new orders. Internal
 suborders and stance roots cannot be edited individually. Unavailable or foreign order
 IDs produce `order_unavailable`; UUID possession grants no authority.
 

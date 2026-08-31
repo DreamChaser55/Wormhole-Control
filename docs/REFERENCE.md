@@ -629,7 +629,9 @@ releases only the owning order's job/charge, once; it cannot refund another acti
 AI `patrol` accepts a complete single destination or 1–16 waypoints. It visits the route,
 returns to its captured start and repeats. `append_patrol_waypoints` extends a named current
 or queued patrol without interrupting its active leg. Ordinary `queue=true` creates a
-separate patrol; human Shift-patrol extension is unchanged. Continuous roots report queue
+separate patrol. For human players, `Ctrl` (or the "Add Patrol Waypoint" context menu option)
+extends an active or queued patrol route, whereas `Shift` consistently queues a new order
+(including a new separate patrol) behind existing work. Continuous roots report queue
 blocking as guidance rather than forbidding intentional queued work.
 
 Tactical observations include actual turret range/cooldown/target classes, base/effective
