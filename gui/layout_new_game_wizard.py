@@ -24,6 +24,9 @@ from game_settings import (
     GameSettings,
     PlayerConfig,
     PLAYER_COLOR_PALETTE,
+    SpawnProfile,
+    DEFAULT_SPAWN_PROFILE,
+    normalize_spawn_profile,
 )
 from player_controller import PlayerController
 
@@ -122,6 +125,8 @@ class NewGameWizard:
 
         # Start with 3 players using the default palette
         self._num_players: int = 3
+        self._spawn_profile: SpawnProfile = DEFAULT_SPAWN_PROFILE
+        self._spawn_profile_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self._player_name_entries: typing.List[pygame_gui.elements.UITextEntryLine] = []
         # Color picker state: palette index + two cycle buttons + swatch panel
         self._player_color_indices: typing.List[int] = []
@@ -209,6 +214,9 @@ class NewGameWizard:
 
         # ── Section: Players ─────────────────────────────────────────
         cursor_y = self._add_section_header("Players", cursor_y, inner_w)
+
+        # Spawn profile row (Normal / Testing)
+        cursor_y = self._add_spawn_profile_row(cursor_y, inner_w)
 
         # Player count row (+/- buttons + count label)
         cursor_y = self._add_player_count_row(cursor_y, inner_w)
@@ -299,6 +307,41 @@ class NewGameWizard:
             object_id="#wizard_section_header",
         )
         return y + top_pad + header_h + self._sy(4)
+
+    def _add_spawn_profile_row(self, y: int, width: int) -> int:
+        """Adds the spawn profile selector row; returns new y cursor."""
+        row_h = self._sy(_ROW_H)
+        pad = self._sx(_PAD)
+        lbl_w = self._sx(160)
+        btn_w = self._sx(120)
+
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
+            text="Spawn Profile:",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#spawn_profile_label",
+        )
+
+        x_offset = pad + lbl_w + self._sx(8)
+        self._spawn_profile_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(x_offset, y, btn_w, row_h),
+            text=self._spawn_profile.display_name,
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#spawn_profile_button",
+        )
+        return y + row_h + self._sy(_PAD)
+
+    def _cycle_spawn_profile(self) -> None:
+        """Cycles between Normal and Testing spawn profiles."""
+        if self._spawn_profile == SpawnProfile.NORMAL:
+            self._spawn_profile = SpawnProfile.TESTING
+        else:
+            self._spawn_profile = SpawnProfile.NORMAL
+        if self._spawn_profile_button:
+            self._spawn_profile_button.set_text(self._spawn_profile.display_name)
+
 
     def _add_player_count_row(self, y: int, width: int) -> int:
         """Adds the player count +/- row; returns new y cursor."""
@@ -684,6 +727,7 @@ class NewGameWizard:
             self.cancel_button = None
 
         # Clear internal refs
+        self._spawn_profile_button = None
         self._player_name_entries = []
         self._player_color_indices = []
         self._player_color_prev_btns = []
@@ -708,6 +752,7 @@ class NewGameWizard:
         """Captures current widget values into a plain dict."""
         return {
             "num_players": self._num_players,
+            "spawn_profile": self._spawn_profile.value,
             "player_names": [e.get_text() for e in self._player_name_entries],
             "player_colors": [
                 PLAYER_COLOR_PALETTE[idx][0] for idx in self._player_color_indices
@@ -731,6 +776,10 @@ class NewGameWizard:
 
     def _restore_snapshot(self, snap: dict) -> None:
         """Restores widget values from a snapshot dict (best-effort)."""
+        if "spawn_profile" in snap:
+            self._spawn_profile = normalize_spawn_profile(snap["spawn_profile"])
+            if self._spawn_profile_button:
+                self._spawn_profile_button.set_text(self._spawn_profile.display_name)
         player_names = snap.get("player_names", [])
         player_colors = snap.get("player_colors", [])  # list of color name strings
         player_controllers = snap.get("player_controllers", [])
@@ -873,6 +922,10 @@ class NewGameWizard:
                 self._adjust_player_count(+1)
                 return None
 
+            if element is self._spawn_profile_button:
+                self._cycle_spawn_profile()
+                return None
+
             # Color cycle buttons
             for i, btn in enumerate(self._player_color_prev_btns):
                 if element is btn:
@@ -1005,6 +1058,7 @@ class NewGameWizard:
             starting_metal=metal,
             starting_crystal=crystal,
             starting_population=population,
+            spawn_profile=self._spawn_profile,
         )
 
         return {"action": "start_new_game_with_settings", "settings": settings}

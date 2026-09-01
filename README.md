@@ -34,6 +34,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 3. **Start a campaign:**
    - Click **New Game** to open the **New Game Wizard**.
+   - Select the **Spawn Profile**: **Normal** (authentic 4X starting state with each player starting in their own star system with a constructor station, constructor ship, colonizer ship, and antimatter harvester) or **Testing** (sandbox profile with all players in Sol equipped with testing ships and stations of all sizes).
    - Configure player count (2–6), custom names, faction colors, and controller type. The player-type button cycles through Human, Codex, AI: Medium, AI: High, and AI: Low.
    - Adjust galaxy generation parameters (system count, radius, wormhole connectivity) and starting economies.
    - Click **Start Game** to generate the galaxy and begin turn 1.

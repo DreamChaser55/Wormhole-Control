@@ -2,6 +2,8 @@
 import typing
 from dataclasses import dataclass, field
 
+from enum import Enum
+
 from game_ai.runtime import (
     DEFAULT_REASONING_EFFORT,
     DEFAULT_REPAIR_RETRIES,
@@ -9,6 +11,39 @@ from game_ai.runtime import (
     normalize_repair_retries,
 )
 from player_controller import PlayerController
+
+
+# ---------------------------------------------------------------------------
+# Spawn profiles
+# ---------------------------------------------------------------------------
+class SpawnProfile(str, Enum):
+    """Preset spawn profile configuring player homeworlds and starting units."""
+    NORMAL = "normal"
+    TESTING = "testing"
+
+    @property
+    def display_name(self) -> str:
+        return {
+            SpawnProfile.NORMAL: "Normal",
+            SpawnProfile.TESTING: "Testing",
+        }[self]
+
+
+DEFAULT_SPAWN_PROFILE: SpawnProfile = SpawnProfile.NORMAL
+
+
+def normalize_spawn_profile(value: typing.Union[SpawnProfile, str, None]) -> SpawnProfile:
+    """Normalizes a raw string or enum value into a valid SpawnProfile."""
+    if value is None:
+        return DEFAULT_SPAWN_PROFILE
+    if isinstance(value, SpawnProfile):
+        return value
+    val_str = str(value).strip().lower()
+    for member in SpawnProfile:
+        if member.value == val_str:
+            return member
+    return DEFAULT_SPAWN_PROFILE
+
 
 # ---------------------------------------------------------------------------
 # Preset player colour palette (name → RGB tuple)
@@ -87,6 +122,9 @@ class GameSettings:
     starting_crystal: float = 10_000.0
     starting_population: int = 50
 
+    # --- Spawn profile ---
+    spawn_profile: SpawnProfile = SpawnProfile.NORMAL
+
     @property
     def num_players(self) -> int:
         return len(self.player_configs)
@@ -114,6 +152,8 @@ class GameSettings:
 
     def __post_init__(self) -> None:
         """Validates settings upon dataclass instantiation."""
+        self.spawn_profile = normalize_spawn_profile(self.spawn_profile)
         errors = self.validate()
         if errors:
             raise ValueError("; ".join(errors))
+

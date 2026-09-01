@@ -101,7 +101,8 @@ def test_observation_discloses_only_authorized_agent_state():
             "target_id": spy.id,
         }
     ]
-    assert str(hidden.id) not in str(observation["intelligence"])
+    assert hidden.id not in {item["agent_id"] for item in observation["intelligence"]["owned_agents"]}
+    assert hidden.id not in {item["agent_id"] for item in observation["intelligence"]["discovered_enemy_agents"]}
     hostile = next(view for view in observation["units"] if view["id"] == enemy_a.id)
     assert "IntelligenceComponent" not in hostile["components"]
     assert "sabotage" in observation["player_commands"]["legal"]

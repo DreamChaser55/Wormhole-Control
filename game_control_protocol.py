@@ -21,7 +21,7 @@ from game_ai.commands import CommandGateway
 from game_ai.contracts import Command, CommandBatch, ContractError
 from game_ai.observation import build_observation
 from game_ai.runtime import MAX_REPAIR_RETRIES, MIN_REPAIR_RETRIES
-from game_settings import GameSettings, PlayerConfig, PLAYER_COLOR_PALETTE
+from game_settings import GameSettings, PlayerConfig, PLAYER_COLOR_PALETTE, SpawnProfile
 from player_controller import PlayerController
 
 logger = logging.getLogger(__name__)
@@ -504,6 +504,7 @@ _SETTINGS_FIELDS = {
     "starting_metal",
     "starting_crystal",
     "starting_population",
+    "spawn_profile",
 }
 _PLAYER_FIELDS = {"name", "controller", "team_id", "color", "ai_reasoning_effort", "ai_repair_retries"}
 
@@ -547,6 +548,15 @@ def _parse_new_game_settings(raw: Any) -> GameSettings:
             if not math.isfinite(float(value)):
                 raise ProtocolError("invalid_settings", f"settings.{field} must be finite.")
             kwargs[field] = float(value)
+
+    if "spawn_profile" in raw:
+        val = raw["spawn_profile"]
+        if not isinstance(val, (str, SpawnProfile)):
+            raise ProtocolError("invalid_settings", "settings.spawn_profile must be a string.")
+        try:
+            kwargs["spawn_profile"] = SpawnProfile(val)
+        except ValueError:
+            raise ProtocolError("invalid_settings", f"Invalid spawn_profile: {val}. Must be 'normal' or 'testing'.")
 
     num_systems = kwargs.get("num_systems", GameSettings.num_systems)
     radius_min = kwargs.get("system_radius_min", GameSettings.system_radius_min)

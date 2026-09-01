@@ -399,6 +399,14 @@ restricted by the selected stance boundary.
 - `FIGHTER`: Fast dogfighter wings designed for air superiority and point-defense interception.
 - `BOMBER`: Heavy torpedo craft designed to deliver devastating payload strikes against capital hulls.
 
+### Spawn Profiles (`SpawnProfile` — 2 total)
+- `NORMAL`: Standard 4X gameplay setup. Each player begins in their own distinct star system with an owned homeworld planet (populated according to starting population) and 4 core starter units spawned in orbit around the homeworld:
+  1. Starting Constructor Station (`SHIPYARD_MK1`)
+  2. Constructor Ship (`CONSTRUCTOR_MK1`)
+  3. Colonizer Ship (`COLONIZER_MK1`)
+  4. Antimatter Harvester Ship (`ANTIMATTER_HARVESTER`)
+- `TESTING`: Sandbox testing setup. All players spawn in the same system (`Sol` or first available system) equipped with testing ships and stations across all sizes (`TINY`..`HUGE`) and a carrier.
+
 ---
 
 ## 8. Architecture & Subsystems
