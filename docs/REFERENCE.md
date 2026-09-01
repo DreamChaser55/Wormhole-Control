@@ -288,6 +288,12 @@ The `OrderType` enum (`unit_orders/base.py`) defines **32 order types**. Thirty-
 
 ## 6. Universe Objects & Celestial Bodies
 
+All world entities derived from `GameObject` use positive integer IDs for newly
+constructed objects, beginning at `1` in a fresh process. IDs are opaque and
+saved games preserve their original values; legacy saves may therefore still
+contain ID `0`. Code uses `None`, rather than zero, to represent a missing
+object or target ID.
+
 ### 6.1 Central Stars (`StarType`)
 Every star system contains a central star with a unique antimatter harvesting rate multiplier (`constants.py: STAR_HARVEST_MULTIPLIERS`). Central stars are solid celestial obstacles with a physical **Collision Radius** of **500.01 logical units** (`STAR_RADIUS`):
 

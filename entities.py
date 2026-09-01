@@ -337,7 +337,7 @@ def are_enemies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
 # --- Game Object Base Class ---
 class GameObject:
     """Base class for all objects that can exist in a sector."""
-    object_counter = 0
+    object_counter = 1
 
     def __init__(self, position: Position, in_hex: HexCoord, in_system: str):
         self.id = GameObject.object_counter

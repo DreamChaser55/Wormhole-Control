@@ -208,7 +208,7 @@ class ContinuousResupplyOrder(Order):
     def _get_star(self, galaxy_ref: 'Galaxy') -> Optional['CelestialBody']:
         """Return the target Star object, or None if not found."""
         target_id = self.parameters.get("target_id")
-        if not target_id:
+        if target_id is None:
             return None
         return galaxy_ref.get_celestial_body_by_id(target_id)
 
@@ -309,7 +309,7 @@ class ContinuousResupplyOrder(Order):
             return
 
         target_id = self.parameters.get("target_id")
-        if not target_id:
+        if target_id is None:
             self.fail("invalid_parameters")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_RESUPPLY order failed: no target_id.")
             return

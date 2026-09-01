@@ -52,6 +52,18 @@ class TestSaveLoad(unittest.TestCase):
         self.assertEqual(deserialized.crystal, 2500.0)
         self.assertEqual(deserialized.ai_repair_retries, 5)
 
+    def test_game_object_ids_start_at_one(self):
+        original_counter = GameObject.object_counter
+        try:
+            GameObject.object_counter = 1
+            first = Star(in_system="Sol", star_type=StarType.G_TYPE)
+            second = Star(in_system="Alpha Centauri", star_type=StarType.G_TYPE)
+
+            self.assertEqual(first.id, 1)
+            self.assertEqual(second.id, 2)
+        finally:
+            GameObject.object_counter = original_counter
+
     def test_codex_controller_round_trip_uses_new_schema(self):
         player = Player("Codex", (12, 34, 56), controller=PlayerController.CODEX)
         serialized = serialize_player(player)
@@ -258,6 +270,38 @@ class TestSaveLoad(unittest.TestCase):
         # Cleanup
         if os.path.exists(saved_filepath):
             os.remove(saved_filepath)
+
+    def test_legacy_zero_object_id_is_preserved_and_counter_advances(self):
+        from game import Game
+
+        game = Game()
+        self.assertTrue(game.start_new_game())
+        legacy_star = next(
+            body
+            for system in game.galaxy.systems.values()
+            for hex_obj in system.hexes.values()
+            for body in hex_obj.celestial_bodies
+            if isinstance(body, Star)
+        )
+        legacy_star.id = 0
+
+        payload = serialize_game_state(game)
+        restored_game = Game()
+        self.assertTrue(deserialize_game_state(restored_game, payload))
+
+        restored_star = restored_game.galaxy.get_celestial_body_by_id(0)
+        self.assertIsInstance(restored_star, Star)
+        loaded_object_ids = [
+            body.id
+            for system in restored_game.galaxy.systems.values()
+            for hex_obj in system.hexes.values()
+            for body in hex_obj.celestial_bodies
+        ] + [
+            unit.id
+            for system in restored_game.galaxy.systems.values()
+            for unit, _ in system.get_all_units()
+        ]
+        self.assertEqual(GameObject.object_counter, max(loaded_object_ids) + 1)
 
     def test_gui_load_dialog_trigger(self):
         from game import Game

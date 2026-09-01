@@ -5,6 +5,8 @@ from unit_components import AntimatterStorage, AntimatterHarvester, Commander
 from tests.test_unit_components import MockUnit, MockPlayer
 from unit_orders import OrderStatus, OrderType, ContinuousResupplyOrder, TransferAntimatterOrder
 from entities import Star
+from events import ContinuousResupplyEvent, EventBus
+from order_system import OrderSystem
 from constants import HullSize, StarType, DEFAULT_ANTIMATTER_CAPACITY
 
 
@@ -192,3 +194,41 @@ def test_continuous_resupply_fails_with_unknown_star():
     order.execute(galaxy)
 
     assert order.status == OrderStatus.FAILED
+    assert order.failure_reason == "target_unavailable"
+
+
+def test_continuous_resupply_fails_with_missing_target_id():
+    player = MockPlayer()
+    harvester = _make_harvester_unit(player, am_current=100.0)
+    galaxy = _make_galaxy([harvester])
+    harvester.game.galaxy = galaxy
+
+    order = ContinuousResupplyOrder(harvester, {})
+    order.execute(galaxy)
+
+    assert order.status == OrderStatus.FAILED
+    assert order.failure_reason == "invalid_parameters"
+
+
+def test_player_event_continuous_resupply_accepts_legacy_star_id_zero():
+    player = MockPlayer()
+    harvester = _make_harvester_unit(player, am_current=0.0)
+    star = _make_star()
+    star.id = 0
+    galaxy = _make_galaxy([harvester], star=star)
+    game = MagicMock()
+    game.galaxy = galaxy
+    game.gui = None
+    harvester.game = game
+    harvester.in_galaxy = galaxy
+
+    event_bus = EventBus()
+    OrderSystem(game, event_bus)
+    event_bus.publish(ContinuousResupplyEvent([harvester], star, False))
+
+    order = harvester.commander_component.current_order
+    assert order is not None
+    assert order.parameters["target_id"] == 0
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert order.failure_reason is None
+    galaxy.get_celestial_body_by_id.assert_called_with(0)
