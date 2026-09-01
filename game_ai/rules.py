@@ -158,6 +158,11 @@ def supported_commands(unit: Any) -> list[str]:
         commands.append("toggle_cloaking")
     if getattr(unit, "ability_component", None):
         commands.append("use_ability")
+    intelligence = getattr(unit, "intelligence_component", None)
+    if intelligence is not None:
+        commands.extend(["infiltrate_unit", "infiltrate_planet", "extract_agent"])
+        if getattr(intelligence, "has_counter_intelligence", False):
+            commands.extend(["ci_sweep", "eliminate_agent"])
     if _component_by_name(unit, "MinelayerComponent") is not None:
         commands.append("lay_minefield")
     return sorted(set(commands))
@@ -210,6 +215,63 @@ def command_guidance(
         for candidate in visible_units
         if relation(player, getattr(candidate, "owner", None)) == "enemy"
     ]
+
+    intelligence = getattr(unit, "intelligence_component", None)
+    if intelligence is not None:
+        from constants import CI_SWEEP_ANTIMATTER_COST, CI_SWEEP_CREDIT_COST
+        from .intelligence import discovered_enemy_agent_hosts, owned_agent_hosts
+
+        available_agents = int(getattr(intelligence, "available_agents", 0))
+        operational = not bool(getattr(intelligence, "is_destroyed", False))
+        enemy_colonies = [
+            body.id
+            for body in exact_bodies
+            if is_colonizable_body(body)
+            and relation(player, getattr(body, "owner", None)) == "enemy"
+        ]
+        options["infiltrate_unit"] = {"target_ids": [candidate.id for candidate in enemy_units]}
+        options["infiltrate_planet"] = {"target_ids": enemy_colonies}
+        if operational and available_agents > 0 and options["infiltrate_unit"]["target_ids"]:
+            legal.add("infiltrate_unit")
+        if operational and available_agents > 0 and enemy_colonies:
+            legal.add("infiltrate_planet")
+
+        capacity = int(getattr(intelligence, "agents_capacity", 0))
+        extractable = [agent.id for agent, _ in owned_agent_hosts(game.galaxy, player)]
+        options["extract_agent"] = {"agent_ids": sorted(extractable)}
+        if (
+            extractable
+            and available_agents < capacity
+            and operational
+        ):
+            legal.add("extract_agent")
+
+        if getattr(intelligence, "has_counter_intelligence", False):
+            storage = getattr(unit, "antimatter_component", None)
+            ready = (
+                not getattr(intelligence, "is_destroyed", False)
+                and int(getattr(intelligence, "ci_cooldown_remaining", 0)) <= 0
+                and float(getattr(player, "credits", 0)) >= CI_SWEEP_CREDIT_COST
+                and storage is not None
+                and not getattr(storage, "is_destroyed", False)
+                and float(getattr(storage, "current_amount", 0)) >= CI_SWEEP_ANTIMATTER_COST
+            )
+            options["ci_sweep"] = {
+                "available": ready,
+                "range": float(getattr(intelligence, "counter_intelligence_range", 500.0)),
+                "credit_cost": CI_SWEEP_CREDIT_COST,
+                "antimatter_cost": CI_SWEEP_ANTIMATTER_COST,
+                "cooldown_remaining": int(getattr(intelligence, "ci_cooldown_remaining", 0)),
+            }
+            if ready:
+                legal.add("ci_sweep")
+            discovered = [
+                agent.id
+                for agent, _ in discovered_enemy_agent_hosts(game.galaxy, player)
+            ]
+            options["eliminate_agent"] = {"agent_ids": sorted(discovered)}
+            if discovered and operational:
+                legal.add("eliminate_agent")
 
     commander_roots = [getattr(commander, "current_order", None), *list(getattr(commander, "orders_queue", []))]
     roots = [root for root in commander_roots if root is not None and getattr(root.status, "name", "") in {"PENDING", "IN_PROGRESS"}]

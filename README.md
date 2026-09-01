@@ -169,12 +169,15 @@ request bodies. AI agents can also message the game developer (`message_develope
 to report gameplay bugs, rule confusions, or balance suggestions directly to
 `saves/ai_feedback.md`.
 
-Both AI interfaces use observation schema **4** and command contract **2**. Friendly
+Both AI interfaces use observation schema **5** and command contract **3**. Friendly
 units expose separate standing, current, and queued orders, tactical ranges, and
 persistent completion/failure/cancellation history. The command catalog is included
 in observations. AI patrols accept explicit routes; `cancel_order` cancels one
 explicit root, and `clear_explicit_orders` preserves stance. `cancel_orders` remains
-full Stop. Unexpected commit exceptions stop the batch without rollback: completed
+full Stop. Intelligence ships can infiltrate visible hostile ships and colonies,
+extract owned agents, run CI sweeps, and eliminate discovered enemy agents. Embedded
+agents can be sabotaged or relocated through player-level commands that do not alter
+ship orders. Unexpected commit exceptions stop the batch without rollback: completed
 operations are reported, the failing operation may have partial effects, and Codex
 must observe again before issuing commands or ending its turn.
 

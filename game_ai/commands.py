@@ -19,6 +19,13 @@ from .rules import (
     is_self_owned,
     is_star,
 )
+from .intelligence import (
+    discovered_enemy_agent_hosts,
+    find_agent_host,
+    host_kind,
+    relation as intelligence_relation,
+    sabotage_types_for_host,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -105,6 +112,12 @@ class _BatchProjection:
         self._docking_slots: dict[int, int] = {}
         self._inhibitor_states: dict[int, bool] = {}
         self._cloaking_states: dict[int, bool] = {}
+        self._agent_hosts: dict[int, Any] = {}
+        self._agent_objects: dict[int, Any] = {}
+        self._agent_sabotage: dict[int, str | None] = {}
+        self._ci_credit_spend = 0.0
+        self._ci_antimatter: dict[int, float] = {}
+        self._ci_cooldowns: dict[int, int] = {}
         self._inhibitor_static_zones: dict[tuple[str, tuple[int, int]], list[Any]] = {}
         self._inhibitor_dynamic_zones: dict[
             tuple[str, tuple[int, int]], dict[int, Any]
@@ -155,7 +168,7 @@ class _BatchProjection:
     def _rebuild(self):
         self._cargo = {}
         self._source_population = {}
-        self._credits = float(getattr(self.player, "credits", 0)) + self._refunds
+        self._credits = float(getattr(self.player, "credits", 0)) + self._refunds - self._ci_credit_spend
         self._docking_slots = dict(self._settled_docks)
         for unit_id, entries in self._order_ledger.items():
             unit = self._ledger_units[unit_id]
@@ -351,12 +364,84 @@ class _BatchProjection:
         self._inhibitor_dynamic_zones = projected_dynamic
         return planned
 
+    def owned_agent(self, agent_id: int) -> tuple[Any, Any]:
+        if agent_id not in self._agent_objects:
+            agent, host = find_agent_host(self.game.galaxy, agent_id)
+            if (
+                agent is None
+                or intelligence_relation(self.player, getattr(agent, "owner", None)) != "self"
+            ):
+                raise _Rejected("agent_unavailable", "The agent is unavailable.")
+            self._agent_objects[agent_id] = agent
+            self._agent_hosts[agent_id] = host
+            sabotage = getattr(agent, "active_sabotage", None)
+            self._agent_sabotage[agent_id] = getattr(sabotage, "value", None)
+        return self._agent_objects[agent_id], self._agent_hosts[agent_id]
+
+    def project_sabotage(self, agent_id: int, sabotage_type: str) -> tuple[Any, Any]:
+        agent, host = self.owned_agent(agent_id)
+        if sabotage_type not in sabotage_types_for_host(host):
+            raise _Rejected("invalid_value", "That sabotage type is unavailable for this host.")
+        self._agent_sabotage[agent_id] = sabotage_type
+        return agent, host
+
+    def project_relocation(self, agent_id: int, target: Any) -> tuple[Any, Any]:
+        from geometry import distance
+        from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
+
+        agent, host = self.owned_agent(agent_id)
+        if target is host or host_kind(target) not in {"unit", "colony"}:
+            raise _Rejected("target_unavailable", "The target is unavailable.")
+        if intelligence_relation(self.player, getattr(target, "owner", None)) != "enemy":
+            raise _Rejected("target_unavailable", "The target is unavailable.")
+        if (
+            getattr(host, "in_system", None) != getattr(target, "in_system", None)
+            or getattr(host, "in_hex", None) != getattr(target, "in_hex", None)
+            or distance(host.position, target.position) > INTELLIGENCE_OPERATIONAL_RANGE
+        ):
+            raise _Rejected("target_unavailable", "The target is unavailable.")
+        self._agent_hosts[agent_id] = target
+        self._agent_sabotage[agent_id] = None
+        return agent, host
+
+    def plan_ci_sweeps(self, units: list[Any]) -> list[Any]:
+        from constants import CI_SWEEP_ANTIMATTER_COST, CI_SWEEP_CREDIT_COST, CI_SWEEP_COOLDOWN_TURNS
+
+        planned = []
+        for unit in units:
+            intelligence = getattr(unit, "intelligence_component", None)
+            storage = getattr(unit, "antimatter_component", None)
+            cooldown = self._ci_cooldowns.get(
+                unit.id, int(getattr(intelligence, "ci_cooldown_remaining", 0))
+            )
+            amount = self._ci_antimatter.get(
+                unit.id, float(getattr(storage, "current_amount", 0)) if storage else 0.0
+            )
+            if (
+                intelligence is None
+                or getattr(intelligence, "is_destroyed", False)
+                or not getattr(intelligence, "has_counter_intelligence", False)
+            ):
+                raise _Rejected("capability_unavailable", f"Unit {unit.id} has no functioning Counter-Intelligence suite.")
+            if cooldown > 0:
+                raise _Rejected("capability_unavailable", f"Unit {unit.id} Counter-Intelligence is on cooldown.")
+            if self._credits < CI_SWEEP_CREDIT_COST:
+                raise _Rejected("insufficient_resources", "Counter-Intelligence sweep requires more credits than remain in this batch.")
+            if storage is None or getattr(storage, "is_destroyed", False) or amount < CI_SWEEP_ANTIMATTER_COST:
+                raise _Rejected("insufficient_resources", f"Unit {unit.id} lacks antimatter for a Counter-Intelligence sweep.")
+            self._ci_credit_spend += CI_SWEEP_CREDIT_COST
+            self._credits -= CI_SWEEP_CREDIT_COST
+            self._ci_antimatter[unit.id] = amount - CI_SWEEP_ANTIMATTER_COST
+            self._ci_cooldowns[unit.id] = CI_SWEEP_COOLDOWN_TURNS
+            planned.append(unit)
+        return planned
+
     def record(self, command, units):
         if command.type == "append_patrol_waypoints":
             entry = self.target_order(command, units[0])
             entry["parameters"]["waypoints"] = [*entry["parameters"].get("waypoints", []), *command.waypoints]
         elif COMMAND_SPECS[command.type].queued:
-            params = {"target_id": command.target_id, "amount": command.amount,
+            params = {"target_id": command.target_id, "agent_id": command.agent_id, "amount": command.amount,
                       "unit_template_name": command.template_name, "target_carrier_id": command.target_id,
                       "waypoints": list(command.waypoints or [])}
             for unit in units:
@@ -466,6 +551,9 @@ class CommandGateway:
                 elif command.type == "message_developer":
                     operations = self._prepare_message_developer(player, command)
                     units = []
+                elif COMMAND_SPECS[command.type].player_level:
+                    operations = self._prepare_player_intelligence(player, command, projection)
+                    units = []
                 else:
                     try:
                         units = self._owned_units(player, command.unit_ids)
@@ -561,6 +649,8 @@ class CommandGateway:
             return self._prepare_inhibitor(units, projection)
         if command.type == "toggle_cloaking":
             return self._prepare_cloaking(units, projection)
+        if command.type == "ci_sweep":
+            return self._prepare_ci_sweep(units, projection)
 
         order_factory, receipt_action = self._order_factory(player, command)
         if command.type == "load_colonists":
@@ -622,6 +712,10 @@ class CommandGateway:
             TransferAntimatterOrder,
             UnloadResourcesOrder,
             UseAbilityOrder,
+            InfiltrateUnitOrder,
+            InfiltratePlanetOrder,
+            ExtractAgentOrder,
+            EliminateAgentOrder,
         )
         from unit_orders.combat import resolve_component_type
 
@@ -647,6 +741,42 @@ class CommandGateway:
             "continuous_resupply",
         }:
             target_body = self._body(command.target_id)
+
+        if command.type == "infiltrate_unit":
+            target_unit = self._visible_unit(player, command.target_id)
+            self._require_relation(player, target_unit, "enemy")
+            return (
+                lambda unit: InfiltrateUnitOrder(unit, {"target_unit_id": target_unit.id}),
+                f"Infiltrate {target_unit.name}",
+            )
+        if command.type == "infiltrate_planet":
+            target_body = self._body(command.target_id)
+            if not is_colonizable_body(target_body) or intelligence_relation(player, getattr(target_body, "owner", None)) != "enemy":
+                raise _Rejected("target_unavailable", "The target is unavailable.")
+            return (
+                lambda unit: InfiltratePlanetOrder(
+                    unit,
+                    {
+                        "target_body_id": target_body.id,
+                        "target_body_name": target_body.name,
+                        "system": target_body.in_system,
+                        "hex": target_body.in_hex,
+                    },
+                ),
+                f"Infiltrate {target_body.name}",
+            )
+        if command.type == "extract_agent":
+            self._owned_agent(player, command.agent_id)
+            return (
+                lambda unit: ExtractAgentOrder(unit, {"agent_id": command.agent_id}),
+                f"Extract agent {command.agent_id}",
+            )
+        if command.type == "eliminate_agent":
+            self._discovered_enemy_agent(player, command.agent_id)
+            return (
+                lambda unit: EliminateAgentOrder(unit, {"agent_id": command.agent_id}),
+                f"Eliminate discovered agent {command.agent_id}",
+            )
 
         if command.type == "patrol" and command.waypoints is not None:
             waypoints = self._waypoints(command.waypoints)
@@ -1008,6 +1138,78 @@ class CommandGateway:
             operations.append(_Prepared(apply, f"Cloaking {'active' if turn_on else 'inactive'} on unit {unit.id}."))
         return operations
 
+    def _prepare_player_intelligence(
+        self, player: Any, command: Any, projection: _BatchProjection
+    ) -> list[_Prepared]:
+        if command.agent_id is None:
+            raise _Rejected("agent_unavailable", "The agent is unavailable.")
+        if command.type == "sabotage":
+            projection.project_sabotage(command.agent_id, command.sabotage_type)
+
+            def apply():
+                agent, host = self._owned_agent(player, command.agent_id)
+                if command.sabotage_type not in sabotage_types_for_host(host):
+                    raise RuntimeError("sabotage authorization changed")
+                if not host.apply_sabotage(agent, command.sabotage_type):
+                    raise RuntimeError("sabotage failed")
+
+            return [
+                _Prepared(
+                    apply,
+                    f"Agent {command.agent_id} set to {command.sabotage_type} sabotage.",
+                )
+            ]
+        if command.type == "relocate_agent":
+            target = self._public_intelligence_target(player, command.target_id)
+            projection.project_relocation(command.agent_id, target)
+
+            def apply():
+                from geometry import distance
+                from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
+
+                agent, host = self._owned_agent(player, command.agent_id)
+                live_target = self._public_intelligence_target(player, command.target_id)
+                if (
+                    live_target is host
+                    or intelligence_relation(player, getattr(live_target, "owner", None)) != "enemy"
+                    or getattr(host, "in_system", None) != getattr(live_target, "in_system", None)
+                    or getattr(host, "in_hex", None) != getattr(live_target, "in_hex", None)
+                    or distance(host.position, live_target.position) > INTELLIGENCE_OPERATIONAL_RANGE
+                ):
+                    raise RuntimeError("relocation authorization changed")
+                if not host.remove_agent(agent):
+                    raise RuntimeError("agent host changed")
+                live_target.infiltrating_agents.append(agent)
+                agent.attached_to = live_target
+                agent.target_type = "UNIT" if host_kind(live_target) == "unit" else "CELESTIAL_BODY"
+                agent.target_id = live_target.id
+                agent.active_sabotage = None
+                agent.is_discovered = False
+
+            return [
+                _Prepared(
+                    apply,
+                    f"Relocated agent {command.agent_id} to target {command.target_id}.",
+                )
+            ]
+        raise _Rejected("unsupported_command", "Unsupported player-level command.")
+
+    def _prepare_ci_sweep(
+        self, units: list[Any], projection: _BatchProjection
+    ) -> list[_Prepared]:
+        from unit_orders import CISweepOrder, OrderStatus
+
+        operations = []
+        for unit in projection.plan_ci_sweeps(units):
+            def apply(unit=unit):
+                order = CISweepOrder(unit)
+                order.execute(self.game.galaxy)
+                if order.status != OrderStatus.COMPLETED:
+                    raise RuntimeError("Counter-Intelligence sweep failed")
+
+            operations.append(_Prepared(apply, f"Counter-Intelligence sweep performed by unit {unit.id}."))
+        return operations
+
     def _prepare_send_message(self, player: Any, command: Any) -> list[_Prepared]:
         target_id = command.target_id
         if target_id is None:
@@ -1074,6 +1276,34 @@ class CommandGateway:
                 raise _Rejected("capability_unavailable", "A selected unit has no commander.")
             units.append(unit)
         return units
+
+    def _owned_agent(self, player: Any, agent_id: int | None) -> tuple[Any, Any]:
+        if agent_id is None:
+            raise _Rejected("agent_unavailable", "The agent is unavailable.")
+        agent, host = find_agent_host(self.game.galaxy, agent_id)
+        if (
+            agent is None
+            or intelligence_relation(player, getattr(agent, "owner", None)) != "self"
+        ):
+            raise _Rejected("agent_unavailable", "The agent is unavailable.")
+        return agent, host
+
+    def _discovered_enemy_agent(self, player: Any, agent_id: int | None) -> tuple[Any, Any]:
+        if agent_id is None:
+            raise _Rejected("agent_unavailable", "The agent is unavailable.")
+        for agent, host in discovered_enemy_agent_hosts(self.game.galaxy, player):
+            if agent.id == agent_id:
+                return agent, host
+        raise _Rejected("agent_unavailable", "The agent is unavailable.")
+
+    def _public_intelligence_target(self, player: Any, target_id: int | None) -> Any:
+        if target_id is None:
+            raise _Rejected("target_unavailable", "The target is unavailable.")
+        unit = self.game.galaxy.get_unit_by_id(target_id)
+        target = self._visible_unit(player, target_id) if unit is not None else self._body(target_id)
+        if host_kind(target) not in {"unit", "colony"}:
+            raise _Rejected("target_unavailable", "The target is unavailable.")
+        return target
 
     def _visible_unit(self, player: Any, target_id: int | None):
         if target_id is None:
@@ -1233,6 +1463,22 @@ class CommandGateway:
                     "capability_unavailable",
                     f"Ability {command.ability} is unavailable on unit {unit.id}.",
                 )
+        elif command.type in {"infiltrate_unit", "infiltrate_planet"}:
+            intelligence = getattr(unit, "intelligence_component", None)
+            if intelligence is None or int(getattr(intelligence, "available_agents", 0)) <= 0:
+                raise _Rejected("capability_unavailable", f"Unit {unit.id} has no available agents.")
+        elif command.type == "extract_agent":
+            intelligence = getattr(unit, "intelligence_component", None)
+            if (
+                intelligence is None
+                or int(getattr(intelligence, "available_agents", 0))
+                >= int(getattr(intelligence, "agents_capacity", 0))
+            ):
+                raise _Rejected("insufficient_capacity", f"Unit {unit.id} has no free agent capacity.")
+        elif command.type == "eliminate_agent":
+            intelligence = getattr(unit, "intelligence_component", None)
+            if not getattr(intelligence, "has_counter_intelligence", False):
+                raise _Rejected("capability_unavailable", f"Unit {unit.id} has no Counter-Intelligence suite.")
     def _require_friendly(self, player: Any, target: Any) -> None:
         if target is None or self._relation(player, getattr(target, "owner", target)) == "enemy":
             raise _Rejected("invalid_relation", "The target must be friendly.")

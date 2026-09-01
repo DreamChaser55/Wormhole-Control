@@ -57,7 +57,7 @@ class OpenAIResponsesProvider:
                 "turn": str(request.turn_number),
             },
             safety_identifier=_safe_identifier(request.agent_id),
-            prompt_cache_key="wormhole-control-turn-v3",
+            prompt_cache_key="wormhole-control-turn-v4",
         )
         latency_seconds = perf_counter() - started
         response_id = getattr(response, "id", None)

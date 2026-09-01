@@ -511,6 +511,20 @@ def test_save_and_load_intelligence_state(test_setup):
     assert loaded_agent.is_discovered is True
     assert loaded_agent.active_sabotage == SabotageType.ENGINES
 
+    from game_ai.observation import build_observation
+    observation = build_observation(new_game, new_game.players[0])
+    assert observation["schema_version"] == 5
+    assert observation["intelligence"]["owned_agents"] == [
+        {
+            "agent_id": loaded_agent.id,
+            "source_unit_id": loaded_spy.id,
+            "host_type": "unit",
+            "target_id": loaded_target.id,
+            "active_sabotage": "engines",
+        }
+    ]
+    assert "is_discovered" not in observation["intelligence"]["owned_agents"][0]
+
 
 def test_intelligence_context_menu_options(test_setup):
     from input_processor.context_menu_builder import build_sector_context_menu_options
@@ -594,7 +608,7 @@ def test_eliminate_agent_zero_id(test_setup):
     system.hexes[(0, 0)].add_unit(friendly_ship)
 
     # Attach enemy agent with id = 0 explicitly
-    agent0 = Agent(owner=p2, source_unit_id=0, target_type="UNIT", target_id=friendly_ship.id, agent_id=0)
+    agent0 = Agent(owner=p2, source_unit_id=0, target_type="UNIT", target_id=friendly_ship.id, agent_id=0, is_discovered=True)
     friendly_ship.infiltrating_agents.append(agent0)
 
     # Test EliminateAgentOrder with agent_id = 0

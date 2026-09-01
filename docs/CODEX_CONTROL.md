@@ -148,7 +148,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":4}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":5}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -229,12 +229,19 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 2, shared field
+Read `observation.command_catalog`: it contains command contract version 3, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
 unknown fields, duplicate/boolean/fractional IDs and non-finite coordinates are rejected.
 Old protocol versions are rejected with an explicit client-upgrade error.
+
+Read `observation.intelligence` for controllable owned agents and discovered hostile agents,
+and `observation.player_commands` for legal player-level `sabotage` and `relocate_agent`
+options. These two commands use `unit_ids: []`, execute immediately, require `queue: false`,
+and never disturb ship orders. Allied agents can extend sensor vision but are not identified
+or controllable. Intelligence and CI ship command options list only currently actionable
+infiltration, extraction, sweep, and elimination choices.
 
 Friendly units separate `standing_order`, `current_order` and `queued_orders`. The old
 `orders` array is gone. Use public UUID `order_id` values for editing, not internal integers.
@@ -264,6 +271,34 @@ Example command objects (wrap in a `command` request with a fresh request ID and
 
 ```json
 {"type":"clear_explicit_orders","unit_ids":[17]}
+```
+
+```json
+{"type":"infiltrate_unit","unit_ids":[17],"target_id":42}
+```
+
+```json
+{"type":"infiltrate_planet","unit_ids":[17],"target_id":73}
+```
+
+```json
+{"type":"sabotage","unit_ids":[],"agent_id":9,"sabotage_type":"engines","queue":false}
+```
+
+```json
+{"type":"relocate_agent","unit_ids":[],"agent_id":9,"target_id":43,"queue":false}
+```
+
+```json
+{"type":"extract_agent","unit_ids":[17],"agent_id":9}
+```
+
+```json
+{"type":"ci_sweep","unit_ids":[21],"queue":false}
+```
+
+```json
+{"type":"eliminate_agent","unit_ids":[21],"agent_id":12}
 ```
 
 Patrol routes accept 1–16 waypoints or a single complete destination triplet. They return to

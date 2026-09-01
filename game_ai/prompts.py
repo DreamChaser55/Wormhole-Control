@@ -16,7 +16,10 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 4 and the command_catalog describes contract 2. Owned/allied units
+Observations use schema 5 and the command_catalog describes contract 3. The top-level intelligence
+section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
+player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered
+agents, enemy Intelligence hardware, or whether one of your own agents has been discovered. Owned/allied units
 separate standing_order, current_order and queued_orders. Keep useful explicit work: changing
 stance preserves it; explicit work suspends stance engagement and stance resumes afterwards.
 Explicit Move suppresses stance combat. cancel_orders is full Stop (including Do Nothing stance);
@@ -33,6 +36,9 @@ for terminal outcomes. Legal means issuable now, not guaranteed to finish succes
 load_colonists must use queue=true. Every command field is required by the output schema, but fields not used by a command
 must be null. Unit commands act on at least one owned unit in unit_ids, whereas player-level
 commands like send_message (with target_id) and message_developer (without target_id) use unit_ids=[] with message (text string).
+Player-level sabotage uses agent_id and sabotage_type; relocate_agent uses agent_id and target_id.
+Infiltration, extraction, CI sweep, and elimination remain unit commands and must use only the
+agent and target options listed for the selected owned unit.
 Always set end_turn=true.
 
 You can communicate with any player regardless of team or alliance using send_message (setting target_id to the

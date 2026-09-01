@@ -32,6 +32,8 @@ class Command:
     minefield_type: str | None = None
     target_component: str | None = None
     message: str | None = None
+    agent_id: int | None = None
+    sabotage_type: str | None = None
 
     order_id: str | None = None
     waypoints: tuple[dict[str, Any], ...] | None = None
@@ -64,6 +66,8 @@ class Command:
             "minefield_type": self.minefield_type,
             "target_component": self.target_component,
             "message": self.message,
+            "agent_id": self.agent_id,
+            "sabotage_type": self.sabotage_type,
             "order_id": self.order_id,
             "waypoints": [{"system_name": w["system_name"], "hex_coord": list(w["hex_coord"]), "position": list(w["position"])} for w in self.waypoints] if self.waypoints is not None else None,
         }

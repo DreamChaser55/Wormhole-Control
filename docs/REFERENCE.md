@@ -282,7 +282,7 @@ The `OrderType` enum (`unit_orders/base.py`) defines **32 order types**. Thirty-
 | `SABOTAGE` | Commands an embedded agent to sabotage host unit subsystems or colonial infrastructure. |
 | `CI_SWEEP` | Counter-Intelligence ship performs an active sector sweep (activated via component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to detect enemy spies on friendly and allied assets within operational range (500 logical units). |
 | `ELIMINATE_AGENT` | Counter-Intelligence ship neutralizes and removes a discovered enemy agent from a friendly or allied unit or colony. |
-| `EXTRACT_AGENT` | Recovers an embedded agent back into the parent Intelligence unit. |
+| `EXTRACT_AGENT` | Recovers an owned embedded agent into a selected owned Intelligence unit with free capacity. |
 
 ---
 
@@ -613,7 +613,7 @@ where $r_{\text{body}}$ is the body's physical collision radius (e.g. `PLANET_RA
 - **Collision Safety**: Because the plotted arrival point lies strictly outside the solid body's collision circle, vessels fly directly to the standoff perimeter without penetrating the planet surface or triggering collisions.
 
 
-## AI order control (observation 4, command contract 2)
+## AI order control (observation 5, command contract 3)
 
 Both GPT-5.6 Luna and the Codex socket controller use the same command registry,
 observation builder, visibility policy and preflight/commit gateway. Socket protocol 2
@@ -641,6 +641,15 @@ Enemy Intelligence components are hidden in observations and subsystem menus; hi
 nonexistent target guesses receive indistinguishable public errors. Hidden target-derived
 movement geometry is redacted; explicit player coordinates remain order intent. No raw
 persistence or sidebar state is serialized into AI observations.
+
+The top-level `intelligence` observation exposes owned agents with source unit, public host,
+and current sabotage, plus discovered enemy agents hosted by friendly or allied assets. It
+never reveals an owned agent's discovery status, an enemy agent's source/sabotage, allied
+agent identities, or undiscovered-agent counts. `player_commands` supplies bounded sabotage
+and relocation choices. Owned Intelligence/CI unit capability details supply capacity,
+range, infiltration/extraction targets, sweep readiness/cost/cooldown, and eliminable agent
+IDs. Luna and Codex can issue `infiltrate_unit`, `infiltrate_planet`, `sabotage`,
+`relocate_agent`, `extract_agent`, `ci_sweep`, and `eliminate_agent` through the same gateway.
 
 Preflight is atomic. Commit exceptions can leave partial effects: results identify completed,
 failed (uncertain), and unattempted operations, with accurate command indices. There is no

@@ -426,7 +426,7 @@ class TestOpenAIAdapter(unittest.TestCase):
         self.assertEqual(responses.kwargs["reasoning"], {"effort": "high"})
         self.assertEqual(result.reasoning_effort, "high")
         self.assertNotIn("tools", responses.kwargs)
-        self.assertEqual(responses.kwargs["prompt_cache_key"], "wormhole-control-turn-v3")
+        self.assertEqual(responses.kwargs["prompt_cache_key"], "wormhole-control-turn-v4")
         self.assertNotIn("previous_response_id", responses.kwargs)
 
     def test_responses_adapter_classifies_invalid_output_as_repairable(self):
@@ -669,7 +669,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
         unit_view = observation["units"][0]
         inhibitor = unit_view["capability_details"]["inhibitor"]
-        self.assertEqual(observation["schema_version"], 4)
+        self.assertEqual(observation["schema_version"], 5)
         self.assertIn("toggle_inhibitor", unit_view["supported_commands"])
         self.assertNotIn("toggle_inhibitor", unit_view["legal_commands"])
         self.assertFalse(inhibitor["can_activate"])
@@ -1005,7 +1005,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
             observation = build_observation(game, player)
         unit_view = observation["units"][0]
-        self.assertEqual(observation["schema_version"], 4)
+        self.assertEqual(observation["schema_version"], 5)
         self.assertNotIn("celestial_bodies", observation)
         self.assertIn("colonize", unit_view["supported_commands"])
         self.assertNotIn("colonize", unit_view["legal_commands"])

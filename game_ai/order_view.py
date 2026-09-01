@@ -29,6 +29,7 @@ def order_layers(unit, relation, visible_ids, body_ids):
         if order is None:
             return None
         kind = enum_name(order.order_type)
+        private_agent_order = kind in {"extract_agent", "eliminate_agent"}
         data = {"type": kind, "status": enum_name(order.status), "origin": origin}
         if not rich:
             return data
@@ -86,7 +87,7 @@ def order_layers(unit, relation, visible_ids, body_ids):
                 if budget[0] <= 0:
                     break
                 budget[0] -= 1
-                shown.append(serialize(child, "internal", depth + 1, hidden, active and index == 0, False))
+                shown.append(serialize(child, "internal", depth + 1, hidden or private_agent_order, active and index == 0, False))
         data["suborders"] = shown
         data["omitted_suborders"] = len(children) - len(shown)
         return data

@@ -118,11 +118,30 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         for unit in visible_unit_objects
     ]
     construction_templates = _construction_catalog(visible_unit_objects, player)
+    from .intelligence import intelligence_observation
+    intelligence, player_intelligence_options = intelligence_observation(
+        galaxy,
+        player,
+        visible_units=visible_unit_objects,
+        exact_bodies=exact_bodies,
+    )
+    recipient_ids = [
+        int(other.id)
+        for other in getattr(game, "players", [])
+        if getattr(other, "id", None) != getattr(player, "id", None)
+    ]
+    player_legal = ["message_developer"]
+    if recipient_ids:
+        player_legal.append("send_message")
+    if player_intelligence_options["sabotage"]["agents"]:
+        player_legal.append("sabotage")
+    if any(entry["target_ids"] for entry in player_intelligence_options["relocate_agent"]["agents"]):
+        player_legal.append("relocate_agent")
     memory_note = (
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 4,
+        "schema_version": 5,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -179,6 +198,15 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "undetailed_enemy_presence": presences,
         "visibility_note": memory_note,
         "command_catalog": command_catalog(),
+        "intelligence": intelligence,
+        "player_commands": {
+            "supported": ["message_developer", "relocate_agent", "sabotage", "send_message"],
+            "legal": sorted(player_legal),
+            "options": {
+                "send_message": {"target_ids": recipient_ids},
+                **player_intelligence_options,
+            },
+        },
         "order_history": history_view(player),
         "command_legality_note": "Legal means issuable now; future execution can still fail. Hardware support does not imply present legality.",
         "action_catalogs": {
@@ -409,11 +437,27 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
         ("repair", "repair_component"),
         ("antimatter_harvester", "harvester_component"),
         ("trade", "trade_component"),
-        ("intelligence", "intelligence_component"),
     ):
         component = getattr(unit, component_name, None)
         if component is not None:
             details[name] = _public_scalar_attributes(component)
+    intelligence = getattr(unit, "intelligence_component", None)
+    if intelligence is not None:
+        from constants import CI_SWEEP_ANTIMATTER_COST, CI_SWEEP_CREDIT_COST
+        details["intelligence"] = {
+            "operational": not bool(getattr(intelligence, "is_destroyed", False)),
+            "available_agents": int(getattr(intelligence, "available_agents", 0)),
+            "agent_capacity": int(getattr(intelligence, "agents_capacity", 0)),
+            "infiltration_range": _rounded(getattr(intelligence, "infiltration_range", 0)),
+            "counter_intelligence": {
+                "installed": bool(getattr(intelligence, "has_counter_intelligence", False)),
+                "ready": bool(getattr(intelligence, "is_ci_ready", False)),
+                "range": _rounded(getattr(intelligence, "counter_intelligence_range", 0)),
+                "cooldown_remaining": int(getattr(intelligence, "ci_cooldown_remaining", 0)),
+                "credit_cost": _rounded(CI_SWEEP_CREDIT_COST),
+                "antimatter_cost": _rounded(CI_SWEEP_ANTIMATTER_COST),
+            },
+        }
     for name, component_name in (
         ("hangar", "hangar_component"),
         ("strikecraft_bay", "strikecraft_bay_component"),

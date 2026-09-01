@@ -224,6 +224,10 @@ class RelocateAgentOrder(Order):
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: agent {agent_id} not found.")
             return
+        if agent.owner != self.unit.owner:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: agent is unavailable.")
+            return
 
         # Find destination target
         dest_target = None
@@ -315,6 +319,25 @@ class SabotageOrder(Order):
         if not agent or not target_obj:
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] SABOTAGE order failed: agent {agent_id} not found.")
+            return
+
+        if agent.owner != self.unit.owner:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] SABOTAGE order failed: agent is unavailable.")
+            return
+
+        from entities import Unit, Planet, Moon, ColonizableAsteroid
+        allowed = (
+            {SabotageType.ENGINES, SabotageType.WEAPONS, SabotageType.DEFENSES,
+             SabotageType.HYPERDRIVE, SabotageType.SENSORS, SabotageType.ANTIMATTER}
+            if isinstance(target_obj, Unit)
+            else {SabotageType.ECONOMY, SabotageType.GROWTH}
+            if isinstance(target_obj, (Planet, Moon, ColonizableAsteroid))
+            else set()
+        )
+        if sab_type not in allowed:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] SABOTAGE order failed: sabotage type unavailable for host.")
             return
 
         success = target_obj.apply_sabotage(agent, sab_type)
@@ -455,6 +478,16 @@ class EliminateAgentOrder(Order):
             logger.debug(f"[{self.unit.name}] ELIMINATE_AGENT failed: agent {agent_id} not found.")
             return
 
+        from entities import are_allies, are_enemies
+        if (
+            not agent.is_discovered
+            or not are_enemies(self.unit.owner, agent.owner)
+            or not are_allies(self.unit.owner, getattr(host_target, 'owner', None))
+        ):
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] ELIMINATE_AGENT failed: agent is unavailable.")
+            return
+
         if self.unit.in_system != host_sys or self.unit.in_hex != host_hex:
             if not self.has_active_sub_orders():
                 if host_is_unit:
@@ -573,6 +606,15 @@ class ExtractAgentOrder(Order):
         if not agent or not host_target:
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] EXTRACT_AGENT failed: agent {agent_id} not found.")
+            return
+
+        if agent.owner != self.unit.owner:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] EXTRACT_AGENT failed: agent is unavailable.")
+            return
+        if intel_comp.agents_count >= intel_comp.agents_capacity:
+            self.status = OrderStatus.FAILED
+            logger.debug(f"[{self.unit.name}] EXTRACT_AGENT failed: no free agent capacity.")
             return
 
         if self.unit.in_system != host_sys or self.unit.in_hex != host_hex:

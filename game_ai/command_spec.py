@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 2
+CONTRACT_VERSION = 3
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -61,6 +61,13 @@ COMMAND_SPECS = {
     "set_stance": _spec("Change standing policy without cancelling explicit work, even an explicit Attack.", ("stance",), queued=False),
     "toggle_inhibitor": _spec("Immediately flip the inhibitor; activation requires a valid non-overlapping field.", queued=False, capability=("inhibitor_component",)),
     "toggle_cloaking": _spec("Immediately flip a functioning cloak.", queued=False, capability=("cloaking_component",)),
+    "infiltrate_unit": _spec("Deploy an agent onto a visible enemy unit.", ("target_id",), capability=("intelligence_component",)),
+    "infiltrate_planet": _spec("Deploy an agent onto an exact enemy colony.", ("target_id",), capability=("intelligence_component",)),
+    "extract_agent": _spec("Recover an owned embedded agent into this Intelligence ship.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
+    "ci_sweep": _spec("Immediately spend credits and antimatter to discover enemy agents on nearby friendly assets.", queued=False, capability=("intelligence_component",)),
+    "eliminate_agent": _spec("Approach and eliminate a discovered enemy agent on a friendly asset.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
+    "sabotage": _spec("Immediately set an owned embedded agent's sabotage operation.", ("agent_id", "sabotage_type"), queued=False, player_level=True),
+    "relocate_agent": _spec("Immediately relocate an owned embedded agent to a visible in-range enemy host.", ("agent_id", "target_id"), queued=False, player_level=True),
     "use_ability": _spec("Use an ability; target requirements are provided in ability options.", ("ability", "target_id", "position"), ("ability",), capability=("ability_component",)),
     "send_message": _spec("Send a message to player target_id.", ("target_id", "message"), queued=False, player_level=True, text_limit=500),
     "message_developer": _spec("Send developer feedback.", ("message",), queued=False, player_level=True, text_limit=2000),
@@ -85,6 +92,8 @@ COMMAND_PROPERTIES = {
     "queue": {"type": "boolean"}, "ability": NULLABLE_STRING,
     "minefield_type": {"type": ["string", "null"], "enum": [None, "anti_ship", "anti_strikecraft"]},
     "target_component": NULLABLE_STRING, "message": NULLABLE_STRING, "order_id": NULLABLE_STRING,
+    "agent_id": {"type": ["integer", "null"]},
+    "sabotage_type": {"type": ["string", "null"], "enum": [None, "engines", "weapons", "defenses", "hyperdrive", "sensors", "antimatter", "economy", "growth"]},
     "waypoints": {"anyOf": [{"type": "array", "items": WAYPOINT_SCHEMA, "minItems": 1, "maxItems": MAX_WAYPOINTS}, {"type": "null"}]},
 }
 
@@ -116,8 +125,8 @@ def validate_command(raw):
         if value is None:
             require(field not in spec.required, f"{kind} requires {field}.")
             continue
-        if field == "target_id":
-            require(type(value) is int and value >= 0, "target_id must be a nonnegative integer.")
+        if field in {"target_id", "agent_id"}:
+            require(type(value) is int and value >= 0, f"{field} must be a nonnegative integer.")
         elif field == "amount":
             require(type(value) in (int, float) and _finite(value) and value > 0, "amount must be finite and positive.")
         elif field in ("hex_coord", "position"):
@@ -134,6 +143,7 @@ def validate_command(raw):
     require(spec.text_limit is None or len(raw.get("message") or "") <= spec.text_limit, "Message exceeds its length limit.")
     require(raw.get("stance") is None or raw["stance"] in STANCE_VALUES, "Unknown stance.")
     require(raw.get("minefield_type") in (None, "anti_ship", "anti_strikecraft"), "Unknown minefield_type.")
+    require(raw.get("sabotage_type") in (None, "engines", "weapons", "defenses", "hyperdrive", "sensors", "antimatter", "economy", "growth"), "Unknown sabotage_type.")
     if kind in {"patrol", "defend"}:
         destination = [raw.get(f) is not None for f in DESTINATION]
         alternative = raw.get("waypoints" if kind == "patrol" else "target_id") is not None

@@ -208,9 +208,18 @@ class IntelligenceComponent(UnitComponent):
 
     def retrieve_agent(self, agent: Agent, target_obj: Optional[typing.Union['Unit', 'CelestialBody']] = None) -> bool:
         """Extracts an operative from a target back to this ship."""
+        if agent is None or agent.owner != self.unit.owner:
+            return False
+        if self.is_destroyed or self.agents_count >= self.agents_capacity:
+            return False
         target = target_obj or getattr(agent, 'attached_to', None)
-        if target and hasattr(target, 'infiltrating_agents') and agent in target.infiltrating_agents:
-            target.infiltrating_agents.remove(agent)
+        if not target or not hasattr(target, 'infiltrating_agents') or agent not in target.infiltrating_agents:
+            return False
+        target.infiltrating_agents.remove(agent)
+        source_unit = agent.source_unit
+        source_component = getattr(source_unit, 'intelligence_component', None) if source_unit else None
+        if source_component is not None:
+            source_component.remove_agent_reference(agent)
         agent.attached_to = None
         self.remove_agent_reference(agent)
         self.agents_count = min(self.agents_capacity, self.agents_count + 1)

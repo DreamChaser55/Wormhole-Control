@@ -41,10 +41,12 @@ player. It includes:
 - per-owned-unit supported commands, currently legal commands, conditional
   command sequences, bounded option values, ability state, cargo, inhibitor
   state and activation eligibility, and other public capability details;
+- owned embedded agents, discovered hostile agents on friendly/allied hosts,
+  bounded player-level sabotage/relocation options, and Intelligence/CI ship options;
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 4 gives full body detail in systems containing friendly
+Observation schema 5 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -104,7 +106,9 @@ subsystem targeting via `target_component`), positional defense (`defend`), prot
 colonization, colonist loading, construction, repair, mining, continuous
 mining, unloading, docking (hangar and strikecraft bay) and carrier deployment, antimatter transfer/resupply, minefields, trade,
 continuous trade, stances, inhibitor/cloaking toggles, diplomatic communications (`send_message`),
-developer feedback (`message_developer`), and abilities.
+developer feedback (`message_developer`), abilities, and all intelligence operations:
+`infiltrate_unit`, `infiltrate_planet`, `sabotage`, `relocate_agent`, `extract_agent`,
+`ci_sweep`, and `eliminate_agent`.
 
 The observation and gateway share side-effect-free legality rules. The gateway
 also projects guaranteed effects through a batch, allowing a valid
@@ -116,10 +120,8 @@ that already completed synchronously. Preserve queued prerequisites with `queue=
 at preflight.
 
 Retrofit remains a human editor transaction because it requires a versioned
-component-configuration schema and dynamic cost preview. Intelligence agent
-operations likewise remain on the engine/UI path until their hidden-information
-contract is separated from UI discovery state. Neither is advertised to the
-model.
+component-configuration schema and dynamic cost preview. It is not advertised to
+the model.
 
 ## Failure behavior
 
@@ -169,7 +171,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 4 / commands 2 / socket 2)
+## Shared order contract (observation 5 / commands 3 / socket 2)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -213,6 +215,16 @@ ranges, defend radius, and cloak state/activation/upkeep. Engine helpers supply 
 values (including XP and sabotage). Hardware support is distinct from current legality;
 "legal" means issuable now, not guaranteed eventual success.
 
+`game_ai.intelligence` is the shared, side-effect-free disclosure and legality policy.
+The `intelligence` observation section identifies an owned agent's source ship, public
+host and active sabotage, but not whether the host has discovered it. It identifies only
+discovered enemy agents on friendly or allied hosts, without source ship or sabotage.
+Allied agents contribute sensor sharing but are neither identified nor controllable.
+Top-level `player_commands` carries legal `sabotage` and `relocate_agent` choices;
+infiltration, extraction, CI sweep and elimination are unit commands. Missing, hidden,
+foreign and stale agents uniformly return `agent_unavailable`; guessed hidden and
+nonexistent world targets uniformly return `target_unavailable`.
+
 `component_visibility.py` supplies the shared disclosure/subsystem policy for AI and UI.
 Enemy Intelligence components are neither listed nor precision-targetable. Hidden and
 nonexistent subsystem guesses return the same error. Public order serializers never dump
@@ -223,7 +235,8 @@ Outcome history contains no target references, names, coordinates or raw excepti
 ## Commit guarantees and lifecycle feedback
 
 Preflight projects order-associated population, construction and docking reservations,
-replacement, cancellation, route edits and toggles in array order. It creates no authoritative
+replacement, cancellation, route edits, toggles, agent relocation/sabotage, CI cooldowns,
+credits and ship antimatter in array order. It creates no authoritative
 orders, charges, component targets or lifecycle events. Construction/refit jobs bind their
 charge and cancellation ownership to the initiating order; cancelling a pending sibling
 cannot cancel/refund the active job. Refunds go to the original payer at most once.
@@ -251,5 +264,5 @@ Save 3.2 preserves order UUIDs recursively, history/counter, terminal-recording 
 job charges. Legacy orders get new UUIDs and empty histories. Restored active orders rebind
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
-The strict response schema is `wormhole_control_turn_v2`, and prompt cache key is
-`wormhole-control-turn-v3`. No live API call is required for regression testing.
+The strict response schema is `wormhole_control_turn_v3`, and prompt cache key is
+`wormhole-control-turn-v4`. No live API call is required for regression testing.
