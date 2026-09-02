@@ -13,6 +13,7 @@ from .rules import (
     is_mining_target,
     is_self_owned,
     is_star,
+    is_antimatter_source,
     supported_commands,
 )
 
@@ -229,7 +230,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                 int(body.id) for body in exact_bodies if is_mining_target(body)
             ],
             "antimatter_source_ids": [
-                int(body.id) for body in exact_bodies if is_star(body)
+                int(body.id) for body in exact_bodies if is_antimatter_source(body)
             ],
             "construction_templates": construction_templates,
         },
@@ -307,9 +308,20 @@ def _body_view(
         "metal_yield",
         "crystal_yield",
         "stability",
+        "is_colonizable",
+        "harvest_multiplier",
     ):
         if hasattr(body, name):
-            data[name] = _rounded(getattr(body, name))
+            val = getattr(body, name)
+            if isinstance(val, bool):
+                data[name] = val
+            elif isinstance(val, (int, float)):
+                data[name] = _rounded(val)
+    for enum_attr in ("planet_type", "storm_type", "star_type", "nebula_type"):
+        if hasattr(body, enum_attr):
+            enum_val = getattr(body, enum_attr)
+            if enum_val is not None:
+                data["subtype"] = _enum_value(enum_val)
     if hasattr(body, "exit_system_name"):
         data["exit_system_name"] = str(body.exit_system_name)
     return data

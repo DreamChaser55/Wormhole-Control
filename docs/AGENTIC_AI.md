@@ -32,10 +32,10 @@ providers by default, so they do not consume API credits.
 player. It includes:
 
 - the active player's economy;
-- public system topology, navigation anchors, detailed nearby bodies, and
-  summaries of remote neutral bodies;
+- public system topology, navigation anchors, detailed nearby bodies (including planetary traits, colonizability, passive mineral yields, and antimatter harvesting sources/multipliers), and summaries of remote neutral bodies;
 - owned and allied units;
-- enemy units only when detailed visibility permits them;
+- enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);
+- space storms (plasma, magnetic, radiation) and black hole event horizons that inflict active environmental hazards;
 - visible minefields;
 - undetailed enemy-presence hexes without count, identity, owner, or strength;
 - per-owned-unit supported commands, currently legal commands, conditional

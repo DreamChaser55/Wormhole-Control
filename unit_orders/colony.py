@@ -40,6 +40,11 @@ class ColonizeOrder(Order):
             logger.debug(f"COLONIZE order failed: Celestial body with ID {target_id} not found.")
             return
 
+        if getattr(target, 'is_colonizable', True) is False:
+            self.fail("target_not_colonizable")
+            logger.debug(f"COLONIZE order failed: Target {target.name} is not colonizable.")
+            return
+
         if not self.unit.colony_component:
             self.fail("capability_unavailable")
             logger.debug(f"COLONIZE order failed: Unit {self.unit.name} has no ColonyComponent.")
@@ -107,6 +112,11 @@ class LoadColonistsOrder(Order):
         if not target:
             self.fail("target_unavailable")
             logger.debug(f"LOAD_COLONISTS order failed: Celestial body with ID {target_id} not found.")
+            return
+
+        if getattr(target, 'is_colonizable', True) is False:
+            self.fail("target_not_colonizable")
+            logger.debug(f"LOAD_COLONISTS order failed: Target {target.name} does not support colonies.")
             return
 
         if not self.unit.colony_component:

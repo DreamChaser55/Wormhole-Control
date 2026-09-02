@@ -743,12 +743,12 @@ def test_mining_component():
     assert crystal == 0.0
     assert mining.raw_metal_cargo == 0.0
 
-    # Target asteroid field
+    # Target asteroid field (non-mineable)
     asteroid_field = AsteroidField(in_hex=(0,0), in_system="Sol")
     asteroid_field.position = Position(0, 0)
     mining.set_target(asteroid_field)
     mining.update(mock_galaxy)
-    assert mining.raw_metal_cargo == 10.0
+    assert mining.raw_metal_cargo == 0.0
 
     # Target comet (crystal mining)
     from entities import Comet

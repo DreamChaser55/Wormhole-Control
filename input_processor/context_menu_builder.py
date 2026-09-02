@@ -5,8 +5,9 @@ from geometry import Position
 from utils import HexCoord
 from entities import (
     GameObject, Unit, Star, Planet, Moon, ColonizableAsteroid,
-    MetalAsteroid, Comet, Wormhole, AsteroidField
+    MetalAsteroid, Comet, Wormhole, AsteroidField, DebrisField, IceField, Nebula, Storm
 )
+from constants import NebulaType
 from unit_components import HyperdriveType
 from unit_orders import OrderType
 
@@ -396,10 +397,14 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
             if len(game.selected_objects) == 1 and isinstance(game.selected_objects[0], Unit):
                 unit = game.selected_objects[0]
                 if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
-                    if unit.colony_component and unit.colony_component.population_cargo > 0 and not target_object.owner:
-                        options.append(("Colonize", "colonize"))
-                    if unit.colony_component and target_object.owner and _are_allies(unit.owner, target_object.owner) and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
-                        options.append(("Load Colonists", "load_colonists"))
+                    if getattr(target_object, 'is_colonizable', True):
+                        if unit.colony_component and unit.colony_component.population_cargo > 0 and not target_object.owner:
+                            options.append(("Colonize", "colonize"))
+                        if unit.colony_component and target_object.owner and _are_allies(unit.owner, target_object.owner) and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
+                            options.append(("Load Colonists", "load_colonists"))
+            if isinstance(target_object, Planet) and getattr(target_object, 'harvest_multiplier', 0.0) > 0:
+                if any(getattr(a, 'harvester_component', None) for a in actors):
+                    options.append(("Resupply (continuously)", "continuous_resupply"))
             if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
                 if target_object.owner and _are_enemies(current_player, target_object.owner):
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
@@ -439,7 +444,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                                 if ag.is_discovered and ag.owner and _are_enemies(current_player, ag.owner):
                                     options.append((f"Eliminate Enemy Agent ({ag.owner.name})", f"eliminate_agent_{ag.id}"))
 
-            if isinstance(target_object, (MetalAsteroid, AsteroidField, Comet)) and any(getattr(a, 'mining_component', None) for a in actors):
+            if isinstance(target_object, (MetalAsteroid, Comet)) and any(getattr(a, 'mining_component', None) for a in actors):
                 options.append(("Mine", "mine"))
                 options.append(("Mine (continuously)", "continuous_mine"))
         elif isinstance(target_object, Wormhole):
@@ -450,6 +455,11 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
             options.append(("View Star", "view_star"))
             if any(getattr(a, 'harvester_component', None) for a in actors):
                 options.append(("Resupply (continuously)", "continuous_resupply"))
+        elif isinstance(target_object, Nebula):
+            options.append(("View Nebula", "view_nebula"))
+            if getattr(target_object, 'nebula_type', None) == NebulaType.HYDROGEN:
+                if any(getattr(a, 'harvester_component', None) for a in actors):
+                    options.append(("Resupply (continuously)", "continuous_resupply"))
 
     return options, target
 

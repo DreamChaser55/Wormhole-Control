@@ -676,3 +676,65 @@ record completed/failed/cancelled roots exactly once with bounded reason codes a
 IDs. Legacy saves receive new UUIDs and empty journals. Stance engagements remain transient.
 Expanded observation suborders are limited to 32 nodes per unit/depth 6; all explicit root IDs
 remain available. Waypoint previews are limited to 16; omitted counts are explicit.
+
+---
+
+## 12. Celestial Bodies & Environmental Mechanics
+
+### 12.1 Planetary Classification & Traits
+
+Every planet generated in the galaxy possesses distinctive biological and geological traits defined in `PLANET_TRAITS`:
+
+| Planet Type | Colonizable | Max Population | Growth Rate | Passive Metal | Passive Crystal | Antimatter Multiplier | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Terran** | Yes | 100.0 | 2.0% / turn | 0.0 | 0.0 | 0.0x | Balanced biosphere with standard habitability. |
+| **Oceanic** | Yes | 120.0 | 2.5% / turn | 0.0 | 0.0 | 0.0x | High carrying capacity and rapid population expansion. |
+| **Continental** | Yes | 110.0 | 2.2% / turn | 0.0 | 0.0 | 0.0x | Expansive landmasses supporting heavy industry. |
+| **Desert** | Yes | 75.0 | 1.5% / turn | 0.0 | 0.0 | 0.0x | Arid wasteland with restricted water reservoirs. |
+| **Ice** | Yes | 60.0 | 1.0% / turn | 0.0 | 2.0 / turn | 0.0x | Glaciated crust yielding passive crystal extraction. |
+| **Barren** | Yes | 40.0 | 0.8% / turn | 0.0 | 0.0 | 0.0x | Airless rock requiring pressurized dome complexes. |
+| **Volcanic** | Yes | 50.0 | 0.8% / turn | 5.0 / turn | 0.0 | 0.0x | Geothermal magma chambers rich in raw minerals. |
+| **Ferrous** | Yes | 70.0 | 1.2% / turn | 8.0 / turn | 0.0 | 0.0x | Massive heavy-metal mantle generating industrial iron. |
+| **Greenhouse** | Yes | 55.0 | 1.0% / turn | 0.0 | 3.0 / turn | 0.0x | Superheated dense atmosphere yielding synthetic crystal. |
+| **Gas Giant** | **No** | 0.0 | 0.0% | 0.0 | 0.0 | **0.5x** | Atmospheric turbulence; antimatter scoop reservoir; 2800 inhibition. |
+
+- **Moons & Colonizable Asteroids**: Both support colonization (`is_colonizable = True`), max population 25.0 and 15.0 respectively, with standard base growth.
+- **Passive Resource Yields**: Colonized planets generate their passive metal or crystal directly into the owner's treasury at the end of each turn, providing strategic economic value beyond direct taxation.
+
+### 12.2 Extreme Star Remnants
+
+Stars anchor the gravitational and hyperspace topology of star systems:
+- **Black Hole**: Extreme gravitational anomaly. Features an event horizon of 750 logical units radius that inflicts 15 damage per turn to all vessels within it. Projects an expansive hyperspace inhibition field of 3600 radius. Minimum fuel harvesting multiplier (0.1x).
+- **Pulsar**: High-energy neutron star with intense rotational sweeps. Drains 5% of a ship's current antimatter reserves per turn when within the sector. Yields a massive fuel harvesting multiplier (2.5x).
+- **Giant Stars (Blue Giant, Red Giant)**: Massive stellar radius (600 physical collision radius) with extended hyperspace inhibition fields (3000 radius).
+
+### 12.3 Environmental Fields & Tactical Cover
+
+Environmental fields (`radius = 900.0` logical units) alter the tactical space:
+- **Asteroid Field**:
+  - **Tactical Radar Stealth**: Conceals all ships inside the field from enemy long-range sensor presence detection. Enemies must deploy close-range visual sensors to detect concealed units.
+  - **Navigation Resistance**: 25% sublight speed drag (`speed_multiplier = 0.75`).
+  - **Mining Target**: Non-mineable for raw metal (raw metal extraction is strictly exclusive to concentrated `MetalAsteroid` bodies).
+  - **Inhibition**: 900 radius hyperspace inhibition field.
+- **Ice Field**:
+  - **Tactical Cover**: Dense cryogenic ice particles scatter coherent energy, providing **+10% defense mitigation against incoming beam attacks**.
+  - **Cooling Aid**: Ambient sub-zero coolant reduces weapon heat dissipation cooldowns.
+  - **Navigation**: 20% sublight speed drag (`speed_multiplier = 0.80`). Hyperspace inhibition field 600 radius. Non-mineable for crystal (crystal extraction is exclusive to `Comet` bodies).
+- **Debris Field**:
+  - **Tactical Cover**: Dense wreckage fragments intercept ballistic projectiles, providing **+10% defense mitigation against incoming kinetic (Mass Driver) and missile attacks**.
+  - **Navigation Hazard**: Moving at high sublight velocities (`speed > 50.0`) through the debris causes abrasive hull damage (2 HP damage per turn).
+  - **Navigation Drag**: 25% sublight speed drag (`speed_multiplier = 0.75`). Non-mineable.
+
+### 12.4 Nebulae & Space Storm Hazards
+
+- **Nebulae** (`radius = 900.0` logical units):
+  - **All Nebulae**: Defeat long-range sensor detection, concealing ships from enemy presence radars.
+  - **Hydrogen Nebula**: High molecular fuel density allows Antimatter Harvesters to scoop fuel at 0.4x base harvest rate; ships traveling inside burn 50% less antimatter during sublight propulsion (`HYDROGEN_NEBULA_AM_BURN_MOD = 0.5`).
+  - **Nitrogen Nebula**: Cryogenic coolant cloud aids radiator dispersal, reducing weapon cooldown by 1 turn.
+  - **Oxygen Nebula**: Volatile combustible gas accelerates shield recharging (+25% shield regeneration bonus) but exacerbates explosive weapon vulnerability (+15% splash damage taken).
+  - **Dust Nebula**: Dense particulate scatter reduces short-range visual sensor radius by 30% (`DUST_NEBULA_SENSOR_MOD = 0.70`).
+- **Space Storms** (`radius = 800.0` logical units):
+  - **Plasma Storm**: Inflicts 8 thermal damage per turn to unit hit points.
+  - **Magnetic Storm**: Drains 6 antimatter per turn from onboard reserves; violent electromagnetic flux completely scrambles long-range radar projection from within the storm.
+  - **Radiation Storm**: Energetic cosmic radiation inflicts 4 damage per turn to a random functional unit component, degrading subsystem integrity and imposing weapon accuracy penalties.
+

@@ -62,5 +62,6 @@ Prefer a few coherent commands over speculative busywork. Do not place instructi
 Markdown inside command fields.
 
 Sensors provide short-range detailed vision and long-range inter-sector presence detection.
-Units with active cloaking devices or units positioned inside nebulae are concealed from
-long-range sensors, requiring close short-range visual scouting to reveal."""
+Units with active cloaking devices, or positioned inside nebulae or asteroid fields, are concealed from
+long-range sensors, requiring close short-range visual scouting to reveal. Space storms (plasma, magnetic,
+radiation) and black hole event horizons present active environmental hazards to ships inside them."""

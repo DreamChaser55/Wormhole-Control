@@ -45,6 +45,9 @@ class ColonyComponent(UnitComponent):
         if self.is_destroyed:
             logger.debug(f"Error: Cannot load population, {self.unit.name}'s ColonyComponent is destroyed.")
             return False
+        if getattr(planet, 'is_colonizable', True) is False:
+            logger.debug(f"Error: Cannot load population from non-colonizable celestial body {planet.name}.")
+            return False
         if planet.owner != self.unit.owner:
             logger.debug(f"Error: Cannot load population from unowned planet {planet.name}.")
             return False
@@ -63,6 +66,9 @@ class ColonyComponent(UnitComponent):
     def unload_population(self, planet: 'Planet', amount: int) -> bool:
         if self.is_destroyed:
             logger.debug(f"Error: Cannot unload population, {self.unit.name}'s ColonyComponent is destroyed.")
+            return False
+        if getattr(planet, 'is_colonizable', True) is False:
+            logger.debug(f"Error: Cannot unload population onto non-colonizable celestial body {planet.name}.")
             return False
         if self.population_cargo < amount:
             logger.debug(f"Error: Not enough population in cargo to unload {amount}.")

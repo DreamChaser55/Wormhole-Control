@@ -9,20 +9,37 @@ from component_visibility import public_target_components
 
 def is_colonizable_body(body: Any) -> bool:
     from entities import ColonizableAsteroid, Moon, Planet
+    from constants import PlanetType
 
+    if isinstance(body, Planet):
+        if getattr(body, "planet_type", None) == PlanetType.GAS_GIANT:
+            return False
+        if getattr(body, "is_colonizable", True) is False:
+            return False
     return isinstance(body, (Planet, Moon, ColonizableAsteroid))
 
 
 def is_mining_target(body: Any) -> bool:
-    from entities import AsteroidField, Comet, MetalAsteroid
+    from entities import Comet, MetalAsteroid
 
-    return isinstance(body, (MetalAsteroid, AsteroidField, Comet))
+    return isinstance(body, (MetalAsteroid, Comet))
 
 
 def is_star(body: Any) -> bool:
     from entities import Star
 
     return isinstance(body, Star)
+
+
+def is_antimatter_source(body: Any) -> bool:
+    from entities import Star, Planet
+    from constants import PlanetType
+
+    if is_star(body):
+        return True
+    if isinstance(body, Planet) and getattr(body, "planet_type", None) == PlanetType.GAS_GIANT:
+        return True
+    return False
 
 
 def has_operational_engines(unit: Any) -> bool:
@@ -374,7 +391,7 @@ def command_guidance(
             if mining_targets:
                 legal.add(command_type)
 
-    stars = [body.id for body in exact_bodies if is_star(body)]
+    stars = [body.id for body in exact_bodies if is_antimatter_source(body)]
     if "continuous_resupply" in supported:
         options["continuous_resupply"] = {"target_ids": stars}
         if stars:

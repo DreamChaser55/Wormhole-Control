@@ -13,7 +13,11 @@ from constants import (
     XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS,
     MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS,
     POPULATION_PER_HABITAT, BASE_HABITAT_CAPACITY,
-    STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, NEBULA_RADIUS
+    STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, NEBULA_RADIUS,
+    CELESTIAL_FIELD_RADIUS, STORM_RADIUS, PLANET_TRAITS,
+    BLACK_HOLE_INHIBITION_RADIUS, GIANT_STAR_RADIUS, GIANT_STAR_INHIBITION_RADIUS,
+    ASTEROID_FIELD_SPEED_MOD, ICE_FIELD_SPEED_MOD, ICE_FIELD_BEAM_DEFENSE_BONUS, ICE_FIELD_COOLDOWN_REDUCTION,
+    DEBRIS_FIELD_SPEED_MOD, DEBRIS_FIELD_DEFENSE_BONUS, DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE
 )
 import uuid
 from datetime import datetime, timezone
@@ -439,7 +443,15 @@ class Star(CelestialBody):
     """Represents the central star of a system."""
     collision_radius: float = STAR_RADIUS
     def __init__(self, in_system: str, star_type: StarType):
-        super().__init__(position=Position(0.0, 0.0), in_hex=(0, 0), in_system=in_system, inhibition_field_radius=2700.0)
+        inhibition_radius = 2700.0
+        coll_radius = STAR_RADIUS
+        if star_type == StarType.BLACK_HOLE:
+            inhibition_radius = BLACK_HOLE_INHIBITION_RADIUS
+        elif star_type in (StarType.BLUE_GIANT, StarType.RED_GIANT):
+            inhibition_radius = GIANT_STAR_INHIBITION_RADIUS
+            coll_radius = GIANT_STAR_RADIUS
+        super().__init__(position=Position(0.0, 0.0), in_hex=(0, 0), in_system=in_system, inhibition_field_radius=inhibition_radius)
+        self.collision_radius = coll_radius
         self.star_type = star_type
         self.name = f"Star {self.id}"
 
@@ -451,17 +463,31 @@ class Star(CelestialBody):
 class Planet(CelestialBody):
     """Represents a planet within a system."""
     collision_radius: float = PLANET_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str, planet_type: PlanetType):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=2400.0)
+    def __init__(self, in_hex: HexCoord, in_system: str, planet_type: Optional[PlanetType] = None):
+        if not isinstance(planet_type, PlanetType):
+            pos = planet_type if isinstance(planet_type, Position) else Position(0.0, 0.0)
+            actual_type = PlanetType.TERRAN
+        else:
+            pos = Position(0.0, 0.0)
+            actual_type = planet_type
+        traits = PLANET_TRAITS.get(actual_type, PLANET_TRAITS[PlanetType.TERRAN])
+        inhibition_radius = traits.get("inhibition_radius", 2400.0)
+        super().__init__(position=pos, in_hex=in_hex, in_system=in_system, inhibition_field_radius=inhibition_radius)
         self.name = f"Planet {self.id}"
         self.owner: Optional[Player] = None
+        self.planet_type = actual_type
+        self.is_colonizable: bool = traits.get("is_colonizable", True)
         self.population: float = 0
-        self.max_population: float = 100.0
-        self.population_growth_rate: float = 0.02
-        self.planet_type = planet_type
+        self.max_population: float = traits.get("max_population", 100.0)
+        self.population_growth_rate: float = traits.get("growth_rate", 0.02)
+        self.growth_rate: float = self.population_growth_rate
+        self.passive_metal: float = traits.get("passive_metal", 0.0)
+        self.passive_crystal: float = traits.get("passive_crystal", 0.0)
+        self.harvest_multiplier: float = traits.get("am_harvest_multiplier", 0.0)
+        self.collision_radius: float = traits.get("collision_radius", PLANET_RADIUS)
 
     def update_population(self):
-        if self.is_sabotaged(SabotageType.GROWTH):
+        if not self.is_colonizable or self.is_sabotaged(SabotageType.GROWTH):
             return
         if self.owner and self.population < self.max_population:
             self.population += self.population * self.population_growth_rate
@@ -476,6 +502,7 @@ class Moon(CelestialBody):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1800.0)
         self.name = f"Moon {self.id}"
         self.owner: Optional[Player] = None
+        self.is_colonizable: bool = True
         self.population: float = 0
         self.max_population: float = 50.0
         self.population_growth_rate: float = 0.01
@@ -496,6 +523,7 @@ class ColonizableAsteroid(CelestialBody):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1200.0)
         self.name = f"Colonizable Asteroid {self.id}"
         self.owner: Optional[Player] = None
+        self.is_colonizable: bool = True
         self.population: float = 0
         self.max_population: float = 20.0
         self.population_growth_rate: float = 0.005
@@ -518,23 +546,37 @@ class MetalAsteroid(CelestialBody):
 
 
 class DebrisField(CelestialBody):
-    """Represents a field of debris."""
+    """Represents a field of debris providing physical cover and high-speed navigation hazard."""
+    radius: float = CELESTIAL_FIELD_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system)
         self.name = f"Debris Field {self.id}"
+        self.radius = CELESTIAL_FIELD_RADIUS
+        self.speed_multiplier = DEBRIS_FIELD_SPEED_MOD
+        self.defense_bonus = DEBRIS_FIELD_DEFENSE_BONUS
+        self.hazard_speed_threshold = DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD
+        self.hazard_damage = DEBRIS_FIELD_HAZARD_DAMAGE
 
 class AsteroidField(CelestialBody):
-    """Represents a field of asteroids."""
+    """Represents a field of asteroids providing long-range radar scattering and sublight drag."""
+    radius: float = CELESTIAL_FIELD_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=900.0)
         self.name = f"Asteroid Field {self.id}"
         self.asteroid_count = 100 # Example value
+        self.radius = CELESTIAL_FIELD_RADIUS
+        self.speed_multiplier = ASTEROID_FIELD_SPEED_MOD
 
 class IceField(CelestialBody):
-    """Represents a field of ice particles."""
+    """Represents a field of ice particles providing beam defense cover, weapon cooling, and navigation drag."""
+    radius: float = CELESTIAL_FIELD_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
         self.name = f"Ice Field {self.id}"
+        self.radius = CELESTIAL_FIELD_RADIUS
+        self.speed_multiplier = ICE_FIELD_SPEED_MOD
+        self.beam_defense_bonus = ICE_FIELD_BEAM_DEFENSE_BONUS
+        self.cooldown_reduction = ICE_FIELD_COOLDOWN_REDUCTION
 
 class Nebula(CelestialBody):
     """Represents a nebula."""
@@ -546,11 +588,13 @@ class Nebula(CelestialBody):
         self.radius = NEBULA_RADIUS
 
 class Storm(CelestialBody):
-    """Represents a storm."""
+    """Represents an energetic space storm hazard."""
+    radius: float = STORM_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str, storm_type: StormType):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Storm {self.id}"
         self.storm_type = storm_type
+        self.radius = STORM_RADIUS
 
 class Comet(CelestialBody):
     """Represents a comet, which is a source of Crystal."""
@@ -892,9 +936,45 @@ class Unit(GameObject):
 
         return (total_atk, total_def)
 
+    def get_environmental_cover_bonus(self, damage_type: Optional[TurretType]) -> float:
+        """Returns extra percentage damage reduction from environmental cover (e.g. IceField, DebrisField)."""
+        if not damage_type or not self.in_system or self.in_hex is None or not self.position:
+            return 0.0
+
+        g = getattr(self, 'in_galaxy', None)
+        if not g and getattr(self, 'game', None):
+            g = getattr(self.game, 'galaxy', None)
+        if not g:
+            return 0.0
+
+        system = g.systems.get(self.in_system)
+        if not system:
+            return 0.0
+
+        hex_obj = system.hexes.get(self.in_hex)
+        if not hex_obj:
+            return 0.0
+
+        cover_bonus = 0.0
+        for body in hex_obj.celestial_bodies:
+            radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
+            if distance(self.position, body.position) <= radius:
+                is_beam = damage_type == TurretType.BEAM or (isinstance(damage_type, str) and damage_type.lower() == "beam")
+                is_kinetic_missile = damage_type in (TurretType.MASS_DRIVER, TurretType.MISSILE) or (isinstance(damage_type, str) and damage_type.lower() in ("mass_driver", "missile", "kinetic"))
+                if isinstance(body, IceField) and is_beam:
+                    cover_bonus = max(cover_bonus, getattr(body, 'beam_defense_bonus', ICE_FIELD_BEAM_DEFENSE_BONUS))
+                elif isinstance(body, DebrisField) and is_kinetic_missile:
+                    cover_bonus = max(cover_bonus, getattr(body, 'defense_bonus', DEBRIS_FIELD_DEFENSE_BONUS))
+
+        return cover_bonus
+
     def take_damage(self, amount: int, damage_type: Optional[TurretType] = None) -> None:
-        """Reduces the unit's current hit points by the given amount, applying any active damage reduction and defenses mitigation."""
+        """Reduces the unit's current hit points by the given amount, applying any active damage reduction, environmental cover, and defenses mitigation."""
         if damage_type:
+            cover = self.get_environmental_cover_bonus(damage_type)
+            if cover > 0.0:
+                cover_mitigation = amount * cover
+                amount = max(0, int(round(amount - cover_mitigation)))
             defenses = self.get_component(Defenses)
             if defenses:
                 mitigation = defenses.calculate_mitigation(amount, damage_type)
@@ -920,6 +1000,10 @@ class Unit(GameObject):
         Returns any excess damage (spillover) if the component is destroyed.
         """
         if damage_type:
+            cover = self.get_environmental_cover_bonus(damage_type)
+            if cover > 0.0:
+                cover_mitigation = amount * cover
+                amount = max(0, int(round(amount - cover_mitigation)))
             defenses = self.get_component(Defenses)
             if defenses:
                 mitigation = defenses.calculate_mitigation(amount, damage_type)

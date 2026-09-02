@@ -13,7 +13,7 @@ if os.name == 'nt':
             ctypes.windll.user32.SetProcessDPIAware()
         except Exception:
             pass
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 
 from geometry import Vector, Position
 from enum import Enum, auto
@@ -319,6 +319,140 @@ STORM_COLORS = {
 }
 
 STORM_LIGHTNING_COLOR = (255, 255, 224, 150) # Light Yellow for lightning
+
+# Planetary Traits & Habitability Configuration
+PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
+    PlanetType.TERRAN: {
+        "is_colonizable": True,
+        "max_population": 100.0,
+        "growth_rate": 0.02,
+        "passive_metal": 0.0,
+        "passive_crystal": 0.0,
+        "am_harvest_multiplier": 0.0,
+        "inhibition_radius": 2400.0,
+        "collision_radius": PLANET_RADIUS,
+        "description": "Temperate biosphere with optimal habitability.",
+    },
+    PlanetType.OCEANIC: {
+        "is_colonizable": True,
+        "max_population": 120.0,
+        "growth_rate": 0.025,
+        "passive_metal": 0.0,
+        "passive_crystal": 0.0,
+        "am_harvest_multiplier": 0.0,
+        "inhibition_radius": 2400.0,
+        "collision_radius": PLANET_RADIUS,
+        "description": "Lush water world supporting expansive population.",
+    },
+    PlanetType.DESERT: {
+        "is_colonizable": True,
+        "max_population": 75.0,
+        "growth_rate": 0.015,
+        "passive_metal": 0.0,
+        "passive_crystal": 0.0,
+        "am_harvest_multiplier": 0.0,
+        "inhibition_radius": 2400.0,
+        "collision_radius": PLANET_RADIUS,
+        "description": "Arid dunes and scarce water reservoirs.",
+    },
+    PlanetType.ICE: {
+        "is_colonizable": True,
+        "max_population": 60.0,
+        "growth_rate": 0.010,
+        "passive_metal": 0.0,
+        "passive_crystal": 2.0,
+        "am_harvest_multiplier": 0.0,
+        "inhibition_radius": 2400.0,
+        "collision_radius": PLANET_RADIUS,
+        "description": "Glaciated surface yielding passive crystal deposits.",
+    },
+    PlanetType.BARREN: {
+        "is_colonizable": True,
+        "max_population": 40.0,
+        "growth_rate": 0.008,
+        "passive_metal": 0.0,
+        "passive_crystal": 0.0,
+        "am_harvest_multiplier": 0.0,
+        "inhibition_radius": 2400.0,
+        "collision_radius": PLANET_RADIUS,
+        "description": "Airless rocky crust requiring sealed dome habitats.",
+    },
+    PlanetType.VOLCANIC: {
+        "is_colonizable": True,
+        "max_population": 50.0,
+        "growth_rate": 0.008,
+        "passive_metal": 5.0,
+        "passive_crystal": 0.0,
+        "am_harvest_multiplier": 0.0,
+        "inhibition_radius": 2400.0,
+        "collision_radius": PLANET_RADIUS,
+        "description": "Hostile geothermal vents rich in raw mineral deposits.",
+    },
+    PlanetType.FERROUS: {
+        "is_colonizable": True,
+        "max_population": 70.0,
+        "growth_rate": 0.012,
+        "passive_metal": 8.0,
+        "passive_crystal": 0.0,
+        "am_harvest_multiplier": 0.0,
+        "inhibition_radius": 2600.0,
+        "collision_radius": PLANET_RADIUS,
+        "description": "Heavy metal crust yielding rich passive metal revenue.",
+    },
+    PlanetType.GREENHOUSE: {
+        "is_colonizable": True,
+        "max_population": 35.0,
+        "growth_rate": 0.005,
+        "passive_metal": 0.0,
+        "passive_crystal": 3.0,
+        "am_harvest_multiplier": 0.0,
+        "inhibition_radius": 2400.0,
+        "collision_radius": PLANET_RADIUS,
+        "description": "Caustic high-pressure atmosphere yielding exotic crystal.",
+    },
+    PlanetType.GAS_GIANT: {
+        "is_colonizable": False,
+        "max_population": 0.0,
+        "growth_rate": 0.0,
+        "passive_metal": 0.0,
+        "passive_crystal": 0.0,
+        "am_harvest_multiplier": 0.5,
+        "inhibition_radius": 2800.0,
+        "collision_radius": 450.0,
+        "description": "Massive volatile gas mantle. Non-colonizable; antimatter harvesting hub.",
+    },
+}
+
+# Environmental Hazards & Special Effects Constants
+STORM_PLASMA_DAMAGE_PER_TURN = 8.0
+STORM_MAGNETIC_AM_DRAIN_PER_TURN = 6.0
+STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN = 4.0
+STORM_RADIATION_ACCURACY_PENALTY = 0.20
+
+BLACK_HOLE_INHIBITION_RADIUS = 3600.0
+BLACK_HOLE_EVENT_HORIZON_RADIUS = 750.0
+BLACK_HOLE_EVENT_HORIZON_DAMAGE = 15.0
+PULSAR_SHIELD_DRAIN_PERCENT = 0.05
+GIANT_STAR_RADIUS = 600.0
+GIANT_STAR_INHIBITION_RADIUS = 3000.0
+
+ASTEROID_FIELD_SPEED_MOD = 0.75
+ICE_FIELD_SPEED_MOD = 0.80
+ICE_FIELD_BEAM_DEFENSE_BONUS = 0.10
+ICE_FIELD_COOLDOWN_REDUCTION = 1
+
+DEBRIS_FIELD_SPEED_MOD = 0.75
+DEBRIS_FIELD_DEFENSE_BONUS = 0.10
+DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD = 50.0
+DEBRIS_FIELD_HAZARD_DAMAGE = 2.0
+
+HYDROGEN_NEBULA_HARVEST_MULTIPLIER = 0.4
+HYDROGEN_NEBULA_AM_BURN_MOD = 0.5
+DUST_NEBULA_SENSOR_MOD = 0.70
+NITROGEN_NEBULA_COOLDOWN_REDUCTION = 1
+OXYGEN_NEBULA_SHIELD_REGEN_BONUS = 0.25
+OXYGEN_NEBULA_SPLASH_DAMAGE_MOD = 1.15
+
 
 HULL_CAPACITIES: Dict[HullSize, float] = {
     HullSize.STRIKECRAFT_WING: 5.0,

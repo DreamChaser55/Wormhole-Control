@@ -18,6 +18,7 @@ from .rules import (
     is_mining_target,
     is_self_owned,
     is_star,
+    is_antimatter_source,
 )
 from .intelligence import (
     discovered_enemy_agent_hosts,
@@ -1017,8 +1018,8 @@ class CommandGateway:
                 f"Transfer antimatter to {target_unit.name}",
             )
         if command.type == "continuous_resupply":
-            if not is_star(target_body):
-                raise _Rejected("invalid_target", "The resupply target is not a star.")
+            if not is_antimatter_source(target_body):
+                raise _Rejected("invalid_target", "The resupply target is not a star or gas giant.")
             return (
                 lambda unit: ContinuousResupplyOrder(
                     unit,

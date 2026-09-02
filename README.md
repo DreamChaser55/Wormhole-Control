@@ -101,15 +101,25 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Sensor Horizons**: Ships and stations project short-range visual circles and long-range inter-sector sensor detection.
 - **Fog of War & Sector Intel**: Unexplored regions remain hidden; explored sectors remember last-seen turn intel until refreshed by active sensors.
 - **Cloaking Devices**: Active cloaking fields hide ships from enemy inter-sector long-range sensors at the cost of continuous antimatter consumption. Basic cloaks shield individual ships, while Advanced cloaks project an area-of-effect stealth field hiding entire fleet formations.
-- **Nebula Concealment**: Starships stationed inside a nebula cloud are naturally concealed from enemy long-range (inter-sector) sensors, requiring enemy ships to move within short-range visual range to achieve detailed detection.
+- **Nebula & Asteroid Field Concealment**: Starships stationed inside a nebula cloud or an asteroid field are naturally concealed from enemy long-range (inter-sector) radar presence, requiring enemy ships to move within short-range visual range to achieve detailed detection.
 - **Espionage & Counter-Intelligence**: Infiltrate enemy vessels and colonies with covert operatives to tap their sensor horizons and execute subsystem sabotage. Counter-Intelligence ships can execute active sector sweeps to detect and eliminate hostile spies.
 
 ### Expansion & Infrastructure
-- **Colonization**: Dispatch colony ships to settle habitable planets, moons, and colonizable asteroids to grow population and tax revenues.
-- **Automated Logistics**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled.
+- **Colonization**: Dispatch colony ships to settle habitable planets, moons, and colonizable asteroids. Different planetary classes feature distinct growth rates and passive resource extraction (e.g. Volcanic and Ferrous worlds generate passive metal; Ice and Greenhouse worlds yield passive crystal). Massive Gas Giants cannot be colonized.
+- **Automated Logistics & Harvesting**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled. Antimatter Harvesters can gather fuel from Stars, Gas Giants, and Hydrogen Nebulae.
 - **Orbital Construction**: Constructors assemble orbital defense platforms, shipyards, refineries, and stations.
 - **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses, supported up to finite colony population limits.
 - **Orbital Defense**: Deploy tactical defense modules in colonized sectors to project an area-of-effect attack/defense buff aura for friendly ships in radius, supported up to colony population limits with additive stacking.
+
+### Celestial Environments & Tactical Cover
+- **Tactical Cover**:
+  - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting **+10% defense mitigation against beam attacks**.
+  - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting **+10% defense mitigation against kinetic and missile attacks**.
+- **Environmental Hazards**:
+  - **Black Holes**: Extreme gravitational tidal distortion inflicts 15 hull damage per turn within 750 radius of the singularity.
+  - **Pulsars**: Sweeping magnetic radiation pulses drain 5% of a ship's current antimatter reserves per turn.
+  - **Debris Field Abrasion**: Moving at high sublight velocities (speed > 50) through debris clouds inflicts 2 damage per turn.
+  - **Space Storms**: Plasma storms inflict 8 thermal damage per turn; Magnetic storms drain 6 antimatter per turn and jam long-range radar sensors; Radiation storms inflict 4 component damage per turn and degrade weapon accuracy.
 
 ---
 

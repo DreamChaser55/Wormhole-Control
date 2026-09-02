@@ -7,7 +7,8 @@ from geometry import distance
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_REGEN,
     DEFAULT_ANTIMATTER_HARVEST_RATE, ANTIMATTER_HARVEST_RANGE,
-    ANTIMATTER_HARVESTER_HULL_COST, ANTIMATTER_CAPACITY_PER_HULL_POINT
+    ANTIMATTER_HARVESTER_HULL_COST, ANTIMATTER_CAPACITY_PER_HULL_POINT,
+    HYDROGEN_NEBULA_HARVEST_MULTIPLIER
 )
 
 if TYPE_CHECKING:
@@ -120,8 +121,8 @@ class AntimatterHarvester(UnitComponent):
         self.harvest_range: float = ANTIMATTER_HARVEST_RANGE
         self.is_harvesting: bool = False  # Updated each turn: True if currently near a star and harvesting
 
-    def find_nearby_star(self, galaxy: 'Galaxy') -> Optional['CelestialBody']:
-        """Returns a Star in the unit's current system+hex within harvest_range, if any."""
+    def find_nearby_harvest_source(self, galaxy: 'Galaxy') -> Optional['CelestialBody']:
+        """Returns a Star, Gas Giant Planet, or Hydrogen Nebula in the unit's current system+hex within harvest_range, if any."""
         if not galaxy or not self.unit.in_system or self.unit.in_hex is None:
             return None
         system = galaxy.systems.get(self.unit.in_system)
@@ -130,11 +131,23 @@ class AntimatterHarvester(UnitComponent):
         hex_obj = system.hexes.get(self.unit.in_hex)
         if not hex_obj:
             return None
-        from entities import Star
+        from entities import Star, Planet, Nebula
+        from constants import PlanetType, NebulaType
         for body in hex_obj.celestial_bodies:
-            if isinstance(body, Star) and distance(self.unit.position, body.position) <= self.harvest_range:
-                return body
+            if distance(self.unit.position, body.position) <= self.harvest_range:
+                if isinstance(body, Star):
+                    return body
+                elif isinstance(body, Planet) and getattr(body, 'planet_type', None) == PlanetType.GAS_GIANT:
+                    return body
+                elif isinstance(body, Nebula) and getattr(body, 'nebula_type', None) == NebulaType.HYDROGEN:
+                    if not hasattr(body, 'harvest_multiplier'):
+                        body.harvest_multiplier = HYDROGEN_NEBULA_HARVEST_MULTIPLIER
+                    return body
         return None
+
+    def find_nearby_star(self, galaxy: 'Galaxy') -> Optional['CelestialBody']:
+        """Returns a fuel source (Star, Gas Giant, or Hydrogen Nebula) within harvest_range."""
+        return self.find_nearby_harvest_source(galaxy)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
@@ -144,10 +157,11 @@ class AntimatterHarvester(UnitComponent):
         if self.is_harvesting and nearby_star:
             multiplier = getattr(nearby_star, 'harvest_multiplier', 1.0)
             effective_rate = self.harvest_rate * multiplier
-            data.append({'type': 'label', 'text': f"Effective Rate: {effective_rate:.1f}/turn ({multiplier:.1f}x star mult)", 'object_id': '#sidebar_info_label', 'height': 20})
+            mult_label = "star mult" if nearby_star.__class__.__name__ == "Star" else "mult"
+            data.append({'type': 'label', 'text': f"Effective Rate: {effective_rate:.1f}/turn ({multiplier:.1f}x {mult_label})", 'object_id': '#sidebar_info_label', 'height': 20})
             status_text = f"Harvesting (near {nearby_star.name})"
         else:
-            status_text = "Idle (no star in range)"
+            status_text = "Idle (no fuel source in range)"
         data.append({'type': 'label', 'text': f"Harvest Range: {self.harvest_range:.0f}", 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': f"Status: {status_text}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data

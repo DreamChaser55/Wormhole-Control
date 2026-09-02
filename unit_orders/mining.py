@@ -200,9 +200,9 @@ class ContinuousMineOrder(Order):
         has_crystal = mining_comp.raw_crystal_cargo > 0
 
         target = galaxy_ref.get_celestial_body_by_id(self.parameters.get("target_id"))
-        from entities import MetalAsteroid, AsteroidField, Comet
+        from entities import MetalAsteroid, Comet
         if not has_metal and not has_crystal and target:
-            if isinstance(target, (MetalAsteroid, AsteroidField)):
+            if isinstance(target, MetalAsteroid):
                 has_metal = True
             elif isinstance(target, Comet):
                 has_crystal = True

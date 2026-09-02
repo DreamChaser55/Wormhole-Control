@@ -4,7 +4,10 @@ from typing import Set, Tuple, Dict, List, Optional, TYPE_CHECKING
 from utils import HexCoord
 from geometry import distance
 from hexgrid_utils import hexes_within_range
-from constants import NEBULA_RADIUS
+from constants import (
+    NEBULA_RADIUS, CELESTIAL_FIELD_RADIUS, STORM_RADIUS,
+    DUST_NEBULA_SENSOR_MOD, NebulaType, StormType
+)
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -89,6 +92,17 @@ class VisibilityService:
                         if sensors and not sensors.is_destroyed:
                             sr_radius = getattr(sensors, 'effective_short_range_radius', sensors.short_range_radius)
                             lr_hexes = getattr(sensors, 'effective_long_range_hexes', sensors.long_range_hexes)
+
+                            # Environmental sensor effects on observer unit
+                            for b in hex_obj.celestial_bodies:
+                                from entities import Nebula, Storm
+                                if isinstance(b, Nebula) and getattr(b, 'nebula_type', None) == NebulaType.DUST:
+                                    if distance(unit.position, b.position) <= getattr(b, 'radius', NEBULA_RADIUS):
+                                        sr_radius *= DUST_NEBULA_SENSOR_MOD
+                                elif isinstance(b, Storm) and getattr(b, 'storm_type', None) == StormType.MAGNETIC:
+                                    if distance(unit.position, b.position) <= getattr(b, 'radius', STORM_RADIUS):
+                                        lr_hexes = 0
+
                             if sr_radius > 0:
                                 key = (system_name, hex_coord)
                                 if key not in short_range_by_hex:
@@ -111,13 +125,13 @@ class VisibilityService:
                                 active_area_cloaks[hex_key].append((unit.owner, unit.position, cloaking.area_radius))
 
                 for body in hex_obj.celestial_bodies:
-                    from entities import Nebula
-                    if isinstance(body, Nebula):
+                    from entities import Nebula, AsteroidField
+                    if isinstance(body, (Nebula, AsteroidField)):
                         hex_key = (system_name, hex_coord)
                         if hex_key not in nebulae_by_hex:
                             nebulae_by_hex[hex_key] = []
-                        neb_radius = getattr(body, 'radius', NEBULA_RADIUS)
-                        nebulae_by_hex[hex_key].append((body.position, neb_radius))
+                        field_radius = getattr(body, 'radius', NEBULA_RADIUS if isinstance(body, Nebula) else CELESTIAL_FIELD_RADIUS)
+                        nebulae_by_hex[hex_key].append((body.position, field_radius))
 
                     is_infiltrated_body = False
                     if hasattr(body, 'infiltrating_agents') and isinstance(body.infiltrating_agents, list):
@@ -242,6 +256,29 @@ def is_unit_in_nebula(unit: Optional['Unit'], galaxy: Optional['Galaxy'] = None)
         if isinstance(body, Nebula):
             neb_radius = getattr(body, 'radius', NEBULA_RADIUS)
             if distance(body.position, unit.position) <= neb_radius:
+                return True
+    return False
+
+
+def is_unit_in_asteroid_field(unit: Optional['Unit'], galaxy: Optional['Galaxy'] = None) -> bool:
+    """Return True if the unit is currently located within an asteroid field (radar scattering)."""
+    if unit is None or not unit.in_system or unit.in_hex is None:
+        return False
+    if galaxy is None and hasattr(unit, 'game') and unit.game and hasattr(unit.game, 'galaxy'):
+        galaxy = unit.game.galaxy
+    if galaxy is None:
+        return False
+    system = galaxy.systems.get(unit.in_system)
+    if not system:
+        return False
+    hex_obj = system.hexes.get(unit.in_hex)
+    if not hex_obj:
+        return False
+    from entities import AsteroidField
+    for body in hex_obj.celestial_bodies:
+        if isinstance(body, AsteroidField):
+            field_radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
+            if distance(body.position, unit.position) <= field_radius:
                 return True
     return False
 
