@@ -194,7 +194,7 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 4 | `has_hyperdrive` | Hyperdrive | Dynamic | 5.0 | Forbidden on `STRIKECRAFT_WING`. Basic hyperdrive available on `TINY`+; Advanced hyperdrive requires `SMALL`+. |
 | 5 | `has_weapon_bays` | Weapons | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with turret count, damage, range, and fire rate. |
 | 6 | `has_defenses` | Defenses | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with Armor, Shields, and Point Defense ratings. |
-| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables building space stations and units, as well as field refitting (adding or removing components) on friendly and allied vessels. |
+| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables building space stations and starships (`TINY` through `HUGE`; strikecraft wings are excluded and constructed solely by units with a strikecraft bay), as well as field refitting (adding or removing components) on friendly and allied vessels. |
 | 8 | `has_repair_component` | Repair | Dynamic | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with repair rate. Repairs friendly and allied ships. |
 | 9 | `has_colony_component` | Colony | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables planetary colonization and loading colonists from friendly/allied worlds. |
 | 10 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Generates +50 credits/turn in colonized sectors up to the colony's supported habitat limit (base 1, +1 per 25 population). |
@@ -204,7 +204,7 @@ The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **
 | 14 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined ore into metal. |
 | 15 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined crystals into usable crystal stock. |
 | 16 | `has_hangar` | Hangar | Dynamic | 20.0 | Restricted to `LARGE` and `HUGE` hulls only. Dynamic cost scales with hangar slot capacity. |
-| 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. |
+| 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. Solely responsible for the construction and replenishment of strikecraft wings. |
 | 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 20.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with inhibition field radius. |
 | 19 | `has_ability_component` | Abilities | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with number of equipped abilities. |
 | 20 | `has_sensors` | Sensors | Dynamic | 2.0 | Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. Coverage is shared across all allied players. |
@@ -261,7 +261,7 @@ The `OrderType` enum (`unit_orders/base.py`) defines **32 order types**. Thirty-
 | `TOGGLE_INHIBITOR` | Activates or deactivates the ship's hyperspace inhibition field emitter. |
 | `COLONIZE` | Disembarks colonists from a colony ship to establish a settlement on a habitable body. |
 | `LOAD_COLONISTS` | Embarks population from a friendly or allied colonized celestial body onto a colony transport. |
-| `CONSTRUCT` | Deploys a constructor to build a new space station, structure, or starship. |
+| `CONSTRUCT` | Deploys a constructor to build a new space station, structure, or starship (excluding strikecraft wings). |
 | `REFIT_UNIT` | Deploys a constructor to install new components or decommission existing components on a friendly or allied vessel in the field. |
 | `REPAIR` | Moves to and restores hull integrity on a damaged friendly or allied unit. |
 | `MINE` | Extracts raw metal from an asteroid or raw crystal from a comet. |

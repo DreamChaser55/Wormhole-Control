@@ -386,6 +386,19 @@ def instantiate_unit_from_template(
     logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
 
 
+def _is_strikecraft_wing_template(template: dict) -> bool:
+    """Return True if the template has STRIKECRAFT_WING hull size."""
+    if not isinstance(template, dict):
+        return False
+    hull_size = template.get("hull_size")
+    if isinstance(hull_size, str):
+        try:
+            hull_size = HullSize[hull_size.upper()]
+        except KeyError:
+            return hull_size.upper() == "STRIKECRAFT_WING"
+    return hull_size == HullSize.STRIKECRAFT_WING
+
+
 @dataclasses.dataclass
 class BuildableUnit:
     unit_template_name: str
@@ -482,9 +495,11 @@ class Constructor(UnitComponent):
 
     @property
     def buildable_units(self) -> list[BuildableUnit]:
-        """Dynamically retrieve all buildable units based on UNIT_TEMPLATES."""
+        """Dynamically retrieve all buildable units based on UNIT_TEMPLATES, excluding strikecraft wings."""
         buildables = []
         for name, template in UNIT_TEMPLATES.items():
+            if _is_strikecraft_wing_template(template):
+                continue
             buildables.append(BuildableUnit(
                 unit_template_name=name,
                 time_to_build=template.get("build_time", 10),
@@ -496,6 +511,8 @@ class Constructor(UnitComponent):
         """Check if this constructor can build a specific unit type."""
         template = UNIT_TEMPLATES.get(unit_template_name)
         if template:
+            if _is_strikecraft_wing_template(template):
+                return None
             return BuildableUnit(
                 unit_template_name=unit_template_name,
                 time_to_build=template.get("build_time", 10),

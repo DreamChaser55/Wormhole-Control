@@ -545,11 +545,16 @@ def _body_summary(bodies: list[Any], viewer: Any) -> dict[str, Any]:
 
 def _construction_catalog(units: list[Any], player: Any) -> list[dict[str, Any]]:
     catalog: dict[str, dict[str, Any]] = {}
+    from unit_templates import UNIT_TEMPLATES
     for unit in units:
         if not is_self_owned(player, getattr(unit, "owner", None)):
             continue
         constructor = getattr(unit, "constructor_component", None)
         for buildable in getattr(constructor, "buildable_units", []) if constructor else []:
+            tpl = UNIT_TEMPLATES.get(buildable.unit_template_name, {})
+            hull_size = tpl.get("hull_size")
+            if hull_size == "STRIKECRAFT_WING" or getattr(hull_size, "name", None) == "STRIKECRAFT_WING":
+                continue
             catalog[buildable.unit_template_name] = {
                 "template_name": buildable.unit_template_name,
                 "credit_cost": int(buildable.cost_credits),

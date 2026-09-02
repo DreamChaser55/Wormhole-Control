@@ -260,6 +260,9 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                     for buildable in actor.constructor_component.buildable_units:
                         from unit_templates import UNIT_TEMPLATES
                         template = UNIT_TEMPLATES.get(buildable.unit_template_name, {})
+                        hull_size = template.get("hull_size")
+                        if hull_size == "STRIKECRAFT_WING" or getattr(hull_size, "name", None) == "STRIKECRAFT_WING":
+                            continue
                         display_name = template.get("name", buildable.unit_template_name)
                         cost = buildable.cost_credits
                         build_options.append((f"{display_name} ({cost}c)", f"construct_{buildable.unit_template_name}"))
