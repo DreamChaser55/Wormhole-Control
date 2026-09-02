@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 from geometry import Position, Vector
 from constants import CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT, TOP_BAR_HEIGHT
 from gui.context_menu import (
+    calculate_context_menu_min_col_width,
     compute_context_menu_layout,
     calculate_menu_position,
     open_context_menu,
@@ -210,3 +211,90 @@ def test_is_mouse_over_context_menu_accepts_tuple_and_position():
     assert is_mouse_over_context_menu(gui, (150, 150)) is True
     assert is_mouse_over_context_menu(gui, Position(50, 50)) is False
     assert is_mouse_over_context_menu(gui, (-1, -1)) is False
+
+
+def test_calculate_context_menu_min_col_width_short_options():
+    screen_res = Vector(1280, 720)
+    options = [("Move Here", "move"), ("Patrol Here", "patrol"), ("Construct", "construct")]
+    min_w = calculate_context_menu_min_col_width(screen_res, options)
+    # Short options should not exceed standard CONTEXT_MENU_WIDTH - 10
+    assert min_w == CONTEXT_MENU_WIDTH - 10
+
+
+def test_calculate_context_menu_min_col_width_long_construct_options():
+    screen_res = Vector(1280, 720)
+    options = [
+        ("Back", "__submenu_back__"),
+        ("Constructor Mk.I (800c)", "construct_CONSTRUCTOR_MK1"),
+        ("Medium Orbital Defense Station (2500c)", "construct_MEDIUM_DEFENSE_STATION"),
+        ("Crystal Refinery Station (1200c)", "construct_CRYSTAL_REFINERY"),
+    ]
+    min_w = calculate_context_menu_min_col_width(screen_res, options)
+    # "Medium Orbital Defense Station (2500c)" has 38 chars, text w ~ 268px + padding ~ 24px >= 290px
+    assert min_w >= 280
+
+
+def test_compute_context_menu_layout_with_min_col_width():
+    screen_res = Vector(1280, 720)
+    desired_width = CONTEXT_MENU_WIDTH + 100
+    num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height = compute_context_menu_layout(
+        screen_res, 4, max_items_cap=14, min_col_width=desired_width
+    )
+    assert num_cols == 1
+    assert num_rows == 4
+    assert col_width == desired_width
+    assert panel_width == 10 + desired_width
+
+
+def test_open_context_menu_construct_submenu_expands_and_fits_text():
+    screen_res = Vector(1280, 720)
+    manager = pygame_gui.UIManager((1280, 720))
+
+    gui = MagicMock()
+    gui.screen_res = screen_res
+    gui.manager = manager
+    gui.context_menu_panel = None
+    gui.context_menu_buttons = []
+    gui.context_menu_options = []
+    gui.context_menu_target = None
+    gui.context_menu_submenus = {}
+    gui.context_menu_parent_options = None
+    gui.context_menu_parent_position = None
+    gui.context_menu_anchor = None
+    gui.context_menu_history = []
+
+    # Construct submenu with real unit templates
+    construct_options = [
+        ("Constructor Mk.I (800c)", "construct_CONSTRUCTOR_MK1"),
+        ("Medium Orbital Defense Station (2500c)", "construct_MEDIUM_DEFENSE_STATION"),
+        ("Crystal Refinery Station (1200c)", "construct_CRYSTAL_REFINERY"),
+        ("Metal Refinery Station (1000c)", "construct_METAL_REFINERY"),
+    ]
+    parent_options = [
+        ("Move Here", "move_here"),
+        ("Construct", construct_options),
+    ]
+
+    click_pos = Position(300, 300)
+    # 1. Open parent menu: should have standard compact width
+    open_context_menu(gui, click_pos, parent_options, target=Position(100, 100))
+    assert len(gui.context_menu_buttons) == 2
+    for btn in gui.context_menu_buttons:
+        assert btn.relative_rect.width == CONTEXT_MENU_WIDTH - 10
+
+    # 2. Click "Construct" -> navigates into submenu
+    action = handle_button_index(gui, 1)
+    assert action == {'action': 'ui_handled'}
+    # Submenu should have 5 options (Back + 4 templates)
+    assert len(gui.context_menu_buttons) == 5
+    # All buttons in the submenu must be expanded (>= 280px) to fit template names & prices
+    for btn in gui.context_menu_buttons:
+        assert btn.relative_rect.width >= 280
+
+    # 3. Click "Back" (index 0) -> restores parent menu with compact width
+    action_back = handle_button_index(gui, 0)
+    assert action_back == {'action': 'ui_handled'}
+    assert len(gui.context_menu_buttons) == 2
+    for btn in gui.context_menu_buttons:
+        assert btn.relative_rect.width == CONTEXT_MENU_WIDTH - 10
+

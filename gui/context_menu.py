@@ -9,10 +9,86 @@ from geometry import Position
 from utils import ContextMenuOption
 
 
+def calculate_context_menu_min_col_width(
+    gui_or_screen_res: typing.Any,
+    options: typing.Sequence[typing.Union[typing.Tuple[str, typing.Any], str]]
+) -> int:
+    """Calculates the minimum column width needed to display all context menu options without clipping.
+
+    Args:
+        gui_or_screen_res: Target GUI_Handler instance or screen resolution Vector.
+        options: Sequence of context menu option definitions.
+
+    Returns:
+        int: Minimum column width in pixels (at least CONTEXT_MENU_WIDTH - 10).
+    """
+    base_col_width = CONTEXT_MENU_WIDTH - 10
+    if not options:
+        return base_col_width
+
+    gui = gui_or_screen_res if hasattr(gui_or_screen_res, 'manager') or hasattr(gui_or_screen_res, 'screen_res') else None
+    screen_res = getattr(gui, 'screen_res', gui_or_screen_res)
+    screen_h = getattr(screen_res, 'y', 720)
+
+    font = None
+    if gui is not None and hasattr(gui, 'manager') and getattr(gui.manager, 'ui_theme', None):
+        for candidate_ids in [
+            ['panel', '#context_menu_panel', 'button', '@context_menu_button'],
+            ['button', '@context_menu_button'],
+            ['button'],
+            []
+        ]:
+            try:
+                f = gui.manager.ui_theme.get_font(candidate_ids)
+                if f is not None and hasattr(f, 'get_rect'):
+                    font = f
+                    break
+            except Exception:
+                continue
+
+    max_text_width = 0
+    for opt in options:
+        if isinstance(opt, tuple) and len(opt) >= 2:
+            text, action_id = opt[0], opt[1]
+            if isinstance(action_id, list) or (isinstance(action_id, tuple) and len(action_id) == 2 and isinstance(action_id[0], list)):
+                display_text = f"{text} \u25b8"
+            else:
+                display_text = str(text)
+        else:
+            display_text = str(opt)
+
+        text_w = 0
+        if font is not None:
+            try:
+                if hasattr(font, 'get_rect'):
+                    rect = font.get_rect(display_text)
+                    if hasattr(rect, 'width') and isinstance(rect.width, (int, float)):
+                        text_w = int(rect.width)
+                elif hasattr(font, 'size'):
+                    sz = font.size(display_text)
+                    if isinstance(sz, tuple) and len(sz) >= 1 and isinstance(sz[0], (int, float)):
+                        text_w = int(sz[0])
+            except Exception:
+                text_w = 0
+
+        # Heuristic fallback if font measurement is unavailable or failed (e.g. headless/mock tests)
+        if text_w <= 0:
+            scale = max(0.5, (screen_h / 720.0) ** 1.15)
+            text_w = int(len(display_text) * 8.0 * scale)
+
+        if text_w > max_text_width:
+            max_text_width = text_w
+
+    # Horizontal padding for UIButton (borders, shadow, and internal text margins on both sides)
+    padding = max(36, int(36 * (screen_h / 720.0)))
+    return max(base_col_width, max_text_width + padding)
+
+
 def compute_context_menu_layout(
     screen_res: typing.Any,
     options_count: int,
-    max_items_cap: int = 14
+    max_items_cap: int = 14,
+    min_col_width: typing.Optional[int] = None
 ) -> typing.Tuple[int, int, int, int, int, int, int]:
     """Computes column/row counts and dimensions for context menu options.
 
@@ -20,12 +96,14 @@ def compute_context_menu_layout(
         screen_res: Screen resolution Vector or Position with x and y attributes.
         options_count (int): Total number of menu options to display.
         max_items_cap (int): Upper bound on items per column for ergonomic compactness.
+        min_col_width (int, optional): Minimum column width needed to fit labels without clipping.
 
     Returns:
         tuple: (num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height)
     """
     row_height = CONTEXT_MENU_ITEM_HEIGHT + 2
     margin = 8
+    screen_w = getattr(screen_res, 'x', 1280)
     screen_h = getattr(screen_res, 'y', 720)
     avail_h = max(100, screen_h - TOP_BAR_HEIGHT - 2 * margin)
     max_items_per_col = max(4, min(max_items_cap, int((avail_h - 10) // row_height)))
@@ -37,8 +115,15 @@ def compute_context_menu_layout(
         num_cols = max(1, math.ceil(options_count / max_items_per_col))
         num_rows = max(1, math.ceil(options_count / num_cols))
 
-    col_width = CONTEXT_MENU_WIDTH - 10
+    base_col_width = CONTEXT_MENU_WIDTH - 10
     col_gap = 4
+    target_col_width = max(base_col_width, min_col_width) if min_col_width is not None else base_col_width
+
+    # Ensure total width doesn't exceed screen boundary
+    avail_w = max(100, screen_w - 2 * margin)
+    max_col_width = max(base_col_width, (avail_w - 10 - (num_cols - 1) * col_gap) // num_cols)
+    col_width = min(target_col_width, max_col_width)
+
     panel_width = 10 + num_cols * col_width + (num_cols - 1) * col_gap
     panel_height = num_rows * row_height + 10
 
@@ -154,8 +239,9 @@ def open_context_menu(gui, position: Position, options: typing.List[ContextMenuO
     if not options:
         return
 
+    min_col_width = calculate_context_menu_min_col_width(gui, options)
     num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height = compute_context_menu_layout(
-        gui.screen_res, len(options)
+        gui.screen_res, len(options), min_col_width=min_col_width
     )
     panel_pos = calculate_menu_position(gui.screen_res, position, panel_width, panel_height)
 
