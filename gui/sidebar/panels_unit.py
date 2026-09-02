@@ -1,6 +1,7 @@
 """Sidebar UI panel builders for Unit entities."""
 import typing
 from constants import MAX_UNIT_XP, UPKEEP_COST_PER_HULL_POINT
+from economy import calculate_unit_upkeep
 from entities import Unit, are_enemies
 from component_visibility import component_is_public
 from unit_components import IntelligenceComponent
@@ -117,7 +118,7 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         data.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
 
         data.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage:g}/{unit.hull_capacity:g}", 'object_id': '#sidebar_info_label', 'height': 25})
-        upkeep_per_turn = unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
+        upkeep_per_turn = calculate_unit_upkeep(getattr(unit, 'hull_size', None), unit.current_hull_usage)
         data.append({'type': 'label', 'text': f"Upkeep: {upkeep_per_turn:.2f} cr/turn", 'object_id': '#sidebar_info_label', 'height': 20})
 
         data.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hit_point_style_id(unit), 'height': 25})

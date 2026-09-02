@@ -49,6 +49,24 @@ def calculate_player_income(galaxy: typing.Any, player: Player) -> float:
     return total_income
 
 
+def calculate_unit_upkeep(hull_size: typing.Optional[HullSize], current_hull_usage: float) -> float:
+    """Calculates credit upkeep cost per turn for an individual unit design or instance.
+
+    Strikecraft wings are exempt from upkeep (0.0 credits/turn).
+    For other hull sizes, upkeep is current_hull_usage * UPKEEP_COST_PER_HULL_POINT.
+
+    Args:
+        hull_size (Optional[HullSize]): Hull size classification of the unit.
+        current_hull_usage (float): Hull points currently consumed by installed components.
+
+    Returns:
+        float: Upkeep cost per turn in credits.
+    """
+    if hull_size == HullSize.STRIKECRAFT_WING:
+        return 0.0
+    return max(0.0, float(current_hull_usage) * UPKEEP_COST_PER_HULL_POINT)
+
+
 def calculate_player_upkeep(galaxy: typing.Any, player: Player) -> float:
     """Calculates total credit upkeep cost per turn for a player's active fleet.
 
@@ -67,7 +85,9 @@ def calculate_player_upkeep(galaxy: typing.Any, player: Player) -> float:
                     continue
                 if getattr(unit, 'is_temporary', False):
                     continue
-                if getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING:
-                    continue
-                total_upkeep += getattr(unit, 'current_hull_usage', 0.0) * UPKEEP_COST_PER_HULL_POINT
+                total_upkeep += calculate_unit_upkeep(
+                    getattr(unit, 'hull_size', None),
+                    getattr(unit, 'current_hull_usage', 0.0)
+                )
     return total_upkeep
+

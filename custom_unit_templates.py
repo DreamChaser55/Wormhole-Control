@@ -659,6 +659,12 @@ class CustomUnitTemplate:
         extra = max(0, round((self.total_hull_cost / capacity) * base))
         return base + extra
 
+    @property
+    def predicted_upkeep(self) -> float:
+        """Calculated credit upkeep cost per turn for this template."""
+        from economy import calculate_unit_upkeep
+        return calculate_unit_upkeep(self.hull_size, self.total_hull_cost)
+
     def validate(self) -> List[str]:
         """
         Returns a list of validation error strings.

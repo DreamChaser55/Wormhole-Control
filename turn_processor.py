@@ -17,6 +17,7 @@ from constants import (
     ENGINE_ANTIMATTER_COST_PER_TURN, HYPERDRIVE_SYSTEM_JUMP_COST, HYPERDRIVE_HEX_JUMP_COST
 )
 from player_controller import PlayerController
+from economy import calculate_unit_upkeep
 
 
 class TurnProcessor:
@@ -527,9 +528,7 @@ class TurnProcessor:
                     continue
                 if unit.is_temporary:
                     continue
-                if unit.hull_size == HullSize.STRIKECRAFT_WING:
-                    continue
-                total_upkeep += unit.current_hull_usage * UPKEEP_COST_PER_HULL_POINT
+                total_upkeep += calculate_unit_upkeep(unit.hull_size, unit.current_hull_usage)
 
         if total_upkeep > 0:
             if current_player.credits < total_upkeep and getattr(self.game, 'gui', None) and current_player.controller == PlayerController.HUMAN:

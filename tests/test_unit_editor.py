@@ -752,9 +752,74 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         tmp_mgr.delete_design("Frigate Alpha Mk II")
         win.kill()
 
+    def test_predicted_upkeep_calculation_and_template(self):
+        """Verifies calculate_unit_upkeep and CustomUnitTemplate.predicted_upkeep behavior."""
+        from economy import calculate_unit_upkeep
+        from constants import UPKEEP_COST_PER_HULL_POINT
+
+        # Strikecraft Wing is always 0.0
+        self.assertEqual(calculate_unit_upkeep(HullSize.STRIKECRAFT_WING, 5.0), 0.0)
+
+        # Standard hulls scale with used hull capacity * UPKEEP_COST_PER_HULL_POINT
+        self.assertAlmostEqual(calculate_unit_upkeep(HullSize.TINY, 10.0), 10.0 * UPKEEP_COST_PER_HULL_POINT)
+        self.assertAlmostEqual(calculate_unit_upkeep(HullSize.MEDIUM, 35.5), 35.5 * UPKEEP_COST_PER_HULL_POINT)
+        self.assertEqual(calculate_unit_upkeep(HullSize.LARGE, 0.0), 0.0)
+
+        # Template property check
+        t_med = CustomUnitTemplate("Cruiser Test", HullSize.MEDIUM)
+        t_med.components.has_engine = True
+        t_med.components.engine_speed = 100.0
+        expected_upkeep = t_med.total_hull_cost * UPKEEP_COST_PER_HULL_POINT
+        self.assertAlmostEqual(t_med.predicted_upkeep, expected_upkeep)
+
+        t_wing = CustomUnitTemplate("Fighter Test", HullSize.STRIKECRAFT_WING)
+        t_wing.components.has_engine = True
+        self.assertEqual(t_wing.predicted_upkeep, 0.0)
+
+    def test_unit_editor_summary_predicted_upkeep_display(self):
+        """Verifies that predicted unit upkeep is displayed in the Unit Designer Column 4 summary."""
+        import pygame
+        import pygame_gui
+        from gui.unit_editor_gui import UnitEditorWindow
+        from gui.unit_editor_gui import cost_model
+        from custom_unit_templates import CustomTemplateManager
+        from constants import UPKEEP_COST_PER_HULL_POINT
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win.show()
+
+        # By default (MEDIUM hull with default components such as Antimatter Storage)
+        win._update_summary()
+        summary_text = win._summary_box.html_text
+        default_used = cost_model.current_hull_used(win)
+        default_expected_upkeep = default_used * UPKEEP_COST_PER_HULL_POINT
+        self.assertIn("<b>Predicted upkeep:</b>", summary_text)
+        self.assertIn(f"{default_expected_upkeep:.2f} credits/turn", summary_text)
+
+        # Enable engine and weapons
+        win._comp.has_engine = True
+        win._comp.engine_speed = 120.0
+        win._update_summary()
+
+        used = cost_model.current_hull_used(win)
+        expected_upkeep = used * UPKEEP_COST_PER_HULL_POINT
+        self.assertAlmostEqual(cost_model.predicted_upkeep(win), expected_upkeep)
+        self.assertIn(f"<b>Predicted upkeep:</b> {expected_upkeep:.2f} credits/turn", win._summary_box.html_text)
+
+        # Switch hull size to STRIKECRAFT_WING
+        win._hull_size = HullSize.STRIKECRAFT_WING
+        win._update_summary()
+        self.assertEqual(cost_model.predicted_upkeep(win), 0.0)
+        self.assertIn("<b>Predicted upkeep:</b> 0.00 credits/turn (Exempt)", win._summary_box.html_text)
+
+        win.kill()
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 
 

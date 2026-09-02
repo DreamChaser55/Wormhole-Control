@@ -4,7 +4,8 @@ summary_view.py
 HTML summary text box formatting and updating for the Unit Designer GUI.
 """
 
-from constants import HULL_CAPACITIES, HIT_POINTS
+from constants import HULL_CAPACITIES, HIT_POINTS, HullSize
+from economy import calculate_unit_upkeep
 from custom_unit_templates import (
     HULL_BASE_COST,
     HULL_BASE_BUILD_TIME,
@@ -28,15 +29,22 @@ def update_summary(editor) -> None:
     base_bt = HULL_BASE_BUILD_TIME[editor._hull_size]
     extra_bt = max(0, round((used / max(1.0, capacity)) * base_bt))
     build_time = base_bt + extra_bt
+    upkeep = calculate_unit_upkeep(editor._hull_size, used)
 
     cap_color = "#FF4444" if over else "#88FF88"
+    upkeep_str = f"{upkeep:.2f} credits/turn"
+    if editor._hull_size == HullSize.STRIKECRAFT_WING:
+        upkeep_str += " (Exempt)"
+
     lines = [
         f"<b>Hull:</b> {editor._hull_size.name}   <b>HP:</b> {hp}",
         f"<b>Hull capacity:</b> <font color='{cap_color}'>{used:g} / {capacity:g}</font>",
         f"<b>Build cost:</b> {build_cost} credits",
         f"<b>Build time:</b> {build_time} turns",
+        f"<b>Predicted upkeep:</b> {upkeep_str}",
         "",
     ]
+
 
     comp_lines = []
     for row in COMPONENT_ROWS:

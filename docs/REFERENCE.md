@@ -171,14 +171,14 @@ Wormhole Control features 6 hull classes (`HullSize`). Each hull size sets the c
 
 | Hull Size | Enum Value | Hull Capacity | Base HP | Min Antimatter Capacity | Base Build Cost (Credits) | Base Build Time (Turns) | Upkeep Cost / Turn |
 |---|---|---|---|---|---|---|---|
-| `STRIKECRAFT_WING` | 1 | 5.0 | 40 | 40.0 | 50 | 1 | 0.01 × HP |
-| `TINY` | 2 | 10.0 | 20 | 60.0 | 100 | 3 | 0.01 × HP |
-| `SMALL` | 3 | 25.0 | 50 | 80.0 | 250 | 6 | 0.01 × HP |
-| `MEDIUM` | 4 | 50.0 | 100 | 100.0 | 500 | 10 | 0.01 × HP |
-| `LARGE` | 5 | 100.0 | 200 | 150.0 | 1000 | 15 | 0.01 × HP |
-| `HUGE` | 6 | 200.0 | 400 | 200.0 | 2000 | 20 | 0.01 × HP |
+| `STRIKECRAFT_WING` | 1 | 5.0 | 40 | 40.0 | 50 | 1 | 0 (Exempt) |
+| `TINY` | 2 | 10.0 | 20 | 60.0 | 100 | 3 | 0.01 × Used Hull Points |
+| `SMALL` | 3 | 25.0 | 50 | 80.0 | 250 | 6 | 0.01 × Used Hull Points |
+| `MEDIUM` | 4 | 50.0 | 100 | 100.0 | 500 | 10 | 0.01 × Used Hull Points |
+| `LARGE` | 5 | 100.0 | 200 | 150.0 | 1000 | 15 | 0.01 × Used Hull Points |
+| `HUGE` | 6 | 200.0 | 400 | 200.0 | 2000 | 20 | 0.01 × Used Hull Points |
 
-*Note: Total unit build cost is `Base Build Cost + (Used Hull Capacity × 30 Credits)`. Total build time is `Base Build Time + (Used Hull Capacity / 10 Turns)`.*
+*Note: Total unit build cost is `Base Build Cost + (Used Hull Capacity × 30 Credits)`. Total build time is `Base Build Time + (Used Hull Capacity / 10 Turns)`. Ongoing unit upkeep cost is `0.01 Credits × Used Hull Points` per turn (Strikecraft Wings are exempt).*
 
 ---
 

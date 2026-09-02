@@ -51,6 +51,19 @@ def current_hull_used(editor) -> float:
     return total
 
 
+def predicted_upkeep(editor) -> float:
+    """Computes predicted credit upkeep cost per turn for the current editor design.
+
+    Args:
+        editor: UnitEditorWindow instance.
+
+    Returns:
+        float: Predicted upkeep cost in credits per turn.
+    """
+    from economy import calculate_unit_upkeep
+    return calculate_unit_upkeep(editor._hull_size, current_hull_used(editor))
+
+
 def capacity_text(editor) -> str:
     """Generates formatted display string comparing current used hull capacity to total max capacity.
 
