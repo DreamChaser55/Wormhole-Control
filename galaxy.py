@@ -6,7 +6,7 @@ import typing
 import math
 import random
 from dataclasses import dataclass, field
-from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3, MAX_MINEFIELDS_PER_HEX
+from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3, MAX_MINEFIELDS_PER_HEX, FieldDensity
 from utils import HexCoord
 from geometry import distance_sq, Vector, Position, Circle, hex_distance
 from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField, Minefield
@@ -206,7 +206,14 @@ class StarSystem:
             elif chosen_body_class == Storm:
                 storm_type = random.choice(list(StormType))
                 body = Storm(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name, storm_type=storm_type)
-            else:  # For Moon, Asteroid, Fields, Comet
+            elif chosen_body_class in (AsteroidField, DebrisField, IceField):
+                density = random.choices(
+                    [FieldDensity.LOW, FieldDensity.MEDIUM, FieldDensity.HIGH],
+                    weights=[0.45, 0.40, 0.15],
+                    k=1
+                )[0]
+                body = chosen_body_class(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name, density=density)
+            else:  # For Moon, Asteroids, Comet
                 body = chosen_body_class(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name)
 
             if body:

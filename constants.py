@@ -238,6 +238,23 @@ class HullSize(Enum):
 
 ADVANCED_CLOAKING_MIN_HULL: HullSize = HullSize.SMALL # Minimum hull size capable of mounting Advanced Cloak
 
+class FieldDensity(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+FIELD_DENSITY_MAX_HULL: Dict[FieldDensity, HullSize] = {
+    FieldDensity.LOW: HullSize.LARGE,
+    FieldDensity.MEDIUM: HullSize.MEDIUM,
+    FieldDensity.HIGH: HullSize.SMALL,
+}
+
+FIELD_DENSITY_PARTICLES: Dict[FieldDensity, int] = {
+    FieldDensity.LOW: 25,
+    FieldDensity.MEDIUM: 45,
+    FieldDensity.HIGH: 75,
+}
+
 class StarType(Enum):
     # Main sequence stars
     G_TYPE = auto()  # Sun-like
@@ -445,6 +462,43 @@ DEBRIS_FIELD_SPEED_MOD = 0.75
 DEBRIS_FIELD_DEFENSE_BONUS = 0.10
 DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD = 50.0
 DEBRIS_FIELD_HAZARD_DAMAGE = 2.0
+
+ASTEROID_FIELD_DENSITY_SPEED_MOD: Dict[FieldDensity, float] = {
+    FieldDensity.LOW: 0.85,
+    FieldDensity.MEDIUM: 0.75,
+    FieldDensity.HIGH: 0.65,
+}
+
+ICE_FIELD_DENSITY_SPEED_MOD: Dict[FieldDensity, float] = {
+    FieldDensity.LOW: 0.90,
+    FieldDensity.MEDIUM: 0.80,
+    FieldDensity.HIGH: 0.70,
+}
+
+ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS: Dict[FieldDensity, float] = {
+    FieldDensity.LOW: 0.05,
+    FieldDensity.MEDIUM: 0.10,
+    FieldDensity.HIGH: 0.15,
+}
+
+DEBRIS_FIELD_DENSITY_SPEED_MOD: Dict[FieldDensity, float] = {
+    FieldDensity.LOW: 0.85,
+    FieldDensity.MEDIUM: 0.75,
+    FieldDensity.HIGH: 0.65,
+}
+
+DEBRIS_FIELD_DENSITY_DEFENSE_BONUS: Dict[FieldDensity, float] = {
+    FieldDensity.LOW: 0.05,
+    FieldDensity.MEDIUM: 0.10,
+    FieldDensity.HIGH: 0.15,
+}
+
+DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE: Dict[FieldDensity, float] = {
+    FieldDensity.LOW: 1.0,
+    FieldDensity.MEDIUM: 2.0,
+    FieldDensity.HIGH: 3.0,
+}
+
 
 HYDROGEN_NEBULA_HARVEST_MULTIPLIER = 0.4
 HYDROGEN_NEBULA_AM_BURN_MOD = 0.5

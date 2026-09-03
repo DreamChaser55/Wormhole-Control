@@ -17,7 +17,10 @@ from constants import (
     CELESTIAL_FIELD_RADIUS, STORM_RADIUS, PLANET_TRAITS,
     BLACK_HOLE_INHIBITION_RADIUS, GIANT_STAR_RADIUS, GIANT_STAR_INHIBITION_RADIUS,
     ASTEROID_FIELD_SPEED_MOD, ICE_FIELD_SPEED_MOD, ICE_FIELD_BEAM_DEFENSE_BONUS, ICE_FIELD_COOLDOWN_REDUCTION,
-    DEBRIS_FIELD_SPEED_MOD, DEBRIS_FIELD_DEFENSE_BONUS, DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE
+    DEBRIS_FIELD_SPEED_MOD, DEBRIS_FIELD_DEFENSE_BONUS, DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE,
+    FieldDensity, FIELD_DENSITY_MAX_HULL, FIELD_DENSITY_PARTICLES,
+    ASTEROID_FIELD_DENSITY_SPEED_MOD, ICE_FIELD_DENSITY_SPEED_MOD, ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS,
+    DEBRIS_FIELD_DENSITY_SPEED_MOD, DEBRIS_FIELD_DENSITY_DEFENSE_BONUS, DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE
 )
 import uuid
 from datetime import datetime, timezone
@@ -548,35 +551,65 @@ class MetalAsteroid(CelestialBody):
 class DebrisField(CelestialBody):
     """Represents a field of debris providing physical cover and high-speed navigation hazard."""
     radius: float = CELESTIAL_FIELD_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str):
+    def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system)
         self.name = f"Debris Field {self.id}"
         self.radius = CELESTIAL_FIELD_RADIUS
-        self.speed_multiplier = DEBRIS_FIELD_SPEED_MOD
-        self.defense_bonus = DEBRIS_FIELD_DEFENSE_BONUS
+        self.density = density
+        self.speed_multiplier = DEBRIS_FIELD_DENSITY_SPEED_MOD.get(density, DEBRIS_FIELD_SPEED_MOD)
+        self.defense_bonus = DEBRIS_FIELD_DENSITY_DEFENSE_BONUS.get(density, DEBRIS_FIELD_DEFENSE_BONUS)
         self.hazard_speed_threshold = DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD
-        self.hazard_damage = DEBRIS_FIELD_HAZARD_DAMAGE
+        self.hazard_damage = DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE.get(density, DEBRIS_FIELD_HAZARD_DAMAGE)
+
+    @property
+    def max_hull_size(self) -> HullSize:
+        return FIELD_DENSITY_MAX_HULL.get(self.density, HullSize.MEDIUM)
+
+    def can_unit_enter(self, unit_or_hull: Any) -> bool:
+        hull = getattr(unit_or_hull, 'hull_size', unit_or_hull)
+        val = getattr(hull, 'value', 0)
+        return val <= self.max_hull_size.value
 
 class AsteroidField(CelestialBody):
     """Represents a field of asteroids providing long-range radar scattering and sublight drag."""
     radius: float = CELESTIAL_FIELD_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str):
+    def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=900.0)
         self.name = f"Asteroid Field {self.id}"
-        self.asteroid_count = 100 # Example value
+        self.density = density
+        self.asteroid_count = 50 if density == FieldDensity.LOW else (100 if density == FieldDensity.MEDIUM else 200)
         self.radius = CELESTIAL_FIELD_RADIUS
-        self.speed_multiplier = ASTEROID_FIELD_SPEED_MOD
+        self.speed_multiplier = ASTEROID_FIELD_DENSITY_SPEED_MOD.get(density, ASTEROID_FIELD_SPEED_MOD)
+
+    @property
+    def max_hull_size(self) -> HullSize:
+        return FIELD_DENSITY_MAX_HULL.get(self.density, HullSize.MEDIUM)
+
+    def can_unit_enter(self, unit_or_hull: Any) -> bool:
+        hull = getattr(unit_or_hull, 'hull_size', unit_or_hull)
+        val = getattr(hull, 'value', 0)
+        return val <= self.max_hull_size.value
 
 class IceField(CelestialBody):
     """Represents a field of ice particles providing beam defense cover, weapon cooling, and navigation drag."""
     radius: float = CELESTIAL_FIELD_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str):
+    def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
         self.name = f"Ice Field {self.id}"
+        self.density = density
         self.radius = CELESTIAL_FIELD_RADIUS
-        self.speed_multiplier = ICE_FIELD_SPEED_MOD
-        self.beam_defense_bonus = ICE_FIELD_BEAM_DEFENSE_BONUS
+        self.speed_multiplier = ICE_FIELD_DENSITY_SPEED_MOD.get(density, ICE_FIELD_SPEED_MOD)
+        self.beam_defense_bonus = ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS.get(density, ICE_FIELD_BEAM_DEFENSE_BONUS)
         self.cooldown_reduction = ICE_FIELD_COOLDOWN_REDUCTION
+
+    @property
+    def max_hull_size(self) -> HullSize:
+        return FIELD_DENSITY_MAX_HULL.get(self.density, HullSize.MEDIUM)
+
+    def can_unit_enter(self, unit_or_hull: Any) -> bool:
+        hull = getattr(unit_or_hull, 'hull_size', unit_or_hull)
+        val = getattr(hull, 'value', 0)
+        return val <= self.max_hull_size.value
 
 class Nebula(CelestialBody):
     """Represents a nebula."""
@@ -631,6 +664,40 @@ def is_position_in_magnetic_storm(
             radius = getattr(body, "radius", STORM_RADIUS)
             if distance(position, body.position) <= radius:
                 return True
+    return False
+
+
+def is_position_blocked_by_celestial_field(
+    galaxy_ref: Any,
+    system_name: Optional[str],
+    hex_coord: Optional[HexCoord],
+    position: Optional[Position],
+    unit_or_hull: Any
+) -> bool:
+    """Returns True if position in system_name and hex_coord is within a celestial field that forbids unit_or_hull."""
+    if not galaxy_ref or not system_name or hex_coord is None or position is None or unit_or_hull is None:
+        return False
+    hull = getattr(unit_or_hull, 'hull_size', unit_or_hull)
+    if not hasattr(hull, 'value'):
+        return False
+    systems = getattr(galaxy_ref, "systems", None)
+    if not isinstance(systems, dict):
+        return False
+    system = systems.get(system_name)
+    if not system:
+        return False
+    hexes = getattr(system, "hexes", None)
+    if not isinstance(hexes, dict):
+        return False
+    hex_obj = hexes.get(hex_coord)
+    if not hex_obj:
+        return False
+    for body in getattr(hex_obj, "celestial_bodies", []):
+        if isinstance(body, (AsteroidField, DebrisField, IceField)):
+            if hasattr(body, 'can_unit_enter') and not body.can_unit_enter(hull):
+                radius = getattr(body, "radius", CELESTIAL_FIELD_RADIUS)
+                if distance(position, body.position) <= radius:
+                    return True
     return False
 
 
@@ -1007,6 +1074,12 @@ class Unit(GameObject):
         g = galaxy_ref or getattr(self, "in_galaxy", None) or (getattr(self.game, "galaxy", None) if getattr(self, "game", None) else None)
         pos = position if position is not None else self.position
         return is_position_in_magnetic_storm(g, self.in_system, self.in_hex, pos)
+
+    def is_in_dense_field(self, position: Optional[Position] = None, galaxy_ref: Any = None) -> bool:
+        """Returns True if this unit (or given position) is inside a celestial field too dense for its hull."""
+        g = galaxy_ref or getattr(self, "in_galaxy", None) or (getattr(self.game, "galaxy", None) if getattr(self, "game", None) else None)
+        pos = position if position is not None else self.position
+        return is_position_blocked_by_celestial_field(g, self.in_system, self.in_hex, pos, self)
 
     def take_damage(self, amount: int, damage_type: Optional[TurretType] = None) -> None:
         """Reduces the unit's current hit points by the given amount, applying any active damage reduction, environmental cover, and defenses mitigation."""

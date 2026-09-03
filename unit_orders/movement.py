@@ -44,8 +44,8 @@ def get_hex_collision_obstacles(
     if not hex_obj:
         return []
     obstacles = []
-    from constants import HullSize, StormType, STORM_RADIUS
-    from entities import Storm
+    from constants import HullSize, StormType, STORM_RADIUS, CELESTIAL_FIELD_RADIUS
+    from entities import Storm, AsteroidField, DebrisField, IceField
     is_strikecraft = getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING
     for body in getattr(hex_obj, 'celestial_bodies', []):
         r = getattr(body, 'collision_radius', 0.0)
@@ -54,6 +54,10 @@ def get_hex_collision_obstacles(
         elif is_strikecraft and isinstance(body, Storm) and getattr(body, 'storm_type', None) == StormType.MAGNETIC:
             storm_radius = getattr(body, 'radius', STORM_RADIUS)
             obstacles.append(Circle(body.position, float(storm_radius)))
+        elif unit is not None and isinstance(body, (AsteroidField, DebrisField, IceField)):
+            if hasattr(body, 'can_unit_enter') and not body.can_unit_enter(unit):
+                field_radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
+                obstacles.append(Circle(body.position, float(field_radius)))
     return obstacles
 
 
@@ -108,10 +112,15 @@ class ReachWaypointOrder(Order):
                 return
 
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm
+            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             if self.unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, dest_system, dest_hex, dest_position):
                 self.fail("hazard_blocked")
-                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (strikecraft wings cannot enter magnetic storms).")
+                logger.debug(f"[{self.unit.name} (id:{self.order_id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (strikecraft wings cannot enter magnetic storms).")
+                return
+
+            if is_position_blocked_by_celestial_field(galaxy_ref, dest_system, dest_hex, dest_position, self.unit):
+                self.fail("hazard_blocked")
+                logger.debug(f"[{self.unit.name} (id:{self.order_id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (unit size {self.unit.hull_size.name} cannot enter dense celestial field).")
                 return
 
             obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex, unit=self.unit)
@@ -448,7 +457,7 @@ class MoveOrder(Order):
                         "FAILED (could not find an uninhibited standoff point after 128 attempts)."
                     )
         from constants import HullSize
-        from entities import is_position_in_magnetic_storm
+        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
             if is_position_in_magnetic_storm(galaxy_ref, target_unit.in_system, target_unit.in_hex, resolved_position):
                 self.fail("hazard_blocked")
@@ -457,6 +466,14 @@ class MoveOrder(Order):
                     "FAILED (strikecraft wing approach position lies inside a magnetic storm)."
                 )
                 return False
+
+        if is_position_blocked_by_celestial_field(galaxy_ref, target_unit.in_system, target_unit.in_hex, resolved_position, self.unit):
+            self.fail("hazard_blocked")
+            logger.debug(
+                f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                f"FAILED (approach position lies inside a dense celestial field impassable for {self.unit.hull_size.name})."
+            )
+            return False
 
         self.parameters["destination_system_name"] = target_unit.in_system
         self.parameters["destination_hex_coord"] = target_unit.in_hex
@@ -558,7 +575,7 @@ class MoveOrder(Order):
             resolved_position = clamp_point_to_circle(resolved_position, boundary_circle)
 
         from constants import HullSize
-        from entities import is_position_in_magnetic_storm
+        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
             if is_position_in_magnetic_storm(galaxy_ref, target_body.in_system, target_body.in_hex, resolved_position):
                 self.fail("hazard_blocked")
@@ -567,6 +584,14 @@ class MoveOrder(Order):
                     "FAILED (strikecraft wing celestial approach position lies inside a magnetic storm)."
                 )
                 return False
+
+        if is_position_blocked_by_celestial_field(galaxy_ref, target_body.in_system, target_body.in_hex, resolved_position, self.unit):
+            self.fail("hazard_blocked")
+            logger.debug(
+                f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                f"FAILED (celestial approach position lies inside a dense celestial field impassable for {self.unit.hull_size.name})."
+            )
+            return False
 
         self.parameters["destination_system_name"] = target_body.in_system
         self.parameters["destination_hex_coord"] = target_body.in_hex
@@ -735,10 +760,15 @@ class MoveOrder(Order):
             return
 
         from constants import HullSize
-        from entities import is_position_in_magnetic_storm
+        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if self.unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, dest_system, dest_hex, dest_position):
             self.fail("hazard_blocked")
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (strikecraft wings cannot enter magnetic storms).")
+            return
+
+        if is_position_blocked_by_celestial_field(galaxy_ref, dest_system, dest_hex, dest_position, self.unit):
+            self.fail("hazard_blocked")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (unit size {self.unit.hull_size.name} cannot enter dense celestial field).")
             return
 
         # If the unit starts inside an active inhibitor field, it cannot engage its hyperdrive.

@@ -219,19 +219,32 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         data.append({'type': 'label', 'text': f"Diameter: {body.diameter.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 25})
 
     elif isinstance(body, DebrisField):
-        data.append({'type': 'label', 'text': "Dense wreckage field. Sublight speed drag -25%.", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': "Tactical Cover: +10% Kinetic and Missile defense.", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': "⚠ Navigation Hazard: 2 dmg when moving speed > 50.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
+        density_str = getattr(body, 'density', None)
+        density_label = f"Density: {density_str.name.capitalize()} (Max Hull: {body.max_hull_size.name.capitalize()})" if density_str else "Debris Field"
+        data.append({'type': 'label', 'text': density_label, 'object_id': '#sidebar_info_label', 'height': 20})
+        drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.75)) * 100))
+        cover_pct = int(round(getattr(body, 'defense_bonus', 0.10) * 100))
+        data.append({'type': 'label', 'text': f"Sublight speed drag -{drag_pct}%. Cover: +{cover_pct}% Kinetic/Missile.", 'object_id': '#sidebar_info_label', 'height': 20})
+        dmg = int(getattr(body, 'hazard_damage', 2.0))
+        data.append({'type': 'label', 'text': f"⚠ Navigation Hazard: {dmg} dmg when moving speed > 50.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
 
     elif isinstance(body, AsteroidField):
+        density_str = getattr(body, 'density', None)
+        density_label = f"Density: {density_str.name.capitalize()} (Max Hull: {body.max_hull_size.name.capitalize()})" if density_str else "Asteroid Field"
+        data.append({'type': 'label', 'text': density_label, 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': f"Asteroid Count: {body.asteroid_count}", 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': "Tactical Radar Stealth: Conceals from long-range sensors.", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': "Sublight navigation drag -25%. Inhibition: 900 radius.", 'object_id': '#sidebar_info_label', 'height': 20})
+        drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.75)) * 100))
+        data.append({'type': 'label', 'text': f"Sublight navigation drag -{drag_pct}%. Inhibition: 900 radius.", 'object_id': '#sidebar_info_label', 'height': 20})
 
     elif isinstance(body, IceField):
-        data.append({'type': 'label', 'text': "Cryogenic ice particle cloud.", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': "Tactical Cover: +10% Beam defense (beam scattering).", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': "Weapon Coolant (-1 cd). Sublight drag -20%. Inhibition: 600.", 'object_id': '#sidebar_info_label', 'height': 20})
+        density_str = getattr(body, 'density', None)
+        density_label = f"Density: {density_str.name.capitalize()} (Max Hull: {body.max_hull_size.name.capitalize()})" if density_str else "Ice Field"
+        data.append({'type': 'label', 'text': density_label, 'object_id': '#sidebar_info_label', 'height': 20})
+        beam_pct = int(round(getattr(body, 'beam_defense_bonus', 0.10) * 100))
+        drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.80)) * 100))
+        data.append({'type': 'label', 'text': f"Tactical Cover: +{beam_pct}% Beam defense (scattering).", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"Weapon Coolant (-1 cd). Drag -{drag_pct}%. Inhibition: 600.", 'object_id': '#sidebar_info_label', 'height': 20})
 
     elif isinstance(body, Nebula):
         data.append({'type': 'label', 'text': f"Type: {body.nebula_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})

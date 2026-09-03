@@ -114,6 +114,25 @@ class StanceOrder(Order):
             if not in_reach_from_outside:
                 return "target is inside a magnetic storm and out of reach"
 
+        from constants import CELESTIAL_FIELD_RADIUS
+        from entities import is_position_blocked_by_celestial_field, AsteroidField, DebrisField, IceField
+        if is_position_blocked_by_celestial_field(galaxy_ref, target.in_system, target.in_hex, target.position, self.unit):
+            system = galaxy_ref.systems.get(target.in_system)
+            hex_obj = system.hexes.get(target.in_hex) if system else None
+            max_weapon_range = max((turret.range for turret in weapons.eligible_turrets_for(target)), default=0.0)
+            in_reach_from_outside = False
+            if hex_obj:
+                for body in getattr(hex_obj, "celestial_bodies", []):
+                    if isinstance(body, (AsteroidField, DebrisField, IceField)) and hasattr(body, 'can_unit_enter') and not body.can_unit_enter(self.unit):
+                        radius = getattr(body, "radius", CELESTIAL_FIELD_RADIUS)
+                        dist_to_center = distance(target.position, body.position)
+                        dist_to_edge = radius - dist_to_center
+                        if dist_to_edge < max_weapon_range:
+                            in_reach_from_outside = True
+                            break
+            if not in_reach_from_outside:
+                return "target is inside an impassable dense field and out of reach"
+
         if visibility_snapshot is None and self.unit.owner:
             from visibility import VisibilityService
             turn_num = getattr(getattr(self.unit, "game", None), "turn_number", None)

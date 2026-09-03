@@ -124,12 +124,19 @@ class OrderSystem:
             if not self.validate_engines_for_unit(unit, "move"):
                 continue
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm
+            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             if unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(self.game.galaxy, event.system_name, event.sector_coord, event.destination):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
                         f"Unit <b>{unit.name}</b> is a strikecraft wing and cannot enter magnetic storms.",
                         title="Magnetic Storm Hazard"
+                    )
+                continue
+            if is_position_blocked_by_celestial_field(self.game.galaxy, event.system_name, event.sector_coord, event.destination, unit):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> ({unit.hull_size.name}) is too large to enter this dense celestial field.",
+                        title="Field Density Restriction"
                     )
                 continue
             # Jumping to a different sector or system requires a hyperdrive.
@@ -162,12 +169,19 @@ class OrderSystem:
             if not self.validate_engines_for_unit(unit, "patrol"):
                 continue
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm
+            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             if unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(self.game.galaxy, event.system_name, event.sector_coord, event.destination):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
                         f"Unit <b>{unit.name}</b> is a strikecraft wing and cannot enter magnetic storms.",
                         title="Magnetic Storm Hazard"
+                    )
+                continue
+            if is_position_blocked_by_celestial_field(self.game.galaxy, event.system_name, event.sector_coord, event.destination, unit):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> ({unit.hull_size.name}) is too large to enter this dense celestial field.",
+                        title="Field Density Restriction"
                     )
                 continue
             if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):

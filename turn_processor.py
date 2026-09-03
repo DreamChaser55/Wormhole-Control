@@ -249,6 +249,24 @@ class TurnProcessor:
                                         curr_order.fail("hazard_blocked")
                                     logger.debug(f"   {unit.name} (strikecraft wing) halted at boundary of magnetic storm.")
                                     break
+                    if current_hex_obj:
+                        from entities import AsteroidField, DebrisField, IceField
+                        for body in current_hex_obj.celestial_bodies:
+                            if isinstance(body, (AsteroidField, DebrisField, IceField)):
+                                if hasattr(body, 'can_unit_enter') and not body.can_unit_enter(unit):
+                                    field_radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
+                                    if distance(new_pos, body.position) <= field_radius:
+                                        diff = unit.position - body.position
+                                        dist_current = diff.magnitude()
+                                        if dist_current > field_radius:
+                                            dir_vec = diff.normalize()
+                                            new_pos = body.position + dir_vec * (field_radius + 1.0)
+                                        unit.engines_component.clear_move_target()
+                                        curr_order = getattr(getattr(unit, 'commander_component', None), 'current_order', None)
+                                        if curr_order and hasattr(curr_order, 'fail'):
+                                            curr_order.fail("hazard_blocked")
+                                        logger.debug(f"   {unit.name} ({unit.hull_size.name}) halted at boundary of dense {body.name}.")
+                                        break
                     unit.position = new_pos
                     logger.debug(f"   {unit.name} moved to {unit.position} (sub-light, speed={effective_speed:.1f})")
                     
@@ -569,9 +587,10 @@ class TurnProcessor:
                             eng = getattr(unit, 'engines_component', None)
                             speed = getattr(eng, 'effective_speed', getattr(eng, 'speed', 0.0)) if eng else 0.0
                             if speed > DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD and getattr(eng, 'move_target', None) is not None:
-                                unit.take_damage(int(DEBRIS_FIELD_HAZARD_DAMAGE))
+                                dmg = getattr(body, 'hazard_damage', DEBRIS_FIELD_HAZARD_DAMAGE)
+                                unit.take_damage(int(dmg))
                                 logger.debug(f"{unit.name} suffered debris abrasion at high speed in {system.name}")
-                                hazards_encountered.append(f"{unit.name}: Debris Field abrasion (-{int(DEBRIS_FIELD_HAZARD_DAMAGE)} HP)")
+                                hazards_encountered.append(f"{unit.name}: Debris Field abrasion (-{int(dmg)} HP)")
 
                 # 3. Central Star Remnant Hazards (Black Hole / Pulsar)
                 if hex_coord == (0, 0):

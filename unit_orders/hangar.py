@@ -142,10 +142,15 @@ class DeployUnitOrder(Order):
             logger.debug(f"DEPLOY_UNIT order failed: Docked unit {docked_unit_id} not found in hangar or strikecraft bay.")
             return
 
-        from entities import is_position_in_magnetic_storm
+        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if docked_unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position):
             self.fail("hazard_blocked")
             logger.debug(f"DEPLOY_UNIT order failed: Cannot launch strikecraft wing {docked_unit.name} in a magnetic storm.")
+            return
+
+        if is_position_blocked_by_celestial_field(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position, docked_unit):
+            self.fail("hazard_blocked")
+            logger.debug(f"DEPLOY_UNIT order failed: Cannot launch unit {docked_unit.name} ({docked_unit.hull_size.name}) in a dense celestial field.")
             return
 
         success = source_component.deploy(docked_unit, galaxy_ref)
@@ -154,7 +159,8 @@ class DeployUnitOrder(Order):
             logger.debug(f"Unit {docked_unit.name} successfully deployed from {self.unit.name}.")
         else:
             in_storm = is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position)
-            self.fail("hazard_blocked" if (docked_unit.hull_size == HullSize.STRIKECRAFT_WING and in_storm) else "execution_failed")
+            in_field = is_position_blocked_by_celestial_field(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position, docked_unit)
+            self.fail("hazard_blocked" if ((docked_unit.hull_size == HullSize.STRIKECRAFT_WING and in_storm) or in_field) else "execution_failed")
             logger.debug(f"Deployment of {docked_unit.name} from {self.unit.name} failed.")
 
     def check_completion_conditions(self) -> None:

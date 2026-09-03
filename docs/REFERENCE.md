@@ -709,21 +709,28 @@ Stars anchor the gravitational and hyperspace topology of star systems:
 - **Giant Stars (Blue Giant, Red Giant)**: Massive stellar radius (600 physical collision radius) with extended hyperspace inhibition fields (3000 radius).
 
 ### 12.3 Environmental Fields & Tactical Cover
+ 
+Environmental fields (`radius = 900.0` logical units) alter tactical movement, sensors, and combat mitigation. Each field possesses a `density` parameter (`FieldDensity`: `LOW`, `MEDIUM`, `HIGH`) determining maximum allowable hull size:
+- **Hull Size Access Gating**:
+  - `FieldDensity.LOW`: Max allowable hull is `HullSize.LARGE` (blocks `HUGE` ships and stations).
+  - `FieldDensity.MEDIUM`: Max allowable hull is `HullSize.MEDIUM` (blocks `LARGE` and `HUGE`).
+  - `FieldDensity.HIGH`: Max allowable hull is `HullSize.SMALL` (blocks `MEDIUM`, `LARGE`, and `HUGE`).
+  - `STRIKECRAFT_WING` wings can enter and traverse fields of any density level.
+  - Impassable fields act as physical collision obstacles for waypoint routing, halt movement at the boundary with `"hazard_blocked"`, and block microjumps and carrier deployments.
 
-Environmental fields (`radius = 900.0` logical units) alter the tactical space:
 - **Asteroid Field**:
-  - **Tactical Radar Stealth**: Conceals all ships inside the field from enemy long-range sensor presence detection. Enemies must deploy close-range visual sensors to detect concealed units.
-  - **Navigation Resistance**: 25% sublight speed drag (`speed_multiplier = 0.75`).
+  - **Tactical Radar Stealth**: Conceals all ships inside the field from enemy long-range sensor presence detection.
+  - **Navigation Resistance**: Sublight speed drag scaled by density (LOW: 0.85x, MEDIUM: 0.75x, HIGH: 0.65x).
   - **Mining Target**: Non-mineable for raw metal (raw metal extraction is strictly exclusive to concentrated `MetalAsteroid` bodies).
   - **Inhibition**: 900 radius hyperspace inhibition field.
 - **Ice Field**:
-  - **Tactical Cover**: Dense cryogenic ice particles scatter coherent energy, providing **+10% defense mitigation against incoming beam attacks**.
-  - **Cooling Aid**: Ambient sub-zero coolant reduces weapon heat dissipation cooldowns.
-  - **Navigation**: 20% sublight speed drag (`speed_multiplier = 0.80`; strikecraft wings exempt). Hyperspace inhibition field 600 radius. Non-mineable for crystal (crystal extraction is exclusive to `Comet` bodies).
+  - **Tactical Cover**: Dense cryogenic ice particles scatter coherent energy, providing beam defense mitigation (LOW: +8%, MEDIUM: +12%, HIGH: +16%).
+  - **Cooling Aid**: Ambient sub-zero coolant reduces weapon heat dissipation cooldowns by 1 turn.
+  - **Navigation**: Sublight speed drag scaled by density (LOW: 0.90x, MEDIUM: 0.80x, HIGH: 0.70x; strikecraft wings exempt). Hyperspace inhibition field 600 radius. Non-mineable for crystal.
 - **Debris Field**:
-  - **Tactical Cover**: Dense wreckage fragments intercept ballistic projectiles, providing **+10% defense mitigation against incoming kinetic (Mass Driver) and missile attacks**.
-  - **Navigation Hazard**: Moving at high sublight velocities (`speed > 50.0`) through the debris causes abrasive hull damage (2 HP damage per turn; strikecraft wings exempt).
-  - **Navigation Drag**: 25% sublight speed drag (`speed_multiplier = 0.75`; strikecraft wings exempt). Non-mineable.
+  - **Tactical Cover**: Dense wreckage fragments intercept ballistic projectiles, providing kinetic and missile defense mitigation (LOW: +8%, MEDIUM: +12%, HIGH: +16%).
+  - **Navigation Hazard**: Moving at high sublight velocities (`speed > 50.0`) through the debris causes abrasive hull damage scaled by density (LOW: 1 HP, MEDIUM: 2 HP, HIGH: 3 HP per turn; strikecraft wings exempt).
+  - **Navigation Drag**: Sublight speed drag scaled by density (LOW: 0.85x, MEDIUM: 0.75x, HIGH: 0.65x; strikecraft wings exempt). Non-mineable.
 
 ### 12.4 Nebulae & Space Storm Hazards
 

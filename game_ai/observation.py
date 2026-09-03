@@ -322,6 +322,9 @@ def _body_view(
             enum_val = getattr(body, enum_attr)
             if enum_val is not None:
                 data["subtype"] = _enum_value(enum_val)
+    if hasattr(body, "density") and body.density is not None:
+        data["density"] = _enum_value(body.density)
+        data["max_hull_size"] = getattr(body.max_hull_size, "name", str(body.max_hull_size))
     if hasattr(body, "exit_system_name"):
         data["exit_system_name"] = str(body.exit_system_name)
     return data

@@ -26,7 +26,7 @@ from game_ai.runtime import (
     normalize_repair_retries,
 )
 from constants import (
-    HullSize, StarType, PlanetType, NebulaType, StormType, HULL_CAPACITIES, HIT_POINTS
+    HullSize, StarType, PlanetType, NebulaType, StormType, HULL_CAPACITIES, HIT_POINTS, FieldDensity
 )
 from entities import (
     Player, GameObject, CelestialBody, Star, Planet, Moon, ColonizableAsteroid,
@@ -145,8 +145,11 @@ def serialize_celestial_body(body: CelestialBody) -> dict:
         data["metal_yield"] = body.metal_yield
     elif isinstance(body, Comet):
         data["crystal_yield"] = body.crystal_yield
-    elif isinstance(body, AsteroidField):
-        data["asteroid_count"] = body.asteroid_count
+    elif isinstance(body, (AsteroidField, DebrisField, IceField)):
+        if hasattr(body, 'density') and body.density is not None:
+            data["density"] = body.density.name
+        if isinstance(body, AsteroidField):
+            data["asteroid_count"] = body.asteroid_count
     elif isinstance(body, Nebula):
         data["nebula_type"] = body.nebula_type.name
     elif isinstance(body, Storm):
@@ -550,9 +553,11 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player]) -> 
     elif cls == Comet:
         body = Comet(in_hex=in_hex, in_system=in_system)
         body.crystal_yield = data.get("crystal_yield", 10.0)
-    elif cls == AsteroidField:
-        body = AsteroidField(in_hex=in_hex, in_system=in_system)
-        body.asteroid_count = data.get("asteroid_count", 100)
+    elif cls in (AsteroidField, DebrisField, IceField):
+        density = FieldDensity[data.get("density", "MEDIUM")]
+        body = cls(in_hex=in_hex, in_system=in_system, density=density)
+        if cls == AsteroidField:
+            body.asteroid_count = data.get("asteroid_count", 100)
     elif cls == Nebula:
         nebula_type = NebulaType[data.get("nebula_type", "EMISSION")]
         body = Nebula(in_hex=in_hex, in_system=in_system, nebula_type=nebula_type)

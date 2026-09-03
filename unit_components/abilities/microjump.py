@@ -85,6 +85,17 @@ class MicrojumpAbility(AbilityInstance):
                         )
                     return False
 
+        from entities import is_position_blocked_by_celestial_field
+        if is_position_blocked_by_celestial_field(galaxy, unit.in_system, unit.in_hex, target_position, unit):
+            logger.debug(f"[{unit.name}] Microjump failed: Destination position is inside an impassable dense celestial field.")
+            gui = getattr(getattr(unit, 'game', None), 'gui', None)
+            if gui:
+                gui.show_warning_dialog(
+                    f"Cannot microjump unit <b>{unit.name}</b>: Destination is inside an impassable celestial field.",
+                    title="Microjump Failed"
+                )
+            return False
+
         # Clamp position to sector boundary if needed
         clamped_pos = clamp_point_to_circle(target_position, Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL))
 

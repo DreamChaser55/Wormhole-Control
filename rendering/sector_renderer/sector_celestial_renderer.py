@@ -6,7 +6,7 @@ from constants import (
     STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS,
     STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER, NEBULA_COLORS, STORM_COLORS,
     WHITE, YELLOW, CYAN, PURPLE, RED, STAR_COLORS, MOON_RADIUS, ASTEROID_RADIUS,
-    COMET_RADIUS, CELESTIAL_FIELD_RADIUS, PlanetType
+    COMET_RADIUS, CELESTIAL_FIELD_RADIUS, PlanetType, FIELD_DENSITY_PARTICLES
 )
 from entities import (
     Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, 
@@ -138,8 +138,12 @@ class SectorCelestialRenderer:
                 smooth=True,
             )
 
-    def draw_celestial_field(self, field, pos_px, base_color, num_particles=40):
-        num_objects = num_particles
+    def draw_celestial_field(self, field, pos_px, base_color, num_particles=None):
+        if num_particles is None:
+            density = getattr(field, 'density', None)
+            num_objects = FIELD_DENSITY_PARTICLES.get(density, 45) if density else 40
+        else:
+            num_objects = num_particles
         field_radius = CELESTIAL_FIELD_RADIUS
         time_ms = _sr().pygame.time.get_ticks()
         zoom = self.game.sector_zoom
@@ -329,11 +333,15 @@ class SectorCelestialRenderer:
             obj_radius_logical = CELESTIAL_FIELD_RADIUS
             should_draw_circle = False
         elif isinstance(obj, IceField):
-            self.draw_celestial_field(obj, obj_pixel_pos, (173, 216, 230), num_particles=20)
+            density = getattr(obj, 'density', None)
+            base_count = int(round(FIELD_DENSITY_PARTICLES.get(density, 45) * 0.5))
+            self.draw_celestial_field(obj, obj_pixel_pos, (173, 216, 230), num_particles=base_count)
             obj_radius_logical = CELESTIAL_FIELD_RADIUS
             should_draw_circle = False
         elif isinstance(obj, DebrisField):
-            self.draw_celestial_field(obj, obj_pixel_pos, (112, 128, 144), num_particles=15)
+            density = getattr(obj, 'density', None)
+            base_count = int(round(FIELD_DENSITY_PARTICLES.get(density, 45) * 0.4))
+            self.draw_celestial_field(obj, obj_pixel_pos, (112, 128, 144), num_particles=base_count)
             obj_radius_logical = CELESTIAL_FIELD_RADIUS
             should_draw_circle = False
         elif isinstance(obj, Nebula):

@@ -112,13 +112,21 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Orbital Defense**: Deploy tactical defense modules in colonized sectors to project an area-of-effect attack/defense buff aura for friendly ships in radius, supported up to colony population limits with additive stacking.
 
 ### Celestial Environments & Tactical Cover
-- **Tactical Cover**:
-  - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting **+10% defense mitigation against beam attacks**.
-  - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting **+10% defense mitigation against kinetic and missile attacks**.
+- **Celestial Field Density**:
+  - Asteroid Fields, Ice Fields, and Debris Fields feature varying **Density** levels:
+    - **Low Density**: Passable by hulls up to `LARGE` (blocks `HUGE` ships and stations).
+    - **Medium Density**: Passable by hulls up to `MEDIUM` (blocks `LARGE` and `HUGE`).
+    - **High Density**: Passable only by `SMALL`, `TINY`, and `STRIKECRAFT_WING` units (blocks `MEDIUM`, `LARGE`, and `HUGE`).
+    - Strikecraft Wings can traverse fields of any density level.
+  - Impassable fields act as physical obstacles for pathfinding and collision avoidance, blocking movement orders, microjumps, and carrier launches.
+- **Tactical Cover & Field Effects**:
+  - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting defense mitigation against beam attacks (+8% Low, +12% Medium, +16% High), weapon cooling, and sublight speed drag.
+  - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting defense mitigation against kinetic and missile attacks (+8% Low, +12% Medium, +16% High), sublight drag, and high-speed navigation abrasion damage scaled by field density.
+  - **Asteroid Fields**: Dense asteroid fields scatter long-range radar sensors and project hyperspace inhibition (900 radius), with sublight drag scaled by density.
 - **Environmental Hazards**:
   - **Black Holes**: Extreme gravitational tidal distortion inflicts 15 hull damage per turn within 750 radius of the singularity.
   - **Pulsars**: Sweeping magnetic radiation pulses drain 5% of a ship's current antimatter reserves per turn.
-  - **Debris Field Abrasion**: Moving at high sublight velocities (speed > 50) through debris clouds inflicts 2 damage per turn (strikecraft wings are exempt).
+  - **Debris Field Abrasion**: Moving at high sublight velocities (speed > 50) through debris clouds inflicts damage per turn scaled by density (1 Low, 2 Medium, 3 High; strikecraft wings are exempt).
   - **Space Storms**: Plasma storms inflict 8 thermal damage per turn; Magnetic storms drain 6 antimatter per turn and jam long-range radar sensors (strikecraft wings are banned from entering or launching in magnetic storms); Radiation storms inflict 4 component damage per turn and degrade weapon accuracy.
 
 ---

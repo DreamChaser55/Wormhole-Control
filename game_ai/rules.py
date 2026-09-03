@@ -409,7 +409,7 @@ def command_guidance(
             legal.add("construct")
 
     if "deploy_unit" in supported:
-        from entities import is_position_in_magnetic_storm, HullSize
+        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field, HullSize
         galaxy_ref = getattr(getattr(unit, "game", None), "galaxy", None)
         in_mag_storm = is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, unit.position)
         docked = []
@@ -417,6 +417,8 @@ def command_guidance(
             component = getattr(unit, component_name, None)
             for du in (getattr(component, "docked_units", []) or []):
                 if in_mag_storm and getattr(du, "hull_size", None) == HullSize.STRIKECRAFT_WING:
+                    continue
+                if is_position_blocked_by_celestial_field(galaxy_ref, unit.in_system, unit.in_hex, unit.position, du):
                     continue
                 docked.append(du)
         target_ids = sorted({docked_unit.id for docked_unit in docked})

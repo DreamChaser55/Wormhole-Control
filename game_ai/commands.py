@@ -1383,32 +1383,41 @@ class CommandGateway:
     ) -> None:
         if command.type == "move":
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm
+            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            dest_pos = self._destination(command)
             if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
-                dest_pos = self._destination(command)
                 if is_position_in_magnetic_storm(self.game.galaxy, command.system_name, tuple(command.hex_coord), dest_pos):
                     raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
+            if is_position_blocked_by_celestial_field(self.game.galaxy, command.system_name, tuple(command.hex_coord), dest_pos, unit):
+                raise _Rejected("hazard_blocked", f"Unit '{unit.name}' ({unit.hull_size.name}) is too large to enter this dense celestial field.")
         elif command.type == "patrol":
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm
-            if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
-                if command.waypoints:
-                    for wp in self._waypoints(command.waypoints):
+            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            if command.waypoints:
+                for wp in self._waypoints(command.waypoints):
+                    if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
                         if is_position_in_magnetic_storm(self.game.galaxy, wp["system_name"], wp["hex_coord"], wp["position"]):
                             raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
-                elif command.system_name is not None and command.position is not None:
-                    dest_pos = self._destination(command)
+                    if is_position_blocked_by_celestial_field(self.game.galaxy, wp["system_name"], wp["hex_coord"], wp["position"], unit):
+                        raise _Rejected("hazard_blocked", f"Unit '{unit.name}' ({unit.hull_size.name}) is too large to enter this dense celestial field.")
+            elif command.system_name is not None and command.position is not None:
+                dest_pos = self._destination(command)
+                if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
                     if is_position_in_magnetic_storm(self.game.galaxy, command.system_name, tuple(command.hex_coord), dest_pos):
                         raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
+                if is_position_blocked_by_celestial_field(self.game.galaxy, command.system_name, tuple(command.hex_coord), dest_pos, unit):
+                    raise _Rejected("hazard_blocked", f"Unit '{unit.name}' ({unit.hull_size.name}) is too large to enter this dense celestial field.")
         elif command.type == "defend":
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm
-            if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
-                if command.position is not None and command.system_name is not None and command.hex_coord is not None:
-                    from geometry import Position
-                    defend_pos = Position(*command.position)
+            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            if command.position is not None and command.system_name is not None and command.hex_coord is not None:
+                from geometry import Position
+                defend_pos = Position(*command.position)
+                if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
                     if is_position_in_magnetic_storm(self.game.galaxy, command.system_name, tuple(command.hex_coord), defend_pos):
                         raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
+                if is_position_blocked_by_celestial_field(self.game.galaxy, command.system_name, tuple(command.hex_coord), defend_pos, unit):
+                    raise _Rejected("hazard_blocked", f"Unit '{unit.name}' ({unit.hull_size.name}) is too large to enter this dense celestial field.")
         elif command.type == "attack":
             target = self._visible_unit(unit.owner, command.target_id)
             check = getattr(unit.weapons_component, "eligible_turrets_for", None)

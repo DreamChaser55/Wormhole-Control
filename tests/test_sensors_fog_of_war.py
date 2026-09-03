@@ -15,6 +15,8 @@ def test_setup():
 
     galaxy = Galaxy()
     system = StarSystem(name="Alpha", position=Position(0, 0), radius=3)
+    for h in system.hexes.values():
+        h.celestial_bodies.clear()
     galaxy.systems = {"Alpha": system}
 
     return p1, p2, galaxy, system
