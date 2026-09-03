@@ -63,6 +63,8 @@ LOGICAL_GALAXY_SIZE = Vector(2560.0, 1440.0)
 # System view parameters
 SYSTEM_CENTER_IN_PX = Position(SCREEN_RES.x // 2, SCREEN_RES.y // 2) # Center of system view hex grid in pixels
 HEX_SIZE = int(25 * (SCREEN_RES.y / 720.0)) # in pixels
+SYSTEM_ZOOM_MIN = 0.8
+SYSTEM_ZOOM_MAX = 15.0
 
 # Sector view circle parameters
 SECTOR_CIRCLE_CENTER_IN_PX = Position(SCREEN_RES.x // 2, SCREEN_RES.y // 2) # Center of sector view circle in pixels

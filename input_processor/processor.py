@@ -49,6 +49,15 @@ class InputProcessor:
 
             if gui_action:
                 self.game.handle_gui_action(gui_action)
+                if (
+                    event.type == pygame.MOUSEBUTTONUP
+                    and getattr(event, 'button', None) == 2
+                    and getattr(self.game, 'is_dragging_camera', False)
+                ):
+                    handle_mouse_button_up(
+                        self.game, self.gui, mouse_pos, event,
+                        self.handle_mouse_click, allow_click=False,
+                    )
                 if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION, pygame.MOUSEWHEEL]:
                     continue
 
@@ -70,7 +79,9 @@ class InputProcessor:
                 )
 
             elif event.type == pygame.MOUSEBUTTONUP:
-                handle_mouse_button_up(self.game, mouse_pos, event)
+                handle_mouse_button_up(
+                    self.game, self.gui, mouse_pos, event, self.handle_mouse_click
+                )
 
             elif event.type == pygame.MOUSEMOTION:
                 handle_mouse_motion(self.game, mouse_pos)

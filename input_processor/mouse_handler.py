@@ -15,6 +15,8 @@ from input_processor.hover_tracker import get_units_under_mouse
 
 logger = logging.getLogger(__name__)
 
+CAMERA_DRAG_THRESHOLD_PX = 5
+
 
 def is_pixel_in_sector(*args, **kwargs):
     mod = sys.modules.get('input_processor')
@@ -56,14 +58,25 @@ def handle_mouse_button_down(game, gui, event: pygame.event.Event, mouse_pos: Po
         click_handler_fn (callable): Callback to dispatch mouse click logic.
     """
     clicked_point = mouse_pos
-    if event.button == 1 and game.view_mode == 'sector' and not gui_action:
+    pointer_over_gui = gui.is_mouse_over_gui_panels(clicked_point)
+    defer_click = False
+    if event.button == 1 and game.view_mode == 'sector' and not gui_action and not pointer_over_gui:
         game.is_dragging_selection_box = True
         game.selection_box_start_pos = clicked_point
-    elif event.button == 2 and game.view_mode == 'sector':
+    elif (
+        event.button == 2
+        and game.view_mode in ('system', 'sector')
+        and not gui_action
+        and not pointer_over_gui
+    ):
         game.is_dragging_camera = True
+        game.camera_drag_start_pos = clicked_point
         game.camera_drag_last_pos = clicked_point
+        game.camera_drag_view = game.view_mode
+        game.camera_drag_exceeded_threshold = game.view_mode == 'sector'
+        defer_click = game.view_mode == 'system'
 
-    if not gui_action:
+    if not gui_action and not pointer_over_gui and not defer_click:
         if not gui.is_mouse_over_context_menu(clicked_point):
             click_handler_fn(event.button, clicked_point)
             if event.button == 1:
@@ -75,16 +88,35 @@ def handle_mouse_button_down(game, gui, event: pygame.event.Event, mouse_pos: Po
                 gui.close_context_menu()
 
 
-def handle_mouse_button_up(game, mouse_pos: Position, event: pygame.event.Event) -> None:
+def handle_mouse_button_up(game, gui, mouse_pos: Position, event: pygame.event.Event,
+                           click_handler_fn: typing.Callable[[int, Position], None],
+                           allow_click: bool = True) -> None:
     """Handles MOUSEBUTTONUP events including camera drag release and box selection resolution.
 
     Args:
         game: Target Game instance.
+        gui: Target GUI handler.
         mouse_pos (Position): Current mouse screen coordinates.
         event (pygame.event.Event): Pygame mouse event.
+        click_handler_fn (callable): Callback used for a deferred system-view middle click.
+        allow_click (bool): Whether a stationary release may dispatch that click.
     """
     if event.button == 2 and getattr(game, 'is_dragging_camera', False):
+        drag_view = getattr(game, 'camera_drag_view', None)
+        was_drag = getattr(game, 'camera_drag_exceeded_threshold', False)
         game.is_dragging_camera = False
+        game.camera_drag_start_pos = None
+        game.camera_drag_last_pos = None
+        game.camera_drag_view = None
+        game.camera_drag_exceeded_threshold = False
+        if (
+            allow_click
+            and drag_view == 'system'
+            and not was_drag
+            and game.view_mode == 'system'
+            and not gui.is_mouse_over_gui_panels(mouse_pos)
+        ):
+            click_handler_fn(2, mouse_pos)
     elif event.button == 1 and game.is_dragging_selection_box:
         game.is_dragging_selection_box = False
         start_pos = game.selection_box_start_pos
@@ -133,20 +165,41 @@ def handle_mouse_button_up(game, mouse_pos: Position, event: pygame.event.Event)
 
 
 def handle_mouse_motion(game, mouse_pos: Position) -> None:
-    """Updates sector view camera pan offset during middle-click drag.
+    """Update the active tactical camera during a middle-click drag.
 
     Args:
         game: Target Game instance.
         mouse_pos (Position): Current mouse screen coordinates.
     """
-    if game.view_mode == 'sector' and getattr(game, 'is_dragging_camera', False):
-        dx = mouse_pos.x - game.camera_drag_last_pos.x
-        dy = mouse_pos.y - game.camera_drag_last_pos.y
-        game.sector_pan_offset.x += dx
-        game.sector_pan_offset.y += dy
-        if getattr(game, 'zoom_anchor_pixel', None) is not None:
-            game.zoom_anchor_pixel.x += dx
-            game.zoom_anchor_pixel.y += dy
+    drag_view = getattr(game, 'camera_drag_view', None)
+    if (
+        getattr(game, 'is_dragging_camera', False)
+        and drag_view in ('system', 'sector')
+        and game.view_mode == drag_view
+    ):
+        if drag_view == 'system' and not getattr(game, 'camera_drag_exceeded_threshold', False):
+            start_pos = game.camera_drag_start_pos
+            if distance_sq(start_pos, mouse_pos) < CAMERA_DRAG_THRESHOLD_PX ** 2:
+                return
+            game.camera_drag_exceeded_threshold = True
+            dx = mouse_pos.x - start_pos.x
+            dy = mouse_pos.y - start_pos.y
+        else:
+            dx = mouse_pos.x - game.camera_drag_last_pos.x
+            dy = mouse_pos.y - game.camera_drag_last_pos.y
+
+        if drag_view == 'system':
+            pan_offset = game.system_pan_offset
+            anchor_pixel = getattr(game, 'system_zoom_anchor_pixel', None)
+        else:
+            pan_offset = game.sector_pan_offset
+            anchor_pixel = getattr(game, 'zoom_anchor_pixel', None)
+
+        pan_offset.x += dx
+        pan_offset.y += dy
+        if anchor_pixel is not None:
+            anchor_pixel.x += dx
+            anchor_pixel.y += dy
         game.camera_drag_last_pos = mouse_pos
 
 
@@ -236,6 +289,7 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
             elif is_middle_click:
                 game.view_mode = 'system'
                 game.current_system_name = clicked_system_name
+                game.reset_system_camera()
                 game.sidebar_needs_update = True
                 logger.debug(f"Entering system view: {system_obj.name}")
                 game.update_view_specific_labels()

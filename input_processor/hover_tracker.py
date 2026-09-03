@@ -72,7 +72,9 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
             return
         system = game.galaxy.systems[game.current_system_name]
         if system:
-            hover_hex = pixel_to_hex(mouse_pos.x, mouse_pos.y)
+            zoom = game.system_zoom if isinstance(getattr(game, 'system_zoom', 1.0), (int, float)) else 1.0
+            pan_offset = game.system_pan_offset if isinstance(getattr(game, 'system_pan_offset', None), Position) else Position(0, 0)
+            hover_hex = pixel_to_hex(mouse_pos.x, mouse_pos.y, zoom, pan_offset)
             if hover_hex in system.hexes:
                 game.system_view_mouse_hover_hex = hover_hex
 

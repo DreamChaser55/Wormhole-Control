@@ -12,7 +12,7 @@ Wormhole Control/
 ├── game_logging.py                # Custom application logging formatter and bootstrap
 ├── game_settings.py               # GameSettings dataclass, PlayerConfig, and campaign bootstrap parameters
 ├── game_setup.py                  # Initial world generation and starting fleet placement
-├── game_camera.py                 # Sector view camera math, pan boundaries, and smooth zoom
+├── game_camera.py                 # System/sector camera framing, panning, and smooth zoom
 ├── economy.py                     # Player credit income and fleet upkeep calculations
 ├── entities.py                    # Core game objects (Player, Unit, CelestialBody, Minefield, etc.)
 ├── events.py                      # Central event bus and game event definitions
@@ -34,7 +34,7 @@ Wormhole Control/
 ├── visibility.py                  # Sensor detection algorithms and dynamic fog of war tracking
 ├── constants.py                   # Global constants, enums, colors, and resolution config
 ├── geometry.py                    # Vector, Position, Circle geometry, intersection math, and avoidance pathfinding
-├── hexgrid_utils.py               # Hexagonal grid math and axial coordinate utilities
+├── hexgrid_utils.py               # Hex-grid math and camera-aware axial/screen transforms
 ├── pathfinding.py                 # A* pathfinding and navigation algorithms
 ├── renderer.py                    # Top-level graphics rendering orchestrator
 ├── sector_utils.py                # Sector coordinate conversion and rendering math
@@ -448,7 +448,7 @@ restricted by the selected stance boundary.
 - **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, conceals units inside nebulae from long-range sensors, and persists last-known sector intel per player.
 - **Diplomacy & Team System (`entities.py`, `game_settings.py`, `game_setup.py`, `save_manager.py`)**: Manages static multi-team configurations established during game setup. Evaluates relations (`is_allied_with`, `is_enemy_of`) to govern sensor sharing, tactical combat engagement, logistics sharing, area buffs, friendly fire prevention, and covert espionage targeting.
 - **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Real-time geometric pathfinding preventing sub-light vessels from clipping into solid celestial bodies (stars, planets, moons, asteroids, comets). Uses parametric line-circle intersection analysis, dual-tangent escape waypoint generation, and recursive obstacle resolution to steer ships safely around physical bodies with a 50.0-logical-unit clearance margin, while permitting unhindered landings and departures.
-- **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations.
+- **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations. System and sector views maintain independent transient cameras with cursor-anchored smooth zoom, middle-drag and arrow-key panning; newly opened systems auto-fit inside the HUD-free gameplay rectangle.
 - **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
 
 ---

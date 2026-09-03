@@ -6,18 +6,31 @@ from utils import HexCoord
 
 # --- Hex Grid Utility Functions ---
 
-def hex_to_pixel(q: int, r: int) -> Position:
-    """Converts axial hex coordinates (q, r) to pixel coordinates (x, y), relative to system center. Formula for a grid of pointy-top hexagons.
+def hex_to_pixel(q: int, r: int, zoom: float = 1.0,
+                 pan_offset: typing.Optional[Position] = None) -> Position:
+    """Convert axial coordinates to system-view screen coordinates.
+
+    ``zoom`` and ``pan_offset`` are optional so gameplay callers that only need
+    the original, untransformed hex geometry retain their existing behaviour.
     """
+    if pan_offset is None:
+        pan_offset = Position(0, 0)
     x = HEX_SIZE * (SQRT3 * q + SQRT3 / 2. * r)
     y = HEX_SIZE * (3. / 2. * r)
-    return Position(int(x + SYSTEM_CENTER_IN_PX.x), int(y + SYSTEM_CENTER_IN_PX.y))
+    return Position(
+        int(SYSTEM_CENTER_IN_PX.x + pan_offset.x + x * zoom),
+        int(SYSTEM_CENTER_IN_PX.y + pan_offset.y + y * zoom),
+    )
 
-def pixel_to_hex(x: int, y: int) -> HexCoord:
-    """Converts pixel coordinates (x, y) to approximate axial hex coordinates (q, r), relative to system center. Formula for a grid of pointy-top hexagons.
-    """
-    x_adj = float(x) - SYSTEM_CENTER_IN_PX.x
-    y_adj = float(y) - SYSTEM_CENTER_IN_PX.y
+def pixel_to_hex(x: int, y: int, zoom: float = 1.0,
+                 pan_offset: typing.Optional[Position] = None) -> HexCoord:
+    """Convert system-view screen coordinates to the nearest axial hex."""
+    if pan_offset is None:
+        pan_offset = Position(0, 0)
+    if not isinstance(zoom, (int, float)) or zoom <= 0:
+        zoom = 1.0
+    x_adj = (float(x) - SYSTEM_CENTER_IN_PX.x - pan_offset.x) / zoom
+    y_adj = (float(y) - SYSTEM_CENTER_IN_PX.y - pan_offset.y) / zoom
     q_approx = (SQRT3 / 3. * x_adj - 1. / 3. * y_adj) / HEX_SIZE
     r_approx = (2. / 3. * y_adj) / HEX_SIZE
     return hex_round(q_approx, r_approx)
@@ -43,15 +56,17 @@ def hex_round(q_frac: float, r_frac: float) -> HexCoord:
 
     return HexCoord(q, r)
 
-def get_hex_vertices(q: int, r: int) -> typing.List[Position]: # Returns a list of pixel Positions
-    """Calculates the 6 vertices of a hexagon at axial coordinates (q, r), relative to system center."""
-    center_point = hex_to_pixel(q, r)
+def get_hex_vertices(q: int, r: int, zoom: float = 1.0,
+                     pan_offset: typing.Optional[Position] = None) -> typing.List[Position]:
+    """Calculate the six transformed vertices of a system-view hex."""
+    center_point = hex_to_pixel(q, r, zoom, pan_offset)
+    radius = HEX_SIZE * zoom
     vertices = []
     for i in range(6):
         angle_deg = 60 * i + 30
         angle_rad = math.pi / 180 * angle_deg
-        vertices.append(Position(int(center_point.x + HEX_SIZE * math.cos(angle_rad)),
-                              int(center_point.y + HEX_SIZE * math.sin(angle_rad))))
+        vertices.append(Position(int(center_point.x + radius * math.cos(angle_rad)),
+                              int(center_point.y + radius * math.sin(angle_rad))))
     return vertices
 
 def hex_distance(q1: int, r1: int, q2: int, r2: int) -> int:

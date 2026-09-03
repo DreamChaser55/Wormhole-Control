@@ -144,6 +144,21 @@ class Game:
         self.zoom_anchor_pixel = None
         self.zoom_anchor_logical = None
 
+        # System View Camera variables (independent from the sector camera)
+        self.system_zoom = 1.0
+        self.system_pan_offset = Position(0, 0)
+        self.system_target_zoom = 1.0
+        self.system_zoom_anchor_pixel = None
+        self.system_zoom_anchor_logical = None
+        self.system_camera_system_name: typing.Optional[str] = None
+
+        # Shared mouse-drag gesture state for the tactical cameras
+        self.is_dragging_camera = False
+        self.camera_drag_start_pos = None
+        self.camera_drag_last_pos = None
+        self.camera_drag_view: typing.Optional[str] = None
+        self.camera_drag_exceeded_threshold = False
+
     @property
     def current_player(self) -> typing.Optional[Player]:
         """Returns the currently active Player object, or None if players list is empty."""
@@ -154,6 +169,14 @@ class Game:
     def reset_sector_camera(self):
         """Resets the sector camera zoom and pan offset."""
         game_camera.reset_sector_camera(self)
+
+    def reset_system_camera(self):
+        """Centers and auto-fits the current system camera."""
+        game_camera.reset_system_camera(self)
+
+    def ensure_system_camera(self):
+        """Initializes the current system camera if it has not been framed."""
+        game_camera.ensure_system_camera(self)
 
     def start_new_game(self, settings=None):
         """Initializes a new game when the New Game button is clicked."""
@@ -205,6 +228,10 @@ class Game:
         """Smoothly interpolates the sector camera zoom and pan offset."""
         game_camera.update_sector_camera(self, dt)
 
+    def update_system_camera(self, dt: float):
+        """Smoothly interpolates the system camera zoom and pan offset."""
+        game_camera.update_system_camera(self, dt)
+
     def recompute_visibility(self):
         """Recomputes the fog-of-war visibility snapshot for the active human/spectator player."""
         if self.game_started and self.galaxy and self.players:
@@ -255,8 +282,9 @@ class Game:
         if self.game_started and (self.visibility_dirty or self.visibility is None):
             self.recompute_visibility()
 
-        # Smooth sector camera zoom
+        # Smooth tactical camera zoom
         self.update_sector_camera(time_delta)
+        self.update_system_camera(time_delta)
 
         # Update the GUI Handler
         self.gui.update(time_delta)
@@ -367,7 +395,7 @@ class Game:
         self.renderer.draw()
 
     def handle_mouse_wheel(self, scroll_y: int):
-        """Processes mouse scroll wheel input for smooth sector camera zooming."""
+        """Processes mouse scroll wheel input for tactical camera zooming."""
         game_camera.handle_mouse_wheel(self, scroll_y)
 
     def run(self):
@@ -434,6 +462,9 @@ class Game:
 
         if success:
             self.gui.show_game_ui()
+            self.system_camera_system_name = None
+            if self.view_mode == 'system':
+                self.reset_system_camera()
             self.update_view_specific_labels()
             self.update_side_bar_content()
             self.update_player_turn_display()

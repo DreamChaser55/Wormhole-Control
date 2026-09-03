@@ -17,6 +17,7 @@ from entities import (
 )
 from visibility import is_minefield_visible
 from galaxy import Hex
+from geometry import Position
 
 
 class SystemViewRenderer:
@@ -25,6 +26,29 @@ class SystemViewRenderer:
         self.screen = game_instance.screen
         self.overlay_surface = game_instance.overlay_surface
         self._circle_surface_cache = {}
+
+    def _system_zoom(self):
+        zoom = getattr(self.game, 'system_zoom', 1.0)
+        return zoom if isinstance(zoom, (int, float)) else 1.0
+
+    def _system_pan_offset(self):
+        pan_offset = getattr(self.game, 'system_pan_offset', None)
+        return pan_offset if isinstance(pan_offset, Position) else Position(0, 0)
+
+    def _hex_to_pixel(self, q, r):
+        try:
+            return hex_to_pixel(q, r, self._system_zoom(), self._system_pan_offset())
+        except TypeError:
+            return hex_to_pixel(q, r)
+
+    def _hex_vertices(self, q, r):
+        try:
+            return get_hex_vertices(q, r, self._system_zoom(), self._system_pan_offset())
+        except TypeError:
+            return get_hex_vertices(q, r)
+
+    def _map_scale(self):
+        return (self.screen.get_height() / 720.0) * self._system_zoom()
 
     def _is_circle_off_screen(self, center_px, radius_px):
         w, h = self.screen.get_size()
@@ -59,7 +83,7 @@ class SystemViewRenderer:
         # 1. Draw Hex Grid Lines (and Enemy Presence Fill)
         for hex_coord, hex_obj in system.hexes.items():
              q, r = hex_coord
-             hex_points_objects = get_hex_vertices(q, r)
+             hex_points_objects = self._hex_vertices(q, r)
              hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
 
              has_hidden_enemy = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
@@ -76,15 +100,15 @@ class SystemViewRenderer:
                     q_w, r_w = hex_coord
                     if q_w == 0 and r_w == 0:
                         continue
-                    center_px = hex_to_pixel(0, 0)
-                    wh_px = hex_to_pixel(q_w, r_w)
+                    center_px = self._hex_to_pixel(0, 0)
+                    wh_px = self._hex_to_pixel(q_w, r_w)
                     dx = wh_px.x - center_px.x
                     dy = wh_px.y - center_px.y
                     dist = math.hypot(dx, dy)
                     if dist > 0:
                         ux = dx / dist
                         uy = dy / dist
-                        edge_radius = (system.radius + 0.5) * SQRT3 * HEX_SIZE
+                        edge_radius = (system.radius + 0.5) * SQRT3 * HEX_SIZE * self._system_zoom()
                         end_x = int(center_px.x + edge_radius * ux)
                         end_y = int(center_px.y + edge_radius * uy)
                         pygame.draw.line(self.screen, WORMHOLE_LINE_COLOR, (wh_px.x, wh_px.y), (end_x, end_y), 2)
@@ -112,10 +136,10 @@ class SystemViewRenderer:
         # 2. Draw Contents of Hexes (Stars, Planets, Units)
         for hex_coord, hex_obj in system.hexes.items():
             q, r = hex_coord
-            hex_center_pixel = hex_to_pixel(q, r)
+            hex_center_pixel = self._hex_to_pixel(q, r)
 
             # Draw celestial bodies
-            scale_val = self.screen.get_height() / 720.0
+            scale_val = self._map_scale()
             for body in hex_obj.celestial_bodies:
                 body_color = DARK_GRAY
                 body_radius = int(3 * scale_val)
@@ -300,7 +324,7 @@ class SystemViewRenderer:
 
         if self.game.system_view_mouse_hover_hex:
             q, r = self.game.system_view_mouse_hover_hex
-            hex_points_objects = get_hex_vertices(q, r)
+            hex_points_objects = self._hex_vertices(q, r)
             hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
             pygame.draw.polygon(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, hex_points_tuples, 2)
 
@@ -308,7 +332,7 @@ class SystemViewRenderer:
         for obj in self.game.selected_objects:
             if isinstance(obj, Hex):
                 if obj.in_system == self.game.current_system_name:
-                     hex_points_objects = get_hex_vertices(obj.q, obj.r)
+                     hex_points_objects = self._hex_vertices(obj.q, obj.r)
                      hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
                      pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, hex_points_tuples, 2)
 
@@ -326,7 +350,7 @@ class SystemViewRenderer:
 
             if selected_object_hex:
                 q, r = selected_object_hex
-                hex_points_objects = get_hex_vertices(q, r)
+                hex_points_objects = self._hex_vertices(q, r)
                 hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
                 pygame.draw.polygon(self.overlay_surface, GRAY, hex_points_tuples, 2)
 
@@ -371,7 +395,7 @@ class SystemViewRenderer:
                             hq, hr = hex_coord
                             dist = hex_distance(q_start, r_start, hq, hr)
                             if dist <= effective_jump_range:
-                                hex_pts = [p.to_tuple() for p in get_hex_vertices(hq, hr)]
+                                hex_pts = [p.to_tuple() for p in self._hex_vertices(hq, hr)]
                                 pygame.draw.polygon(self.overlay_surface, HYPERDRIVE_RANGE_HEX_FILL_COLOR, hex_pts, 0)
 
     def _draw_sensors_range_highlight(self, system):
@@ -408,7 +432,7 @@ class SystemViewRenderer:
                             hq, hr = hex_coord
                             dist = hex_distance(q_start, r_start, hq, hr)
                             if dist <= sensor_range:
-                                hex_pts = [p.to_tuple() for p in get_hex_vertices(hq, hr)]
+                                hex_pts = [p.to_tuple() for p in self._hex_vertices(hq, hr)]
                                 pygame.draw.polygon(self.overlay_surface, SENSOR_RANGE_HEX_FILL_COLOR, hex_pts, 0)
 
     def _draw_system_view_order_lines(self, system):
@@ -719,8 +743,8 @@ class SystemViewRenderer:
                                     break
                             
                             if wormhole_hex:
-                                start_pixel_point = hex_to_pixel(start_q, start_r)
-                                end_pixel_point = hex_to_pixel(wormhole_hex[0], wormhole_hex[1])
+                                start_pixel_point = self._hex_to_pixel(start_q, start_r)
+                                end_pixel_point = self._hex_to_pixel(wormhole_hex[0], wormhole_hex[1])
                                 start_x, start_y = start_pixel_point.x, start_pixel_point.y
                                 end_x, end_y = end_pixel_point.x, end_pixel_point.y
                             else:
@@ -736,15 +760,15 @@ class SystemViewRenderer:
                                     break
                             
                             if wormhole_hex:
-                                start_pixel_point = hex_to_pixel(wormhole_hex[0], wormhole_hex[1])
-                                end_pixel_point = hex_to_pixel(end_q, end_r)
+                                start_pixel_point = self._hex_to_pixel(wormhole_hex[0], wormhole_hex[1])
+                                end_pixel_point = self._hex_to_pixel(end_q, end_r)
                                 start_x, start_y = start_pixel_point.x, start_pixel_point.y
                                 end_x, end_y = end_pixel_point.x, end_pixel_point.y
                             else:
                                 continue
                     else:
-                        start_pixel_point = hex_to_pixel(start_q, start_r)
-                        end_pixel_point = hex_to_pixel(end_q, end_r)
+                        start_pixel_point = self._hex_to_pixel(start_q, start_r)
+                        end_pixel_point = self._hex_to_pixel(end_q, end_r)
                         start_x, start_y = start_pixel_point.x, start_pixel_point.y
                         end_x, end_y = end_pixel_point.x, end_pixel_point.y
                     
@@ -770,7 +794,7 @@ class SystemViewRenderer:
 
     def _draw_nebula(self, nebula, pos_px):
         num_circles = 15
-        scale_val = self.screen.get_height() / 720.0
+        scale_val = self._map_scale()
         base_radius = 10.0 * scale_val
         max_offset = base_radius * 0.6
 
@@ -804,7 +828,7 @@ class SystemViewRenderer:
 
     def _draw_celestial_field(self, field, pos_px, base_color, num_particles=15):
         num_asteroids = num_particles
-        scale_val = self.screen.get_height() / 720.0
+        scale_val = self._map_scale()
         field_radius = 10 * scale_val
         time_ms = pygame.time.get_ticks()
 
@@ -831,7 +855,7 @@ class SystemViewRenderer:
 
     def _draw_storm(self, storm, pos_px):
         num_circles = 25
-        scale_val = self.screen.get_height() / 720.0
+        scale_val = self._map_scale()
         base_radius = 10.0 * scale_val
         time_ms = pygame.time.get_ticks()
 

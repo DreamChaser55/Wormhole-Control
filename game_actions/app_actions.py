@@ -111,6 +111,8 @@ def handle_navigate_back(game, action: dict) -> None:
     if game.view_mode == 'sector':
         game.view_mode = 'system'
         game.current_sector_coord = None
+        if hasattr(game, 'ensure_system_camera'):
+            game.ensure_system_camera()
         game.update_view_specific_labels()
         game.gui.update_back_button_visibility()
         game.update_side_bar_content()

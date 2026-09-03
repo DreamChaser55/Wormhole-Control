@@ -50,13 +50,13 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 | **Left Drag** | Draw selection box to select multiple units |
 | **Right Click** | Open contextual action menu or issue direct unit command |
 | **Shift + Order** | Queue new order behind current/existing orders (all order types) |
-| **Middle Mouse Drag** | Pan tactical camera |
-| **Mouse Wheel** | Zoom camera in / out |
+| **Middle Mouse Drag** | Pan the System or Sector View camera |
+| **Mouse Wheel** | Zoom the System or Sector View camera in / out |
 | **G** | Switch to **Galaxy View** |
 | **S** | Switch to **System View** |
 | **E** | **End Turn** (process actions and advance to next player) |
 | **ESC** | Open In-Game Menu / Cancel targeting mode / Deselect |
-| **Arrow Keys** | Pan tactical camera |
+| **Arrow Keys** | Pan the System or Sector View camera |
 
 ---
 
@@ -65,7 +65,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 Wormhole Control organizes space into three interconnected strategic perspectives:
 
 - **Galaxy View (`G`)**: Strategic overview of the known galaxy showing all star systems, and wormhole conduits connecting distant systems.
-- **System View (`S`)**: System-level hexgrid map showing orbital sectors radiating outward from the central star, along with celestial bodies, wormhole routes, and sector-level fog of war.
+- **System View (`S`)**: System-level hexgrid map showing orbital sectors radiating outward from the central star, along with celestial bodies, wormhole routes, and sector-level fog of war. Systems are automatically fitted to the unobstructed map area and support mouse-wheel zoom plus middle-drag or arrow-key panning.
 - **Sector View**: Tactical view providing a granular look at celestial objects, orbital structures, individual starships, weapon range circles, minefields, and real-time movement trajectories in a specific sector.
 
 ---

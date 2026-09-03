@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def handle_keyboard_panning(game, gui, time_delta: float) -> None:
-    """Pans the sector camera based on directional arrow key states.
+    """Pan the active system or sector camera from directional arrow keys.
 
     Args:
         game: Target Game instance.
@@ -22,11 +22,15 @@ def handle_keyboard_panning(game, gui, time_delta: float) -> None:
         if isinstance(val, bool):
             is_typing = val
 
-    if game.view_mode == 'sector' and game.game_started and not is_typing:
-        zoom = game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
-        pan_offset = game.sector_pan_offset
+    if game.view_mode in ('system', 'sector') and game.game_started and not is_typing:
+        if game.view_mode == 'system':
+            if hasattr(game, 'ensure_system_camera'):
+                game.ensure_system_camera()
+            pan_offset = game.system_pan_offset
+            anchor_pixel_attr = 'system_zoom_anchor_pixel'
+        else:
+            pan_offset = game.sector_pan_offset
+            anchor_pixel_attr = 'zoom_anchor_pixel'
         if isinstance(pan_offset, Position):
             pan_amount = 500.0 * time_delta
 
@@ -49,9 +53,10 @@ def handle_keyboard_panning(game, gui, time_delta: float) -> None:
             if dx != 0.0 or dy != 0.0:
                 pan_offset.x += dx
                 pan_offset.y += dy
-                if getattr(game, 'zoom_anchor_pixel', None) is not None:
-                    game.zoom_anchor_pixel.x += dx
-                    game.zoom_anchor_pixel.y += dy
+                anchor_pixel = getattr(game, anchor_pixel_attr, None)
+                if anchor_pixel is not None:
+                    anchor_pixel.x += dx
+                    anchor_pixel.y += dy
 
 
 def handle_key_down(game, gui, event: pygame.event.Event) -> bool:
@@ -126,6 +131,8 @@ def handle_key_down(game, gui, event: pygame.event.Event) -> bool:
         game.update_view_specific_labels()
     elif event.key == pygame.K_s and game.game_started and game.current_system_name:
         game.view_mode = 'system'
+        if hasattr(game, 'ensure_system_camera'):
+            game.ensure_system_camera()
         game.selected_objects.clear()
         game.update_view_specific_labels()
     elif event.key == pygame.K_c and game.game_started:
