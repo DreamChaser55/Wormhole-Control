@@ -95,7 +95,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Combat Experience (XP)**: Units gain experience from battle, ranking up to boost weapon damage, defensive ratings, sublight speed, and hyperdrive jump ranges.
 - **Boarding Actions**: Deploy specialized Marine strike teams to breach and capture enemy vessels.
 - **Minefields**: Minelayers can deploy Anti-Ship and Anti-Strikecraft minefields for tactical area denial.
-- **Strikecraft Wings**: Carriers deploy Fighter wings (air superiority) and Bomber wings (heavy anti-ship strikes).
+- **Strikecraft Wings**: Carriers deploy Fighter wings (air superiority) and Bomber wings (heavy anti-ship strikes). Strikecraft wings are nimble enough to ignore negative movement speed penalties from fields and debris field abrasion, but are banned from entering or launching within violent Magnetic Storms.
 
 ### Detection & Intel
 - **Sensor Horizons**: Ships and stations project short-range visual circles and long-range inter-sector sensor detection.
@@ -118,8 +118,8 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Environmental Hazards**:
   - **Black Holes**: Extreme gravitational tidal distortion inflicts 15 hull damage per turn within 750 radius of the singularity.
   - **Pulsars**: Sweeping magnetic radiation pulses drain 5% of a ship's current antimatter reserves per turn.
-  - **Debris Field Abrasion**: Moving at high sublight velocities (speed > 50) through debris clouds inflicts 2 damage per turn.
-  - **Space Storms**: Plasma storms inflict 8 thermal damage per turn; Magnetic storms drain 6 antimatter per turn and jam long-range radar sensors; Radiation storms inflict 4 component damage per turn and degrade weapon accuracy.
+  - **Debris Field Abrasion**: Moving at high sublight velocities (speed > 50) through debris clouds inflicts 2 damage per turn (strikecraft wings are exempt).
+  - **Space Storms**: Plasma storms inflict 8 thermal damage per turn; Magnetic storms drain 6 antimatter per turn and jam long-range radar sensors (strikecraft wings are banned from entering or launching in magnetic storms); Radiation storms inflict 4 component damage per turn and degrade weapon accuracy.
 
 ---
 

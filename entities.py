@@ -605,6 +605,35 @@ class Comet(CelestialBody):
         self.crystal_yield: float = 10.0
 
 
+def is_position_in_magnetic_storm(
+    galaxy_ref: Any,
+    system_name: Optional[str],
+    hex_coord: Optional[HexCoord],
+    position: Optional[Position]
+) -> bool:
+    """Returns True if the given position in system_name and hex_coord is inside a Magnetic Storm."""
+    if not galaxy_ref or not system_name or hex_coord is None or position is None:
+        return False
+    systems = getattr(galaxy_ref, "systems", None)
+    if not isinstance(systems, dict):
+        return False
+    system = systems.get(system_name)
+    if not system:
+        return False
+    hexes = getattr(system, "hexes", None)
+    if not isinstance(hexes, dict):
+        return False
+    hex_obj = hexes.get(hex_coord)
+    if not hex_obj:
+        return False
+    for body in getattr(hex_obj, "celestial_bodies", []):
+        if isinstance(body, Storm) and getattr(body, "storm_type", None) == StormType.MAGNETIC:
+            radius = getattr(body, "radius", STORM_RADIUS)
+            if distance(position, body.position) <= radius:
+                return True
+    return False
+
+
 # --- GameObject-derived Class: Minefield ---
 
 class Minefield(GameObject):
@@ -967,6 +996,17 @@ class Unit(GameObject):
                     cover_bonus = max(cover_bonus, getattr(body, 'defense_bonus', DEBRIS_FIELD_DEFENSE_BONUS))
 
         return cover_bonus
+
+    @property
+    def is_strikecraft_wing(self) -> bool:
+        """Returns True if this unit has STRIKECRAFT_WING hull size."""
+        return self.hull_size == HullSize.STRIKECRAFT_WING
+
+    def is_in_magnetic_storm(self, position: Optional[Position] = None, galaxy_ref: Any = None) -> bool:
+        """Returns True if this unit (or given position) is inside a magnetic storm."""
+        g = galaxy_ref or getattr(self, "in_galaxy", None) or (getattr(self.game, "galaxy", None) if getattr(self, "game", None) else None)
+        pos = position if position is not None else self.position
+        return is_position_in_magnetic_storm(g, self.in_system, self.in_hex, pos)
 
     def take_damage(self, amount: int, damage_type: Optional[TurretType] = None) -> None:
         """Reduces the unit's current hit points by the given amount, applying any active damage reduction, environmental cover, and defenses mitigation."""

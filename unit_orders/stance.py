@@ -95,6 +95,25 @@ class StanceOrder(Order):
         if not weapons or not weapons.eligible_turrets_for(target):
             return "no eligible turret"
 
+        from constants import HullSize, StormType, STORM_RADIUS
+        from entities import is_position_in_magnetic_storm, Storm
+        if self.unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, target.in_system, target.in_hex, target.position):
+            system = galaxy_ref.systems.get(target.in_system)
+            hex_obj = system.hexes.get(target.in_hex) if system else None
+            max_weapon_range = max((turret.range for turret in weapons.eligible_turrets_for(target)), default=0.0)
+            in_reach_from_outside = False
+            if hex_obj:
+                for body in getattr(hex_obj, "celestial_bodies", []):
+                    if isinstance(body, Storm) and getattr(body, "storm_type", None) == StormType.MAGNETIC:
+                        radius = getattr(body, "radius", STORM_RADIUS)
+                        dist_to_center = distance(target.position, body.position)
+                        dist_to_edge = radius - dist_to_center
+                        if dist_to_edge < max_weapon_range:
+                            in_reach_from_outside = True
+                            break
+            if not in_reach_from_outside:
+                return "target is inside a magnetic storm and out of reach"
+
         if visibility_snapshot is None and self.unit.owner:
             from visibility import VisibilityService
             turn_num = getattr(getattr(self.unit, "game", None), "turn_number", None)

@@ -123,6 +123,15 @@ class OrderSystem:
         for unit in event.units:
             if not self.validate_engines_for_unit(unit, "move"):
                 continue
+            from constants import HullSize
+            from entities import is_position_in_magnetic_storm
+            if unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(self.game.galaxy, event.system_name, event.sector_coord, event.destination):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> is a strikecraft wing and cannot enter magnetic storms.",
+                        title="Magnetic Storm Hazard"
+                    )
+                continue
             # Jumping to a different sector or system requires a hyperdrive.
             needs_hyperdrive = (event.system_name != unit.in_system or event.sector_coord != unit.in_hex)
             if needs_hyperdrive and not unit.hyperdrive_component:
@@ -151,6 +160,15 @@ class OrderSystem:
         add_waypoint = getattr(event, 'add_waypoint', getattr(event, 'ctrl_pressed', False))
         for unit in event.units:
             if not self.validate_engines_for_unit(unit, "patrol"):
+                continue
+            from constants import HullSize
+            from entities import is_position_in_magnetic_storm
+            if unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(self.game.galaxy, event.system_name, event.sector_coord, event.destination):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        f"Unit <b>{unit.name}</b> is a strikecraft wing and cannot enter magnetic storms.",
+                        title="Magnetic Storm Hazard"
+                    )
                 continue
             if not self.validate_antimatter_for_unit(unit, event.system_name, event.sector_coord, event.destination):
                 continue

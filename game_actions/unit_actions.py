@@ -21,6 +21,17 @@ def handle_deploy_ship(game, action: dict) -> None:
     if carrier and (carrier.hangar_component or carrier.strikecraft_bay_component):
         current_player = game.players[game.current_player_index] if game.players else None
         if carrier.owner == current_player:
+            from entities import is_position_in_magnetic_storm
+            from constants import HullSize
+            is_strikecraft = any(u.id == docked_unit_id for u in getattr(carrier.strikecraft_bay_component, 'docked_units', []) if getattr(u, 'hull_size', None) == HullSize.STRIKECRAFT_WING)
+            if is_strikecraft and is_position_in_magnetic_storm(game.galaxy, carrier.in_system, carrier.in_hex, carrier.position):
+                if getattr(game, 'gui', None):
+                    game.gui.show_warning_dialog(
+                        "Cannot launch strikecraft wings inside a magnetic storm.",
+                        title="Magnetic Storm Hazard"
+                    )
+                game.sidebar_needs_update = True
+                return
             deploy_order = DeployUnitOrder(carrier, {"docked_unit_id": docked_unit_id})
             if carrier.commander_component:
                 carrier.commander_component.add_order(deploy_order)
@@ -34,6 +45,15 @@ def handle_launch_all_wings(game, action: dict) -> None:
     if carrier and carrier.strikecraft_bay_component:
         current_player = game.players[game.current_player_index] if game.players else None
         if carrier.owner == current_player:
+            from entities import is_position_in_magnetic_storm
+            if is_position_in_magnetic_storm(game.galaxy, carrier.in_system, carrier.in_hex, carrier.position):
+                if getattr(game, 'gui', None):
+                    game.gui.show_warning_dialog(
+                        "Cannot launch strikecraft wings inside a magnetic storm.",
+                        title="Magnetic Storm Hazard"
+                    )
+                game.sidebar_needs_update = True
+                return
             deploy_order = DeployAllWingsOrder(carrier)
             if carrier.commander_component:
                 carrier.commander_component.add_order(deploy_order)

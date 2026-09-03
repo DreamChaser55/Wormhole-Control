@@ -120,7 +120,13 @@ class StrikecraftBayComponent(UnitComponent):
         # Docked Wings
         data.append({'type': 'label', 'text': "Docked Strikecraft Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
 
-        if self.docked_units and is_owner:
+        from entities import is_position_in_magnetic_storm
+        galaxy_ref = getattr(self.unit.game, 'galaxy', None) if getattr(self.unit, 'game', None) else None
+        in_magnetic_storm = is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position)
+        if in_magnetic_storm:
+            data.append({'type': 'label', 'text': "  ⚠ Magnetic Storm: Wings cannot launch", 'object_id': '#sidebar_status_charging_label', 'height': 20})
+
+        if self.docked_units and is_owner and not in_magnetic_storm:
             data.append({
                 'type': 'button',
                 'text': "Launch All Wings",
@@ -138,7 +144,7 @@ class StrikecraftBayComponent(UnitComponent):
                 role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
                 wing_label = f"  - {docked_ship.name} ({role_str}, {f_count}/4 craft, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
                 data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
-                if is_owner:
+                if is_owner and not in_magnetic_storm:
                     data.append({
                         'type': 'button',
                         'text': f"Deploy {docked_ship.name}",
@@ -226,26 +232,41 @@ class StrikecraftBayComponent(UnitComponent):
         logger.debug(f"Strikecraft wing {unit.name} docked into carrier {self.unit.name}.")
         return True
 
-    def deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+    def can_deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
         if unit not in self.docked_units:
+            return False
+        from entities import is_position_in_magnetic_storm
+        if is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position):
+            return False
+        return True
+
+    def deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+        if not self.can_deploy(unit, galaxy_ref):
             return False
         
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
         
-        while True:
+        from entities import is_position_in_magnetic_storm
+        attempts = 0
+        while attempts < 100:
+            attempts += 1
             angle = random.uniform(0, 2 * math.pi)
             offset_dist = random.uniform(20.0, 50.0)
             candidate_x = self.unit.position.x + math.cos(angle) * offset_dist
             candidate_y = self.unit.position.y + math.sin(angle) * offset_dist
+            candidate_pos = Position(candidate_x, candidate_y)
             
             if self.unit.in_system is None:
-                if math.hypot(candidate_x, candidate_y) <= SECTOR_CIRCLE_RADIUS_LOGICAL:
-                    unit.position = Position(candidate_x, candidate_y)
-                    break
-            else:
-                unit.position = Position(candidate_x, candidate_y)
-                break
+                if math.hypot(candidate_x, candidate_y) > SECTOR_CIRCLE_RADIUS_LOGICAL:
+                    continue
+            if is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, candidate_pos):
+                continue
+            unit.position = candidate_pos
+            break
+        else:
+            logger.debug(f"Strikecraft wing {unit.name} cannot deploy: Launch zone obstructed by magnetic storm.")
+            return False
         
         system = galaxy_ref.systems.get(unit.in_system)
         if system:

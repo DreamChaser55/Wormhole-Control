@@ -1381,7 +1381,35 @@ class CommandGateway:
     def _validate_unit_command(
         self, unit: Any, command: Any, projection: _BatchProjection
     ) -> None:
-        if command.type == "attack":
+        if command.type == "move":
+            from constants import HullSize
+            from entities import is_position_in_magnetic_storm
+            if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
+                dest_pos = self._destination(command)
+                if is_position_in_magnetic_storm(self.game.galaxy, command.system_name, tuple(command.hex_coord), dest_pos):
+                    raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
+        elif command.type == "patrol":
+            from constants import HullSize
+            from entities import is_position_in_magnetic_storm
+            if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
+                if command.waypoints:
+                    for wp in self._waypoints(command.waypoints):
+                        if is_position_in_magnetic_storm(self.game.galaxy, wp["system_name"], wp["hex_coord"], wp["position"]):
+                            raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
+                elif command.system_name is not None and command.position is not None:
+                    dest_pos = self._destination(command)
+                    if is_position_in_magnetic_storm(self.game.galaxy, command.system_name, tuple(command.hex_coord), dest_pos):
+                        raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
+        elif command.type == "defend":
+            from constants import HullSize
+            from entities import is_position_in_magnetic_storm
+            if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
+                if command.position is not None and command.system_name is not None and command.hex_coord is not None:
+                    from geometry import Position
+                    defend_pos = Position(*command.position)
+                    if is_position_in_magnetic_storm(self.game.galaxy, command.system_name, tuple(command.hex_coord), defend_pos):
+                        raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
+        elif command.type == "attack":
             target = self._visible_unit(unit.owner, command.target_id)
             check = getattr(unit.weapons_component, "eligible_turrets_for", None)
             if callable(check) and not check(target):
@@ -1429,16 +1457,28 @@ class CommandGateway:
             for component_name in ("hangar_component", "strikecraft_bay_component"):
                 component = getattr(unit, component_name, None)
                 docked.extend(getattr(component, "docked_units", []) or [])
-            if not any(docked_unit.id == command.target_id for docked_unit in docked):
+            docked_unit = next((du for du in docked if du.id == command.target_id), None)
+            if not docked_unit:
                 raise _Rejected(
                     "target_unavailable", "The docked unit is unavailable."
                 )
+            from entities import is_position_in_magnetic_storm, HullSize
+            if getattr(docked_unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
+                if is_position_in_magnetic_storm(self.game.galaxy, unit.in_system, unit.in_hex, unit.position):
+                    raise _Rejected(
+                        "hazard_blocked", "Cannot launch strikecraft wings in a magnetic storm."
+                    )
         elif command.type == "deploy_all_wings":
             bay = getattr(unit, "strikecraft_bay_component", None)
             if bay is None:
                 raise _Rejected(
                     "capability_unavailable",
                     f"Unit {unit.id} has no strikecraft bay.",
+                )
+            from entities import is_position_in_magnetic_storm
+            if is_position_in_magnetic_storm(self.game.galaxy, unit.in_system, unit.in_hex, unit.position):
+                raise _Rejected(
+                    "hazard_blocked", "Cannot launch strikecraft wings in a magnetic storm."
                 )
         elif command.type == "transfer_antimatter":
             storage = getattr(unit, "antimatter_component", None)

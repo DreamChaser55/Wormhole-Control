@@ -210,7 +210,7 @@ class TurnProcessor:
                             radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
                             if distance(unit.position, body.position) <= radius:
                                 speed_mult = getattr(body, 'speed_multiplier', None)
-                                if speed_mult is not None:
+                                if speed_mult is not None and unit.hull_size != HullSize.STRIKECRAFT_WING:
                                     speed_mod = min(speed_mod, speed_mult)
                                 from entities import Nebula
                                 if isinstance(body, Nebula) and getattr(body, 'nebula_type', None) == NebulaType.HYDROGEN:
@@ -231,7 +231,25 @@ class TurnProcessor:
                         am_comp.consume(sublight_cost)
 
                     target_pos_in_sector = unit.engines_component.move_target
-                    unit.position = move_towards_position(unit.position, target_pos_in_sector, effective_speed)
+                    new_pos = move_towards_position(unit.position, target_pos_in_sector, effective_speed)
+                    if unit.hull_size == HullSize.STRIKECRAFT_WING and current_hex_obj:
+                        from entities import Storm
+                        for body in current_hex_obj.celestial_bodies:
+                            if isinstance(body, Storm) and getattr(body, 'storm_type', None) == StormType.MAGNETIC:
+                                storm_radius = getattr(body, 'radius', STORM_RADIUS)
+                                if distance(new_pos, body.position) <= storm_radius:
+                                    diff = unit.position - body.position
+                                    dist_current = diff.magnitude()
+                                    if dist_current > storm_radius:
+                                        dir_vec = diff.normalize()
+                                        new_pos = body.position + dir_vec * (storm_radius + 1.0)
+                                    unit.engines_component.clear_move_target()
+                                    curr_order = getattr(getattr(unit, 'commander_component', None), 'current_order', None)
+                                    if curr_order and hasattr(curr_order, 'fail'):
+                                        curr_order.fail("hazard_blocked")
+                                    logger.debug(f"   {unit.name} (strikecraft wing) halted at boundary of magnetic storm.")
+                                    break
+                    unit.position = new_pos
                     logger.debug(f"   {unit.name} moved to {unit.position} (sub-light, speed={effective_speed:.1f})")
                     
                     # Sync the active inhibitor field's location with the unit's new sub-light position.
@@ -544,6 +562,8 @@ class TurnProcessor:
 
                     # 2. Debris Field High-Speed Navigation Hazard
                     elif isinstance(body, DebrisField):
+                        if unit.hull_size == HullSize.STRIKECRAFT_WING:
+                            continue
                         radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
                         if distance(unit.position, body.position) <= radius:
                             eng = getattr(unit, 'engines_component', None)

@@ -35,7 +35,7 @@ player. It includes:
 - public system topology, navigation anchors, detailed nearby bodies (including planetary traits, colonizability, passive mineral yields, and antimatter harvesting sources/multipliers), and summaries of remote neutral bodies;
 - owned and allied units;
 - enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);
-- space storms (plasma, magnetic, radiation) and black hole event horizons that inflict active environmental hazards;
+- space storms (plasma, magnetic, radiation) and black hole event horizons that inflict active environmental hazards (strikecraft wings are banned from entering or launching in magnetic storms, but are immune to negative field effects);
 - visible minefields;
 - undetailed enemy-presence hexes without count, identity, owner, or strength;
 - per-owned-unit supported commands, currently legal commands, conditional
@@ -116,7 +116,7 @@ also projects guaranteed effects through a batch, allowing a valid
 when colonization is queued. Inhibitor toggles likewise project active dynamic
 zones, so overlapping activations are rejected before commit and a preceding
 deactivation can make a later activation legal. Replacing pending work releases only its reservations; it cannot undo a colonist load
-that already completed synchronously. Preserve queued prerequisites with `queue=true`. The complete batch remains atomic
+that already completed synchronously. Environmental hazard constraints are also enforced: commanding strikecraft wings into magnetic storms, or launching wings from a carrier inside a magnetic storm, is rejected at preflight with `hazard_blocked`. Preserve queued prerequisites with `queue=true`. The complete batch remains atomic
 at preflight.
 
 Retrofit remains a human editor transaction because it requires a versioned

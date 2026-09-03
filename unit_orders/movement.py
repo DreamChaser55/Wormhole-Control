@@ -25,9 +25,10 @@ logger = logging.getLogger(__name__)
 def get_hex_collision_obstacles(
     galaxy_ref: Optional['Galaxy'],
     system_name: Optional[str],
-    hex_coord: Optional[HexCoord]
+    hex_coord: Optional[HexCoord],
+    unit: Optional['Unit'] = None
 ) -> typing.List[Circle]:
-    """Returns a list of Circle collision obstacles for solid celestial bodies in the given hex."""
+    """Returns a list of Circle collision obstacles for solid celestial bodies (and magnetic storms for strikecraft wings) in the given hex."""
     if not galaxy_ref or not system_name or hex_coord is None:
         return []
     systems = getattr(galaxy_ref, 'systems', None)
@@ -43,10 +44,16 @@ def get_hex_collision_obstacles(
     if not hex_obj:
         return []
     obstacles = []
+    from constants import HullSize, StormType, STORM_RADIUS
+    from entities import Storm
+    is_strikecraft = getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING
     for body in getattr(hex_obj, 'celestial_bodies', []):
         r = getattr(body, 'collision_radius', 0.0)
         if isinstance(r, (int, float)) and r > 0.0:
             obstacles.append(Circle(body.position, float(r)))
+        elif is_strikecraft and isinstance(body, Storm) and getattr(body, 'storm_type', None) == StormType.MAGNETIC:
+            storm_radius = getattr(body, 'radius', STORM_RADIUS)
+            obstacles.append(Circle(body.position, float(storm_radius)))
     return obstacles
 
 
@@ -100,7 +107,14 @@ class ReachWaypointOrder(Order):
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): COMPLETED (already at sub-light destination {dest_position} in {dest_system}:{dest_hex}).")
                 return
 
-            obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex)
+            from constants import HullSize
+            from entities import is_position_in_magnetic_storm
+            if self.unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, dest_system, dest_hex, dest_position):
+                self.fail("hazard_blocked")
+                logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (strikecraft wings cannot enter magnetic storms).")
+                return
+
+            obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex, unit=self.unit)
             avoidance_wps = compute_avoidance_waypoints(self.unit.position, dest_position, obstacles, margin=50.0)
             if avoidance_wps:
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Path intersects celestial body. Spawning {len(avoidance_wps)} avoidance sub-order(s).")
@@ -433,7 +447,16 @@ class MoveOrder(Order):
                         f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
                         "FAILED (could not find an uninhibited standoff point after 128 attempts)."
                     )
-                    return False
+        from constants import HullSize
+        from entities import is_position_in_magnetic_storm
+        if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
+            if is_position_in_magnetic_storm(galaxy_ref, target_unit.in_system, target_unit.in_hex, resolved_position):
+                self.fail("hazard_blocked")
+                logger.debug(
+                    f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                    "FAILED (strikecraft wing approach position lies inside a magnetic storm)."
+                )
+                return False
 
         self.parameters["destination_system_name"] = target_unit.in_system
         self.parameters["destination_hex_coord"] = target_unit.in_hex
@@ -534,6 +557,17 @@ class MoveOrder(Order):
         if not is_point_in_circle(resolved_position, boundary_circle):
             resolved_position = clamp_point_to_circle(resolved_position, boundary_circle)
 
+        from constants import HullSize
+        from entities import is_position_in_magnetic_storm
+        if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
+            if is_position_in_magnetic_storm(galaxy_ref, target_body.in_system, target_body.in_hex, resolved_position):
+                self.fail("hazard_blocked")
+                logger.debug(
+                    f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): "
+                    "FAILED (strikecraft wing celestial approach position lies inside a magnetic storm)."
+                )
+                return False
+
         self.parameters["destination_system_name"] = target_body.in_system
         self.parameters["destination_hex_coord"] = target_body.in_hex
         self.parameters["destination_position"] = resolved_position
@@ -566,7 +600,7 @@ class MoveOrder(Order):
                         "destination_position": adjusted_pos
                     }, parent_order=self))
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Adding sub-light move from {adjusted_pos} to original target {target_pos}.")
-                    obstacles = get_hex_collision_obstacles(galaxy_ref, system_name, target_hex)
+                    obstacles = get_hex_collision_obstacles(galaxy_ref, system_name, target_hex, unit=self.unit)
                     avoidance_wps = compute_avoidance_waypoints(adjusted_pos, target_pos, obstacles, margin=50.0)
                     for wp in avoidance_wps:
                         self.add_sub_order(ReachWaypointOrder(self.unit, {
@@ -698,6 +732,13 @@ class MoveOrder(Order):
         if current_system == dest_system and current_hex == dest_hex and distance(current_position, dest_position) < 0.01:
             self.status = OrderStatus.COMPLETED
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: COMPLETED (already at destination {dest_system}:{dest_hex}:{dest_position}).")
+            return
+
+        from constants import HullSize
+        from entities import is_position_in_magnetic_storm
+        if self.unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, dest_system, dest_hex, dest_position):
+            self.fail("hazard_blocked")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (strikecraft wings cannot enter magnetic storms).")
             return
 
         # If the unit starts inside an active inhibitor field, it cannot engage its hyperdrive.
@@ -899,7 +940,7 @@ class MoveOrder(Order):
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot plan final sub-light movement leg, {reason}).")
                 return
             
-            obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex)
+            obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex, unit=self.unit)
             avoidance_wps = compute_avoidance_waypoints(current_position, dest_position, obstacles, margin=50.0)
             if avoidance_wps:
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct sub-light path intersects celestial body. Adding {len(avoidance_wps)} avoidance waypoint(s).")

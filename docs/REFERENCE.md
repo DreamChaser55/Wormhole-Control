@@ -178,7 +178,7 @@ Wormhole Control features 6 hull classes (`HullSize`). Each hull size sets the c
 | `LARGE` | 5 | 100.0 | 200 | 150.0 | 1000 | 15 | 0.01 × Used Hull Points |
 | `HUGE` | 6 | 200.0 | 400 | 200.0 | 2000 | 20 | 0.01 × Used Hull Points |
 
-*Note: Total unit build cost is `Base Build Cost + (Used Hull Capacity × 30 Credits)`. Total build time is `Base Build Time + (Used Hull Capacity / 10 Turns)`. Ongoing unit upkeep cost is `0.01 Credits × Used Hull Points` per turn (Strikecraft Wings are exempt).*
+*Note: Total unit build cost is `Base Build Cost + (Used Hull Capacity × 30 Credits)`. Total build time is `Base Build Time + (Used Hull Capacity / 10 Turns)`. Ongoing unit upkeep cost is `0.01 Credits × Used Hull Points` per turn (Strikecraft Wings are exempt). Strikecraft Wings are immune to negative field effects (sublight speed drag in Asteroid, Ice, and Debris Fields, and debris abrasion damage), but are strictly banned from entering or launching within Magnetic Storms.*
 
 ---
 
@@ -320,11 +320,11 @@ Every star system contains a central star with a unique antimatter harvesting ra
 - **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1200.0 logical units. **Collision Radius**: **50.01 logical units** (`ASTEROID_RADIUS`).
 - **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 600.0 logical units. **Collision Radius**: **50.01 logical units** (`COMET_RADIUS`).
 - **Wormholes (`Wormhole`)**: Natural spacetime conduits linking star systems. Traversal requires an Advanced Hyperdrive. Visual radius: 291.66 logical units. Inhibition radius: 1500.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
-- **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Inhibition radius: 900.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
-- **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Inhibition radius: 600.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
-- **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures. **Collision Radius**: **0.0 logical units** (permeable).
+- **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Sublight speed drag: 25% (strikecraft wings exempt). Inhibition radius: 900.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
+- **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Sublight speed drag: 20% (strikecraft wings exempt). Inhibition radius: 600.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
+- **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures. Sublight speed drag: 25% and high-speed abrasion hazard (speed > 50 inflicts 2 HP damage/turn; strikecraft wings exempt from both). **Collision Radius**: **0.0 logical units** (permeable).
 - **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`). Visual radius: 1666.68 logical units. **Collision Radius**: **0.0 logical units** (permeable). Naturally conceals starships positioned within its cloud boundaries from enemy long-range (inter-sector) sensors.
-- **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`). Visual radius: 1666.68 logical units. **Collision Radius**: **0.0 logical units** (permeable).
+- **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`). Visual radius: 1666.68 logical units. **Collision Radius**: **0.0 logical units** (permeable for standard starships; Magnetic Storms act as impassable collision obstacles for strikecraft wings, and launching wings within them is banned).
 
 ### 6.4 Celestial Body Dimensions & Obstacle Classification Summary
 
@@ -719,11 +719,11 @@ Environmental fields (`radius = 900.0` logical units) alter the tactical space:
 - **Ice Field**:
   - **Tactical Cover**: Dense cryogenic ice particles scatter coherent energy, providing **+10% defense mitigation against incoming beam attacks**.
   - **Cooling Aid**: Ambient sub-zero coolant reduces weapon heat dissipation cooldowns.
-  - **Navigation**: 20% sublight speed drag (`speed_multiplier = 0.80`). Hyperspace inhibition field 600 radius. Non-mineable for crystal (crystal extraction is exclusive to `Comet` bodies).
+  - **Navigation**: 20% sublight speed drag (`speed_multiplier = 0.80`; strikecraft wings exempt). Hyperspace inhibition field 600 radius. Non-mineable for crystal (crystal extraction is exclusive to `Comet` bodies).
 - **Debris Field**:
   - **Tactical Cover**: Dense wreckage fragments intercept ballistic projectiles, providing **+10% defense mitigation against incoming kinetic (Mass Driver) and missile attacks**.
-  - **Navigation Hazard**: Moving at high sublight velocities (`speed > 50.0`) through the debris causes abrasive hull damage (2 HP damage per turn).
-  - **Navigation Drag**: 25% sublight speed drag (`speed_multiplier = 0.75`). Non-mineable.
+  - **Navigation Hazard**: Moving at high sublight velocities (`speed > 50.0`) through the debris causes abrasive hull damage (2 HP damage per turn; strikecraft wings exempt).
+  - **Navigation Drag**: 25% sublight speed drag (`speed_multiplier = 0.75`; strikecraft wings exempt). Non-mineable.
 
 ### 12.4 Nebulae & Space Storm Hazards
 
@@ -735,6 +735,6 @@ Environmental fields (`radius = 900.0` logical units) alter the tactical space:
   - **Dust Nebula**: Dense particulate scatter reduces short-range visual sensor radius by 30% (`DUST_NEBULA_SENSOR_MOD = 0.70`).
 - **Space Storms** (`radius = 800.0` logical units):
   - **Plasma Storm**: Inflicts 8 thermal damage per turn to unit hit points.
-  - **Magnetic Storm**: Drains 6 antimatter per turn from onboard reserves; violent electromagnetic flux completely scrambles long-range radar projection from within the storm.
+  - **Magnetic Storm**: Drains 6 antimatter per turn from onboard reserves; violent electromagnetic flux completely scrambles long-range radar projection from within the storm. Strikecraft wings are strictly banned from entering or launching within Magnetic Storms.
   - **Radiation Storm**: Energetic cosmic radiation inflicts 4 damage per turn to a random functional unit component, degrading subsystem integrity and imposing weapon accuracy penalties.
 

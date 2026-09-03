@@ -409,17 +409,26 @@ def command_guidance(
             legal.add("construct")
 
     if "deploy_unit" in supported:
+        from entities import is_position_in_magnetic_storm, HullSize
+        galaxy_ref = getattr(getattr(unit, "game", None), "galaxy", None)
+        in_mag_storm = is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, unit.position)
         docked = []
         for component_name in ("hangar_component", "strikecraft_bay_component"):
             component = getattr(unit, component_name, None)
-            docked.extend(getattr(component, "docked_units", []) or [])
+            for du in (getattr(component, "docked_units", []) or []):
+                if in_mag_storm and getattr(du, "hull_size", None) == HullSize.STRIKECRAFT_WING:
+                    continue
+                docked.append(du)
         target_ids = sorted({docked_unit.id for docked_unit in docked})
         options["deploy_unit"] = {"target_ids": target_ids}
         if target_ids:
             legal.add("deploy_unit")
     if "deploy_all_wings" in supported:
+        from entities import is_position_in_magnetic_storm
+        galaxy_ref = getattr(getattr(unit, "game", None), "galaxy", None)
+        in_mag_storm = is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, unit.position)
         bay = getattr(unit, "strikecraft_bay_component", None)
-        if getattr(bay, "docked_units", None):
+        if getattr(bay, "docked_units", None) and not in_mag_storm:
             legal.add("deploy_all_wings")
 
     if "use_ability" in supported:
