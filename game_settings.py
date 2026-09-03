@@ -113,8 +113,8 @@ class GameSettings:
     min_system_distance: float = 50.0
     max_system_distance: float = 350.0
     wormhole_density: float = 1 / 3          # probability of secondary connections
-    system_radius_min: int = 5
-    system_radius_max: int = 8
+    system_radius_min: int = 6
+    system_radius_max: int = 10
 
     # --- Economy / starting resources ---
     starting_credits: float = 20_000.0

@@ -234,12 +234,12 @@ class NewGameWizard:
         )
         cursor_y, self._sys_radius_min_slider, self._sys_radius_min_label = self._add_slider_row(
             "Min System Radius:", cursor_y, inner_w,
-            min_val=3, max_val=9, start_val=5,
+            min_val=3, max_val=9, start_val=6,
             object_id="#radius_min_slider",
         )
         cursor_y, self._sys_radius_max_slider, self._sys_radius_max_label = self._add_slider_row(
             "Max System Radius:", cursor_y, inner_w,
-            min_val=4, max_val=10, start_val=8,
+            min_val=4, max_val=12, start_val=10,
             object_id="#radius_max_slider",
         )
         cursor_y, self._wormhole_density_slider, self._wormhole_density_label = self._add_slider_row(
