@@ -114,7 +114,10 @@ developer feedback (`message_developer`), abilities, and all intelligence operat
 The observation and gateway share side-effect-free legality rules. The gateway
 also projects guaranteed effects through a batch, allowing a valid
 `load_colonists` command to satisfy a later `colonize` command for the same unit
-when colonization is queued. Inhibitor toggles likewise project active dynamic
+when colonization is queued. Entity-targeted commands (`colonize`, `load_colonists`,
+`mine`, `repair`, `attack`, `trade`) require only `target_id` (plus amount/component
+if applicable); approach movement is automated, so coordinates (`position`, `hex_coord`,
+`system_name`) must be null or omitted. Inhibitor toggles likewise project active dynamic
 zones, so overlapping activations are rejected before commit and a preceding
 deactivation can make a later activation legal. Replacing pending work releases only its reservations; it cannot undo a colonist load
 that already completed synchronously. Environmental hazard constraints are also enforced: commanding strikecraft wings into magnetic storms, or launching wings from a carrier inside a magnetic storm, is rejected at preflight with `hazard_blocked`. Preserve queued prerequisites with `queue=true`. The complete batch remains atomic
