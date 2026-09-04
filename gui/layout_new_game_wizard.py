@@ -925,7 +925,6 @@ class NewGameWizard:
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_home_btn_{index}",
-            tool_tip_text="Click to select this player for map assignment, or use ◀/▶ to cycle.",
         )
         self._player_home_buttons.append(home_btn)
         self._stage_elements.append(home_btn)
