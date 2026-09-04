@@ -1,13 +1,16 @@
-"""New Game Wizard – UIWindow-based multi-section configuration panel.
+"""New Game Wizard – UIWindow-based two-stage configuration panel.
 
-The wizard collects:
-  * Players   – count (2-6), per-player name / colour / controller type
-  * Galaxy    – number of systems, system size, wormhole density,
-                min/max system distance
-  * Economy   – starting credits / metal / crystal / population
+Stage 1: Galaxy Setup & Preview
+  * Galaxy generation parameters: system count, radius min/max, wormhole density, min/max distances
+  * Procedural galaxy generation with live "Generate Map" button
+  * Real-time tactical Map Preview viewport showing systems and wormhole conduits
 
-Color selection uses a colored swatch panel flanked by ◀/▶ cycle buttons
-instead of a UIDropDownMenu (which does not support per-item text colors).
+Stage 2: Factions & Starting Conditions
+  * Spawn profile (Normal / Testing)
+  * Player count (2-6), per-player name / colour / controller type / team
+  * Home System assignment: Random or Specified per player (cycling or clicking map preview)
+  * Economy: starting credits / metal / crystal / homeworld population
+  * Map Preview continues displaying with player faction color indicators
 
 On "Start Game", dispatches {'action': 'start_new_game_with_settings', 'settings': GameSettings}.
 On "Cancel", dispatches {'action': 'cancel_new_game_wizard'}.
@@ -29,28 +32,29 @@ from game_settings import (
     normalize_spawn_profile,
 )
 from player_controller import PlayerController
+from galaxy import Galaxy
+from rendering.galaxy_renderer import draw_galaxy_preview, get_system_at_preview_point
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Layout constants (unscaled, in logical pixels at 1280×720 reference)
 # ---------------------------------------------------------------------------
-_WIN_W = 720
-_WIN_H = 560
+_WIN_W = 940
+_WIN_H = 580
 
-_PAD = 12          # standard internal padding
-_ROW_H = 34        # height of a labelled slider / text row
-_SECTION_H = 24    # section header height
-_BTN_H = 36        # action button height
+_PAD = 10          # standard internal padding
+_ROW_H = 32        # height of a labelled slider / text row
+_SECTION_H = 22    # section header height
+_BTN_H = 34        # action button height
 _BTN_W = 140       # action button width
 
-_PLAYER_ROW_H = 38  # per-player row height
-_COLOR_SWATCH_W = 36  # width of the colored swatch panel
-_COLOR_CYCLE_BTN_W = 24  # width of the ◀/▶ cycle buttons
+_PLAYER_ROW_H = 34  # per-player row height
+_COLOR_SWATCH_W = 30  # width of the colored swatch panel
+_COLOR_CYCLE_BTN_W = 20  # width of the ◀/▶ cycle buttons
 
 _MIN_PLAYERS = 2
 _MAX_PLAYERS = 6
-
 
 
 # ---------------------------------------------------------------------------
@@ -84,13 +88,14 @@ def _subtract_rect_from_blocker(rect: pygame.Rect, blocker: pygame.Rect) -> typi
 # ---------------------------------------------------------------------------
 
 class NewGameWizard:
-    """Wraps a ``pygame_gui.elements.UIWindow`` wizard for new-game configuration.
+    """Wraps a ``pygame_gui.elements.UIWindow`` two-stage wizard for new-game configuration.
 
     Args:
         manager: The active pygame_gui UIManager.
         screen_res: Screen resolution Vector (exposes .x and .y).
         scale_x: Horizontal scale factor (screen_width / 1280).
         scale_y: Vertical scale factor (screen_height / 720).
+        initial_stage: Initial wizard stage to display (1 or 2, default 1).
     """
 
     def __init__(
@@ -99,6 +104,7 @@ class NewGameWizard:
         screen_res,
         scale_x: float,
         scale_y: float,
+        initial_stage: int = 1,
     ):
         self.manager = manager
         self.scale_x = scale_x
@@ -112,34 +118,61 @@ class NewGameWizard:
         self.window = pygame_gui.elements.UIWindow(
             rect=pygame.Rect(win_x, win_y, win_w, win_h),
             manager=manager,
-            window_display_title="New Game",
+            window_display_title="New Game — Stage 1: Galaxy Setup",
             object_id="#new_game_wizard_window",
             resizable=False,
         )
 
-        # Use the actual inner container dimensions (excludes title bar).
-        # This avoids buttons being clipped by the window title bar height.
         inner = self.window.get_container().get_size()
         self._content_w = inner[0]
         self._content_h = inner[1]
 
-        # Start with 3 players using the default palette
+        # Stage state: 1 = Galaxy Generation & Preview, 2 = Factions & Economy
+        self._stage: int = initial_stage
+
+        # --- Map Generation State ---
+        self._num_systems: int = 15
+        self._sys_radius_min: int = 6
+        self._sys_radius_max: int = 10
+        self._wormhole_density: int = 33  # percentage 0-100
+        self._min_dist: int = 50
+        self._max_dist: int = 350
+        self._generated_galaxy: typing.Optional[Galaxy] = None
+
+        # --- Player & Faction State ---
         self._num_players: int = 3
         self._spawn_profile: SpawnProfile = DEFAULT_SPAWN_PROFILE
-        self._spawn_profile_button: typing.Optional[pygame_gui.elements.UIButton] = None
-        self._player_name_entries: typing.List[pygame_gui.elements.UITextEntryLine] = []
-        # Color picker state: palette index + two cycle buttons + swatch panel
-        self._player_color_indices: typing.List[int] = []
-        self._player_color_prev_btns: typing.List[pygame_gui.elements.UIButton] = []
-        self._player_color_next_btns: typing.List[pygame_gui.elements.UIButton] = []
-        self._player_color_swatches: typing.List[pygame_gui.elements.UIPanel] = []
-        self._player_type_buttons: typing.List[pygame_gui.elements.UIButton] = []
-        self._player_controllers: typing.List[PlayerController] = []
-        self._player_ai_reasoning_efforts: typing.List[str] = []
-        self._player_team_buttons: typing.List[pygame_gui.elements.UIButton] = []
-        self._player_teams: typing.List[int] = [1, 2, 3]
+        self._player_names: typing.List[str] = [f"Player {i + 1}" for i in range(self._num_players)]
+        self._player_color_indices: typing.List[int] = [i % len(PLAYER_COLOR_PALETTE) for i in range(self._num_players)]
+        self._player_controllers: typing.List[PlayerController] = [
+            PlayerController.HUMAN if i == 0 else PlayerController.OPENAI
+            for i in range(self._num_players)
+        ]
+        self._player_ai_reasoning_efforts: typing.List[str] = [
+            "medium" if i == 0 else "low" for i in range(self._num_players)
+        ]
+        self._player_teams: typing.List[int] = [i + 1 for i in range(self._num_players)]
+        self._home_system_mode: str = "random"  # "random" or "specified"
+        self._player_home_systems: typing.List[typing.Optional[str]] = ["Random"] * self._num_players
+        self._selected_player_index_for_home: int = 0
 
-        # Slider references (value read via .get_current_value())
+        # --- Economy State ---
+        self._credits_str: str = "20000"
+        self._metal_str: str = "10000"
+        self._crystal_str: str = "10000"
+        self._population_str: str = "50"
+
+        # --- Preview Interaction State ---
+        self._preview_hovered_system: typing.Optional[str] = None
+        self._preview_selected_system: typing.Optional[str] = None
+
+        # Widget references
+        self._preview_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
+        self._preview_hint_label: typing.Optional[pygame_gui.elements.UILabel] = None
+        self._galaxy_stats_label: typing.Optional[pygame_gui.elements.UILabel] = None
+        self._generate_map_btn: typing.Optional[pygame_gui.elements.UIButton] = None
+
+        # Stage 1 Slider widgets
         self._num_systems_slider: typing.Optional[pygame_gui.elements.UIHorizontalSlider] = None
         self._num_systems_label: typing.Optional[pygame_gui.elements.UILabel] = None
         self._sys_radius_min_slider: typing.Optional[pygame_gui.elements.UIHorizontalSlider] = None
@@ -153,27 +186,44 @@ class NewGameWizard:
         self._max_dist_slider: typing.Optional[pygame_gui.elements.UIHorizontalSlider] = None
         self._max_dist_label: typing.Optional[pygame_gui.elements.UILabel] = None
 
-        # Economy text entries
+        # Stage 2 Widgets
+        self._scrollable: typing.Optional[pygame_gui.elements.UIScrollingContainer] = None
+        self._spawn_profile_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self._home_mode_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self._player_minus_btn: typing.Optional[pygame_gui.elements.UIButton] = None
+        self._player_plus_btn: typing.Optional[pygame_gui.elements.UIButton] = None
+        self._player_count_label: typing.Optional[pygame_gui.elements.UILabel] = None
+
+        self._player_name_entries: typing.List[pygame_gui.elements.UITextEntryLine] = []
+        self._player_color_prev_btns: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_color_next_btns: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_color_swatches: typing.List[pygame_gui.elements.UIPanel] = []
+        self._player_type_buttons: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_team_buttons: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_home_buttons: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_home_labels: typing.List[pygame_gui.elements.UILabel] = []
+        self._player_select_labels: typing.List[pygame_gui.elements.UILabel] = []
+        self._player_home_prev_btns: typing.List[pygame_gui.elements.UIButton] = []
+        self._player_home_next_btns: typing.List[pygame_gui.elements.UIButton] = []
+
         self._credits_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._metal_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._crystal_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
         self._population_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
 
-        # Player count buttons
-        self._player_minus_btn: typing.Optional[pygame_gui.elements.UIButton] = None
-        self._player_plus_btn: typing.Optional[pygame_gui.elements.UIButton] = None
-        self._player_count_label: typing.Optional[pygame_gui.elements.UILabel] = None
-
-        # Player rows panel (rebuilt when count changes)
-        self._player_rows_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
-
-        # Action buttons
-        self.start_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        # Action bar buttons
+        self.back_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.cancel_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.next_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.start_button: typing.Optional[pygame_gui.elements.UIButton] = None
 
-        # Scrollable container for the main body
-        self._scrollable: typing.Optional[pygame_gui.elements.UIScrollingContainer] = None
+        # Track dynamically created stage elements to kill upon stage switch
+        self._stage_elements: typing.List[pygame_gui.core.UIElement] = []
 
+        # Generate initial map for preview
+        self._generate_map()
+
+        # Build active UI
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -186,37 +236,229 @@ class NewGameWizard:
         return int(v * self.scale_y)
 
     # ------------------------------------------------------------------
-    # Full UI construction
+    # Map Generation Logic
     # ------------------------------------------------------------------
-
-    def _build_ui(self) -> None:
-        """Constructs all wizard UI elements inside the window."""
-        # Bottom action bar (fixed, not scrolled)
-        btn_bar_h = self._sy(_BTN_H + _PAD * 2)
-        scrollable_h = self._content_h - btn_bar_h
-
-        # --- Scrollable area ---
-        scroll_rect = pygame.Rect(
-            0, 0,
-            self._content_w,
-            scrollable_h,
+    def _generate_map(self) -> None:
+        """Generates a procedural Galaxy matching current parameters for preview."""
+        temp_settings = GameSettings(
+            num_systems=self._num_systems,
+            min_system_distance=float(self._min_dist),
+            max_system_distance=float(self._max_dist),
+            wormhole_density=self._wormhole_density / 100.0,
+            system_radius_min=self._sys_radius_min,
+            system_radius_max=self._sys_radius_max,
+            player_configs=[
+                PlayerConfig(f"P{i + 1}", PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1], team_id=i + 1)
+                for i in range(self._num_players)
+            ],
         )
+        try:
+            self._generated_galaxy = Galaxy(num_systems=self._num_systems, settings=temp_settings)
+        except Exception as e:
+            logger.debug(f"Error generating galaxy in wizard preview: {e}")
+            self._generated_galaxy = None
+
+        # Verify assigned home systems still exist in new galaxy
+        if self._generated_galaxy and self._generated_galaxy.systems:
+            avail_systems = set(self._generated_galaxy.systems.keys())
+            for i in range(len(self._player_home_systems)):
+                sys_val = self._player_home_systems[i]
+                if sys_val and sys_val.lower() != "random" and sys_val not in avail_systems:
+                    self._player_home_systems[i] = "Random"
+        else:
+            self._player_home_systems = ["Random"] * len(self._player_home_systems)
+
+        if self._galaxy_stats_label and self._generated_galaxy:
+            sys_cnt = len(self._generated_galaxy.systems)
+            wh_cnt = len(self._generated_galaxy.wormholes) // 2
+            self._galaxy_stats_label.set_text(f"{sys_cnt} Systems | {wh_cnt} Wormhole Conduits")
+
+    # ------------------------------------------------------------------
+    # UI Construction
+    # ------------------------------------------------------------------
+    def _build_ui(self) -> None:
+        """Constructs UI elements for the active stage and map preview."""
+        # Update window title
+        if self._stage == 1:
+            self.window.set_display_title("New Game — Stage 1: Galaxy Setup & Preview")
+        else:
+            self.window.set_display_title("New Game — Stage 2: Factions & Economy")
+
+        btn_bar_h = self._sy(_BTN_H + _PAD * 2)
+        main_h = self._content_h - btn_bar_h
+        left_w = int(self._content_w * 0.49)
+        right_w = self._content_w - left_w - self._sx(_PAD * 2)
+        right_x = left_w + self._sx(_PAD)
+
+        # 1. Build Persistent Right-Pane Map Preview
+        self._build_preview_panel(right_x, self._sy(_PAD), right_w, main_h - self._sy(_PAD))
+
+        # 2. Build Stage-specific Left-Pane Controls
+        if self._stage == 1:
+            self._build_stage_1_controls(left_w, main_h)
+        else:
+            self._build_stage_2_controls(left_w, main_h)
+
+        # 3. Build Bottom Action Bar
+        self._build_action_bar(main_h, btn_bar_h)
+
+    def _build_preview_panel(self, x: int, y: int, width: int, height: int) -> None:
+        """Constructs the Map Preview container and descriptive labels."""
+        self._preview_panel = pygame_gui.elements.UIPanel(
+            relative_rect=pygame.Rect(x, y, width, height),
+            manager=self.manager,
+            container=self.window,
+            object_id="#wizard_preview_panel",
+        )
+        self._stage_elements.append(self._preview_panel)
+
+        header_h = self._sy(_SECTION_H)
+        title_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(self._sx(8), self._sy(4), width - self._sx(16), header_h),
+            text="── Galaxy Map Preview ────────────────",
+            manager=self.manager,
+            container=self._preview_panel,
+            object_id="#wizard_section_header",
+        )
+        self._stage_elements.append(title_lbl)
+
+        hint_h = self._sy(32)
+        hint_text = (
+            "Galaxy layout preview. Click 'Generate Map' to re-roll."
+            if self._stage == 1
+            else "Click system on map to assign P1 (Player 1)."
+        )
+        self._preview_hint_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(self._sx(8), height - hint_h - self._sy(4), width - self._sx(16), hint_h),
+            text=hint_text,
+            manager=self.manager,
+            container=self._preview_panel,
+            object_id="#wizard_preview_hint",
+        )
+        self._stage_elements.append(self._preview_hint_label)
+
+    def _get_preview_screen_rect(self) -> pygame.Rect:
+        """Computes the screen bounding box for rendering the map preview."""
+        if not self._preview_panel or not self._preview_panel.alive():
+            return pygame.Rect(0, 0, 0, 0)
+        panel_rect = self._preview_panel.get_abs_rect()
+        pad_x = self._sx(10)
+        pad_y = self._sy(6)
+        header_h = self._sy(_SECTION_H) + pad_y
+        hint_h = self._sy(32) + pad_y * 2
+        return pygame.Rect(
+            panel_rect.x + pad_x,
+            panel_rect.y + header_h,
+            max(0, panel_rect.width - pad_x * 2),
+            max(0, panel_rect.height - header_h - hint_h),
+        )
+
+    # ------------------------------------------------------------------
+    # Stage 1: Galaxy Parameters Controls
+    # ------------------------------------------------------------------
+    def _build_stage_1_controls(self, width: int, height: int) -> None:
+        """Builds sliders and generation actions for Stage 1."""
+        cursor_y = self._sy(_PAD)
+        pad = self._sx(_PAD)
+        inner_w = width - pad
+
+        # Header
+        hdr = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, cursor_y, inner_w, self._sy(_SECTION_H)),
+            text="── Galaxy Generation Parameters ────────",
+            manager=self.manager,
+            container=self.window,
+            object_id="#wizard_section_header",
+        )
+        self._stage_elements.append(hdr)
+        cursor_y += self._sy(_SECTION_H + 10)
+
+        # Sliders
+        cursor_y, self._num_systems_slider, self._num_systems_label = self._add_slider_row(
+            "Star Systems:", cursor_y, inner_w,
+            min_val=5, max_val=30, start_val=self._num_systems,
+            object_id="#systems_slider",
+        )
+        cursor_y, self._sys_radius_min_slider, self._sys_radius_min_label = self._add_slider_row(
+            "Min System Radius:", cursor_y, inner_w,
+            min_val=3, max_val=9, start_val=self._sys_radius_min,
+            object_id="#radius_min_slider",
+        )
+        cursor_y, self._sys_radius_max_slider, self._sys_radius_max_label = self._add_slider_row(
+            "Max System Radius:", cursor_y, inner_w,
+            min_val=4, max_val=12, start_val=self._sys_radius_max,
+            object_id="#radius_max_slider",
+        )
+        cursor_y, self._wormhole_density_slider, self._wormhole_density_label = self._add_slider_row(
+            "Wormhole Density:", cursor_y, inner_w,
+            min_val=0, max_val=100, start_val=self._wormhole_density,
+            object_id="#wormhole_slider",
+            value_suffix="%",
+        )
+        cursor_y, self._min_dist_slider, self._min_dist_label = self._add_slider_row(
+            "Min System Dist:", cursor_y, inner_w,
+            min_val=30, max_val=200, start_val=self._min_dist,
+            object_id="#min_dist_slider",
+        )
+        cursor_y, self._max_dist_slider, self._max_dist_label = self._add_slider_row(
+            "Max System Dist:", cursor_y, inner_w,
+            min_val=100, max_val=600, start_val=self._max_dist,
+            object_id="#max_dist_slider",
+        )
+
+        # Action: Generate Map button & stats label
+        cursor_y += self._sy(12)
+        btn_w = self._sx(150)
+        btn_h = self._sy(_BTN_H)
+        self._generate_map_btn = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(pad, cursor_y, btn_w, btn_h),
+            text="⟳ Generate Map",
+            manager=self.manager,
+            container=self.window,
+            object_id="#wizard_generate_map_button",
+        )
+        self._stage_elements.append(self._generate_map_btn)
+
+        stats_text = ""
+        if self._generated_galaxy and self._generated_galaxy.systems:
+            sys_cnt = len(self._generated_galaxy.systems)
+            wh_cnt = len(self._generated_galaxy.wormholes) // 2
+            stats_text = f"{sys_cnt} Systems | {wh_cnt} Wormholes"
+
+        self._galaxy_stats_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad + btn_w + self._sx(10), cursor_y, inner_w - btn_w - self._sx(10), btn_h),
+            text=stats_text,
+            manager=self.manager,
+            container=self.window,
+            object_id="#wizard_stats_label",
+        )
+        self._stage_elements.append(self._galaxy_stats_label)
+
+    # ------------------------------------------------------------------
+    # Stage 2: Factions & Starting Conditions Controls
+    # ------------------------------------------------------------------
+    def _build_stage_2_controls(self, width: int, height: int) -> None:
+        """Builds player rows, spawn profile, home system controls, and economy entries."""
+        scroll_rect = pygame.Rect(0, 0, width, height)
         self._scrollable = pygame_gui.elements.UIScrollingContainer(
             relative_rect=scroll_rect,
             manager=self.manager,
             container=self.window,
             object_id="#wizard_scroll",
         )
+        self._stage_elements.append(self._scrollable)
 
-        # We'll lay out content vertically within the scrollable container
-        cursor_y = _PAD
-        inner_w = self._content_w - self._sx(20)  # leave room for scrollbar
+        cursor_y = self._sy(_PAD)
+        inner_w = width - self._sx(22)
 
-        # ── Section: Players ─────────────────────────────────────────
-        cursor_y = self._add_section_header("Players", cursor_y, inner_w)
+        # Header: Players & Factions
+        cursor_y = self._add_section_header("Players & Factions", cursor_y, inner_w)
 
         # Spawn profile row (Normal / Testing)
         cursor_y = self._add_spawn_profile_row(cursor_y, inner_w)
+
+        # Home system mode row (Random / Specified)
+        cursor_y = self._add_home_mode_row(cursor_y, inner_w)
 
         # Player count row (+/- buttons + count label)
         cursor_y = self._add_player_count_row(cursor_y, inner_w)
@@ -224,117 +466,68 @@ class NewGameWizard:
         # Individual player rows
         cursor_y = self._build_player_rows(cursor_y, inner_w)
 
-        # ── Section: Galaxy ───────────────────────────────────────────
-        cursor_y = self._add_section_header("Galaxy", cursor_y, inner_w)
-
-        cursor_y, self._num_systems_slider, self._num_systems_label = self._add_slider_row(
-            "Star Systems:", cursor_y, inner_w,
-            min_val=5, max_val=30, start_val=15,
-            object_id="#systems_slider",
-        )
-        cursor_y, self._sys_radius_min_slider, self._sys_radius_min_label = self._add_slider_row(
-            "Min System Radius:", cursor_y, inner_w,
-            min_val=3, max_val=9, start_val=6,
-            object_id="#radius_min_slider",
-        )
-        cursor_y, self._sys_radius_max_slider, self._sys_radius_max_label = self._add_slider_row(
-            "Max System Radius:", cursor_y, inner_w,
-            min_val=4, max_val=12, start_val=10,
-            object_id="#radius_max_slider",
-        )
-        cursor_y, self._wormhole_density_slider, self._wormhole_density_label = self._add_slider_row(
-            "Wormhole Density:", cursor_y, inner_w,
-            min_val=0, max_val=100, start_val=33,
-            object_id="#wormhole_slider",
-            value_suffix="%",
-        )
-        cursor_y, self._min_dist_slider, self._min_dist_label = self._add_slider_row(
-            "Min System Dist:", cursor_y, inner_w,
-            min_val=30, max_val=200, start_val=50,
-            object_id="#min_dist_slider",
-        )
-        cursor_y, self._max_dist_slider, self._max_dist_label = self._add_slider_row(
-            "Max System Dist:", cursor_y, inner_w,
-            min_val=100, max_val=600, start_val=350,
-            object_id="#max_dist_slider",
-        )
-
-        # ── Section: Economy ──────────────────────────────────────────
-        cursor_y = self._add_section_header("Economy", cursor_y, inner_w)
+        # Header: Economy
+        cursor_y = self._add_section_header("Starting Economy", cursor_y, inner_w)
 
         cursor_y, self._credits_entry = self._add_numeric_entry_row(
-            "Starting Credits:", cursor_y, inner_w, default="20000",
+            "Starting Credits:", cursor_y, inner_w, default=self._credits_str,
             object_id="#credits_entry",
         )
         cursor_y, self._metal_entry = self._add_numeric_entry_row(
-            "Starting Metal:", cursor_y, inner_w, default="10000",
+            "Starting Metal:", cursor_y, inner_w, default=self._metal_str,
             object_id="#metal_entry",
         )
         cursor_y, self._crystal_entry = self._add_numeric_entry_row(
-            "Starting Crystal:", cursor_y, inner_w, default="10000",
+            "Starting Crystal:", cursor_y, inner_w, default=self._crystal_str,
             object_id="#crystal_entry",
         )
         cursor_y, self._population_entry = self._add_numeric_entry_row(
-            "Homeworld Population:", cursor_y, inner_w, default="50",
+            "Homeworld Population:", cursor_y, inner_w, default=self._population_str,
             object_id="#population_entry",
         )
 
-        # Resize the scrollable container to fit content
         cursor_y += self._sy(_PAD)
-        self._scrollable.set_scrollable_area_dimensions(
-            (inner_w, max(cursor_y, scrollable_h))
-        )
-
-        # --- Bottom action buttons (not scrolled) ---
-        self._add_action_buttons(scrollable_h, btn_bar_h)
-
-    # ------------------------------------------------------------------
-    # Widget builder helpers
-    # ------------------------------------------------------------------
+        self._scrollable.set_scrollable_area_dimensions((inner_w, max(cursor_y, height)))
 
     def _add_section_header(self, title: str, y: int, width: int) -> int:
-        """Adds a bold section header label; returns new y cursor."""
         header_h = self._sy(_SECTION_H)
-        top_pad = self._sy(_PAD)
-        pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(
-                self._sx(_PAD), y + top_pad,
-                width - self._sx(_PAD * 2), header_h,
-            ),
+        top_pad = self._sy(6)
+        hdr = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(self._sx(_PAD), y + top_pad, width - self._sx(_PAD * 2), header_h),
             text=f"── {title} ──────────────────────────",
             manager=self.manager,
             container=self._scrollable,
             object_id="#wizard_section_header",
         )
+        self._stage_elements.append(hdr)
         return y + top_pad + header_h + self._sy(4)
 
     def _add_spawn_profile_row(self, y: int, width: int) -> int:
-        """Adds the spawn profile selector row; returns new y cursor."""
         row_h = self._sy(_ROW_H)
         pad = self._sx(_PAD)
-        lbl_w = self._sx(160)
-        btn_w = self._sx(120)
+        lbl_w = self._sx(140)
+        btn_w = self._sx(110)
 
-        pygame_gui.elements.UILabel(
+        lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
             text="Spawn Profile:",
             manager=self.manager,
             container=self._scrollable,
             object_id="#spawn_profile_label",
         )
+        self._stage_elements.append(lbl)
 
-        x_offset = pad + lbl_w + self._sx(8)
         self._spawn_profile_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(x_offset, y, btn_w, row_h),
+            relative_rect=pygame.Rect(pad + lbl_w + self._sx(6), y, btn_w, row_h),
             text=self._spawn_profile.display_name,
             manager=self.manager,
             container=self._scrollable,
             object_id="#spawn_profile_button",
         )
-        return y + row_h + self._sy(_PAD)
+        self._stage_elements.append(self._spawn_profile_button)
+        return y + row_h + self._sy(6)
 
     def _cycle_spawn_profile(self) -> None:
-        """Cycles between Normal and Testing spawn profiles."""
         if self._spawn_profile == SpawnProfile.NORMAL:
             self._spawn_profile = SpawnProfile.TESTING
         else:
@@ -342,22 +535,58 @@ class NewGameWizard:
         if self._spawn_profile_button:
             self._spawn_profile_button.set_text(self._spawn_profile.display_name)
 
+    def _add_home_mode_row(self, y: int, width: int) -> int:
+        row_h = self._sy(_ROW_H)
+        pad = self._sx(_PAD)
+        lbl_w = self._sx(140)
+        btn_w = self._sx(140)
+
+        lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
+            text="Home Systems:",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#home_mode_label",
+        )
+        self._stage_elements.append(lbl)
+
+        mode_text = "Mode: Random" if self._home_system_mode == "random" else "Mode: Specified"
+        self._home_mode_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(pad + lbl_w + self._sx(6), y, btn_w, row_h),
+            text=mode_text,
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#home_mode_button",
+        )
+        self._stage_elements.append(self._home_mode_button)
+        return y + row_h + self._sy(6)
+
+    def _cycle_home_mode(self) -> None:
+        """Toggles between Random and Specified home system assignment modes."""
+        if self._home_system_mode == "random":
+            self._home_system_mode = "specified"
+        else:
+            self._home_system_mode = "random"
+        if self._home_mode_button:
+            mode_text = "Mode: Random" if self._home_system_mode == "random" else "Mode: Specified"
+            self._home_mode_button.set_text(mode_text)
+        self._full_rebuild()
 
     def _add_player_count_row(self, y: int, width: int) -> int:
-        """Adds the player count +/- row; returns new y cursor."""
         row_h = self._sy(_ROW_H)
-        lbl_w = self._sx(160)
+        lbl_w = self._sx(150)
         btn_sz = self._sy(_ROW_H)
-        count_lbl_w = self._sx(40)
+        count_lbl_w = self._sx(36)
 
-        pygame_gui.elements.UILabel(
+        lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(self._sx(_PAD), y, lbl_w, row_h),
             text="Number of Players:",
             manager=self.manager,
             container=self._scrollable,
         )
+        self._stage_elements.append(lbl)
 
-        x_offset = self._sx(_PAD) + lbl_w + self._sx(8)
+        x_offset = self._sx(_PAD) + lbl_w + self._sx(6)
         self._player_minus_btn = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(x_offset, y, btn_sz, row_h),
             text="−",
@@ -365,6 +594,8 @@ class NewGameWizard:
             container=self._scrollable,
             object_id="#player_minus_button",
         )
+        self._stage_elements.append(self._player_minus_btn)
+
         x_offset += btn_sz + self._sx(4)
         self._player_count_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(x_offset, y, count_lbl_w, row_h),
@@ -373,6 +604,8 @@ class NewGameWizard:
             container=self._scrollable,
             object_id="#player_count_label",
         )
+        self._stage_elements.append(self._player_count_label)
+
         x_offset += count_lbl_w + self._sx(4)
         self._player_plus_btn = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(x_offset, y, btn_sz, row_h),
@@ -381,141 +614,244 @@ class NewGameWizard:
             container=self._scrollable,
             object_id="#player_plus_button",
         )
-        return y + row_h + self._sy(_PAD)
+        self._stage_elements.append(self._player_plus_btn)
+
+        return y + row_h + self._sy(6)
 
     def _build_player_rows(self, y: int, width: int) -> int:
-        """Creates per-player name/color/type rows; returns new y cursor."""
         self._player_name_entries = []
-        self._player_color_indices = []
         self._player_color_prev_btns = []
         self._player_color_next_btns = []
         self._player_color_swatches = []
         self._player_type_buttons = []
-        self._player_controllers = []
-        self._player_ai_reasoning_efforts = []
         self._player_team_buttons = []
+        self._player_home_buttons = []
+        self._player_home_labels = []
+        self._player_select_labels = []
+        self._player_home_prev_btns = []
+        self._player_home_next_btns = []
+
+        # Ensure state arrays match count
+        while len(self._player_names) < self._num_players:
+            self._player_names.append(f"Player {len(self._player_names) + 1}")
+        while len(self._player_color_indices) < self._num_players:
+            self._player_color_indices.append(len(self._player_color_indices) % len(PLAYER_COLOR_PALETTE))
+        while len(self._player_controllers) < self._num_players:
+            self._player_controllers.append(PlayerController.OPENAI)
+            self._player_ai_reasoning_efforts.append("low")
+        while len(self._player_teams) < self._num_players:
+            self._player_teams.append(len(self._player_teams) + 1)
+        while len(self._player_home_systems) < self._num_players:
+            self._player_home_systems.append("Random")
 
         for i in range(self._num_players):
-            y = self._add_single_player_row(i, y, width)
+            y = self._add_single_player_block(i, y, width)
 
         return y
 
-    def _add_single_player_row(self, index: int, y: int, width: int) -> int:
-        """Adds one player row (index label, name entry, colour swatch cycler, human button)."""
+    def _add_single_player_block(self, index: int, y: int, width: int) -> int:
         row_h = self._sy(_PLAYER_ROW_H)
         pad = self._sx(_PAD)
 
-        # Index label e.g. "P1"
+        # Line 1: Index | Name | Swatch | Controller | Team
         idx_lbl_w = self._sx(24)
-        pygame_gui.elements.UILabel(
+        idx_lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(pad, y, idx_lbl_w, row_h),
             text=f"P{index + 1}",
             manager=self.manager,
             container=self._scrollable,
         )
+        self._stage_elements.append(idx_lbl)
 
-        # Name entry
-        name_entry_w = self._sx(150)
-        name_x = pad + idx_lbl_w + self._sx(6)
+        name_w = self._sx(110)
+        name_x = pad + idx_lbl_w + self._sx(4)
         entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(name_x, y, name_entry_w, row_h),
+            relative_rect=pygame.Rect(name_x, y, name_w, row_h),
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_name_entry_{index}",
         )
-        entry.set_text(f"Player {index + 1}")
+        entry.set_text(self._player_names[index])
         self._player_name_entries.append(entry)
+        self._stage_elements.append(entry)
 
-        # ── Colour swatch cycler: [◀] [■■■] [▶] ─────────────────────────
-        # Use the saved index if available (after a rebuild/restore), or default.
-        if index < len(self._player_color_indices):
-            color_idx = self._player_color_indices[index]
-        else:
-            default_name = build_default_color_name_for_index(index)
-            color_idx = next(
-                (i for i, (n, _) in enumerate(PLAYER_COLOR_PALETTE) if n == default_name),
-                index % len(PLAYER_COLOR_PALETTE),
-            )
-            self._player_color_indices.append(color_idx)
-
+        # Color cycler
         cycle_btn_w = self._sx(_COLOR_CYCLE_BTN_W)
         swatch_w = self._sx(_COLOR_SWATCH_W)
-        color_x = name_x + name_entry_w + self._sx(8)
+        color_x = name_x + name_w + self._sx(6)
 
-        prev_btn = pygame_gui.elements.UIButton(
+        prev_c = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(color_x, y, cycle_btn_w, row_h),
             text="◀",
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_color_prev_{index}",
         )
-        self._player_color_prev_btns.append(prev_btn)
+        self._player_color_prev_btns.append(prev_c)
+        self._stage_elements.append(prev_c)
 
-        swatch_panel = pygame_gui.elements.UIPanel(
+        swatch = pygame_gui.elements.UIPanel(
             relative_rect=pygame.Rect(color_x + cycle_btn_w, y, swatch_w, row_h),
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_color_swatch_{index}",
         )
-        self._player_color_swatches.append(swatch_panel)
+        self._player_color_swatches.append(swatch)
+        self._stage_elements.append(swatch)
 
-        next_btn = pygame_gui.elements.UIButton(
+        next_c = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(color_x + cycle_btn_w + swatch_w, y, cycle_btn_w, row_h),
             text="▶",
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_color_next_{index}",
         )
-        self._player_color_next_btns.append(next_btn)
-
-        color_block_w = cycle_btn_w * 2 + swatch_w
+        self._player_color_next_btns.append(next_c)
+        self._stage_elements.append(next_c)
 
         # Controller type button
-        type_btn_w = self._sx(96)
-        type_x = color_x + color_block_w + self._sx(8)
-        controller = PlayerController.HUMAN if index == 0 else PlayerController.OPENAI
-        reasoning_effort = "medium" if index == 0 else "low"
-        btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(type_x, y, type_btn_w, row_h),
-            text=self._player_type_label(controller, reasoning_effort),
+        type_w = self._sx(88)
+        type_x = color_x + cycle_btn_w * 2 + swatch_w + self._sx(6)
+        controller = self._player_controllers[index]
+        effort = self._player_ai_reasoning_efforts[index]
+        type_btn = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(type_x, y, type_w, row_h),
+            text=self._player_type_label(controller, effort),
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_type_button_{index}",
         )
-        self._player_type_buttons.append(btn)
-        self._player_controllers.append(controller)
-        self._player_ai_reasoning_efforts.append(reasoning_effort)
+        self._player_type_buttons.append(type_btn)
+        self._stage_elements.append(type_btn)
 
-        # Team selector button (cycles Team 1 -> Team 2 -> ...)
-        team_btn_w = self._sx(72)
-        team_x = type_x + type_btn_w + self._sx(8)
-        if index >= len(self._player_teams):
-            self._player_teams.append(index + 1)
-        team_num = self._player_teams[index]
+        # Team button
+        team_w = self._sx(64)
+        team_x = type_x + type_w + self._sx(4)
         team_btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(team_x, y, team_btn_w, row_h),
-            text=f"Team {team_num}",
+            relative_rect=pygame.Rect(team_x, y, team_w, row_h),
+            text=f"Team {self._player_teams[index]}",
             manager=self.manager,
             container=self._scrollable,
             object_id=f"#player_team_button_{index}",
         )
         self._player_team_buttons.append(team_btn)
+        self._stage_elements.append(team_btn)
 
-        return y + row_h + self._sy(4)
+        # Line 2: Home system assignment
+        y += row_h + self._sy(2)
+        home_lbl_w = self._sx(56)
+        home_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad + idx_lbl_w, y, home_lbl_w, row_h),
+            text="Home:",
+            manager=self.manager,
+            container=self._scrollable,
+        )
+        self._player_home_labels.append(home_lbl)
+        self._stage_elements.append(home_lbl)
+
+        home_x = pad + idx_lbl_w + home_lbl_w + self._sx(4)
+        prev_h = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(home_x, y, cycle_btn_w, row_h),
+            text="◀",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id=f"#player_home_prev_{index}",
+        )
+        self._player_home_prev_btns.append(prev_h)
+        self._stage_elements.append(prev_h)
+
+        sys_val = self._player_home_systems[index] or "Random"
+        if self._home_system_mode == "random":
+            sys_val = "Random (Auto)"
+        sys_btn_w = self._sx(150)
+        home_btn = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(home_x + cycle_btn_w, y, sys_btn_w, row_h),
+            text=sys_val,
+            manager=self.manager,
+            container=self._scrollable,
+            object_id=f"#player_home_btn_{index}",
+            tool_tip_text="Click to select this player for map assignment, or use ◀/▶ to cycle.",
+        )
+        self._player_home_buttons.append(home_btn)
+        self._stage_elements.append(home_btn)
+
+        next_h = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(home_x + cycle_btn_w + sys_btn_w, y, cycle_btn_w, row_h),
+            text="▶",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id=f"#player_home_next_{index}",
+        )
+        self._player_home_next_btns.append(next_h)
+        self._stage_elements.append(next_h)
+
+        # "click to select" indicator on the right side of the player row
+        sel_lbl_x = home_x + cycle_btn_w + sys_btn_w + cycle_btn_w + self._sx(6)
+        sel_lbl_w = max(self._sx(110), width - sel_lbl_x - self._sx(4))
+        is_target = (index == self._selected_player_index_for_home and self._home_system_mode == "specified")
+        sel_lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(sel_lbl_x, y, sel_lbl_w, row_h),
+            text="click to select" if is_target else "",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#player_select_hint",
+        )
+        self._player_select_labels.append(sel_lbl)
+        self._stage_elements.append(sel_lbl)
+
+        return y + row_h + self._sy(6)
 
     def _cycle_player_color(self, player_index: int, delta: int) -> None:
-        """Cycles the colour for a player by ±1, wrapping around the palette."""
         cur = self._player_color_indices[player_index]
         self._player_color_indices[player_index] = (cur + delta) % len(PLAYER_COLOR_PALETTE)
 
     def _cycle_player_team(self, player_index: int, delta: int = 1) -> None:
-        """Cycles the team assignment for a player."""
         max_teams = max(2, self._num_players)
         cur = self._player_teams[player_index]
         new_team = ((cur - 1 + delta) % max_teams) + 1
         self._player_teams[player_index] = new_team
         if player_index < len(self._player_team_buttons) and self._player_team_buttons[player_index]:
             self._player_team_buttons[player_index].set_text(f"Team {new_team}")
+
+    def _cycle_player_home_system(self, player_index: int, delta: int) -> None:
+        """Cycles the home star system for a player among available generated systems."""
+        if not self._generated_galaxy or not self._generated_galaxy.systems:
+            return
+        # If currently in random mode, switch to specified
+        if self._home_system_mode != "specified":
+            self._home_system_mode = "specified"
+            if self._home_mode_button:
+                self._home_mode_button.set_text("Mode: Specified")
+
+        self._selected_player_index_for_home = player_index
+        sys_list = ["Random"] + sorted(list(self._generated_galaxy.systems.keys()))
+        cur_sys = self._player_home_systems[player_index] or "Random"
+        cur_idx = sys_list.index(cur_sys) if cur_sys in sys_list else 0
+        new_idx = (cur_idx + delta) % len(sys_list)
+        new_sys = sys_list[new_idx]
+        self._player_home_systems[player_index] = new_sys
+        self._preview_selected_system = new_sys if new_sys != "Random" else None
+        self._update_home_assignment_ui()
+
+    def _update_home_assignment_ui(self) -> None:
+        """Updates home assignment labels, button text, and preview hint label."""
+        cur_idx = self._selected_player_index_for_home
+        for j in range(self._num_players):
+            if j < len(self._player_home_labels) and self._player_home_labels[j]:
+                self._player_home_labels[j].set_text("Home:")
+            if j < len(self._player_select_labels) and self._player_select_labels[j]:
+                hint_text = "click to select" if (j == cur_idx and self._home_system_mode == "specified") else ""
+                self._player_select_labels[j].set_text(hint_text)
+            if j < len(self._player_home_buttons) and self._player_home_buttons[j]:
+                val = self._player_home_systems[j] or "Random"
+                disp = "Random (Auto)" if self._home_system_mode == "random" else val
+                self._player_home_buttons[j].set_text(disp)
+
+        if self._preview_hint_label and self._stage == 2:
+            cur_name = self._player_names[cur_idx] if cur_idx < len(self._player_names) else f"Player {cur_idx + 1}"
+            self._preview_hint_label.set_text(
+                f"Click map to assign P{cur_idx + 1} ({cur_name}). Home marked in color."
+            )
 
     @staticmethod
     def _player_type_label(controller: PlayerController, reasoning_effort: str) -> str:
@@ -530,25 +866,650 @@ class NewGameWizard:
         }
         return labels.get(reasoning_effort, "AI: Medium")
 
-    def draw_swatches(self, surface: pygame.Surface) -> None:
-        """Draws filled colour squares on top of each player's swatch panel.
+    def _add_slider_row(
+        self,
+        label: str,
+        y: int,
+        width: int,
+        min_val: int,
+        max_val: int,
+        start_val: int,
+        object_id: str,
+        value_suffix: str = "",
+    ) -> typing.Tuple[int, pygame_gui.elements.UIHorizontalSlider, pygame_gui.elements.UILabel]:
+        row_h = self._sy(_ROW_H)
+        pad = self._sx(_PAD)
+        lbl_w = self._sx(150)
+        val_lbl_w = self._sx(50)
+        slider_w = width - lbl_w - val_lbl_w - pad * 2
 
-        Must be called **after** ``manager.draw_ui(surface)`` so the fill
-        renders on top of the pygame_gui panel background.
-        """
-        if not self._scrollable:
+        lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
+            text=label,
+            manager=self.manager,
+            container=self.window,
+        )
+        self._stage_elements.append(lbl)
+
+        slider = pygame_gui.elements.UIHorizontalSlider(
+            relative_rect=pygame.Rect(pad + lbl_w, y, slider_w, row_h),
+            start_value=start_val,
+            value_range=(min_val, max_val),
+            manager=self.manager,
+            container=self.window,
+            object_id=object_id,
+        )
+        self._stage_elements.append(slider)
+
+        val_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad + lbl_w + slider_w + self._sx(4), y, val_lbl_w, row_h),
+            text=f"{start_val}{value_suffix}",
+            manager=self.manager,
+            container=self.window,
+            object_id=f"{object_id}_value_label",
+        )
+        self._stage_elements.append(val_label)
+
+        return y + row_h + self._sy(4), slider, val_label
+
+    def _add_numeric_entry_row(
+        self,
+        label: str,
+        y: int,
+        width: int,
+        default: str,
+        object_id: str,
+    ) -> typing.Tuple[int, pygame_gui.elements.UITextEntryLine]:
+        row_h = self._sy(_ROW_H)
+        pad = self._sx(_PAD)
+        lbl_w = self._sx(180)
+        entry_w = self._sx(100)
+
+        lbl = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
+            text=label,
+            manager=self.manager,
+            container=self._scrollable,
+        )
+        self._stage_elements.append(lbl)
+
+        entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(pad + lbl_w, y, entry_w, row_h),
+            manager=self.manager,
+            container=self._scrollable,
+            object_id=object_id,
+        )
+        entry.set_text(default)
+        entry.set_allowed_characters("numbers")
+        self._stage_elements.append(entry)
+
+        return y + row_h + self._sy(4), entry
+
+    # ------------------------------------------------------------------
+    # Bottom Action Bar
+    # ------------------------------------------------------------------
+    def _build_action_bar(self, main_h: int, btn_bar_h: int) -> None:
+        btn_h = self._sy(_BTN_H)
+        btn_y = main_h + (btn_bar_h - btn_h) // 2
+
+        if self._stage == 1:
+            btn_w_next = self._sx(_BTN_W + 30)
+            btn_w_cancel = self._sx(_BTN_W)
+            total_w = btn_w_cancel + self._sx(_PAD * 2) + btn_w_next
+            start_x = (self._content_w - total_w) // 2
+
+            self.cancel_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(start_x, btn_y, btn_w_cancel, btn_h),
+                text="Cancel",
+                manager=self.manager,
+                container=self.window,
+                object_id="#wizard_cancel_button",
+            )
+            self._stage_elements.append(self.cancel_button)
+
+            self.next_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(start_x + btn_w_cancel + self._sx(_PAD * 2), btn_y, btn_w_next, btn_h),
+                text="Next: Players & Economy ➔",
+                manager=self.manager,
+                container=self.window,
+                object_id="#wizard_next_button",
+            )
+            self._stage_elements.append(self.next_button)
+
+            # Assign start_button to next_button for backward compatibility in tests
+            self.start_button = self.next_button
+            self.back_button = None
+
+        else:
+            btn_w_back = self._sx(_BTN_W)
+            btn_w_cancel = self._sx(_BTN_W)
+            btn_w_start = self._sx(_BTN_W)
+            total_w = btn_w_back + self._sx(_PAD) + btn_w_cancel + self._sx(_PAD) + btn_w_start
+            start_x = (self._content_w - total_w) // 2
+
+            self.back_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(start_x, btn_y, btn_w_back, btn_h),
+                text="◀ Back to Map",
+                manager=self.manager,
+                container=self.window,
+                object_id="#wizard_back_button",
+            )
+            self._stage_elements.append(self.back_button)
+
+            self.cancel_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(start_x + btn_w_back + self._sx(_PAD), btn_y, btn_w_cancel, btn_h),
+                text="Cancel",
+                manager=self.manager,
+                container=self.window,
+                object_id="#wizard_cancel_button",
+            )
+            self._stage_elements.append(self.cancel_button)
+
+            self.start_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(start_x + btn_w_back + btn_w_cancel + self._sx(_PAD * 2), btn_y, btn_w_start, btn_h),
+                text="Start Game",
+                manager=self.manager,
+                container=self.window,
+                object_id="#wizard_start_button",
+            )
+            self._stage_elements.append(self.start_button)
+            self.next_button = None
+
+    # ------------------------------------------------------------------
+    # Stage Navigation & Full Rebuild
+    # ------------------------------------------------------------------
+    def go_to_stage(self, stage: int) -> None:
+        """Transitions the wizard to the given stage (1 or 2)."""
+        if stage == self._stage:
+            return
+        snap = self._snapshot()
+        self._stage = stage
+        self._full_rebuild(snap)
+
+    def _adjust_player_count(self, delta: int) -> None:
+        new_count = max(_MIN_PLAYERS, min(_MAX_PLAYERS, self._num_players + delta))
+        if new_count == self._num_players:
+            return
+        snap = self._snapshot()
+        self._num_players = new_count
+        snap["num_players"] = new_count
+        self._full_rebuild(snap)
+
+    def _full_rebuild(self, snap: typing.Optional[dict] = None) -> None:
+        """Cleans up dynamic stage elements and recreates UI."""
+        if snap is None:
+            snap = self._snapshot()
+
+        for elem in self._stage_elements:
+            if elem and hasattr(elem, "alive") and elem.alive():
+                elem.kill()
+        self._stage_elements = []
+
+        self._preview_panel = None
+        self._preview_hint_label = None
+        self._galaxy_stats_label = None
+        self._generate_map_btn = None
+        self._scrollable = None
+        self._spawn_profile_button = None
+        self._home_mode_button = None
+        self._player_minus_btn = None
+        self._player_plus_btn = None
+        self._player_count_label = None
+        self.back_button = None
+        self.cancel_button = None
+        self.next_button = None
+        self.start_button = None
+
+        self._player_name_entries = []
+        self._player_color_prev_btns = []
+        self._player_color_next_btns = []
+        self._player_color_swatches = []
+        self._player_type_buttons = []
+        self._player_team_buttons = []
+        self._player_home_buttons = []
+        self._player_home_labels = []
+        self._player_select_labels = []
+        self._player_home_prev_btns = []
+        self._player_home_next_btns = []
+
+        self._build_ui()
+        self._restore_snapshot(snap)
+
+    # ------------------------------------------------------------------
+    # Snapshot / Restore
+    # ------------------------------------------------------------------
+    def _snapshot(self) -> dict:
+        """Captures widget values into state variables and returns snapshot dict."""
+        if self._stage == 1:
+            if self._num_systems_slider:
+                self._num_systems = int(self._num_systems_slider.get_current_value())
+            if self._sys_radius_min_slider:
+                self._sys_radius_min = int(self._sys_radius_min_slider.get_current_value())
+            if self._sys_radius_max_slider:
+                self._sys_radius_max = int(self._sys_radius_max_slider.get_current_value())
+            if self._wormhole_density_slider:
+                self._wormhole_density = int(self._wormhole_density_slider.get_current_value())
+            if self._min_dist_slider:
+                self._min_dist = int(self._min_dist_slider.get_current_value())
+            if self._max_dist_slider:
+                self._max_dist = int(self._max_dist_slider.get_current_value())
+        elif self._stage == 2:
+            for i, entry in enumerate(self._player_name_entries):
+                if i < len(self._player_names):
+                    self._player_names[i] = entry.get_text().strip() or f"Player {i + 1}"
+            if self._credits_entry:
+                self._credits_str = self._credits_entry.get_text()
+            if self._metal_entry:
+                self._metal_str = self._metal_entry.get_text()
+            if self._crystal_entry:
+                self._crystal_str = self._crystal_entry.get_text()
+            if self._population_entry:
+                self._population_str = self._population_entry.get_text()
+
+        return {
+            "stage": self._stage,
+            "num_players": self._num_players,
+            "spawn_profile": self._spawn_profile.value,
+            "player_names": list(self._player_names),
+            "player_colors": [PLAYER_COLOR_PALETTE[idx][0] for idx in self._player_color_indices],
+            "player_controllers": [c.value for c in self._player_controllers],
+            "player_ai_reasoning_efforts": list(self._player_ai_reasoning_efforts),
+            "player_teams": list(self._player_teams),
+            "home_system_mode": self._home_system_mode,
+            "player_home_systems": list(self._player_home_systems),
+            "num_systems": self._num_systems,
+            "radius_min": self._sys_radius_min,
+            "radius_max": self._sys_radius_max,
+            "wormhole_density": self._wormhole_density,
+            "min_dist": self._min_dist,
+            "max_dist": self._max_dist,
+            "credits": self._credits_str,
+            "metal": self._metal_str,
+            "crystal": self._crystal_str,
+            "population": self._population_str,
+        }
+
+    def _restore_snapshot(self, snap: dict) -> None:
+        """Restores state and widget values from snapshot dict."""
+        if "spawn_profile" in snap:
+            self._spawn_profile = normalize_spawn_profile(snap["spawn_profile"])
+            if self._spawn_profile_button:
+                self._spawn_profile_button.set_text(self._spawn_profile.display_name)
+
+        if "home_system_mode" in snap:
+            self._home_system_mode = snap["home_system_mode"]
+            if self._home_mode_button:
+                mode_text = "Mode: Random" if self._home_system_mode == "random" else "Mode: Specified"
+                self._home_mode_button.set_text(mode_text)
+
+        player_names = snap.get("player_names", [])
+        player_colors = snap.get("player_colors", [])
+        player_controllers = snap.get("player_controllers", [])
+        player_efforts = snap.get("player_ai_reasoning_efforts", [])
+        player_teams = snap.get("player_teams", [])
+        player_home_systems = snap.get("player_home_systems", [])
+
+        for i, entry in enumerate(self._player_name_entries):
+            if i < len(player_names):
+                entry.set_text(player_names[i])
+        for i in range(len(self._player_color_indices)):
+            if i < len(player_colors):
+                saved_name = player_colors[i]
+                found_idx = next((j for j, (n, _) in enumerate(PLAYER_COLOR_PALETTE) if n == saved_name), None)
+                if found_idx is not None:
+                    self._player_color_indices[i] = found_idx
+        for i, raw_c in enumerate(player_controllers):
+            if i < len(self._player_controllers):
+                controller = PlayerController(raw_c)
+                self._player_controllers[i] = controller
+                effort = player_efforts[i] if i < len(player_efforts) else "medium"
+                self._player_ai_reasoning_efforts[i] = effort
+                if i < len(self._player_type_buttons) and self._player_type_buttons[i]:
+                    self._player_type_buttons[i].set_text(self._player_type_label(controller, effort))
+        for i, team_num in enumerate(player_teams):
+            if i < len(self._player_teams):
+                self._player_teams[i] = team_num
+                if i < len(self._player_team_buttons) and self._player_team_buttons[i]:
+                    self._player_team_buttons[i].set_text(f"Team {team_num}")
+        for i, sys_name in enumerate(player_home_systems):
+            if i < len(self._player_home_systems):
+                self._player_home_systems[i] = sys_name
+                if i < len(self._player_home_buttons) and self._player_home_buttons[i]:
+                    disp = "Random (Auto)" if self._home_system_mode == "random" else (sys_name or "Random")
+                    self._player_home_buttons[i].set_text(disp)
+
+        def _restore_slider(slider, val):
+            if slider and val is not None:
+                slider.set_current_value(val)
+
+        _restore_slider(self._num_systems_slider, snap.get("num_systems"))
+        _restore_slider(self._sys_radius_min_slider, snap.get("radius_min"))
+        _restore_slider(self._sys_radius_max_slider, snap.get("radius_max"))
+        _restore_slider(self._wormhole_density_slider, snap.get("wormhole_density"))
+        _restore_slider(self._min_dist_slider, snap.get("min_dist"))
+        _restore_slider(self._max_dist_slider, snap.get("max_dist"))
+
+        if self._credits_entry and snap.get("credits"):
+            self._credits_entry.set_text(str(snap["credits"]))
+        if self._metal_entry and snap.get("metal"):
+            self._metal_entry.set_text(str(snap["metal"]))
+        if self._crystal_entry and snap.get("crystal"):
+            self._crystal_entry.set_text(str(snap["crystal"]))
+        if self._population_entry and snap.get("population"):
+            self._population_entry.set_text(str(snap["population"]))
+
+        if self._stage == 2:
+            self._update_home_assignment_ui()
+
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
+    def has_duplicate_colors(self) -> bool:
+        active_indices = self._player_color_indices[:self._num_players]
+        return len(set(active_indices)) < len(active_indices)
+
+    def get_map_validation_errors(self) -> typing.List[str]:
+        errors: typing.List[str] = []
+        radius_min = int(self._sys_radius_min_slider.get_current_value()) if self._sys_radius_min_slider else self._sys_radius_min
+        radius_max = int(self._sys_radius_max_slider.get_current_value()) if self._sys_radius_max_slider else self._sys_radius_max
+        if radius_min > radius_max:
+            errors.append(
+                f"Min System Radius ({radius_min}) cannot be greater than Max System Radius ({radius_max})."
+            )
+
+        min_d = float(int(self._min_dist_slider.get_current_value())) if self._min_dist_slider else float(self._min_dist)
+        max_d = float(int(self._max_dist_slider.get_current_value())) if self._max_dist_slider else float(self._max_dist)
+        if min_d >= max_d:
+            errors.append(
+                f"Min System Distance ({int(min_d)}) must be strictly less than Max System Distance ({int(max_d)})."
+            )
+        return errors
+
+    def get_validation_errors(self) -> typing.List[str]:
+        errors: typing.List[str] = []
+        if self._stage == 1:
+            return self.get_map_validation_errors()
+
+        if self.has_duplicate_colors():
+            errors.append("Each player must be assigned a unique color before starting the game.")
+
+        active_teams = set(self._player_teams[:self._num_players])
+        if self._num_players >= 2 and len(active_teams) < 2:
+            errors.append("Players must be grouped into at least two different teams.")
+
+        # If in stage 2, also check map constraints
+        errors.extend(self.get_map_validation_errors())
+
+        # Validate home systems in specified mode
+        if self._home_system_mode == "specified" and self._generated_galaxy:
+            avail = set(self._generated_galaxy.systems.keys())
+            for i in range(self._num_players):
+                sys_val = self._player_home_systems[i]
+                if sys_val and sys_val.lower() != "random" and sys_val not in avail:
+                    errors.append(f"Home system '{sys_val}' for player {i + 1} does not exist in the galaxy.")
+
+        return errors
+
+    # ------------------------------------------------------------------
+    # Event Processing
+    # ------------------------------------------------------------------
+    def process_event(self, event: pygame.event.Event) -> typing.Optional[dict]:
+        """Processes pygame events; returns an action dict or None."""
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            element = event.ui_element
+
+            # Action bar buttons
+            if element is self.cancel_button:
+                return {"action": "cancel_new_game_wizard"}
+
+            if self._stage == 1 and (element is self.next_button or element is self.start_button):
+                errs = self.get_map_validation_errors()
+                if errs:
+                    return {
+                        "action": "wizard_settings_error",
+                        "message": "\n".join(errs),
+                        "title": "Invalid Game Settings",
+                    }
+                self.go_to_stage(2)
+                return None
+
+            if self._stage == 2 and element is self.back_button:
+                self.go_to_stage(1)
+                return None
+
+            if self._stage == 2 and element is self.start_button:
+                errs = self.get_validation_errors()
+                if errs:
+                    if len(errs) == 1 and self.has_duplicate_colors():
+                        return {
+                            "action": "duplicate_player_colors_warning",
+                            "message": errs[0],
+                        }
+                    return {
+                        "action": "wizard_settings_error",
+                        "message": "\n".join(errs),
+                        "title": "Invalid Game Settings",
+                    }
+                return self._build_start_action()
+
+            # Stage 1: Generate Map
+            if element is self._generate_map_btn:
+                errs = self.get_map_validation_errors()
+                if errs:
+                    return {
+                        "action": "wizard_settings_error",
+                        "message": "\n".join(errs),
+                        "title": "Invalid Game Settings",
+                    }
+                self._snapshot()
+                self._generate_map()
+                return None
+
+            # Stage 2: Spawn profile & Home mode
+            if element is self._spawn_profile_button:
+                self._cycle_spawn_profile()
+                return None
+
+            if element is self._home_mode_button:
+                self._cycle_home_mode()
+                return None
+
+            # Stage 2: Player count buttons
+            if element is self._player_minus_btn:
+                self._adjust_player_count(-1)
+                return None
+            if element is self._player_plus_btn:
+                self._adjust_player_count(+1)
+                return None
+
+            # Stage 2: Color cycle buttons
+            for i, btn in enumerate(self._player_color_prev_btns):
+                if element is btn:
+                    self._cycle_player_color(i, -1)
+                    return None
+            for i, btn in enumerate(self._player_color_next_btns):
+                if element is btn:
+                    self._cycle_player_color(i, +1)
+                    return None
+
+            # Stage 2: Controller type buttons
+            for i, btn in enumerate(self._player_type_buttons):
+                if element is btn:
+                    controller = self._player_controllers[i]
+                    effort = self._player_ai_reasoning_efforts[i]
+                    if controller == PlayerController.HUMAN:
+                        controller = PlayerController.CODEX
+                    elif controller == PlayerController.CODEX:
+                        controller, effort = PlayerController.OPENAI, "medium"
+                    elif effort == "medium":
+                        effort = "high"
+                    elif effort == "high":
+                        effort = "low"
+                    else:
+                        controller, effort = PlayerController.HUMAN, "medium"
+                    self._player_controllers[i] = controller
+                    self._player_ai_reasoning_efforts[i] = effort
+                    btn.set_text(self._player_type_label(controller, effort))
+                    return None
+
+            # Stage 2: Team buttons
+            for i, btn in enumerate(self._player_team_buttons):
+                if element is btn:
+                    self._cycle_player_team(i, +1)
+                    return None
+
+            # Stage 2: Home system buttons
+            for i, btn in enumerate(self._player_home_prev_btns):
+                if element is btn:
+                    self._cycle_player_home_system(i, -1)
+                    return None
+            for i, btn in enumerate(self._player_home_next_btns):
+                if element is btn:
+                    self._cycle_player_home_system(i, +1)
+                    return None
+            for i, btn in enumerate(self._player_home_buttons):
+                if element is btn:
+                    self._selected_player_index_for_home = i
+                    if self._home_system_mode != "specified":
+                        self._home_system_mode = "specified"
+                        if self._home_mode_button:
+                            self._home_mode_button.set_text("Mode: Specified")
+                    self._update_home_assignment_ui()
+                    return None
+
+        elif event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
+            self._update_slider_labels()
+
+        elif event.type == pygame.MOUSEMOTION:
+            preview_rect = self._get_preview_screen_rect()
+            if preview_rect.collidepoint(event.pos):
+                self._preview_hovered_system = get_system_at_preview_point(
+                    event.pos, self._generated_galaxy, preview_rect, scale=self.scale_x
+                )
+            else:
+                self._preview_hovered_system = None
+
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            preview_rect = self._get_preview_screen_rect()
+            if preview_rect.collidepoint(event.pos):
+                clicked_sys = get_system_at_preview_point(
+                    event.pos, self._generated_galaxy, preview_rect, scale=self.scale_x
+                )
+                if clicked_sys:
+                    if self._stage == 2:
+                        idx = self._selected_player_index_for_home
+                        if idx < len(self._player_home_systems):
+                            self._home_system_mode = "specified"
+                            if self._home_mode_button:
+                                self._home_mode_button.set_text("Mode: Specified")
+                            self._player_home_systems[idx] = clicked_sys
+                            self._preview_selected_system = clicked_sys
+                            # Advance focus to next player for easy consecutive setup
+                            next_idx = (idx + 1) % self._num_players
+                            self._selected_player_index_for_home = next_idx
+                            self._update_home_assignment_ui()
+                    elif self._stage == 1:
+                        self._preview_selected_system = clicked_sys
+            elif self._stage == 2:
+                for idx, lbl in enumerate(self._player_select_labels):
+                    if lbl and lbl.alive() and lbl.get_abs_rect().collidepoint(event.pos):
+                        self._selected_player_index_for_home = idx
+                        if self._home_system_mode != "specified":
+                            self._home_system_mode = "specified"
+                            if self._home_mode_button:
+                                self._home_mode_button.set_text("Mode: Specified")
+                        self._update_home_assignment_ui()
+                        break
+
+        return None
+
+    def _update_slider_labels(self) -> None:
+        def _upd(slider, label, suffix=""):
+            if slider and label:
+                label.set_text(f"{int(slider.get_current_value())}{suffix}")
+
+        _upd(self._num_systems_slider, self._num_systems_label)
+        _upd(self._sys_radius_min_slider, self._sys_radius_min_label)
+        _upd(self._sys_radius_max_slider, self._sys_radius_max_label)
+        _upd(self._wormhole_density_slider, self._wormhole_density_label, "%")
+        _upd(self._min_dist_slider, self._min_dist_label)
+        _upd(self._max_dist_slider, self._max_dist_label)
+
+    # ------------------------------------------------------------------
+    # Drawing (Map Preview + Player Color Swatches)
+    # ------------------------------------------------------------------
+    def draw(self, surface: pygame.Surface) -> None:
+        """Renders the custom map preview and color swatches onto the surface."""
+        if not self.window.alive() or not self.window.visible:
             return
 
-        # Find any UIWindow elements layered on top of the wizard window
+        # Check for window blockers layered on top
         blockers: typing.List[pygame.Rect] = []
         if self.manager:
-            wizard_layer_found = False
+            wizard_found = False
             for sprite in self.manager.get_sprite_group().sprites():
                 if sprite is self.window:
-                    wizard_layer_found = True
+                    wizard_found = True
                     continue
                 if (
-                    wizard_layer_found
+                    wizard_found
+                    and isinstance(sprite, pygame_gui.elements.UIWindow)
+                    and sprite.alive()
+                    and sprite.visible
+                ):
+                    blockers.append(sprite.get_abs_rect())
+
+        # 1. Draw Map Preview
+        preview_rect = self._get_preview_screen_rect()
+        if preview_rect.width > 0 and preview_rect.height > 0:
+            visible_rects = [preview_rect]
+            for b in blockers:
+                next_rects = []
+                for r in visible_rects:
+                    next_rects.extend(_subtract_rect_from_blocker(r, b))
+                visible_rects = next_rects
+                if not visible_rects:
+                    break
+
+            if visible_rects:
+                # Build home systems mapping for preview
+                home_map: typing.Dict[str, typing.List[typing.Any]] = {}
+                if self._stage == 2:
+                    for i in range(self._num_players):
+                        sys_val = self._player_home_systems[i] if i < len(self._player_home_systems) else None
+                        if self._home_system_mode == "specified" and sys_val and sys_val.lower() != "random":
+                            color_rgb = PLAYER_COLOR_PALETTE[self._player_color_indices[i]][1]
+                            mark = type("PlayerMark", (), {"color": color_rgb})()
+                            home_map.setdefault(sys_val, []).append(mark)
+
+                draw_galaxy_preview(
+                    surface,
+                    self._generated_galaxy,
+                    preview_rect,
+                    home_systems_map=home_map,
+                    hovered_system_name=self._preview_hovered_system,
+                    selected_system_name=self._preview_selected_system,
+                    scale=self.scale_x,
+                )
+
+        # 2. Draw Color Swatches (in Stage 2)
+        if self._stage == 2:
+            self.draw_swatches(surface)
+
+    def draw_swatches(self, surface: pygame.Surface) -> None:
+        """Draws player color squares on top of swatch panels."""
+        if not self._scrollable or not self._scrollable.alive():
+            return
+
+        blockers: typing.List[pygame.Rect] = []
+        if self.manager:
+            wizard_found = False
+            for sprite in self.manager.get_sprite_group().sprites():
+                if sprite is self.window:
+                    wizard_found = True
+                    continue
+                if (
+                    wizard_found
                     and isinstance(sprite, pygame_gui.elements.UIWindow)
                     and sprite.alive()
                     and sprite.visible
@@ -574,418 +1535,9 @@ class NewGameWizard:
                 for sub_r in rects_to_draw:
                     surface.fill(color_rgb, sub_r)
 
-    def _add_slider_row(
-        self,
-        label: str,
-        y: int,
-        width: int,
-        min_val: int,
-        max_val: int,
-        start_val: int,
-        object_id: str,
-        value_suffix: str = "",
-    ) -> typing.Tuple[int, pygame_gui.elements.UIHorizontalSlider, pygame_gui.elements.UILabel]:
-        """Adds a labelled horizontal slider row; returns (new_y, slider, value_label)."""
-        row_h = self._sy(_ROW_H)
-        pad = self._sx(_PAD)
-        lbl_w = self._sx(170)
-        val_lbl_w = self._sx(56)
-        slider_w = width - lbl_w - val_lbl_w - pad * 3
-
-        pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
-            text=label,
-            manager=self.manager,
-            container=self._scrollable,
-        )
-
-        slider = pygame_gui.elements.UIHorizontalSlider(
-            relative_rect=pygame.Rect(pad + lbl_w, y, slider_w, row_h),
-            start_value=start_val,
-            value_range=(min_val, max_val),
-            manager=self.manager,
-            container=self._scrollable,
-            object_id=object_id,
-        )
-
-        val_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(pad + lbl_w + slider_w + pad, y, val_lbl_w, row_h),
-            text=f"{start_val}{value_suffix}",
-            manager=self.manager,
-            container=self._scrollable,
-            object_id=f"{object_id}_value_label",
-        )
-
-        return y + row_h + self._sy(4), slider, val_label
-
-    def _add_numeric_entry_row(
-        self,
-        label: str,
-        y: int,
-        width: int,
-        default: str,
-        object_id: str,
-    ) -> typing.Tuple[int, pygame_gui.elements.UITextEntryLine]:
-        """Adds a labelled text entry row for numeric input; returns (new_y, entry)."""
-        row_h = self._sy(_ROW_H)
-        pad = self._sx(_PAD)
-        lbl_w = self._sx(200)
-        entry_w = self._sx(120)
-
-        pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
-            text=label,
-            manager=self.manager,
-            container=self._scrollable,
-        )
-
-        entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(pad + lbl_w, y, entry_w, row_h),
-            manager=self.manager,
-            container=self._scrollable,
-            object_id=object_id,
-        )
-        entry.set_text(default)
-        entry.set_allowed_characters("numbers")
-
-        return y + row_h + self._sy(4), entry
-
-    def _add_action_buttons(self, scrollable_h: int, btn_bar_h: int) -> None:
-        """Adds Start Game / Cancel buttons below the scrollable area."""
-        btn_h = self._sy(_BTN_H)
-        btn_w_start = self._sx(_BTN_W)
-        btn_w_cancel = self._sx(_BTN_W)
-        bar_y = scrollable_h + (btn_bar_h - btn_h) // 2
-        total_btn_w = btn_w_start + self._sx(_PAD) + btn_w_cancel
-        bar_x = (self._content_w - total_btn_w) // 2
-
-        self.start_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(bar_x, bar_y, btn_w_start, btn_h),
-            text="Start Game",
-            manager=self.manager,
-            container=self.window,
-            object_id="#wizard_start_button",
-        )
-        self.cancel_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(bar_x + btn_w_start + self._sx(_PAD), bar_y, btn_w_cancel, btn_h),
-            text="Cancel",
-            manager=self.manager,
-            container=self.window,
-            object_id="#wizard_cancel_button",
-        )
-
     # ------------------------------------------------------------------
-    # Player count change
+    # Build GameSettings & Action Output
     # ------------------------------------------------------------------
-    def _adjust_player_count(self, delta: int) -> None:
-        """Increases or decreases the player count, rebuilding player rows.
-
-        Snapshot/restore is handled entirely by _full_rebuild(), so we do not
-        need to manually kill player widgets here first.
-        """
-        new_count = max(_MIN_PLAYERS, min(_MAX_PLAYERS, self._num_players + delta))
-        if new_count == self._num_players:
-            return
-
-        self._num_players = new_count
-        if self._player_count_label:
-            self._player_count_label.set_text(str(self._num_players))
-
-        # Re-enable/disable +/- buttons
-        if self._player_minus_btn:
-            if self._num_players <= _MIN_PLAYERS:
-                self._player_minus_btn.disable()
-            else:
-                self._player_minus_btn.enable()
-        if self._player_plus_btn:
-            if self._num_players >= _MAX_PLAYERS:
-                self._player_plus_btn.disable()
-            else:
-                self._player_plus_btn.enable()
-
-        # We rebuild all rows in-place.  Because pygame_gui doesn't support
-        # dynamic repositioning of existing widgets easily, we kill and
-        # recreate everything in the scrollable container below the
-        # player-count row.  A full rebuild is the simplest reliable approach.
-        self._full_rebuild()
-
-
-    def _full_rebuild(self) -> None:
-        """Kills the scrollable container and action buttons, then recreates all UI."""
-        # Snapshot current values
-        snap = self._snapshot()
-
-        # Kill scrollable and buttons
-        if self._scrollable:
-            self._scrollable.kill()
-            self._scrollable = None
-        if self.start_button:
-            self.start_button.kill()
-            self.start_button = None
-        if self.cancel_button:
-            self.cancel_button.kill()
-            self.cancel_button = None
-
-        # Clear internal refs
-        self._spawn_profile_button = None
-        self._player_name_entries = []
-        self._player_color_indices = []
-        self._player_color_prev_btns = []
-        self._player_color_swatches = []
-        self._player_color_next_btns = []
-        self._player_type_buttons = []
-        self._player_controllers = []
-        self._player_ai_reasoning_efforts = []
-        self._player_team_buttons = []
-
-        # Rebuild
-        self._build_ui()
-
-        # Restore snapshot
-        self._restore_snapshot(snap)
-
-    # ------------------------------------------------------------------
-    # Snapshot / restore for rebuild
-    # ------------------------------------------------------------------
-
-    def _snapshot(self) -> dict:
-        """Captures current widget values into a plain dict."""
-        return {
-            "num_players": self._num_players,
-            "spawn_profile": self._spawn_profile.value,
-            "player_names": [e.get_text() for e in self._player_name_entries],
-            "player_colors": [
-                PLAYER_COLOR_PALETTE[idx][0] for idx in self._player_color_indices
-            ],
-            "player_controllers": [controller.value for controller in self._player_controllers],
-            "player_ai_reasoning_efforts": list(
-                self._player_ai_reasoning_efforts
-            ),
-            "player_teams": list(self._player_teams),
-            "num_systems": self._num_systems_slider.get_current_value() if self._num_systems_slider else 15,
-            "radius_min": self._sys_radius_min_slider.get_current_value() if self._sys_radius_min_slider else 5,
-            "radius_max": self._sys_radius_max_slider.get_current_value() if self._sys_radius_max_slider else 8,
-            "wormhole_density": self._wormhole_density_slider.get_current_value() if self._wormhole_density_slider else 33,
-            "min_dist": self._min_dist_slider.get_current_value() if self._min_dist_slider else 50,
-            "max_dist": self._max_dist_slider.get_current_value() if self._max_dist_slider else 350,
-            "credits": self._credits_entry.get_text() if self._credits_entry else "20000",
-            "metal": self._metal_entry.get_text() if self._metal_entry else "10000",
-            "crystal": self._crystal_entry.get_text() if self._crystal_entry else "10000",
-            "population": self._population_entry.get_text() if self._population_entry else "50",
-        }
-
-    def _restore_snapshot(self, snap: dict) -> None:
-        """Restores widget values from a snapshot dict (best-effort)."""
-        if "spawn_profile" in snap:
-            self._spawn_profile = normalize_spawn_profile(snap["spawn_profile"])
-            if self._spawn_profile_button:
-                self._spawn_profile_button.set_text(self._spawn_profile.display_name)
-        player_names = snap.get("player_names", [])
-        player_colors = snap.get("player_colors", [])  # list of color name strings
-        player_controllers = snap.get("player_controllers", [])
-        player_ai_reasoning_efforts = snap.get(
-            "player_ai_reasoning_efforts", []
-        )
-        player_teams = snap.get("player_teams", [])
-
-        for i, entry in enumerate(self._player_name_entries):
-            if i < len(player_names):
-                entry.set_text(player_names[i])
-        for i in range(len(self._player_color_indices)):
-            if i < len(player_colors):
-                saved_name = player_colors[i]
-                found_idx = next(
-                    (j for j, (n, _) in enumerate(PLAYER_COLOR_PALETTE) if n == saved_name),
-                    None,
-                )
-                if found_idx is not None:
-                    self._player_color_indices[i] = found_idx
-        for i, raw_controller in enumerate(player_controllers):
-            if i < len(self._player_controllers):
-                controller = PlayerController(raw_controller)
-                self._player_controllers[i] = controller
-                if self._player_type_buttons[i]:
-                    reasoning_effort = (
-                        player_ai_reasoning_efforts[i]
-                        if i < len(player_ai_reasoning_efforts)
-                        else "medium"
-                    )
-                    self._player_ai_reasoning_efforts[i] = reasoning_effort
-                    self._player_type_buttons[i].set_text(
-                        self._player_type_label(controller, reasoning_effort)
-                    )
-        for i, team_num in enumerate(player_teams):
-            if i < len(self._player_teams):
-                self._player_teams[i] = team_num
-                if i < len(self._player_team_buttons) and self._player_team_buttons[i]:
-                    self._player_team_buttons[i].set_text(f"Team {team_num}")
-
-        def _restore_slider(slider, value):
-            if slider and value is not None:
-                slider.set_current_value(value)
-
-        _restore_slider(self._num_systems_slider, snap.get("num_systems"))
-        _restore_slider(self._sys_radius_min_slider, snap.get("radius_min"))
-        _restore_slider(self._sys_radius_max_slider, snap.get("radius_max"))
-        _restore_slider(self._wormhole_density_slider, snap.get("wormhole_density"))
-        _restore_slider(self._min_dist_slider, snap.get("min_dist"))
-        _restore_slider(self._max_dist_slider, snap.get("max_dist"))
-
-        if self._credits_entry and snap.get("credits"):
-            self._credits_entry.set_text(snap["credits"])
-        if self._metal_entry and snap.get("metal"):
-            self._metal_entry.set_text(snap["metal"])
-        if self._crystal_entry and snap.get("crystal"):
-            self._crystal_entry.set_text(snap["crystal"])
-        if self._population_entry and snap.get("population"):
-            self._population_entry.set_text(snap["population"])
-
-    # ------------------------------------------------------------------
-    # Event processing
-    # ------------------------------------------------------------------
-
-    def has_duplicate_colors(self) -> bool:
-        """Returns True if any two active players share the same color assignment."""
-        active_indices = self._player_color_indices[:self._num_players]
-        return len(set(active_indices)) < len(active_indices)
-
-    def get_validation_errors(self) -> typing.List[str]:
-        """Validates all wizard inputs and returns a list of human-readable error messages."""
-        errors: typing.List[str] = []
-
-        if self.has_duplicate_colors():
-            errors.append("Each player must be assigned a unique color before starting the game.")
-
-        active_teams = set(self._player_teams[:self._num_players])
-        if self._num_players >= 2 and len(active_teams) < 2:
-            errors.append("Players must be grouped into at least two different teams.")
-
-        radius_min = int(self._sys_radius_min_slider.get_current_value()) if self._sys_radius_min_slider else 5
-        radius_max = int(self._sys_radius_max_slider.get_current_value()) if self._sys_radius_max_slider else 8
-        if radius_min > radius_max:
-            errors.append(
-                f"Min System Radius ({radius_min}) cannot be greater than Max System Radius ({radius_max})."
-            )
-
-        min_dist = float(int(self._min_dist_slider.get_current_value())) if self._min_dist_slider else 50.0
-        max_dist = float(int(self._max_dist_slider.get_current_value())) if self._max_dist_slider else 350.0
-        if min_dist >= max_dist:
-            errors.append(
-                f"Min System Distance ({int(min_dist)}) must be strictly less than Max System Distance ({int(max_dist)})."
-            )
-
-        return errors
-
-    def process_event(self, event: pygame.event.Event) -> typing.Optional[dict]:
-        """Processes a pygame event; returns an action dict or None.
-
-        Returns:
-            ``{'action': 'start_new_game_with_settings', 'settings': GameSettings}``
-            when the player clicks Start Game and validation passes.
-
-            ``{'action': 'duplicate_player_colors_warning', 'message': str}``
-            when duplicate player colors are detected.
-
-            ``{'action': 'wizard_settings_error', 'message': str, 'title': str}``
-            when settings validation fails.
-
-            ``{'action': 'cancel_new_game_wizard'}`` when the player cancels.
-
-            ``None`` for events consumed internally.
-        """
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            element = event.ui_element
-
-            if element is self.start_button:
-                validation_errors = self.get_validation_errors()
-                if validation_errors:
-                    if len(validation_errors) == 1 and self.has_duplicate_colors():
-                        return {
-                            "action": "duplicate_player_colors_warning",
-                            "message": validation_errors[0],
-                        }
-                    return {
-                        "action": "wizard_settings_error",
-                        "message": "\n".join(validation_errors),
-                        "title": "Invalid Game Settings",
-                    }
-                return self._build_start_action()
-
-            if element is self.cancel_button:
-                return {"action": "cancel_new_game_wizard"}
-
-            if element is self._player_minus_btn:
-                self._adjust_player_count(-1)
-                return None
-
-            if element is self._player_plus_btn:
-                self._adjust_player_count(+1)
-                return None
-
-            if element is self._spawn_profile_button:
-                self._cycle_spawn_profile()
-                return None
-
-            # Color cycle buttons
-            for i, btn in enumerate(self._player_color_prev_btns):
-                if element is btn:
-                    self._cycle_player_color(i, -1)
-                    return None
-            for i, btn in enumerate(self._player_color_next_btns):
-                if element is btn:
-                    self._cycle_player_color(i, +1)
-                    return None
-
-            # Controller type buttons
-            for i, btn in enumerate(self._player_type_buttons):
-                if element is btn:
-                    controller = self._player_controllers[i]
-                    reasoning_effort = self._player_ai_reasoning_efforts[i]
-                    if controller == PlayerController.HUMAN:
-                        controller = PlayerController.CODEX
-                    elif controller == PlayerController.CODEX:
-                        controller, reasoning_effort = PlayerController.OPENAI, "medium"
-                    elif reasoning_effort == "medium":
-                        reasoning_effort = "high"
-                    elif reasoning_effort == "high":
-                        reasoning_effort = "low"
-                    else:
-                        controller, reasoning_effort = PlayerController.HUMAN, "medium"
-                    self._player_controllers[i] = controller
-                    self._player_ai_reasoning_efforts[i] = reasoning_effort
-                    btn.set_text(
-                        self._player_type_label(controller, reasoning_effort)
-                    )
-                    return None
-
-            # Team cycle buttons
-            for i, btn in enumerate(self._player_team_buttons):
-                if element is btn:
-                    self._cycle_player_team(i, +1)
-                    return None
-
-        elif event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
-            self._update_slider_labels()
-
-        return None
-
-    def _update_slider_labels(self) -> None:
-        """Refreshes all slider value labels from current slider states."""
-        def _upd(slider, label, suffix=""):
-            if slider and label:
-                label.set_text(f"{int(slider.get_current_value())}{suffix}")
-
-        _upd(self._num_systems_slider, self._num_systems_label)
-        _upd(self._sys_radius_min_slider, self._sys_radius_min_label)
-        _upd(self._sys_radius_max_slider, self._sys_radius_max_label)
-        _upd(self._wormhole_density_slider, self._wormhole_density_label, "%")
-        _upd(self._min_dist_slider, self._min_dist_label)
-        _upd(self._max_dist_slider, self._max_dist_label)
-
-    # ------------------------------------------------------------------
-    # Build GameSettings from current widget values
-    # ------------------------------------------------------------------
-
     def _safe_float(self, text: str, fallback: float) -> float:
         try:
             v = float(text.strip())
@@ -1001,64 +1553,57 @@ class NewGameWizard:
             return fallback
 
     def _build_start_action(self) -> dict:
-        """Reads all widget values and produces a start_new_game_with_settings action."""
+        """Builds GameSettings with pregenerated galaxy and player configurations."""
+        self._snapshot()
+
         player_configs: typing.List[PlayerConfig] = []
         for i in range(self._num_players):
             name = (
-                self._player_name_entries[i].get_text().strip()
-                if i < len(self._player_name_entries)
+                self._player_names[i]
+                if i < len(self._player_names)
                 else f"Player {i + 1}"
             ) or f"Player {i + 1}"
 
-            if i < len(self._player_color_indices):
-                pal_entry = PLAYER_COLOR_PALETTE[self._player_color_indices[i]]
-                color = pal_entry[1]
-            else:
-                color = PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1]
-            controller = self._player_controllers[i] if i < len(self._player_controllers) else PlayerController.HUMAN
-            ai_reasoning_effort = (
-                self._player_ai_reasoning_efforts[i]
-                if i < len(self._player_ai_reasoning_efforts)
-                else "medium"
-            )
-            team_id = self._player_teams[i] if i < len(self._player_teams) else (2 if i > 0 else 1)
+            color = PLAYER_COLOR_PALETTE[self._player_color_indices[i]][1]
+            controller = self._player_controllers[i]
+            effort = self._player_ai_reasoning_efforts[i]
+            team_id = self._player_teams[i]
+
+            home_sys = None
+            if self._home_system_mode == "specified" and i < len(self._player_home_systems):
+                val = self._player_home_systems[i]
+                if val and val.lower() != "random":
+                    home_sys = val
+
             player_configs.append(PlayerConfig(
                 name=name,
                 color=color,
                 controller=controller,
                 team_id=team_id,
-                ai_reasoning_effort=ai_reasoning_effort,
+                ai_reasoning_effort=effort,
+                home_system_name=home_sys,
             ))
 
-        num_systems = int(self._num_systems_slider.get_current_value()) if self._num_systems_slider else 15
-
-        radius_min = int(self._sys_radius_min_slider.get_current_value()) if self._sys_radius_min_slider else 5
-        radius_max = int(self._sys_radius_max_slider.get_current_value()) if self._sys_radius_max_slider else 8
-
-        wormhole_pct = int(self._wormhole_density_slider.get_current_value()) if self._wormhole_density_slider else 33
-        wormhole_density = wormhole_pct / 100.0
-
-        min_dist = float(int(self._min_dist_slider.get_current_value())) if self._min_dist_slider else 50.0
-        max_dist = float(int(self._max_dist_slider.get_current_value())) if self._max_dist_slider else 350.0
-
-        credits_ = self._safe_float(self._credits_entry.get_text() if self._credits_entry else "20000", 20000.0)
-        metal = self._safe_float(self._metal_entry.get_text() if self._metal_entry else "10000", 10000.0)
-        crystal = self._safe_float(self._crystal_entry.get_text() if self._crystal_entry else "10000", 10000.0)
-        population = self._safe_int(self._population_entry.get_text() if self._population_entry else "50", 50)
+        credits_ = self._safe_float(self._credits_str, 20000.0)
+        metal_ = self._safe_float(self._metal_str, 10000.0)
+        crystal_ = self._safe_float(self._crystal_str, 10000.0)
+        pop_ = self._safe_int(self._population_str, 50)
 
         settings = GameSettings(
             player_configs=player_configs,
-            num_systems=num_systems,
-            min_system_distance=min_dist,
-            max_system_distance=max_dist,
-            wormhole_density=wormhole_density,
-            system_radius_min=radius_min,
-            system_radius_max=radius_max,
+            num_systems=self._num_systems,
+            min_system_distance=float(self._min_dist),
+            max_system_distance=float(self._max_dist),
+            wormhole_density=self._wormhole_density / 100.0,
+            system_radius_min=self._sys_radius_min,
+            system_radius_max=self._sys_radius_max,
             starting_credits=credits_,
-            starting_metal=metal,
-            starting_crystal=crystal,
-            starting_population=population,
+            starting_metal=metal_,
+            starting_crystal=crystal_,
+            starting_population=pop_,
             spawn_profile=self._spawn_profile,
+            pregenerated_galaxy=self._generated_galaxy,
+            home_system_assignment_mode=self._home_system_mode,
         )
 
         return {"action": "start_new_game_with_settings", "settings": settings}
@@ -1066,7 +1611,6 @@ class NewGameWizard:
     # ------------------------------------------------------------------
     # Lifetime helpers
     # ------------------------------------------------------------------
-
     @property
     def is_alive(self) -> bool:
         return self.window.alive()

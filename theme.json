@@ -508,5 +508,14 @@
             "text_horiz_alignment": "center",
             "padding": "0,0"
         }
+    },
+    "#player_select_hint": {
+        "colours": {
+            "normal_text": "#70D0FF"
+        },
+        "misc": {
+            "text_horiz_alignment": "left"
+        }
     }
 }
+

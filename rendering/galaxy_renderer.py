@@ -86,6 +86,8 @@ class GalaxyViewRenderer:
                     pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, max_radius + 2, 2)
 
             # Draw system name
+            if not pygame.font.get_init():
+                pygame.font.init()
             font_size = max(1, int(12 * TEXT_SCALE))
             font = pygame.font.Font(None, font_size)
             text_surface = font.render(system.name, True, label_color)
@@ -213,3 +215,166 @@ class GalaxyViewRenderer:
                 
                 pygame.draw.line(self.overlay_surface, line_color, end_pos_tuple, (arrow_x1, arrow_y1), line_width)
                 pygame.draw.line(self.overlay_surface, line_color, end_pos_tuple, (arrow_x2, arrow_y2), line_width)
+
+
+# ---------------------------------------------------------------------------
+# Standalone Galaxy Preview Rendering (for New Game Wizard & Dialogs)
+# ---------------------------------------------------------------------------
+
+def draw_galaxy_preview(
+    surface: pygame.Surface,
+    galaxy: typing.Any,
+    preview_rect: pygame.Rect,
+    home_systems_map: typing.Optional[typing.Dict[str, typing.List[typing.Any]]] = None,
+    hovered_system_name: typing.Optional[str] = None,
+    selected_system_name: typing.Optional[str] = None,
+    scale: float = 1.0,
+) -> None:
+    """Renders a visual preview of a Galaxy into a target preview rectangle.
+
+    Args:
+        surface: Target pygame surface to draw into.
+        galaxy: Galaxy instance to preview (or None).
+        preview_rect: Bounding rectangle on surface for the map preview.
+        home_systems_map: Mapping of system_name -> list of player objects (or dicts/tuples with .color).
+        hovered_system_name: Optional system name currently hovered by mouse cursor.
+        selected_system_name: Optional system name currently focused/selected.
+        scale: Resolution scale factor.
+    """
+    if preview_rect.width <= 0 or preview_rect.height <= 0:
+        return
+
+    # Background fill
+    bg_color = (12, 18, 32)
+    border_color = (58, 109, 140)
+    surface.fill(bg_color, preview_rect)
+    pygame.draw.rect(surface, border_color, preview_rect, 1)
+
+    if not pygame.font.get_init():
+        pygame.font.init()
+
+    if not galaxy or not getattr(galaxy, "systems", None):
+        font_size = max(12, int(14 * scale))
+        font = pygame.font.Font(None, font_size)
+        msg_surf = font.render("Click 'Generate Map' to create galaxy preview", True, (140, 160, 180))
+        msg_rect = msg_surf.get_rect(center=preview_rect.center)
+        surface.blit(msg_surf, msg_rect)
+        return
+
+    # 1. Draw Wormhole Connections
+    for wh_id, wormhole in getattr(galaxy, "wormholes", {}).items():
+        if getattr(wormhole, "stability", 0) > 0 and getattr(wormhole, "exit_wormhole_id", None):
+            exit_wh = galaxy.wormholes.get(wormhole.exit_wormhole_id)
+            if exit_wh:
+                start_system = galaxy.systems.get(wormhole.in_system)
+                end_system = galaxy.systems.get(exit_wh.in_system)
+                if start_system and end_system:
+                    start_screen_pos = logical_to_screen_galaxy(start_system.position, preview_rect)
+                    end_screen_pos = logical_to_screen_galaxy(end_system.position, preview_rect)
+                    pygame.draw.line(
+                        surface,
+                        WORMHOLE_LINE_COLOR,
+                        start_screen_pos.to_tuple(),
+                        end_screen_pos.to_tuple(),
+                        1,
+                    )
+
+    # 2. Draw Systems
+    font_size = max(10, int(11 * scale))
+    font = pygame.font.Font(None, font_size)
+    home_map = home_systems_map or {}
+
+    for sys_name, system in galaxy.systems.items():
+        screen_pos = logical_to_screen_galaxy(system.position, preview_rect)
+        pos_tuple = (int(screen_pos.x), int(screen_pos.y))
+        is_hovered = (hovered_system_name == sys_name)
+        is_selected = (selected_system_name == sys_name)
+        home_players = home_map.get(sys_name, [])
+
+        if not home_players:
+            # Unowned star system
+            if is_hovered:
+                color = HOVER_HIGHLIGHT_COLOR
+                radius = 6
+            else:
+                color = (130, 150, 175)
+                radius = 4
+            max_radius = radius
+            pygame.draw.circle(surface, color, pos_tuple, radius)
+            label_color = color
+        elif len(home_players) == 1:
+            # Single player home system
+            player = home_players[0]
+            player_color = getattr(player, "color", (255, 255, 255))
+            max_radius = 6
+            pygame.draw.circle(surface, player_color, pos_tuple, max_radius)
+            label_color = HOVER_HIGHLIGHT_COLOR if is_hovered else player_color
+            if is_hovered:
+                pygame.draw.circle(surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, max_radius + 2, 2)
+        else:
+            # Multiple players in the same home system: concentric rings
+            num_players = len(home_players)
+            inner_radius = 4
+            ring_thickness = 2
+            max_radius = inner_radius + (num_players - 1) * ring_thickness
+
+            for i in range(num_players - 1, -1, -1):
+                r = inner_radius + i * ring_thickness
+                p_color = getattr(home_players[i], "color", (255, 255, 255))
+                pygame.draw.circle(surface, p_color, pos_tuple, r)
+
+            label_color = HOVER_HIGHLIGHT_COLOR if is_hovered else (240, 240, 240)
+            if is_hovered:
+                pygame.draw.circle(surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, max_radius + 2, 2)
+
+        if is_selected:
+            pygame.draw.circle(surface, SELECTION_HIGHLIGHT_COLOR, pos_tuple, max_radius + 4, 2)
+
+        # Draw system name
+        text_surface = font.render(sys_name, True, label_color)
+        text_rect = text_surface.get_rect()
+        text_rect.midleft = (pos_tuple[0] + max_radius + 4, pos_tuple[1])
+        surface.blit(text_surface, text_rect)
+
+
+def get_system_at_preview_point(
+    screen_pos: typing.Tuple[int, int],
+    galaxy: typing.Any,
+    preview_rect: pygame.Rect,
+    hit_radius: float = 20.0,
+    scale: float = 1.0,
+) -> typing.Optional[str]:
+    """Finds the star system at or closest to screen_pos within preview_rect."""
+    if not galaxy or not getattr(galaxy, "systems", None) or not preview_rect.collidepoint(screen_pos):
+        return None
+
+    if not pygame.font.get_init():
+        pygame.font.init()
+    font_size = max(10, int(11 * scale))
+    font = pygame.font.Font(None, font_size)
+
+    closest_sys = None
+    min_dist_sq = hit_radius * hit_radius
+
+    for name, system in galaxy.systems.items():
+        sys_screen_pos = logical_to_screen_galaxy(system.position, preview_rect)
+        pos_tuple = (int(sys_screen_pos.x), int(sys_screen_pos.y))
+
+        # Check label bounding box (generous click area around system name)
+        text_surface = font.render(name, True, (255, 255, 255))
+        text_rect = text_surface.get_rect()
+        text_rect.midleft = (pos_tuple[0] + 8, pos_tuple[1])
+        click_box = text_rect.inflate(12, 12)
+        if click_box.collidepoint(screen_pos):
+            return name
+
+        # Check distance to star center
+        dx = sys_screen_pos.x - screen_pos[0]
+        dy = sys_screen_pos.y - screen_pos[1]
+        d_sq = dx * dx + dy * dy
+        if d_sq <= min_dist_sq:
+            min_dist_sq = d_sq
+            closest_sys = name
+
+    return closest_sys
+

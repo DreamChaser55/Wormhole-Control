@@ -33,11 +33,19 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
    ```
 
 3. **Start a campaign:**
-   - Click **New Game** to open the **New Game Wizard**.
-   - Select the **Spawn Profile**: **Normal** (authentic 4X starting state with each player starting in their own star system with a constructor station, constructor ship, colonizer ship, and antimatter harvester) or **Testing** (sandbox profile with all players in Sol equipped with testing ships and stations of all sizes).
-   - Configure player count (2–6), custom names, faction colors, and controller type. The player-type button cycles through Human, Codex, AI: Medium, AI: High, and AI: Low.
-   - Adjust galaxy generation parameters (system count, radius, wormhole connectivity) and starting economies.
-   - Click **Start Game** to generate the galaxy and begin turn 1.
+   - Click **New Game** to open the **New Game Wizard** (two-stage configuration flow).
+   - **Stage 1: Galaxy Setup & Preview**:
+     - Adjust galaxy generation parameters: star system count (5–30), min/max system radius, wormhole connectivity density (0–100%), and min/max inter-system distances.
+     - Click **Generate Map** to re-roll and view the procedural galaxy topology, star system positions, and wormhole conduits in the live Map Preview.
+     - Click **Next: Players & Economy ➔** to proceed to Stage 2.
+   - **Stage 2: Factions & Starting Conditions**:
+     - Select the **Spawn Profile**: **Normal** (authentic 4X starting state with each player starting with a constructor station, constructor ship, colonizer ship, and antimatter harvester) or **Testing** (sandbox profile with all players in Sol equipped with testing ships and stations of all sizes).
+     - Configure player count (2–6), custom names, faction colors, and controller type. The player-type button cycles through Human, Codex, AI: Medium, AI: High, and AI: Low.
+     - Choose **Home Systems** assignment mode:
+       - **Random**: Automatically distributes player homeworlds across generated star systems.
+       - **Specified**: Assign specific home star systems to each player by cycling systems using the ◀/▶ buttons or clicking directly on star systems in the interactive Map Preview viewport.
+     - Customize starting economies (credits, metal, crystal, and homeworld population).
+   - Click **Start Game** to generate the campaign and begin turn 1. Use **◀ Back to Map** anytime to return to Stage 1 and modify map parameters while preserving player choices.
 
 ---
 

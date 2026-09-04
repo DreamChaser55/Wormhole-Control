@@ -67,9 +67,13 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
     # Set up game UI first to ensure galaxy_generation_rect is defined before galaxy generation
     game.gui.show_game_ui()
 
-    # Generate galaxy using settings parameters
+    # Generate or reuse galaxy using settings parameters
     try:
-        game.galaxy = Galaxy(num_systems=settings.num_systems, settings=settings)
+        if getattr(settings, "pregenerated_galaxy", None) is not None:
+            game.galaxy = settings.pregenerated_galaxy
+            logger.debug("Using pregenerated galaxy from wizard.")
+        else:
+            game.galaxy = Galaxy(num_systems=settings.num_systems, settings=settings)
         if not game.galaxy.systems:
             logger.debug("Warning: Galaxy generated with no systems.")
             return False
@@ -100,20 +104,43 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
     # Track homeworld info per player: mapping of Player -> (system_name, hex_coord, position)
     player_homeworlds: typing.Dict[Player, typing.Tuple[str, HexCoord, Position]] = {}
 
+    # Check for explicitly specified home systems from player configs
+    specified_targets: typing.Dict[int, StarSystem] = {}
+    for i, cfg in enumerate(settings.player_configs):
+        if cfg.home_system_name and cfg.home_system_name.strip().lower() != "random":
+            sys_name = cfg.home_system_name.strip()
+            if sys_name in game.galaxy.systems:
+                specified_targets[i] = game.galaxy.systems[sys_name]
+
     if settings.spawn_profile == SpawnProfile.NORMAL:
-        # Each player receives their own distinct star system
-        starting_systems = _select_starting_systems(game.galaxy.systems, len(game.players))
+        # Each player receives their own distinct star system unless specified
+        unclaimed_systems = {
+            name: sys for name, sys in game.galaxy.systems.items()
+            if sys not in specified_targets.values()
+        }
+        if not unclaimed_systems:
+            unclaimed_systems = dict(game.galaxy.systems)
+
+        needed_random = len(game.players) - len(specified_targets)
+        starting_pool = _select_starting_systems(unclaimed_systems, max(1, needed_random))
+        pool_idx = 0
+
         for i, player in enumerate(game.players):
-            target_sys = starting_systems[i % len(starting_systems)]
+            if i in specified_targets:
+                target_sys = specified_targets[i]
+            else:
+                target_sys = starting_pool[pool_idx % len(starting_pool)]
+                pool_idx += 1
+
             all_bodies = [body for _, body in target_sys.get_all_celestial_bodies()]
-            planets = [body for body in all_bodies if isinstance(body, Planet)]
-            if planets:
-                homeworld = random.choice(planets)
+            unowned_planets = [body for body in all_bodies if isinstance(body, Planet) and getattr(body, "owner", None) is None]
+            if unowned_planets:
+                homeworld = random.choice(unowned_planets)
             else:
                 # Spawn a habitable planet in an available non-star, non-wormhole hex
                 candidate_hexes = [
                     coord for coord, h in target_sys.hexes.items()
-                    if coord != (0, 0) and not any(isinstance(b, (Star, Wormhole)) for b in h.celestial_bodies)
+                    if coord != (0, 0) and not any(isinstance(b, (Star, Wormhole, Planet)) for b in h.celestial_bodies)
                 ]
                 hw_hex = random.choice(candidate_hexes) if candidate_hexes else (1, 0)
                 if hw_hex not in target_sys.hexes:
@@ -130,41 +157,44 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
             logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} at hex {homeworld.in_hex} as homeworld for {player.name}")
 
     else:
-        # Testing profile: All players spawn in the same system (Sol or first available system)
+        # Testing profile: All players spawn in the specified system or Sol / first available system
         sol_system = game.galaxy.systems.get('Sol')
         if not sol_system and game.galaxy.systems:
             sol_system = next(iter(game.galaxy.systems.values()))
 
-        if sol_system:
-            all_bodies = [body for _, body in sol_system.get_all_celestial_bodies()]
-            sol_planets = [body for body in all_bodies if isinstance(body, Planet)]
-            random.shuffle(sol_planets)
-        else:
-            sol_planets = []
-            logger.debug("Warning: No systems available for homeworld assignment.")
+        for i, player in enumerate(game.players):
+            if i in specified_targets:
+                target_sys = specified_targets[i]
+            else:
+                target_sys = sol_system
 
-        for player in game.players:
-            if sol_system:
-                if sol_planets:
-                    homeworld = sol_planets.pop()
-                else:
-                    candidate_hexes = [
-                        coord for coord, h in sol_system.hexes.items()
-                        if coord != (0, 0) and not any(isinstance(b, (Star, Wormhole, Planet)) for b in h.celestial_bodies)
-                    ]
-                    hw_hex = random.choice(candidate_hexes) if candidate_hexes else (1, 0)
-                    if hw_hex not in sol_system.hexes:
-                        hw_hex = next((c for c in sol_system.hexes if c != (0, 0)), (0, 0))
-                    homeworld = Planet(in_hex=hw_hex, in_system=sol_system.name, planet_type=PlanetType.TERRAN)
-                    sol_system.add_celestial_body(homeworld)
-                    if hw_hex in sol_system.hexes:
-                        sol_system.hexes[hw_hex].update_static_inhibition_zones()
+            if not target_sys:
+                logger.debug("Warning: No systems available for homeworld assignment.")
+                continue
 
-                homeworld.owner = player
-                homeworld.population = settings.starting_population
-                player.homeworld_id = homeworld.id
-                player_homeworlds[player] = (sol_system.name, homeworld.in_hex, homeworld.position)
-                logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} at hex {homeworld.in_hex} as homeworld for {player.name}")
+            all_bodies = [body for _, body in target_sys.get_all_celestial_bodies()]
+            unowned_planets = [body for body in all_bodies if isinstance(body, Planet) and getattr(body, "owner", None) is None]
+            if unowned_planets:
+                homeworld = random.choice(unowned_planets)
+            else:
+                candidate_hexes = [
+                    coord for coord, h in target_sys.hexes.items()
+                    if coord != (0, 0) and not any(isinstance(b, (Star, Wormhole, Planet)) for b in h.celestial_bodies)
+                ]
+                hw_hex = random.choice(candidate_hexes) if candidate_hexes else (1, 0)
+                if hw_hex not in target_sys.hexes:
+                    hw_hex = next((c for c in target_sys.hexes if c != (0, 0)), (0, 0))
+                homeworld = Planet(in_hex=hw_hex, in_system=target_sys.name, planet_type=PlanetType.TERRAN)
+                target_sys.add_celestial_body(homeworld)
+                if hw_hex in target_sys.hexes:
+                    target_sys.hexes[hw_hex].update_static_inhibition_zones()
+
+            homeworld.owner = player
+            homeworld.population = settings.starting_population
+            player.homeworld_id = homeworld.id
+            player_homeworlds[player] = (target_sys.name, homeworld.in_hex, homeworld.position)
+            logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} at hex {homeworld.in_hex} as homeworld for {player.name}")
+
 
     game.player_homeworlds = player_homeworlds
 

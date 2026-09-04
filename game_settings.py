@@ -74,6 +74,7 @@ class PlayerConfig:
     team_id: int = 1
     ai_reasoning_effort: str = DEFAULT_REASONING_EFFORT
     ai_repair_retries: int = DEFAULT_REPAIR_RETRIES
+    home_system_name: typing.Optional[str] = None
 
     def __post_init__(self) -> None:
         self.controller = PlayerController(self.controller)
@@ -83,6 +84,8 @@ class PlayerConfig:
         self.ai_repair_retries = normalize_repair_retries(
             self.ai_repair_retries
         )
+        if self.home_system_name is not None:
+            self.home_system_name = str(self.home_system_name).strip() or None
 
 
 def _default_player_configs() -> typing.List[PlayerConfig]:
@@ -125,6 +128,10 @@ class GameSettings:
     # --- Spawn profile ---
     spawn_profile: SpawnProfile = SpawnProfile.NORMAL
 
+    # --- Stage 1 & 2 integration ---
+    pregenerated_galaxy: typing.Optional[typing.Any] = None
+    home_system_assignment_mode: str = "random"  # "random" or "specified"
+
     @property
     def num_players(self) -> int:
         return len(self.player_configs)
@@ -148,6 +155,14 @@ class GameSettings:
             distinct_teams = {cfg.team_id for cfg in self.player_configs}
             if len(distinct_teams) < 2:
                 errors.append("Players must be grouped into at least two different teams.")
+
+        if self.pregenerated_galaxy is not None and hasattr(self.pregenerated_galaxy, "systems"):
+            for cfg in self.player_configs:
+                if cfg.home_system_name and cfg.home_system_name.lower() != "random":
+                    if cfg.home_system_name not in self.pregenerated_galaxy.systems:
+                        errors.append(
+                            f"Assigned home system '{cfg.home_system_name}' for player '{cfg.name}' does not exist in the generated galaxy."
+                        )
         return errors
 
     def __post_init__(self) -> None:
@@ -156,4 +171,5 @@ class GameSettings:
         errors = self.validate()
         if errors:
             raise ValueError("; ".join(errors))
+
 

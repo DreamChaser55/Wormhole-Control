@@ -407,6 +407,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         self.gui.show_new_game_wizard()
         wizard = self.gui.new_game_wizard
         self.assertIsNotNone(wizard)
+        wizard.go_to_stage(2)
 
         # Force identical colors for active players (e.g. both palette index 0)
         wizard._player_color_indices[0] = 0
@@ -443,6 +444,7 @@ class TestGUIModalDialogs(unittest.TestCase):
     def test_wizard_cycles_and_preserves_controller_and_reasoning_effort(self):
         self.gui.show_new_game_wizard()
         wizard = self.gui.new_game_wizard
+        wizard.go_to_stage(2)
         button = wizard._player_type_buttons[0]
 
         expected_states = (

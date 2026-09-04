@@ -505,8 +505,9 @@ _SETTINGS_FIELDS = {
     "starting_crystal",
     "starting_population",
     "spawn_profile",
+    "home_system_assignment_mode",
 }
-_PLAYER_FIELDS = {"name", "controller", "team_id", "color", "ai_reasoning_effort", "ai_repair_retries"}
+_PLAYER_FIELDS = {"name", "controller", "team_id", "color", "ai_reasoning_effort", "ai_repair_retries", "home_system_name"}
 
 
 def _parse_new_game_settings(raw: Any) -> GameSettings:
@@ -557,6 +558,12 @@ def _parse_new_game_settings(raw: Any) -> GameSettings:
             kwargs["spawn_profile"] = SpawnProfile(val)
         except ValueError:
             raise ProtocolError("invalid_settings", f"Invalid spawn_profile: {val}. Must be 'normal' or 'testing'.")
+
+    if "home_system_assignment_mode" in raw:
+        mode_val = raw["home_system_assignment_mode"]
+        if not isinstance(mode_val, str) or mode_val.lower() not in {"random", "specified"}:
+            raise ProtocolError("invalid_settings", "settings.home_system_assignment_mode must be 'random' or 'specified'.")
+        kwargs["home_system_assignment_mode"] = mode_val.lower()
 
     num_systems = kwargs.get("num_systems", GameSettings.num_systems)
     radius_min = kwargs.get("system_radius_min", GameSettings.system_radius_min)
@@ -620,6 +627,7 @@ def _parse_player_config(raw: Any, index: int) -> PlayerConfig:
             "invalid_repair_retries",
             f"Player {index} ai_repair_retries must be between {MIN_REPAIR_RETRIES} and {MAX_REPAIR_RETRIES}.",
         )
+    home_system_name = raw.get("home_system_name")
     return PlayerConfig(
         name=name.strip(),
         color=tuple(color),
@@ -627,4 +635,5 @@ def _parse_player_config(raw: Any, index: int) -> PlayerConfig:
         team_id=team_id,
         ai_reasoning_effort=effort,
         ai_repair_retries=retries,
+        home_system_name=home_system_name,
     )

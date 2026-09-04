@@ -212,6 +212,7 @@ def test_new_game_wizard_spawn_profile_ui():
     from gui.layout_new_game_wizard import NewGameWizard
 
     wizard = NewGameWizard(manager, Vector(1280, 720), 1.0, 1.0)
+    wizard.go_to_stage(2)
     assert wizard._spawn_profile == SpawnProfile.NORMAL
     assert wizard._spawn_profile_button is not None
     assert wizard._spawn_profile_button.text == "Normal"

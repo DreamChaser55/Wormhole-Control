@@ -329,9 +329,9 @@ class GUI_Handler:
         
         self.manager.draw_ui(surface)
 
-        # Draw colour swatches for the new-game wizard (must be after draw_ui)
+        # Draw map preview and colour swatches for the new-game wizard (must be after draw_ui)
         if self.new_game_wizard and self.new_game_wizard.is_alive:
-            self.new_game_wizard.draw_swatches(surface)
+            self.new_game_wizard.draw(surface)
 
         # Draw custom pygame elements (capacity bar) after the UI manager
         if self.unit_editor_window and self.unit_editor_window.is_visible:

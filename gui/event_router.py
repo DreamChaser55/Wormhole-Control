@@ -47,6 +47,16 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         if comms_action is not None:
             action_result = comms_action
 
+    # Modal New Game Wizard mouse interaction (map preview click & hover)
+    if action_result is None and gui.new_game_wizard and gui.new_game_wizard.is_alive:
+        if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION):
+            wizard_action = gui.new_game_wizard.process_event(event)
+            if wizard_action:
+                action_result = wizard_action
+            elif event.type == pygame.MOUSEBUTTONDOWN and hasattr(gui.new_game_wizard.window, 'get_abs_rect'):
+                if gui.new_game_wizard.window.get_abs_rect().collidepoint(event.pos):
+                    action_result = {'action': 'ui_handled'}
+
     if action_result is None and event.type == pygame_gui.UI_BUTTON_PRESSED:
         if DEBUG:
             logger.debug(f"[GUI_Handler DEBUG] UI_BUTTON_PRESSED: event.ui_element={event.ui_element}")
