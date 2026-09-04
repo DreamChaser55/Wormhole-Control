@@ -490,7 +490,7 @@ def test_all_celestial_inhibition_radii():
     assert metal_ast.inhibition_field_radius == 1500.0
 
     comet = Comet(in_hex=(0, 0), in_system="Sol")
-    assert comet.inhibition_field_radius == 750.0
+    assert comet.inhibition_field_radius == 1000.0
 
     wormhole = Wormhole(in_hex=(0, 0), in_system="Sol", exit_system_name="Alpha Centauri")
     assert wormhole.inhibition_field_radius == 1875.0

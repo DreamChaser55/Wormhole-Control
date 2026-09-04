@@ -655,7 +655,7 @@ class Comet(CelestialBody):
     """Represents a comet, which is a source of Crystal."""
     collision_radius: float = COMET_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=750.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1000.0)
         self.name = f"Comet {self.id}"
         self.crystal_yield: float = 10.0
 

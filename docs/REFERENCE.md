@@ -318,7 +318,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 
 ### 6.3 Resource & Spatial Phenomena
 - **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1500.0 logical units. **Collision Radius**: **50.01 logical units** (`ASTEROID_RADIUS`).
-- **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 750.0 logical units. **Collision Radius**: **50.01 logical units** (`COMET_RADIUS`).
+- **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 1000.0 logical units. **Collision Radius**: **50.01 logical units** (`COMET_RADIUS`).
 - **Wormholes (`Wormhole`)**: Natural spacetime conduits linking star systems. Traversal requires an Advanced Hyperdrive. Visual radius: 291.66 logical units. Inhibition radius: 1875.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
 - **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Effects radius: 3600.0 logical units. Sublight speed drag: 25% (strikecraft wings exempt). Hyperspace inhibition: none (0.0 logical units). **Collision Radius**: **0.0 logical units** (permeable for passable hulls).
 - **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Effects radius: 3600.0 logical units. Sublight speed drag: 20% (strikecraft wings exempt). Hyperspace inhibition: none (0.0 logical units). **Collision Radius**: **0.0 logical units** (permeable for passable hulls).
@@ -335,7 +335,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 | `Moon` | **Yes** | 83.34 (`MOON_RADIUS`) | 2250.0 | — | — | Yes (Max 50 pop) |
 | `ColonizableAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1500.0 | — | — | Yes (Max 20 pop) |
 | `MetalAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1500.0 | — | 10.0 Metal / Turn | No |
-| `Comet` | **Yes** | 50.01 (`COMET_RADIUS`) | 750.0 | — | 10.0 Crystal / Turn | No |
+| `Comet` | **Yes** | 50.01 (`COMET_RADIUS`) | 1000.0 | — | 10.0 Crystal / Turn | No |
 | `Wormhole` | No | 0.00 (Permeable) | 1875.0 | — | Inter-System Travel | No |
 | `AsteroidField` | No | 0.00 (Permeable) | 0.0 | 3600.0 (`ASTEROID_FIELD_RADIUS`) | — | No |
 | `IceField` | No | 0.00 (Permeable) | 0.0 | 3600.0 (`ICE_FIELD_RADIUS`) | — | No |
