@@ -445,7 +445,7 @@ class CelestialBody(GameObject):
 class Wormhole(CelestialBody):
     """Represents a wormhole connecting two systems."""
     def __init__(self, in_hex: HexCoord, in_system: str, exit_system_name: str, stability: int = 100, diameter: HullSize = HullSize.HUGE):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1500.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1875.0)
         self.exit_system_name = exit_system_name
         self.exit_wormhole_id: typing.Optional[int] = None
         self.stability = stability
@@ -456,7 +456,7 @@ class Star(CelestialBody):
     """Represents the central star of a system."""
     collision_radius: float = STAR_RADIUS
     def __init__(self, in_system: str, star_type: StarType):
-        inhibition_radius = 2700.0
+        inhibition_radius = 3375.0
         coll_radius = STAR_RADIUS
         if star_type == StarType.BLACK_HOLE:
             inhibition_radius = BLACK_HOLE_INHIBITION_RADIUS
@@ -484,7 +484,7 @@ class Planet(CelestialBody):
             pos = Position(0.0, 0.0)
             actual_type = planet_type
         traits = PLANET_TRAITS.get(actual_type, PLANET_TRAITS[PlanetType.TERRAN])
-        inhibition_radius = traits.get("inhibition_radius", 2400.0)
+        inhibition_radius = traits.get("inhibition_radius", 3000.0)
         super().__init__(position=pos, in_hex=in_hex, in_system=in_system, inhibition_field_radius=inhibition_radius)
         self.name = f"Planet {self.id}"
         self.owner: Optional[Player] = None
@@ -512,7 +512,7 @@ class Moon(CelestialBody):
     """Represents a moon, which is colonisable."""
     collision_radius: float = MOON_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1800.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=2250.0)
         self.name = f"Moon {self.id}"
         self.owner: Optional[Player] = None
         self.is_colonizable: bool = True
@@ -533,7 +533,7 @@ class ColonizableAsteroid(CelestialBody):
     """Represents a colonisable asteroid with population growth."""
     collision_radius: float = ASTEROID_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1200.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1500.0)
         self.name = f"Colonizable Asteroid {self.id}"
         self.owner: Optional[Player] = None
         self.is_colonizable: bool = True
@@ -553,7 +553,7 @@ class MetalAsteroid(CelestialBody):
     """Represents a metal asteroid, which is a source of Metal."""
     collision_radius: float = ASTEROID_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1200.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1500.0)
         self.name = f"Metal Asteroid {self.id}"
         self.metal_yield: float = 10.0
 
@@ -655,7 +655,7 @@ class Comet(CelestialBody):
     """Represents a comet, which is a source of Crystal."""
     collision_radius: float = COMET_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=750.0)
         self.name = f"Comet {self.id}"
         self.crystal_yield: float = 10.0
 

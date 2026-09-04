@@ -3,7 +3,7 @@
 import pytest
 from entities import (
     Unit, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet,
-    AsteroidField, IceField, DebrisField, Nebula, Storm, Player
+    AsteroidField, IceField, DebrisField, Nebula, Storm, Player, Wormhole
 )
 from constants import (
     PlanetType, StarType, NebulaType, StormType, HullSize,
@@ -102,7 +102,7 @@ def test_planet_traits_initialization():
     jupiter = Planet(in_hex=(0, 0), in_system="Sol", planet_type=PlanetType.GAS_GIANT)
     assert jupiter.is_colonizable is False
     assert jupiter.harvest_multiplier == 0.5
-    assert jupiter.inhibition_field_radius == 2800.0
+    assert jupiter.inhibition_field_radius == 3500.0
     assert jupiter.collision_radius == 450.0
 
 
@@ -112,7 +112,7 @@ def test_star_types_initialization():
     assert black_hole.inhibition_field_radius == BLACK_HOLE_INHIBITION_RADIUS
 
     blue_giant = Star(in_system="Orion", star_type=StarType.BLUE_GIANT)
-    assert blue_giant.inhibition_field_radius == 3000.0
+    assert blue_giant.inhibition_field_radius == 3750.0
     assert blue_giant.collision_radius == 600.0
 
 
@@ -443,4 +443,63 @@ def test_debris_field_speed_hazard():
 
     # FastShip took DEBRIS_FIELD_HAZARD_DAMAGE (2)
     assert u.current_hit_points == 98
+
+
+def test_all_celestial_inhibition_radii():
+    """Verify all celestial bodies have their +25% inhibition radii correctly configured."""
+    # Baseline Stars (e.g. G_TYPE, PULSAR, NEUTRON_STAR, etc.)
+    g_star = Star(in_system="Sol", star_type=StarType.G_TYPE)
+    assert g_star.inhibition_field_radius == 3375.0
+
+    pulsar = Star(in_system="Deep", star_type=StarType.PULSAR)
+    assert pulsar.inhibition_field_radius == 3375.0
+
+    # Black Hole
+    black_hole = Star(in_system="Singularity", star_type=StarType.BLACK_HOLE)
+    assert black_hole.inhibition_field_radius == 4500.0
+
+    # Giant Stars
+    blue_giant = Star(in_system="Orion", star_type=StarType.BLUE_GIANT)
+    assert blue_giant.inhibition_field_radius == 3750.0
+    red_giant = Star(in_system="Antares", star_type=StarType.RED_GIANT)
+    assert red_giant.inhibition_field_radius == 3750.0
+
+    # Planets
+    standard_types = [
+        PlanetType.TERRAN, PlanetType.OCEANIC, PlanetType.DESERT,
+        PlanetType.ICE, PlanetType.BARREN, PlanetType.VOLCANIC, PlanetType.GREENHOUSE
+    ]
+    for p_type in standard_types:
+        planet = Planet(in_hex=(0, 0), in_system="Sol", planet_type=p_type)
+        assert planet.inhibition_field_radius == 3000.0, f"Expected 3000.0 for {p_type.name}, got {planet.inhibition_field_radius}"
+
+    ferrous = Planet(in_hex=(0, 0), in_system="Sol", planet_type=PlanetType.FERROUS)
+    assert ferrous.inhibition_field_radius == 3250.0
+
+    gas_giant = Planet(in_hex=(0, 0), in_system="Sol", planet_type=PlanetType.GAS_GIANT)
+    assert gas_giant.inhibition_field_radius == 3500.0
+
+    # Moons, Asteroids, Comets, Wormholes
+    moon = Moon(in_hex=(0, 0), in_system="Sol")
+    assert moon.inhibition_field_radius == 2250.0
+
+    colonizable_ast = ColonizableAsteroid(in_hex=(0, 0), in_system="Sol")
+    assert colonizable_ast.inhibition_field_radius == 1500.0
+
+    metal_ast = MetalAsteroid(in_hex=(0, 0), in_system="Sol")
+    assert metal_ast.inhibition_field_radius == 1500.0
+
+    comet = Comet(in_hex=(0, 0), in_system="Sol")
+    assert comet.inhibition_field_radius == 750.0
+
+    wormhole = Wormhole(in_hex=(0, 0), in_system="Sol", exit_system_name="Alpha Centauri")
+    assert wormhole.inhibition_field_radius == 1875.0
+
+    # Zero inhibition bodies
+    assert AsteroidField(in_hex=(0, 0), in_system="Sol").inhibition_field_radius == 0.0
+    assert IceField(in_hex=(0, 0), in_system="Sol").inhibition_field_radius == 0.0
+    assert DebrisField(in_hex=(0, 0), in_system="Sol").inhibition_field_radius == 0.0
+    assert Nebula(in_hex=(0, 0), in_system="Sol", nebula_type=NebulaType.HYDROGEN).inhibition_field_radius == 0.0
+    assert Storm(in_hex=(0, 0), in_system="Sol", storm_type=StormType.PLASMA).inhibition_field_radius == 0.0
+
 

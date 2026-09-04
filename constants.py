@@ -371,7 +371,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 0.0,
         "passive_crystal": 0.0,
         "am_harvest_multiplier": 0.0,
-        "inhibition_radius": 2400.0,
+        "inhibition_radius": 3000.0,
         "collision_radius": PLANET_RADIUS,
         "description": "Temperate biosphere with optimal habitability.",
     },
@@ -382,7 +382,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 0.0,
         "passive_crystal": 0.0,
         "am_harvest_multiplier": 0.0,
-        "inhibition_radius": 2400.0,
+        "inhibition_radius": 3000.0,
         "collision_radius": PLANET_RADIUS,
         "description": "Lush water world supporting expansive population.",
     },
@@ -393,7 +393,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 0.0,
         "passive_crystal": 0.0,
         "am_harvest_multiplier": 0.0,
-        "inhibition_radius": 2400.0,
+        "inhibition_radius": 3000.0,
         "collision_radius": PLANET_RADIUS,
         "description": "Arid dunes and scarce water reservoirs.",
     },
@@ -404,7 +404,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 0.0,
         "passive_crystal": 2.0,
         "am_harvest_multiplier": 0.0,
-        "inhibition_radius": 2400.0,
+        "inhibition_radius": 3000.0,
         "collision_radius": PLANET_RADIUS,
         "description": "Glaciated surface yielding passive crystal deposits.",
     },
@@ -415,7 +415,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 0.0,
         "passive_crystal": 0.0,
         "am_harvest_multiplier": 0.0,
-        "inhibition_radius": 2400.0,
+        "inhibition_radius": 3000.0,
         "collision_radius": PLANET_RADIUS,
         "description": "Airless rocky crust requiring sealed dome habitats.",
     },
@@ -426,7 +426,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 5.0,
         "passive_crystal": 0.0,
         "am_harvest_multiplier": 0.0,
-        "inhibition_radius": 2400.0,
+        "inhibition_radius": 3000.0,
         "collision_radius": PLANET_RADIUS,
         "description": "Hostile geothermal vents rich in raw mineral deposits.",
     },
@@ -437,7 +437,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 8.0,
         "passive_crystal": 0.0,
         "am_harvest_multiplier": 0.0,
-        "inhibition_radius": 2600.0,
+        "inhibition_radius": 3250.0,
         "collision_radius": PLANET_RADIUS,
         "description": "Heavy metal crust yielding rich passive metal revenue.",
     },
@@ -448,7 +448,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 0.0,
         "passive_crystal": 3.0,
         "am_harvest_multiplier": 0.0,
-        "inhibition_radius": 2400.0,
+        "inhibition_radius": 3000.0,
         "collision_radius": PLANET_RADIUS,
         "description": "Caustic high-pressure atmosphere yielding exotic crystal.",
     },
@@ -459,7 +459,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_metal": 0.0,
         "passive_crystal": 0.0,
         "am_harvest_multiplier": 0.5,
-        "inhibition_radius": 2800.0,
+        "inhibition_radius": 3500.0,
         "collision_radius": 450.0,
         "description": "Massive volatile gas mantle. Non-colonizable; antimatter harvesting hub.",
     },
@@ -471,12 +471,12 @@ STORM_MAGNETIC_AM_DRAIN_PER_TURN = 6.0
 STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN = 4.0
 STORM_RADIATION_ACCURACY_PENALTY = 0.20
 
-BLACK_HOLE_INHIBITION_RADIUS = 3600.0
+BLACK_HOLE_INHIBITION_RADIUS = 4500.0
 BLACK_HOLE_EVENT_HORIZON_RADIUS = 750.0
 BLACK_HOLE_EVENT_HORIZON_DAMAGE = 15.0
 PULSAR_SHIELD_DRAIN_PERCENT = 0.05
 GIANT_STAR_RADIUS = 600.0
-GIANT_STAR_INHIBITION_RADIUS = 3000.0
+GIANT_STAR_INHIBITION_RADIUS = 3750.0
 
 ASTEROID_FIELD_SPEED_MOD = 0.75
 ICE_FIELD_SPEED_MOD = 0.80

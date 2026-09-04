@@ -150,11 +150,11 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         data.append({'type': 'label', 'text': f"AM Harvest Multiplier: {mult:.1f}x", 'object_id': '#sidebar_info_label', 'height': 20})
         if body.star_type == StarType.BLACK_HOLE:
             data.append({'type': 'label', 'text': "⚠ Event Horizon: 15 damage/turn within 750 radius.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-            data.append({'type': 'label', 'text': "Hyperspace Inhibition: 3600 radius.", 'object_id': '#sidebar_info_label', 'height': 20})
+            data.append({'type': 'label', 'text': f"Hyperspace Inhibition: {int(body.inhibition_field_radius)} radius.", 'object_id': '#sidebar_info_label', 'height': 20})
         elif body.star_type == StarType.PULSAR:
             data.append({'type': 'label', 'text': "⚠ Pulsar Radiation: Drains 5% antimatter/turn.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
         elif body.star_type in (StarType.BLUE_GIANT, StarType.RED_GIANT):
-            data.append({'type': 'label', 'text': "Giant Star: Collision 600 radius; Inhibition 3000.", 'object_id': '#sidebar_info_label', 'height': 20})
+            data.append({'type': 'label', 'text': f"Giant Star: Collision 600 radius; Inhibition {int(body.inhibition_field_radius)}.", 'object_id': '#sidebar_info_label', 'height': 20})
 
     elif isinstance(body, (Planet, Moon, ColonizableAsteroid)):
         if isinstance(body, Planet):
@@ -162,7 +162,7 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
             if body.planet_type == PlanetType.GAS_GIANT:
                 data.append({'type': 'label', 'text': "Massive Gas Giant (Non-colonizable)", 'object_id': '#sidebar_status_charging_label', 'height': 20})
                 data.append({'type': 'label', 'text': f"Antimatter Reservoir: {body.harvest_multiplier:.1f}x harvest rate", 'object_id': '#sidebar_info_label', 'height': 20})
-                data.append({'type': 'label', 'text': "Collision 450 radius; Inhibition 2800.", 'object_id': '#sidebar_info_label', 'height': 20})
+                data.append({'type': 'label', 'text': f"Collision 450 radius; Inhibition {int(body.inhibition_field_radius)}.", 'object_id': '#sidebar_info_label', 'height': 20})
                 return data
 
             p_metal = getattr(body, 'passive_metal', 0.0)
