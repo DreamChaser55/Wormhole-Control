@@ -185,12 +185,15 @@ SHIP_ICON_SIZE = 27.78
 PLANET_RADIUS = 375.0
 WORMHOLE_RADIUS = 291.66
 STAR_RADIUS = 500.01
-NEBULA_RADIUS = 1666.68
-STORM_RADIUS = 1666.68
+NEBULA_RADIUS = 3600.0
+STORM_RADIUS = 3600.0
 MOON_RADIUS = 83.34
 ASTEROID_RADIUS = 50.01
 COMET_RADIUS = 50.01
 CELESTIAL_FIELD_RADIUS = 300.0
+ASTEROID_FIELD_RADIUS = 3600.0
+ICE_FIELD_RADIUS = 3600.0
+DEBRIS_FIELD_RADIUS = 2000.0
 SECTOR_OBJECT_CLICK_RADIUS_MULT = 1.5
 DEFAULT_SUBLIGHT_SHIP_SPEED = 100.0
 
@@ -252,9 +255,27 @@ FIELD_DENSITY_MAX_HULL: Dict[FieldDensity, HullSize] = {
 }
 
 FIELD_DENSITY_PARTICLES: Dict[FieldDensity, int] = {
-    FieldDensity.LOW: 25,
-    FieldDensity.MEDIUM: 45,
-    FieldDensity.HIGH: 75,
+    FieldDensity.LOW: 200,
+    FieldDensity.MEDIUM: 350,
+    FieldDensity.HIGH: 550,
+}
+
+ASTEROID_FIELD_PARTICLES: Dict[FieldDensity, int] = {
+    FieldDensity.LOW: 200,
+    FieldDensity.MEDIUM: 350,
+    FieldDensity.HIGH: 550,
+}
+
+ICE_FIELD_PARTICLES: Dict[FieldDensity, int] = {
+    FieldDensity.LOW: 150,
+    FieldDensity.MEDIUM: 260,
+    FieldDensity.HIGH: 400,
+}
+
+DEBRIS_FIELD_PARTICLES: Dict[FieldDensity, int] = {
+    FieldDensity.LOW: 100,
+    FieldDensity.MEDIUM: 180,
+    FieldDensity.HIGH: 300,
 }
 
 class StarType(Enum):

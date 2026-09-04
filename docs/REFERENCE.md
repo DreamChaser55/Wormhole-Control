@@ -320,11 +320,11 @@ Every star system contains a central star with a unique antimatter harvesting ra
 - **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1200.0 logical units. **Collision Radius**: **50.01 logical units** (`ASTEROID_RADIUS`).
 - **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 600.0 logical units. **Collision Radius**: **50.01 logical units** (`COMET_RADIUS`).
 - **Wormholes (`Wormhole`)**: Natural spacetime conduits linking star systems. Traversal requires an Advanced Hyperdrive. Visual radius: 291.66 logical units. Inhibition radius: 1500.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
-- **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Sublight speed drag: 25% (strikecraft wings exempt). Inhibition radius: 900.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
-- **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Sublight speed drag: 20% (strikecraft wings exempt). Inhibition radius: 600.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
-- **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures. Sublight speed drag: 25% and high-speed abrasion hazard (speed > 50 inflicts 2 HP damage/turn; strikecraft wings exempt from both). **Collision Radius**: **0.0 logical units** (permeable).
-- **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`). Visual radius: 1666.68 logical units. **Collision Radius**: **0.0 logical units** (permeable). Naturally conceals starships positioned within its cloud boundaries from enemy long-range (inter-sector) sensors.
-- **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`). Visual radius: 1666.68 logical units. **Collision Radius**: **0.0 logical units** (permeable for standard starships; Magnetic Storms act as impassable collision obstacles for strikecraft wings, and launching wings within them is banned).
+- **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Effects radius: 3600.0 logical units. Sublight speed drag: 25% (strikecraft wings exempt). Hyperspace inhibition: none (0.0 logical units). **Collision Radius**: **0.0 logical units** (permeable for passable hulls).
+- **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Effects radius: 3600.0 logical units. Sublight speed drag: 20% (strikecraft wings exempt). Hyperspace inhibition: none (0.0 logical units). **Collision Radius**: **0.0 logical units** (permeable for passable hulls).
+- **Debris Fields (`DebrisField`)**: Remnants of past orbital battles or derelict structures. Effects radius: 2000.0 logical units. Sublight speed drag: 25% and high-speed abrasion hazard (speed > 50 inflicts 2 HP damage/turn; strikecraft wings exempt from both). Hyperspace inhibition: none (0.0 logical units). **Collision Radius**: **0.0 logical units** (permeable for passable hulls).
+- **Nebulae (`Nebula`)**: Vast interstellar clouds with 4 distinct elemental subtypes (`HYDROGEN`, `NITROGEN`, `OXYGEN`, `DUST`). Visual radius: 3600.0 logical units. **Collision Radius**: **0.0 logical units** (permeable). Naturally conceals starships positioned within its cloud boundaries from enemy long-range (inter-sector) sensors.
+- **Space Storms (`Storm`)**: Hazardous energetic disturbances with 3 environmental subtypes (`PLASMA`, `MAGNETIC`, `RADIATION`). Visual radius: 3600.0 logical units. **Collision Radius**: **0.0 logical units** (permeable for standard starships; Magnetic Storms act as impassable collision obstacles for strikecraft wings, and launching wings within them is banned).
 
 ### 6.4 Celestial Body Dimensions & Obstacle Classification Summary
 
@@ -337,8 +337,8 @@ Every star system contains a central star with a unique antimatter harvesting ra
 | `MetalAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1200.0 | 10.0 Metal / Turn | No |
 | `Comet` | **Yes** | 50.01 (`COMET_RADIUS`) | 600.0 | 10.0 Crystal / Turn | No |
 | `Wormhole` | No | 0.00 (Permeable) | 1500.0 | Inter-System Travel | No |
-| `AsteroidField` | No | 0.00 (Permeable) | 900.0 | — | No |
-| `IceField` | No | 0.00 (Permeable) | 600.0 | — | No |
+| `AsteroidField` | No | 0.00 (Permeable) | 0.0 | — | No |
+| `IceField` | No | 0.00 (Permeable) | 0.0 | — | No |
 | `DebrisField` | No | 0.00 (Permeable) | 0.0 | — | No |
 | `Nebula` | No | 0.00 (Permeable) | 0.0 | — | No (Long-Range Stealth) |
 | `Storm` | No | 0.00 (Permeable) | 0.0 | — | No |
@@ -711,7 +711,7 @@ Stars anchor the gravitational and hyperspace topology of star systems:
 
 ### 12.3 Environmental Fields & Tactical Cover
  
-Environmental fields (`radius = 900.0` logical units) alter tactical movement, sensors, and combat mitigation. Each field possesses a `density` parameter (`FieldDensity`: `LOW`, `MEDIUM`, `HIGH`) determining maximum allowable hull size:
+Environmental fields (Asteroid and Ice fields: `radius = 3600.0` logical units; Debris fields: `radius = 2000.0` logical units) alter tactical movement, sensors, and combat mitigation. Each field possesses a `density` parameter (`FieldDensity`: `LOW`, `MEDIUM`, `HIGH`) determining maximum allowable hull size:
 - **Hull Size Access Gating**:
   - `FieldDensity.LOW`: Max allowable hull is `HullSize.LARGE` (blocks `HUGE` ships and stations).
   - `FieldDensity.MEDIUM`: Max allowable hull is `HullSize.MEDIUM` (blocks `LARGE` and `HUGE`).
@@ -723,25 +723,25 @@ Environmental fields (`radius = 900.0` logical units) alter tactical movement, s
   - **Tactical Radar Stealth**: Conceals all ships inside the field from enemy long-range sensor presence detection.
   - **Navigation Resistance**: Sublight speed drag scaled by density (LOW: 0.85x, MEDIUM: 0.75x, HIGH: 0.65x).
   - **Mining Target**: Non-mineable for raw metal (raw metal extraction is strictly exclusive to concentrated `MetalAsteroid` bodies).
-  - **Inhibition**: 900 radius hyperspace inhibition field.
+  - **Inhibition**: No hyperspace inhibition (0.0 radius).
 - **Ice Field**:
   - **Tactical Cover**: Dense cryogenic ice particles scatter coherent energy, providing beam defense mitigation (LOW: +8%, MEDIUM: +12%, HIGH: +16%).
   - **Cooling Aid**: Ambient sub-zero coolant reduces weapon heat dissipation cooldowns by 1 turn.
-  - **Navigation**: Sublight speed drag scaled by density (LOW: 0.90x, MEDIUM: 0.80x, HIGH: 0.70x; strikecraft wings exempt). Hyperspace inhibition field 600 radius. Non-mineable for crystal.
+  - **Navigation**: Sublight speed drag scaled by density (LOW: 0.90x, MEDIUM: 0.80x, HIGH: 0.70x; strikecraft wings exempt). No hyperspace inhibition (0.0 radius). Non-mineable for crystal.
 - **Debris Field**:
   - **Tactical Cover**: Dense wreckage fragments intercept ballistic projectiles, providing kinetic and missile defense mitigation (LOW: +8%, MEDIUM: +12%, HIGH: +16%).
   - **Navigation Hazard**: Moving at high sublight velocities (`speed > 50.0`) through the debris causes abrasive hull damage scaled by density (LOW: 1 HP, MEDIUM: 2 HP, HIGH: 3 HP per turn; strikecraft wings exempt).
-  - **Navigation Drag**: Sublight speed drag scaled by density (LOW: 0.85x, MEDIUM: 0.75x, HIGH: 0.65x; strikecraft wings exempt). Non-mineable.
+  - **Navigation Drag**: Sublight speed drag scaled by density (LOW: 0.85x, MEDIUM: 0.75x, HIGH: 0.65x; strikecraft wings exempt). Non-mineable. No hyperspace inhibition (0.0 radius).
 
 ### 12.4 Nebulae & Space Storm Hazards
 
-- **Nebulae** (`radius = 900.0` logical units):
+- **Nebulae** (`radius = 3600.0` logical units):
   - **All Nebulae**: Defeat long-range sensor detection, concealing ships from enemy presence radars.
   - **Hydrogen Nebula**: High molecular fuel density allows Antimatter Harvesters to scoop fuel at 0.4x base harvest rate; ships traveling inside burn 50% less antimatter during sublight propulsion (`HYDROGEN_NEBULA_AM_BURN_MOD = 0.5`).
   - **Nitrogen Nebula**: Cryogenic coolant cloud aids radiator dispersal, reducing weapon cooldown by 1 turn.
   - **Oxygen Nebula**: Volatile combustible gas accelerates shield recharging (+25% shield regeneration bonus) but exacerbates explosive weapon vulnerability (+15% splash damage taken).
   - **Dust Nebula**: Dense particulate scatter reduces short-range visual sensor radius by 30% (`DUST_NEBULA_SENSOR_MOD = 0.70`).
-- **Space Storms** (`radius = 800.0` logical units):
+- **Space Storms** (`radius = 3600.0` logical units):
   - **Plasma Storm**: Inflicts 8 thermal damage per turn to unit hit points.
   - **Magnetic Storm**: Drains 6 antimatter per turn from onboard reserves; violent electromagnetic flux completely scrambles long-range radar projection from within the storm. Strikecraft wings are strictly banned from entering or launching within Magnetic Storms.
   - **Radiation Storm**: Energetic cosmic radiation inflicts 4 damage per turn to a random functional unit component, degrading subsystem integrity and imposing weapon accuracy penalties.

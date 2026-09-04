@@ -56,18 +56,18 @@ def test_unit_inside_nebula_hidden_from_long_range_sensors(galaxy_setup):
 def test_unit_outside_nebula_radius_detected_by_long_range_sensors(galaxy_setup):
     p1, p2, p3, galaxy, system, mock_game = galaxy_setup
 
-    # Hex (0, 0) contains a Nebula at (0, 0) with radius NEBULA_RADIUS = 1666.68
+    # Hex (0, 0) contains a Nebula at (0, 0) with radius NEBULA_RADIUS = 3600.0
     nebula = Nebula(in_hex=(0, 0), in_system="Alpha", nebula_type=NebulaType.OXYGEN)
     system.hexes[(0, 0)].add_celestial_body(nebula)
 
-    # P1 sensor ship stationed at (-3500, 0)
-    sensor_ship = Unit(p1, Position(-3500, 0), in_hex=(0, 0), in_system="Alpha", name="RadarBase", hull_size=HullSize.MEDIUM, game=mock_game)
+    # P1 sensor ship stationed at (-4500, 0)
+    sensor_ship = Unit(p1, Position(-4500, 0), in_hex=(0, 0), in_system="Alpha", name="RadarBase", hull_size=HullSize.MEDIUM, game=mock_game)
     sensor_ship.remove_component(Sensors)
     sensor_ship.add_component(Sensors(sensor_ship, short_range_radius=1000.0, long_range_hexes=1, hull_cost=5))
 
-    # P2 enemy ship stationed at Position(3000, 0) — inside the same hex, but OUTSIDE the nebula radius!
-    # Distance to sensor_ship is 6500 > 1000 (outside short-range visual radius)
-    enemy_ship = Unit(p2, Position(3000, 0), in_hex=(0, 0), in_system="Alpha", name="EnemyCruiser", hull_size=HullSize.MEDIUM, game=mock_game)
+    # P2 enemy ship stationed at Position(4000, 0) — inside the same hex, but OUTSIDE the nebula radius!
+    # Distance to sensor_ship is 8500 > 1000 (outside short-range visual radius)
+    enemy_ship = Unit(p2, Position(4000, 0), in_hex=(0, 0), in_system="Alpha", name="EnemyCruiser", hull_size=HullSize.MEDIUM, game=mock_game)
 
     system.hexes[(0, 0)].units.extend([sensor_ship, enemy_ship])
 
@@ -110,15 +110,15 @@ def test_mixed_units_in_nebula_hex(galaxy_setup):
     nebula = Nebula(in_hex=(0, 0), in_system="Alpha", nebula_type=NebulaType.NITROGEN)
     system.hexes[(0, 0)].add_celestial_body(nebula)
 
-    # P1 sensor ship at (-3500, 0) with 1000 short-range radius
-    sensor_ship = Unit(p1, Position(-3500, 0), in_hex=(0, 0), in_system="Alpha", name="Watcher", hull_size=HullSize.MEDIUM, game=mock_game)
+    # P1 sensor ship at (-4500, 0) with 1000 short-range radius
+    sensor_ship = Unit(p1, Position(-4500, 0), in_hex=(0, 0), in_system="Alpha", name="Watcher", hull_size=HullSize.MEDIUM, game=mock_game)
     sensor_ship.remove_component(Sensors)
     sensor_ship.add_component(Sensors(sensor_ship, short_range_radius=1000.0, long_range_hexes=1, hull_cost=5))
 
     # Enemy A is hidden inside the nebula (Position 200, 0)
     enemy_a = Unit(p2, Position(200, 0), in_hex=(0, 0), in_system="Alpha", name="EnemyA", hull_size=HullSize.SMALL, game=mock_game)
-    # Enemy B is in open space outside nebula (Position 3500, 0)
-    enemy_b = Unit(p2, Position(3500, 0), in_hex=(0, 0), in_system="Alpha", name="EnemyB", hull_size=HullSize.SMALL, game=mock_game)
+    # Enemy B is in open space outside nebula (Position 4000, 0)
+    enemy_b = Unit(p2, Position(4000, 0), in_hex=(0, 0), in_system="Alpha", name="EnemyB", hull_size=HullSize.SMALL, game=mock_game)
 
     system.hexes[(0, 0)].units.extend([sensor_ship, enemy_a, enemy_b])
 

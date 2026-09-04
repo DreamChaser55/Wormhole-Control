@@ -235,7 +235,7 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         data.append({'type': 'label', 'text': f"Asteroid Count: {body.asteroid_count}", 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': "Tactical Radar Stealth: Conceals from long-range sensors.", 'object_id': '#sidebar_info_label', 'height': 20})
         drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.75)) * 100))
-        data.append({'type': 'label', 'text': f"Sublight navigation drag -{drag_pct}%. Inhibition: 900 radius.", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"Sublight navigation drag -{drag_pct}%.", 'object_id': '#sidebar_info_label', 'height': 20})
 
     elif isinstance(body, IceField):
         density_str = getattr(body, 'density', None)
@@ -244,7 +244,7 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         beam_pct = int(round(getattr(body, 'beam_defense_bonus', 0.10) * 100))
         drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.80)) * 100))
         data.append({'type': 'label', 'text': f"Tactical Cover: +{beam_pct}% Beam defense (scattering).", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': f"Weapon Coolant (-1 cd). Drag -{drag_pct}%. Inhibition: 600.", 'object_id': '#sidebar_info_label', 'height': 20})
+        data.append({'type': 'label', 'text': f"Weapon Coolant (-1 cd). Drag -{drag_pct}%.", 'object_id': '#sidebar_info_label', 'height': 20})
 
     elif isinstance(body, Nebula):
         data.append({'type': 'label', 'text': f"Type: {body.nebula_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})

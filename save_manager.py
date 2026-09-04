@@ -579,7 +579,9 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player]) -> 
     body.position = position
     if "name" in data and data["name"]:
         body.name = data["name"]
-    if "inhibition_field_radius" in data:
+    if cls in (AsteroidField, DebrisField, IceField):
+        body.inhibition_field_radius = 0.0
+    elif "inhibition_field_radius" in data:
         body.inhibition_field_radius = data["inhibition_field_radius"]
 
     if "infiltrating_agents" in data:

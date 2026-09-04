@@ -6,7 +6,8 @@ from constants import (
     STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS,
     STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER, NEBULA_COLORS, STORM_COLORS,
     WHITE, YELLOW, CYAN, PURPLE, RED, STAR_COLORS, MOON_RADIUS, ASTEROID_RADIUS,
-    COMET_RADIUS, CELESTIAL_FIELD_RADIUS, PlanetType, FIELD_DENSITY_PARTICLES
+    COMET_RADIUS, CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
+    PlanetType, FIELD_DENSITY_PARTICLES, ASTEROID_FIELD_PARTICLES, ICE_FIELD_PARTICLES, DEBRIS_FIELD_PARTICLES
 )
 from entities import (
     Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, 
@@ -44,9 +45,7 @@ class SectorCelestialRenderer:
 
         ref_zoom = 1.0
         ref_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * ref_zoom
-        num_circles = 15
-        max_offset_logical = NEBULA_RADIUS / 2.0
-        base_radius_logical = NEBULA_RADIUS
+        base_radius_logical = getattr(nebula, 'radius', NEBULA_RADIUS)
 
         random.seed(nebula.id)
 
@@ -54,24 +53,57 @@ class SectorCelestialRenderer:
         min_x, max_x = float('inf'), float('-inf')
         min_y, max_y = float('inf'), float('-inf')
 
-        for _ in range(num_circles):
-            offset_x_logical = random.uniform(-max_offset_logical, max_offset_logical)
-            offset_y_logical = random.uniform(-max_offset_logical, max_offset_logical)
+        # Generate a dense inner core and wispy outer cloud puffs, strictly confined
+        # within base_radius_logical (effective radius)
+        num_core_circles = 5
+        num_outer_circles = 19
+        color_base = NEBULA_COLORS[nebula.nebula_type]
+
+        # Core puffs near the center
+        for _ in range(num_core_circles):
+            angle = random.uniform(0, 2 * math.pi)
+            dist_logical = random.uniform(0, 0.25 * base_radius_logical)
+            offset_x_logical = dist_logical * math.cos(angle)
+            offset_y_logical = dist_logical * math.sin(angle)
+
+            max_allowed_radius = base_radius_logical - dist_logical
+            circle_radius_logical = random.uniform(max_allowed_radius * 0.55, max_allowed_radius * 0.80)
 
             offset_x_px = offset_x_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
             offset_y_px = offset_y_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
+            circle_radius_px = int(circle_radius_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
 
-            radius_variation = random.uniform(0.5, 1.2)
-            circle_radius_logical = base_radius_logical * radius_variation
+            if circle_radius_px <= 0:
+                continue
+
+            alpha = random.randint(25, 55)
+            color_key = (color_base[0], color_base[1], color_base[2], alpha)
+            circles.append((offset_x_px, offset_y_px, circle_radius_px, color_key))
+
+            min_x = min(min_x, offset_x_px - circle_radius_px)
+            max_x = max(max_x, offset_x_px + circle_radius_px)
+            min_y = min(min_y, offset_y_px - circle_radius_px)
+            max_y = max(max_y, offset_y_px + circle_radius_px)
+
+        # Mid and outer puffs spreading up to base_radius_logical
+        for _ in range(num_outer_circles):
+            angle = random.uniform(0, 2 * math.pi)
+            dist_logical = random.uniform(0.15 * base_radius_logical, 0.70 * base_radius_logical)
+            offset_x_logical = dist_logical * math.cos(angle)
+            offset_y_logical = dist_logical * math.sin(angle)
+
+            max_allowed_radius = base_radius_logical - dist_logical
+            circle_radius_logical = random.uniform(max_allowed_radius * 0.45, max_allowed_radius * 0.98)
+
+            offset_x_px = offset_x_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
+            offset_y_px = offset_y_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
             circle_radius_px = int(circle_radius_logical * ref_dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
 
             if circle_radius_px <= 0:
                 continue
 
             alpha = random.randint(20, 50)
-            color = NEBULA_COLORS[nebula.nebula_type]
-            color_key = (color[0], color[1], color[2], alpha)
-
+            color_key = (color_base[0], color_base[1], color_base[2], alpha)
             circles.append((offset_x_px, offset_y_px, circle_radius_px, color_key))
 
             min_x = min(min_x, offset_x_px - circle_radius_px)
@@ -141,10 +173,10 @@ class SectorCelestialRenderer:
     def draw_celestial_field(self, field, pos_px, base_color, num_particles=None):
         if num_particles is None:
             density = getattr(field, 'density', None)
-            num_objects = FIELD_DENSITY_PARTICLES.get(density, 45) if density else 40
+            num_objects = FIELD_DENSITY_PARTICLES.get(density, 350) if density else 350
         else:
             num_objects = num_particles
-        field_radius = CELESTIAL_FIELD_RADIUS
+        field_radius = getattr(field, 'radius', CELESTIAL_FIELD_RADIUS)
         time_ms = _sr().pygame.time.get_ticks()
         zoom = self.game.sector_zoom
         if not isinstance(zoom, (int, float)):
@@ -180,7 +212,7 @@ class SectorCelestialRenderer:
             return self.parent._storm_base_circle_surfaces[storm.id]
 
         num_circles = 25
-        base_radius_logical = STORM_RADIUS
+        base_radius_logical = getattr(storm, 'radius', STORM_RADIUS)
 
         random.seed(storm.id)
 
@@ -278,7 +310,7 @@ class SectorCelestialRenderer:
 
         if random.random() < 0.05:
             num_bolts = random.randint(1, 3)
-            base_radius_logical = STORM_RADIUS
+            base_radius_logical = getattr(storm, 'radius', STORM_RADIUS)
             base_radius_px = int(base_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             for _ in range(num_bolts):
                 angle = random.uniform(0, 2 * math.pi)
@@ -329,26 +361,30 @@ class SectorCelestialRenderer:
             obj_color = (140, 140, 160)
             obj_radius_logical = ASTEROID_RADIUS
         elif isinstance(obj, AsteroidField):
-            self.draw_celestial_field(obj, obj_pixel_pos, (100, 100, 100))
-            obj_radius_logical = CELESTIAL_FIELD_RADIUS
+            density = getattr(obj, 'density', None)
+            count = ASTEROID_FIELD_PARTICLES.get(density, 350)
+            self.draw_celestial_field(obj, obj_pixel_pos, (100, 100, 100), num_particles=count)
+            obj_radius_logical = getattr(obj, 'radius', ASTEROID_FIELD_RADIUS)
             should_draw_circle = False
         elif isinstance(obj, IceField):
             density = getattr(obj, 'density', None)
-            base_count = int(round(FIELD_DENSITY_PARTICLES.get(density, 45) * 0.5))
-            self.draw_celestial_field(obj, obj_pixel_pos, (173, 216, 230), num_particles=base_count)
-            obj_radius_logical = CELESTIAL_FIELD_RADIUS
+            count = ICE_FIELD_PARTICLES.get(density, 260)
+            self.draw_celestial_field(obj, obj_pixel_pos, (173, 216, 230), num_particles=count)
+            obj_radius_logical = getattr(obj, 'radius', ICE_FIELD_RADIUS)
             should_draw_circle = False
         elif isinstance(obj, DebrisField):
             density = getattr(obj, 'density', None)
-            base_count = int(round(FIELD_DENSITY_PARTICLES.get(density, 45) * 0.4))
-            self.draw_celestial_field(obj, obj_pixel_pos, (112, 128, 144), num_particles=base_count)
-            obj_radius_logical = CELESTIAL_FIELD_RADIUS
+            count = DEBRIS_FIELD_PARTICLES.get(density, 180)
+            self.draw_celestial_field(obj, obj_pixel_pos, (112, 128, 144), num_particles=count)
+            obj_radius_logical = getattr(obj, 'radius', DEBRIS_FIELD_RADIUS)
             should_draw_circle = False
         elif isinstance(obj, Nebula):
             self.draw_nebula(obj, obj_pixel_pos)
+            obj_radius_logical = getattr(obj, 'radius', NEBULA_RADIUS)
             should_draw_circle = False
         elif isinstance(obj, Storm):
             self.draw_storm(obj, obj_pixel_pos)
+            obj_radius_logical = getattr(obj, 'radius', STORM_RADIUS)
             should_draw_circle = False
         elif isinstance(obj, Comet):
             obj_color = CYAN

@@ -14,7 +14,8 @@ from constants import (
     MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS,
     POPULATION_PER_HABITAT, BASE_HABITAT_CAPACITY,
     STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, NEBULA_RADIUS,
-    CELESTIAL_FIELD_RADIUS, STORM_RADIUS, PLANET_TRAITS,
+    CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
+    STORM_RADIUS, PLANET_TRAITS,
     BLACK_HOLE_INHIBITION_RADIUS, GIANT_STAR_RADIUS, GIANT_STAR_INHIBITION_RADIUS,
     ASTEROID_FIELD_SPEED_MOD, ICE_FIELD_SPEED_MOD, ICE_FIELD_BEAM_DEFENSE_BONUS, ICE_FIELD_COOLDOWN_REDUCTION,
     DEBRIS_FIELD_SPEED_MOD, DEBRIS_FIELD_DEFENSE_BONUS, DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE,
@@ -552,11 +553,11 @@ class MetalAsteroid(CelestialBody):
 
 class DebrisField(CelestialBody):
     """Represents a field of debris providing physical cover and high-speed navigation hazard."""
-    radius: float = CELESTIAL_FIELD_RADIUS
+    radius: float = DEBRIS_FIELD_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Debris Field {self.id}"
-        self.radius = CELESTIAL_FIELD_RADIUS
+        self.radius = DEBRIS_FIELD_RADIUS
         self.density = density
         self.speed_multiplier = DEBRIS_FIELD_DENSITY_SPEED_MOD.get(density, DEBRIS_FIELD_SPEED_MOD)
         self.defense_bonus = DEBRIS_FIELD_DENSITY_DEFENSE_BONUS.get(density, DEBRIS_FIELD_DEFENSE_BONUS)
@@ -574,13 +575,13 @@ class DebrisField(CelestialBody):
 
 class AsteroidField(CelestialBody):
     """Represents a field of asteroids providing long-range radar scattering and sublight drag."""
-    radius: float = CELESTIAL_FIELD_RADIUS
+    radius: float = ASTEROID_FIELD_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=900.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Asteroid Field {self.id}"
         self.density = density
-        self.asteroid_count = 50 if density == FieldDensity.LOW else (100 if density == FieldDensity.MEDIUM else 200)
-        self.radius = CELESTIAL_FIELD_RADIUS
+        self.asteroid_count = 200 if density == FieldDensity.LOW else (350 if density == FieldDensity.MEDIUM else 550)
+        self.radius = ASTEROID_FIELD_RADIUS
         self.speed_multiplier = ASTEROID_FIELD_DENSITY_SPEED_MOD.get(density, ASTEROID_FIELD_SPEED_MOD)
 
     @property
@@ -594,12 +595,12 @@ class AsteroidField(CelestialBody):
 
 class IceField(CelestialBody):
     """Represents a field of ice particles providing beam defense cover, weapon cooling, and navigation drag."""
-    radius: float = CELESTIAL_FIELD_RADIUS
+    radius: float = ICE_FIELD_RADIUS
     def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
+        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Ice Field {self.id}"
         self.density = density
-        self.radius = CELESTIAL_FIELD_RADIUS
+        self.radius = ICE_FIELD_RADIUS
         self.speed_multiplier = ICE_FIELD_DENSITY_SPEED_MOD.get(density, ICE_FIELD_SPEED_MOD)
         self.beam_defense_bonus = ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS.get(density, ICE_FIELD_BEAM_DEFENSE_BONUS)
         self.cooldown_reduction = ICE_FIELD_COOLDOWN_REDUCTION

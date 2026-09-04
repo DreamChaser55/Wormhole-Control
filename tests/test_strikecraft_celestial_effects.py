@@ -259,7 +259,7 @@ def test_strikecraft_movement_avoidance_around_magnetic_storm():
     hex_obj = game.galaxy.systems["Alpha"].hexes[HexCoord(0, 0)]
 
     storm = Storm(in_hex=HexCoord(0, 0), in_system="Alpha", storm_type=StormType.MAGNETIC)
-    storm.position = Position(2000.0, 0.0)
+    storm.position = Position(0.0, 0.0)
     hex_obj.celestial_bodies.append(storm)
 
     strikecraft = create_test_ship("Wing 1", HullSize.STRIKECRAFT_WING, game=game)
@@ -274,8 +274,8 @@ def test_strikecraft_movement_avoidance_around_magnetic_storm():
     norm_obstacles = get_hex_collision_obstacles(game.galaxy, "Alpha", HexCoord(0, 0), unit=normal_ship)
     assert len(norm_obstacles) == 0
 
-    # Strikecraft moving from (0, 0) to (4000, 0) through the storm at (2000, 0) should create avoidance sub-orders
-    strikecraft.position = Position(0.0, 0.0)
+    # Strikecraft moving from (-4000, 0) to (4000, 0) through the storm at (0, 0) should create avoidance sub-orders
+    strikecraft.position = Position(-4000.0, 0.0)
     move_order = MoveOrder(strikecraft, {
         "destination_system_name": "Alpha",
         "destination_hex_coord": HexCoord(0, 0),

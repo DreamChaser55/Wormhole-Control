@@ -234,5 +234,34 @@ def test_draw_nebula_uses_smoothscale_at_rest_and_fast_scale_while_zooming():
     assert fast_scale.call_count == 1
     assert smooth_scale.call_count == 0
 
+def test_nebula_rendered_effect_confined_to_radius():
+    import math
+    from constants import NEBULA_RADIUS, SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL
+    game, renderer = _make_test_renderer()
 
+    scale = (SECTOR_CIRCLE_RADIUS_IN_PX * 1.0) / SECTOR_CIRCLE_RADIUS_LOGICAL
+    for n_type in [NebulaType.HYDROGEN, NebulaType.NITROGEN, NebulaType.OXYGEN, NebulaType.DUST]:
+        for seed in range(5):
+            nebula = Nebula(in_hex=(0, 0), in_system="Sol", nebula_type=n_type)
+            nebula.id = seed * 37 + 1
+            data = renderer.celestial_renderer.get_pre_rendered_nebula(nebula)
+            assert data is not None
+            master = data['master']
+            cx = data['center_x']
+            cy = data['center_y']
+
+            w, h = master.get_size()
+            max_px_dist = 0.0
+            for x in range(0, w, 2):
+                for y in range(0, h, 2):
+                    if master.get_at((x, y))[3] > 0:
+                        d = math.hypot(x - cx, y - cy)
+                        if d > max_px_dist:
+                            max_px_dist = d
+            max_logical = max_px_dist / scale
+            # Strictly confined to nebula radius (3600.0) and sector radius (5000.0)
+            assert max_logical <= nebula.radius + 1e-3
+            assert max_logical <= SECTOR_CIRCLE_RADIUS_LOGICAL
+            # Also ensure it fills a substantial portion of its effect radius (at least 80%)
+            assert max_logical >= nebula.radius * 0.80
 

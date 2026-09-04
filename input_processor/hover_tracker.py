@@ -15,7 +15,7 @@ from sector_utils import (
 )
 from entities import (
     Unit, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet,
-    Wormhole, AsteroidField, IceField, DebrisField
+    Wormhole, AsteroidField, IceField, DebrisField, Nebula, Storm
 )
 from galaxy_utils import logical_to_screen_galaxy
 
@@ -116,8 +116,8 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                         obj_radius_logical = MOON_RADIUS
                     elif isinstance(obj, (ColonizableAsteroid, MetalAsteroid)):
                         obj_radius_logical = ASTEROID_RADIUS
-                    elif isinstance(obj, (AsteroidField, IceField, DebrisField)):
-                        obj_radius_logical = CELESTIAL_FIELD_RADIUS
+                    elif isinstance(obj, (AsteroidField, IceField, DebrisField, Nebula, Storm)):
+                        obj_radius_logical = getattr(obj, 'radius', CELESTIAL_FIELD_RADIUS)
                     elif isinstance(obj, Comet):
                         obj_radius_logical = COMET_RADIUS
                     else:

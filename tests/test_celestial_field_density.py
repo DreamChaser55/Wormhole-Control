@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 from constants import (
     FieldDensity, HullSize, CELESTIAL_FIELD_RADIUS,
+    ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
     ASTEROID_FIELD_DENSITY_SPEED_MOD, ICE_FIELD_DENSITY_SPEED_MOD,
     ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS, DEBRIS_FIELD_DENSITY_SPEED_MOD,
     DEBRIS_FIELD_DENSITY_DEFENSE_BONUS, DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE
@@ -89,8 +90,8 @@ def test_is_position_blocked_by_celestial_field():
     huge_unit = _make_unit("Titan", Position(100.0, 100.0), hex_coord, "Alpha", HullSize.HUGE)
     assert is_position_blocked_by_celestial_field(galaxy, "Alpha", hex_coord, Position(100.0, 100.0), huge_unit)
 
-    # Test huge unit outside field (distance > CELESTIAL_FIELD_RADIUS) -> Allowed
-    assert not is_position_blocked_by_celestial_field(galaxy, "Alpha", hex_coord, Position(1500.0, 1500.0), huge_unit)
+    # Test huge unit outside field (distance > ASTEROID_FIELD_RADIUS) -> Allowed
+    assert not is_position_blocked_by_celestial_field(galaxy, "Alpha", hex_coord, Position(4000.0, 4000.0), huge_unit)
 
 
 def test_movement_obstacle_detection():
@@ -118,7 +119,7 @@ def test_movement_obstacle_detection():
     obs_large = get_hex_collision_obstacles(galaxy, "Beta", hex_coord, unit=large_unit)
     assert len(obs_large) == 1
     assert obs_large[0].center == Position(200.0, 200.0)
-    assert obs_large[0].radius == CELESTIAL_FIELD_RADIUS
+    assert obs_large[0].radius == DEBRIS_FIELD_RADIUS
 
 
 def test_order_rejection_hazard_blocked():
@@ -224,7 +225,7 @@ def test_turn_processor_boundary_clamping():
     hex_coord = HexCoord(0, 0)
     system.hexes[hex_coord] = Hex(0, 0, "Sol")
     
-    # High density field at (0, 0), radius = 900
+    # High density field at (0, 0), radius = 2000
     field = DebrisField(in_hex=hex_coord, in_system="Sol", density=FieldDensity.HIGH)
     field.position = Position(0.0, 0.0)
     system.hexes[hex_coord].celestial_bodies.append(field)
@@ -233,8 +234,8 @@ def test_turn_processor_boundary_clamping():
     game = MagicMock()
     game.galaxy = galaxy
 
-    # Large ship at (350, 0), attempting to move into center (0, 0)
-    large_ship = _make_unit("Cruiser", Position(350.0, 0.0), hex_coord, "Sol", HullSize.LARGE, game=game)
+    # Large ship at (2050, 0), attempting to move into center (0, 0)
+    large_ship = _make_unit("Cruiser", Position(2050.0, 0.0), hex_coord, "Sol", HullSize.LARGE, game=game)
     large_ship.add_component(Engines(unit=large_ship, speed=100.0))
     large_ship.add_component(Commander(unit=large_ship))
     system.hexes[hex_coord].units.append(large_ship)
@@ -244,17 +245,39 @@ def test_turn_processor_boundary_clamping():
     order = ReachWaypointOrder(large_ship, {
         "destination_system_name": "Sol",
         "destination_hex_coord": hex_coord,
-        "destination_position": Position(-350.0, 0.0)
+        "destination_position": Position(-2050.0, 0.0)
     })
     order.status = OrderStatus.IN_PROGRESS
     large_ship.commander_component.current_order = order
-    large_ship.engines_component.set_move_target(Position(-350.0, 0.0), order.order_id)
+    large_ship.engines_component.set_move_target(Position(-2050.0, 0.0), order.order_id)
 
     tp = TurnProcessor(game)
     tp._process_movement(large_ship.owner)
 
-    # Ship should have halted at boundary (301.0, 0.0)
-    assert large_ship.position.x == pytest.approx(CELESTIAL_FIELD_RADIUS + 1.0, abs=1.0)
+    # Ship should have halted at boundary (2001.0, 0.0)
+    assert large_ship.position.x == pytest.approx(DEBRIS_FIELD_RADIUS + 1.0, abs=1.0)
     assert large_ship.engines_component.move_target is None
     assert order.status == OrderStatus.FAILED
     assert order.failure_reason == "hazard_blocked"
+
+
+def test_celestial_field_radii_and_zero_inhibition():
+    """Verify asteroid, ice, and debris fields have updated radii, 0.0 inhibition, and no static inhibition zones."""
+    af = AsteroidField(in_hex=HexCoord(0, 0), in_system="Sol")
+    assert af.radius == ASTEROID_FIELD_RADIUS == 3600.0
+    assert af.inhibition_field_radius == 0.0
+
+    ice = IceField(in_hex=HexCoord(0, 0), in_system="Sol")
+    assert ice.radius == ICE_FIELD_RADIUS == 3600.0
+    assert ice.inhibition_field_radius == 0.0
+
+    df = DebrisField(in_hex=HexCoord(0, 0), in_system="Sol")
+    assert df.radius == DEBRIS_FIELD_RADIUS == 2000.0
+    assert df.inhibition_field_radius == 0.0
+
+    hex_obj = Hex(0, 0, "Sol")
+    hex_obj.add_celestial_body(af)
+    hex_obj.add_celestial_body(ice)
+    hex_obj.add_celestial_body(df)
+    hex_obj.update_static_inhibition_zones()
+    assert len(hex_obj.static_inhibition_zones) == 0

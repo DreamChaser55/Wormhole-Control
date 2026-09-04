@@ -130,7 +130,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Tactical Cover & Field Effects**:
   - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting defense mitigation against beam attacks (+8% Low, +12% Medium, +16% High), weapon cooling, and sublight speed drag.
   - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting defense mitigation against kinetic and missile attacks (+8% Low, +12% Medium, +16% High), sublight drag, and high-speed navigation abrasion damage scaled by field density.
-  - **Asteroid Fields**: Dense asteroid fields scatter long-range radar sensors and project hyperspace inhibition (900 radius), with sublight drag scaled by density.
+  - **Asteroid Fields**: Dense asteroid fields scatter long-range radar sensors, with sublight drag scaled by density.
 - **Environmental Hazards**:
   - **Black Holes**: Extreme gravitational tidal distortion inflicts 15 hull damage per turn within 750 radius of the singularity.
   - **Pulsars**: Sweeping magnetic radiation pulses drain 5% of a ship's current antimatter reserves per turn.
