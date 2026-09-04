@@ -91,7 +91,7 @@ Wormhole Control/
 │       └── widget_factory.py      # UI widget construction helper functions
 ├── rendering/                     # Specialized rendering modules
 │   ├── drawing_utils.py           # Basic shape and overlay drawing utilities
-│   ├── galaxy_renderer.py         # Galaxy view rendering (systems and wormhole links)
+│   ├── galaxy_renderer.py         # Galaxy view rendering (systems, player home marks, concentric circles, wormhole links)
 │   ├── main_menu_renderer.py      # Main menu view rendering (titles and starfield)
 │   ├── system_renderer.py         # System view rendering (hex grid and celestial bodies)
 │   └── sector_renderer/           # Sector view rendering package
@@ -448,7 +448,7 @@ restricted by the selected stance boundary.
 - **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, conceals units inside nebulae from long-range sensors, and persists last-known sector intel per player.
 - **Diplomacy & Team System (`entities.py`, `game_settings.py`, `game_setup.py`, `save_manager.py`)**: Manages static multi-team configurations established during game setup. Evaluates relations (`is_allied_with`, `is_enemy_of`) to govern sensor sharing, tactical combat engagement, logistics sharing, area buffs, friendly fire prevention, and covert espionage targeting.
 - **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Real-time geometric pathfinding preventing sub-light vessels from clipping into solid celestial bodies (stars, planets, moons, asteroids, comets). Uses parametric line-circle intersection analysis, dual-tangent escape waypoint generation, and recursive obstacle resolution to steer ships safely around physical bodies with a 50.0-logical-unit clearance margin, while permitting unhindered landings and departures.
-- **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations. System and sector views maintain independent transient cameras with cursor-anchored smooth zoom, middle-drag and arrow-key panning; newly opened systems auto-fit inside the HUD-free gameplay rectangle.
+- **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations. System and sector views maintain independent transient cameras with cursor-anchored smooth zoom, middle-drag and arrow-key panning; newly opened systems auto-fit inside the HUD-free gameplay rectangle. The galaxy renderer highlights player home systems dynamically using each player's faction color, rendering concentric circles for systems containing multiple player homeworlds.
 - **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
 
 ---

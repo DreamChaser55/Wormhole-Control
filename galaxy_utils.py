@@ -1,3 +1,4 @@
+import typing
 import pygame
 from geometry import Vector, Position
 from constants import LOGICAL_GALAXY_SIZE
@@ -45,3 +46,55 @@ def screen_to_logical_galaxy(screen_pos: Position, render_rect: pygame.Rect) -> 
     logical_x = (screen_pos.x - offset_x) / scale
     logical_y = (screen_pos.y - offset_y) / scale
     return Vector(logical_x, logical_y)
+
+
+def get_home_systems_mapping(game: typing.Any) -> typing.Dict[str, typing.List[typing.Any]]:
+    """Returns a mapping of star system name to a list of Player instances
+    whose homeworld is located in that system.
+    """
+    if not game or not getattr(game, "players", None):
+        return {}
+
+    home_systems_map: typing.Dict[str, typing.List[typing.Any]] = {}
+    galaxy = getattr(game, "galaxy", None)
+
+    for player in game.players:
+        system_name = None
+        # 1. Primary lookup via player.homeworld_id
+        hw_id = getattr(player, "homeworld_id", None)
+        if hw_id is not None and galaxy and hasattr(galaxy, "get_celestial_body_by_id"):
+            hw_body = galaxy.get_celestial_body_by_id(hw_id)
+            if hw_body and getattr(hw_body, "in_system", None):
+                system_name = hw_body.in_system
+
+        # 2. Fallback: check game.player_homeworlds if available
+        if not system_name and hasattr(game, "player_homeworlds") and isinstance(game.player_homeworlds, dict):
+            hw_info = game.player_homeworlds.get(player)
+            if isinstance(hw_info, tuple) and len(hw_info) > 0 and isinstance(hw_info[0], str):
+                system_name = hw_info[0]
+            elif hasattr(hw_info, "in_system"):
+                system_name = hw_info.in_system
+
+        # 3. Fallback: scan galaxy for any planet owned by the player
+        if not system_name and galaxy and hasattr(galaxy, "systems") and isinstance(galaxy.systems, dict):
+            for sys_name, sys_obj in galaxy.systems.items():
+                hexes = getattr(sys_obj, "hexes", {})
+                if isinstance(hexes, dict):
+                    for hex_obj in hexes.values():
+                        bodies = getattr(hex_obj, "celestial_bodies", [])
+                        for body in bodies:
+                            if getattr(body, "owner", None) == player:
+                                system_name = getattr(body, "in_system", sys_name)
+                                if getattr(player, "homeworld_id", None) is None:
+                                    player.homeworld_id = getattr(body, "id", None)
+                                break
+                        if system_name:
+                            break
+                if system_name:
+                    break
+
+        if system_name:
+            home_systems_map.setdefault(system_name, []).append(player)
+
+    return home_systems_map
+

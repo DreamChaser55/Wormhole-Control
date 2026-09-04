@@ -114,6 +114,7 @@ def serialize_player(player: Player) -> dict:
         "metal": player.metal,
         "crystal": player.crystal,
         "sector_intel": sector_intel_data,
+        "homeworld_id": getattr(player, "homeworld_id", None),
     }
 
 
@@ -496,6 +497,7 @@ def deserialize_player(data: dict) -> Player:
             data.get("ai_repair_retries", DEFAULT_REPAIR_RETRIES)
         ),
         ai_memory=data.get("ai_memory", {}),
+        homeworld_id=data.get("homeworld_id"),
     )
     player.order_history = bounded_history(data.get("order_history", []))
     player.order_event_sequence = max(int(data.get("order_event_sequence", 0)), max((e["event_id"] for e in player.order_history), default=0))
@@ -1143,6 +1145,24 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
 
         # Reconstruct Galaxy
         game.galaxy = deserialize_galaxy(data["galaxy"], players_by_id, game)
+
+        # Resolve homeworld_id fallback for legacy saves and populate game.player_homeworlds
+        player_homeworlds = {}
+        for player in game.players:
+            if player.homeworld_id is None and game.galaxy:
+                for sys_obj in game.galaxy.systems.values():
+                    for hex_obj in sys_obj.hexes.values():
+                        for body in hex_obj.celestial_bodies:
+                            if getattr(body, "owner", None) == player:
+                                player.homeworld_id = body.id
+                                break
+                        if player.homeworld_id is not None:
+                            break
+            if player.homeworld_id is not None and game.galaxy:
+                hw_body = game.galaxy.get_celestial_body_by_id(player.homeworld_id)
+                if hw_body:
+                    player_homeworlds[player] = (hw_body.in_system, hw_body.in_hex, hw_body.position)
+        game.player_homeworlds = player_homeworlds
 
         # Second Pass: Restore orders on all units now that galaxy objects exist
         max_object_id = 0

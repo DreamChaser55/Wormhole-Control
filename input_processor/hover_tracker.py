@@ -60,7 +60,7 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
     if game.view_mode == 'galaxy':
         if not game.galaxy or not game.galaxy.systems:
             return
-        hover_dist_sq = 15**2
+        hover_dist_sq = 22**2
         for sys_name, system in game.galaxy.systems.items():
             screen_pos = logical_to_screen_galaxy(system.position, gui.galaxy_generation_rect)
             if distance_sq(mouse_pos, screen_pos) < hover_dist_sq:

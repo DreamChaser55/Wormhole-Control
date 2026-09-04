@@ -1,15 +1,13 @@
 import pygame
 import math
 from typing import TYPE_CHECKING
-import pygame
-import math
 from galaxy import StarSystem
 from constants import (
     HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR, WORMHOLE_JUMP_ORDER_COLOR,
-    WORMHOLE_LINE_COLOR, BLUE, GRAY, TEXT_SCALE
+    WORMHOLE_LINE_COLOR, GRAY, TEXT_SCALE
 )
 from entities import Unit, OrderType
-from galaxy_utils import logical_to_screen_galaxy
+from galaxy_utils import logical_to_screen_galaxy, get_home_systems_mapping
 if TYPE_CHECKING:
     from galaxy import StarSystem
 
@@ -40,33 +38,64 @@ class GalaxyViewRenderer:
         self.draw_galaxy_view_order_lines()
 
         # 3. Draw Systems
+        home_systems_map = get_home_systems_mapping(self.game)
+
         for sys_name, system in self.game.galaxy.systems.items():
             screen_pos = logical_to_screen_galaxy(system.position, self.game.gui.galaxy_generation_rect)
             pos_tuple = screen_pos.to_tuple()
-            
-            if self.game.galaxy_view_mouse_hover_system_name == sys_name:
-                 color = HOVER_HIGHLIGHT_COLOR
-                 radius = 7
-            elif sys_name == "Sol":
-                 color = BLUE
-                 radius = 7
+            is_hovered = (self.game.galaxy_view_mouse_hover_system_name == sys_name)
+            home_players = home_systems_map.get(sys_name, [])
+
+            if not home_players:
+                # Standard unowned star system
+                if is_hovered:
+                    color = HOVER_HIGHLIGHT_COLOR
+                    radius = 7
+                else:
+                    color = GRAY
+                    radius = 5
+                max_radius = radius
+                pygame.draw.circle(self.screen, color, pos_tuple, radius)
+                label_color = color
+
+            elif len(home_players) == 1:
+                # Single player home system: highlighted by that player's color
+                player = home_players[0]
+                player_color = player.color
+                max_radius = 7
+                pygame.draw.circle(self.screen, player_color, pos_tuple, max_radius)
+                label_color = HOVER_HIGHLIGHT_COLOR if is_hovered else player_color
+                if is_hovered:
+                    pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, max_radius + 2, 2)
+
             else:
-                color = GRAY
-                radius = 5
-            
-            pygame.draw.circle(self.screen, color, pos_tuple, radius)
+                # Multiple players have homeworld in the same system:
+                # Highlight with concentric circles of player colors.
+                # Draw filled concentric circles from outermost player down to innermost player
+                num_players = len(home_players)
+                inner_radius = 5
+                ring_thickness = 3
+                max_radius = inner_radius + (num_players - 1) * ring_thickness
+
+                for i in range(num_players - 1, -1, -1):
+                    r = inner_radius + i * ring_thickness
+                    pygame.draw.circle(self.screen, home_players[i].color, pos_tuple, r)
+
+                label_color = HOVER_HIGHLIGHT_COLOR if is_hovered else (230, 230, 230)
+                if is_hovered:
+                    pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, max_radius + 2, 2)
 
             # Draw system name
             font_size = max(1, int(12 * TEXT_SCALE))
             font = pygame.font.Font(None, font_size)
-            text_surface = font.render(system.name, True, color)
+            text_surface = font.render(system.name, True, label_color)
             text_rect = text_surface.get_rect()
-            text_rect.midleft = (pos_tuple[0] + radius + 5, pos_tuple[1])
+            text_rect.midleft = (pos_tuple[0] + max_radius + 5, pos_tuple[1])
             self.screen.blit(text_surface, text_rect)
 
             # Highlight selected system
             if any(isinstance(obj, StarSystem) and obj.name == sys_name for obj in self.game.selected_objects):
-                 pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, pos_tuple, radius + 3, 2)
+                 pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, pos_tuple, max_radius + 4, 2)
 
     def collect_all_system_waypoints_recursive(self,
                                                order,
@@ -100,7 +129,7 @@ class GalaxyViewRenderer:
                 sub_order,
                 current_system_for_sub_order_chain, 
                 is_part_of_current_top_level_order,
-                all_collected_waypoints,
+                all_collected_waypoints, 
                 updated_sequence_counter 
             )
         

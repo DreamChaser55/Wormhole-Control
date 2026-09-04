@@ -239,6 +239,7 @@ class Player:
         ai_reasoning_effort: str = DEFAULT_REASONING_EFFORT,
         ai_repair_retries: int = DEFAULT_REPAIR_RETRIES,
         ai_memory: Optional[Dict[str, Any]] = None,
+        homeworld_id: Optional[int] = None,
     ):
         self.id = Player.player_counter
         Player.player_counter += 1
@@ -255,6 +256,7 @@ class Player:
             ai_repair_retries
         )
         self.ai_memory: Dict[str, Any] = dict(ai_memory or {})
+        self.homeworld_id: Optional[int] = homeworld_id
         self.order_history = []
         self.order_event_sequence = 0
         self.last_ai_report: Dict[str, Any] = {}

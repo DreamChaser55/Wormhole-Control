@@ -125,6 +125,7 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
 
             homeworld.owner = player
             homeworld.population = settings.starting_population
+            player.homeworld_id = homeworld.id
             player_homeworlds[player] = (target_sys.name, homeworld.in_hex, homeworld.position)
             logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} at hex {homeworld.in_hex} as homeworld for {player.name}")
 
@@ -161,8 +162,11 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
 
                 homeworld.owner = player
                 homeworld.population = settings.starting_population
+                player.homeworld_id = homeworld.id
                 player_homeworlds[player] = (sol_system.name, homeworld.in_hex, homeworld.position)
                 logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} at hex {homeworld.in_hex} as homeworld for {player.name}")
+
+    game.player_homeworlds = player_homeworlds
 
     # Apply starting resources from settings
     for player in game.players:

@@ -64,7 +64,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 Wormhole Control organizes space into three interconnected strategic perspectives:
 
-- **Galaxy View (`G`)**: Strategic overview of the known galaxy showing all star systems, and wormhole conduits connecting distant systems.
+- **Galaxy View (`G`)**: Strategic overview of the known galaxy showing all star systems, player home system color markers (including concentric circles for systems shared by multiple players), and wormhole conduits connecting distant systems.
 - **System View (`S`)**: System-level hexgrid map showing orbital sectors radiating outward from the central star, along with celestial bodies, wormhole routes, and sector-level fog of war. Systems are automatically fitted to the unobstructed map area and support mouse-wheel zoom plus middle-drag or arrow-key panning.
 - **Sector View**: Tactical view providing a granular look at celestial objects, orbital structures, individual starships, weapon range circles, minefields, and real-time movement trajectories in a specific sector.
 
