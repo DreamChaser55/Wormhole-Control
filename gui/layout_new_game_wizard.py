@@ -40,18 +40,18 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Layout constants (unscaled, in logical pixels at 1280×720 reference)
 # ---------------------------------------------------------------------------
-_WIN_W = 940
-_WIN_H = 580
+_WIN_W = 1180
+_WIN_H = 640
 
 _PAD = 10          # standard internal padding
-_ROW_H = 32        # height of a labelled slider / text row
+_ROW_H = 34        # height of a labelled slider / text row
 _SECTION_H = 22    # section header height
-_BTN_H = 34        # action button height
-_BTN_W = 140       # action button width
+_BTN_H = 36        # action button height
+_BTN_W = 150       # action button width
 
 _PLAYER_ROW_H = 34  # per-player row height
-_COLOR_SWATCH_W = 30  # width of the colored swatch panel
-_COLOR_CYCLE_BTN_W = 20  # width of the ◀/▶ cycle buttons
+_COLOR_SWATCH_W = 32  # width of the colored swatch panel
+_COLOR_CYCLE_BTN_W = 22  # width of the ◀/▶ cycle buttons
 
 _MIN_PLAYERS = 2
 _MAX_PLAYERS = 6
@@ -286,7 +286,7 @@ class NewGameWizard:
 
         btn_bar_h = self._sy(_BTN_H + _PAD * 2)
         main_h = self._content_h - btn_bar_h
-        left_w = int(self._content_w * 0.49)
+        left_w = int(self._content_w * 0.48)
         right_w = self._content_w - left_w - self._sx(_PAD * 2)
         right_x = left_w + self._sx(_PAD)
 
@@ -371,7 +371,7 @@ class NewGameWizard:
             object_id="#wizard_section_header",
         )
         self._stage_elements.append(hdr)
-        cursor_y += self._sy(_SECTION_H + 10)
+        cursor_y += self._sy(_SECTION_H + 12)
 
         # Sliders
         cursor_y, self._num_systems_slider, self._num_systems_label = self._add_slider_row(
@@ -408,7 +408,7 @@ class NewGameWizard:
 
         # Action: Generate Map button & stats label
         cursor_y += self._sy(12)
-        btn_w = self._sx(150)
+        btn_w = self._sx(170)
         btn_h = self._sy(_BTN_H)
         self._generate_map_btn = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(pad, cursor_y, btn_w, btn_h),
@@ -423,16 +423,45 @@ class NewGameWizard:
         if self._generated_galaxy and self._generated_galaxy.systems:
             sys_cnt = len(self._generated_galaxy.systems)
             wh_cnt = len(self._generated_galaxy.wormholes) // 2
-            stats_text = f"{sys_cnt} Systems | {wh_cnt} Wormholes"
+            stats_text = f"{sys_cnt} Systems | {wh_cnt} Wormhole Conduits"
 
         self._galaxy_stats_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(pad + btn_w + self._sx(10), cursor_y, inner_w - btn_w - self._sx(10), btn_h),
+            relative_rect=pygame.Rect(pad + btn_w + self._sx(12), cursor_y, inner_w - btn_w - self._sx(12), btn_h),
             text=stats_text,
             manager=self.manager,
             container=self.window,
             object_id="#wizard_stats_label",
         )
         self._stage_elements.append(self._galaxy_stats_label)
+
+        # Tactical guide / parameter summary card
+        cursor_y += btn_h + self._sy(16)
+        guide_hdr = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, cursor_y, inner_w, self._sy(_SECTION_H)),
+            text="── Galaxy Topology Guide ───────────────",
+            manager=self.manager,
+            container=self.window,
+            object_id="#wizard_section_header",
+        )
+        self._stage_elements.append(guide_hdr)
+        cursor_y += self._sy(_SECTION_H + 6)
+
+        info_lines = [
+            "• Star count & distances define cluster scale and FTL travel times.",
+            "• System radius sets the number of orbital sector rings per star.",
+            "• Wormhole density sets natural conduits linking distant systems.",
+        ]
+        info_line_h = self._sy(22)
+        for line in info_lines:
+            lbl = pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect(pad + self._sx(4), cursor_y, inner_w - self._sx(8), info_line_h),
+                text=line,
+                manager=self.manager,
+                container=self.window,
+                object_id="#wizard_stats_label",
+            )
+            self._stage_elements.append(lbl)
+            cursor_y += info_line_h
 
     # ------------------------------------------------------------------
     # Stage 2: Factions & Starting Conditions Controls
@@ -454,11 +483,8 @@ class NewGameWizard:
         # Header: Players & Factions
         cursor_y = self._add_section_header("Players & Factions", cursor_y, inner_w)
 
-        # Spawn profile row (Normal / Testing)
-        cursor_y = self._add_spawn_profile_row(cursor_y, inner_w)
-
-        # Home system mode row (Random / Specified)
-        cursor_y = self._add_home_mode_row(cursor_y, inner_w)
+        # Spawn profile & Home mode row (side-by-side)
+        cursor_y = self._add_spawn_and_home_mode_row(cursor_y, inner_w)
 
         # Player count row (+/- buttons + count label)
         cursor_y = self._add_player_count_row(cursor_y, inner_w)
@@ -469,22 +495,8 @@ class NewGameWizard:
         # Header: Economy
         cursor_y = self._add_section_header("Starting Economy", cursor_y, inner_w)
 
-        cursor_y, self._credits_entry = self._add_numeric_entry_row(
-            "Starting Credits:", cursor_y, inner_w, default=self._credits_str,
-            object_id="#credits_entry",
-        )
-        cursor_y, self._metal_entry = self._add_numeric_entry_row(
-            "Starting Metal:", cursor_y, inner_w, default=self._metal_str,
-            object_id="#metal_entry",
-        )
-        cursor_y, self._crystal_entry = self._add_numeric_entry_row(
-            "Starting Crystal:", cursor_y, inner_w, default=self._crystal_str,
-            object_id="#crystal_entry",
-        )
-        cursor_y, self._population_entry = self._add_numeric_entry_row(
-            "Homeworld Population:", cursor_y, inner_w, default=self._population_str,
-            object_id="#population_entry",
-        )
+        # 2x2 Economy Grid
+        cursor_y = self._build_economy_grid(cursor_y, inner_w)
 
         cursor_y += self._sy(_PAD)
         self._scrollable.set_scrollable_area_dimensions((inner_w, max(cursor_y, height)))
@@ -501,6 +513,149 @@ class NewGameWizard:
         )
         self._stage_elements.append(hdr)
         return y + top_pad + header_h + self._sy(4)
+
+    def _add_spawn_and_home_mode_row(self, y: int, width: int) -> int:
+        """Arranges Spawn Profile and Home Systems Mode side-by-side on one row."""
+        row_h = self._sy(_ROW_H)
+        pad = self._sx(_PAD)
+
+        # Left Column: Spawn Profile
+        lbl_w_spawn = self._sx(115)
+        btn_w_spawn = self._sx(120)
+
+        lbl_spawn = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, y, lbl_w_spawn, row_h),
+            text="Spawn Profile:",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#spawn_profile_label",
+        )
+        self._stage_elements.append(lbl_spawn)
+
+        self._spawn_profile_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(pad + lbl_w_spawn + self._sx(4), y, btn_w_spawn, row_h),
+            text=self._spawn_profile.display_name,
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#spawn_profile_button",
+        )
+        self._stage_elements.append(self._spawn_profile_button)
+
+        # Right Column: Home Systems Mode
+        col2_x = pad + lbl_w_spawn + btn_w_spawn + self._sx(14)
+        lbl_w_home = self._sx(125)
+        btn_w_home = self._sx(145)
+
+        lbl_home = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(col2_x, y, lbl_w_home, row_h),
+            text="Home Systems:",
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#home_mode_label",
+        )
+        self._stage_elements.append(lbl_home)
+
+        mode_text = "Mode: Random" if self._home_system_mode == "random" else "Mode: Specified"
+        self._home_mode_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(col2_x + lbl_w_home + self._sx(4), y, btn_w_home, row_h),
+            text=mode_text,
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#home_mode_button",
+        )
+        self._stage_elements.append(self._home_mode_button)
+
+        return y + row_h + self._sy(6)
+
+    def _build_economy_grid(self, y: int, width: int) -> int:
+        """Constructs a 2x2 grid for Starting Economy parameters."""
+        row_h = self._sy(_ROW_H)
+        pad = self._sx(_PAD)
+
+        lbl_w = self._sx(125)
+        entry_w = self._sx(100)
+        col_w = lbl_w + entry_w
+        col2_x = pad + col_w + self._sx(20)
+
+        # Row 1 Left: Starting Credits
+        lbl_cred = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
+            text="Starting Credits:",
+            manager=self.manager,
+            container=self._scrollable,
+        )
+        self._stage_elements.append(lbl_cred)
+
+        self._credits_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(pad + lbl_w, y, entry_w, row_h),
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#credits_entry",
+        )
+        self._credits_entry.set_text(self._credits_str)
+        self._credits_entry.set_allowed_characters("numbers")
+        self._stage_elements.append(self._credits_entry)
+
+        # Row 1 Right: Starting Crystal
+        lbl_crys = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(col2_x, y, lbl_w, row_h),
+            text="Starting Crystal:",
+            manager=self.manager,
+            container=self._scrollable,
+        )
+        self._stage_elements.append(lbl_crys)
+
+        self._crystal_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(col2_x + lbl_w, y, entry_w, row_h),
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#crystal_entry",
+        )
+        self._crystal_entry.set_text(self._crystal_str)
+        self._crystal_entry.set_allowed_characters("numbers")
+        self._stage_elements.append(self._crystal_entry)
+
+        y += row_h + self._sy(6)
+
+        # Row 2 Left: Starting Metal
+        lbl_met = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(pad, y, lbl_w, row_h),
+            text="Starting Metal:",
+            manager=self.manager,
+            container=self._scrollable,
+        )
+        self._stage_elements.append(lbl_met)
+
+        self._metal_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(pad + lbl_w, y, entry_w, row_h),
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#metal_entry",
+        )
+        self._metal_entry.set_text(self._metal_str)
+        self._metal_entry.set_allowed_characters("numbers")
+        self._stage_elements.append(self._metal_entry)
+
+        # Row 2 Right: Homeworld Population
+        lbl_pop = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(col2_x, y, lbl_w, row_h),
+            text="Homeworld Pop:",
+            manager=self.manager,
+            container=self._scrollable,
+        )
+        self._stage_elements.append(lbl_pop)
+
+        self._population_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(col2_x + lbl_w, y, entry_w, row_h),
+            manager=self.manager,
+            container=self._scrollable,
+            object_id="#population_entry",
+        )
+        self._population_entry.set_text(self._population_str)
+        self._population_entry.set_allowed_characters("numbers")
+        self._stage_elements.append(self._population_entry)
+
+        return y + row_h + self._sy(6)
 
     def _add_spawn_profile_row(self, y: int, width: int) -> int:
         row_h = self._sy(_ROW_H)
@@ -616,7 +771,7 @@ class NewGameWizard:
         )
         self._stage_elements.append(self._player_plus_btn)
 
-        return y + row_h + self._sy(6)
+        return y + row_h + self._sy(8)
 
     def _build_player_rows(self, y: int, width: int) -> int:
         self._player_name_entries = []
@@ -654,7 +809,7 @@ class NewGameWizard:
         pad = self._sx(_PAD)
 
         # Line 1: Index | Name | Swatch | Controller | Team
-        idx_lbl_w = self._sx(24)
+        idx_lbl_w = self._sx(26)
         idx_lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(pad, y, idx_lbl_w, row_h),
             text=f"P{index + 1}",
@@ -663,8 +818,8 @@ class NewGameWizard:
         )
         self._stage_elements.append(idx_lbl)
 
-        name_w = self._sx(110)
-        name_x = pad + idx_lbl_w + self._sx(4)
+        name_w = self._sx(145)
+        name_x = pad + idx_lbl_w + self._sx(6)
         entry = pygame_gui.elements.UITextEntryLine(
             relative_rect=pygame.Rect(name_x, y, name_w, row_h),
             manager=self.manager,
@@ -678,7 +833,7 @@ class NewGameWizard:
         # Color cycler
         cycle_btn_w = self._sx(_COLOR_CYCLE_BTN_W)
         swatch_w = self._sx(_COLOR_SWATCH_W)
-        color_x = name_x + name_w + self._sx(6)
+        color_x = name_x + name_w + self._sx(8)
 
         prev_c = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(color_x, y, cycle_btn_w, row_h),
@@ -710,8 +865,8 @@ class NewGameWizard:
         self._stage_elements.append(next_c)
 
         # Controller type button
-        type_w = self._sx(88)
-        type_x = color_x + cycle_btn_w * 2 + swatch_w + self._sx(6)
+        type_w = self._sx(105)
+        type_x = color_x + cycle_btn_w * 2 + swatch_w + self._sx(8)
         controller = self._player_controllers[index]
         effort = self._player_ai_reasoning_efforts[index]
         type_btn = pygame_gui.elements.UIButton(
@@ -725,8 +880,8 @@ class NewGameWizard:
         self._stage_elements.append(type_btn)
 
         # Team button
-        team_w = self._sx(64)
-        team_x = type_x + type_w + self._sx(4)
+        team_w = self._sx(80)
+        team_x = type_x + type_w + self._sx(8)
         team_btn = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(team_x, y, team_w, row_h),
             text=f"Team {self._player_teams[index]}",
@@ -738,10 +893,10 @@ class NewGameWizard:
         self._stage_elements.append(team_btn)
 
         # Line 2: Home system assignment
-        y += row_h + self._sy(2)
-        home_lbl_w = self._sx(56)
+        y += row_h + self._sy(3)
+        home_lbl_w = self._sx(50)
         home_lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(pad + idx_lbl_w, y, home_lbl_w, row_h),
+            relative_rect=pygame.Rect(pad + idx_lbl_w + self._sx(6), y, home_lbl_w, row_h),
             text="Home:",
             manager=self.manager,
             container=self._scrollable,
@@ -749,7 +904,7 @@ class NewGameWizard:
         self._player_home_labels.append(home_lbl)
         self._stage_elements.append(home_lbl)
 
-        home_x = pad + idx_lbl_w + home_lbl_w + self._sx(4)
+        home_x = pad + idx_lbl_w + self._sx(6) + home_lbl_w + self._sx(6)
         prev_h = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(home_x, y, cycle_btn_w, row_h),
             text="◀",
@@ -763,7 +918,7 @@ class NewGameWizard:
         sys_val = self._player_home_systems[index] or "Random"
         if self._home_system_mode == "random":
             sys_val = "Random (Auto)"
-        sys_btn_w = self._sx(150)
+        sys_btn_w = self._sx(180)
         home_btn = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect(home_x + cycle_btn_w, y, sys_btn_w, row_h),
             text=sys_val,
@@ -786,8 +941,8 @@ class NewGameWizard:
         self._stage_elements.append(next_h)
 
         # "click to select" indicator on the right side of the player row
-        sel_lbl_x = home_x + cycle_btn_w + sys_btn_w + cycle_btn_w + self._sx(6)
-        sel_lbl_w = max(self._sx(110), width - sel_lbl_x - self._sx(4))
+        sel_lbl_x = home_x + cycle_btn_w + sys_btn_w + cycle_btn_w + self._sx(8)
+        sel_lbl_w = max(self._sx(140), width - sel_lbl_x - self._sx(4))
         is_target = (index == self._selected_player_index_for_home and self._home_system_mode == "specified")
         sel_lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(sel_lbl_x, y, sel_lbl_w, row_h),
@@ -799,7 +954,7 @@ class NewGameWizard:
         self._player_select_labels.append(sel_lbl)
         self._stage_elements.append(sel_lbl)
 
-        return y + row_h + self._sy(6)
+        return y + row_h + self._sy(8)
 
     def _cycle_player_color(self, player_index: int, delta: int) -> None:
         cur = self._player_color_indices[player_index]
@@ -879,8 +1034,8 @@ class NewGameWizard:
     ) -> typing.Tuple[int, pygame_gui.elements.UIHorizontalSlider, pygame_gui.elements.UILabel]:
         row_h = self._sy(_ROW_H)
         pad = self._sx(_PAD)
-        lbl_w = self._sx(150)
-        val_lbl_w = self._sx(50)
+        lbl_w = self._sx(165)
+        val_lbl_w = self._sx(55)
         slider_w = width - lbl_w - val_lbl_w - pad * 2
 
         lbl = pygame_gui.elements.UILabel(
@@ -910,7 +1065,7 @@ class NewGameWizard:
         )
         self._stage_elements.append(val_label)
 
-        return y + row_h + self._sy(4), slider, val_label
+        return y + row_h + self._sy(8), slider, val_label
 
     def _add_numeric_entry_row(
         self,
@@ -953,9 +1108,10 @@ class NewGameWizard:
         btn_y = main_h + (btn_bar_h - btn_h) // 2
 
         if self._stage == 1:
-            btn_w_next = self._sx(_BTN_W + 30)
+            btn_w_next = self._sx(220)
             btn_w_cancel = self._sx(_BTN_W)
-            total_w = btn_w_cancel + self._sx(_PAD * 2) + btn_w_next
+            gap = self._sx(_PAD * 2)
+            total_w = btn_w_cancel + gap + btn_w_next
             start_x = (self._content_w - total_w) // 2
 
             self.cancel_button = pygame_gui.elements.UIButton(
@@ -968,7 +1124,7 @@ class NewGameWizard:
             self._stage_elements.append(self.cancel_button)
 
             self.next_button = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(start_x + btn_w_cancel + self._sx(_PAD * 2), btn_y, btn_w_next, btn_h),
+                relative_rect=pygame.Rect(start_x + btn_w_cancel + gap, btn_y, btn_w_next, btn_h),
                 text="Next: Players & Economy ➔",
                 manager=self.manager,
                 container=self.window,
@@ -984,7 +1140,8 @@ class NewGameWizard:
             btn_w_back = self._sx(_BTN_W)
             btn_w_cancel = self._sx(_BTN_W)
             btn_w_start = self._sx(_BTN_W)
-            total_w = btn_w_back + self._sx(_PAD) + btn_w_cancel + self._sx(_PAD) + btn_w_start
+            gap = self._sx(_PAD * 2)
+            total_w = btn_w_back + gap + btn_w_cancel + gap + btn_w_start
             start_x = (self._content_w - total_w) // 2
 
             self.back_button = pygame_gui.elements.UIButton(
@@ -997,7 +1154,7 @@ class NewGameWizard:
             self._stage_elements.append(self.back_button)
 
             self.cancel_button = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(start_x + btn_w_back + self._sx(_PAD), btn_y, btn_w_cancel, btn_h),
+                relative_rect=pygame.Rect(start_x + btn_w_back + gap, btn_y, btn_w_cancel, btn_h),
                 text="Cancel",
                 manager=self.manager,
                 container=self.window,
@@ -1006,7 +1163,7 @@ class NewGameWizard:
             self._stage_elements.append(self.cancel_button)
 
             self.start_button = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect(start_x + btn_w_back + btn_w_cancel + self._sx(_PAD * 2), btn_y, btn_w_start, btn_h),
+                relative_rect=pygame.Rect(start_x + btn_w_back + gap + btn_w_cancel + gap, btn_y, btn_w_start, btn_h),
                 text="Start Game",
                 manager=self.manager,
                 container=self.window,

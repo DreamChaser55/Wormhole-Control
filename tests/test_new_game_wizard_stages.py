@@ -405,3 +405,77 @@ def test_wizard_player_select_hint_label(wizard_env):
     assert wizard._player_select_labels[2].text == "click to select"
 
 
+def test_wizard_enlarged_dimensions_and_preview_scale(wizard_env):
+    """Verify that wizard window is enlarged to 1180x640 logical reference and map preview is spacious."""
+    from gui.layout_new_game_wizard import _WIN_W, _WIN_H
+    wizard, manager, screen = wizard_env
+
+    # Sizing constants
+    assert _WIN_W == 1180
+    assert _WIN_H == 640
+
+    # Window geometry (accounting for UIWindow shadow padding)
+    shadow_pad = getattr(wizard.window, "shadow_width", 0)
+    assert wizard.window.rect.width - 2 * shadow_pad == 1180
+    assert wizard.window.rect.height - 2 * shadow_pad == 640
+    # Centered horizontally: (1280 - 1180) / 2 = 50
+    assert wizard.window.rect.left + shadow_pad == 50
+    # Centered vertically: (720 - 640) / 2 = 40
+    assert wizard.window.rect.top + shadow_pad == 40
+
+    # Container size is spacious
+    content_w, content_h = wizard.window.get_container().get_size()
+    assert content_w >= 1150
+    assert content_h >= 590
+
+    # Preview rect should be significantly larger than the old 420x410 viewport
+    preview_rect = wizard._get_preview_screen_rect()
+    assert preview_rect.width >= 550
+    assert preview_rect.height >= 450
+
+
+def test_wizard_stage_2_layout_and_economy_grid(wizard_env):
+    """Verify that Stage 2 contains side-by-side mode row, spacious player rows, and 2x2 economy grid."""
+    wizard, manager, screen = wizard_env
+    wizard.go_to_stage(2)
+
+    # Spawn profile and Home mode controls
+    assert wizard._spawn_profile_button is not None
+    assert wizard._home_mode_button is not None
+    assert wizard._spawn_profile_button.text == "Normal"
+    assert "Mode: Random" in wizard._home_mode_button.text
+
+    # Verify side-by-side placement (both have the same relative y position in the scroll container)
+    spawn_rect = wizard._spawn_profile_button.get_relative_rect()
+    home_rect = wizard._home_mode_button.get_relative_rect()
+    assert spawn_rect.top == home_rect.top
+    assert home_rect.left > spawn_rect.right
+
+    # 2x2 Economy grid entries
+    assert wizard._credits_entry is not None
+    assert wizard._metal_entry is not None
+    assert wizard._crystal_entry is not None
+    assert wizard._population_entry is not None
+
+    cred_rect = wizard._credits_entry.get_relative_rect()
+    crys_rect = wizard._crystal_entry.get_relative_rect()
+    met_rect = wizard._metal_entry.get_relative_rect()
+    pop_rect = wizard._population_entry.get_relative_rect()
+
+    # Credits & Crystal on row 1
+    assert cred_rect.top == crys_rect.top
+    assert crys_rect.left > cred_rect.right
+
+    # Metal & Population on row 2
+    assert met_rect.top == pop_rect.top
+    assert pop_rect.left > met_rect.right
+    assert met_rect.top > cred_rect.bottom
+
+    # Player block name entry and controller buttons are widened
+    name_rect = wizard._player_name_entries[0].get_relative_rect()
+    assert name_rect.width >= 140
+    ctrl_rect = wizard._player_type_buttons[0].get_relative_rect()
+    assert ctrl_rect.width >= 100
+
+
+
