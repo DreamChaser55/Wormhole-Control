@@ -434,34 +434,6 @@ class NewGameWizard:
         )
         self._stage_elements.append(self._galaxy_stats_label)
 
-        # Tactical guide / parameter summary card
-        cursor_y += btn_h + self._sy(16)
-        guide_hdr = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(pad, cursor_y, inner_w, self._sy(_SECTION_H)),
-            text="── Galaxy Topology Guide ───────────────",
-            manager=self.manager,
-            container=self.window,
-            object_id="#wizard_section_header",
-        )
-        self._stage_elements.append(guide_hdr)
-        cursor_y += self._sy(_SECTION_H + 6)
-
-        info_lines = [
-            "• Star count & distances define cluster scale and FTL travel times.",
-            "• System radius sets the number of orbital sector rings per star.",
-            "• Wormhole density sets natural conduits linking distant systems.",
-        ]
-        info_line_h = self._sy(22)
-        for line in info_lines:
-            lbl = pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect(pad + self._sx(4), cursor_y, inner_w - self._sx(8), info_line_h),
-                text=line,
-                manager=self.manager,
-                container=self.window,
-                object_id="#wizard_stats_label",
-            )
-            self._stage_elements.append(lbl)
-            cursor_y += info_line_h
 
     # ------------------------------------------------------------------
     # Stage 2: Factions & Starting Conditions Controls

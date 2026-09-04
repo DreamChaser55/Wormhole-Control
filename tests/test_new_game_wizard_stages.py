@@ -84,6 +84,24 @@ def test_wizard_stage_1_initial_state(wizard_env):
     assert wizard._preview_panel is not None
 
 
+def test_wizard_stage_1_no_galaxy_topology_guide_text(wizard_env):
+    """Verify that the galaxy topology guide text and bullet labels are removed from Stage 1."""
+    wizard, manager, screen = wizard_env
+    assert wizard._stage == 1
+
+    stage_texts = []
+    for elem in wizard._stage_elements:
+        if hasattr(elem, "text"):
+            stage_texts.append(elem.text)
+        elif hasattr(elem, "html_text"):
+            stage_texts.append(elem.html_text)
+
+    combined_text = " ".join(stage_texts)
+    assert "Galaxy Topology Guide" not in combined_text
+    assert "Star count & distances" not in combined_text
+    assert "Wormhole density sets natural conduits" not in combined_text
+
+
 def test_wizard_stage_1_regenerate_map(wizard_env):
     """Clicking Generate Map re-generates procedural galaxy preview."""
     wizard, manager, screen = wizard_env
