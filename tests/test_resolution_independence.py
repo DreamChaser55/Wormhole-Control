@@ -19,9 +19,9 @@ def test_dynamic_gui_constants():
 
 def test_logical_radii():
     # Check that logical radii are set correctly in constants
-    assert PLANET_RADIUS == 375.0
+    assert PLANET_RADIUS == 562.5
     assert WORMHOLE_RADIUS == 291.66
-    assert STAR_RADIUS == 500.01
+    assert STAR_RADIUS == 750.015
 
 @pytest.mark.parametrize("pixel_radius", [300, 360, 384, 540, 720])
 @pytest.mark.parametrize("logical_pos", [Position(500.0, -250.0), Position(-4000.0, 3000.0)])

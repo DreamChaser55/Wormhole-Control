@@ -105,9 +105,9 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
 
                     obj_radius_logical = 0
                     if isinstance(obj, Star):
-                        obj_radius_logical = STAR_RADIUS
+                        obj_radius_logical = getattr(obj, 'collision_radius', STAR_RADIUS)
                     elif isinstance(obj, Planet):
-                        obj_radius_logical = PLANET_RADIUS
+                        obj_radius_logical = getattr(obj, 'collision_radius', PLANET_RADIUS)
                     elif isinstance(obj, Wormhole):
                         obj_radius_logical = WORMHOLE_RADIUS
                     elif isinstance(obj, Unit):
@@ -115,11 +115,11 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                         effective_icon_size = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
                         obj_radius_logical = effective_icon_size
                     elif isinstance(obj, Moon):
-                        obj_radius_logical = MOON_RADIUS
+                        obj_radius_logical = getattr(obj, 'collision_radius', MOON_RADIUS)
                     elif isinstance(obj, (ColonizableAsteroid, MetalAsteroid)):
-                        obj_radius_logical = ASTEROID_RADIUS
+                        obj_radius_logical = getattr(obj, 'collision_radius', ASTEROID_RADIUS)
                     elif isinstance(obj, Comet):
-                        obj_radius_logical = COMET_RADIUS
+                        obj_radius_logical = getattr(obj, 'collision_radius', COMET_RADIUS)
                     else:
                         obj_radius_logical = 13.89
 

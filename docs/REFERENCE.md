@@ -295,30 +295,30 @@ contain ID `0`. Code uses `None`, rather than zero, to represent a missing
 object or target ID.
 
 ### 6.1 Central Stars (`StarType`)
-Every star system contains a central star with a unique antimatter harvesting rate multiplier (`constants.py: STAR_HARVEST_MULTIPLIERS`). Central stars are solid celestial obstacles with a physical **Collision Radius** of **500.01 logical units** (`STAR_RADIUS`):
+Every star system contains a central star with a unique antimatter harvesting rate multiplier (`constants.py: STAR_HARVEST_MULTIPLIERS`). Central stars are solid celestial obstacles with a physical **Collision Radius** of **750.015 logical units** (`STAR_RADIUS`):
 
 | Star Type | Enum Member | Harvest Multiplier | Color (RGB) | Inhibition Radius | Collision Radius |
 |---|---|---|---|---|---|
-| **Pulsar** | `PULSAR` | **2.5×** | (225, 110, 255) | 3375.0 | 500.01 |
-| **Blue Giant** | `BLUE_GIANT` | **2.0×** | (173, 216, 255) | 3750.0 | 600.0 |
-| **Neutron Star** | `NEUTRON_STAR` | **1.8×** | (200, 245, 255) | 3375.0 | 500.01 |
-| **Yellow Giant** | `YELLOW_GIANT` | **1.5×** | (255, 195, 0) | 3375.0 | 500.01 |
-| **Red Giant** | `RED_GIANT` | **1.3×** | (235, 50, 35) | 3750.0 | 600.0 |
-| **G-Type (Sol-like)** | `G_TYPE` | **1.0×** (Baseline) | (255, 235, 120) | 3375.0 | 500.01 |
-| **White Dwarf** | `WHITE_DWARF` | **0.8×** | (240, 248, 255) | 3375.0 | 500.01 |
-| **Protostar** | `PROTOSTAR` | **0.7×** | (255, 140, 0) | 3375.0 | 500.01 |
-| **Red Dwarf** | `RED_DWARF` | **0.5×** | (255, 127, 80) | 3375.0 | 500.01 |
-| **Brown Dwarf** | `BROWN_DWARF` | **0.3×** | (160, 82, 45) | 3375.0 | 500.01 |
-| **Black Hole** | `BLACK_HOLE` | **0.1×** | (75, 35, 100) | 4500.0 | 500.01 |
+| **Pulsar** | `PULSAR` | **2.5×** | (225, 110, 255) | 3375.0 | 750.015 |
+| **Blue Giant** | `BLUE_GIANT` | **2.0×** | (173, 216, 255) | 3750.0 | 900.0 |
+| **Neutron Star** | `NEUTRON_STAR` | **1.8×** | (200, 245, 255) | 3375.0 | 750.015 |
+| **Yellow Giant** | `YELLOW_GIANT` | **1.5×** | (255, 195, 0) | 3375.0 | 750.015 |
+| **Red Giant** | `RED_GIANT` | **1.3×** | (235, 50, 35) | 3750.0 | 900.0 |
+| **G-Type (Sol-like)** | `G_TYPE` | **1.0×** (Baseline) | (255, 235, 120) | 3375.0 | 750.015 |
+| **White Dwarf** | `WHITE_DWARF` | **0.8×** | (240, 248, 255) | 3375.0 | 750.015 |
+| **Protostar** | `PROTOSTAR` | **0.7×** | (255, 140, 0) | 3375.0 | 750.015 |
+| **Red Dwarf** | `RED_DWARF` | **0.5×** | (255, 127, 80) | 3375.0 | 750.015 |
+| **Brown Dwarf** | `BROWN_DWARF` | **0.3×** | (160, 82, 45) | 3375.0 | 750.015 |
+| **Black Hole** | `BLACK_HOLE` | **0.1×** | (75, 35, 100) | 4500.0 | 750.015 |
 
 ### 6.2 Planets & Colonizable Bodies
-- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 3000.0 logical units (Ferrous: 3250.0, Gas Giant: 3500.0). **Collision Radius**: **375.0 logical units** (`PLANET_RADIUS`).
-- **Moons (`Moon`)**: Colonizable satellites supporting up to **50.0 population** with a growth rate of **1.0% per turn**. Inhibition radius: 2250.0 logical units. **Collision Radius**: **83.34 logical units** (`MOON_RADIUS`).
-- **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts supporting up to **20.0 population** with a growth rate of **0.5% per turn**. Inhibition radius: 1500.0 logical units. **Collision Radius**: **50.01 logical units** (`ASTEROID_RADIUS`).
+- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 3000.0 logical units (Ferrous: 3250.0, Gas Giant: 3500.0). **Collision Radius**: **562.50 logical units** (`PLANET_RADIUS`, Gas Giant: 675.0).
+- **Moons (`Moon`)**: Colonizable satellites supporting up to **50.0 population** with a growth rate of **1.0% per turn**. Inhibition radius: 2250.0 logical units. **Collision Radius**: **125.01 logical units** (`MOON_RADIUS`).
+- **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts supporting up to **20.0 population** with a growth rate of **0.5% per turn**. Inhibition radius: 1500.0 logical units. **Collision Radius**: **75.015 logical units** (`ASTEROID_RADIUS`).
 
 ### 6.3 Resource & Spatial Phenomena
-- **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1500.0 logical units. **Collision Radius**: **50.01 logical units** (`ASTEROID_RADIUS`).
-- **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 1000.0 logical units. **Collision Radius**: **50.01 logical units** (`COMET_RADIUS`).
+- **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1500.0 logical units. **Collision Radius**: **75.015 logical units** (`ASTEROID_RADIUS`).
+- **Comets (`Comet`)**: Pristine icy bodies yielding raw **Crystal** (yield: 10.0/turn). Inhibition radius: 1000.0 logical units. **Collision Radius**: **75.015 logical units** (`COMET_RADIUS`).
 - **Wormholes (`Wormhole`)**: Natural spacetime conduits linking star systems. Traversal requires an Advanced Hyperdrive. Visual radius: 291.66 logical units. Inhibition radius: 1875.0 logical units. **Collision Radius**: **0.0 logical units** (permeable).
 - **Asteroid Fields (`AsteroidField`)**: Dense clusters of rocky fragments. Effects radius: 3600.0 logical units. Sublight speed drag: 25% (strikecraft wings exempt). Hyperspace inhibition: none (0.0 logical units). **Collision Radius**: **0.0 logical units** (permeable for passable hulls).
 - **Ice Fields (`IceField`)**: Dense fields of volatile ice particles. Effects radius: 3600.0 logical units. Sublight speed drag: 20% (strikecraft wings exempt). Hyperspace inhibition: none (0.0 logical units). **Collision Radius**: **0.0 logical units** (permeable for passable hulls).
@@ -330,12 +330,12 @@ Every star system contains a central star with a unique antimatter harvesting ra
 
 | Entity Class | Solid Obstacle? | Collision Radius (logical units) | Inhibition Radius (logical units) | Effect Radius (logical units) | Harvest / Resource Yield | Colonizable |
 |---|---|---|---|---|---|---|
-| `Star` | **Yes** | 500.01 (`STAR_RADIUS`) | 3375.0 (Black Hole: 4500.0, Giants: 3750.0) | — | 0.1× – 2.5× Antimatter | No |
-| `Planet` | **Yes** | 375.00 (`PLANET_RADIUS`) | 3000.0 (Ferrous: 3250.0, Gas Giant: 3500.0) | — | — | Yes (Max 100 pop) |
-| `Moon` | **Yes** | 83.34 (`MOON_RADIUS`) | 2250.0 | — | — | Yes (Max 50 pop) |
-| `ColonizableAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1500.0 | — | — | Yes (Max 20 pop) |
-| `MetalAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1500.0 | — | 10.0 Metal / Turn | No |
-| `Comet` | **Yes** | 50.01 (`COMET_RADIUS`) | 1000.0 | — | 10.0 Crystal / Turn | No |
+| `Star` | **Yes** | 750.015 (`STAR_RADIUS`, Giants: 900.0) | 3375.0 (Black Hole: 4500.0, Giants: 3750.0) | — | 0.1× – 2.5× Antimatter | No |
+| `Planet` | **Yes** | 562.50 (`PLANET_RADIUS`, Gas Giant: 675.0) | 3000.0 (Ferrous: 3250.0, Gas Giant: 3500.0) | — | — | Yes (Max 100 pop) |
+| `Moon` | **Yes** | 125.01 (`MOON_RADIUS`) | 2250.0 | — | — | Yes (Max 50 pop) |
+| `ColonizableAsteroid` | **Yes** | 75.015 (`ASTEROID_RADIUS`) | 1500.0 | — | — | Yes (Max 20 pop) |
+| `MetalAsteroid` | **Yes** | 75.015 (`ASTEROID_RADIUS`) | 1500.0 | — | 10.0 Metal / Turn | No |
+| `Comet` | **Yes** | 75.015 (`COMET_RADIUS`) | 1000.0 | — | 10.0 Crystal / Turn | No |
 | `Wormhole` | No | 0.00 (Permeable) | 1875.0 | — | Inter-System Travel | No |
 | `AsteroidField` | No | 0.00 (Permeable) | 0.0 | 3600.0 (`ASTEROID_FIELD_RADIUS`) | — | No |
 | `IceField` | No | 0.00 (Permeable) | 0.0 | 3600.0 (`ICE_FIELD_RADIUS`) | — | No |
@@ -578,11 +578,11 @@ The collision avoidance system automatically detects obstructed sub-light trajec
 Every celestial entity defines a `collision_radius: float` attribute (`entities.py`):
 
 1. **Solid Celestial Obstacles (`collision_radius > 0.0`)**:
-   - **Central Star (`Star`)**: `STAR_RADIUS = 500.01` logical units
-   - **Planets (`Planet`)**: `PLANET_RADIUS = 375.00` logical units
-   - **Moons (`Moon`)**: `MOON_RADIUS = 83.34` logical units
-   - **Asteroids (`ColonizableAsteroid`, `MetalAsteroid`)**: `ASTEROID_RADIUS = 50.01` logical units
-   - **Comets (`Comet`)**: `COMET_RADIUS = 50.01` logical units
+   - **Central Star (`Star`)**: `STAR_RADIUS = 750.015` logical units (Giants: `GIANT_STAR_RADIUS = 900.0`)
+   - **Planets (`Planet`)**: `PLANET_RADIUS = 562.50` logical units (Gas Giant: `675.0`)
+   - **Moons (`Moon`)**: `MOON_RADIUS = 125.01` logical units
+   - **Asteroids (`ColonizableAsteroid`, `MetalAsteroid`)**: `ASTEROID_RADIUS = 75.015` logical units
+   - **Comets (`Comet`)**: `COMET_RADIUS = 75.015` logical units
 
 2. **Permeable Spatial Phenomena (`collision_radius = 0.0`)**:
    - **Nebulae, Space Storms, Wormholes, Asteroid Fields, Ice Fields, Debris Fields**: Non-solid entities that do not obstruct sub-light flight. Ships pass straight through them.
@@ -619,7 +619,7 @@ Orders targeting solid celestial bodies (`ColonizeOrder` and `LoadColonistsOrder
 
 $$R_{\text{standoff}} = r_{\text{body}} + \text{DEFAULT\_STANDOFF\_DISTANCE}$$
 
-where $r_{\text{body}}$ is the body's physical collision radius (e.g. `PLANET_RADIUS = 375.0`, `MOON_RADIUS = 83.34`, `ASTEROID_RADIUS = 50.01`).
+where $r_{\text{body}}$ is the body's physical collision radius (e.g. `PLANET_RADIUS = 562.5`, `MOON_RADIUS = 125.01`, `ASTEROID_RADIUS = 75.015`).
 
 - **Operational Distance Requirement**: The game demands that the colonizer vessel be within $r_{\text{body}} + \text{DEFAULT\_STANDOFF\_DISTANCE}$ before unloading or embarking population. If outside this range, approach movement sub-orders are automatically planned and executed first.
 - **Same sector (sub-light)**: The standoff destination is the point on the body's standoff circle along the mover-target ray closest to the ship.
@@ -707,7 +707,7 @@ Every planet generated in the galaxy possesses distinctive biological and geolog
 Stars anchor the gravitational and hyperspace topology of star systems:
 - **Black Hole**: Extreme gravitational anomaly. Features an event horizon of 750 logical units radius that inflicts 15 damage per turn to all vessels within it. Projects an expansive hyperspace inhibition field of 4500 radius. Minimum fuel harvesting multiplier (0.1x).
 - **Pulsar**: High-energy neutron star with intense rotational sweeps. Drains 5% of a ship's current antimatter reserves per turn when within the sector. Yields a massive fuel harvesting multiplier (2.5x).
-- **Giant Stars (Blue Giant, Red Giant)**: Massive stellar radius (600 physical collision radius) with extended hyperspace inhibition fields (3750 radius).
+- **Giant Stars (Blue Giant, Red Giant)**: Massive stellar radius (900.0 physical collision radius) with extended hyperspace inhibition fields (3750 radius).
 
 ### 12.3 Environmental Fields & Tactical Cover
  

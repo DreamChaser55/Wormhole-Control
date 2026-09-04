@@ -273,7 +273,7 @@ class TestMoveOrderCollisionAvoidance(unittest.TestCase):
 
         self.assertEqual(move_order.status, OrderStatus.COMPLETED)
         self.assertLess(distance(self.unit.position, Position(1500, 0)), 1.0)
-        # Ship should never have entered the Star's physical collision radius (STAR_RADIUS = 500.01)
+        # Ship should never have entered the Star's physical collision radius (STAR_RADIUS = 750.015)
         self.assertGreaterEqual(min_distance_to_star, STAR_RADIUS - 1.0)
 
 

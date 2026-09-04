@@ -26,10 +26,10 @@ def test_colonize_order_in_range():
 
     order = ColonizeOrder(unit, {"target_id": 999})
 
-    # Unit is within standoff distance (PLANET_RADIUS + DEFAULT_STANDOFF_DISTANCE = 525.0)
+    # Unit is within standoff distance (PLANET_RADIUS + DEFAULT_STANDOFF_DISTANCE = 712.5)
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
-    unit.position = Position(500, 0)
+    unit.position = Position(600, 0)
 
     colony.unload_population.return_value = True
 
@@ -57,7 +57,7 @@ def test_colonize_order_same_hex_out_of_range_spawns_celestial_approach():
 
     order = ColonizeOrder(unit, {"target_id": 999})
 
-    # Unit is in the same hex, but far away from the planet (1000.0 > 525.0)
+    # Unit is in the same hex, but far away from the planet (1000.0 > 712.5)
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
     unit.position = Position(1000, 0)
@@ -126,7 +126,7 @@ def test_colonize_order_no_cargo_fails():
     order = ColonizeOrder(unit, {"target_id": 999})
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
-    unit.position = Position(500, 0)
+    unit.position = Position(600, 0)
 
     order.execute(galaxy)
     assert order.status == OrderStatus.FAILED

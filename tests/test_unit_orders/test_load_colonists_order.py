@@ -25,7 +25,7 @@ def test_load_colonists_order_in_range():
     # Case 1: Unit is at location within standoff range and successfully loads colonists
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
-    unit.position = Position(500, 0)
+    unit.position = Position(600, 0)
     colony.load_population.return_value = True
 
     order = LoadColonistsOrder(unit, {

@@ -103,7 +103,7 @@ def test_planet_traits_initialization():
     assert jupiter.is_colonizable is False
     assert jupiter.harvest_multiplier == 0.5
     assert jupiter.inhibition_field_radius == 3500.0
-    assert jupiter.collision_radius == 450.0
+    assert jupiter.collision_radius == 675.0
 
 
 def test_star_types_initialization():
@@ -113,7 +113,7 @@ def test_star_types_initialization():
 
     blue_giant = Star(in_system="Orion", star_type=StarType.BLUE_GIANT)
     assert blue_giant.inhibition_field_radius == 3750.0
-    assert blue_giant.collision_radius == 600.0
+    assert blue_giant.collision_radius == 900.0
 
 
 def test_gas_giant_uncolonizable_orders():

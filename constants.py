@@ -182,14 +182,14 @@ XP_JUMP_RANGE_BONUS: float = 0.20     # +20% hyperdrive jump range at max XP
 # Object sizes in sector view (in logical world coordinates):
 STATION_ICON_SIZE = 27.78
 SHIP_ICON_SIZE = 27.78
-PLANET_RADIUS = 375.0
+PLANET_RADIUS = 562.5
 WORMHOLE_RADIUS = 291.66
-STAR_RADIUS = 500.01
+STAR_RADIUS = 750.015
 NEBULA_RADIUS = 3600.0
 STORM_RADIUS = 3600.0
-MOON_RADIUS = 83.34
-ASTEROID_RADIUS = 50.01
-COMET_RADIUS = 50.01
+MOON_RADIUS = 125.01
+ASTEROID_RADIUS = 75.015
+COMET_RADIUS = 75.015
 CELESTIAL_FIELD_RADIUS = 300.0
 ASTEROID_FIELD_RADIUS = 3600.0
 ICE_FIELD_RADIUS = 3600.0
@@ -460,7 +460,7 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "passive_crystal": 0.0,
         "am_harvest_multiplier": 0.5,
         "inhibition_radius": 3500.0,
-        "collision_radius": 450.0,
+        "collision_radius": 675.0,
         "description": "Massive volatile gas mantle. Non-colonizable; antimatter harvesting hub.",
     },
 }
@@ -475,7 +475,7 @@ BLACK_HOLE_INHIBITION_RADIUS = 4500.0
 BLACK_HOLE_EVENT_HORIZON_RADIUS = 750.0
 BLACK_HOLE_EVENT_HORIZON_DAMAGE = 15.0
 PULSAR_SHIELD_DRAIN_PERCENT = 0.05
-GIANT_STAR_RADIUS = 600.0
+GIANT_STAR_RADIUS = 900.0
 GIANT_STAR_INHIBITION_RADIUS = 3750.0
 
 ASTEROID_FIELD_SPEED_MOD = 0.75

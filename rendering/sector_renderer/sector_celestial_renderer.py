@@ -328,7 +328,7 @@ class SectorCelestialRenderer:
 
         if isinstance(obj, Star):
             obj_color = STAR_COLORS.get(obj.star_type, YELLOW)
-            obj_radius_logical = STAR_RADIUS
+            obj_radius_logical = getattr(obj, 'collision_radius', STAR_RADIUS)
         elif isinstance(obj, Planet):
             planet_color_map = {
                 PlanetType.TERRAN: (0, 128, 0),
@@ -342,25 +342,25 @@ class SectorCelestialRenderer:
                 PlanetType.GAS_GIANT: (255, 228, 181),
             }
             obj_color = planet_color_map.get(obj.planet_type, CYAN)
-            obj_radius_logical = PLANET_RADIUS
+            obj_radius_logical = getattr(obj, 'collision_radius', PLANET_RADIUS)
             if obj.owner:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                 _sr().pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
         elif isinstance(obj, Moon):
             obj_color = (200, 200, 200)
-            obj_radius_logical = MOON_RADIUS
+            obj_radius_logical = getattr(obj, 'collision_radius', MOON_RADIUS)
             if obj.owner:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                 _sr().pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
         elif isinstance(obj, ColonizableAsteroid):
             obj_color = (90, 60, 50)
-            obj_radius_logical = ASTEROID_RADIUS
+            obj_radius_logical = getattr(obj, 'collision_radius', ASTEROID_RADIUS)
             if obj.owner:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                 _sr().pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
         elif isinstance(obj, MetalAsteroid):
             obj_color = (140, 140, 160)
-            obj_radius_logical = ASTEROID_RADIUS
+            obj_radius_logical = getattr(obj, 'collision_radius', ASTEROID_RADIUS)
         elif isinstance(obj, AsteroidField):
             density = getattr(obj, 'density', None)
             count = ASTEROID_FIELD_PARTICLES.get(density, 350)
@@ -389,7 +389,7 @@ class SectorCelestialRenderer:
             should_draw_circle = False
         elif isinstance(obj, Comet):
             obj_color = CYAN
-            obj_radius_logical = COMET_RADIUS
+            obj_radius_logical = getattr(obj, 'collision_radius', COMET_RADIUS)
         elif isinstance(obj, Wormhole):
             obj_radius_logical = WORMHOLE_RADIUS
             obj_color = PURPLE

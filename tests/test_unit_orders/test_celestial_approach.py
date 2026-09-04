@@ -51,7 +51,7 @@ class TestCelestialApproach(unittest.TestCase):
         self.assertTrue(order.parameters["approach_position_resolved"])
 
         dest_pos = order.parameters["destination_position"]
-        expected_distance = PLANET_RADIUS + DEFAULT_STANDOFF_DISTANCE  # 375.0 + 150.0 = 525.0
+        expected_distance = PLANET_RADIUS + DEFAULT_STANDOFF_DISTANCE  # 562.5 + 150.0 = 712.5
         self.assertAlmostEqual(distance(dest_pos, planet.position), expected_distance, places=2)
         # Direction was from (1000, 0) to (0, 0) -> +X direction
         self.assertAlmostEqual(dest_pos.x, expected_distance, places=2)
@@ -86,7 +86,7 @@ class TestCelestialApproach(unittest.TestCase):
         self.assertTrue(success)
 
         dest_pos = order.parameters["destination_position"]
-        expected_distance = PLANET_RADIUS + DEFAULT_STANDOFF_DISTANCE  # 525.0
+        expected_distance = PLANET_RADIUS + DEFAULT_STANDOFF_DISTANCE  # 712.5
         self.assertAlmostEqual(distance(dest_pos, planet.position), expected_distance, places=2)
 
         # Vector from (0, 0) to (2, 0) in hex pixel space is strictly positive X
