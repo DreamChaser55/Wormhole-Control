@@ -35,8 +35,8 @@ player. It includes:
 - public system topology, navigation anchors, detailed nearby bodies (including planetary traits, colonizability, passive mineral yields, and antimatter harvesting sources/multipliers), and summaries of remote neutral bodies;
 - owned and allied units;
 - enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);
-- celestial fields (asteroid, debris, ice) with density parameters (`density`, `max_hull_size`) that restrict hulls exceeding the field's maximum allowable hull, rejecting forbidden commands with `hazard_blocked`;
-- space storms (plasma, magnetic, radiation) and black hole event horizons that inflict active environmental hazards (strikecraft wings are banned from entering or launching in magnetic storms, but are immune to negative field effects and can enter fields of all densities);
+- celestial fields (asteroid, debris, ice) with density parameters (`density`, `max_hull_size`), solidity status (`is_solid: false`), and exact `effect_radius` values that restrict hulls exceeding the field's maximum allowable hull, rejecting forbidden commands with `hazard_blocked`;
+- space storms (plasma, magnetic, radiation) and nebulae exposing `is_solid: false` and exact `effect_radius`, along with black hole event horizons that inflict active environmental hazards (strikecraft wings are banned from entering or launching in magnetic storms, but are immune to negative field effects and can enter fields of all densities);
 - visible minefields;
 - undetailed enemy-presence hexes without count, identity, owner, or strength;
 - per-owned-unit supported commands, currently legal commands, conditional

@@ -7,7 +7,8 @@ from constants import (
     STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER, NEBULA_COLORS, STORM_COLORS,
     WHITE, YELLOW, CYAN, PURPLE, RED, STAR_COLORS, MOON_RADIUS, ASTEROID_RADIUS,
     COMET_RADIUS, CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
-    PlanetType, FIELD_DENSITY_PARTICLES, ASTEROID_FIELD_PARTICLES, ICE_FIELD_PARTICLES, DEBRIS_FIELD_PARTICLES
+    PlanetType, FIELD_DENSITY_PARTICLES, ASTEROID_FIELD_PARTICLES, ICE_FIELD_PARTICLES, DEBRIS_FIELD_PARTICLES,
+    TURQUOISE
 )
 from entities import (
     Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, 
@@ -442,5 +443,10 @@ class SectorCelestialRenderer:
                     badge_rect = badge_surf.get_rect()
                     badge_rect.midbottom = (obj_pixel_pos.x, obj_pixel_pos.y - pixel_radius - 4)
                     self.screen.blit(badge_surf, badge_rect)
+
+        elif not getattr(obj, 'is_solid', True):
+            pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            if pixel_radius > 0 and not self.parent._is_circle_off_screen((obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius):
+                _sr().pygame.draw.circle(self.screen, TURQUOISE, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
 
         return obj_color, obj_radius_logical

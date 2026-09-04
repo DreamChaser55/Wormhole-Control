@@ -327,6 +327,12 @@ def _body_view(
         data["max_hull_size"] = getattr(body.max_hull_size, "name", str(body.max_hull_size))
     if hasattr(body, "exit_system_name"):
         data["exit_system_name"] = str(body.exit_system_name)
+    is_solid = getattr(body, "is_solid", True)
+    data["is_solid"] = is_solid
+    if not is_solid:
+        effect_rad = getattr(body, "effect_radius", getattr(body, "radius", None))
+        if effect_rad is not None:
+            data["effect_radius"] = _rounded(effect_rad)
     return data
 
 

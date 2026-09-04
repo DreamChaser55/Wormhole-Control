@@ -15,7 +15,7 @@ from constants import (
     POPULATION_PER_HABITAT, BASE_HABITAT_CAPACITY,
     STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, NEBULA_RADIUS,
     CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
-    STORM_RADIUS, PLANET_TRAITS,
+    STORM_RADIUS, PLANET_TRAITS, HYDROGEN_NEBULA_HARVEST_MULTIPLIER,
     BLACK_HOLE_INHIBITION_RADIUS, GIANT_STAR_RADIUS, GIANT_STAR_INHIBITION_RADIUS,
     ASTEROID_FIELD_SPEED_MOD, ICE_FIELD_SPEED_MOD, ICE_FIELD_BEAM_DEFENSE_BONUS, ICE_FIELD_COOLDOWN_REDUCTION,
     DEBRIS_FIELD_SPEED_MOD, DEBRIS_FIELD_DEFENSE_BONUS, DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE,
@@ -381,6 +381,12 @@ class CelestialBody(GameObject):
     """Base class for fixed celestial objects like planets, stars."""
     collision_radius: float = 0.0
     is_solid: bool = True
+
+    @property
+    def effect_radius(self) -> float:
+        """Returns the logical radius of effect for non-solid bodies or environmental zones."""
+        return getattr(self, 'radius', 0.0)
+
     def __init__(self, position: Position, in_hex: HexCoord, in_system: str, inhibition_field_radius: float = 0.0):
         super().__init__(position, in_hex, in_system)
         self.inhibition_field_radius = inhibition_field_radius
@@ -627,6 +633,13 @@ class Nebula(CelestialBody):
         self.name = f"Nebula {self.id}"
         self.nebula_type = nebula_type
         self.radius = NEBULA_RADIUS
+
+    @property
+    def harvest_multiplier(self) -> float:
+        """Returns antimatter harvesting multiplier (0.4x for Hydrogen, 0.0 otherwise)."""
+        if getattr(self, 'nebula_type', None) == NebulaType.HYDROGEN:
+            return HYDROGEN_NEBULA_HARVEST_MULTIPLIER
+        return 0.0
 
 class Storm(CelestialBody):
     """Represents an energetic space storm hazard."""

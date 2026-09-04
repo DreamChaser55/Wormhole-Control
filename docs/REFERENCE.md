@@ -328,20 +328,20 @@ Every star system contains a central star with a unique antimatter harvesting ra
 
 ### 6.4 Celestial Body Dimensions & Obstacle Classification Summary
 
-| Entity Class | Solid Obstacle? | Collision Radius (logical units) | Inhibition Radius (logical units) | Harvest / Resource Yield | Colonizable |
-|---|---|---|---|---|---|
-| `Star` | **Yes** | 500.01 (`STAR_RADIUS`) | 2700.0 | 0.1× – 2.5× Antimatter | No |
-| `Planet` | **Yes** | 375.00 (`PLANET_RADIUS`) | 2400.0 | — | Yes (Max 100 pop) |
-| `Moon` | **Yes** | 83.34 (`MOON_RADIUS`) | 1800.0 | — | Yes (Max 50 pop) |
-| `ColonizableAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1200.0 | — | Yes (Max 20 pop) |
-| `MetalAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1200.0 | 10.0 Metal / Turn | No |
-| `Comet` | **Yes** | 50.01 (`COMET_RADIUS`) | 600.0 | 10.0 Crystal / Turn | No |
-| `Wormhole` | No | 0.00 (Permeable) | 1500.0 | Inter-System Travel | No |
-| `AsteroidField` | No | 0.00 (Permeable) | 0.0 | — | No |
-| `IceField` | No | 0.00 (Permeable) | 0.0 | — | No |
-| `DebrisField` | No | 0.00 (Permeable) | 0.0 | — | No |
-| `Nebula` | No | 0.00 (Permeable) | 0.0 | — | No (Long-Range Stealth) |
-| `Storm` | No | 0.00 (Permeable) | 0.0 | — | No |
+| Entity Class | Solid Obstacle? | Collision Radius (logical units) | Inhibition Radius (logical units) | Effect Radius (logical units) | Harvest / Resource Yield | Colonizable |
+|---|---|---|---|---|---|---|
+| `Star` | **Yes** | 500.01 (`STAR_RADIUS`) | 2700.0 | — | 0.1× – 2.5× Antimatter | No |
+| `Planet` | **Yes** | 375.00 (`PLANET_RADIUS`) | 2400.0 | — | — | Yes (Max 100 pop) |
+| `Moon` | **Yes** | 83.34 (`MOON_RADIUS`) | 1800.0 | — | — | Yes (Max 50 pop) |
+| `ColonizableAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1200.0 | — | — | Yes (Max 20 pop) |
+| `MetalAsteroid` | **Yes** | 50.01 (`ASTEROID_RADIUS`) | 1200.0 | — | 10.0 Metal / Turn | No |
+| `Comet` | **Yes** | 50.01 (`COMET_RADIUS`) | 600.0 | — | 10.0 Crystal / Turn | No |
+| `Wormhole` | No | 0.00 (Permeable) | 1500.0 | — | Inter-System Travel | No |
+| `AsteroidField` | No | 0.00 (Permeable) | 0.0 | 3600.0 (`ASTEROID_FIELD_RADIUS`) | — | No |
+| `IceField` | No | 0.00 (Permeable) | 0.0 | 3600.0 (`ICE_FIELD_RADIUS`) | — | No |
+| `DebrisField` | No | 0.00 (Permeable) | 0.0 | 2000.0 (`DEBRIS_FIELD_RADIUS`) | — | No |
+| `Nebula` | No | 0.00 (Permeable) | 0.0 | 3600.0 (`NEBULA_RADIUS`) | 0.4× AM (Hydrogen) | No (Long-Range Stealth) |
+| `Storm` | No | 0.00 (Permeable) | 0.0 | 3600.0 (`STORM_RADIUS`) | — | No |
 
 ---
 
@@ -711,7 +711,7 @@ Stars anchor the gravitational and hyperspace topology of star systems:
 
 ### 12.3 Environmental Fields & Tactical Cover
  
-- **Selection & Interaction**: Non-solid celestial bodies (Asteroid Fields, Ice Fields, Debris Fields, Nebulae, and Storms) are atmospheric and environmental regions with `is_solid = False`. They cannot be selected by clicking inside their area in the sector view canvas, preventing accidental click interception and preserving open tactical movement/patrol clicks. They are inspected and selected exclusively via the sidebar panel of their containing hex.
+- **Selection & Interaction**: Non-solid celestial bodies (Asteroid Fields, Ice Fields, Debris Fields, Nebulae, and Storms) are atmospheric and environmental regions with `is_solid = False`. They cannot be selected by clicking inside their area in the sector view canvas, preventing accidental click interception and preserving open tactical movement/patrol clicks. They are inspected and selected exclusively via the sidebar panel of their containing hex. In Sector View, all non-solid bodies are visually rendered with an exact-radius turquoise circle (`TURQUOISE = (64, 224, 208)`) marking their physical boundary and area of effect for the player. AI agents observe `is_solid = False` and the exact `effect_radius` for these bodies in system observations.
 - **Hull Size Access Gating**:
   - `FieldDensity.LOW`: Max allowable hull is `HullSize.LARGE` (blocks `HUGE` ships and stations).
   - `FieldDensity.MEDIUM`: Max allowable hull is `HullSize.MEDIUM` (blocks `LARGE` and `HUGE`).

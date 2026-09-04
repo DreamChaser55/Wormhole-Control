@@ -64,4 +64,6 @@ Markdown inside command fields.
 Sensors provide short-range detailed vision and long-range inter-sector presence detection.
 Units with active cloaking devices, or positioned inside nebulae or asteroid fields, are concealed from
 long-range sensors, requiring close short-range visual scouting to reveal. Space storms (plasma, magnetic,
-radiation) and black hole event horizons present active environmental hazards to ships inside them."""
+radiation) and black hole event horizons present active environmental hazards to ships inside them. Non-solid
+celestial bodies (nebulae, storms, asteroid/ice/debris fields) report is_solid=false and an exact effect_radius
+within which their environmental cover, sublight drag, harvesting, or hazard effects apply."""

@@ -32,12 +32,14 @@ def is_star(body: Any) -> bool:
 
 
 def is_antimatter_source(body: Any) -> bool:
-    from entities import Star, Planet
-    from constants import PlanetType
+    from entities import Star, Planet, Nebula
+    from constants import PlanetType, NebulaType
 
     if is_star(body):
         return True
     if isinstance(body, Planet) and getattr(body, "planet_type", None) == PlanetType.GAS_GIANT:
+        return True
+    if isinstance(body, Nebula) and getattr(body, "nebula_type", None) == NebulaType.HYDROGEN:
         return True
     return False
 

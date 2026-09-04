@@ -128,6 +128,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
     - Strikecraft Wings can traverse fields of any density level.
   - Impassable fields act as physical obstacles for pathfinding and collision avoidance, blocking movement orders, microjumps, and carrier launches.
 - **Tactical Cover & Field Effects**:
+  - **Visual Radius Indicators**: In Sector View, all non-solid bodies (nebulae, storms, asteroid fields, ice fields, and debris fields) are outlined by a distinctive turquoise tactical circle marking their exact area of effect and boundary for the player.
   - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting defense mitigation against beam attacks (+8% Low, +12% Medium, +16% High), weapon cooling, and sublight speed drag.
   - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting defense mitigation against kinetic and missile attacks (+8% Low, +12% Medium, +16% High), sublight drag, and high-speed navigation abrasion damage scaled by field density.
   - **Asteroid Fields**: Dense asteroid fields scatter long-range radar sensors, with sublight drag scaled by density.
