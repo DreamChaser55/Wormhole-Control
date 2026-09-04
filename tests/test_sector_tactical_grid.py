@@ -31,6 +31,8 @@ def test_draw_tactical_grid_invokes_draw_line():
     mock_game.sector_zoom = 1.0
     mock_game.sector_pan_offset = Position(0, 0)
     mock_game.is_dragging_selection_box = False
+    mock_game.players = []
+    mock_game.current_player_index = 0
 
     mock_hex = MagicMock()
     mock_hex.celestial_bodies = []

@@ -246,7 +246,10 @@ class TestCommunications(unittest.TestCase):
         self.game.send_message(self.player2, self.player0.id, "Trade incoming")
         gui.update_comms_button()
         self.assertEqual(gui.comms_button.text, "Comms (2)")
-        self.assertGreaterEqual(gui.comms_button.rect.width, 90)
+        button = gui.comms_button
+        text_width = button.font.get_rect(button.text).width
+        frame_width = button.border_width["left"] + button.border_width["right"] + 2 * button.shadow_width
+        self.assertGreaterEqual(button.rect.width - frame_width, text_width)
 
         # Action toggle_comms
         handle_toggle_comms(self.game, {"action": "toggle_comms"})

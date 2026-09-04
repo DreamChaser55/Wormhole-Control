@@ -23,15 +23,20 @@ def test_logical_radii():
     assert WORMHOLE_RADIUS == 291.66
     assert STAR_RADIUS == 500.01
 
-def test_coordinate_roundtrip():
+@pytest.mark.parametrize("pixel_radius", [300, 360, 384, 540, 720])
+@pytest.mark.parametrize("logical_pos", [Position(500.0, -250.0), Position(-4000.0, 3000.0)])
+def test_coordinate_roundtrip(monkeypatch, pixel_radius, logical_pos):
     # Verify logical coordinates map to pixels and back without losing alignment
-    logical_pos = Position(500.0, -250.0)
+    import sector_utils
+
+    monkeypatch.setattr(sector_utils, "SECTOR_CIRCLE_RADIUS_IN_PX", pixel_radius)
     pixel_pos = sector_coords_to_pixels(logical_pos)
     logical_back = pixels_to_sector_coords(pixel_pos)
     
-    # Assert they are reasonably close (due to integer truncation in pixel conversion)
-    assert abs(logical_pos.x - logical_back.x) <= 5.0
-    assert abs(logical_pos.y - logical_back.y) <= 5.0
+    # Integer pixel conversion loses less than one pixel on each axis.
+    logical_units_per_pixel = sector_utils.SECTOR_CIRCLE_RADIUS_LOGICAL / pixel_radius
+    assert abs(logical_pos.x - logical_back.x) < logical_units_per_pixel
+    assert abs(logical_pos.y - logical_back.y) < logical_units_per_pixel
 
 def test_strikecraft_wing_icon_scale():
     # Verify that the scale factor for strikecraft wings is set to 1.2

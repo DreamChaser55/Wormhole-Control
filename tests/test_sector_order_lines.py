@@ -338,11 +338,15 @@ def test_draw_sector_view_draws_turn_notches():
 
 
 def test_system_view_wormhole_lines():
+    from hexgrid_utils import hex_to_pixel
+
     # Setup mock game, player, and renderer
     game = MagicMock()
     game.current_system_name = "Sol"
     game.system_view_mouse_hover_hex = None
     game.selected_objects = []
+    game.system_zoom = 1.0
+    game.system_pan_offset = Position(0, 0)
     
     renderer = SystemViewRenderer(game)
     renderer.screen = MagicMock()
@@ -363,9 +367,9 @@ def test_system_view_wormhole_lines():
     system.hexes = {(3, 0): hex_obj}
     game.galaxy.systems = {"Sol": system}
     
-    # Mock hex_to_pixel, pygame.draw.line, pygame.draw.polygon, pygame.draw.circle, and pygame.font.Font
-    with patch("rendering.system_renderer.hex_to_pixel") as mock_hex_to_pixel, \
-         patch("rendering.system_renderer.pygame.draw.line") as mock_draw_line, \
+    # Keep real hex geometry so the wormhole lies inside the system boundary
+    # at every display resolution. Mock only the drawing operations.
+    with patch("rendering.system_renderer.pygame.draw.line") as mock_draw_line, \
          patch("rendering.system_renderer.pygame.draw.polygon") as mock_draw_polygon, \
          patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle, \
          patch("rendering.system_renderer.pygame.font.Font") as mock_font:
@@ -378,30 +382,23 @@ def test_system_view_wormhole_lines():
          mock_text_rect = MagicMock()
          mock_text_surface.get_rect.return_value = mock_text_rect
          
-         # Mock positions:
-         # center (0,0) is at (500, 500)
-         # wormhole (3,0) is at (800, 500)
-         mock_hex_to_pixel.side_effect = lambda q, r: Position(500, 500) if (q == 0 and r == 0) else Position(800, 500)
+         wormhole_pixel = hex_to_pixel(3, 0)
          
          renderer.draw_system_view()
          
-         # The code should draw a line from (800, 500) to the calculated edge.
-         # dx = 800 - 500 = 300, dy = 0. dist = 300.
-         # ux = 1.0, uy = 0.0.
-         # edge_radius = (3 + 0.5) * SQRT3 * HEX_SIZE.
-         # Let's verify that a line was drawn with WORMHOLE_LINE_COLOR.
+         # The route extends horizontally outward from the wormhole to the edge.
          assert mock_draw_line.call_count == 1
          call_args = mock_draw_line.call_args_list[0][0]
          # call_args: (surface, color, start_pos, end_pos, width)
          # Verify color is WORMHOLE_LINE_COLOR
          from constants import WORMHOLE_LINE_COLOR
          assert call_args[1] == WORMHOLE_LINE_COLOR
-         # Verify start_pos is wormhole center (800, 500)
-         assert call_args[2] == (800, 500)
+         # Verify start_pos is the wormhole center.
+         assert call_args[2] == wormhole_pixel.to_tuple()
          # Verify end_pos.x is greater than start_pos.x (since it extends outwards)
-         assert call_args[3][0] > 800
-         # Verify end_pos.y is exactly 500 (since dy = 0)
-         assert call_args[3][1] == 500
+         assert call_args[3][0] > wormhole_pixel.x
+         # Verify end_pos.y is unchanged (since dy = 0).
+         assert call_args[3][1] == wormhole_pixel.y
          # Verify width is 2
          assert call_args[4] == 2
 

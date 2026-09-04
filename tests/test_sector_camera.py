@@ -14,17 +14,15 @@ def mock_pygame_keys():
     with patch('pygame.key.get_pressed', return_value=mock_keys):
         yield
 
-def test_camera_coordinate_conversion():
-    # 1. Base conversion check (zoom=1.0, pan=0,0)
+@pytest.mark.parametrize("zoom", [0.8, 1.0, 2.0, 15.0])
+def test_camera_coordinate_conversion(zoom):
     logical_pos = Position(100.0, -100.0)
-    pixel_pos = sector_coords_to_pixels(logical_pos)
     
-    # 2. Conversion with zoom and pan
-    zoom = 2.0
+    # Conversion with zoom and pan.
     pan_offset = Position(50, -50)
     pixel_pos_zoomed = sector_coords_to_pixels(logical_pos, zoom, pan_offset)
     
-    # Under zoom=2.0 and pan=50,-50, the offset from center should be doubled plus the pan_offset
+    # Scale the offset from center by zoom, then add the pan offset.
     # pixel = center + pan + (logical * radius_px / radius_logical) * zoom
     from constants import SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL
     
@@ -34,10 +32,11 @@ def test_camera_coordinate_conversion():
     assert pixel_pos_zoomed.x == expected_x
     assert pixel_pos_zoomed.y == expected_y
     
-    # 3. Roundtrip test
+    # Roundtrip error is bounded by one screen pixel at the current zoom.
     logical_back = pixels_to_sector_coords(pixel_pos_zoomed, zoom, pan_offset)
-    assert abs(logical_pos.x - logical_back.x) <= 2.0
-    assert abs(logical_pos.y - logical_back.y) <= 2.0
+    logical_units_per_pixel = SECTOR_CIRCLE_RADIUS_LOGICAL / (SECTOR_CIRCLE_RADIUS_IN_PX * zoom)
+    assert abs(logical_pos.x - logical_back.x) < logical_units_per_pixel
+    assert abs(logical_pos.y - logical_back.y) < logical_units_per_pixel
 
 def test_game_camera_reset():
     game = DummyGame()
