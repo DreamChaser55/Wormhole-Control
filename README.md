@@ -53,7 +53,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 
 | Input | Action |
 |---|---|
-| **Left Click** | Select unit, celestial body, or destination target |
+| **Left Click** | Select unit, solid celestial body, or destination target (non-solid bodies are selected via hex sidebar) |
 | **Shift + Left Click** | Add / remove unit from multi-unit selection |
 | **Left Drag** | Draw selection box to select multiple units |
 | **Right Click** | Open contextual action menu or issue direct unit command |

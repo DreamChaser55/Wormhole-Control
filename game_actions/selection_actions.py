@@ -74,6 +74,18 @@ def handle_select_celestial_body(game, action: dict) -> None:
         game.sidebar_needs_update = True
 
 
+def handle_select_hex(game, action: dict) -> None:
+    hex_coord = action.get('hex_coord') if action.get('hex_coord') is not None else action.get('target_data')
+    if hex_coord is not None and game.galaxy:
+        system_name = getattr(game, 'current_system_name', None)
+        system = game.galaxy.systems.get(system_name) if system_name else None
+        if system:
+            h_key = tuple(hex_coord) if isinstance(hex_coord, (list, tuple)) else hex_coord
+            if h_key in system.hexes:
+                game.selected_objects = [system.hexes[h_key]]
+                game.sidebar_needs_update = True
+
+
 def handle_component_selected(game, action: dict) -> None:
     game.selected_component_name = action.get('component_name')
     game.sidebar_needs_update = True
@@ -89,6 +101,7 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'select_minefield': handle_select_minefield,
     'remove_minefield': handle_remove_minefield,
     'select_celestial_body': handle_select_celestial_body,
+    'select_hex': handle_select_hex,
     'component_selected': handle_component_selected,
     'switch_unit_sidebar_tab': handle_switch_unit_sidebar_tab,
 }

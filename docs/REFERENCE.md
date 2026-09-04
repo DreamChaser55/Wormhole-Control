@@ -711,7 +711,7 @@ Stars anchor the gravitational and hyperspace topology of star systems:
 
 ### 12.3 Environmental Fields & Tactical Cover
  
-Environmental fields (Asteroid and Ice fields: `radius = 3600.0` logical units; Debris fields: `radius = 2000.0` logical units) alter tactical movement, sensors, and combat mitigation. Each field possesses a `density` parameter (`FieldDensity`: `LOW`, `MEDIUM`, `HIGH`) determining maximum allowable hull size:
+- **Selection & Interaction**: Non-solid celestial bodies (Asteroid Fields, Ice Fields, Debris Fields, Nebulae, and Storms) are atmospheric and environmental regions with `is_solid = False`. They cannot be selected by clicking inside their area in the sector view canvas, preventing accidental click interception and preserving open tactical movement/patrol clicks. They are inspected and selected exclusively via the sidebar panel of their containing hex.
 - **Hull Size Access Gating**:
   - `FieldDensity.LOW`: Max allowable hull is `HullSize.LARGE` (blocks `HUGE` ships and stations).
   - `FieldDensity.MEDIUM`: Max allowable hull is `HullSize.MEDIUM` (blocks `LARGE` and `HUGE`).

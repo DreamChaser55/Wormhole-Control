@@ -350,11 +350,15 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
                     gui.open_context_menu(position, options, target)
                 else:
                     clicked_object = units_under_mouse[0] if len(units_under_mouse) == 1 else game.sector_view_mouse_hover_object
+                    if clicked_object is not None and not getattr(clicked_object, 'is_solid', True):
+                        clicked_object = None
                     options, target = build_sector_context_menu_options(game, clicked_object, clicked_sector_coord)
                     gui.open_context_menu(position, options, target)
 
             elif is_left_click:
                 clicked_object = game.sector_view_mouse_hover_object
+                if clicked_object is not None and not getattr(clicked_object, 'is_solid', True):
+                    clicked_object = None
                 if clicked_object:
                     if shift_pressed:
                         if isinstance(clicked_object, Unit):

@@ -114,6 +114,11 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
             'action': 'select_celestial_body',
             'body_id': target_data,
         }
+    elif action_id == 'select_hex':
+        return {
+            'action': 'select_hex',
+            'hex_coord': target_data,
+        }
     elif action_id == 'switch_unit_sidebar_tab':
         return {
             'action': 'switch_unit_sidebar_tab',

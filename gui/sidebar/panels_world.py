@@ -131,6 +131,15 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         hex_pos_str = str(body.in_hex)
     data.append({'type': 'label', 'text': f"Hex: {hex_pos_str}", 'object_id': '#sidebar_info_label', 'height': 25})
     data.append({'type': 'label', 'text': f"Sector Pos: ({body.position.x:.2f}, {body.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 25})
+    if body.in_hex is not None and body.in_system and game.galaxy and body.in_system in game.galaxy.systems:
+        data.append({
+            'type': 'button',
+            'text': f"◀ Back to Hex {body.in_hex}",
+            'object_id': '#sidebar_expand_button',
+            'action_id': 'select_hex',
+            'target_data': body.in_hex,
+            'height': 25
+        })
 
     # Type-specific info
     from constants import StarType, PlanetType, NebulaType, StormType

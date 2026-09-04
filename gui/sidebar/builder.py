@@ -95,6 +95,14 @@ def _build_multi_selection_panel(game) -> list[dict]:
 def build_sidebar_data(game) -> list[dict]:
     """Builds full GUI element description payload based on game selection state."""
     if not game.selected_objects:
+        if (getattr(game, 'view_mode', None) == 'sector'
+                and getattr(game, 'current_system_name', None)
+                and getattr(game, 'current_sector_coord', None) is not None
+                and getattr(game, 'galaxy', None)
+                and game.current_system_name in game.galaxy.systems):
+            system = game.galaxy.systems[game.current_system_name]
+            if game.current_sector_coord in system.hexes:
+                return build_hex_panel(game, system.hexes[game.current_sector_coord])
         return _build_empty_panel()
     elif len(game.selected_objects) > 1:
         return _build_multi_selection_panel(game)

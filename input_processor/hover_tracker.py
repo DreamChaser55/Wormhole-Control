@@ -99,6 +99,8 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                 for obj in units + bodies:
                     if isinstance(obj, Unit) and not game.is_unit_visible(obj):
                         continue
+                    if not getattr(obj, 'is_solid', True):
+                        continue
                     pixel_pos = sector_coords_to_pixels(obj.position, zoom, pan_offset)
 
                     obj_radius_logical = 0
@@ -116,8 +118,6 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                         obj_radius_logical = MOON_RADIUS
                     elif isinstance(obj, (ColonizableAsteroid, MetalAsteroid)):
                         obj_radius_logical = ASTEROID_RADIUS
-                    elif isinstance(obj, (AsteroidField, IceField, DebrisField, Nebula, Storm)):
-                        obj_radius_logical = getattr(obj, 'radius', CELESTIAL_FIELD_RADIUS)
                     elif isinstance(obj, Comet):
                         obj_radius_logical = COMET_RADIUS
                     else:

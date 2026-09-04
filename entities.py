@@ -380,6 +380,7 @@ def _normalize_sabotage_type(sabotage_type: typing.Union[str, SabotageType]) -> 
 class CelestialBody(GameObject):
     """Base class for fixed celestial objects like planets, stars."""
     collision_radius: float = 0.0
+    is_solid: bool = True
     def __init__(self, position: Position, in_hex: HexCoord, in_system: str, inhibition_field_radius: float = 0.0):
         super().__init__(position, in_hex, in_system)
         self.inhibition_field_radius = inhibition_field_radius
@@ -554,6 +555,7 @@ class MetalAsteroid(CelestialBody):
 class DebrisField(CelestialBody):
     """Represents a field of debris providing physical cover and high-speed navigation hazard."""
     radius: float = DEBRIS_FIELD_RADIUS
+    is_solid: bool = False
     def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Debris Field {self.id}"
@@ -576,6 +578,7 @@ class DebrisField(CelestialBody):
 class AsteroidField(CelestialBody):
     """Represents a field of asteroids providing long-range radar scattering and sublight drag."""
     radius: float = ASTEROID_FIELD_RADIUS
+    is_solid: bool = False
     def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Asteroid Field {self.id}"
@@ -596,6 +599,7 @@ class AsteroidField(CelestialBody):
 class IceField(CelestialBody):
     """Represents a field of ice particles providing beam defense cover, weapon cooling, and navigation drag."""
     radius: float = ICE_FIELD_RADIUS
+    is_solid: bool = False
     def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Ice Field {self.id}"
@@ -617,6 +621,7 @@ class IceField(CelestialBody):
 class Nebula(CelestialBody):
     """Represents a nebula."""
     radius: float = NEBULA_RADIUS
+    is_solid: bool = False
     def __init__(self, in_hex: HexCoord, in_system: str, nebula_type: NebulaType):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Nebula {self.id}"
@@ -626,6 +631,7 @@ class Nebula(CelestialBody):
 class Storm(CelestialBody):
     """Represents an energetic space storm hazard."""
     radius: float = STORM_RADIUS
+    is_solid: bool = False
     def __init__(self, in_hex: HexCoord, in_system: str, storm_type: StormType):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
         self.name = f"Storm {self.id}"
@@ -639,6 +645,9 @@ class Comet(CelestialBody):
         super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=600.0)
         self.name = f"Comet {self.id}"
         self.crystal_yield: float = 10.0
+
+
+NON_SOLID_CELESTIAL_BODIES = (AsteroidField, IceField, DebrisField, Nebula, Storm)
 
 
 def is_position_in_magnetic_storm(
