@@ -475,7 +475,7 @@ Property-based testing would be particularly useful for save round trips, ID all
 
 1. Fix the missing `typing` reference in `rendering/galaxy_renderer.py`. - **ALREADY FIXED**
 2. Add a clean import/launch smoke test. - **ALREADY FIXED**
-3. Run the full suite normally and make the socket test explicitly skip or adapt only when loopback is genuinely unavailable.
+3. Run the full suite normally and make the socket test explicitly skip or adapt only when loopback is genuinely unavailable.  - **ALREADY FIXED**
 4. Add undefined-name linting in CI.
 
 Exit criterion: the game imports and the full suite passes without an annotation workaround.
