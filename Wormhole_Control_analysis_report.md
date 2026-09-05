@@ -474,7 +474,7 @@ Property-based testing would be particularly useful for save round trips, ID all
 ### Phase 0 — restore a trustworthy baseline
 
 1. Fix the missing `typing` reference in `rendering/galaxy_renderer.py`. - **ALREADY FIXED**
-2. Add a clean import/launch smoke test.
+2. Add a clean import/launch smoke test. - **ALREADY FIXED**
 3. Run the full suite normally and make the socket test explicitly skip or adapt only when loopback is genuinely unavailable.
 4. Add undefined-name linting in CI.
 
