@@ -262,6 +262,15 @@ class StarSystem:
                 hex_obj.remove_unit(unit_to_remove)
                 unit_to_remove.in_system = None
                 return True
+        # Also check hidden_units in celestial bodies
+        for hex_obj in self.hexes.values():
+            for body in getattr(hex_obj, 'celestial_bodies', []):
+                if unit_to_remove in getattr(body, 'hidden_units', []):
+                    body.hidden_units.remove(unit_to_remove)
+                    unit_to_remove.is_hidden_in_gas_giant = False
+                    unit_to_remove.hidden_in_gas_giant_id = None
+                    unit_to_remove.in_system = None
+                    return True
         return False
 
     def remove_minefield(self, minefield: 'Minefield') -> bool:
@@ -383,6 +392,10 @@ class Galaxy:
                 for unit in hex_obj.units:
                     if unit.id == unit_id:
                         return unit
+                for body in getattr(hex_obj, 'celestial_bodies', []):
+                    for u in getattr(body, 'hidden_units', []):
+                        if u.id == unit_id:
+                            return u
         return None
 
     def get_minefield_by_id(self, mf_id: int) -> typing.Optional['Minefield']:

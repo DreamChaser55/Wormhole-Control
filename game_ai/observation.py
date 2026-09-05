@@ -47,6 +47,10 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         for hex_coord, hex_obj in sorted(system.hexes.items()):
             for body in getattr(hex_obj, "celestial_bodies", []):
                 system_bodies.append(body)
+                for unit in getattr(body, "hidden_units", []):
+                    relation = _relation(player, getattr(unit, "owner", None))
+                    if relation != "enemy":
+                        visible_unit_objects.append(unit)
             for unit in getattr(hex_obj, "units", []):
                 relation = _relation(player, getattr(unit, "owner", None))
                 if relation != "enemy" or unit.id in visibility.visible_enemy_unit_ids:
@@ -269,6 +273,9 @@ def _unit_view(
         "antimatter": _component_amount(getattr(unit, "antimatter_component", None)),
         **order_layers(unit, relation, {u.id for u in visible_units}, {b.id for b in exact_bodies}),
     }
+    if getattr(unit, "is_hidden_in_gas_giant", False):
+        data["is_hidden_in_gas_giant"] = True
+        data["hidden_in_gas_giant_id"] = getattr(unit, "hidden_in_gas_giant_id", None)
     if relation in {"self", "ally"}:
         data["capability_details"] = _capability_details(unit, game)
     if include_capabilities:
@@ -333,6 +340,12 @@ def _body_view(
         effect_rad = getattr(body, "effect_radius", getattr(body, "radius", None))
         if effect_rad is not None:
             data["effect_radius"] = _rounded(effect_rad)
+    friendly_hidden = [
+        int(u.id) for u in getattr(body, "hidden_units", [])
+        if _relation(viewer, getattr(u, "owner", None)) != "enemy"
+    ]
+    if friendly_hidden:
+        data["hidden_unit_ids"] = friendly_hidden
     return data
 
 

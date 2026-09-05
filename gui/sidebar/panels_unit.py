@@ -59,6 +59,23 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
             'height': 24
         })
 
+    if getattr(unit, 'is_hidden_in_gas_giant', False):
+        data.append({
+            'type': 'label',
+            'text': "🌫 SUBMERGED IN GAS GIANT",
+            'object_id': '#sidebar_status_charging_label',
+            'height': 24
+        })
+        if is_owned:
+            data.append({
+                'type': 'button',
+                'text': "Leave Atmosphere",
+                'object_id': '#sidebar_action_button',
+                'action_id': 'order_unit_leave_gas_giant',
+                'target_data': unit.id,
+                'height': 25
+            })
+
     # --- Targeting Mode Banner (if active) ---
     pending = getattr(game, 'pending_ability', None)
     if pending and isinstance(pending, (tuple, list)) and len(pending) > 0 and isinstance(pending[0], str):
@@ -115,7 +132,10 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         if unit.in_system and game.galaxy and unit.in_system in game.galaxy.systems:
             hex_pos_str = str(unit.in_hex)
         data.append({'type': 'label', 'text': f"Hex: {hex_pos_str}", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
+        if getattr(unit, 'is_hidden_in_gas_giant', False):
+            data.append({'type': 'label', 'text': "Sector Pos: Hidden in Gas Giant", 'object_id': '#sidebar_info_label', 'height': 20})
+        else:
+            data.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
 
         data.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage:g}/{unit.hull_capacity:g}", 'object_id': '#sidebar_info_label', 'height': 25})
         upkeep_per_turn = calculate_unit_upkeep(getattr(unit, 'hull_size', None), unit.current_hull_usage)

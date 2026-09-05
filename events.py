@@ -267,3 +267,19 @@ class ExtractAgentEvent(Event):
         self.units = units
         self.agent_id = agent_id
         self.shift_pressed = shift_pressed
+
+
+class EnterGasGiantEvent(Event):
+    """Fired when ordering ships to enter a gas giant atmosphere."""
+    def __init__(self, units: list, gas_giant: typing.Any, shift_pressed: bool = False):
+        self.units = units
+        self.gas_giant = gas_giant
+        self.shift_pressed = shift_pressed
+
+
+class LeaveGasGiantEvent(Event):
+    """Fired when ordering a ship to leave a gas giant atmosphere."""
+    def __init__(self, units: list, shift_pressed: bool = False):
+        self.units = units
+        self.shift_pressed = shift_pressed
+

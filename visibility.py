@@ -214,6 +214,8 @@ def is_unit_visible(snapshot: Optional[VisibilitySnapshot], unit: 'Unit') -> boo
         return True
     if _are_allies(unit.owner, snapshot.viewer):
         return True
+    if getattr(unit, 'is_hidden_in_gas_giant', False):
+        return False
     return unit.id in snapshot.visible_enemy_unit_ids
 
 

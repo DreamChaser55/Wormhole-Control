@@ -129,6 +129,24 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
             'action': 'stop_unit',
             'unit_id': target_data
         }
+    elif action_id == 'order_unit_leave_gas_giant':
+        return {
+            'action': 'order_unit_leave_gas_giant',
+            'unit_id': target_data,
+            'shift_pressed': _shift_pressed()
+        }
+    elif action_id == 'order_all_leave_gas_giant':
+        return {
+            'action': 'order_all_leave_gas_giant',
+            'gas_giant_id': target_data,
+            'shift_pressed': _shift_pressed()
+        }
+    elif action_id == 'enter_gas_giant':
+        return {
+            'action': 'enter_gas_giant',
+            'gas_giant_id': target_data,
+            'shift_pressed': _shift_pressed()
+        }
     elif action_id == 'stop_selected_units':
         return {
             'action': 'stop_selected_units'

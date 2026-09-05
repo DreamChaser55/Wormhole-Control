@@ -19,7 +19,7 @@ from constants import (
     NebulaType, StormType, StarType
 )
 from player_controller import PlayerController
-from economy import calculate_unit_upkeep
+from economy import calculate_unit_upkeep, calculate_player_upkeep
 
 
 class TurnProcessor:
@@ -675,14 +675,7 @@ class TurnProcessor:
         Temporary units and strikecraft wings are excluded.
         Credits are clamped to zero (no negative balance).
         """
-        total_upkeep = 0.0
-        for system_obj in self.game.galaxy.systems.values():
-            for unit, _ in system_obj.get_all_units():
-                if unit.owner != current_player:
-                    continue
-                if unit.is_temporary:
-                    continue
-                total_upkeep += calculate_unit_upkeep(unit.hull_size, unit.current_hull_usage)
+        total_upkeep = calculate_player_upkeep(self.game.galaxy, current_player)
 
         if total_upkeep > 0:
             if current_player.credits < total_upkeep and getattr(self.game, 'gui', None) and current_player.controller == PlayerController.HUMAN:

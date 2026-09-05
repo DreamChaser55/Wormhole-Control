@@ -132,6 +132,12 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
   - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting defense mitigation against beam attacks (+8% Low, +12% Medium, +16% High), weapon cooling, and sublight speed drag.
   - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting defense mitigation against kinetic and missile attacks (+8% Low, +12% Medium, +16% High), sublight drag, and high-speed navigation abrasion damage scaled by field density.
   - **Asteroid Fields**: Dense asteroid fields scatter long-range radar sensors, with sublight drag scaled by density.
+- **Gas Giant Atmospheric Hiding**:
+  - Any starship with operational sublight propulsion (`TINY` through `HUGE`) can submerge into a Gas Giant atmosphere, completely disappearing from the tactical map and all enemy sensors (short and long range).
+  - Submerged ships cannot attack, project fields, or interact with outside space, and are invulnerable to outside attack. Opposing ships submerged in the same atmosphere cannot detect or engage one another.
+  - Strikecraft wings and stationary space stations (lacking sublight engines) are strictly prohibited from entering.
+  - Submerged ships continue regular fleet credit upkeep.
+  - When ordered to leave, ships reappear on a uniformly random vector outside the planetary collision boundary (725.0 logical units), with multiple departing vessels distributed across distinct vectors.
 - **Environmental Hazards**:
   - **Black Holes**: Extreme gravitational tidal distortion inflicts 15 hull damage per turn within 750 radius of the singularity.
   - **Pulsars**: Sweeping magnetic radiation pulses drain 5% of a ship's current antimatter reserves per turn.

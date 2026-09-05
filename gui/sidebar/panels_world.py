@@ -3,7 +3,7 @@ import typing
 from entities import (
     CelestialBody, Star, Planet, Moon,
     ColonizableAsteroid, MetalAsteroid, Wormhole, DebrisField,
-    AsteroidField, IceField, Nebula, Storm, Comet, Minefield
+    AsteroidField, IceField, Nebula, Storm, Comet, Minefield, Unit
 )
 from galaxy import StarSystem, Hex
 
@@ -160,8 +160,55 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         if isinstance(body, Planet):
             data.append({'type': 'label', 'text': f"Type: {body.planet_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
             if body.planet_type == PlanetType.GAS_GIANT:
-                data.append({'type': 'label', 'text': "Massive Gas Giant (Non-colonizable)", 'object_id': '#sidebar_status_charging_label', 'height': 20})
+                data.append({'type': 'label', 'text': "Massive Gas Giant (Atmospheric Hiding)", 'object_id': '#sidebar_status_charging_label', 'height': 20})
                 data.append({'type': 'label', 'text': f"Collision {int(body.collision_radius)} radius; Inhibition {int(body.inhibition_field_radius)}.", 'object_id': '#sidebar_info_label', 'height': 20})
+
+                current_player = game.players[game.current_player_index] if game.players else None
+                if current_player:
+                    friendly_hidden = [u for u in getattr(body, 'hidden_units', []) if u.owner == current_player]
+                    if friendly_hidden:
+                        data.append({'type': 'label', 'text': f"Submerged Ships ({len(friendly_hidden)}):", 'object_id': '#sidebar_section_header_label', 'height': 25})
+                        for u in friendly_hidden:
+                            hull_name = u.hull_size.name.capitalize() if hasattr(u.hull_size, 'name') else str(u.hull_size)
+                            data.append({
+                                'type': 'button',
+                                'text': f"🚀 {u.name} ({hull_name})",
+                                'object_id': '#sidebar_expand_button',
+                                'action_id': 'select_individual_unit',
+                                'target_data': u.id,
+                                'height': 25
+                            })
+                            data.append({
+                                'type': 'button',
+                                'text': f"Order to Leave: {u.name}",
+                                'object_id': '#sidebar_action_button',
+                                'action_id': 'order_unit_leave_gas_giant',
+                                'target_data': u.id,
+                                'height': 25
+                            })
+                        if len(friendly_hidden) > 1:
+                            data.append({
+                                'type': 'button',
+                                'text': "Order All Ships to Leave",
+                                'object_id': '#sidebar_action_button',
+                                'action_id': 'order_all_leave_gas_giant',
+                                'target_data': body.id,
+                                'height': 25
+                            })
+
+                    can_enter_actors = [
+                        a for a in getattr(game, 'selected_objects', [])
+                        if isinstance(a, Unit) and a.owner == current_player and body.can_hide_unit(a)
+                    ]
+                    if can_enter_actors:
+                        data.append({
+                            'type': 'button',
+                            'text': f"Hide Selected Ships ({len(can_enter_actors)})",
+                            'object_id': '#sidebar_action_button',
+                            'action_id': 'enter_gas_giant',
+                            'target_data': body.id,
+                            'height': 25
+                        })
                 return data
 
             p_metal = getattr(body, 'passive_metal', 0.0)

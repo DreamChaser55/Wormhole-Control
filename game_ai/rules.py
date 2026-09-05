@@ -128,6 +128,9 @@ def capability_blocker(unit, command_type):
         component = _component_by_name(unit, "MinelayerComponent")
         if component is None or getattr(component, "is_destroyed", False) is True:
             return "capability_unavailable"
+    if command_type == "enter_gas_giant":
+        if _hull_name(unit) == "strikecraft_wing":
+            return "capability_unavailable"
     for attribute in COMMAND_SPECS[command_type].capability:
         component = getattr(unit, attribute, None)
         if component is None or getattr(component, "is_destroyed", False) is True:
@@ -141,8 +144,12 @@ def supported_commands(unit: Any) -> list[str]:
     commands = ["cancel_orders", "clear_explicit_orders", "cancel_order", "append_patrol_waypoints", "set_stance"]
     if getattr(unit, "engines_component", None) is not None:
         commands.extend(["move", "patrol", "protect"])
+        if _hull_name(unit) != "strikecraft_wing":
+            commands.append("enter_gas_giant")
         if getattr(unit, "weapons_component", None):
             commands.append("defend")
+    if getattr(unit, "is_hidden_in_gas_giant", False):
+        commands.append("leave_gas_giant")
     if getattr(unit, "weapons_component", None):
         commands.append("attack")
     if getattr(unit, "colony_component", None):
@@ -201,6 +208,10 @@ def command_guidance(
     legal: set[str] = set()
     options: dict[str, Any] = {}
     conditional: list[dict[str, Any]] = []
+
+    if getattr(unit, "is_hidden_in_gas_giant", False):
+        legal = {"leave_gas_giant", "cancel_orders", "clear_explicit_orders"}
+        return sorted(legal), options, conditional
 
     if "cancel_orders" in supported:
         legal.update({"cancel_orders", "clear_explicit_orders"})
@@ -396,6 +407,17 @@ def command_guidance(
         options["continuous_resupply"] = {"target_ids": stars}
         if stars:
             legal.add("continuous_resupply")
+
+    if "enter_gas_giant" in supported:
+        from constants import PlanetType
+        gas_giants = [
+            body.id
+            for body in exact_bodies
+            if getattr(body, "planet_type", None) == PlanetType.GAS_GIANT
+        ]
+        options["enter_gas_giant"] = {"target_ids": gas_giants}
+        if gas_giants and has_operational_engines(unit):
+            legal.add("enter_gas_giant")
 
     constructor = getattr(unit, "constructor_component", None)
     if constructor is not None:

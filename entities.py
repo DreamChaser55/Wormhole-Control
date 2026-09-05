@@ -498,6 +498,121 @@ class Planet(CelestialBody):
         self.passive_crystal: float = traits.get("passive_crystal", 0.0)
         self.harvest_multiplier: float = traits.get("am_harvest_multiplier", 0.0)
         self.collision_radius: float = traits.get("collision_radius", PLANET_RADIUS)
+        self.hidden_units: typing.List['Unit'] = []
+
+    def can_hide_unit(self, unit: 'Unit') -> bool:
+        """Returns True if this planet is a gas giant and the unit can enter its atmosphere."""
+        if self.planet_type != PlanetType.GAS_GIANT:
+            return False
+        if getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING:
+            return False
+        eng = getattr(unit, 'engines_component', None)
+        if not eng or not getattr(eng, 'is_operational', False):
+            return False
+        return True
+
+    def hide_unit(self, unit: 'Unit', galaxy_ref: typing.Any = None) -> bool:
+        """Hides the unit in the gas giant's atmosphere, removing it from normal sector presence."""
+        if not self.can_hide_unit(unit):
+            return False
+        if unit in self.hidden_units:
+            return True
+
+        g = galaxy_ref or getattr(unit, 'in_galaxy', None) or (getattr(unit.game, 'galaxy', None) if getattr(unit, 'game', None) else None)
+        if g and unit.in_system:
+            sys_obj = g.systems.get(unit.in_system)
+            if sys_obj:
+                sys_obj.remove_unit(unit)
+
+        # Deactivate any active external fields or targets
+        if getattr(unit, 'inhibitor_component', None) and unit.inhibitor_component.is_active:
+            if hasattr(unit.inhibitor_component, 'turn_off'):
+                unit.inhibitor_component.turn_off()
+            else:
+                unit.inhibitor_component.is_active = False
+        if getattr(unit, 'cloaking_component', None) and unit.cloaking_component.is_active:
+            if hasattr(unit.cloaking_component, 'deactivate'):
+                unit.cloaking_component.deactivate()
+            else:
+                unit.cloaking_component.is_active = False
+        if getattr(unit, 'weapons_component', None):
+            unit.weapons_component.clear_target()
+
+        unit.in_system = self.in_system
+        unit.in_hex = self.in_hex
+        unit.position = Position(self.position.x, self.position.y)
+        unit.is_hidden_in_gas_giant = True
+        unit.hidden_in_gas_giant_id = self.id
+
+        if getattr(unit, 'commander_component', None):
+            unit.commander_component.clear_explicit_orders()
+            unit.commander_component.suspend_stance_activity("hidden_in_gas_giant")
+
+        self.hidden_units.append(unit)
+        logger.debug(f"Unit '{unit.name}' (id:{unit.id}) hidden in gas giant atmosphere '{self.name}' (id:{self.id}).")
+        return True
+
+    def release_unit(self, unit: 'Unit', galaxy_ref: typing.Any = None) -> typing.Optional[Position]:
+        """Releases the unit from the gas giant's atmosphere onto a random vector just outside the collision boundary."""
+        if unit not in self.hidden_units:
+            return None
+
+        import math
+        import random
+        from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
+        from geometry import Circle, is_point_in_circle
+
+        standoff_dist = float(self.collision_radius) + 50.0
+        g = galaxy_ref or getattr(unit, 'in_galaxy', None) or (getattr(unit.game, 'galaxy', None) if getattr(unit, 'game', None) else None)
+        sys_obj = g.systems.get(self.in_system) if g and self.in_system else None
+        hex_obj = sys_obj.hexes.get(self.in_hex) if sys_obj and self.in_hex else None
+
+        obstacles = []
+        if hex_obj:
+            for body in getattr(hex_obj, 'celestial_bodies', []):
+                if body is not self:
+                    cr = getattr(body, 'collision_radius', 0.0)
+                    if cr > 0.0:
+                        obstacles.append(Circle(body.position, cr))
+
+        emerge_pos = None
+        for _ in range(64):
+            angle = random.uniform(0.0, 2.0 * math.pi)
+            cand_x = self.position.x + math.cos(angle) * standoff_dist
+            cand_y = self.position.y + math.sin(angle) * standoff_dist
+            cand = Position(cand_x, cand_y)
+
+            if math.hypot(cand_x, cand_y) > SECTOR_CIRCLE_RADIUS_LOGICAL - 20.0:
+                continue
+
+            blocked = False
+            for obs in obstacles:
+                if is_point_in_circle(cand, obs):
+                    blocked = True
+                    break
+            if not blocked:
+                emerge_pos = cand
+                break
+
+        if not emerge_pos:
+            angle = random.uniform(0.0, 2.0 * math.pi)
+            emerge_pos = Position(self.position.x + math.cos(angle) * standoff_dist, self.position.y + math.sin(angle) * standoff_dist)
+
+        self.hidden_units.remove(unit)
+        unit.position = emerge_pos
+        unit.in_system = self.in_system
+        unit.in_hex = self.in_hex
+        unit.is_hidden_in_gas_giant = False
+        unit.hidden_in_gas_giant_id = None
+
+        if sys_obj:
+            sys_obj.add_unit(unit)
+
+        if getattr(unit, 'commander_component', None):
+            unit.commander_component.clear_explicit_orders()
+
+        logger.debug(f"Unit '{unit.name}' (id:{unit.id}) emerged from gas giant '{self.name}' at {emerge_pos}.")
+        return emerge_pos
 
     def update_population(self):
         if not self.is_colonizable or self.is_sabotaged(SabotageType.GROWTH):
@@ -843,6 +958,9 @@ class Unit(GameObject):
 
         self.template_name: typing.Optional[str] = template_name
         self.infiltrating_agents: typing.List[Agent] = []
+
+        self.is_hidden_in_gas_giant: bool = False
+        self.hidden_in_gas_giant_id: typing.Optional[int] = None
 
         # Every unit has a commander component by default
         self.add_component(Commander(unit=self))
@@ -1201,6 +1319,12 @@ class Unit(GameObject):
         if self.strikecraft_bay_component:
             for docked_unit in list(self.strikecraft_bay_component.docked_units):
                 docked_unit.destroy()
+        if getattr(self, 'is_hidden_in_gas_giant', False) or getattr(self, 'hidden_in_gas_giant_id', None) is not None:
+            galaxy = self.in_galaxy or (self.game.galaxy if self.game else None)
+            if galaxy and self.hidden_in_gas_giant_id is not None:
+                gas_giant = galaxy.get_celestial_body_by_id(self.hidden_in_gas_giant_id)
+                if gas_giant and hasattr(gas_giant, 'hidden_units') and self in gas_giant.hidden_units:
+                    gas_giant.hidden_units.remove(self)
         galaxy = self.in_galaxy or (self.game.galaxy if self.game else None)
         if galaxy:
             galaxy.remove_unit(self)
@@ -1225,6 +1349,9 @@ class Unit(GameObject):
         
         This method should be called on each turn processing cycle.
         """
+        if getattr(self, 'is_hidden_in_gas_giant', False):
+            # Units hidden in a gas giant cannot harvest from stars, tick external fields, or attack
+            return
         # Antimatter is no longer regenerated automatically for all units.
         # Only units with an AntimatterHarvester component can replenish their
         # own antimatter, and only while positioned near a star. All other

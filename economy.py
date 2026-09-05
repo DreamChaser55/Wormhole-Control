@@ -89,5 +89,16 @@ def calculate_player_upkeep(galaxy: typing.Any, player: Player) -> float:
                     getattr(unit, 'hull_size', None),
                     getattr(unit, 'current_hull_usage', 0.0)
                 )
+            for _, body in system_obj.get_all_celestial_bodies():
+                if getattr(body, 'hidden_units', None):
+                    for unit in body.hidden_units:
+                        if getattr(unit, 'owner', None) != player:
+                            continue
+                        if getattr(unit, 'is_temporary', False):
+                            continue
+                        total_upkeep += calculate_unit_upkeep(
+                            getattr(unit, 'hull_size', None),
+                            getattr(unit, 'current_hull_usage', 0.0)
+                        )
     return total_upkeep
 

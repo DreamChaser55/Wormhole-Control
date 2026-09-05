@@ -24,6 +24,7 @@ from .intelligence import (
     EliminateAgentOrder,
     ExtractAgentOrder,
 )
+from .gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
 
 # The single authoritative mapping used by persistence and coverage tests.
 ORDER_CLASS_REGISTRY = {
@@ -58,6 +59,8 @@ ORDER_CLASS_REGISTRY = {
     OrderType.CI_SWEEP: CISweepOrder,
     OrderType.ELIMINATE_AGENT: EliminateAgentOrder,
     OrderType.EXTRACT_AGENT: ExtractAgentOrder,
+    OrderType.ENTER_GAS_GIANT: EnterGasGiantOrder,
+    OrderType.LEAVE_GAS_GIANT: LeaveGasGiantOrder,
     OrderType.STANCE: StanceOrder,
 }
 
@@ -98,5 +101,7 @@ __all__ = [
     "CISweepOrder",
     "EliminateAgentOrder",
     "ExtractAgentOrder",
+    "EnterGasGiantOrder",
+    "LeaveGasGiantOrder",
     "ORDER_CLASS_REGISTRY",
 ]

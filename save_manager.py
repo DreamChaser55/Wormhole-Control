@@ -137,6 +137,8 @@ def serialize_celestial_body(body: CelestialBody) -> dict:
         data["population"] = body.population
         data["max_population"] = body.max_population
         data["population_growth_rate"] = body.population_growth_rate
+        if body.planet_type == PlanetType.GAS_GIANT and getattr(body, 'hidden_units', None):
+            data["hidden_units"] = [serialize_unit(u) for u in body.hidden_units]
     elif isinstance(body, Moon) or isinstance(body, ColonizableAsteroid):
         data["owner_id"] = body.owner.id if body.owner else None
         data["population"] = body.population
@@ -521,7 +523,10 @@ def deserialize_player(data: dict) -> Player:
     return player
 
 
-def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player]) -> CelestialBody:
+def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player], game: Any = None) -> CelestialBody:
+    if game is None and hasattr(players_by_id, 'players'):
+        game = players_by_id
+        players_by_id = {p.id: p for p in game.players}
     class_name = data.get("class_name")
     cls = CELESTIAL_CLASSES.get(class_name)
     if not cls:
@@ -587,6 +592,12 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player]) -> 
     if "infiltrating_agents" in data:
         from unit_components import Agent
         body.infiltrating_agents = [Agent.from_dict(ad, players_by_id, body) for ad in data["infiltrating_agents"]]
+
+    if "hidden_units" in data and game is not None:
+        body.hidden_units = [deserialize_unit(ud, players_by_id, game) for ud in data["hidden_units"]]
+        for u in body.hidden_units:
+            u.is_hidden_in_gas_giant = True
+            u.hidden_in_gas_giant_id = body.id
 
     return body
 
@@ -1051,7 +1062,7 @@ def deserialize_hex(data: dict, players_by_id: Dict[int, Player], game: Any) -> 
     hex_obj = Hex(q, r, in_system=in_system)
 
     for cb_data in data.get("celestial_bodies", []):
-        body = deserialize_celestial_body(cb_data, players_by_id)
+        body = deserialize_celestial_body(cb_data, players_by_id, game)
         hex_obj.add_celestial_body(body)
 
     for unit_data in data.get("units", []):
@@ -1173,6 +1184,12 @@ def deserialize_game_state(game: Any, data: dict) -> bool:
                 for body in hex_obj.celestial_bodies:
                     if body.id > max_object_id:
                         max_object_id = body.id
+                    if hasattr(body, 'hidden_units') and body.hidden_units:
+                        for h_unit in body.hidden_units:
+                            for unit in _iter_unit_tree(h_unit):
+                                max_object_id = max(max_object_id, unit.id)
+                                unit.in_galaxy = game.galaxy
+                                _restore_saved_commander(unit, game)
                 for root_unit in hex_obj.units:
                     for unit in _iter_unit_tree(root_unit):
                         max_object_id = max(max_object_id, unit.id)

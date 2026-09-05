@@ -56,6 +56,8 @@ class OrderType(Enum):
     CI_SWEEP = auto()            # Counter-intelligence scan on friendly units/planets in range to discover agents
     ELIMINATE_AGENT = auto()     # Eliminate a discovered enemy agent on a friendly unit/planet in range
     EXTRACT_AGENT = auto()       # Extract an agent back to a friendly unit with intelligence capacity
+    ENTER_GAS_GIANT = auto()     # Enter a gas giant's atmosphere to conceal the ship
+    LEAVE_GAS_GIANT = auto()     # Emerge from a gas giant's atmosphere onto a random vector
     STANCE = auto()              # Persistent standing policy that owns a transient Attack subtree
 
 

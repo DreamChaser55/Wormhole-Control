@@ -7,7 +7,8 @@ from events import (
     IssueProtectOrderEvent, ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent,
     LayMinefieldEvent, RefitUnitEvent, TradeEvent, ContinuousTradeEvent,
     InfiltrateUnitEvent, InfiltratePlanetEvent, RelocateAgentEvent,
-    SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent
+    SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent,
+    EnterGasGiantEvent, LeaveGasGiantEvent
 )
 from unit_orders import (
     MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
@@ -15,7 +16,8 @@ from unit_orders import (
     ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder, LayMinefieldOrder,
     RefitOrder, TradeOrder, ContinuousTradeOrder, calculate_required_antimatter,
     InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder,
-    CISweepOrder, EliminateAgentOrder, ExtractAgentOrder
+    CISweepOrder, EliminateAgentOrder, ExtractAgentOrder,
+    EnterGasGiantOrder, LeaveGasGiantOrder
 )
 
 from sector_utils import random_point_in_sector
@@ -61,6 +63,8 @@ class OrderSystem:
         self.event_bus.subscribe(CISweepEvent, self.handle_ci_sweep)
         self.event_bus.subscribe(EliminateAgentEvent, self.handle_eliminate_agent)
         self.event_bus.subscribe(ExtractAgentEvent, self.handle_extract_agent)
+        self.event_bus.subscribe(EnterGasGiantEvent, self.handle_enter_gas_giant)
+        self.event_bus.subscribe(LeaveGasGiantEvent, self.handle_leave_gas_giant)
 
     def validate_antimatter_for_unit(self, unit, dest_system, dest_hex, dest_pos=None) -> bool:
         galaxy_ref = getattr(self.game, 'galaxy', None)
@@ -785,6 +789,41 @@ class OrderSystem:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
             logger.debug(f"  Unit {unit.name} ordered to extract Agent {event.agent_id} via event.")
+            if getattr(self.game, 'galaxy', None):
+                order.execute(self.game.galaxy)
+                self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
+
+    def handle_enter_gas_giant(self, event: EnterGasGiantEvent):
+        """Dispatches EnterGasGiantOrder to selected ships."""
+        for unit in event.units:
+            if getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING:
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog(
+                        "Strikecraft wings cannot enter gas giant atmospheres.",
+                        title="Entry Prohibited"
+                    )
+                continue
+            if not self.validate_engines_for_unit(unit, "Enter Gas Giant"):
+                continue
+            order = EnterGasGiantOrder(unit, {"target_id": event.gas_giant.id})
+            if not event.shift_pressed:
+                unit.commander_component.clear_explicit_orders()
+            unit.commander_component.add_order(order)
+            logger.debug(f"  Unit {unit.name} ordered to enter gas giant {event.gas_giant.name} via event.")
+            if getattr(self.game, 'galaxy', None):
+                order.execute(self.game.galaxy)
+                self.game.visibility_dirty = True
+        self.game.sidebar_needs_update = True
+
+    def handle_leave_gas_giant(self, event: LeaveGasGiantEvent):
+        """Dispatches LeaveGasGiantOrder to selected hidden ships."""
+        for unit in event.units:
+            order = LeaveGasGiantOrder(unit, {})
+            if not event.shift_pressed:
+                unit.commander_component.clear_explicit_orders()
+            unit.commander_component.add_order(order)
+            logger.debug(f"  Unit {unit.name} ordered to leave gas giant via event.")
             if getattr(self.game, 'galaxy', None):
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True

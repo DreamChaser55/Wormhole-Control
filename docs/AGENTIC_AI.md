@@ -206,6 +206,8 @@ policy when idle. Stop cancels both layers and selects Do Nothing. Commands:
 | `clear_explicit_orders` | none | Cancel explicit work, preserve stance. |
 | `append_patrol_waypoints` | `order_id`, `waypoints` (one owned unit) | Extend a current/queued patrol while preserving its leg. |
 | `patrol` | `waypoints` OR complete system/hex/position | Traverse 1–16 waypoints, return to captured start, repeat. |
+| `enter_gas_giant` | `target_id` (Gas Giant ID) | Approach and submerge inside a gas giant atmosphere, hiding ship from all sensors. |
+| `leave_gas_giant` | none (`queue=false`) | Emerge from a gas giant atmosphere on a random vector outside collision boundary. |
 
 `queue=true` creates a separate patrol, never an extension. Routes may contain at most
 16 waypoints through AI commands. For human players, the "Add Patrol Waypoint" context menu option extends

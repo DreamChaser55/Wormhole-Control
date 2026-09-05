@@ -7,7 +7,7 @@ from entities import (
     GameObject, Unit, Star, Planet, Moon, ColonizableAsteroid,
     MetalAsteroid, Comet, Wormhole, AsteroidField, DebrisField, IceField, Nebula, Storm
 )
-from constants import NebulaType
+from constants import NebulaType, PlanetType
 from unit_components import HyperdriveType
 from unit_orders import OrderType
 
@@ -394,6 +394,17 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
         if isinstance(target_object, (Planet, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, Comet)):
             if isinstance(target_object, Planet):
                 options.append(("View Planet", "view_planet"))
+                if getattr(target_object, 'planet_type', None) == PlanetType.GAS_GIANT:
+                    if any(a.owner == current_player and target_object.can_hide_unit(a) for a in actors):
+                        options.append(("Hide in Gas Giant", "enter_gas_giant"))
+                    friendly_hidden = [u for u in getattr(target_object, 'hidden_units', []) if u.owner == current_player]
+                    if friendly_hidden:
+                        if len(friendly_hidden) == 1:
+                            options.append((f"Order {friendly_hidden[0].name} to Leave", f"leave_gas_giant_{friendly_hidden[0].id}"))
+                        else:
+                            leave_opts = [(f"Order {u.name} to Leave", f"leave_gas_giant_{u.id}") for u in friendly_hidden]
+                            leave_opts.append(("Order All to Leave", "leave_gas_giant_all"))
+                            options.append(("Leave Atmosphere", leave_opts))
             if len(game.selected_objects) == 1 and isinstance(game.selected_objects[0], Unit):
                 unit = game.selected_objects[0]
                 if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):

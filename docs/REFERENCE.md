@@ -247,7 +247,7 @@ according to resolution and camera zoom.
 
 ## 5. Order Types
 
-The `OrderType` enum (`unit_orders/base.py`) defines **32 order types**. Thirty-one are explicit or internal action types; `STANCE` is the persistent standing-order root:
+The `OrderType` enum (`unit_orders/base.py`) defines **34 order types**. Thirty-three are explicit or internal action types; `STANCE` is the persistent standing-order root:
 
 | Order Type | Description |
 |---|---|
@@ -283,6 +283,8 @@ The `OrderType` enum (`unit_orders/base.py`) defines **32 order types**. Thirty-
 | `CI_SWEEP` | Counter-Intelligence ship performs an active sector sweep (activated via component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to detect enemy spies on friendly and allied assets within operational range (500 logical units). |
 | `ELIMINATE_AGENT` | Counter-Intelligence ship neutralizes and removes a discovered enemy agent from a friendly or allied unit or colony. |
 | `EXTRACT_AGENT` | Recovers an owned embedded agent into a selected owned Intelligence unit with free capacity. |
+| `ENTER_GAS_GIANT` | Commands an eligible ship with operational engines to submerge into a gas giant atmosphere, vanishing from map display and sensor detection. |
+| `LEAVE_GAS_GIANT` | Commands a submerged ship to emerge from a gas giant atmosphere on a random vector outside the collision boundary. |
 
 ---
 
@@ -312,7 +314,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 | **Black Hole** | `BLACK_HOLE` | **0.1×** | (75, 35, 100) | 4500.0 | 750.015 |
 
 ### 6.2 Planets & Colonizable Bodies
-- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 3000.0 logical units (Ferrous: 3250.0, Gas Giant: 3500.0). **Collision Radius**: **562.50 logical units** (`PLANET_RADIUS`, Gas Giant: 675.0).
+- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 3000.0 logical units (Ferrous: 3250.0, Gas Giant: 3500.0). **Collision Radius**: **562.50 logical units** (`PLANET_RADIUS`, Gas Giant: 675.0). Gas giants are non-colonizable massive celestial bodies that support **Atmospheric Hiding**: any ship with operational sublight engines (strikecraft wings and stationary space stations prohibited) can enter the atmosphere to disappear from tactical maps and sensor detection. Submerged ships cannot attack or project fields; ordering departure causes them to emerge on a uniformly random vector outside the collision radius (725.0 logical units). Multiple departing ships emerge on distinct vectors. Regular unit credit upkeep continues while hidden. Submerged opposing ships cannot detect or attack each other.
 - **Moons (`Moon`)**: Colonizable satellites supporting up to **50.0 population** with a growth rate of **1.0% per turn**. Inhibition radius: 2250.0 logical units. **Collision Radius**: **125.01 logical units** (`MOON_RADIUS`).
 - **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts supporting up to **20.0 population** with a growth rate of **0.5% per turn**. Inhibition radius: 1500.0 logical units. **Collision Radius**: **75.015 logical units** (`ASTEROID_RADIUS`).
 
@@ -697,7 +699,7 @@ Every planet generated in the galaxy possesses distinctive biological and geolog
 | **Volcanic** | Yes | 50.0 | 0.8% / turn | 5.0 / turn | 0.0 | 0.0x | Geothermal magma chambers rich in raw minerals. |
 | **Ferrous** | Yes | 70.0 | 1.2% / turn | 8.0 / turn | 0.0 | 0.0x | Massive heavy-metal mantle generating industrial iron. |
 | **Greenhouse** | Yes | 55.0 | 1.0% / turn | 0.0 | 3.0 / turn | 0.0x | Superheated dense atmosphere yielding synthetic crystal. |
-| **Gas Giant** | **No** | 0.0 | 0.0% | 0.0 | 0.0 | 0.0x | Atmospheric turbulence; 3500 inhibition. |
+| **Gas Giant** | **No** | 0.0 | 0.0% | 0.0 | 0.0 | 0.0x | Atmospheric hiding cover; 3500 inhibition. |
 
 - **Moons & Colonizable Asteroids**: Both support colonization (`is_colonizable = True`), max population 25.0 and 15.0 respectively, with standard base growth.
 - **Passive Resource Yields**: Colonized planets generate their passive metal or crystal directly into the owner's treasury at the end of each turn, providing strategic economic value beyond direct taxation.

@@ -4,7 +4,7 @@ import pygame
 import typing
 
 from entities import Unit
-from events import CancelOrdersEvent, LayMinefieldEvent, UseAbilityEvent
+from events import CancelOrdersEvent, LayMinefieldEvent, UseAbilityEvent, EnterGasGiantEvent, LeaveGasGiantEvent
 from geometry import distance, hex_distance
 from pathfinding import find_intersystem_path
 from unit_components import UnitStance, WingType
@@ -410,6 +410,57 @@ def handle_ci_sweep(game, action: dict) -> None:
     game.sidebar_needs_update = True
 
 
+def handle_enter_gas_giant(game, action: dict) -> None:
+    gas_giant_id = action.get('gas_giant_id', action.get('target_data'))
+    gas_giant = game.galaxy.get_celestial_body_by_id(gas_giant_id) if game.galaxy and gas_giant_id is not None else None
+    if not gas_giant:
+        return
+
+    unit_id = action.get('unit_id')
+    if unit_id is not None:
+        unit = game.galaxy.get_unit_by_id(unit_id) if game.galaxy else None
+        units = [unit] if unit else []
+    else:
+        units = [u for u in game.selected_objects if isinstance(u, Unit)]
+
+    current_player = game.players[game.current_player_index] if game.players else None
+    valid_units = [u for u in units if u.owner == current_player]
+    if valid_units:
+        game.event_bus.publish(EnterGasGiantEvent(
+            units=valid_units,
+            gas_giant=gas_giant,
+            shift_pressed=action.get('shift_pressed', False)
+        ))
+    game.sidebar_needs_update = True
+
+
+def handle_order_unit_leave_gas_giant(game, action: dict) -> None:
+    unit_id = action.get('unit_id', action.get('target_data'))
+    unit = game.galaxy.get_unit_by_id(unit_id) if game.galaxy and unit_id is not None else None
+    current_player = game.players[game.current_player_index] if game.players else None
+    if unit and unit.owner == current_player:
+        game.event_bus.publish(LeaveGasGiantEvent(
+            units=[unit],
+            shift_pressed=action.get('shift_pressed', False)
+        ))
+    game.sidebar_needs_update = True
+
+
+def handle_order_all_leave_gas_giant(game, action: dict) -> None:
+    gas_giant_id = action.get('gas_giant_id', action.get('target_data'))
+    gas_giant = game.galaxy.get_celestial_body_by_id(gas_giant_id) if game.galaxy and gas_giant_id is not None else None
+    if not gas_giant:
+        return
+    current_player = game.players[game.current_player_index] if game.players else None
+    units = [u for u in getattr(gas_giant, 'hidden_units', []) if u.owner == current_player]
+    if units:
+        game.event_bus.publish(LeaveGasGiantEvent(
+            units=units,
+            shift_pressed=action.get('shift_pressed', False)
+        ))
+    game.sidebar_needs_update = True
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'deploy_ship': handle_deploy_ship,
     'launch_all_wings': handle_launch_all_wings,
@@ -429,4 +480,7 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'toggle_cloaking': handle_toggle_cloaking,
     'confirm_retrofit': handle_confirm_retrofit,
     'ci_sweep': handle_ci_sweep,
+    'enter_gas_giant': handle_enter_gas_giant,
+    'order_unit_leave_gas_giant': handle_order_unit_leave_gas_giant,
+    'order_all_leave_gas_giant': handle_order_all_leave_gas_giant,
 }

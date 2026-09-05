@@ -11,7 +11,8 @@ from events import (
     ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent, LayMinefieldEvent,
     RefitUnitEvent, TradeEvent, ContinuousTradeEvent,
     InfiltrateUnitEvent, InfiltratePlanetEvent, RelocateAgentEvent,
-    SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent
+    SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent,
+    EnterGasGiantEvent, LeaveGasGiantEvent
 )
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,28 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
         logger.debug(f"  Action: View Unit {getattr(target, 'name', target)} Info (Not Implemented)")
     elif extracted_action_id == "scan_hex":
         logger.debug("  Action: Scan Hex Contents (Not Implemented)")
+    elif extracted_action_id == "leave_gas_giant_all":
+        if isinstance(target, Planet):
+            units = [u for u in getattr(target, 'hidden_units', []) if u.owner == current_player]
+            if units:
+                game.event_bus.publish(LeaveGasGiantEvent(
+                    units=units,
+                    shift_pressed=shift_pressed
+                ))
+                game.sidebar_needs_update = True
+    elif extracted_action_id.startswith("leave_gas_giant_"):
+        unit_id_str = extracted_action_id[len("leave_gas_giant_"):]
+        try:
+            unit_id = int(unit_id_str)
+            unit = game.galaxy.get_unit_by_id(unit_id) if getattr(game, 'galaxy', None) else None
+            if unit and unit.owner == current_player:
+                game.event_bus.publish(LeaveGasGiantEvent(
+                    units=[unit],
+                    shift_pressed=shift_pressed
+                ))
+                game.sidebar_needs_update = True
+        except ValueError:
+            pass
 
     elif selected_units:
         disabled_units = [u for u in selected_units if u.is_disabled]
@@ -384,6 +407,14 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                 agent_id=agent_id,
                 shift_pressed=shift_pressed,
             ))
+
+        elif extracted_action_id == "enter_gas_giant":
+            if isinstance(target, Planet):
+                game.event_bus.publish(EnterGasGiantEvent(
+                    units=selected_units,
+                    gas_giant=target,
+                    shift_pressed=shift_pressed,
+                ))
 
         else:
             logger.debug(f"  Unknown context action ID or no valid unit selected: {extracted_action_id}")

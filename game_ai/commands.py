@@ -717,6 +717,8 @@ class CommandGateway:
             InfiltratePlanetOrder,
             ExtractAgentOrder,
             EliminateAgentOrder,
+            EnterGasGiantOrder,
+            LeaveGasGiantOrder,
         )
         from unit_orders.combat import resolve_component_type
 
@@ -740,6 +742,7 @@ class CommandGateway:
             "mine",
             "continuous_mine",
             "continuous_resupply",
+            "enter_gas_giant",
         }:
             target_body = self._body(command.target_id)
 
@@ -1047,6 +1050,19 @@ class CommandGateway:
             )
         if command.type == "continuous_trade":
             return (lambda unit: ContinuousTradeOrder(unit), "Begin continuous trade")
+        if command.type == "enter_gas_giant":
+            from constants import PlanetType
+            if getattr(target_body, "planet_type", None) != PlanetType.GAS_GIANT:
+                raise _Rejected("invalid_target", "The target is not a gas giant.")
+            return (
+                lambda unit: EnterGasGiantOrder(unit, {"target_id": target_body.id}),
+                f"Enter gas giant {target_body.name}",
+            )
+        if command.type == "leave_gas_giant":
+            return (
+                lambda unit: LeaveGasGiantOrder(unit, {}),
+                "Leave gas giant atmosphere",
+            )
         if command.type == "use_ability":
             return self._ability_factory(command, target_unit)
         raise _Rejected("unsupported_command", "Unsupported command.")
@@ -1381,6 +1397,9 @@ class CommandGateway:
     def _validate_unit_command(
         self, unit: Any, command: Any, projection: _BatchProjection
     ) -> None:
+        if getattr(unit, "is_hidden_in_gas_giant", False) and command.type != "leave_gas_giant":
+            raise _Rejected("invalid_state", "Submerged units cannot execute orders while hidden in a gas giant atmosphere.")
+
         if command.type == "move":
             from constants import HullSize
             from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
@@ -1489,6 +1508,17 @@ class CommandGateway:
                 raise _Rejected(
                     "hazard_blocked", "Cannot launch strikecraft wings in a magnetic storm."
                 )
+        elif command.type == "enter_gas_giant":
+            from constants import HullSize
+            if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
+                raise _Rejected("invalid_unit", "Strikecraft wings cannot enter gas giant atmospheres.")
+            if not getattr(unit, "engines_component", None) or not unit.engines_component.is_operational:
+                raise _Rejected("capability_unavailable", "Unit requires operational engines to enter a gas giant.")
+            if getattr(unit, "is_hidden_in_gas_giant", False):
+                raise _Rejected("invalid_state", "Unit is already submerged in a gas giant atmosphere.")
+        elif command.type == "leave_gas_giant":
+            if not getattr(unit, "is_hidden_in_gas_giant", False):
+                raise _Rejected("invalid_state", "Unit is not submerged in a gas giant atmosphere.")
         elif command.type == "transfer_antimatter":
             storage = getattr(unit, "antimatter_component", None)
             if storage is None or getattr(storage, "current_amount", 0) <= 0:
