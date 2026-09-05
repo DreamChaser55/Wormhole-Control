@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import pygame
 import math
+import typing
 from typing import TYPE_CHECKING
 from galaxy import StarSystem
 from constants import (
@@ -8,8 +11,6 @@ from constants import (
 )
 from entities import Unit, OrderType
 from galaxy_utils import logical_to_screen_galaxy, get_home_systems_mapping
-if TYPE_CHECKING:
-    from galaxy import StarSystem
 
 class GalaxyViewRenderer:
     def __init__(self, game_instance):
