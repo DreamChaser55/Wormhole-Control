@@ -67,7 +67,7 @@ The likely post-import-fix baseline is therefore **1,116 passing tests**, but th
 
 ## Detailed findings
 
-### WC-001 — import and launch blocker
+### WC-001 — import and launch blocker - **ALREADY FIXED**
 
 `rendering/galaxy_renderer.py:3` imports only `TYPE_CHECKING` from `typing`, while module-level function annotations use `typing.Any`, `typing.Optional`, `typing.Dict`, `typing.List`, and `typing.Tuple` at `:226-230` and `:341-346`. The file has neither `import typing` nor postponed annotations. Importing `game` traverses `game -> gui -> layout_new_game_wizard -> rendering.galaxy_renderer` and evaluates those annotations immediately.
 
@@ -473,7 +473,7 @@ Property-based testing would be particularly useful for save round trips, ID all
 
 ### Phase 0 — restore a trustworthy baseline
 
-1. Fix the missing `typing` reference in `rendering/galaxy_renderer.py`.
+1. Fix the missing `typing` reference in `rendering/galaxy_renderer.py`. - **ALREADY FIXED**
 2. Add a clean import/launch smoke test.
 3. Run the full suite normally and make the socket test explicitly skip or adapt only when loopback is genuinely unavailable.
 4. Add undefined-name linting in CI.
