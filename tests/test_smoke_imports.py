@@ -1,6 +1,11 @@
+from __future__ import annotations
+
+import os
 import subprocess
 import sys
 import pytest
+
+pytestmark = pytest.mark.smoke
 
 
 def test_clean_process_import_game_and_renderer():
@@ -9,18 +14,30 @@ def test_clean_process_import_game_and_renderer():
         [sys.executable, "-c", "import game; import renderer"],
         capture_output=True,
         text=True,
+        stdin=subprocess.DEVNULL,
+        timeout=15,
     )
     assert result.returncode == 0, f"Importing game and renderer failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
 
 
-def test_clean_process_import_rendering_galaxy_renderer():
-    """Smoke test: Ensure rendering.galaxy_renderer can be cleanly imported in isolation."""
+def test_clean_process_import_rendering_modules():
+    """Smoke test: Ensure all rendering modules can be cleanly imported in isolation."""
+    modules = [
+        "rendering.drawing_utils",
+        "rendering.galaxy_renderer",
+        "rendering.main_menu_renderer",
+        "rendering.system_renderer",
+        "rendering.sector_renderer",
+    ]
+    script = "; ".join(f"import {mod}" for mod in modules)
     result = subprocess.run(
-        [sys.executable, "-c", "import rendering.galaxy_renderer"],
+        [sys.executable, "-c", script],
         capture_output=True,
         text=True,
+        stdin=subprocess.DEVNULL,
+        timeout=15,
     )
-    assert result.returncode == 0, f"Importing rendering.galaxy_renderer failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+    assert result.returncode == 0, f"Importing rendering modules failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
 
 
 def test_galaxy_renderer_annotations_valid():
@@ -41,3 +58,61 @@ def test_galaxy_renderer_annotations_valid():
             assert "screen_pos" in ann2
     except Exception as e:
         pytest.fail(f"Failed to evaluate annotations on galaxy_renderer preview functions: {e}")
+
+
+def test_clean_process_launch_smoke_test():
+    """Smoke test: Launch game.py --smoke-test in a fresh subprocess and verify clean startup and shutdown."""
+    env = os.environ.copy()
+    env["SDL_VIDEODRIVER"] = "dummy"
+    env["SDL_AUDIODRIVER"] = "dummy"
+
+    result = subprocess.run(
+        [sys.executable, "game.py", "--smoke-test", "--smoke-test-frames", "3"],
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        env=env,
+        timeout=15,
+    )
+    assert result.returncode == 0, (
+        f"Launch smoke test failed (code {result.returncode}):\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+    )
+
+
+def test_in_process_game_launch_and_tick():
+    """Smoke test: Initialize Game in-process, tick 1 frame of update and draw, and shut down cleanly."""
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+
+    from game import Game
+    game = Game()
+    try:
+        assert game.view_mode == "main_menu"
+        assert game.is_running is True
+        assert game.gui is not None
+        assert game.renderer is not None
+        assert game.control_service.is_running is True
+
+        # Exercise one frame
+        time_delta = 1.0 / 60.0
+        game.update(time_delta)
+        game.draw()
+    finally:
+        game.control_service.shutdown()
+        game.ai_coordinator.shutdown()
+        import pygame
+        pygame.quit()
+
+
+def test_clean_process_pytest_collection():
+    """Smoke test: Verify all test files can be imported and collected by pytest without syntax/import errors."""
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        timeout=30,
+    )
+    assert result.returncode == 0, (
+        f"Pytest collection failed (code {result.returncode}):\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+    )

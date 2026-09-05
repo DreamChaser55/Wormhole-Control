@@ -231,6 +231,17 @@ No API key is required because the bridge makes no OpenAI API calls. See the [Co
 
 ## Development & Testing
 
+### Smoke Tests
+For fast verification of clean imports, module boundaries, headless game launch, and test collection:
+
+```bash
+# Run the fast import & launch smoke test suite
+python -m pytest -m smoke
+
+# Or execute a headless launch smoke test directly
+python game.py --smoke-test
+```
+
 ### Automated Test Suite
 Wormhole Control includes a comprehensive automated test suite consisting of an extensive offline regression suite covering economy, combat, movement, AI logic, order trees, and GUI handlers:
 
@@ -239,7 +250,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests`).
+Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests`, `markers = smoke`).
 
 ### Debug log
 

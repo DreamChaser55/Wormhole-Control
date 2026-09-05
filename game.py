@@ -398,15 +398,24 @@ class Game:
         """Processes mouse scroll wheel input for tactical camera zooming."""
         game_camera.handle_mouse_wheel(self, scroll_y)
 
-    def run(self):
-        """Main game loop."""
+    def run(self, max_frames: typing.Optional[int] = None, *, exit_on_finish: bool = True):
+        """Main game loop.
+
+        Args:
+            max_frames: Optional frame limit. If provided, the loop will terminate
+                after executing this number of frames and exit cleanly.
+            exit_on_finish: Whether to invoke sys.exit() upon loop termination.
+        """
         if not self.is_running: # Check if init failed
              logger.debug("Game initialization failed. Exiting.")
              self.control_service.shutdown()
              self.ai_coordinator.shutdown()
              pygame.quit()
-             sys.exit()
+             if exit_on_finish:
+                 sys.exit(1)
+             return
 
+        frames_rendered = 0
         try:
             while self.is_running:
                 time_delta = self.clock.tick(60) / 1000.0
@@ -414,11 +423,17 @@ class Game:
                 self.handle_input(time_delta)
                 self.update(time_delta)
                 self.draw()
+
+                frames_rendered += 1
+                if max_frames is not None and frames_rendered >= max_frames:
+                    logger.info(f"Reached max_frames limit ({max_frames}). Exiting cleanly.")
+                    break
         finally:
             self.control_service.shutdown()
             self.ai_coordinator.shutdown()
             pygame.quit()
-        sys.exit()
+        if exit_on_finish:
+            sys.exit(0)
 
     def save_game(self, filename: typing.Optional[str] = None) -> typing.Optional[str]:
         """Saves current game state to a file.
@@ -733,11 +748,34 @@ if __name__ == '__main__':
         default=None,
         help="localhost Codex control port (overrides WORMHOLE_CONTROL_PORT)",
     )
+    parser.add_argument(
+        "--smoke-test",
+        action="store_true",
+        help="run a headless launch smoke test for a few frames and exit cleanly",
+    )
+    parser.add_argument(
+        "--smoke-test-frames",
+        type=int,
+        default=5,
+        help="number of frames to execute during --smoke-test (default: 5)",
+    )
     arguments = parser.parse_args()
     if arguments.port is not None and not 1 <= arguments.port <= 65535:
         parser.error("--port must be between 1 and 65535")
+    if arguments.smoke_test_frames < 1:
+        parser.error("--smoke-test-frames must be at least 1")
+
+    if arguments.smoke_test:
+        import os
+        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+        os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+
     setup_logging(log_to_file=True)
     logger.debug("Initializing Game...")
     game = Game(control_port=arguments.port)
-    logger.debug("Starting Game Loop...")
-    game.run()
+    if arguments.smoke_test:
+        logger.info(f"Running launch smoke test for {arguments.smoke_test_frames} frames...")
+        game.run(max_frames=arguments.smoke_test_frames)
+    else:
+        logger.debug("Starting Game Loop...")
+        game.run()

@@ -31,10 +31,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
 
-    - name: Clean-process import smoke test
+    - name: Clean-process import and launch smoke test
       run: |
-        python -c "import game; import renderer"
-        python -c "import rendering.galaxy_renderer"
+        python game.py --smoke-test
+        pytest -m smoke -v
 
     - name: Run test suite
       run: |
