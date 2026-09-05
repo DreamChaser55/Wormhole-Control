@@ -122,7 +122,7 @@ class AntimatterHarvester(UnitComponent):
         self.is_harvesting: bool = False  # Updated each turn: True if currently near a star and harvesting
 
     def find_nearby_harvest_source(self, galaxy: 'Galaxy') -> Optional['CelestialBody']:
-        """Returns a Star, Gas Giant Planet, or Hydrogen Nebula in the unit's current system+hex within harvest_range, if any."""
+        """Returns a Star or Hydrogen Nebula in the unit's current system+hex within harvest_range, if any."""
         if not galaxy or not self.unit.in_system or self.unit.in_hex is None:
             return None
         system = galaxy.systems.get(self.unit.in_system)
@@ -131,13 +131,11 @@ class AntimatterHarvester(UnitComponent):
         hex_obj = system.hexes.get(self.unit.in_hex)
         if not hex_obj:
             return None
-        from entities import Star, Planet, Nebula
-        from constants import PlanetType, NebulaType
+        from entities import Star, Nebula
+        from constants import NebulaType
         for body in hex_obj.celestial_bodies:
             if distance(self.unit.position, body.position) <= self.harvest_range:
                 if isinstance(body, Star):
-                    return body
-                elif isinstance(body, Planet) and getattr(body, 'planet_type', None) == PlanetType.GAS_GIANT:
                     return body
                 elif isinstance(body, Nebula) and getattr(body, 'nebula_type', None) == NebulaType.HYDROGEN:
                     if not hasattr(body, 'harvest_multiplier'):
@@ -146,7 +144,7 @@ class AntimatterHarvester(UnitComponent):
         return None
 
     def find_nearby_star(self, galaxy: 'Galaxy') -> Optional['CelestialBody']:
-        """Returns a fuel source (Star, Gas Giant, or Hydrogen Nebula) within harvest_range."""
+        """Returns a fuel source (Star or Hydrogen Nebula) within harvest_range."""
         return self.find_nearby_harvest_source(galaxy)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:

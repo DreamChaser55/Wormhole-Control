@@ -697,7 +697,7 @@ Every planet generated in the galaxy possesses distinctive biological and geolog
 | **Volcanic** | Yes | 50.0 | 0.8% / turn | 5.0 / turn | 0.0 | 0.0x | Geothermal magma chambers rich in raw minerals. |
 | **Ferrous** | Yes | 70.0 | 1.2% / turn | 8.0 / turn | 0.0 | 0.0x | Massive heavy-metal mantle generating industrial iron. |
 | **Greenhouse** | Yes | 55.0 | 1.0% / turn | 0.0 | 3.0 / turn | 0.0x | Superheated dense atmosphere yielding synthetic crystal. |
-| **Gas Giant** | **No** | 0.0 | 0.0% | 0.0 | 0.0 | **0.5x** | Atmospheric turbulence; antimatter scoop reservoir; 3500 inhibition. |
+| **Gas Giant** | **No** | 0.0 | 0.0% | 0.0 | 0.0 | 0.0x | Atmospheric turbulence; 3500 inhibition. |
 
 - **Moons & Colonizable Asteroids**: Both support colonization (`is_colonizable = True`), max population 25.0 and 15.0 respectively, with standard base growth.
 - **Passive Resource Yields**: Colonized planets generate their passive metal or crystal directly into the owner's treasury at the end of each turn, providing strategic economic value beyond direct taxation.

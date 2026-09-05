@@ -1019,7 +1019,7 @@ class CommandGateway:
             )
         if command.type == "continuous_resupply":
             if not is_antimatter_source(target_body):
-                raise _Rejected("invalid_target", "The resupply target is not a star or gas giant.")
+                raise _Rejected("invalid_target", "The resupply target is not a star or hydrogen nebula.")
             return (
                 lambda unit: ContinuousResupplyOrder(
                     unit,

@@ -402,9 +402,6 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                             options.append(("Colonize", "colonize"))
                         if unit.colony_component and target_object.owner and _are_allies(unit.owner, target_object.owner) and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
                             options.append(("Load Colonists", "load_colonists"))
-            if isinstance(target_object, Planet) and getattr(target_object, 'harvest_multiplier', 0.0) > 0:
-                if any(getattr(a, 'harvester_component', None) for a in actors):
-                    options.append(("Resupply (continuously)", "continuous_resupply"))
             if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
                 if target_object.owner and _are_enemies(current_player, target_object.owner):
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)

@@ -114,7 +114,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 
 ### Expansion & Infrastructure
 - **Colonization**: Dispatch colony ships to settle habitable planets, moons, and colonizable asteroids. Different planetary classes feature distinct growth rates and passive resource extraction (e.g. Volcanic and Ferrous worlds generate passive metal; Ice and Greenhouse worlds yield passive crystal). Massive Gas Giants cannot be colonized.
-- **Automated Logistics & Harvesting**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled. Antimatter Harvesters can gather fuel from Stars, Gas Giants, and Hydrogen Nebulae.
+- **Automated Logistics & Harvesting**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled. Antimatter Harvesters can gather fuel from Stars and Hydrogen Nebulae.
 - **Orbital Construction**: Constructors assemble orbital defense platforms, shipyards, refineries, and stations.
 - **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses, supported up to finite colony population limits.
 - **Orbital Defense**: Deploy tactical defense modules in colonized sectors to project an area-of-effect attack/defense buff aura for friendly ships in radius, supported up to colony population limits with additive stacking.

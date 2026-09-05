@@ -458,10 +458,10 @@ PLANET_TRAITS: Dict[PlanetType, Dict[str, Any]] = {
         "growth_rate": 0.0,
         "passive_metal": 0.0,
         "passive_crystal": 0.0,
-        "am_harvest_multiplier": 0.5,
+        "am_harvest_multiplier": 0.0,
         "inhibition_radius": 3500.0,
         "collision_radius": 675.0,
-        "description": "Massive volatile gas mantle. Non-colonizable; antimatter harvesting hub.",
+        "description": "Massive volatile gas mantle. Non-colonizable; 3500 inhibition.",
     },
 }
 

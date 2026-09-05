@@ -101,7 +101,7 @@ def test_planet_traits_initialization():
 
     jupiter = Planet(in_hex=(0, 0), in_system="Sol", planet_type=PlanetType.GAS_GIANT)
     assert jupiter.is_colonizable is False
-    assert jupiter.harvest_multiplier == 0.5
+    assert jupiter.harvest_multiplier == 0.0
     assert jupiter.inhibition_field_radius == 3500.0
     assert jupiter.collision_radius == 675.0
 
@@ -221,7 +221,9 @@ def test_ice_field_and_debris_field_tactical_cover():
 
 
 def test_antimatter_harvesting_from_gas_giant_and_hydrogen_nebula():
-    """Verify AntimatterHarvester can harvest from Gas Giants (0.5x) and Hydrogen Nebulae (0.4x)."""
+    """Verify Gas Giants are not antimatter sources and cannot be harvested, while Hydrogen Nebulae can (0.4x)."""
+    from game_ai.rules import is_antimatter_source
+
     p1 = Player("Player 1", (0, 100, 255))
     unit = create_test_unit(p1, pos=Position(0, 0))
     am_comp = unit.antimatter_component
@@ -243,13 +245,13 @@ def test_antimatter_harvesting_from_gas_giant_and_hydrogen_nebula():
     system.hexes[(0, 0)] = hex_obj
     galaxy.systems["Sol"] = system
 
-    # Harvest from Gas Giant
+    # Gas Giant is not an antimatter source and cannot be harvested
+    assert is_antimatter_source(gas_giant) is False
     source = harvester.find_nearby_star(galaxy)
-    assert source == gas_giant
+    assert source is None
     harvester.update(galaxy)
-    assert harvester.is_harvesting is True
-    # 50 + 10 * 0.5 = 55
-    assert am_comp.current_amount == pytest.approx(55.0)
+    assert harvester.is_harvesting is False
+    assert am_comp.current_amount == pytest.approx(50.0)
 
     # Swap Gas Giant for Hydrogen Nebula
     hex_obj.celestial_bodies.remove(gas_giant)
@@ -257,11 +259,14 @@ def test_antimatter_harvesting_from_gas_giant_and_hydrogen_nebula():
     nebula.position = Position(0, 0)
     hex_obj.celestial_bodies.append(nebula)
 
+    # Hydrogen Nebula is a valid antimatter source
+    assert is_antimatter_source(nebula) is True
     source = harvester.find_nearby_star(galaxy)
     assert source == nebula
     harvester.update(galaxy)
-    # 55 + 10 * 0.4 = 59
-    assert am_comp.current_amount == pytest.approx(59.0)
+    assert harvester.is_harvesting is True
+    # 50 + 10 * 0.4 = 54
+    assert am_comp.current_amount == pytest.approx(54.0)
 
 
 def test_environmental_hazards_in_turn_processor():
@@ -503,3 +508,51 @@ def test_all_celestial_inhibition_radii():
     assert Storm(in_hex=(0, 0), in_system="Sol", storm_type=StormType.PLASMA).inhibition_field_radius == 0.0
 
 
+def test_gas_giant_antimatter_removal_integration():
+    """Verify Gas Giants no longer show antimatter reservoir in sidebar, context menus, rules, or AI commands."""
+    from unittest.mock import MagicMock
+    from gui.sidebar.panels_world import build_celestial_body_panel
+    from input_processor.context_menu_builder import build_sector_context_menu_options
+    from game_ai.rules import is_antimatter_source
+    from game_ai.observation import _body_view
+    from game_ai.commands import CommandGateway, _Rejected
+
+    p1 = Player("Player 1", (0, 100, 255))
+    unit = create_test_unit(p1, pos=Position(0, 0))
+    harvester = AntimatterHarvester(unit, harvest_rate=10.0)
+    unit.add_component(harvester)
+
+    gas_giant = Planet(in_hex=(0, 0), in_system="Sol", planet_type=PlanetType.GAS_GIANT)
+
+    # 1. Rules: is_antimatter_source is False
+    assert is_antimatter_source(gas_giant) is False
+
+    # 2. Sidebar: no "Antimatter Reservoir" label
+    mock_game = MagicMock()
+    mock_game.players = [p1]
+    mock_game.current_player_index = 0
+    sidebar_data = build_celestial_body_panel(mock_game, gas_giant)
+    sidebar_texts = [item.get("text", "") for item in sidebar_data]
+    assert not any("Antimatter Reservoir" in text for text in sidebar_texts)
+
+    # 3. Context menu: no "continuous_resupply"
+    mock_game.selected_objects = [unit]
+    mock_game.current_player = p1
+    options, _ = build_sector_context_menu_options(mock_game, gas_giant, gas_giant.position)
+    option_ids = [opt[1] for opt in options if isinstance(opt, tuple)]
+    assert "continuous_resupply" not in option_ids
+
+    # 4. AI Observation: harvest_multiplier is 0.0
+    body_obs = _body_view(gas_giant, p1)
+    assert body_obs.get("harvest_multiplier", 0.0) == 0.0
+    from game_ai.commands import CommandGateway
+    from game_ai.contracts import Command, CommandBatch
+
+    # 5. CommandGateway rejection
+    mock_game.galaxy.get_celestial_body_by_id = MagicMock(return_value=gas_giant)
+    mock_game.galaxy.get_unit_by_id = MagicMock(return_value=unit)
+    gateway = CommandGateway(mock_game)
+    batch = CommandBatch((Command("continuous_resupply", (unit.id,), target_id=gas_giant.id),))
+    result = gateway.apply_batch(p1, batch)
+    assert not result.accepted
+    assert any("The resupply target is not a star or hydrogen nebula." in err.message for err in result.errors)
