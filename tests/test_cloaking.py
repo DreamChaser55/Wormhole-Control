@@ -388,9 +388,9 @@ def test_save_manager_cloaking_serialization(galaxy_setup):
     serialized = serialize_unit(unit)
     assert "CloakingDevice" in serialized["components"]
     comp_data = serialized["components"]["CloakingDevice"]
-    assert comp_data["is_active"] is True
-    assert comp_data["device_type"] == "ADVANCED"
-    assert comp_data["area_radius"] == 750.0
+    assert comp_data["runtime"]["is_active"] is True
+    assert comp_data["configuration"]["device_type"]["name"] == "ADVANCED"
+    assert comp_data["configuration"]["area_radius"] == 750.0
 
     players_by_id = {p1.id: p1}
     restored = deserialize_unit(serialized, players_by_id, mock_game)

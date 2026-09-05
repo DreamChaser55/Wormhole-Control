@@ -687,12 +687,25 @@ class TurnProcessor:
             logger.debug(f"  {current_player.name} paid {total_upkeep:.2f} credits in unit upkeep.")
 
     def _process_unit_updates(self, current_player):
-        if current_player:
-            for system_name, system_obj in self.game.galaxy.systems.items():
-                all_units_in_system_for_final_update = system_obj.get_all_units()[:]
-                for unit, u_hex in all_units_in_system_for_final_update:
-                    if unit.owner == current_player:
-                        unit.update()
+        from campaign_graph import iter_units, is_deployed
+        # Snapshot both collections before updates can spawn or destroy units.
+        deployed = [unit for system in self.game.galaxy.systems.values()
+                    for unit, _ in system.get_all_units() if unit.owner == current_player]
+        stored = [unit for unit, _ in iter_units(self.game.galaxy)
+                  if unit.owner == current_player and not is_deployed(unit, self.game.galaxy)]
+        for unit in deployed:
+            if getattr(unit, "_destroyed", False) is not True:
+                unit.update()
+        for unit in stored:
+            if getattr(unit, "_destroyed", False) is True:
+                continue
+            # Stored units cannot project effects, but their timers still elapse.
+            if unit.ability_component:
+                unit.ability_component.update(self.game.galaxy, apply_ongoing=False)
+            if unit.lifetime is not None:
+                unit.lifetime -= 1
+                if unit.lifetime <= 0:
+                    unit.destroy()
 
     def _process_minefield_detonations(self):
         """Checks all units across all systems for contact with enemy minefields."""

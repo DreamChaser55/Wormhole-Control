@@ -38,7 +38,7 @@ class MissileBatteriesAbility(AbilityInstance):
         target_system_name: Optional[str] = None,
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
-        spawned = self._spawn_missile_platforms(component, galaxy, self.DEFINITION.duration)
+        spawned = self._spawn_missile_platforms(component, galaxy, self.definition.duration)
         self.spawned_unit_ids = spawned
         logger.debug(f"[{component.unit.name}] Missile Batteries: spawned {len(spawned)} platforms.")
         return True
@@ -47,13 +47,12 @@ class MissileBatteriesAbility(AbilityInstance):
         self._auto_target_platforms(component, galaxy)
 
     def on_expire(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
-        system = galaxy.systems.get(component.unit.in_system)
-        if system:
-            for uid in self.spawned_unit_ids:
-                platform = galaxy.get_unit_by_id(uid)
-                if platform:
-                    galaxy.remove_unit(platform)
-                    logger.debug(f"[{component.unit.name}] Missile Platform {uid} despawned.")
+        from campaign_graph import find_unit
+        ids, self.spawned_unit_ids = self.spawned_unit_ids, []
+        for uid in ids:
+            platform = find_unit(galaxy, uid)
+            if platform and platform.is_temporary:
+                platform.destroy()
         self.spawned_unit_ids = []
 
     def _spawn_missile_platforms(

@@ -35,10 +35,15 @@ class AdaptiveForcefieldAbility(AbilityInstance):
         target_system_name: Optional[str] = None,
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
-        component.unit.damage_reduction = 0.75
+        self.restore_effect(component, galaxy)
         logger.debug(f"[{component.unit.name}] Adaptive Forcefield activated. Damage reduction: 75%.")
         return True
 
     def on_expire(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
-        component.unit.damage_reduction = max(0.0, component.unit.damage_reduction - 0.75)
+        from timed_effects import remove
+        remove(component.unit, component.unit.id, self.definition.ability_type)
         logger.debug(f"[{component.unit.name}] Adaptive Forcefield expired. Damage reduction removed.")
+
+    def restore_effect(self, component, galaxy):
+        from timed_effects import add
+        add(component.unit, component.unit.id, self.definition.ability_type, "reduction", 0.75)

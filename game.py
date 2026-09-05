@@ -468,27 +468,43 @@ class Game:
         """
         import save_manager
         logger.debug(f"Loading game state from {filepath}...")
-        self.ai_coordinator.reset()
+        load_errors = []
         try:
-            success = save_manager.load_game_from_file(self, filepath)
+            success = save_manager.load_game_from_file(self, filepath, on_error=load_errors.append)
         except Exception as e:
             logger.error(f"Error loading save file {filepath}: {e}", exc_info=True)
             success = False
 
         if success:
-            self.gui.show_game_ui()
-            self.system_camera_system_name = None
-            if self.view_mode == 'system':
-                self.reset_system_camera()
-            self.update_view_specific_labels()
-            self.update_side_bar_content()
-            self.update_player_turn_display()
+            # Commit has succeeded. Presentation failures must not report a rejected save.
+            try:
+                self.ai_coordinator.reset()
+            except Exception:
+                logger.exception("Campaign loaded, but AI reset failed")
+            try:
+                self.gui.show_game_ui()
+                self.system_camera_system_name = None
+                if self.view_mode == 'system':
+                    self.reset_system_camera()
+                self.update_view_specific_labels()
+                self.update_side_bar_content()
+                self.update_player_turn_display()
+                if self.load_warnings:
+                    self.gui.show_warning_dialog("<br>".join(self.load_warnings), title="Save upgraded")
+            except Exception:
+                logger.exception("Campaign loaded, but presentation refresh failed")
+            try:
+                self.check_and_schedule_ai_turn()
+            except Exception:
+                logger.exception("Campaign loaded, but AI scheduling failed")
             logger.debug("Game state loaded successfully.")
         else:
             logger.error(f"Failed to load game state from {filepath}")
             if self.gui:
+                from html import escape
+                detail = escape(load_errors[0]) if load_errors else "File may be missing or corrupted."
                 self.gui.show_error_dialog(
-                    f"Failed to load save file:<br>'{filepath}'<br><br>File may be missing or corrupted.",
+                    f"Failed to load save file:<br>'{escape(filepath)}'<br><br>{detail}",
                     title="Load Game Error"
                 )
         return success

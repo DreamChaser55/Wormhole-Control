@@ -22,6 +22,17 @@ class TradeComponent(UnitComponent):
     by traveling between active civilian habitats located in different sectors.
     Income scales with distance between sectors.
     """
+    STATE_CONFIG = ('trade_revenue_multiplier',)
+    STATE_RUNTIME = ('last_traded_sector', 'last_traded_unit_id', 'last_trade_income', 'total_trade_income', 'trades_completed')
+    STATE_REFS = ()
+    STATE_OPTIONAL_TYPES = {"last_traded_sector": tuple, "last_traded_unit_id": int}
+
+    def validate_state(self):
+        sector = self.last_traded_sector
+        if sector is not None and (len(sector) != 2 or not isinstance(sector[0], str) or
+                not isinstance(sector[1], tuple) or len(sector[1]) != 2 or any(type(v) is not int for v in sector[1])):
+            raise ValueError("Invalid last traded sector")
+
     DISPLAY_NAME: str = "Trade Module"
     SIDEBAR_ORDER: int = 11
 

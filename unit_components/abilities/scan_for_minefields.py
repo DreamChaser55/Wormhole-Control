@@ -46,7 +46,7 @@ class ScanForMinefieldsAbility(AbilityInstance):
         if hex_obj:
             for mf in getattr(hex_obj, 'minefields', []):
                 if mf.owner != unit.owner:
-                    if distance(unit.position, mf.position) <= self.DEFINITION.range:
+                    if distance(unit.position, mf.position) <= self.definition.range:
                         mf.reveal_to(unit.owner)
                         revealed_count += 1
                         logger.debug(f"[{unit.name}] Scan for Minefields revealed {mf.name} at {mf.position}.")

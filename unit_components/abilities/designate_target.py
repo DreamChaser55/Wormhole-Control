@@ -48,15 +48,24 @@ class DesignateTargetAbility(AbilityInstance):
             logger.debug(f"[{component.unit.name}] Designate Target: target unit {target_unit.name} is friendly/allied.")
             return False
 
-        target_unit.damage_amplification += 0.5
         self.target_unit_id = target_unit_id
+        self.restore_effect(component, galaxy)
         logger.debug(f"[{component.unit.name}] Designate Target applied to {target_unit.name}. Amplification now: {target_unit.damage_amplification:.2f}.")
         return True
 
     def on_expire(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
         if self.target_unit_id is not None:
-            target_unit = galaxy.get_unit_by_id(self.target_unit_id)
+            from campaign_graph import find_unit
+            target_unit = find_unit(galaxy, self.target_unit_id)
             if target_unit:
-                target_unit.damage_amplification = max(0.0, target_unit.damage_amplification - 0.5)
+                from timed_effects import remove
+                remove(target_unit, component.unit.id, self.definition.ability_type)
                 logger.debug(f"[{component.unit.name}] Designate Target expired on {target_unit.name}. Amplification now: {target_unit.damage_amplification:.2f}.")
         self.target_unit_id = None
+
+    def restore_effect(self, component, galaxy):
+        from campaign_graph import find_unit
+        from timed_effects import add
+        target = find_unit(galaxy, self.target_unit_id)
+        if target:
+            add(target, component.unit.id, self.definition.ability_type, "amplification", 0.5)

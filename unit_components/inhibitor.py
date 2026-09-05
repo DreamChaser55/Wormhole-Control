@@ -27,6 +27,9 @@ class InhibitorStateCheck:
 
 class HyperspaceInhibitionFieldEmitter(UnitComponent):
     """A component that generates a hyperspace inhibition field, preventing jumps."""
+    STATE_CONFIG = ('radius',)
+    STATE_RUNTIME = ('is_active',)
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Inhibitor"
     SIDEBAR_ORDER: int = 4
     radius: float = 50.0

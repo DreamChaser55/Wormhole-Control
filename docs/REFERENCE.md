@@ -555,17 +555,30 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 - **Real-Time Markdown Logging**: Every transmission sent via the Comms menu or AI agents (`send_message`) is appended in real-time to `saves/comms.md` with turn number, ISO 8601 UTC timestamp, sender/recipient names, IDs, team affiliations, and message text.
 - **Campaign Save Sidecars**: When saving campaigns (`save_game_to_file`), complete campaign transmission logs are atomically exported to `saves/comms/<campaign_id>/comms.md`.
 
-### 10.7 Save Format 3.2 Order Persistence
+### 10.7 Save Format 4.0 Integrity
 
-Each serialized unit has a dedicated Commander payload containing the stable
-lowercase stance value, one explicit `current_order`, and an ordered
-`orders_queue`. The transient stance engagement tree is intentionally omitted and
-is reacquired from current visibility after loading. Explicit order parameters
-and runtime state are encoded recursively; active Attack and waypoint orders
-resume by rebinding weapons and movement ownership without replaying ability,
-construction, refit, charge, or refund side effects. Version 3.0 saves without a
-Commander payload load as Do Nothing, while a legacy `orders` array restores its
-first viable root as current and the remainder as queued.
+Components own versioned state codecs, including common hull cost and subsystem
+HP, complete turret layouts/cooldowns, ability definitions and runtime timers,
+and construction/refit progress. Current-format units restore their exact
+installed inventory independently of template files.
+
+Commander saves its stance under `configuration` and explicit `current_order`
+and `orders_queue` under `runtime`. Public order UUIDs, descendants, resource
+charges/refunds, and bounded outcome history persist. Active orders rebind
+actuators without replaying startup side effects; transient stance engagements
+are reacquired through normal play.
+
+Loading migrates and validates an isolated campaign, resolves references, and
+rebuilds visibility, spatial inhibition zones, carrier/agent links, and galaxy
+indexes before commit. Allocator reconciliation includes minefields and all
+nested stored units. Failure leaves the running campaign and AI untouched.
+Timed effects have source-owned, idempotent cleanup on expiry, destruction,
+component removal/replacement, and load.
+
+Explicit 3.0/3.1/3.2 migrations preserve recoverable state and warn about omitted
+legacy fields. Unknown versions and unrecoverable dynamic equipment are rejected.
+See [Campaign persistence](SAVE_FORMAT.md) for the schema, migration policy,
+transaction boundaries, reconciliation rules, and regression tests.
 
 ---
 
@@ -673,7 +686,7 @@ failed (uncertain), and unattempted operations, with accurate command indices. T
 rollback or automatic retry. Codex must obtain a fresh observation; Luna offers manual recovery
 and never applies a rejected memory patch. Command issuance is distinct from completion.
 
-Save 3.2 preserves public UUIDs (including serialized descendants and docked units) plus each
+Save 4.0 retains the public UUID persistence introduced in 3.2 (including serialized descendants and docked units) plus each
 player's last 128 lifecycle events, further limited to 32,000 serialized characters. Events
 record completed/failed/cancelled roots exactly once with bounded reason codes and monotonic
 IDs. Legacy saves receive new UUIDs and empty journals. Stance engagements remain transient.

@@ -28,11 +28,30 @@ class AbilityComponent(UnitComponent):
     (e.g. Repair Cloud healing, Designate Target marking), and cleaning up expired
     effects. If this component is destroyed the unit cannot use any abilities.
     """
+    STATE_CONFIG = ()
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
+    STATE_EXTRA = ("abilities",)
+
+    def _extra_state(self):
+        return {"abilities": [a.to_state() for a in self.abilities.values()]}
+
+    def _restore_extra_state(self, runtime):
+        if not isinstance(runtime["abilities"], list):
+            raise ValueError("abilities: expected array")
+        self.abilities = {}
+        for state in runtime["abilities"]:
+            instance = AbilityInstance.from_state(state)
+            key = instance.definition.ability_type
+            if key in self.abilities:
+                raise ValueError(f"Duplicate ability {key.value}")
+            self.abilities[key] = instance
+
     DISPLAY_NAME: str = "Abilities"
     SIDEBAR_ORDER: int = 14
     abilities: Dict[AbilityType, AbilityInstance] = dataclasses.field(default_factory=dict)
 
-    def __init__(self, unit: 'Unit', ability_types: List[AbilityType], hull_cost: float = 10.0):
+    def __init__(self, unit: 'Unit', ability_types: List[AbilityType] = (), hull_cost: float = 10.0):
         super().__init__(unit, hull_cost=hull_cost)
         self.abilities: Dict[AbilityType, AbilityInstance] = {}
         for atype in ability_types:
@@ -195,17 +214,38 @@ class AbilityComponent(UnitComponent):
     def _expire_ability(self, ability_type: AbilityType, galaxy: 'Galaxy') -> None:
         """Cleans up lingering effects when an ability's duration expires."""
         instance = self.abilities[ability_type]
-        instance.on_expire(self, galaxy)
+        if not instance.is_active and not instance.spawned_unit_ids:
+            return
         instance.is_active = False
+        instance.on_expire(self, galaxy)
         instance.duration_remaining = 0
         instance.target_position = None
+        instance.target_unit_id = None
+        instance.spawned_unit_ids = []
 
-    def update(self, galaxy: 'Galaxy') -> None:
+    def on_destroyed(self):
+        galaxy = self.unit.in_galaxy or getattr(self.unit.game, "galaxy", None)
+        for atype in list(self.abilities):
+            self._expire_ability(atype, galaxy)
+
+    def reconcile_effects(self, galaxy):
+        from campaign_graph import find_unit
+        for atype, instance in self.abilities.items():
+            target_missing = instance.definition.requires_target_unit and find_unit(galaxy, instance.target_unit_id) is None
+            if instance.is_active and (self.is_destroyed or self.unit.current_hit_points <= 0 or instance.duration_remaining <= 0 or target_missing):
+                self._expire_ability(atype, galaxy)
+            elif instance.is_active:
+                instance.restore_effect(self, galaxy)
+            elif instance.spawned_unit_ids:
+                self._expire_ability(atype, galaxy)
+
+    def update(self, galaxy: 'Galaxy', *, apply_ongoing=True) -> None:
         """
         Called once per turn. Ticks cooldowns, applies ongoing ability effects,
         and expires abilities whose duration has elapsed.
         """
         if self.is_destroyed:
+            self.on_destroyed()
             return
 
         for ability_type, instance in self.abilities.items():
@@ -215,7 +255,8 @@ class AbilityComponent(UnitComponent):
 
             # --- Apply ongoing effects for active abilities ---
             if instance.is_active:
-                instance.on_turn_update(self, galaxy)
+                if apply_ongoing and instance.duration_remaining > 0:
+                    instance.on_turn_update(self, galaxy)
 
                 # --- Tick duration ---
                 if instance.duration_remaining > 0:

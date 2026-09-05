@@ -161,8 +161,8 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 
 ## Saving & Loading
 
-- **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory. Save format 3.2 preserves stances, explicit current/queued orders, public order UUIDs, and bounded per-player outcome history; older saves still load.
-- **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match.
+- **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory. Save format 4.0 preserves component damage, refitted equipment, turret cooldowns, ability definitions and timers, stances, explicit orders, and outcome history. See [the save-format reference](docs/SAVE_FORMAT.md) for compatibility and migration limits.
+- **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match. Saves are validated and reconciled before commit; invalid saves leave the running campaign and AI turn unchanged. Legacy 3.x saves migrate with a warning about state the older format omitted.
 - **AI Memory**: Built-in OpenAI players keep canonical long-term memory in each save. A readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`.
 - **Comms Log**: In-game player communications are logged in real-time to `saves/comms.md`. Campaign-specific transmission logs are also generated at `saves/comms/<campaign>/comms.md` during saves.
 

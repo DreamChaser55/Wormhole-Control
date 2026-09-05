@@ -148,9 +148,10 @@ class TestSaveLoad(unittest.TestCase):
 
         transient = AttackOrder(unit, {"target_unit_id": 99999}, parent_order=commander.standing_order)
         commander.standing_order.add_sub_order(transient)
-        payload = serialize_unit(unit)["commander"]
+        component = serialize_unit(unit)["components"]["Commander"]
+        payload = component["runtime"]
 
-        self.assertEqual(payload["stance"], "attack_same_sector")
+        self.assertEqual(component["configuration"]["stance"]["name"], "ATTACK_SAME_SECTOR")
         self.assertEqual(payload["current_order"]["order_type"], "MOVE")
         self.assertEqual([item["order_type"] for item in payload["orders_queue"]], ["ATTACK"])
         self.assertNotIn("standing_order", payload)
@@ -206,7 +207,8 @@ class TestSaveLoad(unittest.TestCase):
         current.status = OrderStatus.IN_PROGRESS
         queued = AttackOrder(unit, {"target_unit_id": 123})
         payload = serialize_unit(unit)
-        payload.pop("commander")
+        payload.pop("schema_version")
+        payload["components"] = {}
         payload["orders"] = [serialize_order(current), serialize_order(queued)]
 
         restored = deserialize_unit(payload, {player.id: player}, game)
@@ -224,7 +226,8 @@ class TestSaveLoad(unittest.TestCase):
         game = SimpleNamespace(galaxy=MagicMock())
         unit = Unit(player, Position(0, 0), (0, 0), "Sol", "Legacy Ship", HullSize.MEDIUM, game)
         payload = serialize_unit(unit)
-        payload.pop("commander")
+        payload.pop("schema_version")
+        payload["components"] = {}
 
         restored = deserialize_unit(payload, {player.id: player}, game)
         _restore_saved_commander(restored, game)

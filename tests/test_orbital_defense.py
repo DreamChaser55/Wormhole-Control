@@ -433,7 +433,7 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
     def test_save_and_load_persistence(self):
         serialized = serialize_unit(self.unit)
         self.assertIn("OrbitalDefenseComponent", serialized["components"])
-        self.assertEqual(serialized["components"]["OrbitalDefenseComponent"]["radius"], DEFAULT_ORBITAL_DEFENSE_RADIUS)
+        self.assertEqual(serialized["components"]["OrbitalDefenseComponent"]["configuration"]["radius"], DEFAULT_ORBITAL_DEFENSE_RADIUS)
 
         players_by_id = {self.player.id: self.player}
         deserialized = deserialize_unit(serialized, players_by_id, self.game_mock)

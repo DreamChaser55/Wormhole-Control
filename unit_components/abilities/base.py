@@ -32,6 +32,61 @@ class AbilityDefinition:
 class AbilityInstance:
     """Base runtime state for a single ability on a unit."""
     DEFINITION: ClassVar[AbilityDefinition]
+    SCHEMA_VERSION = 1
+    STATE_FIELDS = ("cooldown_remaining", "is_active", "duration_remaining", "target_unit_id",
+                    "target_position", "spawned_unit_ids")
+
+    def to_state(self):
+        from state_codec import encode
+        return {"type": self.definition.ability_type.value, "schema_version": self.SCHEMA_VERSION,
+                "definition": {f.name: encode(getattr(self.definition, f.name)) for f in dataclasses.fields(AbilityDefinition)},
+                "runtime": {name: encode(getattr(self, name)) for name in self.STATE_FIELDS}}
+
+    @classmethod
+    def from_state(cls, state):
+        from state_codec import decode, fields, number
+        from .registry import ABILITY_CLASSES
+        fields(state, ("type", "schema_version", "definition", "runtime"), "ability")
+        atype = AbilityType(state["type"])
+        ability_cls = ABILITY_CLASSES[atype]
+        if type(state["schema_version"]) is not int or state["schema_version"] != ability_cls.SCHEMA_VERSION:
+            raise ValueError(f"Unsupported ability schema for {atype.value}")
+        fields(state["definition"], (f.name for f in dataclasses.fields(AbilityDefinition)), "ability.definition")
+        definition = AbilityDefinition(**{k: decode(v) for k, v in state["definition"].items()})
+        if definition.ability_type != atype:
+            raise ValueError("Ability definition type mismatch")
+        for name in ("cooldown", "duration", "range", "antimatter_cost"):
+            number(getattr(definition, name), f"ability.definition.{name}", 0, integer=name in ("cooldown", "duration"))
+        for name in ("requires_target_unit", "requires_target_position"):
+            if type(getattr(definition, name)) is not bool:
+                raise ValueError(f"ability.definition.{name}: expected boolean")
+        if any(not isinstance(getattr(definition, name), str) for name in ("name", "description")):
+            raise ValueError("Ability name/description must be strings")
+        if not isinstance(definition.required_components, list) or any(not isinstance(v, str) for v in definition.required_components):
+            raise ValueError("Ability required_components must be an array of strings")
+        fields(state["runtime"], ability_cls.STATE_FIELDS, "ability.runtime")
+        instance = ability_cls(definition=definition)
+        for name in instance.STATE_FIELDS:
+            setattr(instance, name, decode(state["runtime"][name]))
+        for name in ("cooldown_remaining", "duration_remaining"):
+            number(getattr(instance, name), f"ability.{name}", 0, integer=True)
+        if type(instance.is_active) is not bool:
+            raise ValueError("ability.is_active: expected boolean")
+        if instance.target_unit_id is not None:
+            number(instance.target_unit_id, "ability.target_unit_id", 0, integer=True)
+        if instance.target_position is not None and not isinstance(instance.target_position, Position):
+            raise ValueError("ability.target_position: expected position")
+        if not isinstance(instance.spawned_unit_ids, list):
+            raise ValueError("ability.spawned_unit_ids: expected array")
+        for uid in instance.spawned_unit_ids:
+            number(uid, "ability.spawned_unit_ids", 0, integer=True)
+        if len(set(instance.spawned_unit_ids)) != len(instance.spawned_unit_ids):
+            raise ValueError("ability.spawned_unit_ids: duplicate ID")
+        return instance
+
+    def restore_effect(self, component, galaxy):
+        """Rebuild this effect's contribution without activation side effects."""
+        pass
 
     definition: AbilityDefinition
     cooldown_remaining: int = 0

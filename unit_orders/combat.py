@@ -308,7 +308,7 @@ class AttackOrder(Order):
         if target and weapons and are_enemies(self.unit.owner, target.owner) and weapons.eligible_turrets_for(target):
             weapons.set_target(target, resolve_component_type(self.parameters.get("target_component_type")))
         elif weapons:
-            self.status = OrderStatus.FAILED
+            # Rebinding must not advance order lifecycle or write history on load.
             weapons.clear_target()
         super().resume(galaxy_ref)
 

@@ -79,7 +79,7 @@ Impact:
 
 Recommended repair: add the intended import or convert the annotations to directly imported names, then add a clean-process smoke test such as `python -c "import game; import renderer"` to CI. Postponed annotations are also reasonable, but consistency across the project matters more than the particular style.
 
-### WC-002 — save/load does not preserve the game that was saved
+### WC-002 — save/load does not preserve the game that was saved - **ALREADY FIXED**
 
 `save_manager.serialize_components` (`save_manager.py:278-366`) is a large external type switch. It serializes selected fields for selected component classes, but it does not serialize the base `UnitComponent.current_hit_points` or `max_hit_points` for any component. A damaged engine, sensor, defense, commander, or other subsystem returns at full component health after load.
 
@@ -113,7 +113,7 @@ Recommended design:
 4. Rebuild all derived indexes/zones/targets in an explicit post-load reconciliation pass.
 5. Add a table-driven round-trip test for every registered component and every ability, including a dynamically refitted component.
 
-### WC-003 — load is non-transactional and the version field is decorative
+### WC-003 — load is non-transactional and the version field is decorative - **ALREADY FIXED**
 
 `deserialize_game_state` starts mutating the live `Game` at `save_manager.py:1134`: turn, view, selection, conversations, players, galaxy, counters, visibility, GUI, and AI scheduling are replaced in stages. Its catch-all at `:1223-1225` returns `False` without restoring the previous state. `Game.load_game` also resets the AI coordinator before attempting the load (`game.py:445-479`). A malformed save can therefore fail visibly while leaving a partly replaced campaign and a stopped AI turn.
 
@@ -266,7 +266,7 @@ Recommended repair:
 - Either construct topology with an algorithm that guarantees the requested count for valid settings or fail the whole generation with an actionable error.
 - Inject a `random.Random(seed)` so a map can be reproduced from a save, bug report, or tournament configuration.
 
-### WC-014 — minefield IDs can collide after load
+### WC-014 — minefield IDs can collide after load - **ALREADY FIXED**
 
 Minefields inherit `GameObject` (`entities.py:846`) and their IDs are serialized/restored (`save_manager.py:1035-1055`). The post-load maximum-ID scan covers celestial bodies and deployed/hidden/docked unit trees (`save_manager.py:1181-1197`) but not `hex_obj.minefields`. It also ignores the serialized `game_state.object_counter` even though the writer records it (`:455`, `:473`). A minefield whose ID is greater than every body/unit ID can therefore be followed by a newly created object with the same ID.
 
@@ -480,7 +480,7 @@ Property-based testing would be particularly useful for save round trips, ID all
 
 Exit criterion: the game imports and the full suite passes without an annotation workaround.
 
-### Phase 1 — protect campaign integrity
+### Phase 1 — protect campaign integrity - **ALREADY FIXED**
 
 1. Introduce versioned component persistence and cover every registered component/ability with round-trip tests.
 2. Make load transactional and implement explicit version migrations.

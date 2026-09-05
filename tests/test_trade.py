@@ -377,9 +377,9 @@ class TestTradeSerializationAndCatalog(unittest.TestCase):
         serialized = serialize_unit(unit)
         self.assertIn("TradeComponent", serialized["components"])
         comp_data = serialized["components"]["TradeComponent"]
-        self.assertEqual(comp_data["total_trade_income"], 300.0)
-        self.assertEqual(comp_data["trades_completed"], 4)
-        self.assertEqual(comp_data["last_traded_sector"], ["Sol", (0, 0)])
+        self.assertEqual(comp_data["runtime"]["total_trade_income"], 300.0)
+        self.assertEqual(comp_data["runtime"]["trades_completed"], 4)
+        self.assertEqual(comp_data["runtime"]["last_traded_sector"], {"$tuple": ["Sol", {"$tuple": [0, 0]}]})
 
         # Deserialize
         players_by_id = {self.player.id: self.player}

@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 class HangarComponent(UnitComponent):
     """A component that allows a unit to store and transport smaller units."""
+    STATE_CONFIG = ('max_slots',)
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
+    STATE_CHILDREN = ("docked_units",)
     DISPLAY_NAME: str = "Hangar"
     SIDEBAR_ORDER: int = 11
     max_slots: int = 0

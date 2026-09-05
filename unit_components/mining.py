@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 class MiningComponent(UnitComponent):
     """A component that allows a unit to extract raw resources from celestial bodies."""
+    STATE_CONFIG = ('mining_rate', 'mining_range', 'max_cargo')
+    STATE_RUNTIME = ('raw_metal_cargo', 'raw_crystal_cargo')
+    STATE_REFS = ('mining_target',)
     DISPLAY_NAME: str = "Mining"
     SIDEBAR_ORDER: int = 7
     mining_rate: float = 10.0
@@ -134,6 +137,9 @@ class MiningComponent(UnitComponent):
 
 class MetalRefineryComponent(UnitComponent):
     """A component that instantly converts raw metal into player metal upon delivery."""
+    STATE_CONFIG = ('unload_range',)
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Metal Refinery"
     SIDEBAR_ORDER: int = 8
     unload_range: float = 300.0
@@ -170,6 +176,9 @@ class MetalRefineryComponent(UnitComponent):
 
 class CrystalRefineryComponent(UnitComponent):
     """A component that instantly converts raw crystal into player crystal upon delivery."""
+    STATE_CONFIG = ('unload_range',)
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Crystal Refinery"
     SIDEBAR_ORDER: int = 9
     unload_range: float = 300.0

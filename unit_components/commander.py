@@ -23,6 +23,21 @@ class Commander(UnitComponent):
     This component maintains a queue of orders and processes them in sequence,
     handling the execution and status updates of each order.
     """
+    STATE_CONFIG = ('stance',)
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
+    STATE_EXTRA = ("current_order", "orders_queue")
+
+    def _extra_state(self):
+        from save_manager import serialize_order
+        return {"current_order": serialize_order(self.current_order) if self.current_order else None,
+                "orders_queue": [serialize_order(o) for o in self.orders_queue]}
+
+    def _restore_extra_state(self, runtime):
+        self.unit._saved_commander_data = {"stance": self.stance.value,
+                                           "current_order": runtime["current_order"],
+                                           "orders_queue": runtime["orders_queue"]}
+
     DISPLAY_NAME: str = "Commander"
     SIDEBAR_ORDER: int = 0
     current_order: Optional[Order] = None
@@ -342,6 +357,8 @@ class Commander(UnitComponent):
         current_order: Optional[Order],
         queued_orders: Iterable[Order],
         galaxy_ref: Optional['Galaxy'] = None,
+        *,
+        preserve_queue: bool = False,
     ) -> None:
         """Restore serialized foreground roots without replaying side effects."""
         self.suspend_stance_activity("loaded explicit order")
@@ -350,7 +367,7 @@ class Commander(UnitComponent):
         for root in [current_order, *self.orders_queue]:
             if root is not None:
                 root.register_explicit_root(restored=True)
-        if self.current_order is None and self.orders_queue:
+        if not preserve_queue and self.current_order is None and self.orders_queue:
             self.current_order = self.orders_queue.popleft()
         constructor = self.unit.constructor_component
         self._restored_pending = self.current_order if self.current_order and self.current_order.status == OrderStatus.PENDING else None

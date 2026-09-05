@@ -21,6 +21,10 @@ class Defenses(UnitComponent):
     - Shields reduce beam damage.
     - Point defense cannons reduce missile damage.
     """
+    STATE_CONFIG = ('armor', 'shields', 'point_defense')
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
+    STATE_REAL_FIELDS = ("armor", "shields", "point_defense")
     DISPLAY_NAME: str = "Defenses"
     SIDEBAR_ORDER: int = 4
     armor: int = 0

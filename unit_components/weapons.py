@@ -44,6 +44,25 @@ class Turret:
             self.range *= 3.0
             self.cooldown *= 3
 
+    def to_state(self):
+        from state_codec import encode
+        return {name: encode(getattr(self, name)) for name in
+                ("turret_type", "variant", "damage", "range", "cooldown", "current_cooldown")}
+
+    @classmethod
+    def from_state(cls, data, unit):
+        from state_codec import decode, fields, number
+        fields(data, ("turret_type", "variant", "damage", "range", "cooldown", "current_cooldown"), "turret")
+        values = {k: decode(v) for k, v in data.items()}
+        if not isinstance(values["turret_type"], TurretType) or not isinstance(values["variant"], TurretVariant):
+            raise ValueError("Invalid turret type or variant")
+        for name in ("damage", "range", "cooldown", "current_cooldown"):
+            number(values[name], f"turret.{name}", 0, integer="cooldown" in name)
+        # The save contains effective values. Do not apply variant scaling again.
+        turret = cls.__new__(cls)
+        turret.__dict__.update(values, parent_unit=unit, target=None, target_component_type=None)
+        return turret
+
     def fire(self) -> None:
         """
         Fires at the turret's current target and resets the cooldown.
@@ -106,6 +125,19 @@ class Weapons(UnitComponent):
     """
     Manages all weapon systems for a unit.
     """
+    STATE_CONFIG = ()
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
+    STATE_EXTRA = ("turrets",)
+
+    def _extra_state(self):
+        return {"turrets": [t.to_state() for t in self.turrets]}
+
+    def _restore_extra_state(self, runtime):
+        if not isinstance(runtime["turrets"], list):
+            raise ValueError("turrets: expected array")
+        self.turrets = [Turret.from_state(t, self.unit) for t in runtime["turrets"]]
+
     DISPLAY_NAME: str = "Weapons"
     SIDEBAR_ORDER: int = 1
     turrets: list[Turret] = dataclasses.field(default_factory=list)

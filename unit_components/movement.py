@@ -46,6 +46,9 @@ HYPERDRIVE_HULL_SIZE_MULTIPLIERS: typing.Dict[HullSize, float] = {
 class Engines(UnitComponent):
     """Engines for sublight (non-faster-than-light) travel, within a single sector."""
 
+    STATE_CONFIG = ('speed',)
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Engines"
     SIDEBAR_ORDER: int = 2
     speed: float = 0.0
@@ -137,6 +140,9 @@ class Engines(UnitComponent):
 @dataclasses.dataclass
 class Hyperdrive(UnitComponent):
     """Hyperdrive for faster-than-light travel - inter-sector (basic) or inter-system through wormholes (advanced). """
+    STATE_CONFIG = ('drive_type', 'jump_range', 'RECHARGE_DURATION')
+    STATE_RUNTIME = ('jump_status', 'recharge_time_remaining')
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Hyperdrive"
     SIDEBAR_ORDER: int = 3
     drive_type: HyperdriveType = HyperdriveType.BASIC

@@ -242,8 +242,8 @@ class Player:
         ai_memory: Optional[Dict[str, Any]] = None,
         homeworld_id: Optional[int] = None,
     ):
-        self.id = Player.player_counter
-        Player.player_counter += 1
+        from persistence_context import allocate_id
+        self.id = allocate_id(Player, "player_counter")
         self.name = name if name else f"Player {self.id}"
         self.color = color
         self.controller = PlayerController(controller)
@@ -350,8 +350,8 @@ class GameObject:
     object_counter = 1
 
     def __init__(self, position: Position, in_hex: HexCoord, in_system: str):
-        self.id = GameObject.object_counter
-        GameObject.object_counter += 1
+        from persistence_context import allocate_id
+        self.id = allocate_id(GameObject, "object_counter")
         self.position = position
         self.in_hex = in_hex
         self.in_system = in_system
@@ -970,6 +970,9 @@ class Unit(GameObject):
         self.add_component(Sensors(unit=self, short_range_radius=DEFAULT_SENSOR_SHORT_RANGE, long_range_hexes=0, hull_cost=0))
 
     def add_component(self, component: UnitComponent) -> None:
+        existing = self.components.get(type(component))
+        if existing is not None and existing is not component:
+            existing.on_destroyed()
         self.components[type(component)] = component
         self._update_hull_usage()
 
@@ -978,6 +981,7 @@ class Unit(GameObject):
         
     def remove_component(self, component_type: type) -> None:
         if component_type in self.components:
+            self.components[component_type].on_destroyed()
             del self.components[component_type]
             self._update_hull_usage()
 
@@ -1310,6 +1314,25 @@ class Unit(GameObject):
 
     def destroy(self) -> None:
         """Handles the destruction of the unit."""
+        if getattr(self, "_destroyed", False):
+            return
+        self._destroyed = True
+        from campaign_graph import iter_units, detach_unit
+        galaxy = self.in_galaxy or getattr(self.game, "galaxy", None)
+        for component in list(self.components.values()):
+            component.on_destroyed()
+        if galaxy:
+            for source, _ in list(iter_units(galaxy)):
+                wing = source.strikecraft_wing_component
+                if wing and wing.mother_carrier is self:
+                    wing.mother_carrier = None
+                abilities = source.ability_component
+                if abilities:
+                    for atype, effect in abilities.abilities.items():
+                        if effect.target_unit_id == self.id:
+                            abilities._expire_ability(atype, galaxy)
+                        if self.id in effect.spawned_unit_ids:
+                            effect.spawned_unit_ids.remove(self.id)
         from order_history import interrupt_unit_orders
         interrupt_unit_orders(self, "unit_destroyed")
         logger.debug(f"Unit '{self.name}' has been destroyed.")
@@ -1327,6 +1350,7 @@ class Unit(GameObject):
                     gas_giant.hidden_units.remove(self)
         galaxy = self.in_galaxy or (self.game.galaxy if self.game else None)
         if galaxy:
+            detach_unit(self, galaxy)
             galaxy.remove_unit(self)
         if self.game:
             self.game.deselect_object(self)

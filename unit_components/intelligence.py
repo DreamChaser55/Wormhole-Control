@@ -34,10 +34,11 @@ class Agent:
     ):
         if agent_id is not None:
             self.id = agent_id
-            Agent.agent_counter = max(Agent.agent_counter, agent_id + 1)
+            from persistence_context import observe_id
+            observe_id(Agent, "agent_counter", agent_id)
         else:
-            self.id = Agent.agent_counter
-            Agent.agent_counter += 1
+            from persistence_context import allocate_id
+            self.id = allocate_id(Agent, "agent_counter")
 
         self.owner = owner
         self.source_unit_id = source_unit_id
@@ -120,6 +121,14 @@ class Agent:
 
 class IntelligenceComponent(UnitComponent):
     """Component enabling covert operations: deploying invisible agents, sensor tapping, sabotage, and counter-intelligence."""
+    STATE_CONFIG = ('agents_capacity', 'has_counter_intelligence', 'infiltration_range', 'counter_intelligence_range')
+    STATE_RUNTIME = ('agents_count', 'ci_cooldown_remaining')
+    STATE_REFS = ()
+
+    def validate_state(self):
+        if self.agents_count > self.agents_capacity:
+            raise ValueError("Agent count exceeds capacity")
+
     DISPLAY_NAME: str = "Intelligence"
     SIDEBAR_ORDER: int = 14
 

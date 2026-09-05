@@ -408,6 +408,28 @@ class BuildableUnit:
 
 class Constructor(UnitComponent):
     """A component that allows a unit to construct other units (stations) and refit friendly units."""
+    STATE_CONFIG = ('build_range',)
+    STATE_RUNTIME = ('current_construction_target', 'construction_progress', 'time_to_build', 'construction_order_id', 'current_refit_target', 'refit_progress', 'refit_time', 'refit_order_id')
+    STATE_REFS = ()
+    STATE_OPTIONAL_TYPES = {"current_construction_target": tuple, "current_refit_target": dict,
+                            "construction_order_id": str, "refit_order_id": str}
+
+    def validate_state(self):
+        from geometry import Position
+        target = self.current_construction_target
+        if target is not None and (len(target) != 2 or not isinstance(target[0], str) or not isinstance(target[1], Position)):
+            raise ValueError("Invalid construction target")
+        if self.current_refit_target is not None:
+            from state_codec import number, fields
+            fields(self.current_refit_target, ("target_unit_id", "action", "component_type", "component_config", "cost_credits", "time_to_build"), "refit")
+            number(self.current_refit_target.get("target_unit_id"), "refit.target_unit_id", 0, integer=True)
+            if self.current_refit_target.get("action") not in ("ADD", "REMOVE"):
+                raise ValueError("Invalid refit action")
+            if not isinstance(self.current_refit_target["component_config"], dict) or get_component_class_by_name(self.current_refit_target["component_type"]) is None:
+                raise ValueError("Invalid refit component/configuration")
+            number(self.current_refit_target["cost_credits"], "refit.cost_credits", 0)
+            number(self.current_refit_target["time_to_build"], "refit.time_to_build", 0, integer=True)
+
     DISPLAY_NAME: str = "Constructor"
     SIDEBAR_ORDER: int = 5
     build_range: float = 500.0

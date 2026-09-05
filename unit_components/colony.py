@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 
 class ColonyComponent(UnitComponent):
     """A component that allows a unit to transport population and colonize planets."""
+    STATE_CONFIG = ('max_cargo',)
+    STATE_RUNTIME = ('population_cargo',)
+    STATE_REFS = ()
+    STATE_REAL_FIELDS = ("population_cargo", "max_cargo")
+
+    def validate_state(self):
+        if self.population_cargo > self.max_cargo:
+            raise ValueError("Population cargo exceeds capacity")
+
     DISPLAY_NAME: str = "Colony"
     SIDEBAR_ORDER: int = 6
     population_cargo: int = 0

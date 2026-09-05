@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 class RepairComponent(UnitComponent):
     """A component that allows a unit to repair damaged friendly units."""
+    STATE_CONFIG = ('repair_rate', 'repair_range', 'credit_cost_per_hp')
+    STATE_RUNTIME = ()
+    STATE_REFS = ('target',)
     DISPLAY_NAME: str = "Repair"
     SIDEBAR_ORDER: int = 10
     repair_rate: float = 10.0

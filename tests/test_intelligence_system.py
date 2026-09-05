@@ -488,7 +488,11 @@ def test_save_and_load_intelligence_state(test_setup):
     target_unit.apply_sabotage(agent, SabotageType.ENGINES)
     agent.is_discovered = True
 
-    # Serialize
+    # Populate real serializable campaign metadata rather than MagicMock attributes.
+    game.view_mode = "sector"
+    game.campaign_id = "intelligence-test"
+    game.message_counter = 0
+    game.conversations = {}
     save_data = serialize_game_state(game)
     assert save_data is not None
 

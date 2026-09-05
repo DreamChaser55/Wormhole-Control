@@ -31,6 +31,9 @@ class CloakingDevice(UnitComponent):
     The device consumes antimatter each turn while active and auto-deactivates if empty.
     """
 
+    STATE_CONFIG = ('device_type', 'area_radius')
+    STATE_RUNTIME = ('is_active',)
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Cloaking Device"
     SIDEBAR_ORDER: int = 5
 

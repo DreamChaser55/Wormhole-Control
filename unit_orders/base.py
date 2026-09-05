@@ -80,8 +80,8 @@ class Order:
         self._charged_credits = 0
         self._charged_player_id = None
         self._legacy_charge = False
-        self.order_id = Order.order_counter
-        Order.order_counter += 1
+        from persistence_context import allocate_id
+        self.order_id = allocate_id(Order, "order_counter")
         self.order_type = order_type
         self.parameters = parameters or {}
         self.status = OrderStatus.PENDING

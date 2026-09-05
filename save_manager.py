@@ -276,107 +276,19 @@ def serialize_order(order: Order) -> dict:
 
 
 def serialize_components(unit: Unit) -> dict:
-    comps = {}
-    for comp_type, comp in unit.components.items():
-        comp_name = comp_type.__name__
-        comp_data = {}
-
-        if isinstance(comp, AntimatterStorage):
-            comp_data["current_amount"] = comp.current_amount
-            comp_data["max_capacity"] = comp.max_capacity
-        elif isinstance(comp, ColonyComponent):
-            comp_data["population_cargo"] = comp.population_cargo
-            comp_data["max_cargo"] = comp.max_cargo
-        elif isinstance(comp, MiningComponent):
-            comp_data["mining_rate"] = comp.mining_rate
-            comp_data["mining_range"] = comp.mining_range
-            comp_data["raw_metal_cargo"] = comp.raw_metal_cargo
-            comp_data["raw_crystal_cargo"] = comp.raw_crystal_cargo
-            comp_data["max_cargo"] = comp.max_cargo
-            comp_data["hull_cost"] = comp.hull_cost
-        elif isinstance(comp, Hyperdrive):
-            comp_data["recharge_time_remaining"] = comp.recharge_time_remaining
-            comp_data["jump_status"] = comp.jump_status.name
-        elif isinstance(comp, HyperspaceInhibitionFieldEmitter):
-            comp_data["is_active"] = comp.is_active
-        elif isinstance(comp, CloakingDevice):
-            comp_data["is_active"] = comp.is_active
-            comp_data["device_type"] = comp.device_type.name
-            comp_data["area_radius"] = comp.area_radius
-        elif isinstance(comp, HangarComponent):
-            comp_data["docked_units"] = [serialize_unit(u) for u in comp.docked_units]
-        elif isinstance(comp, StrikecraftBayComponent):
-            comp_data["docked_units"] = [serialize_unit(u) for u in comp.docked_units]
-            comp_data["constructing"] = comp.constructing
-            comp_data["construction_progress"] = comp.construction_progress
-            comp_data["build_wing_type"] = comp.build_wing_type.name
-        elif isinstance(comp, StrikecraftWingComponent):
-            comp_data["wing_type"] = comp.wing_type.name
-        elif isinstance(comp, Constructor):
-            if comp.current_construction_target:
-                comp_data["current_construction_target"] = [
-                    comp.current_construction_target[0],
-                    [comp.current_construction_target[1].x, comp.current_construction_target[1].y]
-                ]
-                comp_data["construction_progress"] = comp.construction_progress
-                comp_data["time_to_build"] = comp.time_to_build
-            if comp.current_refit_target:
-                comp_data["current_refit_target"] = dict(comp.current_refit_target)
-                comp_data["refit_progress"] = comp.refit_progress
-                comp_data["refit_time"] = comp.refit_time
-        elif isinstance(comp, Defenses):
-            comp_data["armor"] = comp.armor
-            comp_data["shields"] = comp.shields
-            comp_data["point_defense"] = comp.point_defense
-            comp_data["hull_cost"] = comp.hull_cost
-        elif isinstance(comp, Engines):
-            comp_data["speed"] = comp.speed
-            comp_data["hull_cost"] = comp.hull_cost
-        elif isinstance(comp, RepairComponent):
-            comp_data["repair_rate"] = comp.repair_rate
-            comp_data["repair_range"] = comp.repair_range
-            comp_data["credit_cost_per_hp"] = comp.credit_cost_per_hp
-            comp_data["hull_cost"] = comp.hull_cost
-        elif isinstance(comp, Sensors):
-            comp_data["short_range_radius"] = comp.short_range_radius
-            comp_data["long_range_hexes"] = comp.long_range_hexes
-            comp_data["hull_cost"] = comp.hull_cost
-        elif isinstance(comp, OrbitalDefenseComponent):
-            comp_data["radius"] = comp.radius
-            comp_data["attack_bonus"] = comp.attack_bonus
-            comp_data["defense_bonus"] = comp.defense_bonus
-            comp_data["hull_cost"] = comp.hull_cost
-        elif isinstance(comp, TradeComponent):
-            comp_data["last_traded_sector"] = list(comp.last_traded_sector) if comp.last_traded_sector else None
-            comp_data["last_traded_unit_id"] = comp.last_traded_unit_id
-            comp_data["last_trade_income"] = comp.last_trade_income
-            comp_data["total_trade_income"] = comp.total_trade_income
-            comp_data["trades_completed"] = comp.trades_completed
-            comp_data["trade_revenue_multiplier"] = comp.trade_revenue_multiplier
-            comp_data["hull_cost"] = comp.hull_cost
-        elif isinstance(comp, IntelligenceComponent):
-            comp_data["agents_count"] = comp.agents_count
-            comp_data["agents_capacity"] = comp.agents_capacity
-            comp_data["has_counter_intelligence"] = comp.has_counter_intelligence
-            comp_data["ci_cooldown_remaining"] = comp.ci_cooldown_remaining
-            comp_data["hull_cost"] = comp.hull_cost
-
-        comps[comp_name] = comp_data
-
-    return comps
+    from unit_components.persistence import component_registry
+    registry = component_registry()
+    result = {}
+    for cls, component in unit.components.items():
+        if registry.get(cls.__name__) is not cls:
+            raise ValueError(f"Unregistered component {cls.__name__}")
+        result[cls.__name__] = component.to_state()
+    return result
 
 
 def serialize_unit(unit: Unit) -> dict:
-    commander_data = None
-    if unit.commander_component:
-        commander = unit.commander_component
-        commander_data = {
-            "stance": commander.stance.value,
-            "current_order": serialize_order(commander.current_order) if commander.current_order else None,
-            "orders_queue": [serialize_order(order) for order in commander.orders_queue],
-        }
-
     return {
+        "schema_version": 1,
         "id": unit.id,
         "name": unit.name,
         "owner_id": unit.owner.id if unit.owner else None,
@@ -396,13 +308,13 @@ def serialize_unit(unit: Unit) -> dict:
         "is_temporary": unit.is_temporary,
         "infiltrating_agents": [a.to_dict() for a in getattr(unit, 'infiltrating_agents', [])],
         "components": serialize_components(unit),
-        "commander": commander_data,
     }
 
 
 def serialize_minefield(minefield: Minefield) -> dict:
     return {
         "id": minefield.id,
+        "name": minefield.name,
         "owner_id": minefield.owner.id if minefield.owner else None,
         "in_hex": list(minefield.in_hex),
         "in_system": minefield.in_system,
@@ -452,6 +364,7 @@ def serialize_galaxy(galaxy: Galaxy) -> dict:
 
 def serialize_game_state(game: Any) -> dict:
     """Serializes the entire Game instance into a JSON-compatible dictionary."""
+    from unit_components import Agent
     object_counter = GameObject.object_counter
     player_counter = Player.player_counter
 
@@ -462,7 +375,7 @@ def serialize_game_state(game: Any) -> dict:
     ]
 
     return {
-        "version": "3.2",
+        "version": "4.0",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -472,6 +385,7 @@ def serialize_game_state(game: Any) -> dict:
             "current_sector_coord": list(game.current_sector_coord) if game.current_sector_coord else None,
             "object_counter": object_counter,
             "player_counter": player_counter,
+            "agent_counter": Agent.agent_counter,
             "message_counter": getattr(game, "message_counter", 0),
             "campaign_id": getattr(game, "campaign_id", None) or generate_short_id(),
         },
@@ -537,7 +451,7 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player], gam
     position = Position(data["position"][0], data["position"][1])
 
     if cls == Star:
-        star_type = StarType[data.get("star_type", "YELLOW_MAIN_SEQUENCE")]
+        star_type = StarType[data.get("star_type", "G_TYPE")]
         body = Star(in_system=in_system, star_type=star_type)
     elif cls == Planet:
         planet_type = PlanetType[data.get("planet_type", "TERRAN")]
@@ -566,10 +480,10 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player], gam
         if cls == AsteroidField:
             body.asteroid_count = data.get("asteroid_count", 100)
     elif cls == Nebula:
-        nebula_type = NebulaType[data.get("nebula_type", "EMISSION")]
+        nebula_type = NebulaType[data.get("nebula_type", "HYDROGEN")]
         body = Nebula(in_hex=in_hex, in_system=in_system, nebula_type=nebula_type)
     elif cls == Storm:
-        storm_type = StormType[data.get("storm_type", "ION")]
+        storm_type = StormType[data.get("storm_type", "PLASMA")]
         body = Storm(in_hex=in_hex, in_system=in_system, storm_type=storm_type)
     elif cls == Wormhole:
         diameter = HullSize[data.get("diameter", "HUGE")]
@@ -693,7 +607,7 @@ def _restore_saved_commander(unit: Unit, game: Any) -> None:
             for raw in commander_data.get("orders_queue", [])
             if (order := deserialize_order(raw, unit, game)) is not None
         ]
-    commander.restore_explicit_orders(current_order, queued_orders, getattr(game, "galaxy", None))
+    commander.restore_explicit_orders(current_order, queued_orders, getattr(game, "galaxy", None), preserve_queue=True)
     delattr(unit, "_saved_commander_data")
     if hasattr(unit, "_legacy_orders"):
         delattr(unit, "_legacy_orders")
@@ -853,6 +767,39 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
 
 
 def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) -> Unit:
+    if "schema_version" not in data:
+        return _deserialize_legacy_unit(data, players_by_id, game)
+    from unit_components.persistence import restore_component
+    if type(data["schema_version"]) is not int or data["schema_version"] != 1:
+        raise ValueError("Unsupported unit schema")
+    owner = players_by_id.get(data["owner_id"])
+    if data["owner_id"] is not None and owner is None:
+        raise ValueError(f"unit {data['id']}: unknown owner")
+    unit = Unit(owner, Position(*data["position"]), tuple(data["in_hex"]), data["in_system"],
+                data["name"], HullSize[data["hull_size"]], game, data.get("template_name"))
+    unit.id = data["id"]
+    for name in ("current_hit_points", "max_hit_points", "experience_points", "is_disabled",
+                 "damage_reduction", "damage_amplification", "lifetime", "is_temporary"):
+        setattr(unit, name, data[name])
+    unit.disabled_by_unit_ids = set(data["disabled_by_unit_ids"])
+    # A new shell has no installed equipment to decommission.
+    unit.components.clear()
+    for name, state in data["components"].items():
+        if name != state.get("type"):
+            raise ValueError(f"unit {unit.id}: component key/type mismatch")
+        try:
+            component = restore_component(state, unit, players_by_id, game)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ValueError(f"unit {unit.id}.components.{name}: {exc}") from exc
+        unit.add_component(component)
+    if not unit.commander_component:
+        raise ValueError(f"unit {unit.id}: missing Commander")
+    from unit_components import Agent
+    unit.infiltrating_agents = [Agent.from_dict(a, players_by_id, unit) for a in data["infiltrating_agents"]]
+    return unit
+
+
+def _deserialize_legacy_unit(data: dict, players_by_id: Dict[int, Player], game: Any) -> Unit:
     hull_size = HullSize[data.get("hull_size", "MEDIUM")]
     owner_id = data.get("owner_id")
     owner = players_by_id.get(owner_id) if owner_id is not None else players_by_id.get(0)
@@ -1051,6 +998,7 @@ def deserialize_minefield(data: dict, players_by_id: Dict[int, Player]) -> Minef
         minefield_type=minefield_type
     )
     minefield.id = data.get("id", minefield.id)
+    minefield.name = data.get("name", f"{minefield.minefield_type.display_name} Minefield {minefield.id}")
     minefield.revealed_to_player_ids = set(data.get("revealed_to_player_ids", []))
     return minefield
 
@@ -1071,7 +1019,8 @@ def deserialize_hex(data: dict, players_by_id: Dict[int, Player], game: Any) -> 
 
     for mf_data in data.get("minefields", []):
         mf = deserialize_minefield(mf_data, players_by_id)
-        hex_obj.add_minefield(mf)
+        if not hex_obj.add_minefield(mf):
+            raise ValueError("Too many minefields in sector")
 
     return hex_obj
 
@@ -1091,6 +1040,8 @@ def deserialize_star_system(data: dict, players_by_id: Dict[int, Player], game: 
 
     for hex_data in data.get("hexes", []):
         hex_obj = deserialize_hex(hex_data, players_by_id, game)
+        if (hex_obj.q, hex_obj.r) in system.hexes:
+            raise ValueError("Duplicate sector coordinates")
         system.hexes[(hex_obj.q, hex_obj.r)] = hex_obj
         for body in hex_obj.celestial_bodies:
             system.celestial_bodies_by_id[body.id] = body
@@ -1116,6 +1067,8 @@ def deserialize_galaxy(data: dict, players_by_id: Dict[int, Player], game: Any) 
     for sys_data in data.get("systems", []):
         sys_obj = deserialize_star_system(sys_data, players_by_id, game)
         sys_obj.in_galaxy = galaxy
+        if sys_obj.name in galaxy.systems:
+            raise ValueError(f"Duplicate system {sys_obj.name}")
         galaxy.systems[sys_obj.name] = sys_obj
 
         # Collect wormholes
@@ -1128,104 +1081,19 @@ def deserialize_galaxy(data: dict, players_by_id: Dict[int, Player], game: Any) 
     return galaxy
 
 
-def deserialize_game_state(game: Any, data: dict) -> bool:
-    """Restores the active game state from serialized JSON dictionary."""
+def deserialize_game_state(game: Any, data: dict, *, on_error=None) -> bool:
+    """Prepare in isolation; an invalid save never changes the running campaign."""
+    from campaign_persistence import prepare_campaign, commit_campaign
     try:
-        state_info = data["game_state"]
-        game.turn_number = state_info.get("turn_number", 1)
-        game.current_player_index = state_info.get("current_player_index", 0)
-        game.view_mode = state_info.get("view_mode", "galaxy")
-        game.current_system_name = state_info.get("current_system_name")
-        game.campaign_id = state_info.get("campaign_id") or generate_short_id()
-
-        sec_coord = state_info.get("current_sector_coord")
-        game.current_sector_coord = tuple(sec_coord) if sec_coord else None
-
-        # Clear active selections
-        game.selected_objects = []
-        game.hovered_object = None
-
-        # Reconstruct conversations
-        game.conversations = {}
-        for c_data in data.get("conversations", []):
-            conv = Conversation.from_dict(c_data)
-            game.conversations[conv.participant_ids] = conv
-        game.message_counter = state_info.get("message_counter", 0)
-
-        # Reconstruct Players
-        game.players = [deserialize_player(p_data) for p_data in data.get("players", [])]
-        players_by_id = {p.id: p for p in game.players}
-
-        # Reconstruct Galaxy
-        game.galaxy = deserialize_galaxy(data["galaxy"], players_by_id, game)
-
-        # Resolve homeworld_id fallback for legacy saves and populate game.player_homeworlds
-        player_homeworlds = {}
-        for player in game.players:
-            if player.homeworld_id is None and game.galaxy:
-                for sys_obj in game.galaxy.systems.values():
-                    for hex_obj in sys_obj.hexes.values():
-                        for body in hex_obj.celestial_bodies:
-                            if getattr(body, "owner", None) == player:
-                                player.homeworld_id = body.id
-                                break
-                        if player.homeworld_id is not None:
-                            break
-            if player.homeworld_id is not None and game.galaxy:
-                hw_body = game.galaxy.get_celestial_body_by_id(player.homeworld_id)
-                if hw_body:
-                    player_homeworlds[player] = (hw_body.in_system, hw_body.in_hex, hw_body.position)
-        game.player_homeworlds = player_homeworlds
-
-        # Second Pass: Restore orders on all units now that galaxy objects exist
-        max_object_id = 0
-        for sys_obj in game.galaxy.systems.values():
-            for hex_obj in sys_obj.hexes.values():
-                for body in hex_obj.celestial_bodies:
-                    if body.id > max_object_id:
-                        max_object_id = body.id
-                    if hasattr(body, 'hidden_units') and body.hidden_units:
-                        for h_unit in body.hidden_units:
-                            for unit in _iter_unit_tree(h_unit):
-                                max_object_id = max(max_object_id, unit.id)
-                                unit.in_galaxy = game.galaxy
-                                _restore_saved_commander(unit, game)
-                for root_unit in hex_obj.units:
-                    for unit in _iter_unit_tree(root_unit):
-                        max_object_id = max(max_object_id, unit.id)
-                        unit.in_galaxy = game.galaxy
-                        _restore_saved_commander(unit, game)
-
-        # Update global object and player counters to prevent ID collisions
-        max_player_id = max([p.id for p in game.players]) if game.players else 0
-        Player.player_counter = max_player_id + 1
-        GameObject.object_counter = max_object_id + 1
-
-        game.game_started = True
-        game.visibility = None
-        game.visibility_dirty = True
-        game.recompute_visibility()
-        # Reacquire transient standing engagements only for deployed units.
-        # Docked ships retain their policy but are not active in the galaxy until
-        # they are launched from a carrier.
-        for system_obj in game.galaxy.systems.values():
-            for unit, _ in system_obj.get_all_units():
-                commander = getattr(unit, "commander_component", None)
-                if commander and commander.current_order is None and not commander.orders_queue:
-                    commander.process_stance()
-        game.update_side_bar_content()
-        game.update_player_turn_display()
-        if hasattr(game, 'check_and_schedule_ai_turn'):
-            game.check_and_schedule_ai_turn()
-
-        logger.debug(f"Game state successfully loaded. Turn: {game.turn_number}, Systems: {len(game.galaxy.systems)}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to deserialize game state: {e}", exc_info=True)
+        prepared = prepare_campaign(data)
+    except Exception as exc:
+        logger.error("Failed to prepare save: %s", exc, exc_info=True)
+        if on_error is not None:
+            on_error(str(exc))
         return False
+    commit_campaign(game, prepared)
+    return True
 
-
-# --- I/O Helper Functions ---
 
 def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
     """Saves the current game state to a JSON file in the saves directory."""
@@ -1244,7 +1112,7 @@ def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
     state_dict = serialize_game_state(game)
     temporary_path = filepath + ".tmp"
     with open(temporary_path, "w", encoding="utf-8") as f:
-        json.dump(state_dict, f, indent=2)
+        json.dump(state_dict, f, indent=2, allow_nan=False)
         f.flush()
         os.fsync(f.fileno())
     os.replace(temporary_path, filepath)
@@ -1330,22 +1198,35 @@ def write_comms_sidecar(
     return target
 
 
-def load_game_from_file(game: Any, filepath: str) -> bool:
+def _unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def load_game_from_file(game: Any, filepath: str, *, on_error=None) -> bool:
     """Loads a game state from a JSON file into the game instance."""
     if not os.path.isabs(filepath):
         filepath = os.path.join(SAVES_DIR, filepath)
 
     if not os.path.exists(filepath):
         logger.error(f"Save file not found: {filepath}")
+        if on_error is not None:
+            on_error("Save file not found")
         return False
 
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            data = json.load(f, object_pairs_hook=_unique_json_object)
 
-        return deserialize_game_state(game, data)
+        return deserialize_game_state(game, data, on_error=on_error)
     except Exception as e:
         logger.error(f"Error loading save file {filepath}: {e}", exc_info=True)
+        if on_error is not None:
+            on_error(str(e))
         return False
 
 

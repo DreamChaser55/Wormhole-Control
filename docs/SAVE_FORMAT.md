@@ -1,0 +1,129 @@
+# Campaign persistence
+
+The current save version is **4.0**. New saves preserve the installed component
+inventory and its configuration and runtime state. Loading does not reconstruct
+current-format units from templates, so refits, removed components, empty weapon
+bays, and changes to template files cannot silently change an existing ship.
+
+## Component and ability schemas
+
+Every registered component owns its persistence through `UnitComponent.to_state()`
+and `restore_state()`. Each component declares its configuration, runtime fields,
+object references, and owned children. Specialized codecs handle turrets,
+abilities, and Commander orders. A component entry has this envelope:
+
+```json
+{
+  "type": "Engines",
+  "schema_version": 1,
+  "hull_cost": 2.5,
+  "current_hit_points": 3,
+  "max_hit_points": 25,
+  "configuration": {"speed": 50.0},
+  "runtime": {}
+}
+```
+
+Enums, positions, tuples, and sets use explicit JSON tags in `state_codec.py`.
+Component names come from a registry; save data cannot import arbitrary classes.
+Unknown types, unsupported schema versions, missing component fields, invalid
+types, and non-finite or out-of-range numbers fail validation.
+
+Weapons save the complete turret inventory, effective turret statistics, variants,
+and current cooldowns. Restoration does not apply variant modifiers a second time.
+Each ability has its own type and schema version, a saved definition, and separate
+runtime state: active flag, cooldown, remaining duration, target ID/position, and
+spawned-unit IDs. Restoration never calls ability activation.
+
+Commander stores its stance in `configuration` and explicit `current_order` and
+`orders_queue` in `runtime`. Public order UUIDs, descendants, charges/refunds, and
+bounded outcome history remain persistent. Loading preserves the current/queued
+split, including an empty current slot. Active orders rebind their actuators
+without executing startup again. Transient stance engagement trees and their
+actuators are reacquired through normal play.
+
+When adding a component or ability, register it, declare every persistent field,
+and extend its independent round-trip fixture. A schema change requires an
+explicit migration; changing constructor defaults is not a migration.
+
+## Transactional load
+
+`campaign_persistence.prepare_campaign()` completes these steps on an isolated
+candidate before changing the running game:
+
+1. Parse JSON and reject duplicate keys, invalid values, and excessive nesting.
+2. Migrate by the declared save version.
+3. Validate the current document and hydrate players and the ownership graph.
+4. Resolve references, rebuild derived state, and validate graph invariants.
+5. Calculate allocator high-water marks and prepare the committed state.
+
+`commit_campaign()` then installs the prepared graph without GUI or AI callbacks.
+`Game.load_game()` resets and schedules AI and refreshes the interface only after
+commit. A rejected save preserves the existing graph, selection, conversations,
+global allocators, random state, and AI scheduling. A presentation failure after
+commit is logged as a refresh failure; it is not reported as a rejected save.
+
+Constructors use context-local counters while staging. Outside staging, the game
+still uses process-global allocators; this implementation does not introduce
+independent concurrently running campaigns.
+
+## References, indexes, and timers
+
+`campaign_graph.iter_objects()` follows ownership edges across celestial bodies,
+minefields, deployed units, gas-giant storage, and recursively nested hangars and
+strikecraft bays. Duplicate ownership, cycles, duplicate IDs, and inconsistent
+container locations are invalid. Carrier links, targets, and agent sources are
+references rather than additional ownership edges.
+
+Reconciliation rebuilds celestial lookup tables, reciprocal wormhole links and
+the system graph, static and dynamic inhibition zones, carrier/wing associations,
+deployed-agent lists, homeworld mappings, and visibility. Visibility reconstruction
+does not rewrite saved historical intel. Active deployed inhibitors block jumps
+immediately after load. Invalid active zone geometry is rejected.
+
+For objects, players, and agents the allocator becomes
+`max(serialized_counter, observed_max_id + 1)`. The object scan includes minefields
+and every stored unit. The message counter retains its existing last-issued-ID
+convention and reconciles against saved messages.
+
+Timed buffs/debuffs are owned by their source unit and ability. Hull status flags
+are rebuilt from active instances, so one source expiring cannot remove another
+source's contribution. Cleanup is idempotent on expiry, component destruction or
+replacement/removal, source/target destruction, and load reconciliation. Expired
+missile batteries remove their temporary platforms. Missing targets terminate
+active targeted effects. Docked and hidden units still tick ability timers and
+temporary lifetimes on their owner's turn; stored units do not apply ongoing
+external ability actions.
+
+## Legacy migration
+
+Supported paths are `3.0 → 3.1 → 3.2 → 4.0`; recognized unversioned historical
+documents enter at 3.0. Unknown and future versions are rejected. Migration works
+on a copy and leaves the input unchanged. Legacy orders receive deterministic
+public UUIDs where missing; later migration passes preserve them.
+
+Versions before 4.0 omitted component damage, turret cooldowns, ability timers,
+and some configuration. That information cannot be recovered. Migration retains
+available fields and uses the named template or documented constructor defaults
+for omitted state, with a visible warning. It clears orphaned temporary status
+flags whose source timers were never saved. Empty legacy Weapons/Ability payloads
+without a matching template component are rejected with a specific error.
+Missing legacy celestial subtype keys use valid G-type star, hydrogen nebula,
+and plasma storm defaults.
+
+## Verification
+
+`tests/test_persistence_integrity.py` covers all 26 registered components and all
+10 abilities, including non-default definitions and dynamically installed
+components. Its canonical snapshot inspects runtime objects independently of the
+serialization field declarations. It exercises a deliberately mutated mid-game
+campaign through the actual file writer/reader, repeated loads, and idempotent
+reconciliation. Separate tests cover legacy wire fixtures, minefield IDs, queued
+orders, paid construction/refit/replenishment, next-turn continuation, overlapping
+effects, stored timers, and injected failures throughout loading.
+
+Run the regression suite from the repository root:
+
+```powershell
+./.venv/Scripts/python.exe -m pytest -q -o cache_dir=.codex_test_cache
+```

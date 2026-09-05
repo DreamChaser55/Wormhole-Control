@@ -16,6 +16,9 @@ class CivilianHabitatComponent(UnitComponent):
     in a sector with a colonized celestial object (Planet, Moon, or ColonizableAsteroid)
     up to the colony's population-supported capacity limit.
     """
+    STATE_CONFIG = ('economic_bonus',)
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Civilian Habitat"
     SIDEBAR_ORDER: int = 10
 

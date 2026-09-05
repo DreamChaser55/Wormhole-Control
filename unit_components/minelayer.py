@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 class MinelayerComponent(UnitComponent):
     """A component that allows a unit to deploy minefields into system hexes."""
+    STATE_CONFIG = ('credit_cost', 'antimatter_cost')
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Minelayer"
     SIDEBAR_ORDER: int = 14
 

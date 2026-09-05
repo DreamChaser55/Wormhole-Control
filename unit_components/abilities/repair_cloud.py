@@ -35,7 +35,7 @@ class RepairCloudAbility(AbilityInstance):
         target_system_name: Optional[str] = None,
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
-        logger.debug(f"[{component.unit.name}] Repair Cloud activated. Healing friendlies within {self.DEFINITION.range} units for {self.DEFINITION.duration} turns.")
+        logger.debug(f"[{component.unit.name}] Repair Cloud activated. Healing friendlies within {self.definition.range} units for {self.definition.duration} turns.")
         return True
 
     def on_turn_update(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
@@ -57,6 +57,6 @@ class RepairCloudAbility(AbilityInstance):
         for unit in hex_obj.units:
             if not are_allies(unit.owner, component.unit.owner):
                 continue
-            if distance(component.unit.position, unit.position) <= self.DEFINITION.range:
+            if distance(component.unit.position, unit.position) <= self.definition.range:
                 unit.heal_hull(heal_per_turn)
                 logger.debug(f"[Repair Cloud] Healed {unit.name} for {heal_per_turn} HP.")

@@ -21,6 +21,14 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class AntimatterStorage(UnitComponent):
     """Component storing and managing antimatter energy levels for a unit."""
+    STATE_CONFIG = ('max_capacity', 'regen_rate')
+    STATE_RUNTIME = ('current_amount',)
+    STATE_REFS = ()
+
+    def validate_state(self):
+        if self.current_amount > self.max_capacity:
+            raise ValueError("Antimatter amount exceeds capacity")
+
     DISPLAY_NAME: str = "Antimatter Storage"
     SIDEBAR_ORDER: int = 1
     max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY
@@ -112,6 +120,9 @@ class AntimatterHarvester(UnitComponent):
     another unit transferring antimatter from its own storage instead
     (see TransferAntimatterOrder).
     """
+    STATE_CONFIG = ('harvest_rate', 'harvest_range')
+    STATE_RUNTIME = ('is_harvesting',)
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Antimatter Harvester"
     SIDEBAR_ORDER: int = 1
 

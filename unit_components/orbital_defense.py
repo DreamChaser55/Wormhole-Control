@@ -26,6 +26,9 @@ class OrbitalDefenseComponent(UnitComponent):
     Functions exclusively in a sector with a friendly colonized celestial object
     (Planet, Moon, or ColonizableAsteroid) up to the colony's population-supported capacity limit.
     """
+    STATE_CONFIG = ('radius', 'attack_bonus', 'defense_bonus')
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Orbital Defense"
     SIDEBAR_ORDER: int = 10
 

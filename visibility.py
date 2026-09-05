@@ -56,7 +56,7 @@ class VisibilityService:
     """Computes visibility (DETAILED vs PRESENCE vs HIDDEN) for all enemy units from a viewer's perspective."""
 
     @staticmethod
-    def compute(galaxy: 'Galaxy', viewer: Optional['Player'], turn_number: int = 1) -> VisibilitySnapshot:
+    def compute(galaxy: 'Galaxy', viewer: Optional['Player'], turn_number: int = 1, *, record_intel: bool = True) -> VisibilitySnapshot:
         if not viewer or not galaxy:
             return VisibilitySnapshot(viewer=viewer)
 
@@ -153,7 +153,7 @@ class VisibilityService:
             elif hasattr(galaxy, 'game') and hasattr(galaxy.game, 'turn_number'):
                 current_turn = getattr(galaxy.game, 'turn_number', 1)
 
-        if hasattr(viewer, 'record_sector_intel'):
+        if record_intel and hasattr(viewer, 'record_sector_intel'):
             for sys_name, h_coord in long_range_covered:
                 viewer.record_sector_intel(sys_name, h_coord, current_turn)
 

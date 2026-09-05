@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 
 class Sensors(UnitComponent):
     """Component providing short-range tactical sensing and optional long-range presence sensing."""
+    STATE_CONFIG = ('short_range_radius', 'long_range_hexes')
+    STATE_RUNTIME = ()
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Sensors"
     SIDEBAR_ORDER: int = 6
 

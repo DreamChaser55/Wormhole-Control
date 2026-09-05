@@ -43,18 +43,24 @@ class IonBoltAbility(AbilityInstance):
             logger.debug(f"[{component.unit.name}] Ion Bolt: target unit {target_unit_id} not found.")
             return False
 
-        target_unit.is_disabled = True
-        target_unit.disabled_by_unit_ids.add(component.unit.id)
         self.target_unit_id = target_unit_id
+        self.restore_effect(component, galaxy)
         logger.debug(f"[{component.unit.name}] Ion Bolt disabled {target_unit.name}.")
         return True
 
     def on_expire(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
         if self.target_unit_id is not None:
-            target_unit = galaxy.get_unit_by_id(self.target_unit_id)
+            from campaign_graph import find_unit
+            target_unit = find_unit(galaxy, self.target_unit_id)
             if target_unit:
-                target_unit.disabled_by_unit_ids.discard(component.unit.id)
-                if not target_unit.disabled_by_unit_ids:
-                    target_unit.is_disabled = False
+                from timed_effects import remove
+                remove(target_unit, component.unit.id, self.definition.ability_type)
                 logger.debug(f"[{component.unit.name}] Ion Bolt expired on {target_unit.name}. Disabled: {target_unit.is_disabled}.")
         self.target_unit_id = None
+
+    def restore_effect(self, component, galaxy):
+        from campaign_graph import find_unit
+        from timed_effects import add
+        target = find_unit(galaxy, self.target_unit_id)
+        if target:
+            add(target, component.unit.id, self.definition.ability_type, "disable")

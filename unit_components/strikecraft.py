@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 class StrikecraftWingComponent(UnitComponent):
     """A component specifically for STRIKECRAFT_WING (strikecraft wings) to track individual fighter counts."""
+    STATE_CONFIG = ('wing_type',)
+    STATE_RUNTIME = ()
+    STATE_REFS = ('mother_carrier',)
     DISPLAY_NAME: str = "Strikecraft Wing"
     SIDEBAR_ORDER: int = 13
     mother_carrier: typing.Optional['Unit'] = None
@@ -63,6 +66,20 @@ class StrikecraftWingComponent(UnitComponent):
 
 class StrikecraftBayComponent(UnitComponent):
     """A component that allows a unit to store, transport, and automatically construct/replenish strikecraft wings."""
+    STATE_CONFIG = ('max_slots',)
+    STATE_RUNTIME = ('constructing', 'construction_progress', 'replenish_progress', 'build_wing_type')
+    STATE_REFS = ('replenishing_unit',)
+    STATE_CHILDREN = ("docked_units",)
+
+    def on_destroyed(self) -> None:
+        from campaign_graph import iter_units
+        galaxy = self.unit.in_galaxy or getattr(self.unit.game, "galaxy", None)
+        for unit, _ in iter_units(galaxy):
+            wing = unit.strikecraft_wing_component
+            if wing and wing.mother_carrier is self.unit and unit not in self.docked_units:
+                wing.mother_carrier = None
+        self.launched_units.clear()
+
     DISPLAY_NAME: str = "Strikecraft Bay"
     SIDEBAR_ORDER: int = 12
     max_slots: int = 0

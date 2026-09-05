@@ -15,6 +15,9 @@ class MarinesComponent(UnitComponent):
     Component representing onboard marine infantry.
     The number of marines determines component hull cost and probability of Capture Unit success.
     """
+    STATE_CONFIG = ()
+    STATE_RUNTIME = ('marines_count',)
+    STATE_REFS = ()
     DISPLAY_NAME: str = "Marines"
 
     def __init__(self, unit: 'Unit', marines_count: int = 10, hull_cost: float = 0.0):

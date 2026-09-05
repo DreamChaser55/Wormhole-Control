@@ -372,7 +372,7 @@ class TestMemory(unittest.TestCase):
             DEFAULT_REPAIR_RETRIES,
         )
 
-    def test_game_state_uses_save_version_3(self):
+    def test_game_state_uses_save_version_4(self):
         import builtins
         import typing
 
@@ -389,7 +389,7 @@ class TestMemory(unittest.TestCase):
             current_sector_coord=None,
             campaign_id="campaign",
         )
-        self.assertEqual(serialize_game_state(game)["version"], "3.2")
+        self.assertEqual(serialize_game_state(game)["version"], "4.0")
 
 
 class _FakeResponses:
