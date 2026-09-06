@@ -526,7 +526,7 @@ class Galaxy:
                 # else: Coords NOT OK - Loop continues to try new random coords
 
             if not found_position:
-                logger.debug(f"Warning: Could not place system {current_sys_name} after {max_placement_attempts} attempts. Constraints might be too tight.")
+                raise ValueError(f"Could place only {len(self.systems)} of {num_systems} systems after {max_placement_attempts} attempts. Regenerate the map or relax its distance constraints.")
 
         logger.debug(f"Finished galaxy generation.")
         logger.debug(f"Generated {len(self.systems)} systems.")

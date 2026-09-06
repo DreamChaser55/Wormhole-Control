@@ -101,12 +101,19 @@ def order_layers(unit, relation, visible_ids, body_ids):
     engagement = serialize(getattr(standing, "active_attack", None), "stance", active=not suspended)
     queue_views = []
     blocker = current if current and enum_name(current.order_type) in CONTINUOUS else None
+    submerged = bool(getattr(unit, 'is_hidden_in_gas_giant', False))
+    def paused(order):
+        return submerged and enum_name(order.status) in {'pending', 'in_progress'} and enum_name(order.order_type) not in {'enter_gas_giant', 'leave_gas_giant'}
+    if current is not None and paused(current):
+        blocker = current
+        if current_view is not None:
+            current_view['active'] = False
     for order in queued:
         entry = serialize(order, "explicit")
         if rich:
             entry["blocked_by_order_id"] = getattr(blocker, "public_id", None)
         queue_views.append(entry)
-        if blocker is None and enum_name(order.order_type) in CONTINUOUS:
+        if blocker is None and (enum_name(order.order_type) in CONTINUOUS or paused(order)):
             blocker = order
     return {"standing_order": {"stance": stance, "suspended": suspended, "engagement": engagement},
             "current_order": current_view, "queued_orders": queue_views}

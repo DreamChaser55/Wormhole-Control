@@ -247,16 +247,15 @@ class NewGameWizard:
             wormhole_density=self._wormhole_density / 100.0,
             system_radius_min=self._sys_radius_min,
             system_radius_max=self._sys_radius_max,
-            player_configs=[
-                PlayerConfig(f"P{i + 1}", PLAYER_COLOR_PALETTE[i % len(PLAYER_COLOR_PALETTE)][1], team_id=i + 1)
-                for i in range(self._num_players)
-            ],
+            player_configs=[],  # A preview validates map parameters independently of starts.
         )
         try:
             self._generated_galaxy = Galaxy(num_systems=self._num_systems, settings=temp_settings)
+            self._map_generation_error = None
         except Exception as e:
             logger.debug(f"Error generating galaxy in wizard preview: {e}")
             self._generated_galaxy = None
+            self._map_generation_error = str(e)
 
         # Verify assigned home systems still exist in new galaxy
         if self._generated_galaxy and self._generated_galaxy.systems:
@@ -1365,16 +1364,16 @@ class NewGameWizard:
         if self._num_players >= 2 and len(active_teams) < 2:
             errors.append("Players must be grouped into at least two different teams.")
 
+        if getattr(self, "_map_generation_error", None):
+            errors.append(self._map_generation_error)
+
         # If in stage 2, also check map constraints
         errors.extend(self.get_map_validation_errors())
 
-        # Validate home systems in specified mode
-        if self._home_system_mode == "specified" and self._generated_galaxy:
-            avail = set(self._generated_galaxy.systems.keys())
-            for i in range(self._num_players):
-                sys_val = self._player_home_systems[i]
-                if sys_val and sys_val.lower() != "random" and sys_val not in avail:
-                    errors.append(f"Home system '{sys_val}' for player {i + 1} does not exist in the galaxy.")
+        try:
+            self._build_start_action()  # GameSettings owns the shared start-condition checks.
+        except ValueError as exc:
+            errors.append(str(exc))
 
         return errors
 
@@ -1431,6 +1430,8 @@ class NewGameWizard:
                     }
                 self._snapshot()
                 self._generate_map()
+                if self._map_generation_error:
+                    return {"action": "wizard_settings_error", "message": self._map_generation_error, "title": "Map generation failed"}
                 return None
 
             # Stage 2: Spawn profile & Home mode
@@ -1715,7 +1716,10 @@ class NewGameWizard:
         credits_ = self._safe_float(self._credits_str, 20000.0)
         metal_ = self._safe_float(self._metal_str, 10000.0)
         crystal_ = self._safe_float(self._crystal_str, 10000.0)
-        pop_ = self._safe_int(self._population_str, 50)
+        try:
+            pop_ = int(self._population_str.strip())
+        except ValueError:
+            raise ValueError("Starting population must be a non-negative integer.") from None
 
         settings = GameSettings(
             player_configs=player_configs,

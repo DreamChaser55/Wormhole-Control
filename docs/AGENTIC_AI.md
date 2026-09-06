@@ -207,7 +207,7 @@ policy when idle. Stop cancels both layers and selects Do Nothing. Commands:
 | `append_patrol_waypoints` | `order_id`, `waypoints` (one owned unit) | Extend a current/queued patrol while preserving its leg. |
 | `patrol` | `waypoints` OR complete system/hex/position | Traverse 1–16 waypoints, return to captured start, repeat. |
 | `enter_gas_giant` | `target_id` (Gas Giant ID) | Approach and submerge inside a gas giant atmosphere, hiding ship from all sensors. |
-| `leave_gas_giant` | none (`queue=false`) | Emerge from a gas giant atmosphere on a random vector outside collision boundary. |
+| `leave_gas_giant` | none; supports `queue=true` | Depart when Leave reaches the front of the FIFO queue; requires hidden state or prior queued entry. |
 
 `queue=true` creates a separate patrol, never an extension. Routes may contain at most
 16 waypoints through AI commands. For human players, the "Add Patrol Waypoint" context menu option extends
@@ -272,3 +272,9 @@ actuators/job ownership without replaying startup or refunds; pending orders sta
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
 The strict response schema is `wormhole_control_turn_v3`, and prompt cache key is
 `wormhole-control-turn-v4`. No live API call is required for regression testing.
+
+### Gameplay invariant guidance
+
+Gas-giant transitions preserve stance and explicit work. `Enter → Leave → Move` works with queued follow-ups; `Enter → Move → Leave` pauses behind Move while hidden. Inspect `blocked_by_order_id` and use `cancel_order`, `clear_explicit_orders`, or a replacement Leave to unblock it. Queue preflight projects entry/departure dependencies; acceptance does not guarantee safe exit placement. A failed Leave reports `path_unavailable` and retains the hidden ship and remaining queue. See the [canonical gas-giant rules](REFERENCE.md#125-gas-giant-atmospheric-hiding).
+
+Mines check final positions after movement on the ship owner's turn, including stationary ships. Positive hits may be fully absorbed by mitigation. Consult [damage and minefield resolution](REFERENCE.md#13-damage--minefield-resolution) and [spawn profiles](REFERENCE.md#spawn-profiles-spawnprofile--2-total) for the canonical gameplay rules. Numeric object ID `0` remains valid; only `None`/JSON `null` means a missing numeric ID.

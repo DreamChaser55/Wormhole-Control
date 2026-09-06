@@ -169,7 +169,7 @@ class PatrolOrder(Order):
                     getattr(getattr(self.unit, "game", None), "galaxy", None)
                     or galaxy_ref
                 )
-                target_unit = galaxy.get_unit_by_id(target_id) if target_id and galaxy else None
+                target_unit = galaxy.get_unit_by_id(target_id) if target_id is not None and galaxy else None
                 from entities import are_enemies
                 if (not target_unit or 
                     target_unit.current_hit_points <= 0 or 

@@ -290,7 +290,7 @@ class ControlService:
             raise ProtocolError("campaign_active", "Quit to the main menu before creating another campaign.")
         settings = _parse_new_game_settings(payload.get("settings"))
         if not self.game.start_new_game(settings=settings):
-            raise ProtocolError("new_game_failed", "The game could not create the requested campaign.")
+            raise ProtocolError("new_game_failed", getattr(self.game, 'last_setup_error', None) or "The game could not create the requested campaign.")
         return self._success(action, request_id, {"created": True})
 
     def _command(self, action: str, request_id: str, payload: dict[str, Any]) -> dict[str, Any]:

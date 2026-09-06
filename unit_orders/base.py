@@ -191,6 +191,8 @@ class Order:
 
     def cancel(self) -> None:
         """Cancel this order and all its sub-orders."""
+        if self.status in {OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED}:
+            return
         self.status = OrderStatus.CANCELLED
         for sub_order in self.sub_orders:
             sub_order.cancel()

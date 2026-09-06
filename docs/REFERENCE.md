@@ -314,9 +314,9 @@ Every star system contains a central star with a unique antimatter harvesting ra
 | **Black Hole** | `BLACK_HOLE` | **0.1×** | (75, 35, 100) | 4500.0 | 750.015 |
 
 ### 6.2 Planets & Colonizable Bodies
-- **Planets (`PlanetType`)**: 9 planetary classes (`TERRAN`, `DESERT`, `VOLCANIC`, `ICE`, `BARREN`, `FERROUS`, `GREENHOUSE`, `OCEANIC`, `GAS_GIANT`). Colonizable planets support up to **100.0 population** with a baseline growth rate of **2.0% per turn**. Inhibition radius: 3000.0 logical units (Ferrous: 3250.0, Gas Giant: 3500.0). **Collision Radius**: **562.50 logical units** (`PLANET_RADIUS`, Gas Giant: 675.0). Gas giants are non-colonizable massive celestial bodies that support **Atmospheric Hiding**: any ship with operational sublight engines (strikecraft wings and stationary space stations prohibited) can enter the atmosphere to disappear from tactical maps and sensor detection. Submerged ships cannot attack or project fields; ordering departure causes them to emerge on a uniformly random vector outside the collision radius (725.0 logical units). Multiple departing ships emerge on distinct vectors. Regular unit credit upkeep continues while hidden. Submerged opposing ships cannot detect or attack each other.
-- **Moons (`Moon`)**: Colonizable satellites supporting up to **50.0 population** with a growth rate of **1.0% per turn**. Inhibition radius: 2250.0 logical units. **Collision Radius**: **125.01 logical units** (`MOON_RADIUS`).
-- **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts supporting up to **20.0 population** with a growth rate of **0.5% per turn**. Inhibition radius: 1500.0 logical units. **Collision Radius**: **75.015 logical units** (`ASTEROID_RADIUS`).
+- **Planets (`PlanetType`)**: Nine planetary classes have distinct population caps, growth rates and yields; see the canonical [planetary traits table](#121-planetary-classification--traits). Gas giants are non-colonizable and support [atmospheric hiding](#125-gas-giant-atmospheric-hiding). Inhibition radius: 3000.0 logical units (Ferrous: 3250.0, Gas Giant: 3500.0). Collision radius: `PLANET_RADIUS` (562.50), or 675.0 for gas giants.
+- **Moons (`Moon`)**: Colonizable satellites. Inhibition radius: 2250.0 logical units. Collision radius: `MOON_RADIUS` (125.01).
+- **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts. Inhibition radius: 1500.0 logical units. Collision radius: `ASTEROID_RADIUS` (75.015). Population limits for both satellites and outposts appear with the planetary traits below.
 
 ### 6.3 Resource & Spatial Phenomena
 - **Metal Asteroids (`MetalAsteroid`)**: Non-colonizable mineral bodies providing a sustainable source of raw **Metal** (yield: 10.0/turn). Inhibition radius: 1500.0 logical units. **Collision Radius**: **75.015 logical units** (`ASTEROID_RADIUS`).
@@ -333,9 +333,9 @@ Every star system contains a central star with a unique antimatter harvesting ra
 | Entity Class | Solid Obstacle? | Collision Radius (logical units) | Inhibition Radius (logical units) | Effect Radius (logical units) | Harvest / Resource Yield | Colonizable |
 |---|---|---|---|---|---|---|
 | `Star` | **Yes** | 750.015 (`STAR_RADIUS`, Giants: 900.0) | 3375.0 (Black Hole: 4500.0, Giants: 3750.0) | — | 0.1× – 2.5× Antimatter | No |
-| `Planet` | **Yes** | 562.50 (`PLANET_RADIUS`, Gas Giant: 675.0) | 3000.0 (Ferrous: 3250.0, Gas Giant: 3500.0) | — | — | Yes (Max 100 pop) |
-| `Moon` | **Yes** | 125.01 (`MOON_RADIUS`) | 2250.0 | — | — | Yes (Max 50 pop) |
-| `ColonizableAsteroid` | **Yes** | 75.015 (`ASTEROID_RADIUS`) | 1500.0 | — | — | Yes (Max 20 pop) |
+| `Planet` | **Yes** | 562.50 (`PLANET_RADIUS`, Gas Giant: 675.0) | 3000.0 (Ferrous: 3250.0, Gas Giant: 3500.0) | — | — | Varies; see §12.1 |
+| `Moon` | **Yes** | 125.01 (`MOON_RADIUS`) | 2250.0 | — | — | Yes; see §12.1 |
+| `ColonizableAsteroid` | **Yes** | 75.015 (`ASTEROID_RADIUS`) | 1500.0 | — | — | Yes; see §12.1 |
 | `MetalAsteroid` | **Yes** | 75.015 (`ASTEROID_RADIUS`) | 1500.0 | — | 10.0 Metal / Turn | No |
 | `Comet` | **Yes** | 75.015 (`COMET_RADIUS`) | 1000.0 | — | 10.0 Crystal / Turn | No |
 | `Wormhole` | No | 0.00 (Permeable) | 1875.0 | — | Inter-System Travel | No |
@@ -408,12 +408,16 @@ restricted by the selected stance boundary.
 - `BOMBER`: Heavy torpedo craft designed to deliver devastating payload strikes against capital hulls.
 
 ### Spawn Profiles (`SpawnProfile` — 2 total)
-- `NORMAL`: Standard 4X gameplay setup. Each player begins in their own distinct star system with an owned homeworld planet (populated according to starting population) and 4 core starter units spawned in orbit around the homeworld:
+- `NORMAL`: Standard 4X gameplay setup. Each player begins in their own distinct star system with an owned homeworld planet (starting population capped to that planet's capacity) and 4 core starter units spawned in orbit around the homeworld:
   1. Starting Constructor Station (`SHIPYARD_MK1`)
   2. Constructor Ship (`CONSTRUCTOR_MK1`)
   3. Colonizer Ship (`COLONIZER_MK1`)
   4. Antimatter Harvester Ship (`ANTIMATTER_HARVESTER`)
-- `TESTING`: Sandbox testing setup. All players spawn in the same system (`Sol` or first available system) equipped with testing ships and stations across all sizes (`TINY`..`HUGE`) and a carrier.
+- `TESTING`: Sandbox setup. Unassigned players share `Sol` (or the first available system); specified homes may also share systems. Each player receives testing ships and stations across all sizes (`TINY`..`HUGE`) and a carrier.
+
+Both profiles select only unowned, colonizable planets and retain their planetary type. If none is available, setup creates a Terran fallback in an empty noncentral sector; without a valid sector, setup fails. Starting population must be non-negative and is capped to the selected world's capacity.
+
+Normal requires at least as many requested and actual systems as players, unique specified home systems, and enough unclaimed systems for all random assignments. Unknown assignments and generation shortfalls produce actionable errors. Map-only previews validate generation independently of player starts. Immediately before starting, the same rules are rechecked by the wizard, control interface and direct setup. Preparation copies previews, isolates ID allocation, and validates homeworld references and starter fleets before replacing the live campaign, resetting AI or closing the wizard. A preparation failure preserves the campaign, preview, counters and AI state. These new-game restrictions do not prevent loading older shared-start saves.
 
 ---
 
@@ -449,9 +453,9 @@ restricted by the selected stance boundary.
 - **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly and allied units within build range (500 logical units). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
 - **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, conceals units inside nebulae from long-range sensors, and persists last-known sector intel per player.
 - **Diplomacy & Team System (`entities.py`, `game_settings.py`, `game_setup.py`, `save_manager.py`)**: Manages static multi-team configurations established during game setup. Evaluates relations (`is_allied_with`, `is_enemy_of`) to govern sensor sharing, tactical combat engagement, logistics sharing, area buffs, friendly fire prevention, and covert espionage targeting.
-- **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Real-time geometric pathfinding preventing sub-light vessels from clipping into solid celestial bodies (stars, planets, moons, asteroids, comets). Uses parametric line-circle intersection analysis, dual-tangent escape waypoint generation, and recursive obstacle resolution to steer ships safely around physical bodies with a 50.0-logical-unit clearance margin, while permitting unhindered landings and departures.
+- **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Verified tangent-polygon routes avoid expanded solid bodies and hull-blocking fields within the sector boundary; see [collision avoidance](#11-celestial-collision-avoidance).
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations. System and sector views maintain independent transient cameras with cursor-anchored smooth zoom, middle-drag and arrow-key panning; newly opened systems auto-fit inside the HUD-free gameplay rectangle. The galaxy renderer highlights player home systems dynamically using each player's faction color, rendering concentric circles for systems containing multiple player homeworlds.
-- **Two-Stage Campaign Setup & Home Star System Assignment (`gui/layout_new_game_wizard.py`, `game_settings.py`, `game_setup.py`)**: The New Game Wizard operates in two discrete stages. Stage 1 configures procedural galaxy generation parameters (system count, min/max radius, wormhole density, min/max distances) and renders a live interactive Map Preview with a **Generate Map** re-roll button. Advancing to Stage 2 validates topology parameters and transitions to faction setup (spawn profile, player count, custom names, colors, controllers, teams, economy) and home star system assignment. In **Specified** mode, players can assign distinct or shared home star systems by cycling available systems or clicking directly on systems in the interactive Map Preview viewport. `game_setup.start_new_game` accepts a pregenerated galaxy or procedural generation parameters, resolves unassigned or random home systems, verifies planet ownership/habitability, and places starter units and homeworlds accordingly.
+- **Two-Stage Campaign Setup & Home Star System Assignment (`gui/layout_new_game_wizard.py`, `game_settings.py`, `game_setup.py`)**: Stage 1 generates and previews the map; Stage 2 configures factions, economy and home assignments. Specified homes must be distinct for Normal and may be shared for Testing. An isolated campaign is validated before commit; see [spawn profiles](#spawn-profiles-spawnprofile--2-total).
 - **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
 
 ---
@@ -587,7 +591,7 @@ transaction boundaries, reconciliation rules, and regression tests.
 ### 11.1 Overview & Purpose
 In Wormhole Control, ships moving at sub-light speeds navigate tactical sector space (a 5000-logical-unit radius circle per hex). To preserve spatial immersion and tactical realism, units never fly straight through physical solid bodies (such as stars, planets, moons, asteroids, or comets).
 
-The collision avoidance system automatically detects obstructed sub-light trajectories in real-time, calculates optimal curved bypass trajectories using geometric tangent math, and injects intermediate waypoint sub-orders into unit order queues without requiring manual player micro-management.
+The collision avoidance system automatically detects obstructed sub-light trajectories in real-time, calculates verified circumscribed tangent-polygon bypass routes, and injects intermediate waypoint sub-orders into unit order queues without requiring manual player micro-management.
 
 ### 11.2 Celestial Body Collision Radii & Classification
 Every celestial entity defines a `collision_radius: float` attribute (`entities.py`):
@@ -600,11 +604,15 @@ Every celestial entity defines a `collision_radius: float` attribute (`entities.
    - **Comets (`Comet`)**: `COMET_RADIUS = 75.015` logical units
 
 2. **Permeable Spatial Phenomena (`collision_radius = 0.0`)**:
-   - **Nebulae, Space Storms, Wormholes, Asteroid Fields, Ice Fields, Debris Fields**: Non-solid entities that do not obstruct sub-light flight. Ships pass straight through them.
+   - **Nebulae, Space Storms, Wormholes, Asteroid Fields, Ice Fields, Debris Fields**: Normally permeable. Fields that prohibit the moving hull size and Magnetic Storms for strikecraft are included as collision obstacles; see §12.3–12.4.
 
 3. **Safety Margin**:
-   - When checking for collisions and computing avoidance waypoints, the navigation engine adds a 50.0-logical-unit safety margin around the obstacle's physical radius:
+   - When checking for collisions and computing avoidance waypoints, the navigation engine adds the shared `NAVIGATION_CLEARANCE` (50.0 logical units) around the obstacle's physical radius:
    $$R_{\text{expanded}} = r_{\text{body}} + \text{margin}$$
+
+Every returned segment is checked against every expanded obstacle and the sector boundary. Tangency is valid within numerical tolerance. The router tries both bypass directions and has bounded search limits; an exhausted or invalid search fails movement with `path_unavailable` instead of reporting an unobstructed route.
+
+Only original endpoints inside physical bodies retain the landing/departure exception for their endpoint segment. A start inside the clearance band must first escape outward; a destination inside that band is rejected. Intermediate waypoints do not receive landing exceptions.
 
 ### 11.3 Target-Unit Standoff Arrival
 Orders that must approach another unit create target-aware movement through
@@ -705,16 +713,16 @@ Every planet generated in the galaxy possesses distinctive biological and geolog
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Terran** | Yes | 100.0 | 2.0% / turn | 0.0 | 0.0 | 0.0x | Balanced biosphere with standard habitability. |
 | **Oceanic** | Yes | 120.0 | 2.5% / turn | 0.0 | 0.0 | 0.0x | High carrying capacity and rapid population expansion. |
-| **Continental** | Yes | 110.0 | 2.2% / turn | 0.0 | 0.0 | 0.0x | Expansive landmasses supporting heavy industry. |
 | **Desert** | Yes | 75.0 | 1.5% / turn | 0.0 | 0.0 | 0.0x | Arid wasteland with restricted water reservoirs. |
 | **Ice** | Yes | 60.0 | 1.0% / turn | 0.0 | 2.0 / turn | 0.0x | Glaciated crust yielding passive crystal extraction. |
 | **Barren** | Yes | 40.0 | 0.8% / turn | 0.0 | 0.0 | 0.0x | Airless rock requiring pressurized dome complexes. |
 | **Volcanic** | Yes | 50.0 | 0.8% / turn | 5.0 / turn | 0.0 | 0.0x | Geothermal magma chambers rich in raw minerals. |
 | **Ferrous** | Yes | 70.0 | 1.2% / turn | 8.0 / turn | 0.0 | 0.0x | Massive heavy-metal mantle generating industrial iron. |
-| **Greenhouse** | Yes | 55.0 | 1.0% / turn | 0.0 | 3.0 / turn | 0.0x | Superheated dense atmosphere yielding synthetic crystal. |
+| **Greenhouse** | Yes | 35.0 | 0.5% / turn | 0.0 | 3.0 / turn | 0.0x | Superheated dense atmosphere yielding synthetic crystal. |
 | **Gas Giant** | **No** | 0.0 | 0.0% | 0.0 | 0.0 | 0.0x | Atmospheric hiding cover; 3500 inhibition. |
 
-- **Moons & Colonizable Asteroids**: Both support colonization (`is_colonizable = True`), max population 25.0 and 15.0 respectively, with standard base growth.
+- **Moons & Colonizable Asteroids**: Both support colonization. Moons have a population cap of 50.0 and growth of 1.0% per owner turn; colonizable asteroids have a cap of 20.0 and growth of 0.5% per owner turn.
+- **Population bounds**: Starting planets use the smaller of requested population and their cap. Existing over-cap planetary populations are clamped before growth or growth-sabotage checks, so sabotage cannot preserve an overflow.
 - **Passive Resource Yields**: Colonized planets generate their passive metal or crystal directly into the owner's treasury at the end of each turn, providing strategic economic value beyond direct taxation.
 
 ### 12.2 Extreme Star Remnants
@@ -761,3 +769,23 @@ Stars anchor the gravitational and hyperspace topology of star systems:
   - **Magnetic Storm**: Drains 6 antimatter per turn from onboard reserves; violent electromagnetic flux completely scrambles long-range radar projection from within the storm. Strikecraft wings are strictly banned from entering or launching within Magnetic Storms.
   - **Radiation Storm**: Energetic cosmic radiation inflicts 4 damage per turn to a random functional unit component, degrading subsystem integrity.
 
+
+### 12.5 Gas-Giant Atmospheric Hiding
+
+Ships with operational sublight engines (`TINY` through `HUGE`) can enter gas giants. Strikecraft wings and stationary stations cannot. Hidden ships disappear from enemy sensors and tactical maps, cannot interact with outside space or project fields, and cannot be attacked from outside. Opposing hidden ships cannot detect or attack one another. Upkeep and existing ability timers continue.
+
+Entry and departure complete their explicit roots exactly once. Both preserve stance policy and queued orders. Hidden ships pause outside-space work and execute only a front-of-queue Leave. Strict FIFO applies: **Enter → Leave → Move** resumes movement after departure; **Enter → Move → Leave** stays blocked until the player cancels or replaces the blocking work. Queue-edit commands remain available while hidden; saving and loading preserves the pause.
+
+Departure searches the ring at the planet's collision radius plus `NAVIGATION_CLEARANCE`, currently 725 logical units for gas giants. It tries 64 random bearings, then a deterministic one-degree sweep. Each candidate must lie inside the sector's 20-unit inset, clear expanded solid bodies and hull-blocking fields, and remain at least `NAVIGATION_CLEARANCE` (50 units) from every deployed living ship center. Successful placement commits immediately so later departures cannot reuse occupied positions. If no candidate passes, Leave fails with `path_unavailable`; the ship remains hidden and its remaining queue is preserved.
+
+## 13. Damage & Minefield Resolution
+
+### 13.1 Full Damage Absorption
+
+Non-positive incoming hull damage is a no-op. Environmental cover, defenses and damage reduction retain their existing mitigation order and integer rounding. Effective damage reduction is bounded to `[0, 1]`; it cannot increase damage or heal a ship. Positive hits can be fully absorbed, including fractional reductions that round down to zero. There is no one-HP minimum after mitigation.
+
+### 13.2 Minefield Cadence
+
+After movement on each ship owner's turn, every living, deployed ship is checked at its final position, including stationary ships. Each overlapping enemy field can detonate against that ship once in this phase, subject to remaining mines. Owner and allied ships are excluded; anti-ship and anti-strikecraft subtype targeting, damage, depletion and destruction rules still apply. Hidden and docked ships do not trigger fields.
+
+This is a position check: crossing a field without ending inside it does not trigger a mine. Damage and mine consumption per owner turn do not increase when more players join the campaign.

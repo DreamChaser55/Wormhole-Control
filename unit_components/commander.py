@@ -386,7 +386,8 @@ class Commander(UnitComponent):
                         node._charged_player_id = self.unit.owner.id
         if galaxy_ref is None:
             galaxy_ref = getattr(self.unit, "in_galaxy", None)
-        if self.current_order and galaxy_ref and self.current_order.status == OrderStatus.IN_PROGRESS:
+        if (self.current_order and galaxy_ref and self.current_order.status == OrderStatus.IN_PROGRESS
+                and not getattr(self.unit, 'is_hidden_in_gas_giant', False)):
             self.current_order.resume(galaxy_ref=galaxy_ref)
 
     def _active_front_chain(self) -> Iterable[Order]:
@@ -461,6 +462,8 @@ class Commander(UnitComponent):
             if order_in_queue.order_id == order_id:
                 order_in_queue.cancel()
                 self.orders_queue.remove(order_in_queue)
+                if self.current_order is None:
+                    self.start_next_order()
                 return True
         return False
 
@@ -542,6 +545,9 @@ class Commander(UnitComponent):
 
         This method should be called on each game update cycle.
         """
+        if getattr(self.unit, 'is_hidden_in_gas_giant', False):
+            self._update_hidden_orders()
+            return
         if not self.current_order:
             self.start_next_order()
             if not self.current_order:
@@ -582,9 +588,38 @@ class Commander(UnitComponent):
                 logger.debug("[%s (id:%s)] Commander: resuming standing stance.", self.unit.name, self.unit.id)
                 self.process_stance()
 
+    def _update_hidden_orders(self) -> None:
+        """Settle entry and process departure without running external work or stance.
+
+        FIFO is intentional: a paused non-Leave root blocks later departures until
+        the player cancels it or replaces the queue. No new persistence state is needed.
+        """
+        galaxy = getattr(self.unit, 'in_galaxy', None) or getattr(getattr(self.unit, 'game', None), 'galaxy', None)
+        order = self.current_order
+        if order and order.order_type == OrderType.ENTER_GAS_GIANT and order.status == OrderStatus.IN_PROGRESS:
+            # Entry can have completed in an approach descendant during movement.
+            order.update(galaxy_ref=galaxy)
+        if self.current_order and self.current_order.status in {OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED}:
+            self.current_order = None
+            self._clear_weapon_target()
+        if self.current_order is not None:
+            if self.current_order.order_type != OrderType.LEAVE_GAS_GIANT:
+                return
+            if self.current_order.status == OrderStatus.PENDING:
+                self.current_order.execute(galaxy_ref=galaxy)
+            elif self.current_order.status == OrderStatus.IN_PROGRESS:
+                self.current_order.update(galaxy_ref=galaxy)
+        else:
+            self.start_next_order()
+        if not getattr(self.unit, 'is_hidden_in_gas_giant', False):
+            self.update()
+
     def start_next_order(self) -> None:
         """Starts the next order from the queue if available."""
         if not self.current_order and self.orders_queue:
+            if (getattr(self.unit, 'is_hidden_in_gas_giant', False)
+                    and self.orders_queue[0].order_type != OrderType.LEAVE_GAS_GIANT):
+                return
             self.current_order = self.orders_queue.popleft()
             self._clear_weapon_target()
             

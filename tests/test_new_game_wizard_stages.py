@@ -114,6 +114,18 @@ def test_wizard_stage_1_regenerate_map(wizard_env):
     assert wizard._generated_galaxy is not old_galaxy
 
 
+def test_map_preview_independent_of_normal_player_count(wizard_env):
+    wizard, _, _ = wizard_env
+    wizard._num_systems_slider.set_current_value(5)
+    wizard._snapshot()
+    wizard._num_players = 6
+    wizard._generate_map()
+    assert wizard._map_generation_error is None
+    assert len(wizard._generated_galaxy.systems) == 5
+    wizard.go_to_stage(2)
+    assert any('distinct star system per player' in error for error in wizard.get_validation_errors())
+
+
 def test_wizard_stage_1_validation_blocks_next_on_invalid_map(wizard_env):
     """Inverted radius or distance prevents advancing to Stage 2 and displays error."""
     wizard, manager, screen = wizard_env
@@ -333,7 +345,8 @@ def test_start_new_game_integration_with_pregenerated_galaxy_and_home_systems(wi
     game = MockGame()
     success = game_setup.start_new_game(game, settings=settings)
     assert success is True
-    assert game.galaxy is wizard._generated_galaxy
+    assert game.galaxy is not wizard._generated_galaxy
+    assert set(game.galaxy.systems) == set(wizard._generated_galaxy.systems)
     assert len(game.players) == 2
 
     # Verify Player 1 homeworld is in p1_sys

@@ -91,7 +91,7 @@ class AttackOrder(Order):
         target_name = None
         lookup_attempted = False
         lookup_success = False
-        if target_unit_id and self.unit and self.unit.game:
+        if target_unit_id is not None and self.unit and self.unit.game:
             lookup_attempted = True
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if target_unit:
@@ -164,7 +164,7 @@ class AttackOrder(Order):
 
         target_unit_id = self.parameters.get("target_unit_id")
         galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
-        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id and galaxy else None
+        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None and galaxy else None
 
         from entities import are_enemies
         if (
@@ -302,7 +302,7 @@ class AttackOrder(Order):
         if self.status != OrderStatus.IN_PROGRESS:
             return
         target_id = self.parameters.get("target_unit_id")
-        target = galaxy_ref.get_unit_by_id(target_id) if target_id else None
+        target = galaxy_ref.get_unit_by_id(target_id) if target_id is not None else None
         weapons = self.unit.weapons_component
         from entities import are_enemies
         if target and weapons and are_enemies(self.unit.owner, target.owner) and weapons.eligible_turrets_for(target):
@@ -323,7 +323,7 @@ class ProtectOrder(Order):
         target_name = None
         lookup_attempted = False
         lookup_success = False
-        if target_unit_id and self.unit and self.unit.game:
+        if target_unit_id is not None and self.unit and self.unit.game:
             lookup_attempted = True
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if target_unit:
@@ -339,7 +339,7 @@ class ProtectOrder(Order):
         super().execute(galaxy_ref)
         target_unit_id = self.parameters.get("target_unit_id")
         galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
-        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id and galaxy else None
+        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None and galaxy else None
 
         if not target_unit:
             self.fail("target_unavailable")
@@ -412,7 +412,7 @@ class ProtectOrder(Order):
 
         target_unit_id = self.parameters.get("target_unit_id")
         galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
-        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id and galaxy else None
+        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None and galaxy else None
 
         from entities import are_allies
         if (
@@ -438,7 +438,7 @@ class ProtectOrder(Order):
             if current_sub.order_type == OrderType.ATTACK:
                 has_attack_order = True
                 enemy_id = current_sub.parameters.get("target_unit_id")
-                enemy_unit = galaxy.get_unit_by_id(enemy_id) if enemy_id and galaxy else None
+                enemy_unit = galaxy.get_unit_by_id(enemy_id) if enemy_id is not None and galaxy else None
                 from entities import are_enemies
 
                 is_in_range = False

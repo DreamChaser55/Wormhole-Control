@@ -5,6 +5,14 @@
 - **Primary documents:** `README.md`, `docs/REFERENCE.md`, and `docs/AGENTIC_AI.md`
 - **Scope:** production code, data/configuration, tests, persistence, the command/control boundary, GUI/rendering structure, documentation accuracy, comments/docstrings, naming, and repository hygiene.
 
+## Phase 2 implementation status — 2026-09-06
+
+The six remaining gameplay-invariant items are complete: WC-005, WC-006, WC-008, WC-009, WC-010 and WC-012. The historical findings below describe the audited revision; the completion notes record the implemented corrections.
+
+Validation: **1,282 tests passed, 10 subtests passed** in the offline full suite; all **6 import/launch smoke tests** passed; `python game.py --smoke-test` exited cleanly after five frames. Focused regressions are in `tests/test_phase2_invariants.py`, `tests/test_legacy_zero_ids.py` and the existing wizard, minefield and setup suites. The planetary table is checked against `PLANET_TRAITS`.
+
+Canonical rules are in the [Reference Manual](docs/REFERENCE.md): capped colonizable homes and distinct Normal systems, full damage absorption, verified collision clearance, strict gas-giant FIFO with safe-exit failure, and ship-owner-turn mine checks. README and AI guidance link to those rules. Save format **4.0** and command wire schemas remain unchanged; existing shared-start saves remain loadable. Broader environmental mechanics, validation cleanup and Phase 3 architecture remain outside this change.
+
 ## Executive assessment
 
 Wormhole Control is an ambitious and unusually broad prototype. It has a real domain model, a compositional unit system, hierarchical orders, three levels of spatial simulation, fog of war, persistence, a large GUI, and two constrained machine-control paths. The agentic-AI boundary is the strongest architectural area: observations are visibility-filtered, commands are schema-constrained, game mutation returns to the main thread, stale model responses are rejected, and preflight is separated from commit. The 1,116-test suite is also substantial for a project of this size.
@@ -50,14 +58,14 @@ The likely post-import-fix baseline is therefore **1,116 passing tests**, but th
 | WC-002 | High | Confirmed | Save/load is lossy for component damage, abilities, weapon cooldown/configuration, and several dynamic component parameters. |
 | WC-003 | High | Confirmed | Loading is non-transactional, does not dispatch on save version, and can leave a partially mutated game after failure. |
 | WC-004 | High | Confirmed | Radiation storms never select a component and therefore deal no component damage; their documented accuracy penalty is also absent. |
-| WC-005 | High | Confirmed | New-game homeworld assignment can colonize gas giants, exceed population caps, and reuse a starting system despite the Normal-profile guarantee. |
-| WC-006 | High | Confirmed | Gas-giant entry/exit clears the order that is currently executing, journaling it as cancelled before it reports completion. |
+| WC-005 | High | Confirmed | **Fixed in Phase 2.** New-game homeworld assignment can colonize gas giants, exceed population caps, and reuse a starting system despite the Normal-profile guarantee. |
+| WC-006 | High | Confirmed | **Fixed in Phase 2.** Gas-giant entry/exit clears the order that is currently executing, journaling it as cancelled before it reports completion. |
 | WC-007 | High | Confirmed | Timed ability effects can become permanent after save/load or destruction of the source component/unit. |
-| WC-008 | High | Confirmed | Adaptive Forcefield changes a zero-damage hit into one point of hull damage. |
-| WC-009 | High | Confirmed | Many order and rendering paths reject legacy object ID `0`, despite the documented and schema-level contract allowing it. |
-| WC-010 | Medium/High | Strong inference | Minefield contact checks run globally once per player turn, so damage and mine consumption scale with player count. |
+| WC-008 | High | Confirmed | **Fixed in Phase 2.** Adaptive Forcefield changes a zero-damage hit into one point of hull damage. |
+| WC-009 | High | Confirmed | **Fixed in Phase 2.** Many order and rendering paths reject legacy object ID `0`, despite the documented and schema-level contract allowing it. |
+| WC-010 | Medium/High | Strong inference | **Fixed in Phase 2.** Minefield contact checks run globally once per player turn, so damage and mine consumption scale with player count. |
 | WC-011 | Medium | Confirmed | Several documented environmental mechanics are constants/UI text only and never affect gameplay. |
-| WC-012 | Medium | Confirmed | Collision avoidance tests the physical obstacle rather than the requested expanded safety margin. |
+| WC-012 | Medium | Confirmed | **Fixed in Phase 2.** Collision avoidance tests the physical obstacle rather than the requested expanded safety margin. |
 | WC-013 | Medium | Confirmed | Settings validation and galaxy generation permit invalid or impossible configurations and can silently produce fewer systems than requested. |
 | WC-014 | Medium | Confirmed | The global object counter is rebuilt without considering minefield IDs, allowing ID reuse after loading some saves. |
 | WC-015 | Low/Medium | Confirmed | Several public APIs fail less gracefully than their shape implies, and internal command exceptions lose diagnostic stack traces. |
@@ -146,7 +154,9 @@ Even after changing iteration to `.values()`, the current `comps[0]` behavior wo
 
 Recommended repair: iterate `unit.components.values()`, select with an injectable campaign RNG, and decide whether to add a real hit-chance model or remove “accuracy penalty” from constants/docs. Add a radiation-specific turn-processor regression test; the current celestial hazard test covers only plasma and magnetic storms.
 
-### WC-005 — new-game setup can create invalid starting states
+### WC-005 — new-game setup can create invalid starting states - **ALREADY FIXED**
+
+**Completion:** Both profiles select unowned colonizable planets, create valid Terran fallbacks when needed, and cap population. Normal start conditions are shared across entry points and rechecked before isolated campaign preparation; generation shortfalls fail explicitly. Failed preparation preserves the live campaign, preview, allocation counters and AI.
 
 `game_setup.start_new_game` selects any unowned `Planet` (`game_setup.py:135-138`, repeated at `:175-178`). It does not filter `planet.is_colonizable` or exclude `PlanetType.GAS_GIANT`, even though gas giants are explicitly non-colonizable (`constants.py:455-464`, README line 116). It then assigns ownership and population unconditionally.
 
@@ -163,7 +173,9 @@ Recommended repair:
 - Make `num_systems >= num_players` a Normal-profile invariant, or explicitly expose/describe shared starts.
 - Stage the new campaign off to the side and commit only after galaxy, players, homeworlds, and starter units validate.
 
-### WC-006 — gas-giant orders report mutually inconsistent outcomes
+### WC-006 — gas-giant orders report mutually inconsistent outcomes - **ALREADY FIXED**
+
+**Completion:** Entry/exit placement no longer cancels explicit orders. Commander settles terminal roots exactly once, preserves stance and strict FIFO, and exposes paused queue editing to AI. Exits validate all candidates against sector bounds, expanded obstacles and deployed ships; blocked departure fails with `path_unavailable` without removing the hidden ship or its remaining queue.
 
 `Planet.hide_unit` calls `unit.commander_component.clear_explicit_orders()` at `entities.py:547-548`. That method cancels the current explicit root and records its outcome. `EnterGasGiantOrder.execute` is itself the current explicit root; after `hide_unit` returns, it assigns `OrderStatus.COMPLETED` (`unit_orders/gas_giant.py:88`). The same sequence exists in `Planet.release_unit` (`entities.py:611-612`) and `LeaveGasGiantOrder` (`unit_orders/gas_giant.py:140`).
 
@@ -186,7 +198,9 @@ Save/load makes the same condition possible without destruction because it persi
 
 Recommended design: introduce an idempotent effect-removal path used by normal expiry, component destruction, unit destruction, capture/ownership changes where relevant, and load reconciliation. Represent stacked effects by source IDs/tokens rather than only aggregate floats, so cleanup can remove exactly one source. Test every timed ability against expiry, source-component destruction, source-unit destruction, save/load mid-effect, and target destruction.
 
-### WC-008 — Adaptive Forcefield can increase damage
+### WC-008 — Adaptive Forcefield can increase damage - **ALREADY FIXED**
+
+**Completion:** Non-positive and fully mitigated hull damage are no-ops. Reduction is bounded to [0, 1], preserves mitigation order and rounding, and can fully absorb a positive hit.
 
 `Unit.take_damage` first permits environmental cover and defenses to reduce damage to zero, then applies:
 
@@ -198,7 +212,9 @@ at `entities.py:1242-1243`. With any positive `damage_reduction`, even an input 
 
 Recommended repair: return early for non-positive post-mitigation damage, or clamp to `max(0, ...)`. If every successful attack is intentionally meant to inflict a minimum of one, apply that rule once, before or after all mitigation consistently, and document it. The current behavior depends on whether a forcefield happens to be active.
 
-### WC-009 — valid legacy ID zero is handled as “missing”
+### WC-009 — valid legacy ID zero is handled as “missing” - **ALREADY FIXED**
+
+**Completion:** The repository-wide numeric-ID audit replaced truthiness with explicit missing-value checks in executors, wormhole traversal and presentation. Zero-ID regressions cover migration, observation, preflight, execution, formatting, rendering and re-save without renumbering.
 
 `docs/REFERENCE.md:293-297` explicitly states that legacy saves may preserve object ID `0` and that `None`, not zero, means missing. The AI command schema also accepts non-negative IDs. Numerous runtime paths still use truthiness:
 
@@ -219,7 +235,9 @@ The result is a preflight/runtime/display mismatch: a command can satisfy the pu
 
 Recommended repair: use `is None`/`is not None` consistently for identifiers. Add one migrated-save fixture containing ID zero and run it through every target-bearing command serializer, validator, executor, and formatter. Consider reserving zero and migrating it once if ongoing compatibility is not worth the pervasive special case—but then change the published contract and migration logic together.
 
-### WC-010 — minefields tick globally per player turn
+### WC-010 — minefields tick globally per player turn - **ALREADY FIXED**
+
+**Completion:** Minefields check only the current player's living deployed ships after movement, including stationary ships. Each overlapping enemy field can trigger once per owner turn; crossing without final contact does not trigger. Alliance, subtype, depletion and destruction behavior is retained.
 
 `TurnProcessor.process_player_turn` calls `_process_minefield_detonations()` after movement (`turn_processor.py:89-100`). That helper accepts no current player and scans every unit in every system (`:697-734`). In a three-player game, a stationary unit inside an enemy field can therefore trigger a mine three times per round, even when the other two players' turns did not move it. Mine depletion and damage rate scale with player count.
 
@@ -243,7 +261,9 @@ There is also a numeric mismatch. README lines 132-133 and Reference lines 730/7
 
 Recommended repair: choose the intended rule for each mechanic, implement it with tests, and generate UI/help/reference values from the same declarative registry. Do not retain constants merely as placeholders while prose presents them as live features.
 
-### WC-012 — collision clearance margin is not enforced
+### WC-012 — collision clearance margin is not enforced - **ALREADY FIXED**
+
+**Completion:** Expanded-circle entry detection and circumscribed tangent polygons enforce segment clearance. Routing validates all segments and the sector boundary, allows numerical tangency and original physical-body endpoint exceptions, recovers clearance-band starts, rejects band destinations and reports bounded failure as `path_unavailable`.
 
 `compute_avoidance_waypoints` creates expanded circles using `radius + margin` (`geometry.py:214`) and its helper docstring says it returns the first expanded obstacle hit. The actual intersection and quadratic entry calculations use `orig`, the unexpanded obstacle, at `:227-238`.
 
@@ -252,6 +272,8 @@ A segment crossing 149 units above a radius-100 obstacle with a 50-unit requeste
 Recommended repair: use the expanded circle for intersection and entry calculations while retaining the original circle only for the deliberate “endpoint inside body” landing/departure exception. Add tangent, near-tangent, endpoint-inside, multiple-obstacle, and sector-boundary property tests.
 
 ### WC-013 — validation and generation do not share one enforceable contract
+
+**Partial follow-up:** Phase 2 now rejects map-placement shortfalls and invalid Normal home assignments through shared start validation. The broader bounds/type-validation recommendations below remain separate work.
 
 `GameSettings.validate` (`game_settings.py:139-166`) checks only radius ordering, distance ordering, two-team minimum, and named pregenerated systems. It does not enforce the README's 2–6 players and 5–30 systems, positive radii/distances, density in `[0,1]`, non-negative resources/population, valid team IDs/colors/controllers, unique/usable names, or Normal-profile topology requirements. `__post_init__` invokes this partial validation once, but settings remain mutable afterward. The control protocol and GUI implement additional, duplicated validation rules.
 
@@ -493,12 +515,12 @@ Exit criterion: a deliberately mutated mid-game state survives a save/load canon
 ### Phase 2 — correct gameplay invariants
 
 1. Fix radiation storm iteration and decide the accuracy model. - **ALREADY FIXED**
-2. Fix zero-damage handling with damage reduction.
-3. Repair gas-giant order lifecycle and safe exit placement.
-4. Enforce colonizable/capped homeworlds and Normal-profile topology.
-5. Decide and implement minefield cadence.
-6. Replace ID truthiness checks.
-7. Correct collision-margin testing.
+2. Fix zero-damage handling with damage reduction. - **ALREADY FIXED**
+3. Repair gas-giant order lifecycle and safe exit placement. - **ALREADY FIXED**
+4. Enforce colonizable/capped homeworlds and Normal-profile topology. - **ALREADY FIXED**
+5. Decide and implement minefield cadence. - **ALREADY FIXED**
+6. Replace ID truthiness checks. - **ALREADY FIXED**
+7. Correct collision-margin testing. - **ALREADY FIXED**
 
 Exit criterion: each finding has a focused regression test and the rule is documented from a single source of truth.
 

@@ -23,7 +23,7 @@ class DockOrder(Order):
         state_data = super().get_state_data()
         target_carrier_id = self.parameters.get("target_carrier_id")
         target_name = None
-        if target_carrier_id and self.unit and self.unit.game:
+        if target_carrier_id is not None and self.unit and self.unit.game:
             target_carrier = self.unit.game.galaxy.get_unit_by_id(target_carrier_id)
             if target_carrier:
                 target_name = target_carrier.name
@@ -98,7 +98,7 @@ class DeployUnitOrder(Order):
         state_data = super().get_state_data()
         docked_unit_id = self.parameters.get("docked_unit_id")
         docked_name = None
-        if docked_unit_id and self.unit and self.unit.game:
+        if docked_unit_id is not None and self.unit and self.unit.game:
             docked_units = []
             if self.unit.hangar_component:
                 docked_units.extend(self.unit.hangar_component.docked_units)

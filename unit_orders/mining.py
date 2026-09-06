@@ -22,7 +22,7 @@ class MineOrder(Order):
         super().execute(galaxy_ref)
 
         target_id = self.parameters.get("target_id")
-        if not target_id:
+        if target_id is None:
             self.fail("invalid_parameters")
             logger.debug(f"MINE order failed: no target_id.")
             return
@@ -156,7 +156,7 @@ class ContinuousMineOrder(Order):
         super().execute(galaxy_ref)
 
         target_id = self.parameters.get("target_id")
-        if not target_id:
+        if target_id is None:
             self.fail("invalid_parameters")
             logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: no target_id.")
             return

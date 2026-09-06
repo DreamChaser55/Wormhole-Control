@@ -15,10 +15,11 @@ def handle_new_game(game, action: dict) -> None:
 def handle_start_new_game_with_settings(game, action: dict) -> None:
     """Starts a new game using the GameSettings produced by the New Game Wizard."""
     settings = action.get('settings')
-    # Close the wizard window before starting (it's still alive at this point)
-    if game.gui.is_new_game_wizard_open():
-        game.gui.close_new_game_wizard()
-    game.start_new_game(settings=settings)
+    if game.start_new_game(settings=settings):
+        if game.gui.is_new_game_wizard_open():
+            game.gui.close_new_game_wizard()
+    else:
+        game.gui.show_warning_dialog(game.last_setup_error, title="Could not start game")
 
 
 def handle_cancel_new_game_wizard(game, action: dict) -> None:

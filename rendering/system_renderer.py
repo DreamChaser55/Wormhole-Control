@@ -548,7 +548,7 @@ class SystemViewRenderer:
                     target_sys = order.parameters.get("target_system_name")
                     target_hex = order.parameters.get("target_hex_coord")
                     
-                    if target_unit_id:
+                    if target_unit_id is not None:
                         target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
                         if target_unit:
                             all_hex_waypoints.append({

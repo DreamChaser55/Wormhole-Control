@@ -545,58 +545,55 @@ class Planet(CelestialBody):
         unit.hidden_in_gas_giant_id = self.id
 
         if getattr(unit, 'commander_component', None):
-            unit.commander_component.clear_explicit_orders()
             unit.commander_component.suspend_stance_activity("hidden_in_gas_giant")
+        if unit.engines_component:
+            unit.engines_component.clear_move_target()
+        if unit.hyperdrive_component:
+            unit.hyperdrive_component.clear_jump_target()
 
         self.hidden_units.append(unit)
         logger.debug(f"Unit '{unit.name}' (id:{unit.id}) hidden in gas giant atmosphere '{self.name}' (id:{self.id}).")
         return True
 
     def release_unit(self, unit: 'Unit', galaxy_ref: typing.Any = None) -> typing.Optional[Position]:
-        """Releases the unit from the gas giant's atmosphere onto a random vector just outside the collision boundary."""
+        """Commit a verified exit position, or leave the hidden ship unchanged."""
         if unit not in self.hidden_units:
             return None
 
         import math
         import random
         from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
-        from geometry import Circle, is_point_in_circle
+        from geometry import NAVIGATION_CLEARANCE, GEOMETRY_TOLERANCE
+        from unit_orders.movement import get_hex_collision_obstacles
 
-        standoff_dist = float(self.collision_radius) + 50.0
-        g = galaxy_ref or getattr(unit, 'in_galaxy', None) or (getattr(unit.game, 'galaxy', None) if getattr(unit, 'game', None) else None)
-        sys_obj = g.systems.get(self.in_system) if g and self.in_system else None
-        hex_obj = sys_obj.hexes.get(self.in_hex) if sys_obj and self.in_hex else None
+        standoff_dist = float(self.collision_radius) + NAVIGATION_CLEARANCE
+        g = galaxy_ref or getattr(unit, 'in_galaxy', None) or getattr(getattr(unit, 'game', None), 'galaxy', None)
+        sys_obj = g.systems.get(self.in_system) if g else None
+        hex_obj = sys_obj.hexes.get(self.in_hex) if sys_obj else None
+        if hex_obj is None:
+            return None
+        obstacles = get_hex_collision_obstacles(g, self.in_system, self.in_hex, unit=unit)
 
-        obstacles = []
-        if hex_obj:
-            for body in getattr(hex_obj, 'celestial_bodies', []):
-                if body is not self:
-                    cr = getattr(body, 'collision_radius', 0.0)
-                    if cr > 0.0:
-                        obstacles.append(Circle(body.position, cr))
+        def safe(candidate):
+            if candidate.magnitude() > SECTOR_CIRCLE_RADIUS_LOGICAL - 20.0:
+                return False
+            if any(distance(candidate, obs.center) < obs.radius + NAVIGATION_CLEARANCE - GEOMETRY_TOLERANCE for obs in obstacles):
+                return False
+            return all(distance(candidate, other.position) >= NAVIGATION_CLEARANCE
+                       for other in hex_obj.units if other is not unit and other.current_hit_points > 0)
 
         emerge_pos = None
-        for _ in range(64):
-            angle = random.uniform(0.0, 2.0 * math.pi)
-            cand_x = self.position.x + math.cos(angle) * standoff_dist
-            cand_y = self.position.y + math.sin(angle) * standoff_dist
-            cand = Position(cand_x, cand_y)
-
-            if math.hypot(cand_x, cand_y) > SECTOR_CIRCLE_RADIUS_LOGICAL - 20.0:
-                continue
-
-            blocked = False
-            for obs in obstacles:
-                if is_point_in_circle(cand, obs):
-                    blocked = True
-                    break
-            if not blocked:
-                emerge_pos = cand
+        # Every candidate, including the deterministic fallback, uses the same checks.
+        import itertools
+        angles = itertools.chain((random.uniform(0.0, 2.0 * math.pi) for _ in range(64)),
+                                 (math.radians(degrees) for degrees in range(360)))
+        for angle in angles:
+            candidate = self.position + Position(math.cos(angle), math.sin(angle)) * standoff_dist
+            if safe(candidate):
+                emerge_pos = candidate
                 break
-
-        if not emerge_pos:
-            angle = random.uniform(0.0, 2.0 * math.pi)
-            emerge_pos = Position(self.position.x + math.cos(angle) * standoff_dist, self.position.y + math.sin(angle) * standoff_dist)
+        if emerge_pos is None:
+            return None
 
         self.hidden_units.remove(unit)
         unit.position = emerge_pos
@@ -608,13 +605,17 @@ class Planet(CelestialBody):
         if sys_obj:
             sys_obj.add_unit(unit)
 
-        if getattr(unit, 'commander_component', None):
-            unit.commander_component.clear_explicit_orders()
+        if unit.engines_component:
+            unit.engines_component.clear_move_target()
+        if unit.hyperdrive_component:
+            unit.hyperdrive_component.clear_jump_target()
 
         logger.debug(f"Unit '{unit.name}' (id:{unit.id}) emerged from gas giant '{self.name}' at {emerge_pos}.")
         return emerge_pos
 
     def update_population(self):
+        if self.owner and self.is_colonizable:
+            self.population = max(0, min(self.population, self.max_population))
         if not self.is_colonizable or self.is_sabotaged(SabotageType.GROWTH):
             return
         if self.owner and self.population < self.max_population:
@@ -1230,6 +1231,8 @@ class Unit(GameObject):
 
     def take_damage(self, amount: int, damage_type: Optional[TurretType] = None) -> None:
         """Reduces the unit's current hit points by the given amount, applying any active damage reduction, environmental cover, and defenses mitigation."""
+        if amount <= 0:
+            return
         if damage_type:
             cover = self.get_environmental_cover_bonus(damage_type)
             if cover > 0.0:
@@ -1243,8 +1246,11 @@ class Unit(GameObject):
                 amount = max(0, int(round(amount - mitigation)))
                 logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} damage. Remaining damage: {amount}")
 
-        if self.damage_reduction > 0.0:
-            amount = max(1, int(amount * (1.0 - self.damage_reduction)))
+        reduction = max(0.0, min(1.0, self.damage_reduction))
+        if reduction > 0.0:
+            amount = max(0, int(amount * (1.0 - reduction)))
+        if amount <= 0:
+            return
         self.current_hit_points -= amount
         if self.current_hit_points < 0:
             self.current_hit_points = 0
@@ -1375,6 +1381,8 @@ class Unit(GameObject):
         """
         if getattr(self, 'is_hidden_in_gas_giant', False):
             # Units hidden in a gas giant cannot harvest from stars, tick external fields, or attack
+            if self.commander_component:
+                self.commander_component.update()
             return
         # Antimatter is no longer regenerated automatically for all units.
         # Only units with an AntimatterHarvester component can replenish their

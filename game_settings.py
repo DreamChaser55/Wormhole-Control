@@ -156,13 +156,7 @@ class GameSettings:
             if len(distinct_teams) < 2:
                 errors.append("Players must be grouped into at least two different teams.")
 
-        if self.pregenerated_galaxy is not None and hasattr(self.pregenerated_galaxy, "systems"):
-            for cfg in self.player_configs:
-                if cfg.home_system_name and cfg.home_system_name.lower() != "random":
-                    if cfg.home_system_name not in self.pregenerated_galaxy.systems:
-                        errors.append(
-                            f"Assigned home system '{cfg.home_system_name}' for player '{cfg.name}' does not exist in the generated galaxy."
-                        )
+        errors.extend(validate_start_conditions(self, self.pregenerated_galaxy))
         return errors
 
     def __post_init__(self) -> None:
@@ -173,3 +167,31 @@ class GameSettings:
             raise ValueError("; ".join(errors))
 
 
+def validate_start_conditions(settings, galaxy=None) -> typing.List[str]:
+    """Shared, side-effect-free population and home-system rules for new games.
+
+    Map previews pass no players; topology and faction checks are then independent.
+    Existing saves do not pass through new-game validation.
+    """
+    errors = []
+    if settings.starting_population < 0:
+        errors.append("Starting population must be non-negative.")
+    if settings.num_systems <= 0:
+        errors.append("At least one star system is required.")
+    assigned = [cfg.home_system_name for cfg in settings.player_configs
+                if cfg.home_system_name and cfg.home_system_name.lower() != 'random']
+    if normalize_spawn_profile(settings.spawn_profile) == SpawnProfile.NORMAL:
+        if settings.num_systems < settings.num_players:
+            errors.append("Normal requires at least one distinct star system per player.")
+        if len(assigned) != len(set(assigned)):
+            errors.append("Normal requires distinct specified home systems.")
+        if galaxy is not None and len(galaxy.systems) < settings.num_players:
+            errors.append("The generated galaxy has too few systems for distinct Normal starts.")
+    if galaxy is not None:
+        if len(galaxy.systems) != settings.num_systems:
+            errors.append(f"Requested {settings.num_systems} systems but the map contains {len(galaxy.systems)}. Regenerate the map or relax its distance constraints.")
+        for cfg in settings.player_configs:
+            if cfg.home_system_name and cfg.home_system_name.lower() != "random":
+                if cfg.home_system_name not in galaxy.systems:
+                    errors.append(f"Assigned home system '{cfg.home_system_name}' for player '{cfg.name}' does not exist in the galaxy.")
+    return errors

@@ -2,16 +2,16 @@
 import logging
 import random
 import typing
-import uuid
+import copy
+from types import SimpleNamespace
 
-from constants import BLUE, RED, YELLOW, PlanetType
+from constants import PlanetType
 from entities import Player, Planet, Star, Wormhole
 from galaxy import Galaxy, StarSystem
 from geometry import Position
-from game_ai.runtime import DEFAULT_REASONING_EFFORT, DEFAULT_REPAIR_RETRIES
 from unit_components import instantiate_unit_from_template
 from utils import HexCoord, generate_short_id
-from game_settings import GameSettings, SpawnProfile, normalize_spawn_profile, _default_player_configs
+from game_settings import GameSettings, SpawnProfile, normalize_spawn_profile, validate_start_conditions
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,11 @@ logger = logging.getLogger(__name__)
 def _select_starting_systems(galaxy_systems: typing.Dict[str, StarSystem], count: int) -> typing.List[StarSystem]:
     """Selects `count` well-distributed starting systems across the galaxy."""
     systems_list = list(galaxy_systems.values())
-    if len(systems_list) <= count:
+    if count < 0 or count > len(systems_list):
+        raise ValueError("Not enough unclaimed systems for distinct Normal starts")
+    if count == 0:
+        return []
+    if len(systems_list) == count:
         return systems_list
 
     # Farthest-point sampling to distribute player starting positions across the galaxy
@@ -44,181 +48,124 @@ def _select_starting_systems(galaxy_systems: typing.Dict[str, StarSystem], count
     return selected
 
 
-def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bool:
-    """Initializes a new game when the New Game button is clicked.
-
-    Args:
-        game: Target game instance.
-        settings: Optional :class:`GameSettings` produced by the New Game Wizard.
-            When *None*, the current defaults are used.
-
-    Returns:
-        bool: True if initialization succeeded, False otherwise.
-    """
-    if settings is None:
-        settings = GameSettings()
-
-    game.settings = settings
-    logger.debug(f"Starting new game setup with spawn profile: {settings.spawn_profile.value}...")
-    if hasattr(game, 'ai_coordinator'):
-        game.ai_coordinator.reset()
-    game.campaign_id = generate_short_id()
-
-    # Set up game UI first to ensure galaxy_generation_rect is defined before galaxy generation
-    game.gui.show_game_ui()
-
-    # Generate or reuse galaxy using settings parameters
-    try:
-        if getattr(settings, "pregenerated_galaxy", None) is not None:
-            game.galaxy = settings.pregenerated_galaxy
-            logger.debug("Using pregenerated galaxy from wizard.")
-        else:
-            game.galaxy = Galaxy(num_systems=settings.num_systems, settings=settings)
-        if not game.galaxy.systems:
-            logger.debug("Warning: Galaxy generated with no systems.")
-            return False
-    except Exception as e:
-        logger.debug(f"Error during Galaxy generation: {e}")
-        return False
-
-    # Add Players from settings
-    game.players = [
-        Player(
-            cfg.name,
-            cfg.color,
-            controller=cfg.controller,
-            team_id=cfg.team_id,
-            ai_reasoning_effort=getattr(
-                cfg, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT
-            ),
-            ai_repair_retries=getattr(
-                cfg, "ai_repair_retries", DEFAULT_REPAIR_RETRIES
-            ),
-        )
-        for cfg in settings.player_configs
-    ]
-
-    game.current_player_index = 0
-    game.turn_number = 1
-
-    # Track homeworld info per player: mapping of Player -> (system_name, hex_coord, position)
-    player_homeworlds: typing.Dict[Player, typing.Tuple[str, HexCoord, Position]] = {}
-
-    # Check for explicitly specified home systems from player configs
-    specified_targets: typing.Dict[int, StarSystem] = {}
-    for i, cfg in enumerate(settings.player_configs):
-        if cfg.home_system_name and cfg.home_system_name.strip().lower() != "random":
-            sys_name = cfg.home_system_name.strip()
-            if sys_name in game.galaxy.systems:
-                specified_targets[i] = game.galaxy.systems[sys_name]
-
-    if settings.spawn_profile == SpawnProfile.NORMAL:
-        # Each player receives their own distinct star system unless specified
-        unclaimed_systems = {
-            name: sys for name, sys in game.galaxy.systems.items()
-            if sys not in specified_targets.values()
-        }
-        if not unclaimed_systems:
-            unclaimed_systems = dict(game.galaxy.systems)
-
-        needed_random = len(game.players) - len(specified_targets)
-        starting_pool = _select_starting_systems(unclaimed_systems, max(1, needed_random))
-        pool_idx = 0
-
-        for i, player in enumerate(game.players):
-            if i in specified_targets:
-                target_sys = specified_targets[i]
-            else:
-                target_sys = starting_pool[pool_idx % len(starting_pool)]
-                pool_idx += 1
-
-            all_bodies = [body for _, body in target_sys.get_all_celestial_bodies()]
-            unowned_planets = [body for body in all_bodies if isinstance(body, Planet) and getattr(body, "owner", None) is None]
-            if unowned_planets:
-                homeworld = random.choice(unowned_planets)
-            else:
-                # Spawn a habitable planet in an available non-star, non-wormhole hex
-                candidate_hexes = [
-                    coord for coord, h in target_sys.hexes.items()
-                    if coord != (0, 0) and not any(isinstance(b, (Star, Wormhole, Planet)) for b in h.celestial_bodies)
-                ]
-                hw_hex = random.choice(candidate_hexes) if candidate_hexes else (1, 0)
-                if hw_hex not in target_sys.hexes:
-                    hw_hex = next((c for c in target_sys.hexes if c != (0, 0)), (0, 0))
-                homeworld = Planet(in_hex=hw_hex, in_system=target_sys.name, planet_type=PlanetType.TERRAN)
-                target_sys.add_celestial_body(homeworld)
-                if hw_hex in target_sys.hexes:
-                    target_sys.hexes[hw_hex].update_static_inhibition_zones()
-
-            homeworld.owner = player
-            homeworld.population = settings.starting_population
-            player.homeworld_id = homeworld.id
-            player_homeworlds[player] = (target_sys.name, homeworld.in_hex, homeworld.position)
-            logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} at hex {homeworld.in_hex} as homeworld for {player.name}")
-
+def _homeworld(system, player, population):
+    """Select a usable world or create a Terran world in an empty sector."""
+    planets = [body for _, body in system.get_all_celestial_bodies()
+               if isinstance(body, Planet) and body.owner is None and body.is_colonizable]
+    if planets:
+        world = random.choice(planets)
     else:
-        # Testing profile: All players spawn in the specified system or Sol / first available system
-        sol_system = game.galaxy.systems.get('Sol')
-        if not sol_system and game.galaxy.systems:
-            sol_system = next(iter(game.galaxy.systems.values()))
-
-        for i, player in enumerate(game.players):
-            if i in specified_targets:
-                target_sys = specified_targets[i]
-            else:
-                target_sys = sol_system
-
-            if not target_sys:
-                logger.debug("Warning: No systems available for homeworld assignment.")
-                continue
-
-            all_bodies = [body for _, body in target_sys.get_all_celestial_bodies()]
-            unowned_planets = [body for body in all_bodies if isinstance(body, Planet) and getattr(body, "owner", None) is None]
-            if unowned_planets:
-                homeworld = random.choice(unowned_planets)
-            else:
-                candidate_hexes = [
-                    coord for coord, h in target_sys.hexes.items()
-                    if coord != (0, 0) and not any(isinstance(b, (Star, Wormhole, Planet)) for b in h.celestial_bodies)
-                ]
-                hw_hex = random.choice(candidate_hexes) if candidate_hexes else (1, 0)
-                if hw_hex not in target_sys.hexes:
-                    hw_hex = next((c for c in target_sys.hexes if c != (0, 0)), (0, 0))
-                homeworld = Planet(in_hex=hw_hex, in_system=target_sys.name, planet_type=PlanetType.TERRAN)
-                target_sys.add_celestial_body(homeworld)
-                if hw_hex in target_sys.hexes:
-                    target_sys.hexes[hw_hex].update_static_inhibition_zones()
-
-            homeworld.owner = player
-            homeworld.population = settings.starting_population
-            player.homeworld_id = homeworld.id
-            player_homeworlds[player] = (target_sys.name, homeworld.in_hex, homeworld.position)
-            logger.debug(f"Assigned {homeworld.name} in {homeworld.in_system} at hex {homeworld.in_hex} as homeworld for {player.name}")
+        available = [coord for coord, sector in system.hexes.items()
+                     if coord != (0, 0) and not sector.celestial_bodies and not sector.units]
+        if not available:
+            raise ValueError(f"No valid homeworld placement is available in {system.name}.")
+        world = Planet(random.choice(available), system.name, PlanetType.TERRAN)
+        system.add_celestial_body(world)
+        system.hexes[world.in_hex].update_static_inhibition_zones()
+    world.owner = player
+    world.population = min(population, world.max_population)
+    player.homeworld_id = world.id
+    return world
 
 
-    game.player_homeworlds = player_homeworlds
+def prepare_new_campaign(settings):
+    """Build and validate an isolated campaign; never invoke live GUI or AI code."""
+    from campaign_graph import iter_objects, iter_units
+    from campaign_persistence import PreparedCampaign, reconcile
+    from persistence_context import isolated_allocations
+    from entities import GameObject
+    from unit_components import Agent
+    from unit_orders import Order
 
-    # Apply starting resources from settings
-    for player in game.players:
-        player.credits = settings.starting_credits
-        player.metal = settings.starting_metal
-        player.crystal = settings.starting_crystal
+    errors = settings.validate()
+    if errors:
+        raise ValueError("; ".join(errors))
+    settings = copy.copy(settings)
+    settings.player_configs = copy.deepcopy(settings.player_configs)
+    settings.spawn_profile = normalize_spawn_profile(settings.spawn_profile)
+    with isolated_allocations() as allocations:
+        allocations[(GameObject, 'object_counter')] = 1
+        galaxy = (copy.deepcopy(settings.pregenerated_galaxy) if settings.pregenerated_galaxy is not None
+                  else Galaxy(num_systems=settings.num_systems, settings=settings))
+        errors = validate_start_conditions(settings, galaxy)
+        if errors:
+            raise ValueError("; ".join(errors))
+        allocations[(GameObject, 'object_counter')] = max(
+            allocations[(GameObject, 'object_counter')],
+            max((obj.id for obj, _ in iter_objects(galaxy)), default=0) + 1)
+        settings.pregenerated_galaxy = None
+        candidate = SimpleNamespace(
+            settings=settings, galaxy=galaxy, players=[], campaign_id=generate_short_id(),
+            current_player_index=0, turn_number=1, view_mode='galaxy', game_started=True,
+            current_system_name=None, current_sector_coord=None, conversations={}, message_counter=0,
+            visibility=None, visibility_dirty=True, selected_objects=[], _loading=True,
+            deselect_object=lambda obj: None)
+        candidate.players = [Player(cfg.name, cfg.color, controller=cfg.controller, team_id=cfg.team_id,
+                                    ai_reasoning_effort=cfg.ai_reasoning_effort,
+                                    ai_repair_retries=cfg.ai_repair_retries) for cfg in settings.player_configs]
+        if not candidate.players:
+            raise ValueError("A campaign requires players.")
+        specified = {i: galaxy.systems[cfg.home_system_name] for i, cfg in enumerate(settings.player_configs)
+                     if cfg.home_system_name and cfg.home_system_name.lower() != 'random'}
+        if settings.spawn_profile == SpawnProfile.NORMAL:
+            unclaimed = {name: system for name, system in galaxy.systems.items() if system not in specified.values()}
+            random_systems = iter(_select_starting_systems(unclaimed, len(candidate.players) - len(specified)))
+        else:
+            shared = galaxy.systems.get('Sol') or next(iter(galaxy.systems.values()))
+        homes = {}
+        for i, player in enumerate(candidate.players):
+            system = specified.get(i)
+            if system is None:
+                system = next(random_systems) if settings.spawn_profile == SpawnProfile.NORMAL else shared
+            world = _homeworld(system, player, settings.starting_population)
+            homes[player] = (system.name, world.in_hex, world.position)
+            player.credits, player.metal, player.crystal = settings.starting_credits, settings.starting_metal, settings.starting_crystal
+        candidate.player_homeworlds = homes
+        spawn_units(candidate, player_homeworlds=homes, spawn_profile=settings.spawn_profile)
+        expected_units = 4 if settings.spawn_profile == SpawnProfile.NORMAL else 11
+        for player in candidate.players:
+            world = galaxy.get_celestial_body_by_id(player.homeworld_id)
+            if world is None or world.owner is not player or not world.is_colonizable or not 0 <= world.population <= world.max_population:
+                raise ValueError(f"Invalid homeworld for {player.name}.")
+            if sum(unit.owner is player for unit, _ in iter_units(galaxy)) != expected_units:
+                raise ValueError(f"Could not create the complete starter fleet for {player.name}.")
+        objects, agents = reconcile(candidate)
+        return PreparedCampaign(candidate,
+            max(objects, default=0) + 1,
+            allocations.get((Player, 'player_counter'), 0),
+            max(allocations.get((Agent, 'agent_counter'), 0), max(agents, default=-1) + 1),
+            allocations.get((Order, 'order_counter'), 0), [])
 
-    # Set up starting units
-    spawn_units(game, player_homeworlds=player_homeworlds, spawn_profile=settings.spawn_profile)
 
-    # Change view mode and set up game UI
-    game.view_mode = 'galaxy'
-    game.game_started = True
-    game.visibility = None
-    game.visibility_dirty = True
-    game.recompute_visibility()
-    game.update_side_bar_content()  # Update info box for initial state
-    game.update_player_turn_display()  # Update turn display for Player 1
-    logger.debug(f"--- Turn {game.turn_number} - Start of {game.players[game.current_player_index].name}'s Turn ---")
-    if hasattr(game, 'check_and_schedule_ai_turn'):
-        game.check_and_schedule_ai_turn()
-    logger.debug("New game setup complete.\n")
+def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bool:
+    """Prepare a complete campaign before committing; failed setup preserves live play."""
+    from campaign_persistence import commit_campaign
+    try:
+        prepared = prepare_new_campaign(settings if settings is not None else GameSettings())
+    except Exception as exc:
+        logger.exception("Could not prepare new campaign")
+        game.last_setup_error = str(exc)
+        return False
+    commit_campaign(game, prepared)
+    game.last_setup_error = None
+    # As with loading, a presentation failure cannot reject an already committed campaign.
+    try:
+        if hasattr(game, 'ai_coordinator'):
+            game.ai_coordinator.reset()
+    except Exception:
+        logger.exception("Campaign started, but AI reset failed")
+    try:
+        game.gui.show_game_ui()
+        game.recompute_visibility()
+        game.update_side_bar_content()
+        game.update_player_turn_display()
+    except Exception:
+        logger.exception("Campaign started, but presentation refresh failed")
+    try:
+        if hasattr(game, 'check_and_schedule_ai_turn'):
+            game.check_and_schedule_ai_turn()
+    except Exception:
+        logger.exception("Campaign started, but AI scheduling failed")
     return True
 
 

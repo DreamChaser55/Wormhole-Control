@@ -142,7 +142,7 @@ def test_minefield_contact_detonation():
     initial_hp = enemy_unit.current_hit_points
 
     # Trigger turn processing detonations
-    tp._process_minefield_detonations()
+    tp._process_minefield_detonations(p2)
 
     # Enemy unit should have taken damage
     assert enemy_unit.current_hit_points < initial_hp
@@ -229,7 +229,7 @@ def test_minefield_subtypes_targeting():
     system.hexes[(0, 0)].add_unit(strikecraft_wing)
 
     # Process detonations -> Anti-ship minefield MUST IGNORE strikecraft wing
-    tp._process_minefield_detonations()
+    tp._process_minefield_detonations(p2)
     assert strikecraft_wing.current_hit_points == strikecraft_wing.max_hit_points
     assert anti_ship_mf.mines_remaining == 2
 
@@ -241,7 +241,7 @@ def test_minefield_subtypes_targeting():
     system.hexes[(0, 0)].add_unit(cruiser)
 
     # Process detonations -> Anti-ship minefield MUST ATTACK cruiser
-    tp._process_minefield_detonations()
+    tp._process_minefield_detonations(p2)
     assert cruiser.current_hit_points < cruiser.max_hit_points
     assert anti_ship_mf.mines_remaining == 1
 
@@ -265,7 +265,7 @@ def test_minefield_subtypes_targeting():
     system.hexes[(1, 1)].add_unit(cruiser2)
 
     # Process detonations -> Anti-strikecraft minefield MUST IGNORE cruiser
-    tp._process_minefield_detonations()
+    tp._process_minefield_detonations(p2)
     assert cruiser2.current_hit_points == cruiser2.max_hit_points
     assert anti_sc_mf.mines_remaining == 2
 
@@ -277,7 +277,7 @@ def test_minefield_subtypes_targeting():
     system.hexes[(1, 1)].add_unit(sc_wing2)
 
     # Process detonations -> Anti-strikecraft minefield MUST ATTACK strikecraft
-    tp._process_minefield_detonations()
+    tp._process_minefield_detonations(p2)
     assert sc_wing2.current_hit_points < sc_wing2.max_hit_points
     assert anti_sc_mf.mines_remaining == 1
 

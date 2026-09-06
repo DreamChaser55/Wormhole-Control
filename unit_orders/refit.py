@@ -60,7 +60,7 @@ class RefitOrder(Order):
         target_name = None
         lookup_attempted = False
         lookup_success = False
-        if target_unit_id and self.unit and self.unit.game and self.unit.game.galaxy:
+        if target_unit_id is not None and self.unit and self.unit.game and self.unit.game.galaxy:
             lookup_attempted = True
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if target_unit:

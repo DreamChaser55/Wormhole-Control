@@ -28,7 +28,7 @@ class ColonizeOrder(Order):
         super().execute(galaxy_ref)
 
         target_id = self.parameters.get("target_id")
-        if not target_id:
+        if target_id is None:
             self.fail("invalid_parameters")
             logger.debug(f"COLONIZE order failed: no target_id.")
             return
@@ -102,7 +102,7 @@ class LoadColonistsOrder(Order):
         target_id = self.parameters.get("target_id")
         amount = self.parameters.get("amount", 50)
 
-        if not target_id:
+        if target_id is None:
             self.fail("invalid_parameters")
             logger.debug(f"LOAD_COLONISTS order failed: no target_id.")
             return

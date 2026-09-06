@@ -191,135 +191,159 @@ def segment_intersects_circle(p1: Position, p2: Position, circle: Circle) -> boo
     return t1 <= 1.0 and t2 >= 0.0
 
 
+NAVIGATION_CLEARANCE = 50.0
+GEOMETRY_TOLERANCE = 1e-6
+
+
+class NoSafePathError(ValueError):
+    """A bounded search could not produce a verified collision-free route."""
+
+
+def segment_clearance(start: Position, end: Position, center: Position) -> float:
+    """Minimum center distance anywhere along a segment, including endpoints."""
+    delta = end - start
+    length_sq = delta.magnitude_sq()
+    if length_sq <= 1e-24:
+        return distance(start, center)
+    offset = center - start
+    t = max(0.0, min(1.0, (offset.x * delta.x + offset.y * delta.y) / length_sq))
+    return distance(start + delta * t, center)
+
+
 def compute_avoidance_waypoints(
     start: Position,
     end: Position,
     obstacles: typing.List[Circle],
-    margin: float = 50.0,
+    margin: float = NAVIGATION_CLEARANCE,
+    boundary: typing.Optional[Circle] = None,
 ) -> typing.List[Position]:
-    """Computes intermediate waypoints so the path from *start* to *end* avoids
-    every obstacle in the list.
+    """Return verified intermediate waypoints, or raise NoSafePathError.
 
-    Each obstacle ``Circle`` represents the physical extent of a celestial body.
-    A safety *margin* is added around each obstacle when testing for clearances
-    and placing waypoints.
-
-    Returns a (possibly empty) list of intermediate ``Position`` waypoints.
-    An empty list means the direct path is already clear.
+    Tangency to the expanded obstacles is legal. Only original endpoints inside
+    physical bodies receive the legacy landing/departure exception. A start in
+    the clearance band may escape outward; a destination in that band is invalid.
+    The optional circular boundary contains the entire route, including endpoints.
     """
-    if not obstacles:
-        return []
-
-    MAX_DEPTH = 8  # Prevent infinite recursion in degenerate layouts.
+    eps = GEOMETRY_TOLERANCE
+    if margin < 0:
+        raise ValueError("Navigation clearance must be non-negative")
     expanded = [Circle(obs.center, obs.radius + margin) for obs in obstacles]
 
-    def _first_blocker(p1: Position, p2: Position) -> typing.Optional[typing.Tuple[Circle, Circle]]:
-        """Return the first expanded obstacle hit by the segment, or None."""
-        best: typing.Optional[typing.Tuple[Circle, Circle]] = None
-        best_t: float = float("inf")
-        for i, obs in enumerate(expanded):
-            orig = obstacles[i]
-            # Skip obstacles that contain either endpoint so units can land/depart
-            if distance_sq(p1, orig.center) <= orig.radius * orig.radius:
+    def in_bounds(p):
+        return boundary is None or distance(p, boundary.center) <= boundary.radius + eps
+
+    if not in_bounds(start) or not in_bounds(end):
+        raise NoSafePathError("Route endpoint is outside the sector")
+
+    def endpoint_exception(a, b, original):
+        return ((a == start and distance(start, original.center) <= original.radius + eps)
+                or (b == end and distance(end, original.center) <= original.radius + eps))
+
+    for original, expanded_obstacle in zip(obstacles, expanded):
+        d = distance(end, original.center)
+        if original.radius + eps < d < expanded_obstacle.radius - eps:
+            raise NoSafePathError("Destination lies inside an obstacle clearance band")
+
+    band = [obs for original, obs in zip(obstacles, expanded)
+            if original.radius + eps < distance(start, obs.center) < obs.radius - eps]
+    escape = None
+    if band:
+        # One outward segment must clear all bands without moving deeper into any.
+        for obs in band:
+            candidate = obs.center + (start - obs.center).normalize() * (obs.radius + eps * 4)
+            delta = candidate - start
+            if not in_bounds(candidate):
                 continue
-            if distance_sq(p2, orig.center) <= orig.radius * orig.radius:
+            valid = True
+            for original, other in zip(obstacles, expanded):
+                if other in band:
+                    offset = start - other.center
+                    if (distance(candidate, other.center) < other.radius - eps
+                            or offset.x * delta.x + offset.y * delta.y < -eps):
+                        valid = False
+                elif not endpoint_exception(start, candidate, original):
+                    valid = valid and segment_clearance(start, candidate, other.center) >= other.radius - eps
+            if valid:
+                escape = candidate
+                break
+        if escape is None:
+            raise NoSafePathError("Cannot escape the obstacle clearance band")
+
+    def exempt(a, b, original, obs):
+        return endpoint_exception(a, b, original) or (a == start and b == escape and obs in band)
+
+    def first_blocker(a, b):
+        best, best_t = None, float('inf')
+        delta = b - a
+        length_sq = delta.magnitude_sq()
+        for original, obs in zip(obstacles, expanded):
+            if exempt(a, b, original, obs):
                 continue
-            if not segment_intersects_circle(p1, p2, orig):
+            if segment_clearance(a, b, obs.center) >= obs.radius - eps:
                 continue
-            # Parametric entry t to find the closest blocker to p1
-            dx = p2.x - p1.x
-            dy = p2.y - p1.y
-            fx = p1.x - orig.center.x
-            fy = p1.y - orig.center.y
-            a = dx * dx + dy * dy
-            if a < 1e-12:
-                continue
-            b_val = 2.0 * (fx * dx + fy * dy)
-            c_val = fx * fx + fy * fy - orig.radius * orig.radius
-            disc = b_val * b_val - 4.0 * a * c_val
-            if disc < 0.0:
-                continue
-            t_entry = max(0.0, (-b_val - math.sqrt(disc)) / (2.0 * a))
-            if t_entry < best_t:
-                best_t = t_entry
-                best = (obs, orig)
+            offset = a - obs.center
+            linear = 2 * (offset.x * delta.x + offset.y * delta.y)
+            constant = offset.magnitude_sq() - obs.radius ** 2
+            disc = max(0.0, linear ** 2 - 4 * length_sq * constant)
+            entry = max(0.0, (-linear - math.sqrt(disc)) / (2 * length_sq)) if length_sq > 1e-24 else 0.0
+            if entry < best_t:
+                best, best_t = obs, entry
         return best
 
-    def _get_tangent_angle(P: Position, C: Position, R: float) -> typing.Tuple[float, float]:
-        dx = P.x - C.x
-        dy = P.y - C.y
-        d = math.hypot(dx, dy)
-        if d <= 1e-9:
-            return 0.0, 0.0
-        theta = math.atan2(dy, dx)
-        if d <= R:
-            return theta, 0.0
-        alpha = math.acos(min(1.0, R / d))
-        return theta, alpha
+    def candidate_path(a, b, obs, direction):
+        radius = obs.radius
+        d1, d2 = distance(a, obs.center), distance(b, obs.center)
+        if min(d1, d2) < radius - eps:
+            raise NoSafePathError("Intermediate waypoint is inside an obstacle")
+        theta1 = math.atan2(a.y - obs.center.y, a.x - obs.center.x)
+        theta2 = math.atan2(b.y - obs.center.y, b.x - obs.center.x)
+        angle1 = theta1 + direction * math.acos(min(1.0, radius / max(d1, eps)))
+        angle2 = theta2 - direction * math.acos(min(1.0, radius / max(d2, eps)))
+        arc = direction * ((direction * (angle2 - angle1)) % (2 * math.pi))
+        steps = max(1, math.ceil(abs(arc) / math.radians(15)))
+        step = arc / steps
+        # Intersections of consecutive tangent lines form a circumscribed polygon.
+        # Every edge has clearance radius, unlike chords between points on a circle.
+        vertex_radius = radius / math.cos(step / 2)
+        return [obs.center + Position(math.cos(angle1 + (i + .5) * step),
+                                      math.sin(angle1 + (i + .5) * step)) * vertex_radius
+                for i in range(steps)]
 
-    def _generate_candidate_path(
-        p1: Position, p2: Position, exp_obs: Circle, orig_obs: Circle, side_sign: float
-    ) -> typing.List[Position]:
-        C = exp_obs.center
-        R = exp_obs.radius
-        r_body = orig_obs.radius
+    def path_length(points):
+        return sum(distance(a, b) for a, b in zip(points, points[1:]))
 
-        theta1, alpha1 = _get_tangent_angle(p1, C, R)
-        theta2, alpha2 = _get_tangent_angle(p2, C, R)
+    budget = 2048
 
-        a_start = theta1 + side_sign * alpha1
-        a_end = theta2 - side_sign * alpha2
-
-        # Compute angular difference for the shortest arc
-        diff = (a_end - a_start + math.pi) % (2.0 * math.pi) - math.pi
-
-        # Maximum angular step ensuring every straight chord between waypoints satisfies:
-        # R * cos(step / 2) >= r_body
-        ratio = max(0.0, min(1.0, r_body / R))
-        max_step = max(0.3, 2.0 * math.acos(ratio) * 0.95)
-
-        num_steps = max(1, math.ceil(abs(diff) / max_step))
-        step = diff / num_steps
-
-        wps: typing.List[Position] = []
-        for i in range(num_steps + 1):
-            ang = a_start + i * step
-            wp = Position(C.x + R * math.cos(ang), C.y + R * math.sin(ang))
-            if not wps or distance(wps[-1], wp) > 1.0:
-                wps.append(wp)
-        return wps
-
-    def _path_length(pts: typing.List[Position]) -> float:
-        return sum(distance(pts[i], pts[i+1]) for i in range(len(pts)-1))
-
-    def _solve(p1: Position, p2: Position, depth: int = 0) -> typing.List[Position]:
-        if depth >= MAX_DEPTH:
+    def solve(a, b, depth=0):
+        nonlocal budget
+        budget -= 1
+        if budget < 0:
+            raise NoSafePathError("Collision search budget exhausted")
+        blocker = first_blocker(a, b)
+        if blocker is None:
             return []
-        blocker_pair = _first_blocker(p1, p2)
-        if blocker_pair is None:
-            return []
-        exp_obs, orig_obs = blocker_pair
+        if depth >= 8:
+            raise NoSafePathError("Collision search depth exhausted")
+        candidates = [candidate_path(a, b, blocker, sign) for sign in (1, -1)]
+        candidates.sort(key=lambda wps: path_length([a, *wps, b]))
+        for waypoints in candidates:
+            if not all(in_bounds(p) for p in waypoints):
+                continue
+            points = [a, *waypoints, b]
+            result = []
+            try:
+                for index, (left, right) in enumerate(zip(points, points[1:])):
+                    result.extend(solve(left, right, depth + 1))
+                    if index < len(waypoints):
+                        result.append(right)
+            except NoSafePathError:
+                continue
+            return result
+        raise NoSafePathError("No safe bypass fits the sector and obstacles")
 
-        path_pos = _generate_candidate_path(p1, p2, exp_obs, orig_obs, +1.0)
-        path_neg = _generate_candidate_path(p1, p2, exp_obs, orig_obs, -1.0)
-
-        len_pos = _path_length([p1] + path_pos + [p2])
-        len_neg = _path_length([p1] + path_neg + [p2])
-
-        chosen_wps = path_pos if len_pos <= len_neg else path_neg
-
-        # Recursively resolve any collisions on all sub-segments
-        full_pts = [p1] + chosen_wps + [p2]
-        result: typing.List[Position] = []
-        for i in range(len(full_pts) - 1):
-            sub_start = full_pts[i]
-            sub_end = full_pts[i+1]
-            sub_avoidance = _solve(sub_start, sub_end, depth + 1)
-            result.extend(sub_avoidance)
-            if i < len(chosen_wps):
-                result.append(chosen_wps[i])
-        return result
-
-    return _solve(start, end)
-
-
+    waypoints = ([escape] if escape is not None else []) + solve(escape if escape is not None else start, end)
+    waypoints = [p for p in waypoints if distance(p, start) > eps and distance(p, end) > eps]
+    points = [start, *waypoints, end]
+    if not all(in_bounds(p) for p in points) or any(first_blocker(a, b) is not None for a, b in zip(points, points[1:])):
+        raise NoSafePathError("Final route failed clearance validation")
+    return waypoints

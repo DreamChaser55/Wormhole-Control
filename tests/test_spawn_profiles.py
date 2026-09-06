@@ -136,7 +136,7 @@ def test_start_new_game_normal_spawn_profile():
 
         assert len(homeworlds) == 1, f"Expected exactly 1 homeworld planet for {player.name}"
         sys_name, hw_hex, planet = homeworlds[0]
-        assert planet.population == 40
+        assert planet.population == min(40, planet.max_population)
         player_systems[player] = sys_name
 
         # Find units owned by player

@@ -182,7 +182,7 @@ def test_serialization_and_deserialization():
 
 def test_ai_observation_and_command_validation():
     from game_ai.observation import _body_view
-    from game_ai.commands import CommandGateway, _Rejected
+    from game_ai.commands import CommandGateway, _Rejected, _BatchProjection
 
     field = AsteroidField(in_hex=HexCoord(0, 0), in_system="Sol", density=FieldDensity.HIGH)
     view = _body_view(field, None)
@@ -204,6 +204,7 @@ def test_ai_observation_and_command_validation():
 
     cmd = MagicMock()
     cmd.type = "move"
+    cmd.queue = False
     cmd.system_name = "Sol"
     cmd.hex_coord = HexCoord(0, 0)
     cmd.position = [0.0, 0.0]
@@ -211,7 +212,7 @@ def test_ai_observation_and_command_validation():
     cmd.target_body_id = None
 
     with pytest.raises(_Rejected) as exc_info:
-        gateway._validate_unit_command(large_ship, cmd, MagicMock())
+        gateway._validate_unit_command(large_ship, cmd, _BatchProjection(game, large_ship.owner))
     assert exc_info.value.code == "hazard_blocked"
 
 

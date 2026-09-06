@@ -32,7 +32,7 @@ class TransferAntimatterOrder(Order):
         target_name = None
         lookup_attempted = False
         lookup_success = False
-        if target_unit_id and self.unit and self.unit.game:
+        if target_unit_id is not None and self.unit and self.unit.game:
             lookup_attempted = True
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if target_unit:
@@ -118,7 +118,7 @@ class TransferAntimatterOrder(Order):
             return
 
         target_unit_id = self.parameters.get("target_unit_id")
-        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id else None
+        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None else None
 
         from entities import are_allies
         if (not target_unit or not are_allies(self.unit.owner, target_unit.owner) or
@@ -148,7 +148,7 @@ class TransferAntimatterOrder(Order):
             return
 
         target_unit_id = self.parameters.get("target_unit_id")
-        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id else None
+        target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None else None
 
         source_am = self.unit.antimatter_component
         target_am = target_unit.antimatter_component if target_unit else None

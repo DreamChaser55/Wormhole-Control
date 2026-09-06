@@ -366,7 +366,7 @@ class SectorOverlayRenderer:
         elif order.order_type == OrderType.USE_ABILITY:
             target_unit_id = order.parameters.get("target_unit_id")
             target_position = order.parameters.get("target_position")
-            if target_unit_id:
+            if target_unit_id is not None:
                 target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
                 if target_unit and target_unit.in_system == system_name and target_unit.in_hex == hex_coord:
                     return True
@@ -377,7 +377,7 @@ class SectorOverlayRenderer:
                     return True
         elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
             target_unit_id = order.parameters.get("target_unit_id")
-            if target_unit_id:
+            if target_unit_id is not None:
                 target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
                 if target_unit and target_unit.in_system == system_name and target_unit.in_hex == hex_coord:
                     return True
@@ -480,7 +480,7 @@ class SectorOverlayRenderer:
                 })
         elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
             target_unit_id = order.parameters.get("target_unit_id")
-            if target_unit_id:
+            if target_unit_id is not None:
                 target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
                 if target_unit:
                     sequence_index = len(all_waypoints_sequence)
@@ -496,7 +496,7 @@ class SectorOverlayRenderer:
         elif order.order_type == OrderType.USE_ABILITY:
             target_unit_id = order.parameters.get("target_unit_id")
             target_position = order.parameters.get("target_position")
-            if target_unit_id:
+            if target_unit_id is not None:
                 target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
                 if target_unit:
                     sequence_index = len(all_waypoints_sequence)

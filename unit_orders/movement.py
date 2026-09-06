@@ -8,7 +8,7 @@ from utils import HexCoord
 from geometry import (
     Position, Vector, distance, hex_distance, is_point_in_circle,
     get_closest_point_on_circle_edge, clamp_point_to_circle, Circle,
-    segment_intersects_circle, compute_avoidance_waypoints,
+    segment_intersects_circle, compute_avoidance_waypoints, NoSafePathError, NAVIGATION_CLEARANCE,
     position_at_distance_from_target
 )
 from pathfinding import find_intersystem_path, find_hex_jump_path
@@ -124,7 +124,11 @@ class ReachWaypointOrder(Order):
                 return
 
             obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex, unit=self.unit)
-            avoidance_wps = compute_avoidance_waypoints(self.unit.position, dest_position, obstacles, margin=50.0)
+            try:
+                avoidance_wps = compute_avoidance_waypoints(self.unit.position, dest_position, obstacles, margin=NAVIGATION_CLEARANCE, boundary=Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL))
+            except NoSafePathError:
+                self.fail("path_unavailable")
+                return
             if avoidance_wps:
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] REACH_WAYPOINT(id:{self.order_id}): Path intersects celestial body. Spawning {len(avoidance_wps)} avoidance sub-order(s).")
                 for wp in avoidance_wps:
@@ -332,6 +336,11 @@ class MoveOrder(Order):
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
         self.plan_route(galaxy_ref=galaxy_ref)
+        if self.status == OrderStatus.FAILED:
+            # Planning may have prepared early jump legs before a later bypass failed.
+            for sub_order in self.sub_orders:
+                sub_order.cancel()
+            self.sub_orders.clear()
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -556,7 +565,7 @@ class MoveOrder(Order):
             else:
                 # Inter-system travel: Find entry wormhole in destination system if available
                 direct_wh = self.find_wormhole_to_system(self.unit.in_system, target_body.in_system, galaxy_ref, self.unit.hull_size)
-                if direct_wh and direct_wh.exit_wormhole_id:
+                if direct_wh and direct_wh.exit_wormhole_id is not None:
                     exit_wh = galaxy_ref.wormholes.get(direct_wh.exit_wormhole_id)
                     if exit_wh:
                         from hexgrid_utils import hex_to_pixel
@@ -626,7 +635,11 @@ class MoveOrder(Order):
                     }, parent_order=self))
                     logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route->plan_hex_jump_sequence: Adding sub-light move from {adjusted_pos} to original target {target_pos}.")
                     obstacles = get_hex_collision_obstacles(galaxy_ref, system_name, target_hex, unit=self.unit)
-                    avoidance_wps = compute_avoidance_waypoints(adjusted_pos, target_pos, obstacles, margin=50.0)
+                    try:
+                        avoidance_wps = compute_avoidance_waypoints(adjusted_pos, target_pos, obstacles, margin=NAVIGATION_CLEARANCE, boundary=Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL))
+                    except NoSafePathError:
+                        self.fail("path_unavailable")
+                        return
                     for wp in avoidance_wps:
                         self.add_sub_order(ReachWaypointOrder(self.unit, {
                             "destination_system_name": system_name,
@@ -971,7 +984,11 @@ class MoveOrder(Order):
                 return
             
             obstacles = get_hex_collision_obstacles(galaxy_ref, dest_system, dest_hex, unit=self.unit)
-            avoidance_wps = compute_avoidance_waypoints(current_position, dest_position, obstacles, margin=50.0)
+            try:
+                avoidance_wps = compute_avoidance_waypoints(current_position, dest_position, obstacles, margin=NAVIGATION_CLEARANCE, boundary=Circle(Position(0, 0), SECTOR_CIRCLE_RADIUS_LOGICAL))
+            except NoSafePathError:
+                self.fail("path_unavailable")
+                return
             if avoidance_wps:
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: Direct sub-light path intersects celestial body. Adding {len(avoidance_wps)} avoidance waypoint(s).")
                 for wp in avoidance_wps:

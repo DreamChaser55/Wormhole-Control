@@ -209,17 +209,6 @@ def command_guidance(
     options: dict[str, Any] = {}
     conditional: list[dict[str, Any]] = []
 
-    if getattr(unit, "is_hidden_in_gas_giant", False):
-        legal = {"leave_gas_giant", "cancel_orders", "clear_explicit_orders"}
-        return sorted(legal), options, conditional
-
-    if "cancel_orders" in supported:
-        legal.update({"cancel_orders", "clear_explicit_orders"})
-    if "move" in supported:
-        legal.update({"move", "patrol"})
-    if "defend" in supported:
-        legal.add("defend")
-
     commander = getattr(unit, "commander_component", None)
     stances = [
         _enum_value(stance)
@@ -232,6 +221,28 @@ def command_guidance(
     options["set_stance"] = {"values": stances}
     if stances:
         legal.add("set_stance")
+
+    commander_roots = [getattr(commander, "current_order", None), *list(getattr(commander, "orders_queue", []))]
+    roots = [root for root in commander_roots if root is not None and getattr(root.status, "name", "") in {"PENDING", "IN_PROGRESS"}]
+    options["cancel_order"] = {"order_ids": [root.public_id for root in roots]}
+    options["append_patrol_waypoints"] = {"order_ids": [root.public_id for root in roots if root.order_type.name == "PATROL" and len(root.parameters.get("waypoints", [])) < 16]}
+    for kind in ("cancel_order", "append_patrol_waypoints"):
+        if options[kind]["order_ids"]:
+            legal.add(kind)
+
+    if getattr(unit, "is_hidden_in_gas_giant", False):
+        legal.update({"leave_gas_giant", "cancel_orders", "clear_explicit_orders"})
+        if "move" in supported:
+            conditional.append({"type": "move", "requires_prior_command": "leave_gas_giant",
+                                "same_unit": True, "queue": True})
+        return sorted(legal), options, conditional
+
+    if "cancel_orders" in supported:
+        legal.update({"cancel_orders", "clear_explicit_orders"})
+    if "move" in supported:
+        legal.update({"move", "patrol"})
+    if "defend" in supported:
+        legal.add("defend")
 
     friendly_units = [
         candidate
@@ -300,14 +311,6 @@ def command_guidance(
             options["eliminate_agent"] = {"agent_ids": sorted(discovered)}
             if discovered and operational:
                 legal.add("eliminate_agent")
-
-    commander_roots = [getattr(commander, "current_order", None), *list(getattr(commander, "orders_queue", []))]
-    roots = [root for root in commander_roots if root is not None and getattr(root.status, "name", "") in {"PENDING", "IN_PROGRESS"}]
-    options["cancel_order"] = {"order_ids": [root.public_id for root in roots]}
-    options["append_patrol_waypoints"] = {"order_ids": [root.public_id for root in roots if root.order_type.name == "PATROL" and len(root.parameters.get("waypoints", [])) < 16]}
-    for kind in ("cancel_order", "append_patrol_waypoints"):
-        if options[kind]["order_ids"]:
-            legal.add(kind)
 
     target_options = {
         "attack": [candidate.id for candidate in enemy_units if not callable(getattr(getattr(unit, "weapons_component", None), "eligible_turrets_for", None)) or unit.weapons_component.eligible_turrets_for(candidate)],
@@ -409,6 +412,8 @@ def command_guidance(
             legal.add("continuous_resupply")
 
     if "enter_gas_giant" in supported:
+        conditional.append({"type": "leave_gas_giant", "requires_prior_command": "enter_gas_giant",
+                            "same_unit": True, "queue": True})
         from constants import PlanetType
         gas_giants = [
             body.id

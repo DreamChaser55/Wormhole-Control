@@ -90,7 +90,7 @@ def test_lethal_minefield_detonation_removes_unit():
     game.selected_objects.append(enemy_unit)
 
     # Trigger minefield detonation processing
-    tp._process_minefield_detonations()
+    tp._process_minefield_detonations(p2)
 
     # Unit should be destroyed and removed from hex and selection
     assert enemy_unit.current_hit_points == 0

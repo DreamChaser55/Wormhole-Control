@@ -70,7 +70,7 @@ COMMAND_SPECS = {
     "relocate_agent": _spec("Immediately relocate an owned embedded agent to a visible in-range enemy host.", ("agent_id", "target_id"), queued=False, player_level=True),
     "use_ability": _spec("Use an ability; target requirements are provided in ability options.", ("ability", "target_id", "position"), ("ability",), capability=("ability_component",)),
     "enter_gas_giant": _spec("Hide eligible ships in a gas giant atmosphere.", ("target_id",), capability=("engines_component",)),
-    "leave_gas_giant": _spec("Order submerged ships to emerge from a gas giant atmosphere.", queued=False),
+    "leave_gas_giant": _spec("Emerge safely from a gas giant; queue behind entry using strict FIFO."),
     "send_message": _spec("Send a message to player target_id.", ("target_id", "message"), queued=False, player_level=True, text_limit=500),
     "message_developer": _spec("Send developer feedback.", ("message",), queued=False, player_level=True, text_limit=2000),
 }

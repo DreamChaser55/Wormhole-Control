@@ -25,7 +25,7 @@ class TradeOrder(Order):
         super().execute(galaxy_ref)
 
         target_unit_id = self.parameters.get("target_unit_id")
-        if not target_unit_id:
+        if target_unit_id is None:
             self.fail("target_unavailable")
             logger.debug(f"[{self.unit.name}] TRADE order failed: no target_unit_id.")
             return

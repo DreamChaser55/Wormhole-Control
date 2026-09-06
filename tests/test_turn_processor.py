@@ -493,6 +493,7 @@ def test_check_and_schedule_ai_turn():
 def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
     from game_settings import GameSettings, PlayerConfig
     from game_setup import start_new_game
+    from tests.test_persistence_integrity import campaign
 
     game = MagicMock()
     game.turn_manager = TurnProcessor(game)
@@ -505,17 +506,11 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
         game.turn_manager.check_and_schedule_ai_turn()
     game.check_and_schedule_ai_turn = check_ai
 
-    settings = GameSettings(player_configs=[
+    settings = GameSettings(num_systems=2, pregenerated_galaxy=campaign().galaxy, player_configs=[
         PlayerConfig("AI Player 1", (255, 0, 0), controller=PlayerController.OPENAI, team_id=1),
         PlayerConfig("Human Player 2", (0, 0, 255), controller=PlayerController.HUMAN, team_id=2),
     ])
 
-    with patch('game_setup.Galaxy') as mock_galaxy_cls, \
-         patch('game_setup.spawn_units'), \
-         patch('pygame.time.get_ticks', return_value=2000):
-        mock_galaxy = MagicMock()
-        mock_galaxy.systems = {"Sol": MagicMock()}
-        mock_galaxy_cls.return_value = mock_galaxy
-
-        start_new_game(game, settings=settings)
+    with patch('pygame.time.get_ticks', return_value=2000):
+        assert start_new_game(game, settings=settings)
         assert game.pending_ai_turn_end_time == 2500

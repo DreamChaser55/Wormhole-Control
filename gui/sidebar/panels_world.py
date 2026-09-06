@@ -269,7 +269,7 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
 
     elif isinstance(body, Wormhole):
         data.append({'type': 'label', 'text': f"Exit System: {body.exit_system_name or 'None'}", 'object_id': '#sidebar_info_label', 'height': 25})
-        data.append({'type': 'label', 'text': f"Exit Wormhole: {body.exit_wormhole_id or 'None'}", 'object_id': '#sidebar_info_label', 'height': 25})
+        data.append({'type': 'label', 'text': f"Exit Wormhole: {body.exit_wormhole_id if body.exit_wormhole_id is not None else 'None'}", 'object_id': '#sidebar_info_label', 'height': 25})
         data.append({'type': 'label', 'text': f"Stability: {body.stability}", 'object_id': '#sidebar_info_label', 'height': 25})
         data.append({'type': 'label', 'text': f"Diameter: {body.diameter.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 25})
 

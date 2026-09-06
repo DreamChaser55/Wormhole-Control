@@ -184,7 +184,7 @@ class DefendOrder(Order):
                 enemy_id = current_sub.parameters.get("target_unit_id")
                 enemy_unit = None
                 if galaxy_ref and hasattr(galaxy_ref, "get_unit_by_id"):
-                    enemy_unit = galaxy_ref.get_unit_by_id(enemy_id) if enemy_id else None
+                    enemy_unit = galaxy_ref.get_unit_by_id(enemy_id) if enemy_id is not None else None
                 from entities import are_enemies
 
                 is_in_range = False

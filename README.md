@@ -81,7 +81,7 @@ Wormhole Control organizes space into three interconnected strategic perspective
 ## Core Gameplay
 
 ### Turns & Players
-Matches operate on a hot-seat turn sequence. At the start of a player's turn, movement orders execute, resource income and upkeep resolve, populations grow, and combat engagements are calculated. When finished issuing commands, press **`E`** or click **End Turn** on the HUD to advance.
+Matches operate on a hot-seat turn sequence. When finished issuing commands, press **`E`** or click **End Turn** on the HUD. This resolves that player's movement, mine contacts, resource income, upkeep, population growth and combat before advancing.
 
 ### Resource Economy
 - **Credits**: General empire treasury generated from colonized populations and civilian habitats. Credits fund ship construction, space installations, and ongoing fleet upkeep.
@@ -102,7 +102,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
 - **Unit Stances**: Configure a persistent standing engagement policy (Do Nothing, Attack in Weapon Range, Attack in Sector, Attack in Jump Range, or Attack in System). Explicit orders temporarily suspend stance pursuits and always take priority; the stance resumes when explicit work finishes. **Stop Unit** cancels everything and selects Do Nothing.
 - **Combat Experience (XP)**: Units gain experience from battle, ranking up to boost weapon damage, defensive ratings, sublight speed, and hyperdrive jump ranges.
 - **Boarding Actions**: Deploy specialized Marine strike teams to breach and capture enemy vessels.
-- **Minefields**: Minelayers can deploy Anti-Ship and Anti-Strikecraft minefields for tactical area denial.
+- **Minefields**: Enemy contact is checked after movement on the ship owner's turn, including stationary ships; see [minefield cadence](docs/REFERENCE.md#132-minefield-cadence). Minelayers can deploy Anti-Ship and Anti-Strikecraft minefields for tactical area denial.
 - **Strikecraft Wings**: Carriers deploy Fighter wings (air superiority) and Bomber wings (heavy anti-ship strikes). Strikecraft wings are nimble enough to ignore negative movement speed penalties from fields and debris field abrasion, but are banned from entering or launching within violent Magnetic Storms.
 
 ### Detection & Intel
@@ -132,12 +132,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
   - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting defense mitigation against beam attacks (+8% Low, +12% Medium, +16% High), weapon cooling, and sublight speed drag.
   - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting defense mitigation against kinetic and missile attacks (+8% Low, +12% Medium, +16% High), sublight drag, and high-speed navigation abrasion damage scaled by field density.
   - **Asteroid Fields**: Dense asteroid fields scatter long-range radar sensors, with sublight drag scaled by density.
-- **Gas Giant Atmospheric Hiding**:
-  - Any starship with operational sublight propulsion (`TINY` through `HUGE`) can submerge into a Gas Giant atmosphere, completely disappearing from the tactical map and all enemy sensors (short and long range).
-  - Submerged ships cannot attack, project fields, or interact with outside space, and are invulnerable to outside attack. Opposing ships submerged in the same atmosphere cannot detect or engage one another.
-  - Strikecraft wings and stationary space stations (lacking sublight engines) are strictly prohibited from entering.
-  - Submerged ships continue regular fleet credit upkeep.
-  - When ordered to leave, ships reappear on a uniformly random vector outside the planetary collision boundary (725.0 logical units), with multiple departing vessels distributed across distinct vectors.
+- **Gas Giant Atmospheric Hiding**: Ships with sublight engines can hide in gas giants, preserving stance and queued orders. Departure requires a safe position; blocked exits leave the ship hidden. Queues follow strict FIFO, so outside-space work ahead of Leave pauses the queue. See the [canonical gas-giant rules](docs/REFERENCE.md#125-gas-giant-atmospheric-hiding).
 - **Environmental Hazards**:
   - **Black Holes**: Extreme gravitational tidal distortion inflicts 15 hull damage per turn within 750 radius of the singularity.
   - **Pulsars**: Sweeping magnetic radiation pulses drain 5% of a ship's current antimatter reserves per turn.

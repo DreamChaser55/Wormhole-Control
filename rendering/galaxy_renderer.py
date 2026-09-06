@@ -24,7 +24,7 @@ class GalaxyViewRenderer:
 
         # 1. Draw Wormhole Connections (draw first so they are behind stars)
         for wh_id, wormhole in self.game.galaxy.wormholes.items():
-             if wormhole.stability > 0 and wormhole.exit_wormhole_id:
+             if wormhole.stability > 0 and wormhole.exit_wormhole_id is not None:
                   exit_wormhole = self.game.galaxy.wormholes[wormhole.exit_wormhole_id]
                   if exit_wormhole:
                        start_system = self.game.galaxy.systems[wormhole.in_system]
@@ -264,7 +264,7 @@ def draw_galaxy_preview(
 
     # 1. Draw Wormhole Connections
     for wh_id, wormhole in getattr(galaxy, "wormholes", {}).items():
-        if getattr(wormhole, "stability", 0) > 0 and getattr(wormhole, "exit_wormhole_id", None):
+        if getattr(wormhole, "stability", 0) > 0 and getattr(wormhole, 'exit_wormhole_id', None) is not None:
             exit_wh = galaxy.wormholes.get(wormhole.exit_wormhole_id)
             if exit_wh:
                 start_system = galaxy.systems.get(wormhole.in_system)

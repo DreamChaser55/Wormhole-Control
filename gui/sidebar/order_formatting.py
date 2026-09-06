@@ -34,7 +34,7 @@ def _target_name_html(state_data: dict) -> str:
 
     if lookup_success and target_name:
         return f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
-    elif target_unit_id:
+    elif target_unit_id is not None:
         if lookup_attempted:
             return f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id} (Not found)</i></font>"
         else:
@@ -223,7 +223,7 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
 
         if target_name:
             carrier_name_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
-        elif target_carrier_id:
+        elif target_carrier_id is not None:
             carrier_name_styled = f"<font color='{INFO_COLOR}'><i>Carrier ID: {target_carrier_id}</i></font>"
         else:
             carrier_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Carrier</i></font>"
@@ -237,7 +237,7 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
 
         if docked_name:
             unit_name_styled = f"<font color='{INFO_COLOR}'><i>{docked_name}</i></font>"
-        elif docked_unit_id:
+        elif docked_unit_id is not None:
             unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unit ID: {docked_unit_id}</i></font>"
         else:
             unit_name_styled = f"<font color='{INFO_COLOR}'><i>Unknown Unit</i></font>"
@@ -255,7 +255,7 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         target_position = parameters.get("target_position")
 
         target_name = None
-        if target_unit_id and galaxy:
+        if target_unit_id is not None and galaxy:
             target_unit = galaxy.get_unit_by_id(target_unit_id)
             if target_unit:
                 target_name = target_unit.name
@@ -265,7 +265,7 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         lines = [ability_type_styled]
         if target_name:
             lines.append(f"  Target: <font color='{INFO_COLOR}'><i>{target_name}</i></font>")
-        elif target_unit_id:
+        elif target_unit_id is not None:
             lines.append(f"  Target: <font color='{INFO_COLOR}'><i>ID: {target_unit_id}</i></font>")
 
         if target_position:

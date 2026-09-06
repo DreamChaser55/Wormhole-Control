@@ -28,7 +28,7 @@ class EnterGasGiantOrder(Order):
         state_data = super().get_state_data()
         target_id = self.parameters.get("target_id")
         target_name = None
-        if target_id and getattr(self.unit, 'game', None) and getattr(self.unit.game, 'galaxy', None):
+        if target_id is not None and getattr(self.unit, 'game', None) and getattr(self.unit.game, 'galaxy', None):
             target = self.unit.game.galaxy.get_celestial_body_by_id(target_id)
             if target:
                 target_name = target.name
@@ -51,7 +51,7 @@ class EnterGasGiantOrder(Order):
             return
 
         target_id = self.parameters.get("target_id")
-        if not target_id:
+        if target_id is None:
             self.fail("invalid_parameters")
             logger.debug(f"ENTER_GAS_GIANT failed: No target_id specified.")
             return
@@ -136,11 +136,11 @@ class LeaveGasGiantOrder(Order):
             return
 
         emerge_pos = target.release_unit(self.unit, galaxy_ref)
-        if emerge_pos:
+        if emerge_pos is not None:
             self.status = OrderStatus.COMPLETED
             logger.debug(f"LEAVE_GAS_GIANT completed: {self.unit.name} emerged at {emerge_pos}.")
         else:
-            self.fail("execution_failed")
+            self.fail("path_unavailable")
             logger.debug(f"LEAVE_GAS_GIANT failed: Could not release {self.unit.name} from {target.name}.")
 
     def check_completion_conditions(self) -> None:

@@ -105,6 +105,7 @@ class _BatchProjection:
         self._settled_cargo = {}
         self._settled_population = {}
         self._settled_docks = {}
+        self._settled_hidden = {}
         self._unavailable_units = set()
         self._edit_target = None
         self._cargo: dict[int, float] = {}
@@ -206,6 +207,20 @@ class _BatchProjection:
         if unit.id not in self._cargo:
             self._rebuild()
         return self._cargo.get(unit.id, self._live_cargo(unit))
+
+    def hidden_for(self, unit, *, queued=False):
+        """Projected FIFO prerequisites are intent, not a promise of successful exit."""
+        hidden = self._settled_hidden.get(unit.id, bool(getattr(unit, 'is_hidden_in_gas_giant', False)))
+        if queued:
+            self._ensure_orders(unit)
+            for entry in self._order_ledger[unit.id]:
+                if entry.get('settled'):
+                    continue
+                if entry['type'] == 'enter_gas_giant':
+                    hidden = True
+                elif entry['type'] == 'leave_gas_giant':
+                    hidden = False
+        return hidden
 
     def validate_load(self, command: Any, units: list[Any], body: Any) -> None:
         amount = float(command.amount or 0)
@@ -456,13 +471,19 @@ class _BatchProjection:
         This projects only facts known now. Travel and future resource acquisition
         remain queued prerequisites; no authoritative orders are constructed here.
         """
-        entries = self._order_ledger[unit.id]
+        entries = [entry for entry in self._order_ledger[unit.id] if not entry.get('settled')]
         if not entries or entries[0].get("started"):
             return
         entry = entries[0]
         entry["started"] = True
         params, kind = entry["parameters"], entry["type"]
-        if kind in {"load_colonists", "colonize"}:
+        if kind == 'enter_gas_giant':
+            from unit_orders.gas_giant import within_gas_giant_range
+            body = self.game.galaxy.get_celestial_body_by_id(params.get('target_id'))
+            if body is not None and within_gas_giant_range(unit, body) and body.can_hide_unit(unit):
+                self._settled_hidden[unit.id] = True
+                entry['settled'] = True
+        elif kind in {"load_colonists", "colonize"}:
             from unit_orders.colony import within_colony_range
             body = self.game.galaxy.get_celestial_body_by_id(params.get("target_id"))
             if body is not None and within_colony_range(unit, body):
@@ -1397,7 +1418,8 @@ class CommandGateway:
     def _validate_unit_command(
         self, unit: Any, command: Any, projection: _BatchProjection
     ) -> None:
-        if getattr(unit, "is_hidden_in_gas_giant", False) and command.type != "leave_gas_giant":
+        hidden = projection.hidden_for(unit, queued=command.queue)
+        if hidden and command.type != "leave_gas_giant":
             raise _Rejected("invalid_state", "Submerged units cannot execute orders while hidden in a gas giant atmosphere.")
 
         if command.type == "move":
@@ -1514,10 +1536,10 @@ class CommandGateway:
                 raise _Rejected("invalid_unit", "Strikecraft wings cannot enter gas giant atmospheres.")
             if not getattr(unit, "engines_component", None) or not unit.engines_component.is_operational:
                 raise _Rejected("capability_unavailable", "Unit requires operational engines to enter a gas giant.")
-            if getattr(unit, "is_hidden_in_gas_giant", False):
+            if hidden:
                 raise _Rejected("invalid_state", "Unit is already submerged in a gas giant atmosphere.")
         elif command.type == "leave_gas_giant":
-            if not getattr(unit, "is_hidden_in_gas_giant", False):
+            if not hidden:
                 raise _Rejected("invalid_state", "Unit is not submerged in a gas giant atmosphere.")
         elif command.type == "transfer_antimatter":
             storage = getattr(unit, "antimatter_component", None)

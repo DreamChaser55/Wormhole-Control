@@ -89,7 +89,7 @@ class TurnProcessor:
 
             # The execution order is critical for game state consistency:
             # 1. Resolve unit movement first so positions are updated.
-            # 2. Minefield detonations from movement.
+            # 2. Minefield contact for the active player's ships, including stationary ships.
             # 3. Generate resource credits for the active player based on population and habitats.
             # 4. Deduct upkeep for the active player's units.
             # 5. Run unit state updates (engines, weapons, order resolution) with updated context.
@@ -97,7 +97,7 @@ class TurnProcessor:
                 self._process_movement(current_player)
 
             with ProfileTimer("Minefield detonations"):
-                self._process_minefield_detonations()
+                self._process_minefield_detonations(current_player)
                 self._cleanup_dead_units()
 
             with ProfileTimer("Environmental hazards"):
@@ -170,7 +170,7 @@ class TurnProcessor:
                     target_order_id = unit.hyperdrive_component.jump_target_order_id
                     target_sys_name_for_jump = target_wormhole_obj.exit_system_name
                     exit_wh_id_for_jump = target_wormhole_obj.exit_wormhole_id
-                    if target_sys_name_for_jump and exit_wh_id_for_jump and target_sys_name_for_jump in self.game.galaxy.systems:
+                    if target_sys_name_for_jump and exit_wh_id_for_jump is not None and target_sys_name_for_jump in self.game.galaxy.systems:
                         units_to_move.append((unit, ("system_jump", target_sys_name_for_jump, target_order_id)))
                     else:
                         logger.debug(f"  Wormhole Jump Failed (Queuing): Invalid target system ({target_sys_name_for_jump}) or incomplete exit wormhole data ({exit_wh_id_for_jump}) for {unit.name}")
@@ -347,7 +347,7 @@ class TurnProcessor:
                     else:
                         entry_wormhole = hd_comp.wormhole_jump_target
                         exit_wh_id = entry_wormhole.exit_wormhole_id
-                        if not exit_wh_id:
+                        if exit_wh_id is None:
                             logger.debug(f"   Error: Entry wormhole {entry_wormhole.id} for unit {unit.name} has no exit_wormhole_id. Aborting jump.")
                             hd_comp.jump_status = JumpStatus.ERROR
                             hd_comp.clear_jump_target(expected_order_id)
@@ -706,6 +706,8 @@ class TurnProcessor:
         for unit in stored:
             if getattr(unit, "_destroyed", False) is True:
                 continue
+            if getattr(unit, 'is_hidden_in_gas_giant', False) and unit.commander_component:
+                unit.commander_component.update()
             # Stored units cannot project effects, but their timers still elapse.
             if unit.ability_component:
                 unit.ability_component.update(self.game.galaxy, apply_ongoing=False)
@@ -714,8 +716,9 @@ class TurnProcessor:
                 if unit.lifetime <= 0:
                     unit.destroy()
 
-    def _process_minefield_detonations(self):
-        """Checks all units across all systems for contact with enemy minefields."""
+    def _process_minefield_detonations(self, current_player):
+        """Check final positions once per ship-owner turn, after movement."""
+        from campaign_graph import is_deployed
         if not self.game.galaxy:
             return
 
@@ -733,6 +736,8 @@ class TurnProcessor:
                         continue
 
                     for unit in list(units):
+                        if unit.owner != current_player or not is_deployed(unit, self.game.galaxy):
+                            continue
                         if not minefield.can_target(unit):
                             continue
 
@@ -761,6 +766,4 @@ class TurnProcessor:
             for unit, _ in system.get_all_units():
                 if unit.current_hit_points <= 0:
                     unit.destroy()
-
-
 
