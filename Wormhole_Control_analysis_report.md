@@ -492,7 +492,7 @@ Exit criterion: a deliberately mutated mid-game state survives a save/load canon
 
 ### Phase 2 — correct gameplay invariants
 
-1. Fix radiation storm iteration and decide the accuracy model.
+1. Fix radiation storm iteration and decide the accuracy model. - **ALREADY FIXED**
 2. Fix zero-damage handling with damage reduction.
 3. Repair gas-giant order lifecycle and safe exit placement.
 4. Enforce colonizable/capped homeworlds and Normal-profile topology.
