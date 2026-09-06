@@ -1,0 +1,1501 @@
+{
+  "version": "4.0",
+  "timestamp": "2026-09-06T14:03:56.423495",
+  "game_state": {
+    "turn_number": 7,
+    "current_player_index": 0,
+    "view_mode": "sector",
+    "current_system_name": "Sol",
+    "current_sector_coord": [
+      0,
+      0
+    ],
+    "object_counter": 229,
+    "player_counter": 40,
+    "agent_counter": 31,
+    "message_counter": 40,
+    "campaign_id": "integrity"
+  },
+  "players": [
+    {
+      "id": 18,
+      "name": "One",
+      "color": [
+        0,
+        200,
+        0
+      ],
+      "controller": "human",
+      "team_id": 19,
+      "persistent_id": "c94cebd1",
+      "agent_id": "3c238f87",
+      "ai_reasoning_effort": "medium",
+      "ai_repair_retries": 2,
+      "ai_memory": {},
+      "order_history": [],
+      "order_event_sequence": 0,
+      "credits": 20000,
+      "metal": 10000,
+      "crystal": 10000,
+      "sector_intel": {
+        "Sol:0:0": 2
+      },
+      "homeworld_id": null
+    },
+    {
+      "id": 19,
+      "name": "Two",
+      "color": [
+        200,
+        0,
+        0
+      ],
+      "controller": "human",
+      "team_id": 20,
+      "persistent_id": "094e0634",
+      "agent_id": "77730b1b",
+      "ai_reasoning_effort": "medium",
+      "ai_repair_retries": 2,
+      "ai_memory": {},
+      "order_history": [],
+      "order_event_sequence": 0,
+      "credits": 20000,
+      "metal": 10000,
+      "crystal": 10000,
+      "sector_intel": {},
+      "homeworld_id": null
+    }
+  ],
+  "galaxy": {
+    "generation_bounds": {
+      "x_min": 0,
+      "x_max": 1000,
+      "y_min": 0,
+      "y_max": 1000
+    },
+    "systems": [
+      {
+        "name": "Sol",
+        "position": [
+          10,
+          20
+        ],
+        "radius": 1,
+        "hexes": [
+          {
+            "q": 0,
+            "r": 0,
+            "in_system": "Sol",
+            "celestial_bodies": [],
+            "units": [
+              {
+                "schema_version": 1,
+                "id": 69,
+                "name": "ship",
+                "owner_id": 18,
+                "hull_size": "HUGE",
+                "template_name": "A_TEMPLATE_THAT_NO_LONGER_EXISTS",
+                "in_system": "Sol",
+                "in_hex": [
+                  0,
+                  0
+                ],
+                "position": [
+                  100,
+                  0
+                ],
+                "current_hit_points": 400,
+                "max_hit_points": 400,
+                "experience_points": 0,
+                "is_disabled": false,
+                "disabled_by_unit_ids": [],
+                "damage_reduction": 0.75,
+                "damage_amplification": 0,
+                "lifetime": null,
+                "is_temporary": false,
+                "infiltrating_agents": [],
+                "components": {
+                  "Commander": {
+                    "type": "Commander",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "stance": {
+                        "$enum": "UnitStance",
+                        "name": "DO_NOTHING"
+                      }
+                    },
+                    "runtime": {
+                      "current_order": null,
+                      "orders_queue": []
+                    }
+                  },
+                  "AntimatterStorage": {
+                    "type": "AntimatterStorage",
+                    "schema_version": 1,
+                    "hull_cost": 5.0,
+                    "current_hit_points": 50,
+                    "max_hit_points": 50,
+                    "configuration": {
+                      "max_capacity": 100.0,
+                      "regen_rate": 10.0
+                    },
+                    "runtime": {
+                      "current_amount": 100
+                    }
+                  },
+                  "Sensors": {
+                    "type": "Sensors",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 0,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "short_range_radius": 2000.0,
+                      "long_range_hexes": 0
+                    },
+                    "runtime": {}
+                  },
+                  "Engines": {
+                    "type": "Engines",
+                    "schema_version": 1,
+                    "hull_cost": 9.25,
+                    "current_hit_points": 3,
+                    "max_hit_points": 117,
+                    "configuration": {
+                      "speed": 1.25
+                    },
+                    "runtime": {}
+                  },
+                  "Weapons": {
+                    "type": "Weapons",
+                    "schema_version": 1,
+                    "hull_cost": 9.25,
+                    "current_hit_points": 3,
+                    "max_hit_points": 117,
+                    "configuration": {},
+                    "runtime": {
+                      "turrets": [
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MASS_DRIVER"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "STANDARD"
+                          },
+                          "damage": 17.5,
+                          "range": 140.25,
+                          "cooldown": 3,
+                          "current_cooldown": 2
+                        },
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MASS_DRIVER"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "ANTI_STRIKECRAFT"
+                          },
+                          "damage": 17.5,
+                          "range": 140.25,
+                          "cooldown": 3,
+                          "current_cooldown": 2
+                        },
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MASS_DRIVER"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "LONG_RANGE"
+                          },
+                          "damage": 17.5,
+                          "range": 420.75,
+                          "cooldown": 9,
+                          "current_cooldown": 2
+                        },
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "BEAM"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "STANDARD"
+                          },
+                          "damage": 17.5,
+                          "range": 140.25,
+                          "cooldown": 3,
+                          "current_cooldown": 2
+                        },
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "BEAM"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "ANTI_STRIKECRAFT"
+                          },
+                          "damage": 17.5,
+                          "range": 140.25,
+                          "cooldown": 3,
+                          "current_cooldown": 2
+                        },
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "BEAM"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "LONG_RANGE"
+                          },
+                          "damage": 17.5,
+                          "range": 420.75,
+                          "cooldown": 9,
+                          "current_cooldown": 2
+                        },
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MISSILE"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "STANDARD"
+                          },
+                          "damage": 17.5,
+                          "range": 140.25,
+                          "cooldown": 3,
+                          "current_cooldown": 2
+                        },
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MISSILE"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "ANTI_STRIKECRAFT"
+                          },
+                          "damage": 17.5,
+                          "range": 140.25,
+                          "cooldown": 3,
+                          "current_cooldown": 2
+                        },
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MISSILE"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "LONG_RANGE"
+                          },
+                          "damage": 17.5,
+                          "range": 420.75,
+                          "cooldown": 9,
+                          "current_cooldown": 2
+                        }
+                      ]
+                    }
+                  },
+                  "Constructor": {
+                    "type": "Constructor",
+                    "schema_version": 1,
+                    "hull_cost": 9.25,
+                    "current_hit_points": 3,
+                    "max_hit_points": 117,
+                    "configuration": {
+                      "build_range": 777.5
+                    },
+                    "runtime": {
+                      "current_construction_target": null,
+                      "construction_progress": 2,
+                      "time_to_build": 2,
+                      "construction_order_id": null,
+                      "current_refit_target": null,
+                      "refit_progress": 2,
+                      "refit_time": 2,
+                      "refit_order_id": null
+                    }
+                  },
+                  "IntelligenceComponent": {
+                    "type": "IntelligenceComponent",
+                    "schema_version": 1,
+                    "hull_cost": 9.25,
+                    "current_hit_points": 3,
+                    "max_hit_points": 117,
+                    "configuration": {
+                      "agents_capacity": 3,
+                      "has_counter_intelligence": true,
+                      "infiltration_range": 501.25,
+                      "counter_intelligence_range": 501.25
+                    },
+                    "runtime": {
+                      "agents_count": 2,
+                      "ci_cooldown_remaining": 2
+                    }
+                  },
+                  "AbilityComponent": {
+                    "type": "AbilityComponent",
+                    "schema_version": 1,
+                    "hull_cost": 10.0,
+                    "current_hit_points": 100,
+                    "max_hit_points": 100,
+                    "configuration": {},
+                    "runtime": {
+                      "abilities": [
+                        {
+                          "type": "ion_bolt",
+                          "schema_version": 1,
+                          "definition": {
+                            "ability_type": {
+                              "$enum": "AbilityType",
+                              "name": "ION_BOLT"
+                            },
+                            "name": "Ion Bolt",
+                            "description": "Disables a target unit, preventing movement and attacks for 3 turns.",
+                            "cooldown": 7,
+                            "duration": 3,
+                            "range": 400.0,
+                            "requires_target_unit": true,
+                            "requires_target_position": false,
+                            "antimatter_cost": 25,
+                            "required_components": [
+                              "has_weapon_bays"
+                            ]
+                          },
+                          "runtime": {
+                            "cooldown_remaining": 7,
+                            "is_active": true,
+                            "duration_remaining": 1,
+                            "target_unit_id": 70,
+                            "target_position": null,
+                            "spawned_unit_ids": []
+                          }
+                        },
+                        {
+                          "type": "designate_target",
+                          "schema_version": 1,
+                          "definition": {
+                            "ability_type": {
+                              "$enum": "AbilityType",
+                              "name": "DESIGNATE_TARGET"
+                            },
+                            "name": "Designate Target",
+                            "description": "Marks an enemy unit. Friendly units deal +50% damage against it for 4 turns.",
+                            "cooldown": 6,
+                            "duration": 4,
+                            "range": 450.0,
+                            "requires_target_unit": true,
+                            "requires_target_position": false,
+                            "antimatter_cost": 15,
+                            "required_components": [
+                              "has_sensors"
+                            ]
+                          },
+                          "runtime": {
+                            "cooldown_remaining": 6,
+                            "is_active": true,
+                            "duration_remaining": 4,
+                            "target_unit_id": 70,
+                            "target_position": null,
+                            "spawned_unit_ids": []
+                          }
+                        },
+                        {
+                          "type": "adaptive_forcefield",
+                          "schema_version": 1,
+                          "definition": {
+                            "ability_type": {
+                              "$enum": "AbilityType",
+                              "name": "ADAPTIVE_FORCEFIELD"
+                            },
+                            "name": "Adaptive Forcefield",
+                            "description": "Reduces incoming damage by 75% for 3 turns.",
+                            "cooldown": 8,
+                            "duration": 3,
+                            "range": 0.0,
+                            "requires_target_unit": false,
+                            "requires_target_position": false,
+                            "antimatter_cost": 20,
+                            "required_components": [
+                              "has_defenses"
+                            ]
+                          },
+                          "runtime": {
+                            "cooldown_remaining": 8,
+                            "is_active": true,
+                            "duration_remaining": 3,
+                            "target_unit_id": null,
+                            "target_position": null,
+                            "spawned_unit_ids": []
+                          }
+                        },
+                        {
+                          "type": "missile_batteries",
+                          "schema_version": 1,
+                          "definition": {
+                            "ability_type": {
+                              "$enum": "AbilityType",
+                              "name": "MISSILE_BATTERIES"
+                            },
+                            "name": "Missile Batteries",
+                            "description": "Deploys 3 missile platforms that automatically attack enemies for 4 turns.",
+                            "cooldown": 10,
+                            "duration": 4,
+                            "range": 0.0,
+                            "requires_target_unit": false,
+                            "requires_target_position": false,
+                            "antimatter_cost": 40,
+                            "required_components": [
+                              "has_weapon_bays"
+                            ]
+                          },
+                          "runtime": {
+                            "cooldown_remaining": 10,
+                            "is_active": true,
+                            "duration_remaining": 4,
+                            "target_unit_id": null,
+                            "target_position": null,
+                            "spawned_unit_ids": [
+                              71,
+                              72,
+                              73
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "schema_version": 1,
+                "id": 70,
+                "name": "target",
+                "owner_id": 19,
+                "hull_size": "HUGE",
+                "template_name": null,
+                "in_system": "Sol",
+                "in_hex": [
+                  0,
+                  0
+                ],
+                "position": [
+                  100,
+                  0
+                ],
+                "current_hit_points": 400,
+                "max_hit_points": 400,
+                "experience_points": 0,
+                "is_disabled": true,
+                "disabled_by_unit_ids": [
+                  69
+                ],
+                "damage_reduction": 0,
+                "damage_amplification": 0.5,
+                "lifetime": null,
+                "is_temporary": false,
+                "infiltrating_agents": [
+                  {
+                    "id": 0,
+                    "owner_id": 18,
+                    "source_unit_id": 69,
+                    "target_type": "UNIT",
+                    "target_id": 70,
+                    "is_discovered": false,
+                    "active_sabotage": null,
+                    "turns_active": 0
+                  }
+                ],
+                "components": {
+                  "Commander": {
+                    "type": "Commander",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "stance": {
+                        "$enum": "UnitStance",
+                        "name": "DO_NOTHING"
+                      }
+                    },
+                    "runtime": {
+                      "current_order": null,
+                      "orders_queue": []
+                    }
+                  },
+                  "AntimatterStorage": {
+                    "type": "AntimatterStorage",
+                    "schema_version": 1,
+                    "hull_cost": 5.0,
+                    "current_hit_points": 50,
+                    "max_hit_points": 50,
+                    "configuration": {
+                      "max_capacity": 100.0,
+                      "regen_rate": 10.0
+                    },
+                    "runtime": {
+                      "current_amount": 100.0
+                    }
+                  },
+                  "Sensors": {
+                    "type": "Sensors",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "short_range_radius": 2000.0,
+                      "long_range_hexes": 0
+                    },
+                    "runtime": {}
+                  }
+                }
+              },
+              {
+                "schema_version": 1,
+                "id": 71,
+                "name": "Missile Platform",
+                "owner_id": 18,
+                "hull_size": "TINY",
+                "template_name": null,
+                "in_system": "Sol",
+                "in_hex": [
+                  0,
+                  0
+                ],
+                "position": [
+                  160.0,
+                  0.0
+                ],
+                "current_hit_points": 20,
+                "max_hit_points": 20,
+                "experience_points": 0,
+                "is_disabled": false,
+                "disabled_by_unit_ids": [],
+                "damage_reduction": 0.0,
+                "damage_amplification": 0.0,
+                "lifetime": 4,
+                "is_temporary": true,
+                "infiltrating_agents": [],
+                "components": {
+                  "Commander": {
+                    "type": "Commander",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "stance": {
+                        "$enum": "UnitStance",
+                        "name": "DO_NOTHING"
+                      }
+                    },
+                    "runtime": {
+                      "current_order": null,
+                      "orders_queue": []
+                    }
+                  },
+                  "AntimatterStorage": {
+                    "type": "AntimatterStorage",
+                    "schema_version": 1,
+                    "hull_cost": 5.0,
+                    "current_hit_points": 50,
+                    "max_hit_points": 50,
+                    "configuration": {
+                      "max_capacity": 100.0,
+                      "regen_rate": 10.0
+                    },
+                    "runtime": {
+                      "current_amount": 100.0
+                    }
+                  },
+                  "Sensors": {
+                    "type": "Sensors",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "short_range_radius": 2000.0,
+                      "long_range_hexes": 0
+                    },
+                    "runtime": {}
+                  },
+                  "Weapons": {
+                    "type": "Weapons",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {},
+                    "runtime": {
+                      "turrets": [
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MISSILE"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "STANDARD"
+                          },
+                          "damage": 15.0,
+                          "range": 350.0,
+                          "cooldown": 2,
+                          "current_cooldown": 0
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "schema_version": 1,
+                "id": 72,
+                "name": "Missile Platform",
+                "owner_id": 18,
+                "hull_size": "TINY",
+                "template_name": null,
+                "in_system": "Sol",
+                "in_hex": [
+                  0,
+                  0
+                ],
+                "position": [
+                  70.00000000000001,
+                  51.96152422706632
+                ],
+                "current_hit_points": 20,
+                "max_hit_points": 20,
+                "experience_points": 0,
+                "is_disabled": false,
+                "disabled_by_unit_ids": [],
+                "damage_reduction": 0.0,
+                "damage_amplification": 0.0,
+                "lifetime": 4,
+                "is_temporary": true,
+                "infiltrating_agents": [],
+                "components": {
+                  "Commander": {
+                    "type": "Commander",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "stance": {
+                        "$enum": "UnitStance",
+                        "name": "DO_NOTHING"
+                      }
+                    },
+                    "runtime": {
+                      "current_order": null,
+                      "orders_queue": []
+                    }
+                  },
+                  "AntimatterStorage": {
+                    "type": "AntimatterStorage",
+                    "schema_version": 1,
+                    "hull_cost": 5.0,
+                    "current_hit_points": 50,
+                    "max_hit_points": 50,
+                    "configuration": {
+                      "max_capacity": 100.0,
+                      "regen_rate": 10.0
+                    },
+                    "runtime": {
+                      "current_amount": 100.0
+                    }
+                  },
+                  "Sensors": {
+                    "type": "Sensors",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "short_range_radius": 2000.0,
+                      "long_range_hexes": 0
+                    },
+                    "runtime": {}
+                  },
+                  "Weapons": {
+                    "type": "Weapons",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {},
+                    "runtime": {
+                      "turrets": [
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MISSILE"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "STANDARD"
+                          },
+                          "damage": 15.0,
+                          "range": 350.0,
+                          "cooldown": 2,
+                          "current_cooldown": 0
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "schema_version": 1,
+                "id": 73,
+                "name": "Missile Platform",
+                "owner_id": 18,
+                "hull_size": "TINY",
+                "template_name": null,
+                "in_system": "Sol",
+                "in_hex": [
+                  0,
+                  0
+                ],
+                "position": [
+                  69.99999999999997,
+                  -51.961524227066306
+                ],
+                "current_hit_points": 20,
+                "max_hit_points": 20,
+                "experience_points": 0,
+                "is_disabled": false,
+                "disabled_by_unit_ids": [],
+                "damage_reduction": 0.0,
+                "damage_amplification": 0.0,
+                "lifetime": 4,
+                "is_temporary": true,
+                "infiltrating_agents": [],
+                "components": {
+                  "Commander": {
+                    "type": "Commander",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "stance": {
+                        "$enum": "UnitStance",
+                        "name": "DO_NOTHING"
+                      }
+                    },
+                    "runtime": {
+                      "current_order": null,
+                      "orders_queue": []
+                    }
+                  },
+                  "AntimatterStorage": {
+                    "type": "AntimatterStorage",
+                    "schema_version": 1,
+                    "hull_cost": 5.0,
+                    "current_hit_points": 50,
+                    "max_hit_points": 50,
+                    "configuration": {
+                      "max_capacity": 100.0,
+                      "regen_rate": 10.0
+                    },
+                    "runtime": {
+                      "current_amount": 100.0
+                    }
+                  },
+                  "Sensors": {
+                    "type": "Sensors",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "short_range_radius": 2000.0,
+                      "long_range_hexes": 0
+                    },
+                    "runtime": {}
+                  },
+                  "Weapons": {
+                    "type": "Weapons",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {},
+                    "runtime": {
+                      "turrets": [
+                        {
+                          "turret_type": {
+                            "$enum": "TurretType",
+                            "name": "MISSILE"
+                          },
+                          "variant": {
+                            "$enum": "TurretVariant",
+                            "name": "STANDARD"
+                          },
+                          "damage": 15.0,
+                          "range": 350.0,
+                          "cooldown": 2,
+                          "current_cooldown": 0
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "schema_version": 1,
+                "id": 75,
+                "name": "carrier",
+                "owner_id": 18,
+                "hull_size": "HUGE",
+                "template_name": null,
+                "in_system": "Sol",
+                "in_hex": [
+                  0,
+                  0
+                ],
+                "position": [
+                  100,
+                  0
+                ],
+                "current_hit_points": 400,
+                "max_hit_points": 400,
+                "experience_points": 0,
+                "is_disabled": false,
+                "disabled_by_unit_ids": [],
+                "damage_reduction": 0.0,
+                "damage_amplification": 0.0,
+                "lifetime": null,
+                "is_temporary": false,
+                "infiltrating_agents": [],
+                "components": {
+                  "Commander": {
+                    "type": "Commander",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "stance": {
+                        "$enum": "UnitStance",
+                        "name": "DO_NOTHING"
+                      }
+                    },
+                    "runtime": {
+                      "current_order": null,
+                      "orders_queue": []
+                    }
+                  },
+                  "AntimatterStorage": {
+                    "type": "AntimatterStorage",
+                    "schema_version": 1,
+                    "hull_cost": 5.0,
+                    "current_hit_points": 50,
+                    "max_hit_points": 50,
+                    "configuration": {
+                      "max_capacity": 100.0,
+                      "regen_rate": 10.0
+                    },
+                    "runtime": {
+                      "current_amount": 100.0
+                    }
+                  },
+                  "Sensors": {
+                    "type": "Sensors",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "short_range_radius": 2000.0,
+                      "long_range_hexes": 0
+                    },
+                    "runtime": {}
+                  },
+                  "HangarComponent": {
+                    "type": "HangarComponent",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "max_slots": 8
+                    },
+                    "runtime": {
+                      "docked_units": [
+                        {
+                          "schema_version": 1,
+                          "id": 76,
+                          "name": "docked",
+                          "owner_id": 18,
+                          "hull_size": "TINY",
+                          "template_name": null,
+                          "in_system": "Sol",
+                          "in_hex": [
+                            0,
+                            0
+                          ],
+                          "position": [
+                            100,
+                            0
+                          ],
+                          "current_hit_points": 20,
+                          "max_hit_points": 20,
+                          "experience_points": 0,
+                          "is_disabled": false,
+                          "disabled_by_unit_ids": [],
+                          "damage_reduction": 0.0,
+                          "damage_amplification": 0.0,
+                          "lifetime": null,
+                          "is_temporary": false,
+                          "infiltrating_agents": [],
+                          "components": {
+                            "Commander": {
+                              "type": "Commander",
+                              "schema_version": 1,
+                              "hull_cost": 0.0,
+                              "current_hit_points": 1,
+                              "max_hit_points": 10,
+                              "configuration": {
+                                "stance": {
+                                  "$enum": "UnitStance",
+                                  "name": "DO_NOTHING"
+                                }
+                              },
+                              "runtime": {
+                                "current_order": {
+                                  "public_id": "e9c5312e443c411ea997d790644d6efb",
+                                  "failure_reason": null,
+                                  "outcome_recorded": false,
+                                  "order_type": "ATTACK",
+                                  "status": "PENDING",
+                                  "parameters": {
+                                    "target_unit_id": 70
+                                  },
+                                  "runtime_state": {
+                                    "charged_credits": 0,
+                                    "charged_player_id": null
+                                  },
+                                  "sub_orders": []
+                                },
+                                "orders_queue": [
+                                  {
+                                    "public_id": "1ac7c1bbe11e4401806cee7ab0f4fa40",
+                                    "failure_reason": null,
+                                    "outcome_recorded": false,
+                                    "order_type": "MOVE",
+                                    "status": "PENDING",
+                                    "parameters": {
+                                      "destination_system_name": "Sol",
+                                      "destination_hex_coord": {
+                                        "__type__": "tuple",
+                                        "items": [
+                                          0,
+                                          0
+                                        ]
+                                      },
+                                      "destination_position": {
+                                        "__type__": "position",
+                                        "x": 450,
+                                        "y": 70
+                                      }
+                                    },
+                                    "runtime_state": {
+                                      "charged_credits": 0,
+                                      "charged_player_id": null
+                                    },
+                                    "sub_orders": []
+                                  }
+                                ]
+                              }
+                            },
+                            "AntimatterStorage": {
+                              "type": "AntimatterStorage",
+                              "schema_version": 1,
+                              "hull_cost": 5.0,
+                              "current_hit_points": 50,
+                              "max_hit_points": 50,
+                              "configuration": {
+                                "max_capacity": 100.0,
+                                "regen_rate": 10.0
+                              },
+                              "runtime": {
+                                "current_amount": 100.0
+                              }
+                            },
+                            "Sensors": {
+                              "type": "Sensors",
+                              "schema_version": 1,
+                              "hull_cost": 0.0,
+                              "current_hit_points": 10,
+                              "max_hit_points": 10,
+                              "configuration": {
+                                "short_range_radius": 2000.0,
+                                "long_range_hexes": 0
+                              },
+                              "runtime": {}
+                            },
+                            "HangarComponent": {
+                              "type": "HangarComponent",
+                              "schema_version": 1,
+                              "hull_cost": 0.0,
+                              "current_hit_points": 10,
+                              "max_hit_points": 10,
+                              "configuration": {
+                                "max_slots": 2
+                              },
+                              "runtime": {
+                                "docked_units": [
+                                  {
+                                    "schema_version": 1,
+                                    "id": 77,
+                                    "name": "nested",
+                                    "owner_id": 18,
+                                    "hull_size": "TINY",
+                                    "template_name": null,
+                                    "in_system": "Sol",
+                                    "in_hex": [
+                                      0,
+                                      0
+                                    ],
+                                    "position": [
+                                      100,
+                                      0
+                                    ],
+                                    "current_hit_points": 20,
+                                    "max_hit_points": 20,
+                                    "experience_points": 0,
+                                    "is_disabled": false,
+                                    "disabled_by_unit_ids": [],
+                                    "damage_reduction": 0.0,
+                                    "damage_amplification": 0.0,
+                                    "lifetime": null,
+                                    "is_temporary": false,
+                                    "infiltrating_agents": [],
+                                    "components": {
+                                      "Commander": {
+                                        "type": "Commander",
+                                        "schema_version": 1,
+                                        "hull_cost": 0.0,
+                                        "current_hit_points": 10,
+                                        "max_hit_points": 10,
+                                        "configuration": {
+                                          "stance": {
+                                            "$enum": "UnitStance",
+                                            "name": "DO_NOTHING"
+                                          }
+                                        },
+                                        "runtime": {
+                                          "current_order": null,
+                                          "orders_queue": []
+                                        }
+                                      },
+                                      "AntimatterStorage": {
+                                        "type": "AntimatterStorage",
+                                        "schema_version": 1,
+                                        "hull_cost": 5.0,
+                                        "current_hit_points": 50,
+                                        "max_hit_points": 50,
+                                        "configuration": {
+                                          "max_capacity": 100.0,
+                                          "regen_rate": 10.0
+                                        },
+                                        "runtime": {
+                                          "current_amount": 100.0
+                                        }
+                                      },
+                                      "Sensors": {
+                                        "type": "Sensors",
+                                        "schema_version": 1,
+                                        "hull_cost": 0.0,
+                                        "current_hit_points": 10,
+                                        "max_hit_points": 10,
+                                        "configuration": {
+                                          "short_range_radius": 2000.0,
+                                          "long_range_hexes": 0
+                                        },
+                                        "runtime": {}
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "StrikecraftBayComponent": {
+                    "type": "StrikecraftBayComponent",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "max_slots": 5
+                    },
+                    "runtime": {
+                      "constructing": false,
+                      "construction_progress": 0,
+                      "replenish_progress": 0,
+                      "build_wing_type": {
+                        "$enum": "WingType",
+                        "name": "FIGHTER"
+                      },
+                      "replenishing_unit": null,
+                      "docked_units": []
+                    }
+                  }
+                }
+              },
+              {
+                "schema_version": 1,
+                "id": 78,
+                "name": "wing",
+                "owner_id": 18,
+                "hull_size": "HUGE",
+                "template_name": null,
+                "in_system": "Sol",
+                "in_hex": [
+                  0,
+                  0
+                ],
+                "position": [
+                  100,
+                  0
+                ],
+                "current_hit_points": 400,
+                "max_hit_points": 400,
+                "experience_points": 0,
+                "is_disabled": false,
+                "disabled_by_unit_ids": [],
+                "damage_reduction": 0.0,
+                "damage_amplification": 0.0,
+                "lifetime": null,
+                "is_temporary": false,
+                "infiltrating_agents": [],
+                "components": {
+                  "Commander": {
+                    "type": "Commander",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "stance": {
+                        "$enum": "UnitStance",
+                        "name": "DO_NOTHING"
+                      }
+                    },
+                    "runtime": {
+                      "current_order": null,
+                      "orders_queue": []
+                    }
+                  },
+                  "AntimatterStorage": {
+                    "type": "AntimatterStorage",
+                    "schema_version": 1,
+                    "hull_cost": 5.0,
+                    "current_hit_points": 50,
+                    "max_hit_points": 50,
+                    "configuration": {
+                      "max_capacity": 100.0,
+                      "regen_rate": 10.0
+                    },
+                    "runtime": {
+                      "current_amount": 100.0
+                    }
+                  },
+                  "Sensors": {
+                    "type": "Sensors",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "short_range_radius": 2000.0,
+                      "long_range_hexes": 0
+                    },
+                    "runtime": {}
+                  },
+                  "StrikecraftWingComponent": {
+                    "type": "StrikecraftWingComponent",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "wing_type": {
+                        "$enum": "WingType",
+                        "name": "FIGHTER"
+                      }
+                    },
+                    "runtime": {
+                      "mother_carrier": 75
+                    }
+                  }
+                }
+              }
+            ],
+            "minefields": []
+          },
+          {
+            "q": 1,
+            "r": 0,
+            "in_system": "Sol",
+            "celestial_bodies": [],
+            "units": [
+              {
+                "schema_version": 1,
+                "id": 74,
+                "name": "inhibitor",
+                "owner_id": 18,
+                "hull_size": "HUGE",
+                "template_name": null,
+                "in_system": "Sol",
+                "in_hex": [
+                  1,
+                  0
+                ],
+                "position": [
+                  100,
+                  0
+                ],
+                "current_hit_points": 400,
+                "max_hit_points": 400,
+                "experience_points": 0,
+                "is_disabled": false,
+                "disabled_by_unit_ids": [],
+                "damage_reduction": 0.0,
+                "damage_amplification": 0.0,
+                "lifetime": null,
+                "is_temporary": false,
+                "infiltrating_agents": [],
+                "components": {
+                  "Commander": {
+                    "type": "Commander",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "stance": {
+                        "$enum": "UnitStance",
+                        "name": "DO_NOTHING"
+                      }
+                    },
+                    "runtime": {
+                      "current_order": null,
+                      "orders_queue": []
+                    }
+                  },
+                  "AntimatterStorage": {
+                    "type": "AntimatterStorage",
+                    "schema_version": 1,
+                    "hull_cost": 5.0,
+                    "current_hit_points": 50,
+                    "max_hit_points": 50,
+                    "configuration": {
+                      "max_capacity": 100.0,
+                      "regen_rate": 10.0
+                    },
+                    "runtime": {
+                      "current_amount": 100.0
+                    }
+                  },
+                  "Sensors": {
+                    "type": "Sensors",
+                    "schema_version": 1,
+                    "hull_cost": 0.0,
+                    "current_hit_points": 10,
+                    "max_hit_points": 10,
+                    "configuration": {
+                      "short_range_radius": 2000.0,
+                      "long_range_hexes": 0
+                    },
+                    "runtime": {}
+                  },
+                  "HyperspaceInhibitionFieldEmitter": {
+                    "type": "HyperspaceInhibitionFieldEmitter",
+                    "schema_version": 1,
+                    "hull_cost": 20.0,
+                    "current_hit_points": 200,
+                    "max_hit_points": 200,
+                    "configuration": {
+                      "radius": 123.5
+                    },
+                    "runtime": {
+                      "is_active": true
+                    }
+                  }
+                }
+              }
+            ],
+            "minefields": [
+              {
+                "id": 182,
+                "name": "Anti-Ship Minefield 81",
+                "owner_id": 18,
+                "in_hex": [
+                  1,
+                  0
+                ],
+                "in_system": "Sol",
+                "position": [
+                  0,
+                  500
+                ],
+                "mines_remaining": 5,
+                "mine_damage": 40.0,
+                "detonation_radius": 300.0,
+                "minefield_type": "anti_ship",
+                "revealed_to_player_ids": [
+                  19
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Beta",
+        "position": [
+          10,
+          20
+        ],
+        "radius": 1,
+        "hexes": [
+          {
+            "q": 0,
+            "r": 0,
+            "in_system": "Beta",
+            "celestial_bodies": [],
+            "units": [],
+            "minefields": []
+          },
+          {
+            "q": 1,
+            "r": 0,
+            "in_system": "Beta",
+            "celestial_bodies": [
+              {
+                "class_name": "Planet",
+                "id": 79,
+                "name": "Planet 79",
+                "position": [
+                  0.0,
+                  0.0
+                ],
+                "in_hex": [
+                  1,
+                  0
+                ],
+                "in_system": "Beta",
+                "inhibition_field_radius": 3500.0,
+                "planet_type": "GAS_GIANT",
+                "owner_id": null,
+                "population": 0,
+                "max_population": 0.0,
+                "population_growth_rate": 0.0,
+                "hidden_units": [
+                  {
+                    "schema_version": 1,
+                    "id": 80,
+                    "name": "hidden",
+                    "owner_id": 18,
+                    "hull_size": "HUGE",
+                    "template_name": null,
+                    "in_system": "Beta",
+                    "in_hex": [
+                      1,
+                      0
+                    ],
+                    "position": [
+                      100,
+                      0
+                    ],
+                    "current_hit_points": 400,
+                    "max_hit_points": 400,
+                    "experience_points": 0,
+                    "is_disabled": false,
+                    "disabled_by_unit_ids": [],
+                    "damage_reduction": 0.0,
+                    "damage_amplification": 0.0,
+                    "lifetime": null,
+                    "is_temporary": false,
+                    "infiltrating_agents": [],
+                    "components": {
+                      "Commander": {
+                        "type": "Commander",
+                        "schema_version": 1,
+                        "hull_cost": 0.0,
+                        "current_hit_points": 10,
+                        "max_hit_points": 10,
+                        "configuration": {
+                          "stance": {
+                            "$enum": "UnitStance",
+                            "name": "DO_NOTHING"
+                          }
+                        },
+                        "runtime": {
+                          "current_order": null,
+                          "orders_queue": []
+                        }
+                      },
+                      "AntimatterStorage": {
+                        "type": "AntimatterStorage",
+                        "schema_version": 1,
+                        "hull_cost": 5.0,
+                        "current_hit_points": 50,
+                        "max_hit_points": 50,
+                        "configuration": {
+                          "max_capacity": 100.0,
+                          "regen_rate": 10.0
+                        },
+                        "runtime": {
+                          "current_amount": 100.0
+                        }
+                      },
+                      "Sensors": {
+                        "type": "Sensors",
+                        "schema_version": 1,
+                        "hull_cost": 0.0,
+                        "current_hit_points": 10,
+                        "max_hit_points": 10,
+                        "configuration": {
+                          "short_range_radius": 2000.0,
+                          "long_range_hexes": 0
+                        },
+                        "runtime": {}
+                      }
+                    }
+                  }
+                ],
+                "infiltrating_agents": []
+              }
+            ],
+            "units": [],
+            "minefields": []
+          }
+        ]
+      }
+    ]
+  },
+  "conversations": []
+}

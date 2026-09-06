@@ -130,7 +130,7 @@ Recommended repair:
 
 For a strategy game, a load failure should be all-or-nothing.
 
-### WC-004 — radiation storms are inert, and “accuracy” does not exist
+### WC-004 — radiation storms are inert, and “accuracy” does not exist - **ALREADY FIXED**
 
 The radiation branch in `turn_processor.py:573-579` does this:
 

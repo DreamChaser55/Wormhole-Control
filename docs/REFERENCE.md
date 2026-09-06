@@ -759,5 +759,5 @@ Stars anchor the gravitational and hyperspace topology of star systems:
 - **Space Storms** (`radius = 3600.0` logical units):
   - **Plasma Storm**: Inflicts 8 thermal damage per turn to unit hit points.
   - **Magnetic Storm**: Drains 6 antimatter per turn from onboard reserves; violent electromagnetic flux completely scrambles long-range radar projection from within the storm. Strikecraft wings are strictly banned from entering or launching within Magnetic Storms.
-  - **Radiation Storm**: Energetic cosmic radiation inflicts 4 damage per turn to a random functional unit component, degrading subsystem integrity and imposing weapon accuracy penalties.
+  - **Radiation Storm**: Energetic cosmic radiation inflicts 4 damage per turn to a random functional unit component, degrading subsystem integrity.
 

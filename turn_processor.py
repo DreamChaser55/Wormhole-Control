@@ -23,8 +23,9 @@ from economy import calculate_unit_upkeep, calculate_player_upkeep
 
 
 class TurnProcessor:
-    def __init__(self, game_instance):
+    def __init__(self, game_instance, rng=None):
         self.game = game_instance
+        self.rng = rng or getattr(game_instance, 'rng', None) or random
 
     def end_turn(self):
         """Processes the end of the current player's turn and advances turn/round state."""
@@ -571,9 +572,15 @@ class TurnProcessor:
                                     logger.debug(f"{unit.name} lost {STORM_MAGNETIC_AM_DRAIN_PER_TURN} AM in magnetic storm in {system.name}")
                                     hazards_encountered.append(f"{unit.name}: Magnetic Storm AM drain (-{int(STORM_MAGNETIC_AM_DRAIN_PER_TURN)} AM)")
                             elif body.storm_type == StormType.RADIATION:
-                                comps = [c for c in getattr(unit, 'components', []) if not c.is_destroyed]
+                                comps_source = getattr(unit, 'components', {})
+                                if isinstance(comps_source, dict):
+                                    comps = [c for c in comps_source.values() if not c.is_destroyed]
+                                elif isinstance(comps_source, (list, tuple)):
+                                    comps = [c for c in comps_source if not isinstance(c, type) and not getattr(c, 'is_destroyed', False)]
+                                else:
+                                    comps = []
                                 if comps:
-                                    target_comp = comps[0]
+                                    target_comp = self.rng.choice(comps)
                                     unit.take_component_damage(type(target_comp), int(STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN))
                                     logger.debug(f"{unit.name} took {STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN} radiation damage to {target_comp.__class__.__name__}")
                                     hazards_encountered.append(f"{unit.name}: Radiation Storm damage to {getattr(target_comp, 'DISPLAY_NAME', target_comp.__class__.__name__)}")

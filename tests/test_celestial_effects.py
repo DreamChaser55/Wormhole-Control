@@ -313,6 +313,181 @@ def test_environmental_hazards_in_turn_processor():
     assert am_comp.current_amount == pytest.approx(50.0 - STORM_MAGNETIC_AM_DRAIN_PER_TURN)
 
 
+def test_radiation_storm_damages_component_in_turn_processor():
+    """Verify Radiation Storm inflicts 4 damage to a functional component."""
+    import random
+    from turn_processor import TurnProcessor
+
+    p1 = Player("Player 1", (0, 100, 255))
+    p1.is_human = False
+    game = MockGame()
+    game.players.append(p1)
+    processor = TurnProcessor(game)
+
+    system = MockSystem("Sol")
+    hex_obj = MockHex((0, 0))
+
+    u = create_test_unit(p1, name="RadShip", pos=Position(100, 100), game=game)
+    eng = Engines(u, speed=20.0, hull_cost=2.0)
+    u.add_component(eng)
+    hex_obj.units.append(u)
+
+    storm_rad = Storm(in_hex=(0, 0), in_system="Sol", storm_type=StormType.RADIATION)
+    storm_rad.position = Position(100, 100)
+    hex_obj.celestial_bodies.append(storm_rad)
+
+    system.hexes[(0, 0)] = hex_obj
+    game.galaxy.systems["Sol"] = system
+
+    # Sum initial HP of all components
+    initial_total_comp_hp = sum(c.current_hit_points for c in u.components.values())
+
+    processor._process_environmental_hazards(p1)
+
+    final_total_comp_hp = sum(c.current_hit_points for c in u.components.values())
+    # Exactly STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN (4) damage applied across components
+    assert initial_total_comp_hp - final_total_comp_hp == int(STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN)
+
+
+def test_radiation_storm_injectable_rng_selection():
+    """Verify TurnProcessor uses injected RNG to select the targeted component deterministically."""
+    from unittest.mock import MagicMock
+    from turn_processor import TurnProcessor
+
+    p1 = Player("Player 1", (0, 100, 255))
+    p1.is_human = False
+    game = MockGame()
+    game.players.append(p1)
+
+    system = MockSystem("Sol")
+    hex_obj = MockHex((0, 0))
+
+    u = create_test_unit(p1, name="RadShip", pos=Position(0, 0), game=game)
+    eng = Engines(u, speed=20.0, hull_cost=2.0)
+    u.add_component(eng)
+    sensors = u.get_component(Sensors)
+    hex_obj.units.append(u)
+
+    storm_rad = Storm(in_hex=(0, 0), in_system="Sol", storm_type=StormType.RADIATION)
+    storm_rad.position = Position(0, 0)
+    hex_obj.celestial_bodies.append(storm_rad)
+
+    system.hexes[(0, 0)] = hex_obj
+    game.galaxy.systems["Sol"] = system
+
+    # Inject mock RNG that chooses the Engines component
+    mock_rng = MagicMock()
+    mock_rng.choice.side_effect = lambda comps: next(c for c in comps if isinstance(c, Engines))
+
+    processor = TurnProcessor(game, rng=mock_rng)
+
+    eng_initial_hp = eng.current_hit_points
+    sensors_initial_hp = sensors.current_hit_points
+
+    processor._process_environmental_hazards(p1)
+
+    assert eng.current_hit_points == eng_initial_hp - int(STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN)
+    assert sensors.current_hit_points == sensors_initial_hp
+
+
+def test_radiation_storm_skips_destroyed_components():
+    """Verify Radiation Storm only damages functional components and skips destroyed ones."""
+    from turn_processor import TurnProcessor
+
+    p1 = Player("Player 1", (0, 100, 255))
+    p1.is_human = False
+    game = MockGame()
+    game.players.append(p1)
+    processor = TurnProcessor(game)
+
+    system = MockSystem("Sol")
+    hex_obj = MockHex((0, 0))
+
+    u = create_test_unit(p1, name="RadShip", pos=Position(0, 0), game=game)
+    eng = Engines(u, speed=20.0, hull_cost=2.0)
+    u.add_component(eng)
+    # Destroy all components except Engines
+    for c in u.components.values():
+        if c is not eng:
+            c.current_hit_points = 0
+
+    hex_obj.units.append(u)
+
+    storm_rad = Storm(in_hex=(0, 0), in_system="Sol", storm_type=StormType.RADIATION)
+    storm_rad.position = Position(0, 0)
+    hex_obj.celestial_bodies.append(storm_rad)
+
+    system.hexes[(0, 0)] = hex_obj
+    game.galaxy.systems["Sol"] = system
+
+    eng_hp_before = eng.current_hit_points
+    processor._process_environmental_hazards(p1)
+
+    assert eng.current_hit_points == eng_hp_before - int(STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN)
+
+
+def test_radiation_storm_all_components_destroyed_safe():
+    """Verify no exceptions when all components are destroyed."""
+    from turn_processor import TurnProcessor
+
+    p1 = Player("Player 1", (0, 100, 255))
+    p1.is_human = False
+    game = MockGame()
+    game.players.append(p1)
+    processor = TurnProcessor(game)
+
+    system = MockSystem("Sol")
+    hex_obj = MockHex((0, 0))
+
+    u = create_test_unit(p1, name="RadShip", pos=Position(0, 0), game=game)
+    for c in u.components.values():
+        c.current_hit_points = 0
+
+    hex_obj.units.append(u)
+
+    storm_rad = Storm(in_hex=(0, 0), in_system="Sol", storm_type=StormType.RADIATION)
+    storm_rad.position = Position(0, 0)
+    hex_obj.celestial_bodies.append(storm_rad)
+
+    system.hexes[(0, 0)] = hex_obj
+    game.galaxy.systems["Sol"] = system
+
+    # Should safely complete with no errors
+    processor._process_environmental_hazards(p1)
+
+
+def test_radiation_storm_outside_radius_no_damage():
+    """Verify units outside the radiation storm radius take no component damage."""
+    from turn_processor import TurnProcessor
+
+    p1 = Player("Player 1", (0, 100, 255))
+    p1.is_human = False
+    game = MockGame()
+    game.players.append(p1)
+    processor = TurnProcessor(game)
+
+    system = MockSystem("Sol")
+    hex_obj = MockHex((0, 0))
+
+    # Place unit well outside STORM_RADIUS (3600.0)
+    u = create_test_unit(p1, name="SafeShip", pos=Position(5000, 5000), game=game)
+    hex_obj.units.append(u)
+
+    storm_rad = Storm(in_hex=(0, 0), in_system="Sol", storm_type=StormType.RADIATION)
+    storm_rad.position = Position(0, 0)
+    hex_obj.celestial_bodies.append(storm_rad)
+
+    system.hexes[(0, 0)] = hex_obj
+    game.galaxy.systems["Sol"] = system
+
+    initial_hp_map = {type(c): c.current_hit_points for c in u.components.values()}
+    processor._process_environmental_hazards(p1)
+
+    for comp_type, hp in initial_hp_map.items():
+        assert u.get_component(comp_type).current_hit_points == hp
+
+
+
 def test_black_hole_event_horizon_hazard():
     """Verify Black Hole event horizon damages ships within 750 radius."""
     from turn_processor import TurnProcessor

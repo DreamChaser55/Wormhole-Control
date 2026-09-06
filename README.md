@@ -142,7 +142,7 @@ Matches operate on a hot-seat turn sequence. At the start of a player's turn, mo
   - **Black Holes**: Extreme gravitational tidal distortion inflicts 15 hull damage per turn within 750 radius of the singularity.
   - **Pulsars**: Sweeping magnetic radiation pulses drain 5% of a ship's current antimatter reserves per turn.
   - **Debris Field Abrasion**: Moving at high sublight velocities (speed > 50) through debris clouds inflicts damage per turn scaled by density (1 Low, 2 Medium, 3 High; strikecraft wings are exempt).
-  - **Space Storms**: Plasma storms inflict 8 thermal damage per turn; Magnetic storms drain 6 antimatter per turn and jam long-range radar sensors (strikecraft wings are banned from entering or launching in magnetic storms); Radiation storms inflict 4 component damage per turn and degrade weapon accuracy.
+  - **Space Storms**: Plasma storms inflict 8 thermal damage per turn; Magnetic storms drain 6 antimatter per turn and jam long-range radar sensors (strikecraft wings are banned from entering or launching in magnetic storms); Radiation storms inflict 4 component damage per turn to a random functional subsystem.
 
 ---
 
