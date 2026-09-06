@@ -32,10 +32,13 @@ class TestGUIModalDialogs(unittest.TestCase):
         self._orig_data_file = ctm._DATA_FILE
         ctm._DATA_FILE = self._temp_data_file.name
 
-        self.game = Game()
+        self.game = Game(control_port=0)
         self.gui = self.game.gui
 
     def tearDown(self):
+        if hasattr(self, "game") and self.game:
+            self.game.control_service.shutdown()
+            self.game.ai_coordinator.shutdown()
         if self.gui:
             self.gui.clear_and_reset()
         import custom_unit_templates as ctm

@@ -454,37 +454,45 @@ def test_save_load_roundtrip_with_submerged_units():
 
     # Full game state roundtrip
     from game import Game
-    full_game = Game()
-    full_game.start_new_game()
-    gg = None
-    for sys in full_game.galaxy.systems.values():
-        for hex_obj in sys.hexes.values():
-            for body in hex_obj.celestial_bodies:
-                if getattr(body, 'planet_type', None) == PlanetType.GAS_GIANT:
-                    gg = body
+    full_game = Game(control_port=0)
+    try:
+        full_game.start_new_game()
+        gg = None
+        for sys in full_game.galaxy.systems.values():
+            for hex_obj in sys.hexes.values():
+                for body in hex_obj.celestial_bodies:
+                    if getattr(body, 'planet_type', None) == PlanetType.GAS_GIANT:
+                        gg = body
+                        break
+                if gg:
                     break
             if gg:
                 break
         if gg:
-            break
-    if gg:
-        player = full_game.players[0]
-        test_ship = Unit(
-            owner=player,
-            position=gg.position,
-            in_hex=gg.in_hex,
-            in_system=gg.in_system,
-            name="Test Submerged Ship",
-            hull_size=HullSize.MEDIUM,
-            game=full_game
-        )
-        test_ship.add_component(Engines(test_ship, speed=100.0))
-        full_game.galaxy.systems[gg.in_system].hexes[gg.in_hex].add_unit(test_ship)
-        gg.hide_unit(test_ship, full_game.galaxy)
+            player = full_game.players[0]
+            test_ship = Unit(
+                owner=player,
+                position=gg.position,
+                in_hex=gg.in_hex,
+                in_system=gg.in_system,
+                name="Test Submerged Ship",
+                hull_size=HullSize.MEDIUM,
+                game=full_game
+            )
+            test_ship.add_component(Engines(test_ship, speed=100.0))
+            full_game.galaxy.systems[gg.in_system].hexes[gg.in_hex].add_unit(test_ship)
+            gg.hide_unit(test_ship, full_game.galaxy)
 
-        payload = serialize_game_state(full_game)
-        restored = Game()
-        deserialize_game_state(restored, payload)
-        loaded_gg = restored.galaxy.get_celestial_body_by_id(gg.id)
-        assert loaded_gg is not None
-        assert any(u.id == test_ship.id for u in loaded_gg.hidden_units)
+            payload = serialize_game_state(full_game)
+            restored = Game(control_port=0)
+            try:
+                deserialize_game_state(restored, payload)
+                loaded_gg = restored.galaxy.get_celestial_body_by_id(gg.id)
+                assert loaded_gg is not None
+                assert any(u.id == test_ship.id for u in loaded_gg.hidden_units)
+            finally:
+                restored.control_service.shutdown()
+                restored.ai_coordinator.shutdown()
+    finally:
+        full_game.control_service.shutdown()
+        full_game.ai_coordinator.shutdown()

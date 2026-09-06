@@ -14,7 +14,7 @@ from visibility import VisibilityService, is_unit_visible, hex_has_presence
 
 def create_test_galaxy():
     """Build a standard two-player galaxy with system 'Sol' and multiple hex sectors."""
-    galaxy = Galaxy()
+    galaxy = Galaxy(num_systems=0)
     p1 = Player(name="Player 1", color=(255, 0, 0), team_id=1)
     p2 = Player(name="Player 2", color=(0, 0, 255), team_id=2)
     galaxy.game = MagicMock()

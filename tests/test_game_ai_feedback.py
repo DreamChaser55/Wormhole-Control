@@ -25,7 +25,7 @@ class TestGameAIFeedback(unittest.TestCase):
         pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game()
+        self.game = Game(control_port=0)
         self.galaxy = Galaxy()
         sys1 = StarSystem("Sol", Position(0, 0), radius=3)
         self.galaxy.systems["Sol"] = sys1
@@ -36,6 +36,11 @@ class TestGameAIFeedback(unittest.TestCase):
         self.game.players = [self.player0, self.player1]
         self.game.current_player_index = 1
         self.game.turn_number = 3
+
+    def tearDown(self):
+        if hasattr(self, "game") and self.game:
+            self.game.control_service.shutdown()
+            self.game.ai_coordinator.shutdown()
 
     def test_supported_commands_and_schema(self):
         self.assertIn("message_developer", SUPPORTED_COMMANDS)

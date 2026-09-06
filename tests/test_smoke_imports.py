@@ -67,7 +67,7 @@ def test_clean_process_launch_smoke_test():
     env["SDL_AUDIODRIVER"] = "dummy"
 
     result = subprocess.run(
-        [sys.executable, "game.py", "--smoke-test", "--smoke-test-frames", "3"],
+        [sys.executable, "game.py", "--smoke-test", "--smoke-test-frames", "3", "--port", "0"],
         capture_output=True,
         text=True,
         stdin=subprocess.DEVNULL,
@@ -85,7 +85,7 @@ def test_in_process_game_launch_and_tick():
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
     from game import Game
-    game = Game()
+    game = Game(control_port=0)
     try:
         assert game.view_mode == "main_menu"
         assert game.is_running is True

@@ -272,22 +272,26 @@ def test_template_sensor_wiring(test_setup):
 
 def test_new_game_visibility_turn1():
     from game import Game
-    g = Game()
-    g.start_new_game()
+    g = Game(control_port=0)
+    try:
+        g.start_new_game()
 
-    assert g.visibility is not None
-    assert g.visibility.viewer == g.players[0]
+        assert g.visibility is not None
+        assert g.visibility.viewer == g.players[0]
 
-    # Find Player 1's starting units and ensure they are visible on Turn 1
-    p1 = g.players[0]
-    p1_units = []
-    for system in g.galaxy.systems.values():
-        for hex_obj in system.hexes.values():
-            for u in hex_obj.units:
-                if u.owner == p1:
-                    p1_units.append(u)
+        # Find Player 1's starting units and ensure they are visible on Turn 1
+        p1 = g.players[0]
+        p1_units = []
+        for system in g.galaxy.systems.values():
+            for hex_obj in system.hexes.values():
+                for u in hex_obj.units:
+                    if u.owner == p1:
+                        p1_units.append(u)
 
-    assert len(p1_units) > 0
-    for u in p1_units:
-        assert g.is_unit_visible(u) is True
+        assert len(p1_units) > 0
+        for u in p1_units:
+            assert g.is_unit_visible(u) is True
+    finally:
+        g.control_service.shutdown()
+        g.ai_coordinator.shutdown()
 

@@ -31,13 +31,16 @@ class TestInGameErrorDialogs(unittest.TestCase):
         pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game()
+        self.game = Game(control_port=0)
         self.game.start_new_game()
         self.gui = self.game.gui
         self.player = self.game.players[0]
         self.player.controller = PlayerController.HUMAN
 
     def tearDown(self):
+        if hasattr(self, "game") and self.game:
+            self.game.control_service.shutdown()
+            self.game.ai_coordinator.shutdown()
         if self.gui:
             self.gui.clear_and_reset()
 

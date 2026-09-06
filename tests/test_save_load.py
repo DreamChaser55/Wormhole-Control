@@ -238,108 +238,134 @@ class TestSaveLoad(unittest.TestCase):
 
     def test_full_game_save_load(self):
         from game import Game
-        game = Game()
-        success = game.start_new_game()
-        self.assertTrue(success)
+        game = Game(control_port=0)
+        new_game = None
+        saved_filepath = None
+        try:
+            success = game.start_new_game()
+            self.assertTrue(success)
 
-        game.turn_number = 7
-        game.players[0].credits = 8888.0
-        saved_systems_count = len(game.galaxy.systems)
-        stance_unit = next(
-            unit
-            for system in game.galaxy.systems.values()
-            for unit, _ in system.get_all_units()
-            if unit.commander_component
-        )
-        stance_unit.commander_component.set_stance(UnitStance.ATTACK_WEAPON_RANGE)
-        stance_unit_id = stance_unit.id
+            game.turn_number = 7
+            game.players[0].credits = 8888.0
+            saved_systems_count = len(game.galaxy.systems)
+            stance_unit = next(
+                unit
+                for system in game.galaxy.systems.values()
+                for unit, _ in system.get_all_units()
+                if unit.commander_component
+            )
+            stance_unit.commander_component.set_stance(UnitStance.ATTACK_WEAPON_RANGE)
+            stance_unit_id = stance_unit.id
 
-        test_filename = "test_autotest_save.json"
-        saved_filepath = game.save_game(test_filename)
-        self.assertTrue(os.path.exists(saved_filepath))
+            test_filename = "test_autotest_save.json"
+            saved_filepath = game.save_game(test_filename)
+            self.assertTrue(os.path.exists(saved_filepath))
 
-        # Create fresh game and load
-        new_game = Game()
-        load_success = new_game.load_game(saved_filepath)
-        self.assertTrue(load_success)
-        self.assertTrue(new_game.game_started)
-        self.assertEqual(new_game.turn_number, 7)
-        self.assertEqual(new_game.players[0].credits, 8888.0)
-        self.assertEqual(len(new_game.galaxy.systems), saved_systems_count)
-        restored_stance_unit = new_game.galaxy.get_unit_by_id(stance_unit_id)
-        self.assertEqual(restored_stance_unit.commander_component.stance, UnitStance.ATTACK_WEAPON_RANGE)
-        self.assertIs(restored_stance_unit.in_galaxy, new_game.galaxy)
-
-        # Cleanup
-        if os.path.exists(saved_filepath):
-            os.remove(saved_filepath)
+            # Create fresh game and load
+            new_game = Game(control_port=0)
+            load_success = new_game.load_game(saved_filepath)
+            self.assertTrue(load_success)
+            self.assertTrue(new_game.game_started)
+            self.assertEqual(new_game.turn_number, 7)
+            self.assertEqual(new_game.players[0].credits, 8888.0)
+            self.assertEqual(len(new_game.galaxy.systems), saved_systems_count)
+            restored_stance_unit = new_game.galaxy.get_unit_by_id(stance_unit_id)
+            self.assertEqual(restored_stance_unit.commander_component.stance, UnitStance.ATTACK_WEAPON_RANGE)
+            self.assertIs(restored_stance_unit.in_galaxy, new_game.galaxy)
+        finally:
+            game.control_service.shutdown()
+            game.ai_coordinator.shutdown()
+            if new_game is not None:
+                new_game.control_service.shutdown()
+                new_game.ai_coordinator.shutdown()
+            if saved_filepath and os.path.exists(saved_filepath):
+                os.remove(saved_filepath)
 
     def test_legacy_zero_object_id_is_preserved_and_counter_advances(self):
         from game import Game
 
-        game = Game()
-        self.assertTrue(game.start_new_game())
-        legacy_star = next(
-            body
-            for system in game.galaxy.systems.values()
-            for hex_obj in system.hexes.values()
-            for body in hex_obj.celestial_bodies
-            if isinstance(body, Star)
-        )
-        legacy_star.id = 0
+        game = Game(control_port=0)
+        restored_game = None
+        try:
+            self.assertTrue(game.start_new_game())
+            legacy_star = next(
+                body
+                for system in game.galaxy.systems.values()
+                for hex_obj in system.hexes.values()
+                for body in hex_obj.celestial_bodies
+                if isinstance(body, Star)
+            )
+            legacy_star.id = 0
 
-        payload = serialize_game_state(game)
-        restored_game = Game()
-        self.assertTrue(deserialize_game_state(restored_game, payload))
+            payload = serialize_game_state(game)
+            restored_game = Game(control_port=0)
+            self.assertTrue(deserialize_game_state(restored_game, payload))
 
-        restored_star = restored_game.galaxy.get_celestial_body_by_id(0)
-        self.assertIsInstance(restored_star, Star)
-        loaded_object_ids = [
-            body.id
-            for system in restored_game.galaxy.systems.values()
-            for hex_obj in system.hexes.values()
-            for body in hex_obj.celestial_bodies
-        ] + [
-            unit.id
-            for system in restored_game.galaxy.systems.values()
-            for unit, _ in system.get_all_units()
-        ]
-        self.assertEqual(GameObject.object_counter, max(loaded_object_ids) + 1)
+            restored_star = restored_game.galaxy.get_celestial_body_by_id(0)
+            self.assertIsInstance(restored_star, Star)
+            loaded_object_ids = [
+                body.id
+                for system in restored_game.galaxy.systems.values()
+                for hex_obj in system.hexes.values()
+                for body in hex_obj.celestial_bodies
+            ] + [
+                unit.id
+                for system in restored_game.galaxy.systems.values()
+                for unit, _ in system.get_all_units()
+            ]
+            self.assertEqual(GameObject.object_counter, max(loaded_object_ids) + 1)
+        finally:
+            game.control_service.shutdown()
+            game.ai_coordinator.shutdown()
+            if restored_game is not None:
+                restored_game.control_service.shutdown()
+                restored_game.ai_coordinator.shutdown()
 
     def test_gui_load_dialog_trigger(self):
         from game import Game
-        game = Game()
-        game.gui.setup_main_menu()
-        self.assertIsNotNone(game.gui.load_game_button)
+        game = Game(control_port=0)
+        try:
+            game.gui.setup_main_menu()
+            self.assertIsNotNone(game.gui.load_game_button)
 
-        game.gui.show_load_game_dialog()
-        self.assertIsNotNone(game.gui.load_save_window)
-        self.assertIsNotNone(game.gui.load_save_confirm_button)
-        self.assertIsNotNone(game.gui.load_save_cancel_button)
+            game.gui.show_load_game_dialog()
+            self.assertIsNotNone(game.gui.load_save_window)
+            self.assertIsNotNone(game.gui.load_save_confirm_button)
+            self.assertIsNotNone(game.gui.load_save_cancel_button)
+        finally:
+            game.control_service.shutdown()
+            game.ai_coordinator.shutdown()
 
     def test_load_game_schedules_ai_turn_if_current_player_is_ai(self):
         from game import Game
         from unittest.mock import patch
 
-        game = Game()
-        game.start_new_game()
-        # Set player 0 to AI and save
-        game.players[0].controller = PlayerController.OPENAI
-        game.current_player_index = 0
+        game = Game(control_port=0)
+        new_game = None
+        saved_filepath = None
+        try:
+            game.start_new_game()
+            # Set player 0 to AI and save
+            game.players[0].controller = PlayerController.OPENAI
+            game.current_player_index = 0
 
-        test_filename = "test_ai_load_save.json"
-        saved_filepath = game.save_game(test_filename)
-        self.assertTrue(os.path.exists(saved_filepath))
+            test_filename = "test_ai_load_save.json"
+            saved_filepath = game.save_game(test_filename)
+            self.assertTrue(os.path.exists(saved_filepath))
 
-        new_game = Game()
-        with patch('pygame.time.get_ticks', return_value=3000):
-            load_success = new_game.load_game(saved_filepath)
-            self.assertTrue(load_success)
-            self.assertEqual(new_game.pending_ai_turn_end_time, 3500)
-
-        # Cleanup
-        if os.path.exists(saved_filepath):
-            os.remove(saved_filepath)
+            new_game = Game(control_port=0)
+            with patch('pygame.time.get_ticks', return_value=3000):
+                load_success = new_game.load_game(saved_filepath)
+                self.assertTrue(load_success)
+                self.assertEqual(new_game.pending_ai_turn_end_time, 3500)
+        finally:
+            game.control_service.shutdown()
+            game.ai_coordinator.shutdown()
+            if new_game is not None:
+                new_game.control_service.shutdown()
+                new_game.ai_coordinator.shutdown()
+            if saved_filepath and os.path.exists(saved_filepath):
+                os.remove(saved_filepath)
 
     def test_short_id_generation(self):
         token = generate_short_id()
@@ -362,18 +388,22 @@ class TestSaveLoad(unittest.TestCase):
         self.assertTrue(all(c in "0123456789abcdef" for c in player.persistent_id))
         self.assertTrue(all(c in "0123456789abcdef" for c in player.agent_id))
 
-        game = Game()
-        self.assertEqual(len(game.campaign_id), 8)
-        self.assertTrue(all(c in "0123456789abcdef" for c in game.campaign_id))
+        game = Game(control_port=0)
+        try:
+            self.assertEqual(len(game.campaign_id), 8)
+            self.assertTrue(all(c in "0123456789abcdef" for c in game.campaign_id))
 
-        game.start_new_game()
-        self.assertEqual(len(game.campaign_id), 8)
-        self.assertTrue(all(c in "0123456789abcdef" for c in game.campaign_id))
+            game.start_new_game()
+            self.assertEqual(len(game.campaign_id), 8)
+            self.assertTrue(all(c in "0123456789abcdef" for c in game.campaign_id))
 
-        # Check serialization preserves short IDs
-        serialized = serialize_player(player)
-        self.assertEqual(serialized["persistent_id"], player.persistent_id)
-        self.assertEqual(serialized["agent_id"], player.agent_id)
+            # Check serialization preserves short IDs
+            serialized = serialize_player(player)
+            self.assertEqual(serialized["persistent_id"], player.persistent_id)
+            self.assertEqual(serialized["agent_id"], player.agent_id)
+        finally:
+            game.control_service.shutdown()
+            game.ai_coordinator.shutdown()
 
 
 if __name__ == "__main__":

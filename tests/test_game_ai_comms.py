@@ -22,7 +22,7 @@ class TestGameAIComms(unittest.TestCase):
         pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game()
+        self.game = Game(control_port=0)
         self.galaxy = Galaxy()
         sys1 = StarSystem("Sol", Position(0, 0), radius=3)
         self.galaxy.systems["Sol"] = sys1
@@ -34,6 +34,11 @@ class TestGameAIComms(unittest.TestCase):
         self.game.players = [self.player0, self.player1, self.player2]
         self.game.current_player_index = 1
         self.game.turn_number = 2
+
+    def tearDown(self):
+        if hasattr(self, "game") and self.game:
+            self.game.control_service.shutdown()
+            self.game.ai_coordinator.shutdown()
 
     def test_observation_conversations(self):
         # Transmissions on Turn 1

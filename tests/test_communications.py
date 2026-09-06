@@ -25,13 +25,18 @@ class TestCommunications(unittest.TestCase):
         pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game()
+        self.game = Game(control_port=0)
         self.player0 = Player("Player 1", (0, 128, 255), controller=PlayerController.HUMAN)
         self.player1 = Player("Player 2", (255, 0, 0), controller=PlayerController.OPENAI)
         self.player2 = Player("Player 3", (0, 255, 0), controller=PlayerController.HUMAN)
         self.game.players = [self.player0, self.player1, self.player2]
         self.game.current_player_index = 0
         self.game.turn_number = 1
+
+    def tearDown(self):
+        if hasattr(self, "game") and self.game:
+            self.game.control_service.shutdown()
+            self.game.ai_coordinator.shutdown()
 
     def test_message_dataclass(self):
         msg = Message(
@@ -156,16 +161,20 @@ class TestCommunications(unittest.TestCase):
         saved_filepath = self.game.save_game(test_filename)
         self.assertTrue(os.path.exists(saved_filepath))
 
-        new_game = Game()
-        load_success = new_game.load_game(saved_filepath)
-        self.assertTrue(load_success)
-        
-        conv = new_game.get_conversation(p0.id, p1.id)
-        self.assertIsNotNone(conv)
-        self.assertEqual(len(conv.messages), 2)
-        self.assertEqual(conv.messages[0].text, "Message A")
-        self.assertEqual(conv.messages[1].text, "Message B")
-        self.assertEqual(new_game.message_counter, 2)
+        new_game = Game(control_port=0)
+        try:
+            load_success = new_game.load_game(saved_filepath)
+            self.assertTrue(load_success)
+            
+            conv = new_game.get_conversation(p0.id, p1.id)
+            self.assertIsNotNone(conv)
+            self.assertEqual(len(conv.messages), 2)
+            self.assertEqual(conv.messages[0].text, "Message A")
+            self.assertEqual(conv.messages[1].text, "Message B")
+            self.assertEqual(new_game.message_counter, 2)
+        finally:
+            new_game.control_service.shutdown()
+            new_game.ai_coordinator.shutdown()
 
         if os.path.exists(saved_filepath):
             os.remove(saved_filepath)

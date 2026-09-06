@@ -776,8 +776,8 @@ if __name__ == '__main__':
         help="number of frames to execute during --smoke-test (default: 5)",
     )
     arguments = parser.parse_args()
-    if arguments.port is not None and not 1 <= arguments.port <= 65535:
-        parser.error("--port must be between 1 and 65535")
+    if arguments.port is not None and not 0 <= arguments.port <= 65535:
+        parser.error("--port must be between 0 and 65535")
     if arguments.smoke_test_frames < 1:
         parser.error("--smoke-test-frames must be at least 1")
 
@@ -788,7 +788,8 @@ if __name__ == '__main__':
 
     setup_logging(log_to_file=True)
     logger.debug("Initializing Game...")
-    game = Game(control_port=arguments.port)
+    control_port = arguments.port if arguments.port is not None else (0 if arguments.smoke_test else None)
+    game = Game(control_port=control_port)
     if arguments.smoke_test:
         logger.info(f"Running launch smoke test for {arguments.smoke_test_frames} frames...")
         game.run(max_frames=arguments.smoke_test_frames)
