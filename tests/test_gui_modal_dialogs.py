@@ -28,6 +28,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         import tempfile
         import custom_unit_templates as ctm
         self._temp_data_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
+        self._temp_data_file.write(b"{}")
         self._temp_data_file.close()
         self._orig_data_file = ctm._DATA_FILE
         ctm._DATA_FILE = self._temp_data_file.name

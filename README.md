@@ -148,7 +148,7 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 - **Hull Sizing**: Choose from 6 hull classes (`STRIKECRAFT_WING`, `TINY`, `SMALL`, `MEDIUM`, `LARGE`, `HUGE`), each offering distinct capacity budgets, baseline hit points, and construction costs.
 - **Dynamic & Fixed Components**: Tune sublight engines, hyperdrives, turrets, and defense ratings with dynamically scaling hull costs, or install fixed utility modules like refineries, colony pods, and hangars.
 - **Special Abilities**: Equip up to 9 specialized abilities, including *Adaptive Forcefields*, *Cluster Warheads*, *Designate Target*, *Ion Bolts*, *Missile Batteries*, *Repair Clouds*, *Capture Unit*, *Drain Antimatter*, and *Microjumps*.
-- **Persistence**: Saved designs are stored in `data/custom_unit_templates.json` and immediately become available for construction in active shipyards.
+- **Persistence**: Saved designs are stored in your user-data library and immediately become available for construction in active shipyards. See [custom-design storage and migration](#custom-design-storage-and-migration).
 
 > For complete component hull costs, stat scaling formulas, and ability tables, consult the [Reference Manual](docs/REFERENCE.md).
 
@@ -251,8 +251,26 @@ Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests
 
 Each run of the game produces a `game.log` text file in the root folder, containing the debug log.
 
+### Custom-design storage and migration
+
+Custom designs are stored as `custom_unit_templates.json` in:
+
+- Windows: `%LOCALAPPDATA%/WormholeControl` (fallback: `~/AppData/Local/WormholeControl`).
+- macOS: `~/Library/Application Support/WormholeControl`.
+- Linux: `$XDG_DATA_HOME/WormholeControl` (fallback: `~/.local/share/WormholeControl`).
+
+Set `WORMHOLE_USER_DATA_DIR` to an **absolute directory path** to use another location. Tests automatically use temporary user storage, including child processes.
+
+On first use, when no user library exists, the game validates and copies the legacy `data/custom_unit_templates.json` library. It leaves the original intact. An existing user library, including an empty one, always takes precedence. Migration preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation.
+
+Malformed libraries and storage failures are reported in the log. Failed loading blocks subsequent writes until the library is repaired and reloaded (restart the game after repairing it). Failed saves, renames, and deletions show an editor error and preserve the previous disk library and registered designs. Writes use atomic replacement.
+
+**Upgrade sequence:** This release retains the tracked legacy library so existing installations can migrate safely. Before upgrading to the follow-up release that removes it from version control, launch this release and verify your user library, or back up the legacy file outside the checkout. Users skipping this release must back up that file before updating, then copy it into their user-data directory while the game is closed. Fresh installations after removal will start with an empty library. The legacy file must not be removed from this release.
+
+Bundled assets resolve relative to the application, independent of the current working directory. UI themes are scaled in memory; `theme_scaled.json` is no longer generated. Campaign saves and logs keep their existing locations.
+
 ### Configuration & Data Files
-- `data/`: Contains JSON files for unit templates, custom designs, spawn rates, and star name generators.
+- `data/`: Contains bundled unit templates, spawn rates, star names, and the read-only legacy custom-design library retained for migration.
 - `constants.py`: Central repository for game tuning constants, colors, and resolution definitions.
 - **Environment Flags**:
   - `WORMHOLE_FULLSCREEN=1`: Forces full-screen display mode.

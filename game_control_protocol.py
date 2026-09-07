@@ -131,6 +131,9 @@ class ControlService:
     """Own socket I/O off-thread and dispatch live game work from ``pump``."""
 
     def __init__(self, game: Any, *, host: str = DEFAULT_HOST, port: int | None = None):
+        """Configure a loopback service; reject unsupported hosts before socket creation."""
+        if host != DEFAULT_HOST:
+            raise ValueError("Control host must be 127.0.0.1.")
         self.game = game
         self.host = DEFAULT_HOST
         configured = os.environ.get("WORMHOLE_CONTROL_PORT", "").strip()

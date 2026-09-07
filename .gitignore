@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+theme_scaled.json
 *.py[cod]
 *$py.class
 
@@ -138,5 +139,4 @@ saves/ai_telemetry.jsonl
 saves/ai_feedback.md
 saves/comms.md
 saves/comms/
-
 

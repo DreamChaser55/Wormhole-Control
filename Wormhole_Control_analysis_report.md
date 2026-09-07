@@ -5,6 +5,16 @@
 - **Primary documents:** `README.md`, `docs/REFERENCE.md`, and `docs/AGENTIC_AI.md`
 - **Scope:** production code, data/configuration, tests, persistence, the command/control boundary, GUI/rendering structure, documentation accuracy, comments/docstrings, naming, and repository hygiene.
 
+## Runtime reliability follow-up — 2026-09-07
+
+**WC-015's concrete API and diagnostic defects are fixed:** missing-hex lookups return empty lists, invalid transfer endpoints return `False` before mutation, the control host argument rejects unsupported addresses, and unexpected command failures log sanitized frame locations with their stage/index/type. Public command and save contracts remain unchanged. The broader exception-handler audit remains future work.
+
+**WC-018 migration support and theme cleanup are implemented:** custom designs now use platform user-data storage with an absolute directory override, migration preserves the legacy library, and atomic save/rename/delete writes precede registry publication. Storage failures are visible in the editor; failed library loads block writes. Migration validates decoding without rejecting historical designs solely for current hull-budget limits. Themes are scaled in memory and the tracked generated theme is removed. The related working-directory resource bug is fixed.
+
+**Deliberate rollout remainder:** `data/custom_unit_templates.json` stays tracked in this migration release. Remove it only in the follow-up release after the documented migration/backup window; fresh installs after that removal start empty. Its historical contents are not new product defaults.
+
+Focused regressions cover API failures, sanitized diagnostics, resource roots, multiple in-memory themes, migration precedence/retry, malformed libraries, and atomic write failures. Validation: **1,314 tests passed, 10 subtests passed**, including all **6 smoke tests**, in the offline full suite (23 font/layout warnings). A final focused run passed **35 tests**, including three additional migration regressions. The historical audit below remains unchanged.
+
 ## Phase 2 implementation status — 2026-09-06
 
 The six remaining gameplay-invariant items are complete: WC-005, WC-006, WC-008, WC-009, WC-010 and WC-012. The historical findings below describe the audited revision; the completion notes record the implemented corrections.

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_ui_manager(screen_res) -> pygame_gui.UIManager:
-    """Builds a UIManager using a TEXT_SCALE-scaled copy of theme.json with preloaded fonts.
+    """Build a UIManager with an in-memory scaled theme and preloaded fonts; write no files.
 
     Args:
         screen_res: Screen resolution vector exposing .to_tuple().
@@ -24,7 +24,6 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
         theme_path = resource_path('theme.json')
         
         # Dynamically scale theme text sizes
-        scaled_theme_path = resource_path('theme_scaled.json')
         try:
             with open(theme_path, 'r') as f:
                 theme_data = json.load(f)
@@ -71,10 +70,7 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
                         orig_tb_height = int(theme_data[window_theme_id]["misc"]["title_bar_height"])
                         theme_data[window_theme_id]["misc"]["title_bar_height"] = str(max(24, int(orig_tb_height * TEXT_SCALE)))
 
-            with open(scaled_theme_path, 'w') as f:
-                json.dump(theme_data, f)
-            
-            theme_path_to_use = scaled_theme_path
+            theme_path_to_use = theme_data
         except Exception as e:
             logger.error(f"Error generating scaled theme: {e}")
             theme_path_to_use = theme_path

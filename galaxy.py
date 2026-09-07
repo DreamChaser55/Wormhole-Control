@@ -287,12 +287,14 @@ class StarSystem:
         return False
 
     def get_units_in_hex(self, hex_coord: HexCoord) -> typing.List[Unit]:
-        """Returns a list of units in the specified hex."""
-        return self.hexes.get(hex_coord, []).units
+        """Return the live unit list, or an empty list for an unknown hex."""
+        sector = self.hexes.get(hex_coord)
+        return sector.units if sector is not None else []
 
     def get_celestial_bodies_in_hex(self, hex_coord: HexCoord) -> typing.List[CelestialBody]:
-        """Returns a list of celestial bodies in the specified hex."""
-        return self.hexes.get(hex_coord, []).celestial_bodies
+        """Return the live body list, or an empty list for an unknown hex."""
+        sector = self.hexes.get(hex_coord)
+        return sector.celestial_bodies if sector is not None else []
 
     def get_all_units(self) -> typing.List[typing.Tuple[Unit, HexCoord]]:
         """Returns a list of all units in the system and their hex coordinates."""
@@ -662,6 +664,8 @@ class Galaxy:
     def move_unit_between_systems(self, unit: Unit, origin_system_name: str, destination_system_name: str, destination_hex: HexCoord) -> bool:
         """Moves a unit between two star systems.
 
+        Unknown systems and invalid destination hexes return False before any mutation.
+
         Args:
             unit: The unit object to move.
             origin_system_name: The name of the system the unit is starting in.
@@ -671,8 +675,8 @@ class Galaxy:
         Returns:
             True if the move was successful, False otherwise.
         """
-        origin_system = self.systems[origin_system_name]
-        destination_system = self.systems[destination_system_name]
+        origin_system = self.systems.get(origin_system_name)
+        destination_system = self.systems.get(destination_system_name)
 
         if not origin_system:
             logger.debug(f"Error: Origin system '{origin_system_name}' not found for unit transfer.")

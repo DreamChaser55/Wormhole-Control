@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import uuid
+from pathlib import Path
 
 # Type definitions
 class HexCoord(typing.NamedTuple):
@@ -21,14 +22,33 @@ ContextMenuOption = typing.Union[
 ]
 
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """Return an asset path independent of the working directory (including bundles)."""
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
+    except AttributeError:
+        base_path = Path(__file__).resolve().parent
 
     return os.path.join(base_path, relative_path)
+
+
+def user_data_path() -> Path:
+    """Resolve writable user storage without creating directories at import time."""
+    override = os.environ.get("WORMHOLE_USER_DATA_DIR")
+    if override is not None:
+        path = Path(override)
+        if not path.is_absolute():
+            raise ValueError("WORMHOLE_USER_DATA_DIR must be an absolute path.")
+        return path
+    if sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+        if not base.is_absolute():
+            base = Path.home() / ".local" / "share"
+    return base / "WormholeControl"
 
 def timeit(func):
     """A decorator that prints the execution time of the function it decorates."""

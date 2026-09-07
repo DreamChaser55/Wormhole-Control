@@ -9,7 +9,7 @@ import copy
 import pygame
 import pygame_gui
 import typing
-from custom_unit_templates import CustomUnitTemplate
+from custom_unit_templates import CustomUnitTemplate, TemplatePersistenceError
 from .catalog import HULL_SIZE_NAMES, HYPERDRIVE_TYPES, CLOAKING_TYPES
 from .widget_factory import replace_dropdown
 from .component_state import (
@@ -229,7 +229,12 @@ def execute_save(
     editor, template: CustomUnitTemplate, original_name: typing.Optional[str] = None
 ) -> typing.Optional[str]:
     """Persists the template via template_manager and updates the editor state."""
-    errors = editor.template_manager.save_design(template, original_name=original_name)
+    try:
+        errors = editor.template_manager.save_design(template, original_name=original_name)
+    except TemplatePersistenceError as exc:
+        set_status(editor, str(exc), error=True)
+        _show_editor_modal(editor, "Save Failed", str(exc), window_type="warning")
+        return None
     if errors:
         error_msg = "<br>".join([f"• {e}" for e in errors])
         set_status(editor, " | ".join(errors), error=True)
@@ -381,7 +386,12 @@ def do_delete(editor) -> typing.Optional[str]:
         set_status(editor, f"⚠ {msg}", error=True)
         _show_editor_modal(editor, "No Design Selected", msg, window_type="warning")
         return None
-    deleted = editor.template_manager.delete_design(name)
+    try:
+        deleted = editor.template_manager.delete_design(name)
+    except TemplatePersistenceError as exc:
+        set_status(editor, str(exc), error=True)
+        _show_editor_modal(editor, "Deletion Failed", str(exc), window_type="warning")
+        return None
     if deleted:
         set_status(editor, f"✖ Design '{name}' deleted.", error=False)
         editor._editing_name = None

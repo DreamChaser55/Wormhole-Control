@@ -6,8 +6,8 @@ CustomUnitTemplate dataclass, converted into the same dict format used by
 data/unit_templates.json, and inserted into the global UNIT_TEMPLATES dict
 so that create_unit_from_template() works without modification.
 
-Designs are persisted to data/custom_unit_templates.json so they survive
-game restarts.
+Designs are persisted in the platform user-data directory. Legacy repository
+libraries migrate on first use without modifying the original file.
 
 Component hull costs for Engines, Weapons, Defenses, and Hyperdrive are
 **computed dynamically** from their performance parameters using the
@@ -20,6 +20,9 @@ import logging
 import math
 import os
 import dataclasses
+import tempfile
+from pathlib import Path
+from utils import resource_path, user_data_path
 from typing import Dict, List, Optional, Any
 
 from constants import (
@@ -782,64 +785,154 @@ class CustomUnitTemplate:
 # --------------------------------------------------------------------------
 # CustomTemplateManager
 # --------------------------------------------------------------------------
-_DATA_FILE = os.path.join(os.path.dirname(__file__), "data", "custom_unit_templates.json")
+# Compatibility seam for existing callers/tests; normal storage is resolved per manager.
+_DATA_FILE = None
+
+
+class TemplatePersistenceError(OSError):
+    """A library could not be loaded or persisted; canonical state remains unchanged."""
 
 
 class CustomTemplateManager:
-    """
-    Manages player-created unit designs.
+    """Persist custom designs before publishing changes to the global registry.
 
-    Designs are stored in self.designs (keyed by display_name).
-    When saved, designs are:
-      1. Inserted into the global UNIT_TEMPLATES dict so that
-         create_unit_from_template() works unchanged.
-      2. Written to data/custom_unit_templates.json for persistence.
+    Explicit data_file paths disable legacy discovery unless legacy_file is supplied.
+    Loading preserves historical designs, including ones now over today's hull budget.
     """
 
-    def __init__(self):
+    def __init__(self, data_file=None, legacy_file=None):
         self.designs: Dict[str, CustomUnitTemplate] = {}
+        self._data_file = Path(data_file) if data_file is not None else None
+        self._legacy_file = Path(legacy_file) if legacy_file is not None else None
+        self.last_load_error = None
+        self._loaded = False
 
-    # ------------------------------------------------------------------
-    # Persistence
-    # ------------------------------------------------------------------
+    @property
+    def data_file(self) -> Path:
+        if self._data_file is not None:
+            return self._data_file
+        if _DATA_FILE is not None:
+            return Path(_DATA_FILE)
+        return user_data_path() / "custom_unit_templates.json"
+
+    @property
+    def legacy_file(self):
+        if self._legacy_file is not None:
+            return self._legacy_file
+        if self._data_file is None and _DATA_FILE is None:
+            return Path(resource_path("data/custom_unit_templates.json"))
+        return None
+
+    def _decode_library(self, payload):
+        raw = json.loads(payload)
+        if not isinstance(raw, dict):
+            raise ValueError("Custom template library must be a JSON object.")
+        from unit_templates import UNIT_TEMPLATES
+        builtin_names = {name.lower() for key, value in UNIT_TEMPLATES.items()
+                         if not value.get("is_custom") for name in (key, value.get("name", key))}
+        designs, names = {}, set()
+        for key, data in raw.items():
+            if not isinstance(data, dict):
+                raise ValueError("Each custom template must be a JSON object.")
+            name = data.get("name", key)
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError("Custom templates require nonempty names.")
+            name = name.strip()
+            if name.lower() in names or name.lower() in builtin_names:
+                raise ValueError("Custom template names must be unique and not replace built-ins.")
+            template = self._dict_to_template(name, data)
+            # Decode and serialize before publishing, but don't retroactively apply balance rules.
+            self._template_to_dict(template)
+            names.add(name.lower())
+            designs[name] = template
+        return designs
+
+    def _atomic_write(self, payload, *, overwrite=True):
+        target = self.data_file
+        temporary = None
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(mode="wb", dir=target.parent,
+                                             prefix=target.name + ".", suffix=".tmp", delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if overwrite:
+                os.replace(temporary, target)
+            else:
+                # Publish migration without overwriting a library created by another instance.
+                try:
+                    os.link(temporary, target)
+                except FileExistsError:
+                    return False
+            return True
+        except OSError as exc:
+            raise TemplatePersistenceError(f"Could not write custom designs to {target}.") from exc
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("Could not remove custom template temporary file.")
+
+    def _publish(self, designs):
+        from unit_templates import UNIT_TEMPLATES
+        registered = {name: self._template_to_dict(template) for name, template in designs.items()}
+        for name in self.designs:
+            UNIT_TEMPLATES.pop(name, None)
+        self.designs = designs
+        UNIT_TEMPLATES.update(registered)
 
     def load_from_file(self) -> None:
-        """Load persisted designs from disk and register them."""
-        if not os.path.exists(_DATA_FILE):
-            return
-        try:
-            with open(_DATA_FILE, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-        except (json.JSONDecodeError, OSError) as e:
-            logger.warning(f"[CustomTemplateManager] Could not load custom templates: {e}")
-            return
+        """Load or migrate a whole library; report errors without replacing either library.
 
-        for key, d in raw.items():
-            try:
-                display_name = d.get("name", key).strip()
-                template = self._dict_to_template(display_name, d)
-                template.display_name = display_name
-                self.designs[display_name] = template
-                self._register_in_global(template)
-                logger.debug(f"[CustomTemplateManager] Loaded design '{display_name}'")
-            except Exception as e:
-                logger.warning(f"[CustomTemplateManager] Failed to load design '{key}': {e}")
+        last_load_error blocks later writes until loading succeeds, preventing accidental
+        replacement of malformed input. Migration retains the original bytes and file.
+        """
+        try:
+            target = self.data_file
+            legacy = self.legacy_file
+            source = target if target.exists() else legacy
+            if source is None or not source.exists():
+                designs = {}
+            else:
+                payload = source.read_bytes()
+                designs = self._decode_library(payload)
+                if source != target:
+                    # Existing libraries, including {}, always win over legacy data.
+                    if target.exists():
+                        designs = self._decode_library(target.read_bytes())
+                    else:
+                        if not self._atomic_write(payload, overwrite=False):
+                            designs = self._decode_library(target.read_bytes())
+            self._publish(designs)
+            self.last_load_error = None
+            self._loaded = True
+        except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+            self.last_load_error = TemplatePersistenceError("Could not load or migrate custom designs; repair the library and reload before saving.")
+            logger.warning("%s Failure type: %s.", self.last_load_error, type(exc).__name__)
+
+    def _ensure_loaded(self):
+        if not self._loaded and self.last_load_error is None:
+            self.load_from_file()
+        if self.last_load_error is not None:
+            raise self.last_load_error
+
+    def _write_designs(self, designs):
+        raw = {}
+        for template in designs.values():
+            data = self._template_to_dict(template)
+            if hasattr(data.get("hull_size"), "name"):
+                data["hull_size"] = data["hull_size"].name
+            raw[template.display_name] = data
+        self._atomic_write(json.dumps(raw, indent=2).encode("utf-8"))
 
     def save_to_file(self) -> None:
-        """Persist all current designs to disk."""
-        raw: Dict[str, Any] = {}
-        for key, template in self.designs.items():
-            d = self._template_to_dict(template)
-            # Ensure hull_size is stored as a string (JSON-serializable)
-            if hasattr(d.get("hull_size"), "name"):
-                d["hull_size"] = d["hull_size"].name
-            raw[template.display_name] = d
-        try:
-            with open(_DATA_FILE, "w", encoding="utf-8") as f:
-                json.dump(raw, f, indent=2)
-            logger.debug(f"[CustomTemplateManager] Saved {len(self.designs)} design(s) to {_DATA_FILE}")
-        except OSError as e:
-            logger.error(f"[CustomTemplateManager] Could not save custom templates: {e}")
+        """Atomically persist designs; raise TemplatePersistenceError on storage failure."""
+        if self.last_load_error is not None:
+            raise self.last_load_error
+        self._write_designs(self.designs)
 
     # ------------------------------------------------------------------
     # Design management
@@ -851,13 +944,15 @@ class CustomTemplateManager:
 
         Returns a list of validation error strings. An empty list means
         success — the design has been stored and registered.
+        Storage failures raise TemplatePersistenceError without publishing any change.
         """
+        self._ensure_loaded()
         errors = template.validate()
         if errors:
             return errors
 
         name = template.display_name.strip()
-        template.display_name = name
+        template = dataclasses.replace(template, display_name=name)
 
         # Duplicate check: check against existing custom designs
         from unit_templates import UNIT_TEMPLATES
@@ -877,32 +972,27 @@ class CustomTemplateManager:
                     errors.append(f"A unit template named '{name}' already exists.")
                     return errors
 
-        # If renaming an existing design, remove the old entry
+        designs = dict(self.designs)
         if original_name and original_name.strip():
-            old_name = original_name.strip()
-            if old_name != name and old_name in self.designs:
-                del self.designs[old_name]
-                self._unregister_from_global(old_name)
-
-        self.designs[name] = template
-        self._register_in_global(template)
-        self.save_to_file()
-        logger.debug(f"[CustomTemplateManager] Design '{name}' saved.")
+            old_name = next((key for key in designs if key.lower() == orig_clean), None)
+            if old_name is not None:
+                del designs[old_name]
+        designs[name] = template
+        self._write_designs(designs)
+        self._publish(designs)
         return []
 
     def delete_design(self, display_name: str) -> bool:
-        """Remove a design. Returns True if it existed."""
-        target_key = None
-        for k in self.designs.keys():
-            if k == display_name or k.lower() == display_name.strip().lower():
-                target_key = k
-                break
-        if not target_key:
+        """Persist deletion before changing state; raise TemplatePersistenceError on I/O failure."""
+        self._ensure_loaded()
+        target_key = next((key for key in self.designs
+                           if key.lower() == display_name.strip().lower()), None)
+        if target_key is None:
             return False
-        del self.designs[target_key]
-        self._unregister_from_global(target_key)
-        self.save_to_file()
-        logger.debug(f"[CustomTemplateManager] Design '{target_key}' deleted.")
+        designs = dict(self.designs)
+        del designs[target_key]
+        self._write_designs(designs)
+        self._publish(designs)
         return True
 
     def get_design(self, display_name: str) -> Optional[CustomUnitTemplate]:

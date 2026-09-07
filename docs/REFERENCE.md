@@ -40,11 +40,10 @@ Wormhole Control/
 ├── sector_utils.py                # Sector coordinate conversion and rendering math
 ├── utils.py                       # General utility functions and HexCoord type aliases
 ├── theme.json                     # Base UI visual theme configuration
-├── theme_scaled.json              # Dynamically generated resolution-scaled theme
 ├── pytest.ini                     # Pytest configuration (testpaths, pythonpath)
 ├── LICENSE                        # MIT License text
 ├── data/                          # Persistent JSON data files
-│   ├── custom_unit_templates.json # Player-created custom ship designs
+│   ├── custom_unit_templates.json # Read-only legacy library retained for migration
 │   ├── spawn_rates.json           # Celestial object generation probability tables
 │   ├── star_names.json            # Procedural star system name registry
 │   └── unit_templates.json        # Predefined default unit designs
@@ -456,7 +455,7 @@ Normal requires at least as many requested and actual systems as players, unique
 - **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Verified tangent-polygon routes avoid expanded solid bodies and hull-blocking fields within the sector boundary; see [collision avoidance](#11-celestial-collision-avoidance).
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations. System and sector views maintain independent transient cameras with cursor-anchored smooth zoom, middle-drag and arrow-key panning; newly opened systems auto-fit inside the HUD-free gameplay rectangle. The galaxy renderer highlights player home systems dynamically using each player's faction color, rendering concentric circles for systems containing multiple player homeworlds.
 - **Two-Stage Campaign Setup & Home Star System Assignment (`gui/layout_new_game_wizard.py`, `game_settings.py`, `game_setup.py`)**: Stage 1 generates and previews the map; Stage 2 configures factions, economy and home assignments. Specified homes must be distinct for Normal and may be shared for Testing. An isolated campaign is validated before commit; see [spawn profiles](#spawn-profiles-spawnprofile--2-total).
-- **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`, `theme_scaled.json`)**: Dynamically computes theme scale ratios to ensure clean font and layout rendering across diverse desktop resolutions.
+- **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`)**: Scales a fresh theme dictionary in memory for each UI manager, with absolute bundled font paths and existing preloading/fallback behavior. No generated theme file is written.
 
 ---
 
@@ -789,3 +788,14 @@ Non-positive incoming hull damage is a no-op. Environmental cover, defenses and 
 After movement on each ship owner's turn, every living, deployed ship is checked at its final position, including stationary ships. Each overlapping enemy field can detonate against that ship once in this phase, subject to remaining mines. Owner and allied ships are excluded; anti-ship and anti-strikecraft subtype targeting, damage, depletion and destruction rules still apply. Hidden and docked ships do not trigger fields.
 
 This is a position check: crossing a field without ending inside it does not trigger a mine. Damage and mine consumption per owner turn do not increase when more players join the campaign.
+
+
+## Runtime storage and API failure contracts
+
+Custom designs use platform user-data storage with an absolute `WORMHOLE_USER_DATA_DIR` override; see [storage paths and upgrade sequencing](../README.md#custom-design-storage-and-migration). `CustomTemplateManager(data_file=..., legacy_file=...)` supports isolated libraries; an explicit data path disables automatic legacy discovery. Migration validates the complete library before copying, preserves legacy bytes, and never replaces an existing user library. Historical designs are decoded without retroactive hull-budget validation. This migration release deliberately retains the tracked legacy file; its removal belongs to the following release.
+
+Design saves, renames, and deletions persist through atomic replacement before updating the manager or `UNIT_TEMPLATES`. Successful return values and validation-error lists are unchanged. Storage failures raise `TemplatePersistenceError`, which the editor displays without reporting success. Loading reports failures through `last_load_error` and logging, retaining existing state and blocking subsequent writes until a successful reload.
+
+Missing-hex lookups return empty lists; valid lookups return the live sector collections. Inter-system transfers return `False` for unknown systems or invalid destination hexes without changing unit location or membership. `ControlService(host=...)` accepts only `127.0.0.1` and raises `ValueError` for other values before creating a socket.
+
+Unexpected command preparation/commit failures retain their existing public error contracts, atomic preflight, and partial-commit recovery rules. Internal diagnostics include stage, command index/type, exception class, and traceback frame locations only; exception messages, payloads, source lines, observations, memory, and locals are omitted. Resource paths resolve from the application module or PyInstaller bundle, never the working directory.

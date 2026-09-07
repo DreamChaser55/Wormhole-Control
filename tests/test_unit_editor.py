@@ -31,11 +31,7 @@ from unit_templates import UNIT_TEMPLATES
 
 def _make_manager(data_file: str) -> CustomTemplateManager:
     """Return a CustomTemplateManager that uses a temporary data file."""
-    mgr = CustomTemplateManager()
-    # Monkey-patch the module-level _DATA_FILE used by the manager's methods
-    import custom_unit_templates as ctm
-    ctm._DATA_FILE = data_file
-    return mgr
+    return CustomTemplateManager(data_file=data_file)
 
 
 class TestCustomUnitTemplateValidation(unittest.TestCase):
@@ -387,6 +383,7 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
 
         # Persistence & Dict conversion using temporary data file
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
+        tmp.write(b"{}")
         tmp.close()
         try:
             mgr = _make_manager(tmp.name)
@@ -421,6 +418,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         import tempfile
         import custom_unit_templates as ctm
         self._temp_data_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
+        self._temp_data_file.write(b"{}")
         self._temp_data_file.close()
         self._orig_data_file = ctm._DATA_FILE
         ctm._DATA_FILE = self._temp_data_file.name

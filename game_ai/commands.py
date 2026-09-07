@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import uuid
 import logging
+import traceback
 from typing import Any, Callable
 
 from .contracts import CommandBatch, ContractError
@@ -30,6 +31,14 @@ from .intelligence import (
 
 
 logger = logging.getLogger(__name__)
+
+
+def _log_command_failure(stage, index, command_type, exc):
+    """Record frame locations only: exception text, source lines and locals are private."""
+    frames = [(frame.f_code.co_filename, line) for frame, line in traceback.walk_tb(exc.__traceback__)]
+    safe_type = command_type if isinstance(command_type, str) and command_type in COMMAND_SPECS else "unknown"
+    logger.error("Unexpected command failure stage=%s index=%s type=%s exception=%s frames=%s",
+                 stage, index, safe_type, type(exc).__name__, frames)
 
 @dataclass(frozen=True)
 class CommandError:
@@ -551,6 +560,10 @@ class CommandGateway:
         self.game = game
 
     def apply_batch(self, player: Any, batch: CommandBatch) -> CommandResult:
+        """Preflight atomically; commit can partially apply and requires observation on failure.
+
+        Unexpected errors retain generic public messages and sanitized internal diagnostics.
+        """
         prepared = []
         errors = []
         if len(batch.commands) > MAX_COMMANDS:
@@ -596,7 +609,8 @@ class CommandGateway:
                 errors.append(CommandError(index, "invalid_command_contract", str(exc)))
             except _Rejected as exc:
                 errors.append(CommandError(index, exc.code, str(exc)))
-            except Exception:
+            except Exception as exc:
+                _log_command_failure("prepare", index, command.type, exc)
                 errors.append(CommandError(index, "invalid_command", "The command could not be prepared from the current public state."))
         if errors:
             return CommandResult(False, errors=tuple(errors))
@@ -605,7 +619,8 @@ class CommandGateway:
         for offset, operation in enumerate(prepared):
             try:
                 operation.apply()
-            except Exception:
+            except Exception as exc:
+                _log_command_failure("commit", operation.command_index, operation.command_type, exc)
                 results.append(self._operation_result(operation, "failed", uncertain=True))
                 results.extend(self._operation_result(op, "unattempted") for op in prepared[offset + 1:])
                 self._mark_dirty()
