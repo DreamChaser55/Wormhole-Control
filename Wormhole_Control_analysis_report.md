@@ -5,15 +5,33 @@
 - **Primary documents:** `README.md`, `docs/REFERENCE.md`, and `docs/AGENTIC_AI.md`
 - **Scope:** production code, data/configuration, tests, persistence, the command/control boundary, GUI/rendering structure, documentation accuracy, comments/docstrings, naming, and repository hygiene.
 
+## Current remediation status — 2026-09-07
+
+Status reconciled against local history and implementation through `6026a42`. **Fourteen findings are fixed:** WC-001–WC-010, WC-012, WC-014, WC-015 and WC-018. **WC-011, WC-013 and WC-017 are partially addressed; WC-016 remains open.** The finding register and completion notes below describe current status. Original defect descriptions, line numbers, architecture assessments and audit measurements describe `b2c324f` and are retained as historical evidence, not assertions that fixed defects remain present.
+
+| Commit | Completed work |
+|---|---|
+| `79bf770`, `1b70fcf` | WC-001: renderer import repair and clean-process import/launch smoke coverage, including CI. |
+| `eac1da5` | WC-002, WC-003, WC-007, WC-014: versioned transactional persistence, complete component/ability state, derived-state rebuilding, source-owned timed-effect cleanup and allocator reconciliation. |
+| `7ea9a9a` | WC-004: random functional-component radiation damage and removal of the unsupported accuracy penalty. |
+| `f2d133a` | WC-005, WC-006, WC-008, WC-009, WC-010, WC-012: campaign, order, damage, legacy-ID, mine-cadence and navigation invariants; partial WC-013/WC-017 corrections. |
+| `4242623` | Control socket test port-collision and socket-leak fixes. |
+| `63c67ff` | WC-015 and WC-018 implementation: safe API failures, sanitized diagnostics, atomic user-design storage/migration, editor errors, working-directory-independent assets and in-memory themes. |
+| `6026a42` | WC-018 cleanup completed: removed the tracked legacy custom-design library. |
+
+Remaining work includes environmental cooling/oxygen mechanics and cover-value drift, shared settings bounds/type validation, dispatch/import-boundary refactoring, remaining documentation corrections, undefined-name linting, Python support-matrix alignment, and residual GUI warnings. README/Reference migration text still says the deleted legacy library is retained; that new documentation mismatch belongs to WC-017.
+
+This status update used commit and source inspection; it did not rerun tests. Test counts below are the recorded results of the respective implementation follow-ups.
+
 ## Runtime reliability follow-up — 2026-09-07
 
 **WC-015's concrete API and diagnostic defects are fixed:** missing-hex lookups return empty lists, invalid transfer endpoints return `False` before mutation, the control host argument rejects unsupported addresses, and unexpected command failures log sanitized frame locations with their stage/index/type. Public command and save contracts remain unchanged. The broader exception-handler audit remains future work.
 
 **WC-018 migration support and theme cleanup are implemented:** custom designs now use platform user-data storage with an absolute directory override, migration preserves the legacy library, and atomic save/rename/delete writes precede registry publication. Storage failures are visible in the editor; failed library loads block writes. Migration validates decoding without rejecting historical designs solely for current hull-budget limits. Themes are scaled in memory and the tracked generated theme is removed. The related working-directory resource bug is fixed.
 
-**Deliberate rollout remainder:** `data/custom_unit_templates.json` stays tracked in this migration release. Remove it only in the follow-up release after the documented migration/backup window; fresh installs after that removal start empty. Its historical contents are not new product defaults.
+**Rollout completed in the checkout:** `63c67ff` deliberately retained `data/custom_unit_templates.json` for migration, then `6026a42` removed it from version control. Fresh installations now start with an empty custom library. Migration support remains available for an existing legacy file. README/Reference rollout wording still needs to reflect the removal (WC-017); the repository cleanup itself is fixed.
 
-Focused regressions cover API failures, sanitized diagnostics, resource roots, multiple in-memory themes, migration precedence/retry, malformed libraries, and atomic write failures. Validation: **1,314 tests passed, 10 subtests passed**, including all **6 smoke tests**, in the offline full suite (23 font/layout warnings). A final focused run passed **35 tests**, including three additional migration regressions. The historical audit below remains unchanged.
+Focused regressions cover API failures, sanitized diagnostics, resource roots, multiple in-memory themes, migration precedence/retry, malformed libraries, and atomic write failures. Recorded validation for `63c67ff`: **1,314 tests passed, 10 subtests passed**, including all **6 smoke tests**, in the offline full suite (23 font/layout warnings). A final focused run passed **35 tests**, including three additional migration regressions. These results predate the legacy-file deletion in `6026a42`.
 
 ## Phase 2 implementation status — 2026-09-06
 
@@ -23,7 +41,7 @@ Validation: **1,282 tests passed, 10 subtests passed** in the offline full suite
 
 Canonical rules are in the [Reference Manual](docs/REFERENCE.md): capped colonizable homes and distinct Normal systems, full damage absorption, verified collision clearance, strict gas-giant FIFO with safe-exit failure, and ship-owner-turn mine checks. README and AI guidance link to those rules. Save format **4.0** and command wire schemas remain unchanged; existing shared-start saves remain loadable. Broader environmental mechanics, validation cleanup and Phase 3 architecture remain outside this change.
 
-## Executive assessment
+## Executive assessment (historical audit)
 
 Wormhole Control is an ambitious and unusually broad prototype. It has a real domain model, a compositional unit system, hierarchical orders, three levels of spatial simulation, fog of war, persistence, a large GUI, and two constrained machine-control paths. The agentic-AI boundary is the strongest architectural area: observations are visibility-filtered, commands are schema-constrained, game mutation returns to the main thread, stale model responses are rejected, and preflight is separated from commit. The 1,116-test suite is also substantial for a project of this size.
 
@@ -48,7 +66,7 @@ The audit used the following methods:
 
 This was not a live balance playtest or a performance profile of a long campaign. No live OpenAI API request was made. GUI behavior was assessed from code and test output rather than a complete interactive session because the normal application import is currently blocked.
 
-## Verification baseline
+## Verification baseline (historical audit)
 
 | Check | Result | Interpretation |
 |---|---:|---|
@@ -62,28 +80,32 @@ The likely post-import-fix baseline is therefore **1,116 passing tests**, but th
 
 ## Prioritized finding register
 
-| ID | Severity | Confidence | Finding |
-|---|---|---|---|
-| WC-001 | Blocker | Confirmed | The game and test suite cannot import because `rendering/galaxy_renderer.py` uses `typing.*` without importing `typing`. |
-| WC-002 | High | Confirmed | Save/load is lossy for component damage, abilities, weapon cooldown/configuration, and several dynamic component parameters. |
-| WC-003 | High | Confirmed | Loading is non-transactional, does not dispatch on save version, and can leave a partially mutated game after failure. |
-| WC-004 | High | Confirmed | Radiation storms never select a component and therefore deal no component damage; their documented accuracy penalty is also absent. |
-| WC-005 | High | Confirmed | **Fixed in Phase 2.** New-game homeworld assignment can colonize gas giants, exceed population caps, and reuse a starting system despite the Normal-profile guarantee. |
-| WC-006 | High | Confirmed | **Fixed in Phase 2.** Gas-giant entry/exit clears the order that is currently executing, journaling it as cancelled before it reports completion. |
-| WC-007 | High | Confirmed | Timed ability effects can become permanent after save/load or destruction of the source component/unit. |
-| WC-008 | High | Confirmed | **Fixed in Phase 2.** Adaptive Forcefield changes a zero-damage hit into one point of hull damage. |
-| WC-009 | High | Confirmed | **Fixed in Phase 2.** Many order and rendering paths reject legacy object ID `0`, despite the documented and schema-level contract allowing it. |
-| WC-010 | Medium/High | Strong inference | **Fixed in Phase 2.** Minefield contact checks run globally once per player turn, so damage and mine consumption scale with player count. |
-| WC-011 | Medium | Confirmed | Several documented environmental mechanics are constants/UI text only and never affect gameplay. |
-| WC-012 | Medium | Confirmed | **Fixed in Phase 2.** Collision avoidance tests the physical obstacle rather than the requested expanded safety margin. |
-| WC-013 | Medium | Confirmed | Settings validation and galaxy generation permit invalid or impossible configurations and can silently produce fewer systems than requested. |
-| WC-014 | Medium | Confirmed | The global object counter is rebuilt without considering minefield IDs, allowing ID reuse after loading some saves. |
-| WC-015 | Low/Medium | Confirmed | Several public APIs fail less gracefully than their shape implies, and internal command exceptions lose diagnostic stack traces. |
-| WC-016 | Maintainability | Confirmed | A small number of very large dispatch/state-machine functions and accidental re-export boundaries concentrate change risk. |
-| WC-017 | Documentation | Confirmed | README and reference values, counts, feature descriptions, and project tree have material drift from the implementation. |
-| WC-018 | Repository hygiene | Confirmed | Mutable user templates and a generated, resolution-specific theme are committed as source artifacts. |
+Severity and confidence refer to the original audit; status and resolution refer to the current checkout.
+
+| ID | Severity | Confidence | Status | Resolution / remaining work |
+|---|---|---|---|---|
+| WC-001 | Blocker | Confirmed | **Fixed** | Missing renderer import repaired; clean import/launch smoke tests added. |
+| WC-002 | High | Confirmed | **Fixed** | Save 4.0 preserves component HP/configuration, turret state and ability definitions/timers, including refitted equipment. |
+| WC-003 | High | Confirmed | **Fixed** | Explicit migrations and isolated validation precede campaign commit; invalid loads preserve the campaign and AI. |
+| WC-004 | High | Confirmed | **Fixed** | Radiation damages a random functional component; unsupported accuracy claims/constant removed. |
+| WC-005 | High | Confirmed | **Fixed** | Colonizable capped homes, distinct Normal starts and isolated campaign preparation enforced. |
+| WC-006 | High | Confirmed | **Fixed** | Gas-giant roots settle exactly once; safe departures preserve stance and strict FIFO queues. |
+| WC-007 | High | Confirmed | **Fixed** | Source-owned effects receive idempotent cleanup on expiry, destruction, refit and load reconciliation. |
+| WC-008 | High | Confirmed | **Fixed** | Non-positive or fully absorbed hull damage is a no-op; reduction is bounded. |
+| WC-009 | High | Confirmed | **Fixed** | Numeric-ID presence checks preserve legacy ID zero through execution, persistence and presentation. |
+| WC-010 | Medium/High | Strong inference | **Fixed** | Mine contact checks run once per ship-owner turn after movement, including stationary ships. |
+| WC-011 | Medium | Confirmed | **Partial** | Radiation/accuracy portion fixed; cooling, oxygen bonuses and cover-value drift remain. |
+| WC-012 | Medium | Confirmed | **Fixed** | Expanded-obstacle clearance, endpoint exceptions and bounded safe-path failure are enforced. |
+| WC-013 | Medium | Confirmed | **Partial** | Generation shortfalls and invalid Normal starts rejected; shared bounds/type validation and strict profile parsing remain. |
+| WC-014 | Medium | Confirmed | **Fixed** | Allocator reconciliation includes minefields, nested stored units and serialized counters. |
+| WC-015 | Low/Medium | Confirmed | **Fixed** | Concrete lookup, transfer, host-argument and diagnostic defects fixed in `63c67ff`; broader exception-handler review remains optional follow-up. |
+| WC-016 | Maintainability | Confirmed | **Open** | Large dispatchers and accidental re-export/import boundaries still concentrate change risk. |
+| WC-017 | Documentation | Confirmed | **Partial** | Persistence, radiation, Phase 2 rules and storage documentation updated; remaining counts/mechanics/tree drift and post-deletion migration wording need correction. |
+| WC-018 | Repository hygiene | Confirmed | **Fixed** | User designs persist outside the checkout, themes are in memory, and both tracked runtime artifacts have been removed. |
 
 ## Detailed findings
+
+The descriptions and repair proposals below retain the original audit evidence. Fixed headings and completion notes supersede those historical descriptions.
 
 ### WC-001 — import and launch blocker - **ALREADY FIXED**
 
@@ -195,7 +217,9 @@ The release position also has weaker guarantees than the docs claim. It tries 64
 
 Recommended repair: the order lifecycle, not the domain entity, should decide which explicit work is cancelled. Add a narrow method for clearing unrelated movement/targets, or exclude the executing root from cancellation. Choose and reserve an exit position through one validated helper, with deterministic fallback and unit deconfliction.
 
-### WC-007 — active ability effects lack destruction and persistence cleanup
+### WC-007 — active ability effects lack destruction and persistence cleanup - **ALREADY FIXED**
+
+**Completion (`eac1da5`):** `timed_effects.py` tracks contributions by source and ability, and `AbilityComponent` shares an idempotent expiration path across normal expiry, destruction and load reconciliation. Component removal/replacement and unit destruction invoke cleanup. Complete ability state persists in save 4.0; persistence regressions cover effect restoration and cleanup.
 
 `AbilityComponent.update` simply returns if the component is destroyed (`unit_components/abilities/component.py:203-209`). `AbilityComponent` does not override `UnitComponent.on_destroyed`, and `Unit.destroy` does not call each component's destruction hook (`entities.py:1311-1336`). Consequently:
 
@@ -255,7 +279,9 @@ The comment says “Minefield detonations from movement,” which suggests the i
 
 This is marked Medium/High rather than unconditionally High because the desired game rule is not explicitly documented. The current behavior should either be changed to active-player/moved-unit contact resolution, or documented and tested as an every-player-turn area hazard.
 
-### WC-011 — several environmental mechanics are promises, not mechanics
+### WC-011 — several environmental mechanics are promises, not mechanics - **PARTIALLY FIXED**
+
+**Partial follow-up:** WC-004 fixed radiation damage and removed the unsupported accuracy penalty. The historical accuracy bullet below is resolved; ice/nitrogen cooling, oxygen bonuses and cover-value discrepancies remain open.
 
 Repository-wide use tracing found these values defined but not consumed by gameplay:
 
@@ -281,7 +307,7 @@ A segment crossing 149 units above a radius-100 obstacle with a 50-unit requeste
 
 Recommended repair: use the expanded circle for intersection and entry calculations while retaining the original circle only for the deliberate “endpoint inside body” landing/departure exception. Add tangent, near-tangent, endpoint-inside, multiple-obstacle, and sector-boundary property tests.
 
-### WC-013 — validation and generation do not share one enforceable contract
+### WC-013 — validation and generation do not share one enforceable contract - **PARTIALLY FIXED**
 
 **Partial follow-up:** Phase 2 now rejects map-placement shortfalls and invalid Normal home assignments through shared start validation. The broader bounds/type-validation recommendations below remain separate work.
 
@@ -300,11 +326,15 @@ Recommended repair:
 
 ### WC-014 — minefield IDs can collide after load - **ALREADY FIXED**
 
+**Completion (`eac1da5`):** Campaign graph traversal and allocator reconciliation include minefields, deployed/hidden/docked unit trees and serialized counters before committing a loaded campaign. Persistence regression coverage checks allocation safety after load.
+
 Minefields inherit `GameObject` (`entities.py:846`) and their IDs are serialized/restored (`save_manager.py:1035-1055`). The post-load maximum-ID scan covers celestial bodies and deployed/hidden/docked unit trees (`save_manager.py:1181-1197`) but not `hex_obj.minefields`. It also ignores the serialized `game_state.object_counter` even though the writer records it (`:455`, `:473`). A minefield whose ID is greater than every body/unit ID can therefore be followed by a newly created object with the same ID.
 
 Recommended repair: include every `GameObject` collection in a single graph iterator, then set the allocator to `max(serialized_counter, observed_max + 1)`. Longer term, inject ID allocators into a campaign instead of using process-global counters; this improves save isolation and tests as well as correctness.
 
-### WC-015 — small API and diagnostic reliability problems
+### WC-015 — small API and diagnostic reliability problems - **ALREADY FIXED**
+
+**Completion (`63c67ff`):** Missing-hex lookups return empty lists; transfers validate systems and destination hexes before mutation; `ControlService` rejects unsupported hosts before socket creation. Unexpected command exceptions log sanitized stage/index/type and traceback frame locations while preserving safe public errors. `tests/test_runtime_reliability.py` covers these contracts. The final broad-exception bullet below is a remaining general review recommendation, not an unfixed instance of the four concrete defects.
 
 - `StarSystem.get_units_in_hex` and `get_celestial_bodies_in_hex` use `self.hexes.get(coord, []).units` / `.celestial_bodies` (`galaxy.py:289-295`). An invalid coordinate therefore raises `AttributeError` on a list rather than returning an empty list.
 - `Galaxy.move_unit_between_systems` indexes both system names before checking them (`galaxy.py:674-681`), so the advertised `False` path for an unknown system is unreachable; `KeyError` is raised first.
@@ -313,6 +343,8 @@ Recommended repair: include every `GameObject` collection in a single graph iter
 - Broad `except Exception` appears 33 times. Many are appropriate at I/O, GUI, serialization, plugin/API, or thread boundaries; internal state transitions should narrow catches or re-raise after logging so programming errors do not masquerade as ordinary user failures.
 
 ## Architecture review by subsystem
+
+**Historical assessment:** The persistence, effect-cleanup, setup, geometry, API, resource-path and smoke-test defects in this table are fixed as recorded above. Remaining architectural recommendations, including display initialization and large dispatchers, still apply.
 
 | Area | Assessment | Highest-value change |
 |---|---|---|
@@ -400,6 +432,8 @@ The `entities` and `game` modules also act as accidental barrel APIs: other modu
 
 ## Documentation audit
 
+**WC-017 — PARTIALLY FIXED.** Locations and quoted claims below come from the original audit. Resolved entries are marked explicitly; unmarked discrepancies remain open. Storage/migration documentation added in `63c67ff` also needs a follow-up after `6026a42`: it still describes the legacy custom-design file as tracked and retained.
+
 ### README.md
 
 | Location | Current claim | Runtime reality / recommendation |
@@ -408,7 +442,7 @@ The `entities` and `game` modules also act as accidental barrel APIs: other modu
 | Lines 38, 43 | 5–30 systems; 2–6 players | `GameSettings.validate` does not enforce either bound, and the direct/protocol/GUI paths do not share one validator. |
 | Line 97 | “vicitity” | Typo: “vicinity.” |
 | Lines 132-133 | Cover is +8/+12/+16% | Code implements +5/+10/+15%. Decide one set and generate the text from constants. |
-| Line 145 | Radiation storms degrade accuracy | Radiation damage is currently inert and accuracy has no runtime model. |
+| Line 145 | Radiation storms degrade accuracy | **Fixed (WC-004):** README now describes random functional-component damage; the accuracy claim was removed. |
 | Line 155 | Up to 9 abilities | `AbilityType` and the registry contain 10; Scan for Minefields is omitted from the list. |
 | Line 184 | “version-3 observation” | Current observation schema is 5; line 206 correctly says schema 5/command contract 3. Use the precise names consistently. |
 | Line 252 | `WORMHOLE_FULLSCREEN=1` forces fullscreen | The parser accepts only case-insensitive `"true"`; setting `1` evaluates false. Accept common booleans or document `true`. |
@@ -420,13 +454,13 @@ The `entities` and `game` modules also act as accidental barrel APIs: other modu
 | Line 38 | Calls `pathfinding.py` A*. The implementation uses unweighted Dijkstra for systems and cube interpolation for jump waypoints. |
 | Line 187 | Says 22 selectable component rows, while `COMPONENT_ROWS` and the following table contain 24. |
 | Line 237 | Designate Target is described as increasing accuracy. Code applies +50% damage received (`damage_amplification`). |
-| Lines 293-297 | Correctly documents legacy ID zero, but many executors/renderers violate it. |
-| Line 454 | Says setup verifies planet ownership/habitability. It verifies ownership only and can choose gas giants. |
-| Lines 693-704 | Adds a nonexistent Continental planet; Greenhouse is listed as 55 population/1.0% but code is 35/0.5%; Moon/Asteroid caps are later listed as 25/15 even though lines 318-319 and code use 50/20. The document contradicts itself. |
+| Lines 293-297 | **Fixed (WC-009):** executors/renderers now honor the documented legacy-ID-zero contract. |
+| Line 454 | **Fixed (WC-005):** setup and Reference now require unowned colonizable homes and capped populations. |
+| Lines 693-704 | **Fixed:** the canonical planetary table matches `PLANET_TRAITS`, removes Continental and gives Greenhouse 35/0.5%; Moon/Asteroid caps are 50/20. A regression checks the table against constants. |
 | Lines 730, 734 | Cover values differ from constants as described above. |
 | Lines 731, 743 | Ice/Nitrogen cooldown reduction is not connected to weapons. |
 | Lines 744-745 | Oxygen regeneration/splash mechanics are not implemented. |
-| Line 749 | Radiation is neither random nor currently damaging; accuracy penalty is absent. |
+| Line 749 | **Fixed (WC-004):** radiation damages a random functional component and Reference no longer promises an accuracy penalty. |
 | Project tree | Omits `game_control.py`, `game_control_protocol.py`, `order_history.py`, `player_controller.py`, the `game_ai/` package, `gui/communications_window.py`, `gui/retrofit_gui/`, `unit_components/trade.py`, and newer gas-giant/stance/trade order modules. |
 
 The reference is valuable but has become a manually maintained second implementation of the rules. Counts and balance values should be generated from registries/constants, while prose explains design intent.
@@ -442,25 +476,31 @@ This is the most accurate of the three documents. Its core claims match the revi
 - bounded canonical memory, receipts, and history;
 - stale-result rejection and no live API dependency in regression tests.
 
-The primary correction is the exact-once outcome guarantee at lines 261-262: gas-giant entry/exit currently records the wrong terminal outcome. Lines 23-24 should also distinguish **preflight acceptance** from successful commit. The command gateway deliberately reports that commit operations may partially apply, so memory/turn completion semantics should say which stage must succeed before they are persisted.
+**Fixed (WC-006):** gas-giant entry/exit now honors the exactly-once terminal-outcome guarantee, and AI guidance describes FIFO pauses and safe-exit failure. The document also explicitly describes partial-commit recovery and rejected memory patches. The original recommendation to clarify the introductory preflight-versus-commit wording remains a documentation review item.
 
 Runtime enumeration under the import workaround found 40 public AI commands, 34 `OrderType` values, 10 abilities, and 24 component rows. Those counts should be generated into docs or tested as explicit contract snapshots.
 
 ## Repository hygiene and cruft
 
-### Mutable user data committed as product data
+### Mutable user data committed as product data - **ALREADY FIXED**
+
+**Completion (WC-018, `63c67ff` and `6026a42`):** Custom designs use OS user-data storage with atomic persistence and legacy migration. The tracked legacy library has now been deleted. The following paragraph describes the original checkout.
 
 `data/custom_unit_templates.json` is tracked and currently contains nine ad hoc user/test designs: `Test Design`, `Sensor Ship`, `Cloaked Ship`, `amdrainer`, `Minelayer Ship`, `Ability testing ship`, `IntelShip`, `Small Civilian Station`, and `Medium Orbital Defense Station`. The application treats this as mutable user content.
 
 Ship a deliberate example file if examples are useful, but store user-created designs in an OS-appropriate user-data directory and ignore that runtime file. Otherwise normal gameplay dirties the repository and one developer's experimental designs become product defaults.
 
-### Generated theme committed and rewritten at runtime
+### Generated theme committed and rewritten at runtime - **ALREADY FIXED**
+
+**Completion (WC-018, `63c67ff`):** Each UI manager receives a fresh theme dictionary scaled in memory with absolute font paths. `theme_scaled.json` was removed from version control and is ignored. No generated theme file is written; the following is historical evidence.
 
 `theme_scaled.json` is tracked, but `gui/theme_loader.py:26-77` regenerates and overwrites it based on the current display scale and resolved font paths whenever the manager is created. This is derived, machine-specific state. It can fail in a read-only installation and race between two instances.
 
 Generate it into a temporary/cache path, or construct the scaled theme in memory if `pygame_gui` permits. Keep `theme.json` as the source and ignore the derived artifact.
 
-### Working-directory resource coupling
+### Working-directory resource coupling - **ALREADY FIXED**
+
+**Completion (`63c67ff`):** `resource_path` resolves development assets from the module directory and bundled assets from `_MEIPASS`, catching `AttributeError` for the fallback. Regression coverage verifies independence from the working directory. The following is the original defect description.
 
 `utils.resource_path` falls back to `os.path.abspath(".")` (`utils.py:23-31`). Launching the program from outside the repository can make themes/data/fonts disappear. Resolve development assets relative to the module/repository (`Path(__file__).resolve().parent`) and use the PyInstaller bundle path only when it exists. Catch `AttributeError` rather than broad `Exception` for `_MEIPASS` detection.
 
@@ -468,21 +508,25 @@ Generate it into a temporary/cache path, or construct the scaled theme in memory
 
 `constants.py:5-15` changes Windows DPI awareness and `:31-55` may initialize/query/quit the Pygame display at import time. Importing constants should not manipulate process-global GUI state. These effects complicate headless tests and make import order significant. Move them into application bootstrap and pass a computed display configuration to UI code.
 
-### Missing quality automation
+### Missing quality automation - **PARTIALLY FIXED**
 
-No repository CI workflow or central `pyproject.toml`/lint/type-check configuration was found. `requirements-dev.txt` contains only pytest. The immediate missing-import blocker is precisely the kind of regression a two-second import job, Ruff/Pyflakes, or a small type-check target would catch.
+**Completed:** `.github/workflows/ci.yml` installs development/runtime dependencies, runs clean-process import/launch smoke checks and the full offline suite on Python 3.10–3.13. Socket tests also received port-collision and cleanup fixes in `4242623`. The original absence-of-CI finding is resolved.
+
+**Remaining:** No central lint/type-check configuration or undefined-name lint step is present. The matrix still needs alignment with README's claimed Python minimum and verified 3.14 version. Coverage gating and stricter dependency pinning remain proposals.
 
 A pragmatic first quality gate:
 
 1. Install pinned runtime/dev dependencies.
-2. Run clean imports in a fresh process.
+2. Run clean imports in a fresh process. - **ALREADY FIXED**
 3. Run Ruff or Pyflakes for undefined names and unused imports.
-4. Run pytest with warnings summarized and a modest coverage floor on core logic.
+4. Run pytest with warnings summarized and a modest coverage floor on core logic. - **PARTIALLY FIXED:** pytest runs in CI; coverage gating remains proposed.
 5. Exercise the declared minimum Python and current supported Python.
 
 Avoid turning on hundreds of style rules at once; start with correctness rules and ratchet.
 
 ## Test gaps exposed by this audit
+
+**Status follow-up:** Clean imports/launch and collection are covered by `tests/test_smoke_imports.py`. Component/ability round trips, timed-effect cleanup, allocator reconciliation and load-failure isolation are covered by `tests/test_persistence_integrity.py`. Phase 2 added setup, gas-giant journaling/FIFO, mine cadence and expanded-geometry regressions; `tests/test_legacy_zero_ids.py` covers legacy-ID paths. Radiation has focused regression coverage. The original list below records the requested scenarios, not ten wholly unaddressed gaps; broader property-based testing, deterministic replay and the remaining environmental mechanics still need work.
 
 The suite is broad, but the confirmed defects share a pattern: individual features are tested in isolation while state transitions across features are not.
 
@@ -514,15 +558,15 @@ Exit criterion: the game imports and the full suite passes without an annotation
 
 ### Phase 1 — protect campaign integrity - **ALREADY FIXED**
 
-1. Introduce versioned component persistence and cover every registered component/ability with round-trip tests.
-2. Make load transactional and implement explicit version migrations.
-3. Rebuild dynamic inhibition zones and all other derived indexes after load.
-4. Include minefields and serialized counters in ID allocator reconciliation.
-5. Fix timed-effect cleanup on expiry, component destruction, unit destruction, and load.
+1. Introduce versioned component persistence and cover every registered component/ability with round-trip tests. - **ALREADY FIXED**
+2. Make load transactional and implement explicit version migrations. - **ALREADY FIXED**
+3. Rebuild dynamic inhibition zones and all other derived indexes after load. - **ALREADY FIXED**
+4. Include minefields and serialized counters in ID allocator reconciliation. - **ALREADY FIXED**
+5. Fix timed-effect cleanup on expiry, component destruction, unit destruction, and load. - **ALREADY FIXED**
 
 Exit criterion: a deliberately mutated mid-game state survives a save/load canonical comparison, and invalid saves leave the running campaign unchanged.
 
-### Phase 2 — correct gameplay invariants
+### Phase 2 — correct gameplay invariants - **ALREADY FIXED**
 
 1. Fix radiation storm iteration and decide the accuracy model. - **ALREADY FIXED**
 2. Fix zero-damage handling with damage reduction. - **ALREADY FIXED**
@@ -539,18 +583,18 @@ Exit criterion: each finding has a focused regression test and the rule is docum
 1. Create declarative descriptors for components, abilities, commands, and environmental effects.
 2. Generate GUI choices, AI schemas/guidance, persistence keys, and reference tables from those descriptors where practical.
 3. Split giant dispatch functions by descriptor/handler rather than by arbitrary file length.
-4. Make order transitions and status effects explicit state machines.
+4. Make order transitions and status effects explicit state machines. - **PARTIALLY ADDRESSED:** Commander terminal settlement and source-owned ability effects now fix the reported lifecycle defects; a general state-machine refactor remains open.
 5. Establish core/UI import boundaries and remove import-time display side effects.
 
 Exit criterion: adding one component or command does not require editing five unrelated switch statements and two hand-maintained documents.
 
 ### Phase 4 — documentation and polish
 
-1. Correct the README and Reference discrepancies listed above.
-2. Regenerate the project tree and registry-derived tables.
+1. Correct the README and Reference discrepancies listed above. - **PARTIALLY FIXED:** persistence, radiation and Phase 2 contracts corrected; remaining WC-017 items are listed in the documentation audit.
+2. Regenerate the project tree and registry-derived tables. - **PARTIALLY FIXED:** the planetary table is corrected and checked against constants; general generation and the project tree remain open.
 3. Add contract-focused docstrings to public state-changing functions.
 4. Resolve the recurring `pygame_gui` layout/font warnings.
-5. Move generated/user data out of version control.
+5. Move generated/user data out of version control. - **ALREADY FIXED (WC-018):** in-memory themes and OS user-data storage in `63c67ff`; legacy library removal in `6026a42`.
 
 ## New design opportunities
 
@@ -574,6 +618,8 @@ This directly addresses the current 22/24 count, 9/10 ability count, balance-val
 
 ### 3. Sourced status effects instead of aggregate flags
 
+**Partially implemented in `eac1da5`:** Ability reduction, amplification and disabling contributions are now source-owned and aggregated by `timed_effects.py`. Generalizing that model to all environmental/sensor/cooldown/speed modifiers remains an opportunity.
+
 Represent `damage_reduction`, `damage_amplification`, disabling, sensor penalties, cooldown modifiers, and speed modifiers as effects with `source_id`, `kind`, `magnitude`, `duration`, and stacking policy. Derive aggregate values. Cleanup then becomes deterministic, save state becomes explicit, multiple sources compose safely, and UI/AI can explain *why* a value changed.
 
 ### 4. Event-driven turn phases
@@ -592,7 +638,9 @@ Store golden snapshots for observation schema, command schema, public reason cod
 
 Define a normalized, derived-state-free representation of a campaign and hash it. Use it for save/load round-trip tests, replay verification, stale-command detection, and desynchronization diagnostics. Exclude GUI caches and recomputable visibility indexes; include every rule-relevant component/order/effect field.
 
-## Final conclusion
+## Final conclusion (historical audit)
+
+**Current status:** The correctness campaign recommended below has been completed for all fourteen fixed findings. Next work should target the remaining WC-011/WC-013/WC-017 items, CI linting and the open WC-016 architecture work. The following conclusion is retained from the original audit.
 
 Wormhole Control has enough structure and tests to evolve into a robust game, and its visibility-safe agent boundary is notably thoughtful. The immediate problem is not a lack of architecture; it is that several cross-cutting contracts—imports, persistence, lifecycle ownership, settings validation, and documentation as rules—are not enforced end to end.
 
