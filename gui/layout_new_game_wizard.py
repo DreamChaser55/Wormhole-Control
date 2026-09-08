@@ -30,6 +30,8 @@ from game_settings import (
     SpawnProfile,
     DEFAULT_SPAWN_PROFILE,
     normalize_spawn_profile,
+    MIN_SYSTEMS, MAX_SYSTEMS, MIN_SYSTEM_RADIUS, MAX_SYSTEM_RADIUS,
+    MIN_PLAYERS, MAX_PLAYERS,
 )
 from player_controller import PlayerController
 from galaxy import Galaxy
@@ -53,8 +55,8 @@ _PLAYER_ROW_H = 34  # per-player row height
 _COLOR_SWATCH_W = 32  # width of the colored swatch panel
 _COLOR_CYCLE_BTN_W = 22  # width of the ◀/▶ cycle buttons
 
-_MIN_PLAYERS = 2
-_MAX_PLAYERS = 6
+_MIN_PLAYERS = MIN_PLAYERS
+_MAX_PLAYERS = MAX_PLAYERS
 
 
 # ---------------------------------------------------------------------------
@@ -240,22 +242,27 @@ class NewGameWizard:
     # ------------------------------------------------------------------
     def _generate_map(self) -> None:
         """Generates a procedural Galaxy matching current parameters for preview."""
-        temp_settings = GameSettings(
-            num_systems=self._num_systems,
-            min_system_distance=float(self._min_dist),
-            max_system_distance=float(self._max_dist),
-            wormhole_density=self._wormhole_density / 100.0,
-            system_radius_min=self._sys_radius_min,
-            system_radius_max=self._sys_radius_max,
-            player_configs=[],  # A preview validates map parameters independently of starts.
-        )
         try:
-            self._generated_galaxy = Galaxy(num_systems=self._num_systems, settings=temp_settings)
+            temp_settings = GameSettings(
+                num_systems=self._num_systems,
+                min_system_distance=float(self._min_dist),
+                max_system_distance=float(self._max_dist),
+                wormhole_density=self._wormhole_density / 100.0,
+                system_radius_min=self._sys_radius_min,
+                system_radius_max=self._sys_radius_max,
+                player_configs=[], preview_only=True,  # A preview validates map parameters independently of starts.
+            )
+            from persistence_context import isolated_allocations
+            from entities import GameObject
+            with isolated_allocations() as allocations:
+                allocations[(GameObject, 'object_counter')] = 1
+                preview = Galaxy(num_systems=self._num_systems, settings=temp_settings)
+            self._generated_galaxy = preview
             self._map_generation_error = None
         except Exception as e:
             logger.debug(f"Error generating galaxy in wizard preview: {e}")
-            self._generated_galaxy = None
             self._map_generation_error = str(e)
+            return  # Keep the last usable preview and its home assignments.
 
         # Verify assigned home systems still exist in new galaxy
         if self._generated_galaxy and self._generated_galaxy.systems:
@@ -375,17 +382,17 @@ class NewGameWizard:
         # Sliders
         cursor_y, self._num_systems_slider, self._num_systems_label = self._add_slider_row(
             "Star Systems:", cursor_y, inner_w,
-            min_val=5, max_val=30, start_val=self._num_systems,
+            min_val=MIN_SYSTEMS, max_val=MAX_SYSTEMS, start_val=self._num_systems,
             object_id="#systems_slider",
         )
         cursor_y, self._sys_radius_min_slider, self._sys_radius_min_label = self._add_slider_row(
             "Min System Radius:", cursor_y, inner_w,
-            min_val=3, max_val=9, start_val=self._sys_radius_min,
+            min_val=MIN_SYSTEM_RADIUS, max_val=MAX_SYSTEM_RADIUS, start_val=self._sys_radius_min,
             object_id="#radius_min_slider",
         )
         cursor_y, self._sys_radius_max_slider, self._sys_radius_max_label = self._add_slider_row(
             "Max System Radius:", cursor_y, inner_w,
-            min_val=4, max_val=12, start_val=self._sys_radius_max,
+            min_val=MIN_SYSTEM_RADIUS, max_val=MAX_SYSTEM_RADIUS, start_val=self._sys_radius_max,
             object_id="#radius_max_slider",
         )
         cursor_y, self._wormhole_density_slider, self._wormhole_density_label = self._add_slider_row(
@@ -1223,7 +1230,7 @@ class NewGameWizard:
         elif self._stage == 2:
             for i, entry in enumerate(self._player_name_entries):
                 if i < len(self._player_names):
-                    self._player_names[i] = entry.get_text().strip() or f"Player {i + 1}"
+                    self._player_names[i] = entry.get_text().strip()
             if self._credits_entry:
                 self._credits_str = self._credits_entry.get_text()
             if self._metal_entry:
@@ -1336,33 +1343,27 @@ class NewGameWizard:
         return len(set(active_indices)) < len(active_indices)
 
     def get_map_validation_errors(self) -> typing.List[str]:
-        errors: typing.List[str] = []
-        radius_min = int(self._sys_radius_min_slider.get_current_value()) if self._sys_radius_min_slider else self._sys_radius_min
-        radius_max = int(self._sys_radius_max_slider.get_current_value()) if self._sys_radius_max_slider else self._sys_radius_max
-        if radius_min > radius_max:
-            errors.append(
-                f"Min System Radius ({radius_min}) cannot be greater than Max System Radius ({radius_max})."
-            )
-
-        min_d = float(int(self._min_dist_slider.get_current_value())) if self._min_dist_slider else float(self._min_dist)
-        max_d = float(int(self._max_dist_slider.get_current_value())) if self._max_dist_slider else float(self._max_dist)
-        if min_d >= max_d:
-            errors.append(
-                f"Min System Distance ({int(min_d)}) must be strictly less than Max System Distance ({int(max_d)})."
-            )
-        return errors
+        def value(widget_name, state_name, convert=int):
+            widget = getattr(self, widget_name)
+            raw = widget.get_current_value() if widget else getattr(self, state_name)
+            return convert(raw)
+        try:
+            GameSettings(
+                num_systems=value('_num_systems_slider', '_num_systems'),
+                system_radius_min=value('_sys_radius_min_slider', '_sys_radius_min'),
+                system_radius_max=value('_sys_radius_max_slider', '_sys_radius_max'),
+                min_system_distance=value('_min_dist_slider', '_min_dist', float),
+                max_system_distance=value('_max_dist_slider', '_max_dist', float),
+                wormhole_density=value('_wormhole_density_slider', '_wormhole_density', float) / 100,
+                player_configs=[], preview_only=True)
+        except ValueError as exc:
+            return [str(exc)]
+        return []
 
     def get_validation_errors(self) -> typing.List[str]:
         errors: typing.List[str] = []
         if self._stage == 1:
             return self.get_map_validation_errors()
-
-        if self.has_duplicate_colors():
-            errors.append("Each player must be assigned a unique color before starting the game.")
-
-        active_teams = set(self._player_teams[:self._num_players])
-        if self._num_players >= 2 and len(active_teams) < 2:
-            errors.append("Players must be grouped into at least two different teams.")
 
         if getattr(self, "_map_generation_error", None):
             errors.append(self._map_generation_error)
@@ -1407,11 +1408,6 @@ class NewGameWizard:
             if self._stage == 2 and element is self.start_button:
                 errs = self.get_validation_errors()
                 if errs:
-                    if len(errs) == 1 and self.has_duplicate_colors():
-                        return {
-                            "action": "duplicate_player_colors_warning",
-                            "message": errs[0],
-                        }
                     return {
                         "action": "wizard_settings_error",
                         "message": "\n".join(errs),
@@ -1667,19 +1663,11 @@ class NewGameWizard:
     # ------------------------------------------------------------------
     # Build GameSettings & Action Output
     # ------------------------------------------------------------------
-    def _safe_float(self, text: str, fallback: float) -> float:
+    def _parse_resource(self, text: str, label: str) -> float:
         try:
-            v = float(text.strip())
-            return v if v > 0 else fallback
-        except ValueError:
-            return fallback
-
-    def _safe_int(self, text: str, fallback: int) -> int:
-        try:
-            v = int(text.strip())
-            return v if v > 0 else fallback
-        except ValueError:
-            return fallback
+            return float(text.strip())
+        except (ValueError, OverflowError):
+            raise ValueError(f"{label} must be a finite non-negative number.") from None
 
     def _build_start_action(self) -> dict:
         """Builds GameSettings with pregenerated galaxy and player configurations."""
@@ -1691,7 +1679,7 @@ class NewGameWizard:
                 self._player_names[i]
                 if i < len(self._player_names)
                 else f"Player {i + 1}"
-            ) or f"Player {i + 1}"
+            )
 
             color = PLAYER_COLOR_PALETTE[self._player_color_indices[i]][1]
             controller = self._player_controllers[i]
@@ -1713,9 +1701,9 @@ class NewGameWizard:
                 home_system_name=home_sys,
             ))
 
-        credits_ = self._safe_float(self._credits_str, 20000.0)
-        metal_ = self._safe_float(self._metal_str, 10000.0)
-        crystal_ = self._safe_float(self._crystal_str, 10000.0)
+        credits_ = self._parse_resource(self._credits_str, "Starting credits")
+        metal_ = self._parse_resource(self._metal_str, "Starting metal")
+        crystal_ = self._parse_resource(self._crystal_str, "Starting crystal")
         try:
             pop_ = int(self._population_str.strip())
         except ValueError:

@@ -406,44 +406,23 @@ class TestGUIModalDialogs(unittest.TestCase):
         warn_dlg = self.gui.active_dialogs[-1]
         self.assertIn("Invalid Stance", warn_dlg.window_display_title)
 
-    def test_wizard_duplicate_player_colors_warning(self):
-        """Test that Start Game with duplicate player colors displays a modal warning dialog."""
+    def test_wizard_allows_shared_colors_and_reports_resource_errors(self):
+        """Wizard accepts shared colors and displays strict resource errors without losing input."""
         self.gui.show_new_game_wizard()
         wizard = self.gui.new_game_wizard
-        self.assertIsNotNone(wizard)
         wizard.go_to_stage(2)
-
-        # Force identical colors for active players (e.g. both palette index 0)
-        wizard._player_color_indices[0] = 0
-        wizard._player_color_indices[1] = 0
-
-        self.assertTrue(wizard.has_duplicate_colors())
-
-        # Simulate pressing Start Game button
+        wizard._player_color_indices[0] = wizard._player_color_indices[1] = 0
         event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": wizard.start_button})
         from gui import event_router
         action = event_router.process_event(self.gui, event)
-
-        # Should be handled by GUI (modal dialog shown), not start new game
-        self.assertEqual(action, {'action': 'ui_handled'})
-        self.assertGreater(len(self.gui.active_dialogs), 0)
-        warn_dlg = self.gui.active_dialogs[-1]
-        self.assertIn("Duplicate Player Colors", warn_dlg.window_display_title)
-        self.assertTrue(wizard.is_alive)
-
-        # Ensure drawing GUI with modal dialog open clips swatches cleanly
-        dummy_surface = pygame.Surface((1280, 720))
-        self.gui.draw(dummy_surface)
-
-        # Now assign unique colors
-        wizard._player_color_indices[0] = 0
-        wizard._player_color_indices[1] = 1
-        wizard._player_color_indices[2] = 2
-        self.assertFalse(wizard.has_duplicate_colors())
-
-        # Press Start Game again
-        action = event_router.process_event(self.gui, event)
         self.assertEqual(action['action'], 'start_new_game_with_settings')
+        wizard._credits_entry.set_text('')
+        action = event_router.process_event(self.gui, event)
+        self.assertEqual(action, {'action': 'ui_handled'})
+        self.assertTrue(wizard.is_alive)
+        self.assertEqual(wizard._credits_entry.get_text(), '')
+        self.assertIn('Invalid Game Settings', self.gui.active_dialogs[-1].window_display_title)
+        self.gui.draw(pygame.Surface((1280, 720)))
 
     def test_wizard_cycles_and_preserves_controller_and_reasoning_effort(self):
         self.gui.show_new_game_wizard()

@@ -83,7 +83,7 @@ def test_home_systems_mapping_testing_profile():
     """In Testing spawn profile, all players share the starting system (Sol)."""
     game = MockGame()
     settings = GameSettings(
-        num_systems=4,
+        num_systems=5,
         spawn_profile=SpawnProfile.TESTING,
         player_configs=[
             PlayerConfig("Alice", (30, 120, 255), controller=PlayerController.HUMAN, team_id=1),

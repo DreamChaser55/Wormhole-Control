@@ -506,7 +506,10 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
         game.turn_manager.check_and_schedule_ai_turn()
     game.check_and_schedule_ai_turn = check_ai
 
-    settings = GameSettings(num_systems=2, pregenerated_galaxy=campaign().galaxy, player_configs=[
+    from tests.test_phase2_invariants import settings_for
+    preview = campaign().galaxy
+    settings_for(preview)
+    settings = GameSettings(num_systems=5, pregenerated_galaxy=preview, player_configs=[
         PlayerConfig("AI Player 1", (255, 0, 0), controller=PlayerController.OPENAI, team_id=1),
         PlayerConfig("Human Player 2", (0, 0, 255), controller=PlayerController.HUMAN, team_id=2),
     ])

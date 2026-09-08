@@ -80,5 +80,5 @@ class ClusterWarheadAbility(AbilityInstance):
                 # Damage falls off linearly with distance
                 falloff = max(0.0, 1.0 - (dist / self.SPLASH_RADIUS))
                 damage = max(1, int(self.BASE_DAMAGE * falloff))
-                target_unit.take_damage(damage)
+                target_unit.take_damage(damage, is_splash=True)
                 logger.debug(f"[Cluster Warhead] Hit {target_unit.name} for {damage} damage (dist={dist:.1f}).")

@@ -318,3 +318,5 @@ owned unit; observe current roots rather than guessing identities.
   ID; never retry changed content under that ID. Cached failure responses are replayed too.
   Cache retention is the last 256 mutation responses in this running service; after restart
   or eviction, observe/reconcile before attempting an uncertain action again.
+
+New campaign bounds and validation are shared with the wizard and direct setup; see [new-campaign validation](REFERENCE.md#new-campaign-validation). Both radius bounds accept 3–12. Existing protocol errors and the exactly-one-Codex-player requirement remain unchanged.

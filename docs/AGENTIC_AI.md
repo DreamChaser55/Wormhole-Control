@@ -20,8 +20,10 @@ files, or arbitrary tools.
    gets another semantic request containing the immediately preceding plan and
    its exact errors while the active AI player's snapshotted budget remains.
    Commit and transport failures are not semantically retried.
-7. The memory patch and execution receipts are bounded, persisted, and the turn
-   ends.
+7. Only after successful commit are the bounded memory patch and execution
+   receipts persisted and the turn ended. Preflight acceptance alone is not
+   commit success; unexpected commit exceptions enter manual recovery without
+   applying the rejected memory patch.
 
 No API call is made for a human player. Tests and evaluation use injected fake
 providers by default, so they do not consume API credits.
@@ -278,3 +280,5 @@ The strict response schema is `wormhole_control_turn_v3`, and prompt cache key i
 Gas-giant transitions preserve stance and explicit work. `Enter → Leave → Move` works with queued follow-ups; `Enter → Move → Leave` pauses behind Move while hidden. Inspect `blocked_by_order_id` and use `cancel_order`, `clear_explicit_orders`, or a replacement Leave to unblock it. Queue preflight projects entry/departure dependencies; acceptance does not guarantee safe exit placement. A failed Leave reports `path_unavailable` and retains the hidden ship and remaining queue. See the [canonical gas-giant rules](REFERENCE.md#125-gas-giant-atmospheric-hiding).
 
 Mines check final positions after movement on the ship owner's turn, including stationary ships. Positive hits may be fully absorbed by mitigation. Consult [damage and minefield resolution](REFERENCE.md#13-damage--minefield-resolution) and [spawn profiles](REFERENCE.md#spawn-profiles-spawnprofile--2-total) for the canonical gameplay rules. Numeric object ID `0` remains valid; only `None`/JSON `null` means a missing numeric ID.
+
+Environmental observation additions retain schema 5: friendly/allied turrets expose `effective_cooldown` for a shot at their current position alongside base `cooldown` and `cooldown_remaining`. Already-exposed celestial bodies carry numeric `environmental_effects`; no extra bodies or enemy equipment are revealed. Ice/nitrogen coolant reduces the on-fire reset by one (non-stacking, positive minimum one), and oxygen multiplies Cluster Warhead splash damage to victims inside by 1.15. See the [canonical environmental rules](REFERENCE.md#123-environmental-fields--tactical-cover).

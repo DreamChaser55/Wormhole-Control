@@ -1229,10 +1229,13 @@ class Unit(GameObject):
         pos = position if position is not None else self.position
         return is_position_blocked_by_celestial_field(g, self.in_system, self.in_hex, pos, self)
 
-    def take_damage(self, amount: int, damage_type: Optional[TurretType] = None) -> None:
+    def take_damage(self, amount: int, damage_type: Optional[TurretType] = None, *, is_splash: bool = False) -> None:
         """Reduces the unit's current hit points by the given amount, applying any active damage reduction, environmental cover, and defenses mitigation."""
         if amount <= 0:
             return
+        if is_splash:
+            from environmental_effects import splash_damage
+            amount = splash_damage(amount, self)
         if damage_type:
             cover = self.get_environmental_cover_bonus(damage_type)
             if cover > 0.0:

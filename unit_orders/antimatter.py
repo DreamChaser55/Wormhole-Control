@@ -7,7 +7,7 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from entities import Unit, CelestialBody
 
 logger = logging.getLogger(__name__)
 

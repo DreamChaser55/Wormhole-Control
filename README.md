@@ -15,7 +15,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 ## Getting Started
 
 ### Requirements
-- **Python 3.9+** (Verified working on Python 3.14.3)
+- **Python 3.10+** (Verified working on Python 3.14.3)
 - **pygame-ce** (Verified working on 2.5.7)
 - **pygame_gui** (Verified working on 0.6.14)
 - **OpenAI Python SDK** (only for built-in OpenAI players)
@@ -35,7 +35,7 @@ The game uses a deliberately simple, tactical display aesthetic inspired by nava
 3. **Start a campaign:**
    - Click **New Game** to open the **New Game Wizard** (two-stage configuration flow).
    - **Stage 1: Galaxy Setup & Preview**:
-     - Adjust galaxy generation parameters: star system count (5–30), min/max system radius, wormhole connectivity density (0–100%), and min/max inter-system distances.
+     - Adjust galaxy generation parameters: star system count (5–30), min/max system radius (3–12), wormhole connectivity density (0–100%), and min/max inter-system distances.
      - Click **Generate Map** to re-roll and view the procedural galaxy topology, star system positions, and wormhole conduits in the live Map Preview.
      - Click **Next: Players & Economy ➔** to proceed to Stage 2.
    - **Stage 2: Factions & Starting Conditions**:
@@ -94,7 +94,7 @@ Matches operate on a hot-seat turn sequence. When finished issuing commands, pre
 - **Hex Jumps**: Short-range hyperdrive jumps between adjacent sectors within the same star system (requires **Basic Hyperdrive**).
 - **Wormhole Traversal**: Long-range inter-system travel through natural spacetime wormholes (requires **Advanced Hyperdrive**).
 - **Tactical Microjumps**: Instant short-distance teleportation via special ability to bypass hazards or reposition in combat.
-- **Hyperspace Inhibition**: Dedicated inhibitor ships project interdiction fields that prevent enemy vessels from entering or exiting hyperspace within their radius. Gravitational fields from massive celestial bodies also prevent hyperspace jumps in their vicitity.
+- **Hyperspace Inhibition**: Dedicated inhibitor ships project interdiction fields that prevent enemy vessels from entering or exiting hyperspace within their radius. Gravitational fields from massive celestial bodies also prevent hyperspace jumps in their vicinity.
 
 ### Combat & Warfare
 - **Weapon Systems**: Mount Mass Driver (kinetic), Beam (laser), or Missile (guided payload) turrets across Standard, Anti-Strikecraft, and Long-Range variants.
@@ -129,8 +129,8 @@ Matches operate on a hot-seat turn sequence. When finished issuing commands, pre
   - Impassable fields act as physical obstacles for pathfinding and collision avoidance, blocking movement orders, microjumps, and carrier launches.
 - **Tactical Cover & Field Effects**:
   - **Visual Radius Indicators**: In Sector View, all non-solid bodies (nebulae, storms, asteroid fields, ice fields, and debris fields) are outlined by a distinctive turquoise tactical circle marking their exact area of effect and boundary for the player.
-  - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting defense mitigation against beam attacks (+8% Low, +12% Medium, +16% High), weapon cooling, and sublight speed drag.
-  - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting defense mitigation against kinetic and missile attacks (+8% Low, +12% Medium, +16% High), sublight drag, and high-speed navigation abrasion damage scaled by field density.
+  - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting defense mitigation against beam attacks (see the [cover table](docs/REFERENCE.md#123-environmental-fields--tactical-cover)), a shorter cooldown reset when firing, and sublight speed drag.
+  - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting defense mitigation against kinetic and missile attacks (see the [cover table](docs/REFERENCE.md#123-environmental-fields--tactical-cover)), sublight drag, and high-speed navigation abrasion damage scaled by field density.
   - **Asteroid Fields**: Dense asteroid fields scatter long-range radar sensors, with sublight drag scaled by density.
 - **Gas Giant Atmospheric Hiding**: Ships with sublight engines can hide in gas giants, preserving stance and queued orders. Departure requires a safe position; blocked exits leave the ship hidden. Queues follow strict FIFO, so outside-space work ahead of Leave pauses the queue. See the [canonical gas-giant rules](docs/REFERENCE.md#125-gas-giant-atmospheric-hiding).
 - **Environmental Hazards**:
@@ -147,7 +147,11 @@ Access the **Unit Designer** from the main menu or the in-game menu to build and
 
 - **Hull Sizing**: Choose from 6 hull classes (`STRIKECRAFT_WING`, `TINY`, `SMALL`, `MEDIUM`, `LARGE`, `HUGE`), each offering distinct capacity budgets, baseline hit points, and construction costs.
 - **Dynamic & Fixed Components**: Tune sublight engines, hyperdrives, turrets, and defense ratings with dynamically scaling hull costs, or install fixed utility modules like refineries, colony pods, and hangars.
-- **Special Abilities**: Equip up to 9 specialized abilities, including *Adaptive Forcefields*, *Cluster Warheads*, *Designate Target*, *Ion Bolts*, *Missile Batteries*, *Repair Clouds*, *Capture Unit*, *Drain Antimatter*, and *Microjumps*.
+
+<!-- BEGIN GENERATED: readme-abilities -->
+The designer offers **10 special abilities**: Adaptive Forcefield, Cluster Warhead, Designate Target, Ion Bolt, Missile Batteries, Repair Cloud, Capture Unit, Drain Antimatter, Microjump, Scan for Minefields.
+<!-- END GENERATED: readme-abilities -->
+
 - **Persistence**: Saved designs are stored in your user-data library and immediately become available for construction in active shipyards. See [custom-design storage and migration](#custom-design-storage-and-migration).
 
 > For complete component hull costs, stat scaling formulas, and ability tables, consult the [Reference Manual](docs/REFERENCE.md).
@@ -176,7 +180,7 @@ The three levels share the same 7,000-output-token limit, 120-second timeout,
 and 40-command turn limit, so the selected level changes only Luna's reasoning
 effort.
 
-Planning runs outside the Pygame thread. The version-3 observation distinguishes
+Planning runs outside the Pygame thread. The schema-5 observation distinguishes
 hardware-supported commands from currently legal actions, supplies bounded option
 lists, reports inhibitor state and activation eligibility, and keeps remote
 systems compact until friendly forces approach them.
@@ -245,6 +249,15 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
+CI checks undefined names with Ruff, verifies generated reference blocks, and runs smoke/full tests on Linux Python 3.10–3.14 plus Windows Python 3.14. Local checks:
+
+```bash
+python -m ruff check .
+python scripts/generate_reference.py --check
+```
+
+Refresh generated tables with `python scripts/generate_reference.py`. Gameplay effects and strict setup rules are described in the [Reference Manual](docs/REFERENCE.md#new-campaign-validation).
+
 Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests`, `markers = smoke`).
 
 ### Debug log
@@ -261,19 +274,19 @@ Custom designs are stored as `custom_unit_templates.json` in:
 
 Set `WORMHOLE_USER_DATA_DIR` to an **absolute directory path** to use another location. Tests automatically use temporary user storage, including child processes.
 
-On first use, when no user library exists, the game validates and copies the legacy `data/custom_unit_templates.json` library. It leaves the original intact. An existing user library, including an empty one, always takes precedence. Migration preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation.
+Fresh installations start with an empty custom-design library. On first use, when no user library exists and a legacy `data/custom_unit_templates.json` file is present, the game validates and copies that library. It leaves the original intact. An existing user library, including an empty one, always takes precedence. Migration preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation.
 
 Malformed libraries and storage failures are reported in the log. Failed loading blocks subsequent writes until the library is repaired and reloaded (restart the game after repairing it). Failed saves, renames, and deletions show an editor error and preserve the previous disk library and registered designs. Writes use atomic replacement.
 
-**Upgrade sequence:** This release retains the tracked legacy library so existing installations can migrate safely. Before upgrading to the follow-up release that removes it from version control, launch this release and verify your user library, or back up the legacy file outside the checkout. Users skipping this release must back up that file before updating, then copy it into their user-data directory while the game is closed. Fresh installations after removal will start with an empty library. The legacy file must not be removed from this release.
+**Upgrade sequence:** The legacy library has been removed from version control. An existing user-data library is retained. Users upgrading from a version that stored designs in the checkout should back up that file before updating, then copy it into their user-data directory while the game is closed. Migration support remains available if a legacy file is supplied; it never overwrites an existing user library.
 
 Bundled assets resolve relative to the application, independent of the current working directory. UI themes are scaled in memory; `theme_scaled.json` is no longer generated. Campaign saves and logs keep their existing locations.
 
 ### Configuration & Data Files
-- `data/`: Contains bundled unit templates, spawn rates, star names, and the read-only legacy custom-design library retained for migration.
+- `data/`: Contains bundled unit templates, spawn rates and star names. Custom designs live in the user-data directory.
 - `constants.py`: Central repository for game tuning constants, colors, and resolution definitions.
 - **Environment Flags**:
-  - `WORMHOLE_FULLSCREEN=1`: Forces full-screen display mode.
+  - `WORMHOLE_FULLSCREEN=true`: Forces full-screen display mode.
 
 > For the full repository file tree and architecture breakdown, see the [Reference Manual](docs/REFERENCE.md).
 

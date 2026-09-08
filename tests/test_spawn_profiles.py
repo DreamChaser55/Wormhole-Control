@@ -33,7 +33,8 @@ def test_spawn_profile_enum_and_normalization():
     assert normalize_spawn_profile("Testing") == SpawnProfile.TESTING
     assert normalize_spawn_profile("testing") == SpawnProfile.TESTING
     assert normalize_spawn_profile(SpawnProfile.TESTING) == SpawnProfile.TESTING
-    assert normalize_spawn_profile("invalid") == DEFAULT_SPAWN_PROFILE
+    with pytest.raises(ValueError, match="Invalid spawn_profile"):
+        normalize_spawn_profile("invalid")
 
 
 def test_game_settings_spawn_profile_default_and_custom():

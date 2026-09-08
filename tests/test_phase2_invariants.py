@@ -305,6 +305,14 @@ def test_mine_damage_once_per_owner_turn(players, moving):
 
 
 def settings_for(galaxy, profile=SpawnProfile.NORMAL):
+    from galaxy import StarSystem
+    # Campaign setup uses real product bounds; smaller worlds remain engine fixtures.
+    for index in range(len(galaxy.systems), 5):
+        name = f'Extra{index}'
+        galaxy.systems[name] = StarSystem(name, Position(index * 300, 0), radius=3)
+        for sector in galaxy.systems[name].hexes.values():
+            sector.celestial_bodies.clear()
+            sector.update_static_inhibition_zones()
     return GameSettings(num_systems=len(galaxy.systems), pregenerated_galaxy=galaxy,
                         spawn_profile=profile, player_configs=[
         PlayerConfig('One', (0, 200, 0), team_id=1, home_system_name='Sol'),
@@ -375,16 +383,16 @@ def test_testing_allows_shared_systems_and_normal_mixed_starts():
     settings = settings_for(game.galaxy)
     settings.player_configs[1].home_system_name = None
     prepared = prepare_new_campaign(settings)
-    assert {home[0] for home in prepared.state.player_homeworlds.values()} == {'Sol', 'Beta'}
+    assert len({home[0] for home in prepared.state.player_homeworlds.values()}) == 2
 
 
 def test_setup_rejects_shortfall_missing_system_and_no_homeworld_space(monkeypatch):
     game = campaign()
     settings = settings_for(game.galaxy)
-    settings.num_systems = 3
-    with pytest.raises(ValueError, match='contains 2'):
+    settings.num_systems = 6
+    with pytest.raises(ValueError, match='contains 5'):
         prepare_new_campaign(settings)
-    settings.num_systems = 2
+    settings.num_systems = 5
     settings.player_configs[1].home_system_name = 'Missing'
     with pytest.raises(ValueError, match='does not exist'):
         prepare_new_campaign(settings)
@@ -516,7 +524,7 @@ def test_reference_planet_table_matches_numeric_authority():
     rows = [line.split('|')[1:-1] for line in table.splitlines() if line.startswith('| **')]
     assert len(rows) == len(PLANET_TRAITS)
     for row in rows:
-        name, colonizable, population, growth, metal, crystal, antimatter, _ = [cell.strip().replace('**', '') for cell in row]
+        name, colonizable, population, growth, metal, crystal, antimatter = [cell.strip().replace('**', '') for cell in row]
         traits = PLANET_TRAITS[PlanetType[name.upper().replace(' ', '_')]]
         assert (colonizable == 'Yes') == traits['is_colonizable']
         assert float(population) == traits['max_population']

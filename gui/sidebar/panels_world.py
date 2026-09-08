@@ -299,7 +299,9 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         beam_pct = int(round(getattr(body, 'beam_defense_bonus', 0.10) * 100))
         drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.80)) * 100))
         data.append({'type': 'label', 'text': f"Tactical Cover: +{beam_pct}% Beam defense (scattering).", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': f"Weapon Coolant (-1 cd). Drag -{drag_pct}%.", 'object_id': '#sidebar_info_label', 'height': 20})
+        from environmental_effects import effects_for_body
+        cooling = effects_for_body(body)['cooldown_reduction']
+        data.append({'type': 'label', 'text': f"Coolant: -{cooling} turn on firing (non-stacking). Drag -{drag_pct}%.", 'object_id': '#sidebar_info_label', 'height': 20})
 
     elif isinstance(body, Nebula):
         data.append({'type': 'label', 'text': f"Type: {body.nebula_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
@@ -307,9 +309,13 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         if body.nebula_type == NebulaType.HYDROGEN:
             data.append({'type': 'label', 'text': "Fuel Scooping: 0.4x AM harvest; -50% sublight AM burn.", 'object_id': '#sidebar_info_label', 'height': 20})
         elif body.nebula_type == NebulaType.NITROGEN:
-            data.append({'type': 'label', 'text': "Coolant Cloud: Enhanced weapon cooling (-1 cd).", 'object_id': '#sidebar_info_label', 'height': 20})
+            from environmental_effects import effects_for_body
+            cooling = effects_for_body(body)['cooldown_reduction']
+            data.append({'type': 'label', 'text': f"Coolant: -{cooling} turn on firing (non-stacking).", 'object_id': '#sidebar_info_label', 'height': 20})
         elif body.nebula_type == NebulaType.OXYGEN:
-            data.append({'type': 'label', 'text': "Volatile Gas: +25% shield regen, +15% splash vuln.", 'object_id': '#sidebar_info_label', 'height': 20})
+            from environmental_effects import effects_for_body
+            splash = round((effects_for_body(body)['splash_damage_multiplier'] - 1) * 100)
+            data.append({'type': 'label', 'text': f"Volatile Gas: +{splash}% splash damage taken (non-stacking).", 'object_id': '#sidebar_info_label', 'height': 20})
         elif body.nebula_type == NebulaType.DUST:
             data.append({'type': 'label', 'text': "Dense Particulate: Reduces optical vision by 30%.", 'object_id': '#sidebar_info_label', 'height': 20})
 

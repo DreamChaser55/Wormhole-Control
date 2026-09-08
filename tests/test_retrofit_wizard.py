@@ -48,7 +48,7 @@ def wizard_setup():
     player = Player(name="Player 1", color=(0, 0, 255), controller=PlayerController.HUMAN)
     player.credits = 5000
 
-    galaxy = Galaxy()
+    galaxy = Galaxy(num_systems=0)
     system = StarSystem(name="Sol", position=Position(0, 0))
     galaxy.systems["Sol"] = system
 

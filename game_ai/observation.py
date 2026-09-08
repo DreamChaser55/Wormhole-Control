@@ -340,6 +340,10 @@ def _body_view(
         effect_rad = getattr(body, "effect_radius", getattr(body, "radius", None))
         if effect_rad is not None:
             data["effect_radius"] = _rounded(effect_rad)
+    from environmental_effects import effects_for_body
+    effects = effects_for_body(body)
+    if effects:
+        data["environmental_effects"] = effects
     friendly_hidden = [
         int(u.id) for u in getattr(body, "hidden_units", [])
         if _relation(viewer, getattr(u, "owner", None)) != "enemy"
@@ -404,6 +408,7 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
         details["weapons"] = {"operational": not bool(weapons.is_destroyed), "turrets": [
             {"type": enum_name(t.turret_type), "variant": enum_name(t.variant), "range": t.range,
              "cooldown": t.cooldown, "cooldown_remaining": t.current_cooldown,
+             "effective_cooldown": t.effective_cooldown,
              "eligible_target_classes": [enum_name(h) for h in HullSize if weapons.turret_accepts_hull(t, h)]}
             for t in weapons.turrets]}
     cloak = getattr(unit, "cloaking_component", None)

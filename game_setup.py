@@ -82,6 +82,8 @@ def prepare_new_campaign(settings):
         raise ValueError("; ".join(errors))
     settings = copy.copy(settings)
     settings.player_configs = copy.deepcopy(settings.player_configs)
+    for config in settings.player_configs:
+        config.__post_init__()
     settings.spawn_profile = normalize_spawn_profile(settings.spawn_profile)
     with isolated_allocations() as allocations:
         allocations[(GameObject, 'object_counter')] = 1

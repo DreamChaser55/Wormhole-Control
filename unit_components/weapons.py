@@ -39,6 +39,15 @@ class Turret:
     target: Optional['Unit'] = None
     target_component_type: Optional[type] = None
 
+    @property
+    def effective_cooldown(self) -> int:
+        """Reset duration if fired here; never rewrite base or remaining cooldown."""
+        from environmental_effects import modifiers_for_unit
+        if self.cooldown <= 0:
+            return self.cooldown
+        reduction = modifiers_for_unit(self.parent_unit).cooldown_reduction
+        return max(1, self.cooldown - reduction)
+
     def __post_init__(self) -> None:
         if self.variant == TurretVariant.LONG_RANGE:
             self.range *= 3.0
@@ -111,7 +120,7 @@ class Turret:
             if xp_earned > 0:
                 self.parent_unit.gain_experience(xp_earned)
 
-        self.current_cooldown = self.cooldown
+        self.current_cooldown = self.effective_cooldown
 
     def update(self) -> None:
         """
@@ -215,7 +224,7 @@ class Weapons(UnitComponent):
                 stats_text = f"Damage: {turret.damage} | Range: {turret.range} | Cooldown: {turret.cooldown}t"
             data.append({
                 'type': 'label',
-                'text': stats_text,
+                'text': stats_text + f" | Reset here: {turret.effective_cooldown}t",
                 'object_id': '#sidebar_info_label',
                 'height': 18,
                 'indent_level': 2

@@ -6,160 +6,215 @@ This document contains in-depth reference data, data structures, catalogues, enu
 
 ## 1. Project Structure
 
-```
-Wormhole Control/
-├── game.py                        # Central game loop facade and delegate controller
-├── game_logging.py                # Custom application logging formatter and bootstrap
-├── game_settings.py               # GameSettings dataclass, PlayerConfig, and campaign bootstrap parameters
-├── game_setup.py                  # Initial world generation and starting fleet placement
-├── game_camera.py                 # System/sector camera framing, panning, and smooth zoom
-├── economy.py                     # Player credit income and fleet upkeep calculations
-├── entities.py                    # Core game objects (Player, Unit, CelestialBody, Minefield, etc.)
-├── events.py                      # Central event bus and game event definitions
-├── galaxy.py                      # Galaxy generation, star system topology, and sector hex grids
-├── galaxy_utils.py                # Galaxy generation helper functions and placement math
-├── input_processor/               # Mouse/keyboard event dispatch and selection package
-│   ├── __init__.py                # Package facade and public re-exports
-│   ├── processor.py               # InputProcessor main orchestrator class
-│   ├── hover_tracker.py           # Spatial entity hover detection (galaxy, system, sector)
-│   ├── mouse_handler.py           # Mouse click dispatch, box selection, ability targeting
-│   ├── keyboard_handler.py        # Keyboard camera panning and global hotkeys
-│   ├── context_menu_builder.py    # Dynamic right-click context menu and submenu generators
-│   └── context_actions.py         # Context menu action event dispatchers
-├── order_system.py                # Order dispatch, route planning, and command validation engine
-├── turn_processor.py              # Turn resolution engine (economy, movement, combat, orders, XP)
-├── custom_unit_templates.py       # Custom ship design manager and dynamic hull cost calculations
-├── unit_templates.py              # Baseline predefined unit template loader
-├── save_manager.py                # Game state serialization, save, and load manager (JSON)
-├── visibility.py                  # Sensor detection algorithms and dynamic fog of war tracking
-├── constants.py                   # Global constants, enums, colors, and resolution config
-├── geometry.py                    # Vector, Position, Circle geometry, intersection math, and avoidance pathfinding
-├── hexgrid_utils.py               # Hex-grid math and camera-aware axial/screen transforms
-├── pathfinding.py                 # A* pathfinding and navigation algorithms
-├── renderer.py                    # Top-level graphics rendering orchestrator
-├── sector_utils.py                # Sector coordinate conversion and rendering math
-├── utils.py                       # General utility functions and HexCoord type aliases
-├── theme.json                     # Base UI visual theme configuration
-├── pytest.ini                     # Pytest configuration (testpaths, pythonpath)
-├── LICENSE                        # MIT License text
-├── data/                          # Persistent JSON data files
-│   ├── custom_unit_templates.json # Read-only legacy library retained for migration
-│   ├── spawn_rates.json           # Celestial object generation probability tables
-│   ├── star_names.json            # Procedural star system name registry
-│   └── unit_templates.json        # Predefined default unit designs
-├── fonts/                         # Bundled TrueType font assets
-│   ├── dejavu-sans/               # DejaVu Sans font family
-│   └── noto-emoji/                # Noto Emoji font family
-├── game_actions/                  # GUI action dispatch package
-│   ├── __init__.py                # Package exports
-│   ├── app_actions.py             # Menu, view navigation, and persistence actions
-│   ├── selection_actions.py       # Object selections and sidebar tab handlers
-│   └── unit_actions.py            # Unit orders, stances, abilities, and carrier wing actions
-├── gui/                           # User interface management package
-│   ├── __init__.py                # Package re-exports for GUI_Handler facade
-│   ├── handler.py                 # GUI_Handler orchestrator, view transitions, and delegates
-│   ├── theme_loader.py            # Scaled theme loading and font preloading
-│   ├── layout_main_menu.py        # Main menu and About screen layout builders
-│   ├── layout_ingame_menu.py      # Pause menu and load game dialog builders
-│   ├── layout_new_game_wizard.py  # Two-stage setup wizard (Stage 1: galaxy setup & preview; Stage 2: factions, home systems, economy)
-│   ├── layout_hud.py              # Top bar, resource labels, and turn indicator
-│   ├── context_menu.py            # Right-click context menu construction and hit testing
-│   ├── event_router.py            # GUI event routing and action payload generation
-│   ├── dynamic_actions.py         # Dynamic sidebar button and dropdown action payloads
-│   ├── text_layout.py             # Text wrapping and measurement utilities
-│   ├── sidebar/                   # Sidebar UI sub-package
-│   │   ├── __init__.py            # Package re-exports
-│   │   ├── builder.py             # Sidebar data payload orchestrator
-│   │   ├── order_formatting.py    # HTML order-text formatters for UI queues
-│   │   ├── panels_unit.py         # Unit panel, tabs, and component dropdown builders
-│   │   ├── panels_world.py        # System, Hex, Celestial Body, and Minefield panel builders
-│   │   └── view.py                # Dynamic sidebar widget factory and accordion state
-│   └── unit_editor_gui/           # Unit Designer GUI sub-package
-│       ├── __init__.py            # Package re-exports for UnitEditorWindow
-│       ├── window.py              # UnitEditorWindow orchestrator facade
-│       ├── catalog.py             # Component catalogue, option lists, and descriptions
-│       ├── component_state.py     # Component selection, toggling, and restriction logic
-│       ├── cost_model.py          # Hull capacity calculations and capacity bar drawing
-│       ├── event_handlers.py      # Pygame GUI event handling and dispatch logic
-│       ├── layout.py              # UI layout orchestrator (columns 1, 2, 4)
-│       ├── layout_details.py      # Column 3 dynamic component detail controls
-│       ├── param_readers.py       # Parameter input parsing functions
-│       ├── summary_view.py        # Design summary HTML box formatting
-│       ├── template_io.py         # Template saving, loading, deletion, and widget sync
-│       ├── turret_editor.py       # Turret list management and widget building
-│       └── widget_factory.py      # UI widget construction helper functions
-├── rendering/                     # Specialized rendering modules
-│   ├── drawing_utils.py           # Basic shape and overlay drawing utilities
-│   ├── galaxy_renderer.py         # Galaxy view rendering (systems, player home marks, concentric circles, wormhole links)
-│   ├── main_menu_renderer.py      # Main menu view rendering (titles and starfield)
-│   ├── system_renderer.py         # System view rendering (hex grid and celestial bodies)
-│   └── sector_renderer/           # Sector view rendering package
-│       ├── __init__.py            # Package exports (SectorViewRenderer facade)
-│       ├── sector_renderer.py     # Sector view orchestrator facade
-│       ├── sector_grid_renderer.py # Tactical grid, boundaries, and spatial clipping
-│       ├── sector_celestial_renderer.py # Stars, planets, moons, nebulae, and storms
-│       ├── sector_entity_renderer.py # Units, hull icons, health bars, and minefields
-│       └── sector_overlay_renderer.py # Selection boxes, range circles, and fog of war
-├── saves/                         # Saved game files (*.json), AI memory sidecars, and comms logs (*.md)
-├── tests/                         # Automated test suite
+```text
+Wormhole-Control/
+├── LICENSE
+├── README.md
+├── campaign_graph.py
+├── campaign_persistence.py
+├── component_visibility.py
+├── constants.py
+├── custom_unit_templates.py
+├── economy.py
+├── entities.py
+├── environmental_effects.py
+├── events.py
+├── galaxy.py
+├── galaxy_utils.py
+├── game.py
+├── game_camera.py
+├── game_control.py
+├── game_control_protocol.py
+├── game_logging.py
+├── game_settings.py
+├── game_setup.py
+├── geometry.py
+├── hexgrid_utils.py
+├── order_history.py
+├── order_system.py
+├── pathfinding.py
+├── persistence_context.py
+├── player_controller.py
+├── pyproject.toml
+├── pytest.ini
+├── renderer.py
+├── requirements-dev.txt
+├── requirements.txt
+├── save_manager.py
+├── save_migrations.py
+├── sector_utils.py
+├── state_codec.py
+├── theme.json
+├── timed_effects.py
+├── turn_processor.py
+├── unit_templates.py
+├── utils.py
+├── visibility.py
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── data/
+│   ├── spawn_rates.json
+│   ├── star_names.json
+│   └── unit_templates.json
+├── docs/
+│   ├── AGENTIC_AI.md
+│   ├── CODEX_CONTROL.md
+│   ├── REFERENCE.md
+│   └── SAVE_FORMAT.md
+├── fonts/  # Bundled font families
+├── game_actions/
 │   ├── __init__.py
-│   └── test_*.py                  # Unit and integration test suites
-├── unit_components/               # Modular unit component package
-│   ├── __init__.py                # Package exports and registry
-│   ├── base.py                    # UnitComponent base class
-│   ├── antimatter.py              # AntimatterStorage and AntimatterHarvester components
-│   ├── civilian_habitat.py        # CivilianHabitatComponent (economic sector bonus)
-│   ├── orbital_defense.py         # OrbitalDefenseComponent (AoE tactical attack & defense aura)
-│   ├── cloaking.py                # CloakingDevice component (sensor stealth)
-│   ├── colony.py                  # ColonyComponent (planetary colonization)
-│   ├── commander.py               # Commander component (order queues and stances)
-│   ├── constructor.py             # Constructor component (unit and station building)
-│   ├── defenses.py                # Defenses component (armor, shields, point defense)
-│   ├── enums.py                   # Component-related enums (Stance, Turret, Ability, etc.)
-│   ├── hangar.py                  # HangarComponent (dockable ship carrier bays)
-│   ├── inhibitor.py               # HyperspaceInhibitionFieldEmitter component
-│   ├── intelligence.py            # IntelligenceComponent and Agent (espionage and counter-intelligence)
-│   ├── marines.py                 # MarinesComponent (boarding and capture)
-│   ├── minelayer.py               # MinelayerComponent (minefield deployment)
-│   ├── mining.py                  # Mining, MetalRefinery, and CrystalRefinery components
-│   ├── movement.py                # Engines and Hyperdrive movement components
-│   ├── repair.py                  # RepairComponent (automated field repairs)
-│   ├── sensors.py                 # Sensors component (short and long range detection)
-│   ├── strikecraft.py             # StrikecraftWing and StrikecraftBay components
-│   ├── weapons.py                 # Weapons and Turret combat components
-│   └── abilities/                 # Special abilities subpackage
-│       ├── __init__.py            # Package exports
-│       ├── base.py                # AbilityDefinition and AbilityInstance base classes
-│       ├── registry.py            # Ability registry and definition mapping
-│       ├── component.py           # AbilityComponent unit integration
-│       ├── adaptive_forcefield.py # Adaptive Forcefield ability
-│       ├── capture_unit.py        # Capture Unit (boarding) ability
-│       ├── cluster_warhead.py     # Cluster Warhead area damage ability
-│       ├── designate_target.py    # Designate Target sensor tagging ability
-│       ├── drain_antimatter.py    # Drain Antimatter ability
-│       ├── ion_bolt.py            # Ion Bolt system-disable ability
-│       ├── microjump.py           # Microjump tactical teleport ability
-│       ├── missile_batteries.py   # Missile Batteries salvo ability
-│       ├── repair_cloud.py        # Repair Cloud area healing ability
-│       └── scan_for_minefields.py # Scan for Minefields area reveal ability
-└── unit_orders/                   # Unit command and order execution subpackage
-    ├── __init__.py                # Package exports
-    ├── base.py                    # Order base class, OrderType, and OrderStatus enums
-    ├── abilities.py               # UseAbilityOrder implementation
-    ├── antimatter.py              # TransferAntimatter and ContinuousResupply orders
-    ├── colony.py                  # Colonize and LoadColonists orders
-    ├── combat.py                  # Attack and Protect orders
-    ├── construction.py            # ConstructOrder implementation
-    ├── defend.py                  # DefendOrder implementation (positional and perimeter defense)
-    ├── hangar.py                  # Dock, DeployUnit, and DeployAllWings orders
-    ├── inhibitor.py               # ToggleInhibitorOrder implementation
-    ├── intelligence.py            # InfiltrateUnit, InfiltratePlanet, RelocateAgent, Sabotage, CISweep, EliminateAgent, ExtractAgent orders
-    ├── minelayer.py               # LayMinefieldOrder implementation
-    ├── mining.py                  # Mine, UnloadResources, and ContinuousMine orders
-    ├── movement.py                # Move and ReachWaypoint orders
-    ├── patrol.py                  # PatrolOrder implementation
-    ├── refit.py                   # RefitOrder implementation (field component addition/removal)
-    └── repair.py                  # RepairOrder implementation
+│   ├── app_actions.py
+│   ├── selection_actions.py
+│   └── unit_actions.py
+├── game_ai/
+│   ├── __init__.py
+│   ├── adapters/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── fake.py
+│   │   └── openai_responses.py
+│   ├── command_spec.py
+│   ├── commands.py
+│   ├── config.py
+│   ├── contracts.py
+│   ├── coordinator.py
+│   ├── evaluation.py
+│   ├── intelligence.py
+│   ├── memory.py
+│   ├── observation.py
+│   ├── order_view.py
+│   ├── prompts.py
+│   ├── rules.py
+│   ├── runtime.py
+│   └── schema.py
+├── gui/
+│   ├── __init__.py
+│   ├── communications_window.py
+│   ├── context_menu.py
+│   ├── dynamic_actions.py
+│   ├── event_router.py
+│   ├── handler.py
+│   ├── layout_hud.py
+│   ├── layout_ingame_menu.py
+│   ├── layout_main_menu.py
+│   ├── layout_new_game_wizard.py
+│   ├── retrofit_gui/
+│   │   ├── __init__.py
+│   │   ├── catalog.py
+│   │   ├── layout.py
+│   │   ├── param_readers.py
+│   │   └── wizard.py
+│   ├── sidebar/
+│   │   ├── __init__.py
+│   │   ├── builder.py
+│   │   ├── order_formatting.py
+│   │   ├── panels_unit.py
+│   │   ├── panels_world.py
+│   │   └── view.py
+│   ├── text_layout.py
+│   ├── theme_loader.py
+│   └── unit_editor_gui/
+│       ├── __init__.py
+│       ├── catalog.py
+│       ├── component_state.py
+│       ├── cost_model.py
+│       ├── event_handlers.py
+│       ├── layout.py
+│       ├── layout_details.py
+│       ├── param_readers.py
+│       ├── save_dialog.py
+│       ├── summary_view.py
+│       ├── template_io.py
+│       ├── turret_editor.py
+│       ├── widget_factory.py
+│       └── window.py
+├── input_processor/
+│   ├── __init__.py
+│   ├── context_actions.py
+│   ├── context_menu_builder.py
+│   ├── hover_tracker.py
+│   ├── keyboard_handler.py
+│   ├── mouse_handler.py
+│   └── processor.py
+├── rendering/
+│   ├── drawing_utils.py
+│   ├── galaxy_renderer.py
+│   ├── main_menu_renderer.py
+│   ├── sector_renderer/
+│   │   ├── __init__.py
+│   │   ├── sector_celestial_renderer.py
+│   │   ├── sector_entity_renderer.py
+│   │   ├── sector_grid_renderer.py
+│   │   ├── sector_overlay_renderer.py
+│   │   └── sector_renderer.py
+│   └── system_renderer.py
+├── scripts/
+│   └── generate_reference.py
+├── unit_components/
+│   ├── __init__.py
+│   ├── abilities/
+│   │   ├── __init__.py
+│   │   ├── adaptive_forcefield.py
+│   │   ├── base.py
+│   │   ├── capture_unit.py
+│   │   ├── cluster_warhead.py
+│   │   ├── component.py
+│   │   ├── designate_target.py
+│   │   ├── drain_antimatter.py
+│   │   ├── ion_bolt.py
+│   │   ├── microjump.py
+│   │   ├── missile_batteries.py
+│   │   ├── registry.py
+│   │   ├── repair_cloud.py
+│   │   └── scan_for_minefields.py
+│   ├── antimatter.py
+│   ├── base.py
+│   ├── civilian_habitat.py
+│   ├── cloaking.py
+│   ├── colony.py
+│   ├── commander.py
+│   ├── constructor.py
+│   ├── defenses.py
+│   ├── enums.py
+│   ├── hangar.py
+│   ├── inhibitor.py
+│   ├── intelligence.py
+│   ├── marines.py
+│   ├── minelayer.py
+│   ├── mining.py
+│   ├── movement.py
+│   ├── orbital_defense.py
+│   ├── persistence.py
+│   ├── repair.py
+│   ├── sensors.py
+│   ├── strikecraft.py
+│   ├── trade.py
+│   └── weapons.py
+├── unit_orders/
+│   ├── __init__.py
+│   ├── abilities.py
+│   ├── antimatter.py
+│   ├── base.py
+│   ├── colony.py
+│   ├── combat.py
+│   ├── construction.py
+│   ├── defend.py
+│   ├── gas_giant.py
+│   ├── hangar.py
+│   ├── inhibitor.py
+│   ├── intelligence.py
+│   ├── minelayer.py
+│   ├── mining.py
+│   ├── movement.py
+│   ├── patrol.py
+│   ├── refit.py
+│   ├── repair.py
+│   ├── stance.py
+│   └── trade.py
+├── tests/  # Offline regression suite (test_*.py)
+└── saves/  # Runtime campaigns and logs
 ```
 
 ---
@@ -183,35 +238,63 @@ Wormhole Control features 6 hull classes (`HullSize`). Each hull size sets the c
 
 ## 3. Component Catalogue
 
-The Unit Designer (`gui/unit_editor_gui/catalog.py: COMPONENT_ROWS`) provides **22 selectable component rows**. In addition, all active units are equipped with a `Commander` component (order management and stances).
+<!-- BEGIN GENERATED: components -->
+The Unit Designer provides **24 selectable component rows**. Commander is always present.
 
-| # | Component Key | Label | Cost Type | Default Cost | Hull Size Restrictions / Notes |
-|---|---|---|---|---|---|
-| 1 | `has_engine` | Engines | Dynamic | 5.0 | Available on all hull sizes. Dynamic cost scales with sublight speed and hull size. |
-| 2 | `has_antimatter_storage` | Antimatter Storage | Dynamic | 5.0 | Available on all hull sizes. Dynamic cost scales with additional storage capacity. |
-| 3 | `has_antimatter_harvester` | Antimatter Harvester | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Harvests antimatter near stars. |
-| 4 | `has_hyperdrive` | Hyperdrive | Dynamic | 5.0 | Forbidden on `STRIKECRAFT_WING`. Basic hyperdrive available on `TINY`+; Advanced hyperdrive requires `SMALL`+. |
-| 5 | `has_weapon_bays` | Weapons | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with turret count, damage, range, and fire rate. |
-| 6 | `has_defenses` | Defenses | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with Armor, Shields, and Point Defense ratings. |
-| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables building space stations and starships (`TINY` through `HUGE`; strikecraft wings are excluded and constructed solely by units with a strikecraft bay), as well as field refitting (adding or removing components) on friendly and allied vessels. |
-| 8 | `has_repair_component` | Repair | Dynamic | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with repair rate. Repairs friendly and allied ships. |
-| 9 | `has_colony_component` | Colony | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables planetary colonization and loading colonists from friendly/allied worlds. |
-| 10 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Generates +50 credits/turn in colonized sectors up to the colony's supported habitat limit (base 1, +1 per 25 population). |
-| 11 | `has_orbital_defense_component` | Orbital Defense | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Projects an area-of-effect aura (500 radius) providing +20% weapon damage and +20% defense mitigation to friendly and allied ships in range in friendly/allied colonized sectors up to the colony's supported orbital defense limit (base 1, +1 per 25 population). Overlapping auras stack additively. |
-| 12 | `has_trade_component` | Trade Module | Fixed | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. **Requires Engines (`has_engine`)**. Enables trade ships to earn credits by traveling between active Civilian Habitat modules in different sectors, with payout scaling with distance between sectors. |
-| 13 | `has_mining_component` | Mining | Dynamic | 10.0 | Available on all hull sizes. Dynamic cost scales with mining rate and cargo capacity. |
-| 14 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined ore into metal. |
-| 15 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined crystals into usable crystal stock. |
-| 16 | `has_hangar` | Hangar | Dynamic | 20.0 | Restricted to `LARGE` and `HUGE` hulls only. Dynamic cost scales with hangar slot capacity. |
-| 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. Solely responsible for the construction and replenishment of strikecraft wings. |
-| 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 20.0 | Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with inhibition field radius. |
-| 19 | `has_ability_component` | Abilities | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with number of equipped abilities. |
-| 20 | `has_sensors` | Sensors | Dynamic | 2.0 | Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. Coverage is shared across all allied players. |
-| 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields that ignore friendly and allied vessels. |
-| 22 | `has_marines_component` | Marines | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count. |
-| 23 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 / 30.0 | Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly and allied units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius). |
-| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 | Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps (activated via the component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to protect friendly and allied assets and eliminate discovered enemy agents. |
-| — | *Always Present* | Commander | — | — | Core component present on all ships; manages order queues and combat stances. |
+| # | Component Key | Label | Cost Type | Default Cost |
+| --- | --- | --- | --- | --- |
+| 1 | `has_engine` | Engines | Dynamic | 5.0 |
+| 2 | `has_antimatter_storage` | Antimatter Storage | Dynamic | 5.0 |
+| 3 | `has_antimatter_harvester` | Antimatter Harvester | Fixed | 15.0 |
+| 4 | `has_hyperdrive` | Hyperdrive | Dynamic | 5.0 |
+| 5 | `has_weapon_bays` | Weapons | Dynamic | 10.0 |
+| 6 | `has_defenses` | Defenses | Dynamic | 10.0 |
+| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 |
+| 8 | `has_repair_component` | Repair | Dynamic | 15.0 |
+| 9 | `has_colony_component` | Colony | Fixed | 10.0 |
+| 10 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 |
+| 11 | `has_orbital_defense_component` | Orbital Defense | Fixed | 20.0 |
+| 12 | `has_trade_component` | Trade Module | Fixed | 10.0 |
+| 13 | `has_mining_component` | Mining | Dynamic | 10.0 |
+| 14 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 |
+| 15 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 |
+| 16 | `has_hangar` | Hangar | Dynamic | 20.0 |
+| 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 |
+| 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 20.0 |
+| 19 | `has_ability_component` | Abilities | Dynamic | 10.0 |
+| 20 | `has_sensors` | Sensors | Dynamic | 2.0 |
+| 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 |
+| 22 | `has_marines_component` | Marines | Dynamic | 10.0 |
+| 23 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 |
+| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 |
+<!-- END GENERATED: components -->
+
+Hull restrictions and component behavior:
+
+- **Engines**: Available on all hull sizes. Dynamic cost scales with sublight speed and hull size.
+- **Antimatter Storage**: Available on all hull sizes. Dynamic cost scales with additional storage capacity.
+- **Antimatter Harvester**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Harvests antimatter near stars.
+- **Hyperdrive**: Forbidden on `STRIKECRAFT_WING`. Basic hyperdrive available on `TINY`+; Advanced hyperdrive requires `SMALL`+.
+- **Weapons**: Available on all hull sizes. Dynamic cost scales with turret count, damage, range, and fire rate.
+- **Defenses**: Available on all hull sizes. Dynamic cost scales with Armor, Shields, and Point Defense ratings.
+- **Constructor**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables building space stations and starships (`TINY` through `HUGE`; strikecraft wings are excluded and constructed solely by units with a strikecraft bay), as well as field refitting (adding or removing components) on friendly and allied vessels.
+- **Repair**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with repair rate. Repairs friendly and allied ships.
+- **Colony**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Enables planetary colonization and loading colonists from friendly/allied worlds.
+- **Civilian Habitat**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Generates +50 credits/turn in colonized sectors up to the colony's supported habitat limit (base 1, +1 per 25 population).
+- **Orbital Defense**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Projects an area-of-effect aura (500 radius) providing +20% weapon damage and +20% defense mitigation to friendly and allied ships in range in friendly/allied colonized sectors up to the colony's supported orbital defense limit (base 1, +1 per 25 population). Overlapping auras stack additively.
+- **Trade Module**: Forbidden on `STRIKECRAFT_WING` and `TINY`. **Requires Engines (`has_engine`)**. Enables trade ships to earn credits by traveling between active Civilian Habitat modules in different sectors, with payout scaling with distance between sectors.
+- **Mining**: Available on all hull sizes. Dynamic cost scales with mining rate and cargo capacity.
+- **Metal Refinery**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined ore into metal.
+- **Crystal Refinery**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined crystals into usable crystal stock.
+- **Hangar**: Restricted to `LARGE` and `HUGE` hulls only. Dynamic cost scales with hangar slot capacity.
+- **Strikecraft Bay**: Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. Solely responsible for the construction and replenishment of strikecraft wings.
+- **Inhibitor Field**: Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with inhibition field radius.
+- **Abilities**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with number of equipped abilities.
+- **Sensors**: Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. Coverage is shared across all allied players.
+- **Minelayer**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields that ignore friendly and allied vessels.
+- **Marines**: Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count.
+- **Cloaking Device**: Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly and allied units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius).
+- **Intelligence**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps (activated via the component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to protect friendly and allied assets and eliminate discovered enemy agents.
 
 An Engines component is operational only while it has hit points remaining and
 provides a positive effective speed. Destroyed Engines immediately halt and
@@ -222,31 +305,43 @@ hex or wormhole jumps performed by an otherwise operational Hyperdrive.
 
 ## 4. Special Abilities
 
-There are **10 special abilities** in the game, registered in `unit_components/abilities/registry.py`. Each ability requires a specific component installed on the unit design.
+Tactical positions and ranges use logical sector units (sector radius 5000); renderers convert them to pixels.
 
-Unless explicitly described as screen-space rendering, tactical positions,
-distances, and radii are measured in **logical sector units**. Each sector has a
-logical radius of 5000 units; renderers convert those values to screen pixels
-according to resolution and camera zoom.
+<!-- BEGIN GENERATED: abilities -->
+There are **10 special abilities** registered in the game.
 
-| Ability | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Required Component | Target Type | Description |
-|---|---|---|---|---|---|---|---|
-| **Adaptive Forcefield** | 8 | 3 | 0 (self) | 20 | Defenses (`has_defenses`) | None (Self) | Temporarily raises defensive mitigation against incoming attacks. |
-| **Cluster Warhead** | 5 | 0 | 500.0 | 30 | Weapons (`has_weapon_bays`) | Position | Detonates an area-of-effect cluster warhead at the designated coordinate. |
-| **Designate Target** | 6 | 4 | 450.0 | 15 | Sensors (`has_sensors`) | Unit | Tags an enemy unit with sensor lock, increasing fleet attack accuracy against it. |
-| **Ion Bolt** | 7 | 3 | 400.0 | 25 | Weapons (`has_weapon_bays`) | Unit | Fires an electromagnetic bolt that disables the target's sublight engines and weapons. |
-| **Missile Batteries** | 10 | 4 | 0 (self) | 40 | Weapons (`has_weapon_bays`) | None (Self) | Deploys autonomous missile platforms that fire coordinated salvos at nearby hostiles. |
-| **Repair Cloud** | 8 | 4 | 350.0 | 35 | Repair (`has_repair_component`) | None (Self) | Emits an expanding nanite cloud that continuously repairs adjacent friendly units. |
-| **Capture Unit** | 10 | 0 | 100.0 | 40 | Marines (`has_marines_component`) | Unit | Launches an armed marine boarding party to commandeer and seize control of an enemy vessel. |
-| **Drain Antimatter** | 6 | 0 | 300.0 | 0 | Antimatter Storage (`has_antimatter_storage`) | Unit | Siphons antimatter fuel directly from an enemy unit's storage tanks into your own. |
-| **Microjump** | 5 | 0 | 0 (sector) | 25 | Hyperdrive (`has_hyperdrive`) | Position | Executes an instant tactical micro-hyperjump to any target location in the same sector. |
-| **Scan for Minefields** | 6 | 0 | 1500.0 | 35 | Sensors (`has_sensors`) | None (Self) | Emits a high-frequency sensor sweep that permanently reveals all enemy minefields within range. |
+| Ability | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Required Component | Target Type |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Adaptive Forcefield** | 8 | 3 | 0.0 | 20 | Defenses | Self |
+| **Cluster Warhead** | 5 | 0 | 500.0 | 30 | Weapons | Position |
+| **Designate Target** | 6 | 4 | 450.0 | 15 | Sensors | Unit |
+| **Ion Bolt** | 7 | 3 | 400.0 | 25 | Weapons | Unit |
+| **Missile Batteries** | 10 | 4 | 0.0 | 40 | Weapons | Self |
+| **Repair Cloud** | 8 | 4 | 350.0 | 35 | Repair | Self |
+| **Capture Unit** | 10 | 0 | 100.0 | 40 | Marines | Unit |
+| **Drain Antimatter** | 6 | 0 | 300.0 | 0 | Antimatter Storage | Unit |
+| **Microjump** | 5 | 0 | 0.0 | 25 | Hyperdrive | Position |
+| **Scan for Minefields** | 6 | 0 | 1500.0 | 35 | Sensors | Self |
+<!-- END GENERATED: abilities -->
+
+- **Adaptive Forcefield**: Temporarily raises defensive mitigation against incoming attacks.
+- **Cluster Warhead**: Detonates an area-of-effect cluster warhead at the designated coordinate.
+- **Designate Target**: Applies +50% turret damage amplification to the marked enemy; contributions from different sources stack additively.
+- **Ion Bolt**: Fires an electromagnetic bolt that disables the target's sublight engines and weapons.
+- **Missile Batteries**: Deploys autonomous missile platforms that fire coordinated salvos at nearby hostiles.
+- **Repair Cloud**: Emits an expanding nanite cloud that continuously repairs adjacent friendly units.
+- **Capture Unit**: Launches an armed marine boarding party to commandeer and seize control of an enemy vessel.
+- **Drain Antimatter**: Siphons antimatter fuel directly from an enemy unit's storage tanks into your own.
+- **Microjump**: Executes an instant tactical micro-hyperjump to any target location in the same sector.
+- **Scan for Minefields**: Emits a high-frequency sensor sweep that permanently reveals all enemy minefields within range.
 
 ---
 
 ## 5. Order Types
 
-The `OrderType` enum (`unit_orders/base.py`) defines **34 order types**. Thirty-three are explicit or internal action types; `STANCE` is the persistent standing-order root:
+<!-- BEGIN GENERATED: order-count -->
+The `OrderType` enum defines **34 order types**, including the persistent `STANCE` root.
+<!-- END GENERATED: order-count -->
 
 | Order Type | Description |
 |---|---|
@@ -448,6 +543,7 @@ Normal requires at least as many requested and actual systems as players, unique
 ```
 
 - **Event Bus (`events.py`)**: Decouples input handling, order queuing, and UI notifications using a lightweight publish/subscribe pattern.
+- **Inter-system Routing (`pathfinding.py`)**: Unweighted Dijkstra selects shortest feasible system routes; intra-system jump waypoints use cube-coordinate interpolation on the hex grid.
 - **Order System (`order_system.py`)**: Manages hierarchical order lifecycles (parent orders and dynamically generated sub-orders), route pathfinding, jump safety checks, and continuous loops.
 - **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly and allied units within build range (500 logical units). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
 - **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, conceals units inside nebulae from long-range sensors, and persists last-known sector intel per player.
@@ -674,7 +770,7 @@ blocking as guidance rather than forbidding intentional queued work.
 Tactical observations include actual turret range/cooldown/target classes, base/effective
 sensor and hyperdrive ranges, jump status/functionality, support ranges, defend radius and
 cloak status/upkeep. Supported hardware is distinguished from current issuance legality.
-Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
+Friendly/allied turret observations retain `cooldown` (base) and `cooldown_remaining`, and add `effective_cooldown` (reset if fired here). Already-exposed celestial bodies include numeric `environmental_effects` where applicable. These additive fields retain observation schema 5, command contract 3 and socket protocol 2. Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
 nonexistent target guesses receive indistinguishable public errors. Hidden target-derived
 movement geometry is redacted; explicit player coordinates remain order intent. No raw
 persistence or sidebar state is serialized into AI observations.
@@ -708,17 +804,29 @@ remain available. Waypoint previews are limited to 16; omitted counts are explic
 
 Every planet generated in the galaxy possesses distinctive biological and geological traits defined in `PLANET_TRAITS`:
 
-| Planet Type | Colonizable | Max Population | Growth Rate | Passive Metal | Passive Crystal | Antimatter Multiplier | Notes |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Terran** | Yes | 100.0 | 2.0% / turn | 0.0 | 0.0 | 0.0x | Balanced biosphere with standard habitability. |
-| **Oceanic** | Yes | 120.0 | 2.5% / turn | 0.0 | 0.0 | 0.0x | High carrying capacity and rapid population expansion. |
-| **Desert** | Yes | 75.0 | 1.5% / turn | 0.0 | 0.0 | 0.0x | Arid wasteland with restricted water reservoirs. |
-| **Ice** | Yes | 60.0 | 1.0% / turn | 0.0 | 2.0 / turn | 0.0x | Glaciated crust yielding passive crystal extraction. |
-| **Barren** | Yes | 40.0 | 0.8% / turn | 0.0 | 0.0 | 0.0x | Airless rock requiring pressurized dome complexes. |
-| **Volcanic** | Yes | 50.0 | 0.8% / turn | 5.0 / turn | 0.0 | 0.0x | Geothermal magma chambers rich in raw minerals. |
-| **Ferrous** | Yes | 70.0 | 1.2% / turn | 8.0 / turn | 0.0 | 0.0x | Massive heavy-metal mantle generating industrial iron. |
-| **Greenhouse** | Yes | 35.0 | 0.5% / turn | 0.0 | 3.0 / turn | 0.0x | Superheated dense atmosphere yielding synthetic crystal. |
-| **Gas Giant** | **No** | 0.0 | 0.0% | 0.0 | 0.0 | 0.0x | Atmospheric hiding cover; 3500 inhibition. |
+<!-- BEGIN GENERATED: planets -->
+| Planet Type | Colonizable | Max Population | Growth Rate | Passive Metal | Passive Crystal | Antimatter Multiplier |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Terran** | Yes | 100.0 | 2% / turn | 0.0 | 0.0 | 0.0x |
+| **Oceanic** | Yes | 120.0 | 2.5% / turn | 0.0 | 0.0 | 0.0x |
+| **Desert** | Yes | 75.0 | 1.5% / turn | 0.0 | 0.0 | 0.0x |
+| **Ice** | Yes | 60.0 | 1% / turn | 0.0 | 2.0 | 0.0x |
+| **Barren** | Yes | 40.0 | 0.8% / turn | 0.0 | 0.0 | 0.0x |
+| **Volcanic** | Yes | 50.0 | 0.8% / turn | 5.0 | 0.0 | 0.0x |
+| **Ferrous** | Yes | 70.0 | 1.2% / turn | 8.0 | 0.0 | 0.0x |
+| **Greenhouse** | Yes | 35.0 | 0.5% / turn | 0.0 | 3.0 | 0.0x |
+| **Gas Giant** | No | 0.0 | 0% / turn | 0.0 | 0.0 | 0.0x |
+<!-- END GENERATED: planets -->
+
+- **Terran**: Balanced biosphere with standard habitability.
+- **Oceanic**: High carrying capacity and rapid population expansion.
+- **Desert**: Arid wasteland with restricted water reservoirs.
+- **Ice**: Glaciated crust yielding passive crystal extraction.
+- **Barren**: Airless rock requiring pressurized dome complexes.
+- **Volcanic**: Geothermal magma chambers rich in raw minerals.
+- **Ferrous**: Massive heavy-metal mantle generating industrial iron.
+- **Greenhouse**: Superheated dense atmosphere yielding synthetic crystal.
+- **Gas Giant**: Atmospheric hiding cover; 3500 inhibition.
 
 - **Moons & Colonizable Asteroids**: Both support colonization. Moons have a population cap of 50.0 and growth of 1.0% per owner turn; colonizable asteroids have a cap of 20.0 and growth of 0.5% per owner turn.
 - **Population bounds**: Starting planets use the smaller of requested population and their cap. Existing over-cap planetary populations are clamped before growth or growth-sabotage checks, so sabotage cannot preserve an overflow.
@@ -732,6 +840,20 @@ Stars anchor the gravitational and hyperspace topology of star systems:
 - **Giant Stars (Blue Giant, Red Giant)**: Massive stellar radius (900.0 physical collision radius) with extended hyperspace inhibition fields (3750 radius).
 
 ### 12.3 Environmental Fields & Tactical Cover
+
+<!-- BEGIN GENERATED: environment -->
+| Density | Ice beam cover | Debris kinetic/missile cover |
+| --- | --- | --- |
+| Low | 5% | 5% |
+| Medium | 10% | 10% |
+| High | 15% | 15% |
+
+| Environment | Combat modifier |
+| --- | --- |
+| Ice field | -1 turn to cooldown reset when firing |
+| Nitrogen nebula | -1 turn to cooldown reset when firing |
+| Oxygen nebula | 1.15x splash damage taken |
+<!-- END GENERATED: environment -->
  
 - **Selection & Interaction**: Non-solid celestial bodies (Asteroid Fields, Ice Fields, Debris Fields, Nebulae, and Storms) are atmospheric and environmental regions with `is_solid = False`. They cannot be selected by clicking inside their area in the sector view canvas, preventing accidental click interception and preserving open tactical movement/patrol clicks. They are inspected and selected exclusively via the sidebar panel of their containing hex. In Sector View, all non-solid bodies are visually rendered with an exact-radius turquoise circle (`TURQUOISE = (64, 224, 208)`) marking their physical boundary and area of effect for the player. AI agents observe `is_solid = False` and the exact `effect_radius` for these bodies in system observations.
 - **Hull Size Access Gating**:
@@ -747,11 +869,11 @@ Stars anchor the gravitational and hyperspace topology of star systems:
   - **Mining Target**: Non-mineable for raw metal (raw metal extraction is strictly exclusive to concentrated `MetalAsteroid` bodies).
   - **Inhibition**: No hyperspace inhibition (0.0 radius).
 - **Ice Field**:
-  - **Tactical Cover**: Dense cryogenic ice particles scatter coherent energy, providing beam defense mitigation (LOW: +8%, MEDIUM: +12%, HIGH: +16%).
-  - **Cooling Aid**: Ambient sub-zero coolant reduces weapon heat dissipation cooldowns by 1 turn.
+  - **Tactical Cover**: Dense cryogenic ice particles scatter coherent energy, providing beam defense mitigation (see the generated density table above).
+  - **Cooling Aid**: Ice and nitrogen coolant reduce the reset cooldown when a turret fires, using the values above. Apply cooling after turret-variant scaling, with a minimum positive reset of one turn; existing zero-cooldown designs remain zero. Overlapping coolant sources do not stack. The normal owner-turn tick is unchanged, and entering or leaving a field never recalculates a running cooldown. All turret types and hull classes benefit; ability cooldowns are unaffected.
   - **Navigation**: Sublight speed drag scaled by density (LOW: 0.90x, MEDIUM: 0.80x, HIGH: 0.70x; strikecraft wings exempt). No hyperspace inhibition (0.0 radius). Non-mineable for crystal.
 - **Debris Field**:
-  - **Tactical Cover**: Dense wreckage fragments intercept ballistic projectiles, providing kinetic and missile defense mitigation (LOW: +8%, MEDIUM: +12%, HIGH: +16%).
+  - **Tactical Cover**: Dense wreckage fragments intercept ballistic projectiles, providing kinetic and missile defense mitigation (see the generated density table above).
   - **Navigation Hazard**: Moving at high sublight velocities (`speed > 50.0`) through the debris causes abrasive hull damage scaled by density (LOW: 1 HP, MEDIUM: 2 HP, HIGH: 3 HP per turn; strikecraft wings exempt).
   - **Navigation Drag**: Sublight speed drag scaled by density (LOW: 0.85x, MEDIUM: 0.75x, HIGH: 0.65x; strikecraft wings exempt). Non-mineable. No hyperspace inhibition (0.0 radius).
 
@@ -760,14 +882,16 @@ Stars anchor the gravitational and hyperspace topology of star systems:
 - **Nebulae** (`radius = 3600.0` logical units):
   - **All Nebulae**: Defeat long-range sensor detection, concealing ships from enemy presence radars.
   - **Hydrogen Nebula**: High molecular fuel density allows Antimatter Harvesters to scoop fuel at 0.4x base harvest rate; ships traveling inside burn 50% less antimatter during sublight propulsion (`HYDROGEN_NEBULA_AM_BURN_MOD = 0.5`).
-  - **Nitrogen Nebula**: Cryogenic coolant cloud aids radiator dispersal, reducing weapon cooldown by 1 turn.
-  - **Oxygen Nebula**: Volatile combustible gas accelerates shield recharging (+25% shield regeneration bonus) but exacerbates explosive weapon vulnerability (+15% splash damage taken).
+  - **Nitrogen Nebula**: Uses the same non-stacking on-fire turret cooling rule as ice fields (see §12.3).
+  - **Oxygen Nebula**: Amplifies splash damage against a victim inside its radius (see the generated multiplier in §12.3). Cluster Warhead is currently the splash source; ordinary missiles, minefields, hazards and component spillover are unaffected. Apply once after falloff and before existing mitigation, truncating the decimal product to an integer. Overlapping oxygen clouds do not stack. Shields retain mitigation strength and have no regenerating health pool.
   - **Dust Nebula**: Dense particulate scatter reduces short-range visual sensor radius by 30% (`DUST_NEBULA_SENSOR_MOD = 0.70`).
 - **Space Storms** (`radius = 3600.0` logical units):
   - **Plasma Storm**: Inflicts 8 thermal damage per turn to unit hit points.
   - **Magnetic Storm**: Drains 6 antimatter per turn from onboard reserves; violent electromagnetic flux completely scrambles long-range radar projection from within the storm. Strikecraft wings are strictly banned from entering or launching within Magnetic Storms.
   - **Radiation Storm**: Energetic cosmic radiation inflicts 4 damage per turn to a random functional unit component, degrading subsystem integrity.
 
+
+Environmental queries use the current sector and include points exactly on the body radius. Hidden and docked units receive no external modifiers. Base turret cooldowns and remaining cooldowns retain their existing save 4.0 fields; location-derived modifiers are recomputed.
 
 ### 12.5 Gas-Giant Atmospheric Hiding
 
@@ -792,10 +916,21 @@ This is a position check: crossing a field without ending inside it does not tri
 
 ## Runtime storage and API failure contracts
 
-Custom designs use platform user-data storage with an absolute `WORMHOLE_USER_DATA_DIR` override; see [storage paths and upgrade sequencing](../README.md#custom-design-storage-and-migration). `CustomTemplateManager(data_file=..., legacy_file=...)` supports isolated libraries; an explicit data path disables automatic legacy discovery. Migration validates the complete library before copying, preserves legacy bytes, and never replaces an existing user library. Historical designs are decoded without retroactive hull-budget validation. This migration release deliberately retains the tracked legacy file; its removal belongs to the following release.
+Custom designs use platform user-data storage with an absolute `WORMHOLE_USER_DATA_DIR` override; see [storage paths and upgrade sequencing](../README.md#custom-design-storage-and-migration). `CustomTemplateManager(data_file=..., legacy_file=...)` supports isolated libraries; an explicit data path disables automatic legacy discovery. Migration validates the complete library before copying, preserves legacy bytes, and never replaces an existing user library. Historical designs are decoded without retroactive hull-budget validation. The legacy file is no longer distributed or tracked; migration still accepts an existing legacy file, and fresh installations start with an empty library.
 
 Design saves, renames, and deletions persist through atomic replacement before updating the manager or `UNIT_TEMPLATES`. Successful return values and validation-error lists are unchanged. Storage failures raise `TemplatePersistenceError`, which the editor displays without reporting success. Loading reports failures through `last_load_error` and logging, retaining existing state and blocking subsequent writes until a successful reload.
 
 Missing-hex lookups return empty lists; valid lookups return the live sector collections. Inter-system transfers return `False` for unknown systems or invalid destination hexes without changing unit location or membership. `ControlService(host=...)` accepts only `127.0.0.1` and raises `ValueError` for other values before creating a socket.
 
 Unexpected command preparation/commit failures retain their existing public error contracts, atomic preflight, and partial-commit recovery rules. Internal diagnostics include stage, command index/type, exception class, and traceback frame locations only; exception messages, payloads, source lines, observations, memory, and locals are omitted. Resource paths resolve from the application module or PyInstaller bundle, never the working directory.
+
+
+## New-campaign validation
+
+The wizard, direct Python setup and control protocol share side-effect-free settings validation. Campaigns require 2–6 players and 5–30 systems; both radius bounds are integers in 3–12 with minimum no greater than maximum. Distances are finite and positive with minimum strictly smaller than maximum; wormhole density is in [0, 1]. Resources are finite and non-negative, and starting population is a non-negative integer. Zero is accepted without replacing it with defaults. Booleans are not numeric settings.
+
+Player names are trimmed, 1–80 characters, unique ignoring case and contain no control characters. Colors are three integer RGB channels in [0, 255]; repeated colors are allowed. Teams use positive integer IDs and at least two teams are required. Controllers, reasoning effort (low/medium/high), repair retries (1–5), spawn profiles and assignment modes must be recognized. Omitted values keep their defaults; invalid values produce explicit errors. Home names must be strings or None, with blank/Random treated as unassigned.
+
+`GameSettings.validation_issues()` returns field/code/message records without mutation; `validate()` retains its list-of-strings interface. Invalid construction raises `SettingsValidationError`, a `ValueError` subclass. `preview_only=True` is a constructor-only map validation mode for previews, not a campaign validation bypass. Preparation always revalidates full settings before isolation and checks the generated topology again before commit. The control adapter retains its envelope and public error codes, including the exactly-one-Codex-player requirement. Save loading does not enforce new-campaign restrictions.
+
+Generated blocks are maintained with `python scripts/generate_reference.py`; `--check` detects drift without writing. Numeric tables come from runtime constants and registries; the explanatory prose remains hand-maintained.

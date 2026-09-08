@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import json
 import logging
-import math
 import os
 import queue
 import secrets
@@ -20,8 +19,8 @@ from typing import Any, cast
 from game_ai.commands import CommandGateway
 from game_ai.contracts import Command, CommandBatch, ContractError
 from game_ai.observation import build_observation
-from game_ai.runtime import MAX_REPAIR_RETRIES, MIN_REPAIR_RETRIES
-from game_settings import GameSettings, PlayerConfig, PLAYER_COLOR_PALETTE, SpawnProfile
+from game_settings import (GameSettings, PlayerConfig, PLAYER_COLOR_PALETTE,
+                           SettingsValidationError, MIN_PLAYERS, MAX_PLAYERS)
 from player_controller import PlayerController
 
 logger = logging.getLogger(__name__)
@@ -520,77 +519,16 @@ def _parse_new_game_settings(raw: Any) -> GameSettings:
     if unknown:
         raise ProtocolError("unknown_settings", "Unknown game settings fields.", unknown)
     players_raw = raw.get("players")
-    if not isinstance(players_raw, list) or not 2 <= len(players_raw) <= 6:
+    if not isinstance(players_raw, list) or not MIN_PLAYERS <= len(players_raw) <= MAX_PLAYERS:
         raise ProtocolError("invalid_players", "settings.players must contain 2-6 player objects.")
     players = [_parse_player_config(item, index) for index, item in enumerate(players_raw)]
     if sum(config.controller == PlayerController.CODEX for config in players) != 1:
         raise ProtocolError("invalid_codex_count", "A campaign must contain exactly one Codex player.")
-    if len({config.team_id for config in players}) < 2:
-        raise ProtocolError("invalid_teams", "Players must belong to at least two teams.")
-
-    kwargs: dict[str, Any] = {"player_configs": players}
-    integer_fields = {"num_systems", "system_radius_min", "system_radius_max", "starting_population"}
-    number_fields = {
-        "min_system_distance",
-        "max_system_distance",
-        "wormhole_density",
-        "starting_credits",
-        "starting_metal",
-        "starting_crystal",
-    }
-    for field in integer_fields:
-        if field in raw:
-            value = raw[field]
-            if isinstance(value, bool) or not isinstance(value, int):
-                raise ProtocolError("invalid_settings", f"settings.{field} must be an integer.")
-            kwargs[field] = value
-    for field in number_fields:
-        if field in raw:
-            value = raw[field]
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise ProtocolError("invalid_settings", f"settings.{field} must be a number.")
-            if not math.isfinite(float(value)):
-                raise ProtocolError("invalid_settings", f"settings.{field} must be finite.")
-            kwargs[field] = float(value)
-
-    if "spawn_profile" in raw:
-        val = raw["spawn_profile"]
-        if not isinstance(val, (str, SpawnProfile)):
-            raise ProtocolError("invalid_settings", "settings.spawn_profile must be a string.")
-        try:
-            kwargs["spawn_profile"] = SpawnProfile(val)
-        except ValueError:
-            raise ProtocolError("invalid_settings", f"Invalid spawn_profile: {val}. Must be 'normal' or 'testing'.")
-
-    if "home_system_assignment_mode" in raw:
-        mode_val = raw["home_system_assignment_mode"]
-        if not isinstance(mode_val, str) or mode_val.lower() not in {"random", "specified"}:
-            raise ProtocolError("invalid_settings", "settings.home_system_assignment_mode must be 'random' or 'specified'.")
-        kwargs["home_system_assignment_mode"] = mode_val.lower()
-
-    num_systems = kwargs.get("num_systems", GameSettings.num_systems)
-    radius_min = kwargs.get("system_radius_min", GameSettings.system_radius_min)
-    radius_max = kwargs.get("system_radius_max", GameSettings.system_radius_max)
-    population = kwargs.get("starting_population", GameSettings.starting_population)
-    if not 5 <= num_systems <= 30:
-        raise ProtocolError("invalid_settings", "settings.num_systems must be between 5 and 30.")
-    if not 3 <= radius_min <= 10 or not 3 <= radius_max <= 10:
-        raise ProtocolError("invalid_settings", "System radii must be between 3 and 10.")
-    if population < 0:
-        raise ProtocolError("invalid_settings", "settings.starting_population cannot be negative.")
-    density = kwargs.get("wormhole_density", GameSettings.wormhole_density)
-    if not 0.0 <= density <= 1.0:
-        raise ProtocolError("invalid_settings", "settings.wormhole_density must be between 0 and 1.")
-    for field in ("min_system_distance", "max_system_distance"):
-        if kwargs.get(field, getattr(GameSettings, field)) <= 0:
-            raise ProtocolError("invalid_settings", f"settings.{field} must be positive.")
-    for field in ("starting_credits", "starting_metal", "starting_crystal"):
-        if kwargs.get(field, getattr(GameSettings, field)) < 0:
-            raise ProtocolError("invalid_settings", f"settings.{field} cannot be negative.")
+    kwargs = {key: value for key, value in raw.items() if key != "players"}
     try:
-        return GameSettings(**kwargs)
-    except ValueError as exc:
-        raise ProtocolError("invalid_settings", str(exc)) from exc
+        return GameSettings(player_configs=players, **kwargs)
+    except SettingsValidationError as exc:
+        raise ProtocolError(exc.issues[0].code, str(exc)) from exc
 
 
 def _parse_player_config(raw: Any, index: int) -> PlayerConfig:
@@ -602,41 +540,12 @@ def _parse_player_config(raw: Any, index: int) -> PlayerConfig:
     missing = [field for field in ("name", "controller", "team_id") if field not in raw]
     if missing:
         raise ProtocolError("missing_player_fields", f"Player {index} is missing required fields.", missing)
-    name = raw["name"]
-    if not isinstance(name, str) or not name.strip() or len(name.strip()) > 80:
-        raise ProtocolError("invalid_player_name", f"Player {index} name must contain 1-80 characters.")
+    values = dict(raw)
+    values.setdefault("color", PLAYER_COLOR_PALETTE[index % len(PLAYER_COLOR_PALETTE)][1])
     try:
-        controller = PlayerController(raw["controller"])
-    except (TypeError, ValueError) as exc:
-        raise ProtocolError("invalid_controller", f"Player {index} controller must be human, openai, or codex.") from exc
-    team_id = raw["team_id"]
-    if isinstance(team_id, bool) or not isinstance(team_id, int) or team_id < 1:
-        raise ProtocolError("invalid_team", f"Player {index} team_id must be a positive integer.")
-    color = raw.get("color", PLAYER_COLOR_PALETTE[index % len(PLAYER_COLOR_PALETTE)][1])
-    if (
-        not isinstance(color, (list, tuple))
-        or len(color) != 3
-        or any(isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 255 for value in color)
-    ):
-        raise ProtocolError("invalid_color", f"Player {index} color must be three integers from 0 to 255.")
-    effort = raw.get("ai_reasoning_effort", "medium")
-    retries = raw.get("ai_repair_retries", 2)
-    if controller != PlayerController.OPENAI and ({"ai_reasoning_effort", "ai_repair_retries"} & set(raw)):
+        config = PlayerConfig(**values)
+    except SettingsValidationError as exc:
+        raise ProtocolError(exc.issues[0].code, str(exc)) from exc
+    if config.controller != PlayerController.OPENAI and ({"ai_reasoning_effort", "ai_repair_retries"} & set(raw)):
         raise ProtocolError("irrelevant_ai_settings", f"Player {index} AI settings are only valid for openai controllers.")
-    if effort not in {"low", "medium", "high"}:
-        raise ProtocolError("invalid_reasoning_effort", f"Player {index} ai_reasoning_effort must be low, medium, or high.")
-    if isinstance(retries, bool) or not isinstance(retries, int) or not MIN_REPAIR_RETRIES <= retries <= MAX_REPAIR_RETRIES:
-        raise ProtocolError(
-            "invalid_repair_retries",
-            f"Player {index} ai_repair_retries must be between {MIN_REPAIR_RETRIES} and {MAX_REPAIR_RETRIES}.",
-        )
-    home_system_name = raw.get("home_system_name")
-    return PlayerConfig(
-        name=name.strip(),
-        color=tuple(color),
-        controller=controller,
-        team_id=team_id,
-        ai_reasoning_effort=effort,
-        ai_repair_retries=retries,
-        home_system_name=home_system_name,
-    )
+    return config
