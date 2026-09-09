@@ -11,6 +11,21 @@ def selection_color_for(obj):
     return owner.color if owner is not None else SELECTION_HIGHLIGHT_COLOR
 
 
+def draw_selection_brackets(surface, color, rect):
+    """Draw four open corners around a screen-space rectangle, without rounding bounds."""
+    left, top, width, height = rect
+    right, bottom = left + width, top + height
+    dx, dy = width * 0.25, height * 0.25
+    for x, y, arm_x, arm_y in (
+        (left, top, dx, dy),
+        (right, top, -dx, dy),
+        (left, bottom, dx, -dy),
+        (right, bottom, -dx, -dy),
+    ):
+        pygame.draw.lines(surface, color, False,
+                          [(x + arm_x, y), (x, y), (x, y + arm_y)], 2)
+
+
 def draw_dotted_line(surface: pygame.Surface, color: Color, start, end, width: int = 1,
                      dot_len: int = 6, gap_len: int = 12):
     """Draw a dotted (dashed) line from start to end.

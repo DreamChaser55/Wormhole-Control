@@ -2,13 +2,12 @@ from display_config import display_config_for
 import sys
 import math
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, FOG_OF_WAR_COLOR, XP_SPEED_BONUS
-from rendering.drawing_utils import selection_color_for
+from rendering.drawing_utils import draw_selection_brackets, selection_color_for
 from geometry import distance, Position
 from domain.units import Unit
 from unit_orders.base import OrderType
 
 MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
-SELECTION_BRACKET_SIDE_FRACTION = 0.25
 
 
 def _sr():
@@ -66,44 +65,9 @@ class SectorOverlayRenderer:
             selection_color = selection_color_for(obj)
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             r = pixel_radius + 5
-            tick_length = (2 * r) * SELECTION_BRACKET_SIDE_FRACTION
-            
-            left = obj_pixel_pos.x - r
-            right = obj_pixel_pos.x + r
-            top = obj_pixel_pos.y - r
-            bottom = obj_pixel_pos.y + r
-            
-            # Top-Left corner bracket
-            _sr().pygame.draw.lines(
-                self.overlay_surface,
-                selection_color,
-                False,
-                [(left + tick_length, top), (left, top), (left, top + tick_length)],
-                2
-            )
-            # Top-Right corner bracket
-            _sr().pygame.draw.lines(
-                self.overlay_surface,
-                selection_color,
-                False,
-                [(right - tick_length, top), (right, top), (right, top + tick_length)],
-                2
-            )
-            # Bottom-Left corner bracket
-            _sr().pygame.draw.lines(
-                self.overlay_surface,
-                selection_color,
-                False,
-                [(left + tick_length, bottom), (left, bottom), (left, bottom - tick_length)],
-                2
-            )
-            # Bottom-Right corner bracket
-            _sr().pygame.draw.lines(
-                self.overlay_surface,
-                selection_color,
-                False,
-                [(right - tick_length, bottom), (right, bottom), (right, bottom - tick_length)],
-                2
+            draw_selection_brackets(
+                self.overlay_surface, selection_color,
+                (obj_pixel_pos.x - r, obj_pixel_pos.y - r, 2 * r, 2 * r),
             )
 
     def draw_fog_of_war(self, hex_obj, dynamic_radius: float) -> None:

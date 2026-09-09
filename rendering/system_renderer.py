@@ -12,7 +12,7 @@ from domain.minefields import Minefield
 from visibility import is_minefield_visible
 from galaxy import Hex
 from geometry import Position
-from rendering.drawing_utils import selection_color_for
+from rendering.drawing_utils import draw_selection_brackets, selection_color_for
 
 
 class SystemViewRenderer:
@@ -68,6 +68,8 @@ class SystemViewRenderer:
         """Draws the hex grid for the current system."""
         if not self.game.current_system_name: return
         system = self.game.galaxy.systems[self.game.current_system_name]
+
+        selection_bounds = []
 
         # 1. Draw Hex Grid Lines (and Enemy Presence Fill)
         for hex_coord, hex_obj in system.hexes.items():
@@ -194,7 +196,23 @@ class SystemViewRenderer:
                     pygame.draw.circle(self.screen, body_color, (hex_center_pixel.x, hex_center_pixel.y), body_radius)
 
                 if body in self.game.selected_objects:
-                    pygame.draw.circle(self.overlay_surface, selection_color_for(body), (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 2)
+                    # Stable visual envelopes include ownership rings and animated effects.
+                    selection_radius = body_radius
+                    if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and body.owner:
+                        selection_radius += int(3 * scale_val)
+                    elif isinstance(body, Wormhole) and body.stability < 100:
+                        selection_radius += int(2 * scale_val)
+                    elif isinstance(body, (AsteroidField, IceField, DebrisField)):
+                        selection_radius = 10 * scale_val + max(1, int(scale_val))
+                    elif isinstance(body, Nebula):
+                        selection_radius = 18 * scale_val
+                    elif isinstance(body, Storm):
+                        selection_radius = 15 * scale_val
+                    selection_bounds.append((body, (
+                        hex_center_pixel.x - selection_radius,
+                        hex_center_pixel.y - selection_radius,
+                        2 * selection_radius, 2 * selection_radius,
+                    )))
 
             # Draw Minefields
             visible_mfs = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
@@ -277,20 +295,15 @@ class SystemViewRenderer:
                         pygame.draw.polygon(self.screen, unit_color, [t2_p1, t2_p2, t2_p3])
                         pygame.draw.polygon(self.screen, unit_color, [t3_p1, t3_p2, t3_p3])
                         
-                        if unit in self.game.selected_objects:
-                            p1 = (cx, cy - r)
-                            p2 = (cx - int(r * 0.8), cy + int(r * 0.6))
-                            p3 = (cx + int(r * 0.8), cy + int(r * 0.6))
-                            pygame.draw.polygon(self.overlay_surface, selection_color_for(unit), [p1, p2, p3], 2)
-                            
+                        main_shape_points = [t1_p1, t1_p2, t1_p3, t2_p1, t2_p2,
+                                             t2_p3, t3_p1, t3_p2, t3_p3]
+
                     elif shape_type == 'triangle':
                         p1 = (unit_screen_x, unit_screen_y - current_icon_base_size)
                         p2 = (unit_screen_x - int(current_icon_base_size * 0.8), unit_screen_y + int(current_icon_base_size * 0.6))
                         p3 = (unit_screen_x + int(current_icon_base_size * 0.8), unit_screen_y + int(current_icon_base_size * 0.6))
                         main_shape_points = [p1, p2, p3]
                         pygame.draw.polygon(self.screen, unit_color, main_shape_points)
-                        if unit in self.game.selected_objects:
-                            pygame.draw.polygon(self.overlay_surface, selection_color_for(unit), main_shape_points, 2)
                         
                     else: # 'square'
                         half_size = int(current_icon_base_size)
@@ -300,8 +313,13 @@ class SystemViewRenderer:
                         p4 = (unit_screen_x - half_size, unit_screen_y + half_size)
                         main_shape_points = [p1, p2, p3, p4]
                         pygame.draw.polygon(self.screen, unit_color, main_shape_points)
-                        if unit in self.game.selected_objects:
-                            pygame.draw.polygon(self.overlay_surface, selection_color_for(unit), main_shape_points, 2)
+
+                    if unit in self.game.selected_objects:
+                        left = min(p[0] for p in main_shape_points)
+                        top = min(p[1] for p in main_shape_points)
+                        right = max(p[0] for p in main_shape_points)
+                        bottom = max(p[1] for p in main_shape_points)
+                        selection_bounds.append((unit, (left, top, right - left, bottom - top)))
 
                     # Draw spy indicator if unit is infiltrated by current player
                     current_viewer = getattr(self.game, 'current_player', None)
@@ -351,6 +369,13 @@ class SystemViewRenderer:
 
         # 6. Draw Order Lines (Hex Jumps)
         self._draw_system_view_order_lines(system)
+
+        # Keep selection visible above environmental effects, range fills and orders.
+        for obj, (left, top, width, height) in selection_bounds:
+            draw_selection_brackets(
+                self.overlay_surface, selection_color_for(obj),
+                (left - 2, top - 2, width + 4, height + 4),
+            )
 
     def _draw_hyperdrive_jump_range_highlight(self, system):
         """Draws a hexgrid highlight showing inter-sector jump distance when a unit with Hyperdrive is selected
