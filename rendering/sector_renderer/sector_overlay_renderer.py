@@ -7,6 +7,7 @@ from domain.units import Unit
 from unit_orders.base import OrderType
 
 MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
+SELECTION_BRACKET_SIDE_FRACTION = 0.25
 
 
 def _sr():
@@ -59,11 +60,11 @@ class SectorOverlayRenderer:
             _sr().pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
 
     def draw_selection_brackets(self, obj, obj_pixel_pos, dynamic_radius, obj_radius_logical):
-        """Draws four corner selection brackets around selected objects."""
+        """Draws corner brackets with each arm spanning one quarter of the box side."""
         if obj in self.game.selected_objects:
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             r = pixel_radius + 5
-            tick_length = 10
+            tick_length = (2 * r) * SELECTION_BRACKET_SIDE_FRACTION
             
             left = obj_pixel_pos.x - r
             right = obj_pixel_pos.x + r

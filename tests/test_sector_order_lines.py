@@ -1,5 +1,7 @@
 from player_controller import PlayerController
 from unittest.mock import MagicMock, patch
+import pytest
+from display_config import DisplayConfig
 from domain.units import Unit
 from domain.players import Player
 from unit_orders.base import OrderType
@@ -203,9 +205,13 @@ def test_galaxy_view_order_lines_only_for_active_player():
          assert len(mock_draw_line.call_args_list) == 3
 
 
-def test_draw_sector_view_draws_four_corner_selection_brackets():
+@pytest.mark.parametrize("zoom", [0.1, 1.0, 4.0])
+@pytest.mark.parametrize("logical_radius", [1.0, 150.0, 900.0])
+def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_radius):
     # Setup mock game, player, and renderer
     game = MagicMock()
+    game.display_config = DisplayConfig(1920, 1080, False)
+    game.sector_zoom = zoom
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0
@@ -240,7 +246,8 @@ def test_draw_sector_view_draws_four_corner_selection_brackets():
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
          patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
          patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
-         patch("rendering.sector_renderer.pygame.font.Font") as mock_font:
+         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
+         patch.object(renderer.entity_renderer, "draw_unit", return_value=logical_radius):
 
         renderer.draw_sector_view()
 
@@ -250,10 +257,10 @@ def test_draw_sector_view_draws_four_corner_selection_brackets():
         # Extract the coordinate list arguments from mock_draw_lines (the 4th argument)
         called_points_lists = [call[0][3] for call in mock_draw_lines.call_args_list]
 
-        from constants import SECTOR_VIEW_BASE_ICON_SIZE, SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL
-        expected_pixel_radius = int(SECTOR_VIEW_BASE_ICON_SIZE * SECTOR_CIRCLE_RADIUS_IN_PX / SECTOR_CIRCLE_RADIUS_LOGICAL)
+        from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, SELECTION_HIGHLIGHT_COLOR
+        expected_pixel_radius = int(logical_radius * game.display_config.sector_radius * zoom / SECTOR_CIRCLE_RADIUS_LOGICAL)
         r = expected_pixel_radius + 5
-        tick_length = 10
+        tick_length = (2 * r) / 4
 
         left = 10 - r
         right = 10 + r
@@ -270,6 +277,16 @@ def test_draw_sector_view_draws_four_corner_selection_brackets():
         # Verify that all expected corner paths are in the called_points_lists (regardless of order)
         for expected in expected_corners:
             assert expected in called_points_lists
+
+        for call in mock_draw_lines.call_args_list:
+            surface, color, closed, points, width = call.args
+            assert surface is renderer.overlay_surface
+            assert color == SELECTION_HIGHLIGHT_COLOR
+            assert closed is False
+            assert width == 2
+            horizontal_end, corner, vertical_end = points
+            assert abs(horizontal_end[0] - corner[0]) / (right - left) == pytest.approx(0.25)
+            assert abs(vertical_end[1] - corner[1]) / (bottom - top) == pytest.approx(0.25)
 
 
 def test_draw_sector_view_draws_turn_notches():
