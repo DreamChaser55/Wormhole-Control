@@ -1,8 +1,6 @@
 """Unit and integration tests for non-solid celestial body effect radii and turquoise circles."""
 
-import pytest
 from unittest.mock import MagicMock, patch
-
 from constants import (
     ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
     NEBULA_RADIUS, STORM_RADIUS, TURQUOISE, SECTOR_CIRCLE_RADIUS_LOGICAL,
@@ -11,8 +9,7 @@ from constants import (
 )
 from entities import (
     AsteroidField, IceField, DebrisField, Nebula, Storm,
-    Planet, Star, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole,
-    NON_SOLID_CELESTIAL_BODIES
+    Planet, Star
 )
 from geometry import Position
 from utils import HexCoord

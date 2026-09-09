@@ -48,6 +48,8 @@ coverage.xml
 *.py,cover
 .stats
 .pytest_cache/
+.pytest_tmp/
+.codex_test_cache/
 pytestdebug.log
 
 # Translations
@@ -139,4 +141,3 @@ saves/ai_telemetry.jsonl
 saves/ai_feedback.md
 saves/comms.md
 saves/comms/
-

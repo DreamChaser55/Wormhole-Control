@@ -437,7 +437,3 @@ def test_input_processor_mousewheel_suppressed_on_gui_action():
         ip.handle_input()
         mock_gui_action.assert_called_once_with({'action': 'ui_handled'})
         mock_mouse_wheel.assert_not_called()
-
-
-
-

@@ -1,12 +1,11 @@
 import pytest
 from unittest.mock import MagicMock
-from constants import HullSize, ENGINE_ANTIMATTER_COST_PER_TURN, BASELINE_ENGINE_SPEED
+from constants import HullSize
 from custom_unit_templates import get_sublight_antimatter_cost_per_turn
-from entities import Unit
 from geometry import Position
 from unit_components import Engines, AntimatterStorage
-from unit_orders import calculate_required_antimatter
 from turn_processor import TurnProcessor
+from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 def test_get_sublight_antimatter_cost_per_turn_baseline():
@@ -54,14 +53,12 @@ def test_get_sublight_antimatter_cost_per_turn_zero_speed():
     assert get_sublight_antimatter_cost_per_turn(HullSize.MEDIUM, -10.0) == 0.0
 
 
-from tests.test_unit_components import MockUnit, MockPlayer
-
 def test_turn_processor_sublight_antimatter_consumption():
     game = MagicMock()
-    player = MockPlayer()
+    player = ComponentPlayer()
     system = MagicMock()
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.name = "TestHugeCruiser"
     unit.hull_size = HullSize.HUGE
     unit.owner = player

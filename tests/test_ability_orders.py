@@ -1,13 +1,13 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from geometry import Position, distance
-from entities import Unit, Player, OrderType
-from constants import HullSize, RED
-from unit_components import AbilityComponent, AbilityType, Engines, AntimatterStorage, Commander, Weapons, Defenses, MarinesComponent
-from unit_orders import UseAbilityOrder, OrderStatus, MoveOrder
-from tests.test_unit_components import MockPlayer
+from geometry import Position
+from entities import Unit, OrderType
+from constants import HullSize
+from unit_components import AbilityComponent, AbilityType, Engines, Weapons, Defenses, MarinesComponent
+from unit_orders import UseAbilityOrder, OrderStatus
 from rendering.sector_renderer import SectorViewRenderer
 from rendering.system_renderer import SystemViewRenderer
+from tests.support.units import ComponentPlayer
+
 
 class DummyGame:
     def __init__(self):
@@ -29,7 +29,7 @@ def test_missile_platform_auto_targeting_uses_current_attack_order():
     from unit_components.abilities.missile_batteries import MissileBatteriesAbility
 
     platform = Unit(
-        owner=MockPlayer("Platform Owner"),
+        owner=ComponentPlayer("Platform Owner"),
         position=Position(0, 0),
         in_hex=(0, 0),
         in_system="Sol",
@@ -50,7 +50,7 @@ def test_missile_platform_auto_targeting_uses_current_attack_order():
     platform.add_component(weapons)
 
     enemy = Unit(
-        owner=MockPlayer("Enemy"),
+        owner=ComponentPlayer("Enemy"),
         position=Position(100, 0),
         in_hex=(0, 0),
         in_system="Sol",
@@ -93,7 +93,7 @@ def test_missile_platform_auto_targeting_uses_current_attack_order():
     assert platform.weapons_component.turrets[0].target is None
 
 def test_use_ability_order_no_target():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = DummyGame()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Test Ship", hull_size=HullSize.MEDIUM, game=game)
     
@@ -114,7 +114,7 @@ def test_use_ability_order_no_target():
     assert unit.damage_reduction == 0.75
 
 def test_use_ability_order_unit_target_in_range():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = DummyGame()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
     target = Unit(owner=player, position=Position(100, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
@@ -137,7 +137,7 @@ def test_use_ability_order_unit_target_in_range():
     assert target.is_disabled is True
 
 def test_use_ability_order_unit_target_out_of_range():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = DummyGame()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
     target = Unit(owner=player, position=Position(500, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
@@ -167,7 +167,7 @@ def test_use_ability_order_unit_target_out_of_range():
     assert order.sub_orders[1].order_type == OrderType.USE_ABILITY
 
 def test_use_ability_order_position_target_in_range():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = DummyGame()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
     
@@ -194,7 +194,7 @@ def test_use_ability_order_position_target_in_range():
     assert order.status == OrderStatus.COMPLETED
 
 def test_use_ability_order_position_target_out_of_range():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = DummyGame()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
     
@@ -220,10 +220,10 @@ def test_use_ability_order_position_target_out_of_range():
     assert order.sub_orders[1].order_type == OrderType.USE_ABILITY
 
 def test_apply_cluster_warhead_accurate_routing():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = DummyGame()
     caster = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
-    enemy_player = MockPlayer("Enemy")
+    enemy_player = ComponentPlayer("Enemy")
     enemy_player.id = 2
     enemy = Unit(owner=enemy_player, position=Position(10, 10), in_hex=(0, 1), in_system="Sol", name="Enemy", hull_size=HullSize.MEDIUM, game=game)
     
@@ -257,7 +257,7 @@ def test_sector_view_renderer_collect_waypoints_for_ability():
     game = DummyGame()
     renderer = SectorViewRenderer(game)
     
-    caster = Unit(owner=MockPlayer(), position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    caster = Unit(owner=ComponentPlayer(), position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
     order = UseAbilityOrder(caster, {
         "ability_type": "cluster_warhead",
         "target_position": Position(100, 200),
@@ -279,7 +279,7 @@ def test_system_view_renderer_collect_waypoints_for_ability():
     game = DummyGame()
     renderer = SystemViewRenderer(game)
     
-    caster = Unit(owner=MockPlayer(), position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
+    caster = Unit(owner=ComponentPlayer(), position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
     game.players = [caster.owner]
     game.selected_objects = [caster]
     order = UseAbilityOrder(caster, {
@@ -310,8 +310,8 @@ def test_system_view_renderer_collect_waypoints_for_ability():
 
 
 def test_capture_unit_success_no_engines():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -336,8 +336,8 @@ def test_capture_unit_success_no_engines():
 
 
 def test_capture_unit_success_disabled_engines():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -366,8 +366,8 @@ def test_capture_unit_success_disabled_engines():
 
 
 def test_capture_unit_success_disabled_unit():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -396,8 +396,8 @@ def test_capture_unit_success_disabled_unit():
 
 
 def test_capture_unit_fails_engines_active():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -424,7 +424,7 @@ def test_capture_unit_fails_engines_active():
 
 
 def test_capture_unit_fails_already_friendly():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = DummyGame()
     caster = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
     target = Unit(owner=player, position=Position(50, 0), in_hex=(0, 0), in_system="Sol", name="Target", hull_size=HullSize.MEDIUM, game=game)
@@ -446,8 +446,8 @@ def test_capture_unit_fails_already_friendly():
 
 
 def test_capture_unit_out_of_range():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -477,8 +477,8 @@ def test_capture_unit_out_of_range():
 
 
 def test_capture_unit_fails_weapons_active():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -506,8 +506,8 @@ def test_capture_unit_fails_weapons_active():
 
 
 def test_capture_unit_success_weapons_destroyed():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -537,8 +537,8 @@ def test_capture_unit_success_weapons_destroyed():
 
 
 def test_capture_unit_fails_defenses_active():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -566,8 +566,8 @@ def test_capture_unit_fails_defenses_active():
 
 
 def test_capture_unit_success_defenses_destroyed():
-    player_caster = MockPlayer()
-    player_target = MockPlayer()
+    player_caster = ComponentPlayer()
+    player_target = ComponentPlayer()
     player_target.id = 2
     game = DummyGame()
     caster = Unit(owner=player_caster, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)

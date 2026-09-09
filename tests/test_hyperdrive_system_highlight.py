@@ -1,14 +1,13 @@
 from player_controller import PlayerController
-"""Tests for hyperdrive inter-sector jump distance hexgrid highlight in System View."""
 from unittest.mock import MagicMock, patch
 import pytest
 import pygame
-
-from constants import BLUE, HullSize, HYPERDRIVE_RANGE_HEX_FILL_COLOR, MAX_UNIT_XP, XP_JUMP_RANGE_BONUS
+from constants import BLUE, HullSize, HYPERDRIVE_RANGE_HEX_FILL_COLOR, MAX_UNIT_XP
 from entities import Player, Unit
 from geometry import Position
 from rendering.system_renderer import SystemViewRenderer
 from unit_components import Hyperdrive, HyperdriveType
+"""Tests for hyperdrive inter-sector jump distance hexgrid highlight in System View."""
 
 
 @pytest.fixture

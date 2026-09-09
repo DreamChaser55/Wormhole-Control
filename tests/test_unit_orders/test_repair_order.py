@@ -2,16 +2,16 @@ from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders import OrderStatus, OrderType, RepairOrder
 from unit_components import RepairComponent
-from tests.test_unit_components import MockUnit
+from tests.support.units import ComponentUnit
 
 
 def test_repair_order():
     # Setup unit and repair component
-    unit = MockUnit()
+    unit = ComponentUnit()
     repair_comp = RepairComponent(unit, repair_rate=10, repair_range=100.0, credit_cost_per_hp=1.0)
     unit.add_component(repair_comp)
 
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 999
     target.owner = unit.owner  # Friendly
     target.in_system = "Sol"
@@ -52,17 +52,15 @@ def test_repair_order():
 
 
 def test_stationary_unit_repair_order_recursion_prevention():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.game = MagicMock()
-    unit.hangar_component = None
-    unit.strikecraft_bay_component = None
     
     # Give unit a RepairComponent but NO Engines
     repair_comp = RepairComponent(unit)
     unit.add_component(repair_comp)
     assert unit.engines_component is None
     
-    target_unit = MockUnit()
+    target_unit = ComponentUnit()
     target_unit.id = 999
     target_unit.name = "Damaged Friendly"
     target_unit.owner = unit.owner

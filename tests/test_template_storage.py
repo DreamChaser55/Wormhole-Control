@@ -1,20 +1,12 @@
 """Migration and write-failure tests use isolated libraries and registry snapshots."""
 import json
 from types import SimpleNamespace
-
 import pytest
-
 from constants import HullSize
 from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate, TemplatePersistenceError
 from unit_templates import UNIT_TEMPLATES
-
-
-@pytest.fixture(autouse=True)
-def restore_registry():
-    original = dict(UNIT_TEMPLATES)
-    yield
-    UNIT_TEMPLATES.clear()
-    UNIT_TEMPLATES.update(original)
+from pathlib import Path
+from utils import user_data_path
 
 
 def design(name='Storage Test'):
@@ -180,3 +172,24 @@ def test_editor_reports_storage_failure_without_success(monkeypatch, operation):
     assert result is None and editor._editing_name == 'Storage Test'
     assert statuses[-1][1]['error'] is True
     assert 'Failed' in modals[-1][1]
+
+
+@pytest.mark.parametrize('platform,variable,subdir', [
+    ('win32', 'LOCALAPPDATA', ''), ('darwin', None, 'Library/Application Support'),
+    ('linux', 'XDG_DATA_HOME', ''),
+])
+def test_user_storage_defaults(platform, variable, subdir, tmp_path, monkeypatch):
+    monkeypatch.delenv('WORMHOLE_USER_DATA_DIR')
+    monkeypatch.setattr('sys.platform', platform)
+    monkeypatch.setattr(Path, 'home', lambda: tmp_path)
+    if variable:
+        monkeypatch.setenv(variable, str(tmp_path))
+    assert user_data_path() == tmp_path / subdir / 'WormholeControl'
+
+
+def test_user_storage_override(tmp_path, monkeypatch):
+    monkeypatch.setenv('WORMHOLE_USER_DATA_DIR', str(tmp_path))
+    assert user_data_path() == tmp_path
+    monkeypatch.setenv('WORMHOLE_USER_DATA_DIR', 'relative')
+    with pytest.raises(ValueError, match='absolute'):
+        user_data_path()

@@ -2,11 +2,11 @@ from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders import OrderStatus, OrderType, ProtectOrder
 from unit_components import Commander, Engines, Weapons, Turret, TurretType
-from tests.test_unit_components import MockUnit, MockPlayer
+from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 def test_protect_order_validation():
-    protector = MockUnit()
+    protector = ComponentUnit()
     protector.add_component(Commander(protector))
     
     # 1. Target doesn't exist
@@ -18,14 +18,14 @@ def test_protect_order_validation():
     assert order_no_target.status == OrderStatus.FAILED
     
     # Setup target
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 123
     target.name = "TargetUnit"
-    target.owner = MockPlayer("Player1")
+    target.owner = ComponentPlayer("Player1")
     galaxy.get_unit_by_id.return_value = target
     
     # 2. Target hostile (protector belongs to Player2)
-    protector.owner = MockPlayer("Player2")
+    protector.owner = ComponentPlayer("Player2")
     order_hostile = ProtectOrder(protector, {"target_unit_id": 123})
     order_hostile.execute(galaxy)
     assert order_hostile.status == OrderStatus.FAILED
@@ -38,7 +38,7 @@ def test_protect_order_validation():
 
 
 def test_protect_order_follow_movement():
-    protector = MockUnit()
+    protector = ComponentUnit()
     protector.name = "Protector"
     protector.add_component(Commander(protector))
     engines = Engines(protector, speed=50.0)
@@ -47,10 +47,10 @@ def test_protect_order_follow_movement():
     protector.in_hex = (0, 0)
     protector.position = Position(10, 10)
     
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 123
     target.name = "TargetUnit"
-    target.owner = MockPlayer("Player1")
+    target.owner = ComponentPlayer("Player1")
     target.in_system = "Sol"
     target.in_hex = (0, 0)
     target.position = Position(300, 10)
@@ -95,7 +95,7 @@ def test_protect_order_follow_movement():
 
 
 def test_protect_order_combat_engagement():
-    protector = MockUnit()
+    protector = ComponentUnit()
     protector.name = "Protector"
     protector.add_component(Commander(protector))
     engines = Engines(protector, speed=50.0)
@@ -111,20 +111,20 @@ def test_protect_order_combat_engagement():
     protector.in_hex = (0, 0)
     protector.position = Position(10, 10)
     
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 123
     target.name = "TargetUnit"
-    target.owner = MockPlayer("Player1")
+    target.owner = ComponentPlayer("Player1")
     target.in_system = "Sol"
     target.in_hex = (0, 0)
     target.position = Position(250, 10)
     
     protector.owner = target.owner
     
-    enemy = MockUnit()
+    enemy = ComponentUnit()
     enemy.id = 666
     enemy.name = "Enemy"
-    enemy.owner = MockPlayer("Player2")
+    enemy.owner = ComponentPlayer("Player2")
     enemy.in_system = "Sol"
     enemy.in_hex = (0, 0)
     enemy.position = Position(80, 10) # within 150.0 detection range of target/protector
@@ -159,7 +159,7 @@ def test_protect_order_combat_engagement():
 
 
 def test_protect_order_target_range_limit():
-    protector = MockUnit()
+    protector = ComponentUnit()
     protector.name = "Protector"
     protector.add_component(Commander(protector))
     engines = Engines(protector, speed=50.0)
@@ -175,10 +175,10 @@ def test_protect_order_target_range_limit():
     protector.in_hex = (0, 0)
     protector.position = Position(100, 100)
     
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 123
     target.name = "TargetUnit"
-    target.owner = MockPlayer("Player1")
+    target.owner = ComponentPlayer("Player1")
     target.in_system = "Sol"
     target.in_hex = (0, 0)
     target.position = Position(100, 100)
@@ -186,19 +186,19 @@ def test_protect_order_target_range_limit():
     protector.owner = target.owner
     
     # Enemy 1: distance to target is 800.0 (within 1000.0, but outside protector turret range 50.0)
-    enemy_near = MockUnit()
+    enemy_near = ComponentUnit()
     enemy_near.id = 111
     enemy_near.name = "EnemyNear"
-    enemy_near.owner = MockPlayer("Player2")
+    enemy_near.owner = ComponentPlayer("Player2")
     enemy_near.in_system = "Sol"
     enemy_near.in_hex = (0, 0)
     enemy_near.position = Position(100, 900)
     
     # Enemy 2: distance to target is 1100.0 (outside 1000.0)
-    enemy_far = MockUnit()
+    enemy_far = ComponentUnit()
     enemy_far.id = 222
     enemy_far.name = "EnemyFar"
-    enemy_far.owner = MockPlayer("Player2")
+    enemy_far.owner = ComponentPlayer("Player2")
     enemy_far.in_system = "Sol"
     enemy_far.in_hex = (0, 0)
     enemy_far.position = Position(100, 1200)

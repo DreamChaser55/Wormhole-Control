@@ -1,14 +1,12 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
-
 from geometry import Position
 from turn_processor import TurnProcessor
 from constants import HullSize
 from unit_components import AntimatterStorage, Turret, TurretType, TurretVariant, UnitStance
 from unit_components.enums import SabotageType
 from unit_orders import AttackOrder, Order, OrderStatus, OrderType, ProtectOrder, ReachWaypointOrder
-
-from tests.test_stance_visibility import create_combat_ship, create_test_galaxy
+from tests.support.combat import create_combat_ship, create_test_galaxy
 
 
 def test_stance_owns_attack_movement_tree_and_explicit_orders_take_priority():

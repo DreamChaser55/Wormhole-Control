@@ -1,15 +1,14 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from entities import Unit, Star
-from unit_components import AntimatterStorage, AntimatterHarvester
+from unit_components import AntimatterHarvester
 from unit_orders import TransferAntimatterOrder, OrderStatus
 from constants import (
     HullSize, StarType,
     DEFAULT_ANTIMATTER_HARVEST_RATE,
     ANTIMATTER_TRANSFER_RATE, ANTIMATTER_TRANSFER_RANGE,
 )
-from tests.test_unit_components import MockPlayer
+from tests.support.units import ComponentPlayer
 
 
 class FakeHex:
@@ -42,7 +41,7 @@ def make_unit(owner, hull_size=HullSize.MEDIUM, position=None, in_hex=(0, 0), in
 
 
 def test_harvester_replenishes_near_star():
-    player = MockPlayer()
+    player = ComponentPlayer()
     unit = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
     harvester = AntimatterHarvester(unit, harvest_rate=DEFAULT_ANTIMATTER_HARVEST_RATE)
     unit.add_component(harvester)
@@ -64,7 +63,7 @@ def test_harvester_replenishes_near_star():
 
 
 def test_harvester_does_nothing_without_star():
-    player = MockPlayer()
+    player = ComponentPlayer()
     unit = make_unit(player, position=Position(0, 0), in_hex=(1, 1))
     harvester = AntimatterHarvester(unit)
     unit.add_component(harvester)
@@ -84,7 +83,7 @@ def test_harvester_does_nothing_without_star():
 
 
 def test_harvester_respects_max_capacity():
-    player = MockPlayer()
+    player = ComponentPlayer()
     unit = make_unit(player)
     harvester = AntimatterHarvester(unit, harvest_rate=1000.0)
     unit.add_component(harvester)
@@ -107,7 +106,7 @@ def test_harvester_respects_max_capacity():
 def test_unit_without_harvester_does_not_auto_regenerate_on_update():
     """Confirms that Unit.update() no longer passively regenerates antimatter
     for units that lack an AntimatterHarvester component."""
-    player = MockPlayer()
+    player = ComponentPlayer()
     unit = make_unit(player)
     unit.in_galaxy = None  # Avoid triggering other component updates that need a galaxy
 
@@ -121,7 +120,7 @@ def test_unit_without_harvester_does_not_auto_regenerate_on_update():
 
 
 def test_antimatter_storage_add_respects_capacity():
-    player = MockPlayer()
+    player = ComponentPlayer()
     unit = make_unit(player)
     am_comp = unit.antimatter_component
     am_comp.current_amount = am_comp.max_capacity - 3.0
@@ -133,7 +132,7 @@ def test_antimatter_storage_add_respects_capacity():
 
 
 def test_transfer_antimatter_order_moves_am_when_in_range():
-    player = MockPlayer()
+    player = ComponentPlayer()
     source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
     target = make_unit(player, position=Position(10, 0), in_hex=(0, 0))
 
@@ -159,7 +158,7 @@ def test_transfer_antimatter_order_moves_am_when_in_range():
 
 
 def test_transfer_antimatter_order_uses_target_approach_when_out_of_range():
-    player = MockPlayer()
+    player = ComponentPlayer()
     source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
     target = make_unit(
         player,
@@ -184,8 +183,8 @@ def test_transfer_antimatter_order_uses_target_approach_when_out_of_range():
 
 
 def test_transfer_antimatter_order_fails_for_unfriendly_target():
-    player = MockPlayer()
-    enemy_player = MockPlayer()
+    player = ComponentPlayer()
+    enemy_player = ComponentPlayer()
     enemy_player.id = 2
 
     source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
@@ -202,7 +201,7 @@ def test_transfer_antimatter_order_fails_for_unfriendly_target():
 
 
 def test_transfer_antimatter_order_completes_when_target_full():
-    player = MockPlayer()
+    player = ComponentPlayer()
     source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
     target = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
 
@@ -222,7 +221,7 @@ def test_transfer_antimatter_order_completes_when_target_full():
 
 
 def test_harvester_transfer_stops_at_60_reserve():
-    player = MockPlayer()
+    player = ComponentPlayer()
     source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
     target = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
 
@@ -249,7 +248,7 @@ def test_harvester_transfer_stops_at_60_reserve():
 
 
 def test_non_harvester_transfer_can_deplete_to_zero():
-    player = MockPlayer()
+    player = ComponentPlayer()
     source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
     target = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
 
@@ -269,4 +268,3 @@ def test_non_harvester_transfer_can_deplete_to_zero():
     assert target.antimatter_component.current_amount == 20.0
     assert source.antimatter_component.current_amount == 0.0
     assert order.status == OrderStatus.COMPLETED
-

@@ -1,10 +1,7 @@
 """Shared new-campaign validation across Python, socket and wizard boundaries."""
 from copy import deepcopy
 from dataclasses import asdict
-from types import SimpleNamespace
-
 import pytest
-
 from game_settings import GameSettings, PlayerConfig, SettingsValidationError
 from game_control_protocol import _parse_new_game_settings, ProtocolError
 from game_setup import prepare_new_campaign

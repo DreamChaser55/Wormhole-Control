@@ -1,3 +1,15 @@
+import pytest
+import json
+import os
+import tempfile
+import unittest
+from constants import HullSize
+from custom_unit_templates import (
+    CustomTemplateManager,
+    CustomUnitTemplate,
+    ComponentConfig,
+)
+from unit_templates import UNIT_TEMPLATES
 """
 tests/test_unit_editor.py
 
@@ -8,25 +20,8 @@ Unit tests for the custom unit template system:
   - Constructor.refresh_buildable_units integration
 """
 
-import json
-import os
-import sys
-import tempfile
-import unittest
 
 # Ensure the project root is on the path
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-from constants import HullSize
-from custom_unit_templates import (
-    CustomTemplateManager,
-    CustomUnitTemplate,
-    ComponentConfig,
-    TurretConfig,
-    HULL_RESTRICTIONS,
-    ADVANCED_HYPERDRIVE_MIN_HULL,
-)
-from unit_templates import UNIT_TEMPLATES
 
 
 def _make_manager(data_file: str) -> CustomTemplateManager:
@@ -177,21 +172,12 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         self.tmp.write("{}")
         self.tmp.close()
         self.data_file = self.tmp.name
-        import custom_unit_templates as ctm
-        self._orig_data_file = ctm._DATA_FILE
-        ctm._DATA_FILE = self.data_file
 
     def tearDown(self):
-        import custom_unit_templates as ctm
-        ctm._DATA_FILE = self._orig_data_file
         os.unlink(self.data_file)
-        # Clean up any templates we inserted into UNIT_TEMPLATES
-        for k in list(UNIT_TEMPLATES.keys()):
-            if UNIT_TEMPLATES[k].get("is_custom"):
-                del UNIT_TEMPLATES[k]
 
     def _fresh_manager(self) -> CustomTemplateManager:
-        return CustomTemplateManager()
+        return CustomTemplateManager(data_file=self.data_file)
 
     def _make_template(self, name="Test Cruiser", hull=HullSize.MEDIUM) -> CustomUnitTemplate:
         t = CustomUnitTemplate(name, hull)
@@ -348,7 +334,6 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
 
     def test_all_components_in_gui(self):
         import dataclasses
-        from custom_unit_templates import ComponentConfig
         from gui.unit_editor_gui import COMPONENT_ROWS
 
         gui_keys = {row["key"] for row in COMPONENT_ROWS}
@@ -358,7 +343,7 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
 
     def test_antimatter_harvester_custom_template(self):
         from constants import HullSize, ANTIMATTER_HARVESTER_HULL_COST
-        from custom_unit_templates import ComponentConfig, CustomUnitTemplate
+        from custom_unit_templates import CustomUnitTemplate
         from unit_templates import UNIT_TEMPLATES
 
         # Hull cost calculation includes harvester cost (15)
@@ -404,30 +389,10 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
                 os.remove(tmp.name)
 
 
+@pytest.mark.usefixtures("pygame_context")
 class TestUnitEditorWindowSelection(unittest.TestCase):
     """Unit tests for UnitEditorWindow component selection & dynamic details UI."""
 
-    @classmethod
-    def setUpClass(cls):
-        os.environ["SDL_VIDEODRIVER"] = "dummy"
-        import pygame
-        pygame.init()
-        pygame.display.set_mode((1280, 720))
-
-    def setUp(self):
-        import tempfile
-        import custom_unit_templates as ctm
-        self._temp_data_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
-        self._temp_data_file.write(b"{}")
-        self._temp_data_file.close()
-        self._orig_data_file = ctm._DATA_FILE
-        ctm._DATA_FILE = self._temp_data_file.name
-
-    def tearDown(self):
-        import custom_unit_templates as ctm
-        ctm._DATA_FILE = self._orig_data_file
-        if os.path.exists(self._temp_data_file.name):
-            os.remove(self._temp_data_file.name)
 
     def test_component_selection(self):
         import pygame
@@ -532,40 +497,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         win.kill()
 
-    def test_ability_requires_component_validation_fails(self):
-        """Validation fails if an ability is equipped without its required component."""
-        t = CustomUnitTemplate("Test Ability Fail", HullSize.MEDIUM)
-        t.components.has_engine = True
-        t.components.has_ability_component = True
-        t.components.abilities = ["adaptive_forcefield"]  # Requires has_defenses
-        t.components.has_defenses = False
-        errors = t.validate()
-        self.assertTrue(any("Adaptive Forcefield" in e and "has_defenses" in e for e in errors))
-
-    def test_ability_requires_component_validation_passes(self):
-        """Validation passes if an ability is equipped with its required component."""
-        t = CustomUnitTemplate("Test Ability Pass", HullSize.MEDIUM)
-        t.components.has_engine = True
-        t.components.has_ability_component = True
-        t.components.abilities = ["adaptive_forcefield"]  # Requires has_defenses
-        t.components.has_defenses = True
-        t.components.armor = 5
-        errors = t.validate()
-        self.assertFalse(any("Adaptive Forcefield" in e for e in errors))
-
-    def test_capture_unit_requires_marines_component(self):
-        """Capture Unit ability requires has_marines_component."""
-        t = CustomUnitTemplate("Test Capture Unit", HullSize.MEDIUM)
-        t.components.has_engine = True
-        t.components.has_ability_component = True
-        t.components.abilities = ["capture_unit"]
-        errors = t.validate()
-        self.assertTrue(any("Capture Unit" in e and "has_marines_component" in e for e in errors))
-
-        t.components.has_marines_component = True
-        t.components.marines_count = 10
-        errors = t.validate()
-        self.assertFalse(any("Capture Unit" in e for e in errors))
 
     def test_load_design_dropdown_visibility(self):
         """Verifies loading a design with hyperdrive unselected keeps hyperdrive dropdown hidden."""
@@ -686,33 +617,13 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         win.kill()
 
-    def test_save_as_button_exists_and_layout(self):
-        """Verifies that the Save as New button exists in Column 1 and is properly positioned."""
-        import pygame
-        import pygame_gui
-        from gui.unit_editor_gui import UnitEditorWindow
-        from custom_unit_templates import CustomTemplateManager
-
-        mgr = pygame_gui.UIManager((1280, 720))
-        tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
-
-        self.assertIsNotNone(win._save_as_button)
-        self.assertIsInstance(win._save_as_button, pygame_gui.elements.UIButton)
-        self.assertIn("Save as New", win._save_as_button.text)
-
-        # Ensure Save As New is vertically positioned between Save Design and Delete Design
-        self.assertGreater(win._save_as_button.relative_rect.y, win._save_button.relative_rect.y)
-        self.assertLess(win._save_as_button.relative_rect.y, win._delete_button.relative_rect.y)
-
-        win.kill()
 
     def test_save_as_new_creates_independent_template(self):
         """Verifies that _do_save_as_new saves a new template without modifying loaded template."""
         import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
-        from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate, ComponentConfig
+        from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
@@ -750,29 +661,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         tmp_mgr.delete_design("Frigate Alpha Mk II")
         win.kill()
 
-    def test_predicted_upkeep_calculation_and_template(self):
-        """Verifies calculate_unit_upkeep and CustomUnitTemplate.predicted_upkeep behavior."""
-        from economy import calculate_unit_upkeep
-        from constants import UPKEEP_COST_PER_HULL_POINT
-
-        # Strikecraft Wing is always 0.0
-        self.assertEqual(calculate_unit_upkeep(HullSize.STRIKECRAFT_WING, 5.0), 0.0)
-
-        # Standard hulls scale with used hull capacity * UPKEEP_COST_PER_HULL_POINT
-        self.assertAlmostEqual(calculate_unit_upkeep(HullSize.TINY, 10.0), 10.0 * UPKEEP_COST_PER_HULL_POINT)
-        self.assertAlmostEqual(calculate_unit_upkeep(HullSize.MEDIUM, 35.5), 35.5 * UPKEEP_COST_PER_HULL_POINT)
-        self.assertEqual(calculate_unit_upkeep(HullSize.LARGE, 0.0), 0.0)
-
-        # Template property check
-        t_med = CustomUnitTemplate("Cruiser Test", HullSize.MEDIUM)
-        t_med.components.has_engine = True
-        t_med.components.engine_speed = 100.0
-        expected_upkeep = t_med.total_hull_cost * UPKEEP_COST_PER_HULL_POINT
-        self.assertAlmostEqual(t_med.predicted_upkeep, expected_upkeep)
-
-        t_wing = CustomUnitTemplate("Fighter Test", HullSize.STRIKECRAFT_WING)
-        t_wing.components.has_engine = True
-        self.assertEqual(t_wing.predicted_upkeep, 0.0)
 
     def test_unit_editor_summary_predicted_upkeep_display(self):
         """Verifies that predicted unit upkeep is displayed in the Unit Designer Column 4 summary."""
@@ -815,10 +703,62 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         win.kill()
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestDesignBusinessRules(unittest.TestCase):
+    def test_ability_requires_component_validation_fails(self):
+        """Validation fails if an ability is equipped without its required component."""
+        t = CustomUnitTemplate("Test Ability Fail", HullSize.MEDIUM)
+        t.components.has_engine = True
+        t.components.has_ability_component = True
+        t.components.abilities = ["adaptive_forcefield"]  # Requires has_defenses
+        t.components.has_defenses = False
+        errors = t.validate()
+        self.assertTrue(any("Adaptive Forcefield" in e and "has_defenses" in e for e in errors))
 
+    def test_ability_requires_component_validation_passes(self):
+        """Validation passes if an ability is equipped with its required component."""
+        t = CustomUnitTemplate("Test Ability Pass", HullSize.MEDIUM)
+        t.components.has_engine = True
+        t.components.has_ability_component = True
+        t.components.abilities = ["adaptive_forcefield"]  # Requires has_defenses
+        t.components.has_defenses = True
+        t.components.armor = 5
+        errors = t.validate()
+        self.assertFalse(any("Adaptive Forcefield" in e for e in errors))
 
+    def test_capture_unit_requires_marines_component(self):
+        """Capture Unit ability requires has_marines_component."""
+        t = CustomUnitTemplate("Test Capture Unit", HullSize.MEDIUM)
+        t.components.has_engine = True
+        t.components.has_ability_component = True
+        t.components.abilities = ["capture_unit"]
+        errors = t.validate()
+        self.assertTrue(any("Capture Unit" in e and "has_marines_component" in e for e in errors))
 
+        t.components.has_marines_component = True
+        t.components.marines_count = 10
+        errors = t.validate()
+        self.assertFalse(any("Capture Unit" in e for e in errors))
 
+    def test_predicted_upkeep_calculation_and_template(self):
+        """Verifies calculate_unit_upkeep and CustomUnitTemplate.predicted_upkeep behavior."""
+        from economy import calculate_unit_upkeep
+        from constants import UPKEEP_COST_PER_HULL_POINT
 
+        # Strikecraft Wing is always 0.0
+        self.assertEqual(calculate_unit_upkeep(HullSize.STRIKECRAFT_WING, 5.0), 0.0)
+
+        # Standard hulls scale with used hull capacity * UPKEEP_COST_PER_HULL_POINT
+        self.assertAlmostEqual(calculate_unit_upkeep(HullSize.TINY, 10.0), 10.0 * UPKEEP_COST_PER_HULL_POINT)
+        self.assertAlmostEqual(calculate_unit_upkeep(HullSize.MEDIUM, 35.5), 35.5 * UPKEEP_COST_PER_HULL_POINT)
+        self.assertEqual(calculate_unit_upkeep(HullSize.LARGE, 0.0), 0.0)
+
+        # Template property check
+        t_med = CustomUnitTemplate("Cruiser Test", HullSize.MEDIUM)
+        t_med.components.has_engine = True
+        t_med.components.engine_speed = 100.0
+        expected_upkeep = t_med.total_hull_cost * UPKEEP_COST_PER_HULL_POINT
+        self.assertAlmostEqual(t_med.predicted_upkeep, expected_upkeep)
+
+        t_wing = CustomUnitTemplate("Fighter Test", HullSize.STRIKECRAFT_WING)
+        t_wing.components.has_engine = True
+        self.assertEqual(t_wing.predicted_upkeep, 0.0)

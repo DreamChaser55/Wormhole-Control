@@ -7,19 +7,14 @@ from entities import (
 )
 from constants import (
     PlanetType, StarType, NebulaType, StormType, HullSize,
-    PLANET_TRAITS, CELESTIAL_FIELD_RADIUS, STORM_RADIUS,
     ICE_FIELD_BEAM_DEFENSE_BONUS, DEBRIS_FIELD_DEFENSE_BONUS,
-    BLACK_HOLE_EVENT_HORIZON_RADIUS, BLACK_HOLE_EVENT_HORIZON_DAMAGE,
-    BLACK_HOLE_INHIBITION_RADIUS, PULSAR_SHIELD_DRAIN_PERCENT,
-    STORM_PLASMA_DAMAGE_PER_TURN, STORM_MAGNETIC_AM_DRAIN_PER_TURN,
-    STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN,
-    DUST_NEBULA_SENSOR_MOD, HYDROGEN_NEBULA_HARVEST_MULTIPLIER
+    BLACK_HOLE_EVENT_HORIZON_DAMAGE,
+    BLACK_HOLE_INHIBITION_RADIUS, STORM_PLASMA_DAMAGE_PER_TURN, STORM_MAGNETIC_AM_DRAIN_PER_TURN,
+    STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN
 )
 from geometry import Position
-from utils import HexCoord
 from unit_components import (
-    ColonyComponent, MiningComponent, AntimatterHarvester, AntimatterStorage,
-    Engines, Sensors
+    ColonyComponent, MiningComponent, AntimatterHarvester, Engines, Sensors
 )
 from unit_orders import ColonizeOrder, LoadColonistsOrder
 from visibility import VisibilityService, is_unit_in_asteroid_field
@@ -315,7 +310,6 @@ def test_environmental_hazards_in_turn_processor():
 
 def test_radiation_storm_damages_component_in_turn_processor():
     """Verify Radiation Storm inflicts 4 damage to a functional component."""
-    import random
     from turn_processor import TurnProcessor
 
     p1 = Player("Player 1", (0, 100, 255))
@@ -485,7 +479,6 @@ def test_radiation_storm_outside_radius_no_damage():
 
     for comp_type, hp in initial_hp_map.items():
         assert u.get_component(comp_type).current_hit_points == hp
-
 
 
 def test_black_hole_event_horizon_hazard():
@@ -690,7 +683,7 @@ def test_gas_giant_antimatter_removal_integration():
     from input_processor.context_menu_builder import build_sector_context_menu_options
     from game_ai.rules import is_antimatter_source
     from game_ai.observation import _body_view
-    from game_ai.commands import CommandGateway, _Rejected
+    from game_ai.commands import CommandGateway
 
     p1 = Player("Player 1", (0, 100, 255))
     unit = create_test_unit(p1, pos=Position(0, 0))
@@ -720,7 +713,6 @@ def test_gas_giant_antimatter_removal_integration():
     # 4. AI Observation: harvest_multiplier is 0.0
     body_obs = _body_view(gas_giant, p1)
     assert body_obs.get("harvest_multiplier", 0.0) == 0.0
-    from game_ai.commands import CommandGateway
     from game_ai.contracts import Command, CommandBatch
 
     # 5. CommandGateway rejection

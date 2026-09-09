@@ -213,7 +213,7 @@ Wormhole-Control/
 │   ├── repair.py
 │   ├── stance.py
 │   └── trade.py
-├── tests/  # Offline regression suite (test_*.py)
+├── tests/  # Offline behavior suites, shared support scenarios, and lifecycle fixtures
 └── saves/  # Runtime campaigns and logs
 ```
 

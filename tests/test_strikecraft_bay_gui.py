@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 from entities import Unit
 from geometry import Position
@@ -6,12 +5,13 @@ from constants import HullSize
 from unit_components import StrikecraftBayComponent, StrikecraftWingComponent
 from unit_orders import DockOrder, DeployAllWingsOrder
 from game import Game
-from tests.test_unit_components import MockPlayer
+from tests.support.units import ComponentPlayer
+
 
 def test_strikecraft_bay_gui_data_generation():
     # Mock game
     game = MagicMock()
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     game.players = [player]
     game.current_player_index = 0
     game.sidebar_needs_update = True
@@ -108,8 +108,8 @@ def test_strikecraft_bay_gui_data_generation():
 def test_strikecraft_bay_gui_data_generation_non_owner():
     # Mock game
     game = MagicMock()
-    player = MockPlayer("Player 1")
-    enemy = MockPlayer("Player 2")
+    player = ComponentPlayer("Player 1")
+    enemy = ComponentPlayer("Player 2")
     game.players = [player] # Active player is player
     game.current_player_index = 0
     game.sidebar_needs_update = True
@@ -172,7 +172,7 @@ def test_strikecraft_bay_gui_data_generation_non_owner():
 
 def test_recall_ship_action_handling():
     game = MagicMock()
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     game.players = [player]
     game.current_player_index = 0
     
@@ -225,7 +225,7 @@ def test_recall_ship_action_handling():
 
 def test_launch_all_wings_action_handling():
     game = MagicMock()
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     game.players = [player]
     game.current_player_index = 0
     
@@ -264,7 +264,7 @@ def test_launch_all_wings_action_handling():
 def test_fighter_wing_gui_data_generation():
     # Mock game
     game = MagicMock()
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     game.players = [player]
     game.current_player_index = 0
     game.sidebar_needs_update = True

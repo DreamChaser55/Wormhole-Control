@@ -1,20 +1,18 @@
 """Environmental effects at firing, damage, visibility and persistence boundaries."""
 from types import SimpleNamespace
 import json
-
 import pytest
-
 from constants import FieldDensity, HullSize, NebulaType
 from entities import IceField, Nebula, Player
 from environmental_effects import modifiers_for_unit
 from geometry import Position
-from tests.test_persistence_integrity import campaign, ship
 from turn_processor import TurnProcessor
 from unit_components import Weapons, Turret, TurretType, TurretVariant, Commander
 from unit_components.abilities.cluster_warhead import ClusterWarheadAbility
 from unit_orders import AttackOrder, OrderStatus
 from save_manager import serialize_game_state, deserialize_game_state
 from game_ai.observation import build_observation
+from tests.support.campaigns import campaign, ship
 
 
 def field(game, kind, *, center=None, radius=500):

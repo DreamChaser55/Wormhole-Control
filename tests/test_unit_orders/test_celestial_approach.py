@@ -1,26 +1,22 @@
-import math
 import unittest
 from unittest.mock import MagicMock
-
-from geometry import Position, Vector, distance, Circle
+from geometry import Position, distance, Circle
 from constants import (
     PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS,
     DEFAULT_STANDOFF_DISTANCE, SECTOR_CIRCLE_RADIUS_LOGICAL
 )
-from entities import Planet, Moon, ColonizableAsteroid, Player, Unit
-from unit_components import Engines, Hyperdrive, ColonyComponent, AntimatterStorage
-from unit_orders import MoveOrder, OrderStatus, ReachWaypointOrder
+from unit_orders import MoveOrder
 from hexgrid_utils import hex_to_pixel
 from save_manager import serialize_order, deserialize_order
-from tests.test_unit_components import MockUnit, MockPlayer
+from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 class TestCelestialApproach(unittest.TestCase):
     def setUp(self):
-        self.player = MockPlayer()
+        self.player = ComponentPlayer()
 
     def test_same_sector_resolution(self):
-        unit = MockUnit()
+        unit = ComponentUnit()
         unit.in_system = "Sol"
         unit.in_hex = (0, 0)
         unit.position = Position(1000.0, 0.0)
@@ -58,7 +54,7 @@ class TestCelestialApproach(unittest.TestCase):
         self.assertAlmostEqual(dest_pos.y, 0.0, places=2)
 
     def test_different_sector_intra_system_resolution(self):
-        unit = MockUnit()
+        unit = ComponentUnit()
         unit.in_system = "Sol"
         unit.in_hex = (2, 0)
         unit.position = Position(0.0, 0.0)
@@ -99,7 +95,7 @@ class TestCelestialApproach(unittest.TestCase):
         self.assertAlmostEqual(dest_pos.y, expected_pos.y, places=2)
 
     def test_moon_and_asteroid_standoff_distances(self):
-        unit = MockUnit()
+        unit = ComponentUnit()
         unit.in_system = "Sol"
         unit.in_hex = (0, 0)
         unit.position = Position(0.0, 500.0)
@@ -142,7 +138,7 @@ class TestCelestialApproach(unittest.TestCase):
         self.assertAlmostEqual(distance(ast_dest, asteroid.position), ASTEROID_RADIUS + DEFAULT_STANDOFF_DISTANCE, places=2)
 
     def test_serialization_round_trip(self):
-        unit = MockUnit()
+        unit = ComponentUnit()
         planet = MagicMock()
         planet.id = 101
         planet.name = "Terra"

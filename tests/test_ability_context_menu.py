@@ -1,5 +1,4 @@
 from player_controller import PlayerController
-import pytest
 from unittest.mock import MagicMock, patch
 from geometry import Position
 from entities import Unit
@@ -203,4 +202,3 @@ def test_context_menu_submenu_handle_button_index():
         res = handle_button_index(gui, 0)
         assert res == {'action': 'ui_handled'}
         mock_open_cm.assert_called_once_with(gui, Position(100, 200), [("Back", "__submenu_back__"), ("Sub Item 1", "sub_action_1")], "Target")
-

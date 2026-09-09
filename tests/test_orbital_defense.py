@@ -1,22 +1,18 @@
 from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
-
 from constants import (
     HullSize, RED, BLUE,
     DEFAULT_ORBITAL_DEFENSE_RADIUS,
     DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS,
     DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS,
     ORBITAL_DEFENSE_HULL_COST,
-    BASE_ORBITAL_DEFENSE_CAPACITY,
-    POPULATION_PER_ORBITAL_DEFENSE,
 )
 from geometry import Position
 from entities import Player, Unit, Planet, Moon, ColonizableAsteroid, MetalAsteroid
-from galaxy import Galaxy, StarSystem, Hex
+from galaxy import Galaxy, StarSystem
 from unit_components import (
-    OrbitalDefenseComponent, Weapons, Turret, Defenses, TurretType, TurretVariant,
-    instantiate_unit_from_template,
+    OrbitalDefenseComponent, Weapons, Turret, Defenses, TurretType,
 )
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig
 from gui.unit_editor_gui.catalog import COMPONENT_ROWS, COMPONENT_DESCRIPTIONS
@@ -442,7 +438,3 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
         self.assertEqual(deserialized.orbital_defense_component.radius, DEFAULT_ORBITAL_DEFENSE_RADIUS)
         self.assertEqual(deserialized.orbital_defense_component.attack_bonus, DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS)
         self.assertEqual(deserialized.orbital_defense_component.defense_bonus, DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS)
-
-
-if __name__ == "__main__":
-    unittest.main()

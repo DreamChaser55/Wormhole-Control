@@ -1,7 +1,5 @@
-import pytest
 from unittest.mock import MagicMock
 from pygame import Color
-
 from gui.theme_loader import create_player_scifi_theme_colors
 from gui.layout_hud import update_hud_panel_colors
 from game import Game
@@ -73,4 +71,3 @@ def test_update_player_turn_display_triggers_theme_update():
     game.update_player_turn_display()
 
     game.gui.update_player_turn_theme.assert_called_once_with(Color(0, 255, 0))
-

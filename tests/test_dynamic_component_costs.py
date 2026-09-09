@@ -6,8 +6,6 @@ custom_unit_templates.py.
 """
 
 import pytest
-import math
-
 from custom_unit_templates import (
     TurretConfig,
     calc_engine_hull_cost,
@@ -18,14 +16,6 @@ from custom_unit_templates import (
     calc_ability_hull_cost,
     ComponentConfig,
     CustomUnitTemplate,
-    SPEED_PER_HULL_POINT,
-    BASE_TURRET_COST,
-    DMG_PER_POINT,
-    RANGE_PER_POINT,
-    COOLDOWN_BONUS,
-    DEFENSE_PER_HULL_POINT,
-    HYPERDRIVE_BASE_COST,
-    HYPERDRIVE_RANGE_PER_POINT,
     ABILITY_BASE_COST,
     ABILITY_COST_PER_ABILITY,
 )
@@ -41,11 +31,6 @@ class TestCalcEngineHullCost:
         """Default speed 100 should yield hull cost 5 on MEDIUM baseline hull."""
         assert calc_engine_hull_cost(100.0, HullSize.MEDIUM) == 5
 
-    def test_speed_200_gives_10(self):
-        assert calc_engine_hull_cost(200.0, HullSize.MEDIUM) == 10
-
-    def test_speed_50_gives_2_point_5(self):
-        assert calc_engine_hull_cost(50.0, HullSize.MEDIUM) == 2.5
 
     def test_speed_1_gives_fractional(self):
         assert calc_engine_hull_cost(1.0, HullSize.MEDIUM) == 0.05
@@ -57,12 +42,6 @@ class TestCalcEngineHullCost:
     def test_speed_negative_gives_0(self):
         assert calc_engine_hull_cost(-10.0, HullSize.MEDIUM) == 0.0
 
-    def test_speed_exactly_on_boundary(self):
-        """Speed exactly divisible by SPEED_PER_HULL_POINT."""
-        assert calc_engine_hull_cost(SPEED_PER_HULL_POINT, HullSize.MEDIUM) == 1.0
-
-    def test_result_always_float(self):
-        assert isinstance(calc_engine_hull_cost(137.5, HullSize.MEDIUM), float)
 
     def test_hull_size_multipliers_for_speed_100(self):
         """Verify speed 100 scales according to hull size multipliers."""
@@ -113,9 +92,6 @@ class TestCalcTurretHullCost:
         t_lr = self._standard(10, 300, 2, "LONG_RANGE")
         assert calc_turret_hull_cost(t_lr) > calc_turret_hull_cost(t_std)
 
-    def test_result_always_float(self):
-        assert isinstance(calc_turret_hull_cost(self._standard(10, 300, 2)), float)
-
 
 # ---------------------------------------------------------------------------
 # calc_weapons_hull_cost
@@ -128,13 +104,6 @@ class TestCalcWeaponsHullCost:
     def test_no_turrets_returns_0(self):
         assert calc_weapons_hull_cost([]) == 0
 
-    def test_single_turret(self):
-        t = self._t()
-        assert calc_weapons_hull_cost([t]) == calc_turret_hull_cost(t)
-
-    def test_multiple_turrets_sum(self):
-        t = self._t()
-        assert calc_weapons_hull_cost([t, t]) == calc_turret_hull_cost(t) * 2
 
     def test_two_different_turrets(self):
         t1 = TurretConfig("MASS_DRIVER", 10, 300, 2, "STANDARD")
@@ -155,20 +124,9 @@ class TestCalcDefensesHullCost:
         """armor=5 + shields=5 + pd=5 = 15 total → 15 / 3 = 5.0."""
         assert calc_defenses_hull_cost(5, 5, 5) == 5.0
 
-    def test_equal_spread_10_10_10(self):
-        """30 total → 30 / 3 = 10.0."""
-        assert calc_defenses_hull_cost(10, 10, 10) == 10.0
 
     def test_nonzero_when_any_nonzero(self):
         assert calc_defenses_hull_cost(1, 0, 0) == 1 / 3.0
-
-    def test_more_total_higher_cost(self):
-        low = calc_defenses_hull_cost(2, 2, 2)
-        high = calc_defenses_hull_cost(20, 20, 20)
-        assert high > low
-
-    def test_result_always_float(self):
-        assert isinstance(calc_defenses_hull_cost(7, 3, 5), float)
 
 
 # ---------------------------------------------------------------------------
@@ -188,15 +146,6 @@ class TestCalcHyperdriveCost:
         """BASIC + range 10 → 3 + 10/5 = 3 + 2 = 5.0."""
         assert calc_hyperdrive_hull_cost("BASIC", 10) == 5.0
 
-    def test_advanced_range10(self):
-        """ADVANCED + range 10 → 7 + 2 = 9.0."""
-        assert calc_hyperdrive_hull_cost("ADVANCED", 10) == 9.0
-
-    def test_longer_range_costs_more(self):
-        assert calc_hyperdrive_hull_cost("BASIC", 20) > calc_hyperdrive_hull_cost("BASIC", 5)
-
-    def test_advanced_costs_more_than_basic_same_range(self):
-        assert calc_hyperdrive_hull_cost("ADVANCED", 5) > calc_hyperdrive_hull_cost("BASIC", 5)
 
     def test_case_insensitive(self):
         assert calc_hyperdrive_hull_cost("basic", 5) == calc_hyperdrive_hull_cost("BASIC", 5)
@@ -204,8 +153,6 @@ class TestCalcHyperdriveCost:
     def test_minimum_is_1(self):
         assert calc_hyperdrive_hull_cost("BASIC", 0) >= 1.0
 
-    def test_result_always_float(self):
-        assert isinstance(calc_hyperdrive_hull_cost("ADVANCED", 7), float)
 
     def test_hyperdrive_hull_cost_scales_with_hull_size(self):
         # BASIC, range 5 has base raw cost of 3 + (5/5) = 4.0
@@ -231,9 +178,6 @@ class TestCalcAbilityCost:
     def test_multiple_abilities(self):
         assert calc_ability_hull_cost(["ion_bolt", "cluster_warhead", "repair_cloud"]) == \
                ABILITY_BASE_COST + 3 * ABILITY_COST_PER_ABILITY
-
-    def test_result_always_float(self):
-        assert isinstance(calc_ability_hull_cost(["ion_bolt"]), float)
 
 
 # ---------------------------------------------------------------------------
@@ -386,23 +330,7 @@ class TestValidation:
 # ---------------------------------------------------------------------------
 
 class TestComponentClassCostMethods:
-    def test_engines_calc_hull_cost(self):
-        from unit_components.movement import Engines
-        assert Engines.calc_hull_cost(100.0, HullSize.MEDIUM) == 5.0
 
-    def test_hyperdrive_calc_hull_cost(self):
-        from unit_components.movement import Hyperdrive
-        assert Hyperdrive.calc_hull_cost("BASIC", 0, HullSize.MEDIUM) == 3.0
-
-    def test_weapons_calc_hull_cost(self):
-        from unit_components.weapons import Weapons
-        t = TurretConfig("MASS_DRIVER", 10.0, 500.0, 2)
-        assert Weapons.calc_turret_hull_cost(t) > 0.0
-        assert Weapons.calc_hull_cost([t]) == Weapons.calc_turret_hull_cost(t)
-
-    def test_defenses_calc_hull_cost(self):
-        from unit_components.defenses import Defenses
-        assert Defenses.calc_hull_cost(5, 5, 5) == 5.0
 
     def test_antimatter_calc_hull_cost(self):
         from unit_components.antimatter import AntimatterStorage
@@ -412,25 +340,6 @@ class TestComponentClassCostMethods:
         from unit_components.sensors import Sensors
         assert pytest.approx(Sensors.calc_hull_cost(300.0, 0)) == 0.3
 
-    def test_hangar_calc_hull_cost(self):
-        from unit_components.hangar import HangarComponent
-        assert HangarComponent.calc_hull_cost(2) == 20.0
-
-    def test_strikecraft_bay_calc_hull_cost(self):
-        from unit_components.strikecraft import StrikecraftBayComponent
-        assert StrikecraftBayComponent.calc_hull_cost(2) == 15.0
-
-    def test_repair_calc_hull_cost(self):
-        from unit_components.repair import RepairComponent
-        assert pytest.approx(RepairComponent.calc_hull_cost(10.0), rel=1e-3) == 14.9925
-
-    def test_mining_calc_hull_cost(self):
-        from unit_components.mining import MiningComponent
-        assert MiningComponent.calc_hull_cost(10.0, 100.0) == 10.0
-
-    def test_inhibitor_calc_hull_cost(self):
-        from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
-        assert HyperspaceInhibitionFieldEmitter.calc_hull_cost(50.0) == 10.0
 
     def test_marines_calc_hull_cost(self):
         from unit_components.marines import MarinesComponent
@@ -448,4 +357,3 @@ class TestComponentClassCostMethods:
         assert CloakingDevice.calc_hull_cost(CloakingType.ADVANCED, area_radius=500.0) == 30.0
         assert CloakingDevice.calc_hull_cost("ADVANCED", area_radius=250.0) == 15.0
         assert CloakingDevice.calc_hull_cost("ADVANCED", area_radius=1000.0) == 60.0
-

@@ -2,15 +2,15 @@ from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders import OrderStatus, OrderType, AttackOrder
 from unit_components import Engines, Hyperdrive, HyperdriveType, Weapons
-from tests.test_unit_components import MockUnit
+from tests.support.units import ComponentUnit
 
 
 def test_attack_order():
-    unit = MockUnit()
-    weapons = MagicMock()
+    unit = ComponentUnit()
+    weapons = MagicMock(hull_cost=0)
     unit.components[Weapons] = weapons
     
-    target = MockUnit()
+    target = ComponentUnit()
     unit.game.galaxy.get_unit_by_id.return_value = target
     
     order = AttackOrder(unit, {"target_unit_id": target.id})
@@ -35,8 +35,8 @@ def test_attack_order():
 
 
 def test_attack_order_pursuit():
-    unit = MockUnit()
-    weapons = MagicMock()
+    unit = ComponentUnit()
+    weapons = MagicMock(hull_cost=0)
     unit.components[Weapons] = weapons
     
     # Add engines and hyperdrive to allow route planning and hex jumps
@@ -45,7 +45,7 @@ def test_attack_order_pursuit():
     hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5)
     unit.add_component(hd)
     
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 456
     target.name = "TargetUnit"
     

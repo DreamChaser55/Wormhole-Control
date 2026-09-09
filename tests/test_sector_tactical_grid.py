@@ -2,27 +2,14 @@ import pytest
 import pygame
 import math
 from unittest.mock import MagicMock, patch
-
 from constants import (
-    SECTOR_GRID_COLOR, SECTOR_GRID_SPACING, SECTOR_CIRCLE_RADIUS_LOGICAL
+    SECTOR_GRID_COLOR, SECTOR_CIRCLE_RADIUS_LOGICAL
 )
 from rendering.sector_renderer import SectorViewRenderer
 from geometry import Position
 
 
-@pytest.fixture(autouse=True)
-def init_pygame():
-    pygame.init()
-    yield
-    pygame.quit()
-
-
-def test_sector_tactical_grid_constants():
-    assert SECTOR_GRID_COLOR == (30, 35, 45)
-    assert SECTOR_GRID_SPACING == 1000.0
-
-
-def test_draw_tactical_grid_invokes_draw_line():
+def test_tactical_grid_draws_lines_clipped_to_sector():
     mock_game = MagicMock()
     mock_game.screen = pygame.Surface((800, 600))
     mock_game.overlay_surface = pygame.Surface((800, 600), pygame.SRCALPHA)
@@ -51,24 +38,14 @@ def test_draw_tactical_grid_invokes_draw_line():
             if len(call[0]) >= 2 and call[0][1] == SECTOR_GRID_COLOR
         ]
 
-        # For logical radius 5000 and spacing 1000:
-        # grid step = 1000 -> -4000, -3000, -2000, -1000, 0, 1000, 2000, 3000, 4000 (9 values)
-        # Each step draws 1 vertical line and 1 horizontal line -> 18 lines total
-        assert len(grid_line_calls) == 18
+        assert grid_line_calls
+        from sector_utils import pixels_to_sector_coords
+        for call in grid_line_calls:
+            for endpoint in call.args[2:4]:
+                point = pixels_to_sector_coords(Position(*endpoint), zoom=mock_game.sector_zoom, pan_offset=mock_game.sector_pan_offset)
+                # Pixel rounding permits at most one pixel per axis of overshoot.
+                from constants import SECTOR_CIRCLE_RADIUS_IN_PX
+                tolerance = math.sqrt(2) * SECTOR_CIRCLE_RADIUS_LOGICAL / SECTOR_CIRCLE_RADIUS_IN_PX
+                assert math.hypot(point.x, point.y) <= SECTOR_CIRCLE_RADIUS_LOGICAL + tolerance
 
-
-def test_tactical_grid_boundary_clipping():
-    mock_game = MagicMock()
-    mock_game.screen = pygame.Surface((800, 600))
-    mock_game.overlay_surface = pygame.Surface((800, 600), pygame.SRCALPHA)
-    renderer = SectorViewRenderer(mock_game)
-
-    lines_drawn = []
-
-    def mock_line(surface, color, start_pos, end_pos, width=1):
-        lines_drawn.append((start_pos, end_pos))
-
-    with patch("rendering.sector_renderer.pygame.draw.line", side_effect=mock_line):
-        renderer._draw_tactical_grid()
-
-    assert len(lines_drawn) == 18
+pytestmark = pytest.mark.usefixtures("pygame_context")

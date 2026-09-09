@@ -1,13 +1,12 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_components import AntimatterStorage, AntimatterHarvester, Commander
-from tests.test_unit_components import MockUnit, MockPlayer
-from unit_orders import OrderStatus, OrderType, ContinuousResupplyOrder, TransferAntimatterOrder
+from unit_components import AntimatterHarvester, Commander
+from unit_orders import OrderStatus, OrderType, ContinuousResupplyOrder
 from entities import Star
 from events import ContinuousResupplyEvent, EventBus
 from order_system import OrderSystem
-from constants import HullSize, StarType, DEFAULT_ANTIMATTER_CAPACITY
+from constants import HullSize, StarType
+from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 def _make_star(in_system="Sol", in_hex=(0, 0), position=None):
@@ -21,7 +20,7 @@ def _make_star(in_system="Sol", in_hex=(0, 0), position=None):
 
 def _make_harvester_unit(player, position=None, in_hex=(0, 0), in_system="Sol",
                          am_capacity=100.0, am_current=None):
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.in_system = in_system
     unit.in_hex = in_hex
@@ -39,7 +38,7 @@ def _make_harvester_unit(player, position=None, in_hex=(0, 0), in_system="Sol",
 
 def _make_needy_unit(player, position=None, in_hex=(0, 0), in_system="Sol",
                      am_capacity=100.0, am_current=0.0):
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.id = id(unit)
     unit.owner = player
     unit.in_system = in_system
@@ -71,7 +70,7 @@ def _make_galaxy(units_in_hex, star=None):
 
 
 def test_continuous_resupply_flow():
-    player = MockPlayer()
+    player = ComponentPlayer()
     harvester = _make_harvester_unit(player, am_current=0.0)
     needy = _make_needy_unit(player)
     star = _make_star()
@@ -100,7 +99,7 @@ def test_continuous_resupply_flow():
 
 
 def test_continuous_resupply_no_needy_units():
-    player = MockPlayer()
+    player = ComponentPlayer()
     harvester = _make_harvester_unit(player, am_current=100.0)
     star = _make_star()
     galaxy = _make_galaxy([harvester], star=star)
@@ -114,7 +113,7 @@ def test_continuous_resupply_no_needy_units():
 
 
 def test_continuous_resupply_returns_to_star_when_reserve_hits_60():
-    player = MockPlayer()
+    player = ComponentPlayer()
     star = _make_star(in_hex=(0, 0))
     # Harvester is away from star hex (e.g. in hex (2, 2)) after completing transfer, reserve = 60.0
     harvester = _make_harvester_unit(player, in_hex=(2, 2), am_current=60.0)
@@ -129,10 +128,9 @@ def test_continuous_resupply_returns_to_star_when_reserve_hits_60():
     assert order.sub_orders[0].order_type == OrderType.MOVE
 
 
-
 def test_continuous_resupply_requires_harvester():
-    player = MockPlayer()
-    unit = MockUnit()
+    player = ComponentPlayer()
+    unit = ComponentUnit()
     unit.owner = player
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
@@ -153,7 +151,7 @@ def test_continuous_resupply_requires_harvester():
 
 
 def test_continuous_resupply_picks_closest_needy_unit():
-    player = MockPlayer()
+    player = ComponentPlayer()
     harvester = _make_harvester_unit(player, position=Position(0, 0), am_current=100.0)
     needy_close = _make_needy_unit(player, position=Position(100, 0), am_current=0.0)
     needy_far = _make_needy_unit(player, position=Position(2000, 0), am_current=0.0)
@@ -183,7 +181,7 @@ def test_continuous_resupply_picks_closest_needy_unit():
 
 
 def test_continuous_resupply_fails_with_unknown_star():
-    player = MockPlayer()
+    player = ComponentPlayer()
     harvester = _make_harvester_unit(player, am_current=100.0)
     galaxy = MagicMock()
     galaxy.get_celestial_body_by_id.return_value = None
@@ -198,7 +196,7 @@ def test_continuous_resupply_fails_with_unknown_star():
 
 
 def test_continuous_resupply_fails_with_missing_target_id():
-    player = MockPlayer()
+    player = ComponentPlayer()
     harvester = _make_harvester_unit(player, am_current=100.0)
     galaxy = _make_galaxy([harvester])
     harvester.game.galaxy = galaxy
@@ -211,7 +209,7 @@ def test_continuous_resupply_fails_with_missing_target_id():
 
 
 def test_player_event_continuous_resupply_accepts_legacy_star_id_zero():
-    player = MockPlayer()
+    player = ComponentPlayer()
     harvester = _make_harvester_unit(player, am_current=0.0)
     star = _make_star()
     star.id = 0

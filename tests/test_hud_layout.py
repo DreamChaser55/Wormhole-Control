@@ -1,13 +1,9 @@
 import pygame
-import pygame_gui
 import pytest
-from unittest.mock import MagicMock
-from pygame import Color
-
 from constants import SCREEN_RES, TOP_BAR_HEIGHT, INFO_BOX_WIDTH
-from geometry import Position, Vector
+from geometry import Position
 from gui.handler import GUI_Handler
-from gui.layout_hud import setup_game_ui, update_hud_panel_colors, update_resource_display
+from gui.layout_hud import setup_game_ui
 
 
 class DummyGame:
@@ -24,7 +20,7 @@ class DummyGame:
 
 @pytest.fixture
 def mock_gui():
-    pygame.init()
+
     if not pygame.display.get_surface():
         pygame.display.set_mode((int(SCREEN_RES.x), int(SCREEN_RES.y)))
     gui = GUI_Handler(SCREEN_RES, DummyGame())
@@ -62,8 +58,6 @@ def test_bottom_bar_spans_to_sidebar_edge(mock_gui):
     assert bottom_rect.top == int(SCREEN_RES.y) - TOP_BAR_HEIGHT
     assert bottom_rect.width == int(SCREEN_RES.x) - INFO_BOX_WIDTH
     assert bottom_rect.height == TOP_BAR_HEIGHT
-
-
 
 
 def test_top_bar_elements_layout(mock_gui):
@@ -139,3 +133,5 @@ def test_is_mouse_over_gui_panels(mock_gui):
 
     # Inside main game viewport area (should NOT be over UI panels)
     assert mock_gui.is_mouse_over_gui_panels(Position((screen_w - INFO_BOX_WIDTH) // 2, screen_h // 2)) is False
+
+pytestmark = pytest.mark.usefixtures("pygame_context")

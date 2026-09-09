@@ -1,15 +1,11 @@
+import pytest
 from player_controller import PlayerController
-import os
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-import pygame
-pygame.init()
-pygame.display.set_mode((1280, 720))
 from unittest.mock import MagicMock
 from geometry import Position
-from entities import Minefield, Player
+from entities import Minefield
 from unit_components import MinefieldType
 from input_processor import InputProcessor
-from sector_utils import get_minefield_dot_pixel_positions, sector_coords_to_pixels
+from sector_utils import get_minefield_dot_pixel_positions
 from galaxy import Galaxy, StarSystem, Hex
 
 
@@ -152,3 +148,5 @@ def test_invisible_enemy_minefield_not_selectable_by_clicking_dots():
     # Click position
     input_proc.handle_mouse_click(1, target_pos)
     assert game.selected_objects == []
+
+pytestmark = pytest.mark.usefixtures("pygame_context")

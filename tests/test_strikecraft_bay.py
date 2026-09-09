@@ -1,10 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
 from unit_components import StrikecraftWingComponent, StrikecraftBayComponent
-from unit_orders import OrderStatus, OrderType, DockOrder, DeployUnitOrder, DeployAllWingsOrder
-from tests.test_unit_components import MockUnit as BaseMockUnit, MockPlayer
+from unit_orders import OrderStatus, DockOrder, DeployUnitOrder, DeployAllWingsOrder
+from tests.support.units import ComponentUnit as BaseMockUnit
+
 
 class MockUnit(BaseMockUnit):
     @property
@@ -363,5 +363,3 @@ def test_deploy_all_wings_order():
     assert len(strikecraft_bay.launched_units) == 2
     assert wing1 in strikecraft_bay.launched_units
     assert wing2 in strikecraft_bay.launched_units
-
-

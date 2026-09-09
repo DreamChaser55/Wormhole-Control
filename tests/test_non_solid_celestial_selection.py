@@ -2,11 +2,9 @@
 cannot be selected by clicking inside their radius in sector view, and can only
 be selected via the sidebar of the hex they are in.
 """
-import pytest
 from unittest.mock import MagicMock
 from constants import (
-    PlanetType, StarType, NebulaType, StormType, FieldDensity,
-    SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_CIRCLE_RADIUS_IN_PX
+    PlanetType, StarType, NebulaType, StormType
 )
 from geometry import Position
 from entities import (

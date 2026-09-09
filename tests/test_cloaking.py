@@ -14,12 +14,10 @@ import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import (
-    DEFAULT_SENSOR_SHORT_RANGE,
     HullSize,
     CLOAKING_BASIC_HULL_COST,
     CLOAKING_ADVANCED_HULL_COST,
     CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN,
-    CLOAKING_ADVANCED_ANTIMATTER_COST_PER_TURN,
     DEFAULT_ADVANCED_CLOAKING_RADIUS,
 )
 from entities import Player, Unit
@@ -33,8 +31,6 @@ from visibility import VisibilityService, is_unit_visible, hex_has_presence
 from galaxy import Galaxy, StarSystem
 from custom_unit_templates import (
     CustomUnitTemplate,
-    ComponentConfig,
-    calc_cloaking_hull_cost,
 )
 
 
@@ -164,8 +160,6 @@ def test_toggle_and_destroyed_handling(galaxy_setup):
     cloak.on_destroyed()
     assert cloak.is_active is False
     assert cloak.toggle() is False
-
-
 
 
 # --------------------------------------------------------------------------

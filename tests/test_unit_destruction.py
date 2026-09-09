@@ -1,8 +1,6 @@
 from player_controller import PlayerController
-import pytest
 from entities import Player, Unit, Minefield, HullSize
 from geometry import Position
-from utils import HexCoord
 from galaxy import StarSystem, Galaxy
 from turn_processor import TurnProcessor
 from visibility import VisibilityService

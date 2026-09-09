@@ -1,20 +1,18 @@
 from player_controller import PlayerController
 import pytest
-from entities import Player, Unit, Position, Planet, Minefield, HullSize
-from galaxy import Galaxy, StarSystem, Hex, CelestialBody
+from entities import Player, Unit, Position, Minefield, HullSize
+from galaxy import Galaxy, StarSystem
 from game_settings import PlayerConfig, GameSettings
 from visibility import VisibilityService, is_unit_visible, is_minefield_visible
-from unit_components import Sensors, CloakingDevice, OrbitalDefenseComponent
-from unit_components.enums import CloakingType, AbilityType
+from unit_components import Sensors, CloakingDevice
+from unit_components.enums import CloakingType
 from unit_components.abilities.repair_cloud import RepairCloudAbility
 from unit_components.abilities.cluster_warhead import ClusterWarheadAbility
 from unit_components.abilities.capture_unit import CaptureUnitAbility
 from unit_components.abilities.drain_antimatter import DrainAntimatterAbility
 from unit_components.abilities.designate_target import DesignateTargetAbility
-from unit_components.intelligence import IntelligenceComponent, Agent, SabotageType
-from unit_orders.intelligence import InfiltrateUnitOrder, InfiltratePlanetOrder, CISweepOrder
-from unit_orders.combat import ProtectOrder
-from unit_orders.patrol import PatrolOrder
+from unit_components.intelligence import IntelligenceComponent, Agent
+from unit_orders.intelligence import InfiltrateUnitOrder, CISweepOrder
 from save_manager import serialize_player, deserialize_player
 from utils import HexCoord
 

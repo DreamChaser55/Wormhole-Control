@@ -3,11 +3,11 @@ from unittest.mock import MagicMock
 from geometry import Position, Circle
 from unit_orders import OrderStatus, ToggleInhibitorOrder
 from unit_components import HyperspaceInhibitionFieldEmitter
-from tests.test_unit_components import MockUnit
+from tests.support.units import ComponentUnit
 
 
 def test_toggle_inhibitor_order():
-    unit = MockUnit()
+    unit = ComponentUnit()
     emitter = MagicMock()
     emitter.radius = 100.0
     emitter.set_active.return_value = SimpleNamespace(allowed=True)

@@ -2,10 +2,10 @@ import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import DEFAULT_SENSOR_SHORT_RANGE, HullSize
-from entities import Player, Unit, Planet, Star, PlanetType, StarType
+from entities import Player, Unit
 from unit_components import Sensors
 from visibility import VisibilityService, is_unit_visible, hex_has_presence
-from galaxy import Galaxy, StarSystem, Hex
+from galaxy import Galaxy, StarSystem
 
 
 @pytest.fixture
@@ -270,9 +270,8 @@ def test_template_sensor_wiring(test_setup):
     assert sensors.hull_cost == 15
 
 
-def test_new_game_visibility_turn1():
-    from game import Game
-    g = Game(control_port=0)
+def test_new_game_visibility_turn1(game_factory):
+    g = game_factory()
     try:
         g.start_new_game()
 
@@ -294,4 +293,3 @@ def test_new_game_visibility_turn1():
     finally:
         g.control_service.shutdown()
         g.ai_coordinator.shutdown()
-

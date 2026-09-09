@@ -1,14 +1,13 @@
 from player_controller import PlayerController
-"""Tests for sensors inter-sector range hexgrid highlight in System View."""
 from unittest.mock import MagicMock, patch
 import pytest
 import pygame
-
 from constants import BLUE, HullSize, SENSOR_RANGE_HEX_FILL_COLOR, DARK_RED
 from entities import Player, Unit
 from geometry import Position
 from rendering.system_renderer import SystemViewRenderer
 from unit_components import Sensors
+"""Tests for sensors inter-sector range hexgrid highlight in System View."""
 
 
 @pytest.fixture

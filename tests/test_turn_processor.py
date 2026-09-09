@@ -1,16 +1,17 @@
 from player_controller import PlayerController
 import pytest
 from unittest.mock import MagicMock, patch
-from turn_processor import TurnProcessor, TAX_RATE
+from turn_processor import TurnProcessor
 from geometry import Position
 from entities import Planet
-from tests.test_unit_components import MockUnit, MockPlayer
 from constants import UPKEEP_COST_PER_HULL_POINT, HullSize
+from tests.support.units import ComponentUnit, ComponentPlayer
+
 
 def test_end_turn_advances_player():
     game = MagicMock()
-    player1 = MockPlayer("Player 1")
-    player2 = MockPlayer("Player 2")
+    player1 = ComponentPlayer("Player 1")
+    player2 = ComponentPlayer("Player 2")
     player2.controller = PlayerController.HUMAN
     game.players = [player1, player2]
     game.current_player_index = 0
@@ -25,7 +26,7 @@ def test_end_turn_advances_player():
 
 def test_process_resource_generation():
     game = MagicMock()
-    player = MockPlayer("Human Player")
+    player = ComponentPlayer("Human Player")
     player.credits = 1000.0
     game.players = [player]
     game.current_player_index = 0
@@ -40,7 +41,7 @@ def test_process_resource_generation():
     planet2.population = 100.0
     
     # Planet owned by another player (should not count)
-    other_player = MockPlayer("AI Player")
+    other_player = ComponentPlayer("AI Player")
     planet_other = MagicMock(spec=Planet)
     planet_other.owner = other_player
     planet_other.population = 500.0
@@ -62,8 +63,8 @@ def test_process_resource_generation():
 
 def test_process_movement_sublight():
     game = MagicMock()
-    player = MockPlayer("Player 1")
-    unit = MockUnit()
+    player = ComponentPlayer("Player 1")
+    unit = ComponentUnit()
     unit.owner = player
     
     # Setup engine component
@@ -90,8 +91,8 @@ def test_process_movement_clears_stale_target_for_destroyed_engines():
     from unit_components import Engines
 
     game = MagicMock()
-    player = MockPlayer("Player 1")
-    unit = MockUnit()
+    player = ComponentPlayer("Player 1")
+    unit = ComponentUnit()
     unit.owner = player
     unit.position = Position(0.0, 0.0)
 
@@ -128,15 +129,15 @@ def test_process_combat():
     from unit_components import Commander, Weapons, Turret, TurretType
     from unit_orders import AttackOrder, OrderStatus
     game = MagicMock()
-    player1 = MockPlayer("Player 1")
-    player2 = MockPlayer("Player 2")
+    player1 = ComponentPlayer("Player 1")
+    player2 = ComponentPlayer("Player 2")
     game.players = [player1, player2]
     game.current_player_index = 0
     
-    unit1 = MockUnit()
+    unit1 = ComponentUnit()
     unit1.owner = player1
     unit1.game = game
-    unit2 = MockUnit()
+    unit2 = ComponentUnit()
     unit2.owner = player2
     unit2.game = game
     
@@ -186,11 +187,11 @@ def test_process_combat():
 
 def test_process_unit_updates():
     game = MagicMock()
-    player = MockPlayer("Human Player")
+    player = ComponentPlayer("Human Player")
     game.players = [player]
     game.current_player_index = 0
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     
     system = MagicMock()
@@ -211,11 +212,11 @@ def test_process_orders():
     from unit_orders import Order, OrderStatus
     
     game = MagicMock()
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     game.players = [player]
     game.current_player_index = 0
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     
     commander = Commander(unit)
@@ -242,8 +243,8 @@ def test_process_orders():
 # --- Unit Upkeep Tests ---
 
 def _make_upkeep_unit(player, hull_usage, hull_size=HullSize.TINY, is_temporary=False):
-    """Helper that returns a MockUnit configured for upkeep tests."""
-    unit = MockUnit()
+    """Helper that returns a ComponentUnit configured for upkeep tests."""
+    unit = ComponentUnit()
     unit.owner = player
     unit.current_hull_usage = hull_usage
     unit.hull_size = hull_size
@@ -262,7 +263,7 @@ def _make_upkeep_game(units):
 
 def test_process_unit_upkeep_basic():
     """Upkeep is correctly deducted from player credits."""
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     player.credits = 1000.0
 
     unit = _make_upkeep_unit(player, hull_usage=10)
@@ -277,7 +278,7 @@ def test_process_unit_upkeep_basic():
 
 def test_process_unit_upkeep_clamps_to_zero():
     """Credits never go below zero even when upkeep exceeds the balance."""
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     player.credits = 0.05  # Less than the upkeep that will be charged
 
     unit = _make_upkeep_unit(player, hull_usage=200)  # 200 * 0.01 = 2.0 upkeep
@@ -291,7 +292,7 @@ def test_process_unit_upkeep_clamps_to_zero():
 
 def test_process_unit_upkeep_skips_temporary_units():
     """Temporary units (e.g. Missile Platforms) are excluded from upkeep."""
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     player.credits = 1000.0
 
     temp_unit = _make_upkeep_unit(player, hull_usage=50, is_temporary=True)
@@ -305,7 +306,7 @@ def test_process_unit_upkeep_skips_temporary_units():
 
 def test_process_unit_upkeep_skips_strikecraft():
     """Strikecraft wings are excluded from upkeep charges."""
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     player.credits = 1000.0
 
     wing = _make_upkeep_unit(player, hull_usage=5, hull_size=HullSize.STRIKECRAFT_WING)
@@ -319,9 +320,9 @@ def test_process_unit_upkeep_skips_strikecraft():
 
 def test_process_unit_upkeep_multiple_units():
     """Upkeep accumulates correctly across multiple units owned by the same player."""
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     player.credits = 500.0
-    other_player = MockPlayer("Player 2")
+    other_player = ComponentPlayer("Player 2")
 
     unit_a = _make_upkeep_unit(player, hull_usage=10)       # 10 * 0.01 = 0.10
     unit_b = _make_upkeep_unit(player, hull_usage=25)       # 25 * 0.01 = 0.25
@@ -345,7 +346,7 @@ def test_game_get_player_income():
             self.galaxy = MagicMock()
 
     game = DummyGame()
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     
     planet1 = MagicMock(spec=Planet)
     planet1.owner = player
@@ -355,7 +356,7 @@ def test_game_get_player_income():
     planet2.owner = player
     planet2.population = 50.0
     
-    other_player = MockPlayer("Player 2")
+    other_player = ComponentPlayer("Player 2")
     planet_other = MagicMock(spec=Planet)
     planet_other.owner = other_player
     planet_other.population = 200.0
@@ -381,14 +382,14 @@ def test_game_get_player_upkeep():
             self.galaxy = MagicMock()
             
     game = DummyGame()
-    player = MockPlayer("Player 1")
+    player = ComponentPlayer("Player 1")
     
     unit_a = _make_upkeep_unit(player, hull_usage=10)       # counts
     unit_b = _make_upkeep_unit(player, hull_usage=25)       # counts
     unit_temp = _make_upkeep_unit(player, hull_usage=50, is_temporary=True)  # skipped
     unit_wing = _make_upkeep_unit(player, hull_usage=5, hull_size=HullSize.STRIKECRAFT_WING)  # skipped
     
-    other_player = MockPlayer("Player 2")
+    other_player = ComponentPlayer("Player 2")
     unit_enemy = _make_upkeep_unit(other_player, hull_usage=100)  # skipped
     
     system = MagicMock()
@@ -408,8 +409,8 @@ def test_game_get_player_upkeep():
 def test_turn_number_increment():
     game = MagicMock()
     game.turn_number = 1
-    player1 = MockPlayer("Player 1")
-    player2 = MockPlayer("Player 2")
+    player1 = ComponentPlayer("Player 1")
+    player2 = ComponentPlayer("Player 2")
     player1.controller = PlayerController.HUMAN
     player2.controller = PlayerController.HUMAN
     game.players = [player1, player2]
@@ -431,9 +432,9 @@ def test_turn_number_increment():
 def test_global_round_execution_order_and_population_growth():
     game = MagicMock()
     game.turn_number = 1
-    player1 = MockPlayer("Player 1")
-    player2 = MockPlayer("Player 2")
-    player3 = MockPlayer("Player 3")
+    player1 = ComponentPlayer("Player 1")
+    player2 = ComponentPlayer("Player 2")
+    player3 = ComponentPlayer("Player 3")
     player1.controller = PlayerController.HUMAN
     player2.controller = PlayerController.HUMAN
     player3.controller = PlayerController.HUMAN
@@ -468,9 +469,9 @@ def test_global_round_execution_order_and_population_growth():
 
 def test_check_and_schedule_ai_turn():
     game = MagicMock()
-    ai_player = MockPlayer("AI Player")
+    ai_player = ComponentPlayer("AI Player")
     ai_player.controller = PlayerController.OPENAI
-    human_player = MockPlayer("Human Player")
+    human_player = ComponentPlayer("Human Player")
     human_player.controller = PlayerController.HUMAN
 
     game.players = [ai_player, human_player]
@@ -493,7 +494,7 @@ def test_check_and_schedule_ai_turn():
 def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
     from game_settings import GameSettings, PlayerConfig
     from game_setup import start_new_game
-    from tests.test_persistence_integrity import campaign
+    from tests.support.campaigns import campaign
 
     game = MagicMock()
     game.turn_manager = TurnProcessor(game)
@@ -506,7 +507,7 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
         game.turn_manager.check_and_schedule_ai_turn()
     game.check_and_schedule_ai_turn = check_ai
 
-    from tests.test_phase2_invariants import settings_for
+    from tests.support.scenarios import settings_for
     preview = campaign().galaxy
     settings_for(preview)
     settings = GameSettings(num_systems=5, pregenerated_galaxy=preview, player_configs=[

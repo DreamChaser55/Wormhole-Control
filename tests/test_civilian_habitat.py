@@ -1,10 +1,9 @@
 from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
-
 from constants import HullSize, RED
 from entities import Player, Unit, Planet, Moon, ColonizableAsteroid, MetalAsteroid
-from galaxy import Galaxy, StarSystem, Hex
+from galaxy import Galaxy, StarSystem
 from unit_components import CivilianHabitatComponent, instantiate_unit_from_template
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig
 from turn_processor import TurnProcessor
@@ -394,8 +393,3 @@ class TestCivilianHabitatComponent(unittest.TestCase):
         self.assertTrue(status_new['active'])
         self.assertEqual(status_new['slot'], 1)
         self.assertEqual(status_new['capacity'], 2)
-
-
-if __name__ == "__main__":
-    unittest.main()
-

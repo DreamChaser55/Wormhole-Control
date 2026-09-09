@@ -3,11 +3,11 @@ from geometry import Position
 from unit_orders import OrderStatus, OrderType, PatrolOrder
 from unit_components import Engines, Weapons, Turret, TurretType, TurretVariant
 from constants import HullSize
-from tests.test_unit_components import MockUnit
+from tests.support.units import ComponentUnit
 
 
 def test_patrol_order_movement_loop():
-    unit = MockUnit()
+    unit = ComponentUnit()
     engines = Engines(unit, speed=50.0)
     unit.add_component(engines)
 
@@ -67,7 +67,7 @@ def test_patrol_order_movement_loop():
 
 
 def test_patrol_order_multiple_waypoints():
-    unit = MockUnit()
+    unit = ComponentUnit()
     engines = Engines(unit, speed=50.0)
     unit.add_component(engines)
 
@@ -185,7 +185,7 @@ def test_patrol_order_multiple_waypoints():
 
 
 def test_patrol_order_combat_engagement_and_resumption():
-    unit = MockUnit()
+    unit = ComponentUnit()
     engines = Engines(unit, speed=50.0)
     unit.add_component(engines)
 
@@ -204,7 +204,7 @@ def test_patrol_order_combat_engagement_and_resumption():
     unit.in_hex = (0, 0)
     unit.position = Position(0, 0)
 
-    enemy = MockUnit()
+    enemy = ComponentUnit()
     enemy.id = 999
     enemy.name = "Enemy Ship"
     enemy.owner.id = unit.owner.id + 1  # Make it an enemy
@@ -276,7 +276,7 @@ def test_patrol_order_combat_engagement_and_resumption():
 
 
 def test_patrol_order_combat_engagement_strikecraft():
-    unit = MockUnit()
+    unit = ComponentUnit()
     engines = Engines(unit, speed=50.0)
     unit.add_component(engines)
 
@@ -298,7 +298,7 @@ def test_patrol_order_combat_engagement_strikecraft():
     unit.position = Position(0, 0)
 
     # Enemy is a strikecraft wing and is close (50, 0)
-    enemy = MockUnit()
+    enemy = ComponentUnit()
     enemy.id = 999
     enemy.name = "Enemy Strikecraft"
     enemy.hull_size = HullSize.STRIKECRAFT_WING

@@ -1,31 +1,19 @@
+import pytest
 from player_controller import PlayerController
 import os
 import tempfile
 from pathlib import Path
 import unittest
-from unittest.mock import MagicMock, patch
-import pygame
-import pygame_gui
-
-from geometry import Vector, Position
+from unittest.mock import patch
 from entities import Player, Message, Conversation
-from game import Game
-from gui.handler import GUI_Handler
-from gui.communications_window import CommunicationsWindow
-from save_manager import serialize_game_state, deserialize_game_state
 from game_actions.app_actions import handle_toggle_comms
 
-os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-
+@pytest.mark.usefixtures("game_factory")
 class TestCommunications(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pygame.init()
-        pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game(control_port=0)
+        self.game = self.make_game()
         self.player0 = Player("Player 1", (0, 128, 255), controller=PlayerController.HUMAN)
         self.player1 = Player("Player 2", (255, 0, 0), controller=PlayerController.OPENAI)
         self.player2 = Player("Player 3", (0, 255, 0), controller=PlayerController.HUMAN)
@@ -33,10 +21,6 @@ class TestCommunications(unittest.TestCase):
         self.game.current_player_index = 0
         self.game.turn_number = 1
 
-    def tearDown(self):
-        if hasattr(self, "game") and self.game:
-            self.game.control_service.shutdown()
-            self.game.ai_coordinator.shutdown()
 
     def test_message_dataclass(self):
         msg = Message(
@@ -161,7 +145,7 @@ class TestCommunications(unittest.TestCase):
         saved_filepath = self.game.save_game(test_filename)
         self.assertTrue(os.path.exists(saved_filepath))
 
-        new_game = Game(control_port=0)
+        new_game = self.make_game()
         try:
             load_success = new_game.load_game(saved_filepath)
             self.assertTrue(load_success)
@@ -349,7 +333,3 @@ class TestCommunications(unittest.TestCase):
                 content = sidecar_path.read_text(encoding="utf-8")
                 self.assertIn("# Inter-Player Communications Log", content)
                 self.assertIn("Sidecar comms test message", content)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -1,10 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
 from unit_components import HangarComponent
 from unit_orders import OrderStatus, OrderType, DockOrder, DeployUnitOrder
-from tests.test_unit_components import MockUnit as BaseMockUnit, MockPlayer
+from tests.support.units import ComponentUnit as BaseMockUnit, ComponentPlayer
+
 
 class MockUnit(BaseMockUnit):
     @property
@@ -156,7 +156,7 @@ def test_cascading_destruction():
     galaxy_mock = MagicMock()
     game_mock.galaxy = galaxy_mock
     
-    owner = MockPlayer()
+    owner = ComponentPlayer()
     
     carrier = Unit(
         owner=owner,

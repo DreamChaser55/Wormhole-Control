@@ -37,7 +37,7 @@ class MockKeys:
 
 def test_is_any_text_entry_focused():
     # Initialize pygame and UIManager
-    pygame.init()
+
     pygame.display.set_mode((100, 100))
     game = DummyGame()
     
@@ -111,7 +111,7 @@ def test_shortcuts_blocked_when_focused():
         assert game.view_mode == 'galaxy'
 
 def test_esc_unfocuses_text_entry():
-    pygame.init()
+
     pygame.display.set_mode((100, 100))
     game = DummyGame()
     
@@ -184,3 +184,4 @@ def test_esc_closes_unit_editor():
         
     ip.gui.close_unit_editor.assert_called_once()
 
+pytestmark = pytest.mark.usefixtures("pygame_context")

@@ -1,10 +1,8 @@
 from player_controller import PlayerController
-"""Automated tests for unit context menu disambiguation when multiple units overlap under cursor."""
 import pytest
 from unittest.mock import MagicMock, patch
 import pygame
 import pygame_gui
-
 from geometry import Position, Vector
 from constants import HullSize
 from entities import Unit
@@ -12,13 +10,12 @@ from input_processor import (
     InputProcessor,
     get_units_under_mouse,
     build_sector_unit_disambiguation_menu,
-    build_sector_context_menu_options,
 )
 from gui.context_menu import (
     open_context_menu,
-    close_context_menu,
     handle_button_index,
 )
+"""Automated tests for unit context menu disambiguation when multiple units overlap under cursor."""
 
 
 class MockPlayer:
@@ -46,7 +43,7 @@ class MockPlayer:
 
 @pytest.fixture(autouse=True)
 def setup_pygame():
-    pygame.init()
+
     try:
         pygame.display.set_mode((1280, 720))
     except Exception:
@@ -265,3 +262,5 @@ def test_single_unit_falls_back_to_direct_menu():
                     assert target == unit1
                     action_ids = [opt[1] for opt in opened_options if isinstance(opt[1], str)]
                     assert "view_unit" in action_ids
+
+pytestmark = pytest.mark.usefixtures("pygame_context")

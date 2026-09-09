@@ -1,179 +1,30 @@
-from player_controller import PlayerController
-import pytest
 from unittest.mock import MagicMock
-from geometry import Position, Circle, Vector
+from geometry import Position, Circle
 from unit_components import (
     Engines, Hyperdrive, HyperdriveType, JumpStatus, SabotageType,
     HyperspaceInhibitionFieldEmitter, Commander, UnitStance,
     Turret, TurretType, TurretVariant, Weapons, ColonyComponent,
-    Constructor, BuildableUnit, RepairComponent,
+    Constructor, RepairComponent,
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
-    Defenses, AntimatterStorage, AntimatterHarvester, Sensors
+    Defenses
 )
 from unit_orders import AttackOrder, Order, OrderStatus, OrderType
-
 from constants import HullSize
+from tests.support.units import ComponentPlayer, ComponentUnit
+
 
 # Custom simple mocks to avoid Pygame setup during unit tests
-class MockPlayer:
-    _counter = 1
-    def __init__(self, name="Test Player", player_id=None, team_id=None):
-        if player_id is not None:
-            self.id = player_id
-        else:
-            self.id = MockPlayer._counter
-            MockPlayer._counter += 1
-        self.name = name
-        self.controller = PlayerController.HUMAN
-        self.team_id = team_id if team_id is not None else self.id
-        self.credits = 1000
-        self.metal = 1000
-        self.crystal = 1000
-        self.color = (255, 0, 0)
 
-    def is_allied_with(self, other):
-        if other is None:
-            return False
-        if self is other:
-            return True
-        return getattr(self, 'team_id', None) == getattr(other, 'team_id', None)
-
-    def is_enemy_of(self, other):
-        return not self.is_allied_with(other)
-
-class MockUnit:
-    def __init__(self):
-        self.id = 123
-        self.name = "Test Unit"
-        self.position = Position(0, 0)
-        self.in_hex = (0, 0)
-        self.in_system = "Sol"
-        self.owner = MockPlayer()
-        self.components = {}
-        self.in_galaxy = MagicMock()
-        self.current_hit_points = 100
-        self.max_hit_points = 100
-        self.game = MagicMock()
-        self.hull_size = HullSize.MEDIUM
-        self.is_disabled = False
-        self.damage_amplification = 0.0
-        self.is_temporary = False
-        self.current_hull_usage = 0
-        # XP system
-        self.experience_points = 0
-        # Default antimatter storage and sensors so tests can access components without manual setup
-        self.add_component(AntimatterStorage(self))
-        self.add_component(Sensors(self, short_range_radius=2500.0, long_range_hexes=5))
-        
-    def add_component(self, component):
-        self.components[type(component)] = component
-        
-    def get_component(self, component_type):
-        return self.components.get(component_type)
-        
-    @property
-    def engines_component(self): return self.get_component(Engines)
-    @property
-    def antimatter_component(self): return self.get_component(AntimatterStorage)
-    @property
-    def sensors_component(self): return self.get_component(Sensors)
-    @property
-    def hyperdrive_component(self): return self.get_component(Hyperdrive)
-    @property
-    def inhibitor_component(self): return self.get_component(HyperspaceInhibitionFieldEmitter)
-    @property
-    def weapons_component(self): return self.get_component(Weapons)
-    @property
-    def colony_component(self): return self.get_component(ColonyComponent)
-    @property
-    def constructor_component(self): return self.get_component(Constructor)
-    @property
-    def repair_component(self): return self.get_component(RepairComponent)
-    @property
-    def commander_component(self): return self.get_component(Commander)
-    @property
-    def mining_component(self): return self.get_component(MiningComponent)
-    @property
-    def metal_refinery_component(self): return self.get_component(MetalRefineryComponent)
-    @property
-    def crystal_refinery_component(self): return self.get_component(CrystalRefineryComponent)
-    @property
-    def harvester_component(self): return self.get_component(AntimatterHarvester)
-
-    def take_damage(self, amount, damage_type=None):
-        if damage_type:
-            defenses = self.get_component(Defenses)
-            if defenses:
-                amount = max(0, amount - defenses.calculate_mitigation(amount, damage_type))
-        self.current_hit_points -= amount
-
-    def take_component_damage(self, component_type, amount, damage_type=None):
-        if damage_type:
-            defenses = self.get_component(Defenses)
-            if defenses:
-                amount = max(0, amount - defenses.calculate_mitigation(amount, damage_type))
-        component = self.get_component(component_type)
-        if not component or component.is_destroyed:
-            return amount
-        component.current_hit_points -= amount
-        spillover = 0
-        if component.current_hit_points <= 0:
-            spillover = abs(component.current_hit_points)
-            component.current_hit_points = 0
-            component.on_destroyed()
-        return spillover
-
-    def heal_hull(self, amount):
-        if self.current_hit_points >= self.max_hit_points:
-            return 0
-        healed = min(amount, self.max_hit_points - self.current_hit_points)
-        self.current_hit_points += healed
-        return healed
-
-    def heal_components(self, amount):
-        healed_total = 0
-        for component in self.components.values():
-            if amount <= 0:
-                break
-            if component.current_hit_points < component.max_hit_points:
-                needed = component.max_hit_points - component.current_hit_points
-                healed = min(amount, needed)
-                component.current_hit_points += healed
-                healed_total += healed
-                amount -= healed
-        return healed_total
-
-    def gain_experience(self, amount: int) -> None:
-        from constants import MAX_UNIT_XP
-        if self.experience_points >= MAX_UNIT_XP:
-            return
-        self.experience_points = min(MAX_UNIT_XP, self.experience_points + max(0, amount))
-
-    def xp_multiplier(self, max_bonus: float) -> float:
-        from constants import MAX_UNIT_XP
-        return 1.0 + max_bonus * (self.experience_points / MAX_UNIT_XP)
-
-    def update(self):
-        if self.hyperdrive_component:
-            self.hyperdrive_component.update_recharge()
-        if self.weapons_component and self.in_galaxy:
-            self.weapons_component.update(self.in_galaxy)
-        if self.constructor_component and self.in_galaxy:
-            self.constructor_component.update(self.in_galaxy)
-        if self.repair_component and self.in_galaxy:
-            self.repair_component.update(self.in_galaxy)
-        if self.commander_component:
-            self.commander_component.update()
 
 def test_engines():
-    unit = MockUnit()
+    unit = ComponentUnit()
     engines = Engines(unit, speed=100.0)
     assert engines.speed == 100.0
     assert engines.move_target is None
 
 
 def test_destroyed_engines_are_inoperable_until_repaired():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.is_sabotaged = lambda sabotage_type: sabotage_type == SabotageType.ENGINES
     engines = Engines(unit, speed=100.0)
 
@@ -194,7 +45,7 @@ def test_destroyed_engines_are_inoperable_until_repaired():
     assert engines.effective_speed == 50.0
 
 def test_hyperdrive_recharge():
-    unit = MockUnit()
+    unit = ComponentUnit()
     hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, recharge_duration=3)
     
     assert hd.jump_status == JumpStatus.READY
@@ -214,7 +65,7 @@ def test_hyperdrive_recharge():
     assert hd.jump_status == JumpStatus.READY
 
 def test_inhibition_field():
-    unit = MockUnit()
+    unit = ComponentUnit()
     emitter = HyperspaceInhibitionFieldEmitter(unit, radius=100.0)
     
     assert not emitter.is_active
@@ -259,7 +110,7 @@ def test_inhibition_field():
 
 
 def test_inhibitor_state_check_reports_bounded_failure_codes():
-    unit = MockUnit()
+    unit = ComponentUnit()
     emitter = HyperspaceInhibitionFieldEmitter(unit, radius=100.0)
     mock_hex = MagicMock()
     mock_hex.boundary_circle = Circle(Position(0, 0), 500.0)
@@ -295,7 +146,7 @@ def test_inhibitor_state_check_reports_bounded_failure_codes():
     assert destroyed.code == "inhibitor_unavailable"
 
 def test_commander():
-    unit = MockUnit()
+    unit = ComponentUnit()
     commander = Commander(unit)
     
     order1 = MagicMock(spec=Order)
@@ -326,13 +177,13 @@ def test_commander():
 
 def test_commander_stances():
     # Setup players
-    player_friendly = MockPlayer()
+    player_friendly = ComponentPlayer()
     player_friendly.id = 1
-    player_enemy = MockPlayer()
+    player_enemy = ComponentPlayer()
     player_enemy.id = 2
 
     # Setup units
-    friendly = MockUnit()
+    friendly = ComponentUnit()
     friendly.id = 100
     friendly.name = "Friendly Unit"
     friendly.owner = player_friendly
@@ -340,7 +191,7 @@ def test_commander_stances():
     friendly.in_hex = (0, 0)
     friendly.position = Position(0, 0)
 
-    enemy_in_range = MockUnit()
+    enemy_in_range = ComponentUnit()
     enemy_in_range.id = 200
     enemy_in_range.name = "Enemy in Range"
     enemy_in_range.owner = player_enemy
@@ -349,7 +200,7 @@ def test_commander_stances():
     enemy_in_range.position = Position(10, 0) # 10 distance
     enemy_in_range.current_hit_points = 50
 
-    enemy_in_sector = MockUnit()
+    enemy_in_sector = ComponentUnit()
     enemy_in_sector.id = 300
     enemy_in_sector.name = "Enemy in Sector but out of range"
     enemy_in_sector.owner = player_enemy
@@ -358,7 +209,7 @@ def test_commander_stances():
     enemy_in_sector.position = Position(500, 0) # 500 distance (out of 100 range)
     enemy_in_sector.current_hit_points = 50
 
-    enemy_in_jump_range = MockUnit()
+    enemy_in_jump_range = ComponentUnit()
     enemy_in_jump_range.id = 400
     enemy_in_jump_range.name = "Enemy in different sector, within jump range"
     enemy_in_jump_range.owner = player_enemy
@@ -367,7 +218,7 @@ def test_commander_stances():
     enemy_in_jump_range.position = Position(0, 0)
     enemy_in_jump_range.current_hit_points = 50
 
-    enemy_far = MockUnit()
+    enemy_far = ComponentUnit()
     enemy_far.id = 500
     enemy_far.name = "Enemy far away in system"
     enemy_far.owner = player_enemy
@@ -397,14 +248,14 @@ def test_commander_stances():
     commander = Commander(friendly)
     friendly.add_component(commander)
 
-    friendly_scout1 = MockUnit()
+    friendly_scout1 = ComponentUnit()
     friendly_scout1.id = 101
     friendly_scout1.name = "Friendly Scout 1"
     friendly_scout1.owner = player_friendly
     friendly_scout1.in_system = "Sol"
     friendly_scout1.in_hex = (0, 1)
 
-    friendly_scout2 = MockUnit()
+    friendly_scout2 = ComponentUnit()
     friendly_scout2.id = 102
     friendly_scout2.name = "Friendly Scout 2"
     friendly_scout2.owner = player_friendly
@@ -511,8 +362,8 @@ def test_commander_stances():
     assert commander.standing_order.active_attack.parameters["target_unit_id"] == enemy_far.id
 
 def test_weapons_and_turrets():
-    unit = MockUnit()
-    target = MockUnit()
+    unit = ComponentUnit()
+    target = ComponentUnit()
     weapons = Weapons(unit)
     
     turret = Turret(
@@ -567,7 +418,7 @@ def test_weapons_and_turrets():
     assert turret.target is None
 
 def test_colony_component():
-    unit = MockUnit()
+    unit = ComponentUnit()
     colony = ColonyComponent(unit)
     
     planet = MagicMock()
@@ -610,7 +461,7 @@ def test_constructor():
     })
 
     try:
-        unit = MockUnit()
+        unit = ComponentUnit()
         constructor = Constructor(unit, hull_cost=10)
         
         bu = constructor.can_build("Station")
@@ -645,7 +496,7 @@ def test_constructor():
 
 def test_repair_component():
     # Setup repairer unit
-    repairer = MockUnit()
+    repairer = ComponentUnit()
     repair_comp = RepairComponent(
         repairer,
         repair_rate=15.0,
@@ -656,7 +507,7 @@ def test_repair_component():
     repairer.add_component(repair_comp)
 
     # Setup target unit
-    target = MockUnit()
+    target = ComponentUnit()
     target.owner = repairer.owner  # Friendly
     target.in_system = repairer.in_system
     target.in_hex = repairer.in_hex
@@ -706,10 +557,10 @@ def test_repair_component():
     assert repairer.owner.credits == 0
 
 def test_mining_component():
-    unit = MockUnit()
+    unit = ComponentUnit()
     mining = MiningComponent(unit, mining_rate=10.0, max_cargo=50.0)
     
-    from entities import MetalAsteroid, AsteroidField, Moon
+    from entities import MetalAsteroid, AsteroidField
     asteroid = MetalAsteroid(in_hex=(0,0), in_system="Sol")
     asteroid.position = Position(10, 0) # within 200 range
     
@@ -762,8 +613,8 @@ def test_colonizable_vs_metal_asteroid():
     from entities import ColonizableAsteroid, MetalAsteroid
     from unit_components import ColonyComponent
 
-    unit = MockUnit()
-    unit.owner = MockPlayer()
+    unit = ComponentUnit()
+    unit.owner = ComponentPlayer()
 
     col_asteroid = ColonizableAsteroid(in_hex=(0,0), in_system="Sol")
     metal_asteroid = MetalAsteroid(in_hex=(0,0), in_system="Sol")
@@ -798,7 +649,7 @@ def test_colonizable_vs_metal_asteroid():
     assert mining.raw_metal_cargo == 10.0
 
 def test_refinery_components():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner.metal = 100
     unit.owner.crystal = 100
     
@@ -813,7 +664,7 @@ def test_refinery_components():
 
 def test_ship_size_hyperdrive_restrictions_in_constructor():
     # Setup constructor
-    unit = MockUnit()
+    unit = ComponentUnit()
     constructor = Constructor(unit, hull_cost=10)
     
     # We will mock the galaxy and systems
@@ -893,7 +744,7 @@ def test_ship_size_hyperdrive_restrictions_in_constructor():
 
 def test_shipyard_refinery_options():
     # Verify Constructor component can build refinery templates
-    unit = MockUnit()
+    unit = ComponentUnit()
     constructor = Constructor(unit, hull_cost=30)
     
     assert constructor.can_build("METAL_REFINERY_STATION") is not None
@@ -902,7 +753,7 @@ def test_shipyard_refinery_options():
 
 def test_defenses():
     # Test Defenses component mitigation logic directly
-    unit = MockUnit()
+    unit = ComponentUnit()
     defenses = Defenses(unit, armor=20, shields=50, point_defense=10)
     unit.add_component(defenses)
 
@@ -936,10 +787,10 @@ def test_defenses():
 
 
 def test_turret_variants():
-    unit = MockUnit()
-    target_normal = MockUnit()
+    unit = ComponentUnit()
+    target_normal = ComponentUnit()
     target_normal.hull_size = HullSize.MEDIUM
-    target_strikecraft = MockUnit()
+    target_strikecraft = ComponentUnit()
     target_strikecraft.hull_size = HullSize.STRIKECRAFT_WING
 
     # 1. Standard turret: Cannot target strikecraft
@@ -1008,7 +859,7 @@ def test_turret_variants():
 
 def test_weapons_sidebar_data():
     # Setup unit and weapons component
-    unit = MockUnit()
+    unit = ComponentUnit()
     weapons = Weapons(unit)
     unit.add_component(weapons)
 
@@ -1024,7 +875,7 @@ def test_weapons_sidebar_data():
     weapons.add_turret(turret1)
 
     # Add long-range turret on cooldown, targeting Engines component of target_unit
-    target_unit = MockUnit()
+    target_unit = ComponentUnit()
     target_unit.name = "Enemy Cruisey"
     
     turret2 = Turret(
@@ -1088,14 +939,13 @@ def test_weapons_sidebar_data():
 
 def test_unit_template_name_assignment():
     from unittest.mock import MagicMock
-    from entities import Unit
-    from unit_components import Constructor, HangarComponent, WingType
+    from unit_components import Constructor, WingType
     from constants import HullSize
     from geometry import Position
     import unit_components
 
     # 1. Test create_unit_from_template assigns template_name
-    owner_unit = MockUnit()
+    owner_unit = ComponentUnit()
     constructor = Constructor(owner_unit, hull_cost=30)
     owner_unit.add_component(constructor)
 
@@ -1129,7 +979,7 @@ def test_unit_template_name_assignment():
 
         # 2. Test auto-construction in StrikecraftBayComponent assigns template_name
         from unit_components import StrikecraftBayComponent
-        carrier_unit = MockUnit()
+        carrier_unit = ComponentUnit()
         carrier_unit.game = owner_unit.game
         bay = StrikecraftBayComponent(carrier_unit, max_slots=2)
         carrier_unit.add_component(bay)
@@ -1191,13 +1041,13 @@ def test_unit_template_name_in_sidebar():
 
 def test_commander_get_sidebar_data_stance_dropdown():
     # Setup players
-    player_friendly = MockPlayer()
+    player_friendly = ComponentPlayer()
     player_friendly.id = 1
-    player_enemy = MockPlayer()
+    player_enemy = ComponentPlayer()
     player_enemy.id = 2
 
     # Friendly unit
-    friendly_unit = MockUnit()
+    friendly_unit = ComponentUnit()
     friendly_unit.id = 100
     friendly_unit.owner = player_friendly
     friendly_unit.name = "Friendly Unit"
@@ -1205,7 +1055,7 @@ def test_commander_get_sidebar_data_stance_dropdown():
     friendly_unit.add_component(Hyperdrive(friendly_unit, drive_type=HyperdriveType.BASIC, jump_range=2))
 
     # Enemy unit
-    enemy_unit = MockUnit()
+    enemy_unit = ComponentUnit()
     enemy_unit.id = 200
     enemy_unit.owner = player_enemy
     enemy_unit.name = "Enemy Unit"
@@ -1253,7 +1103,7 @@ def test_commander_get_sidebar_data_stance_dropdown():
 
 
 def test_allowed_stances_restriction():
-    unit = MockUnit()
+    unit = ComponentUnit()
     commander = Commander(unit)
     unit.add_component(commander)
 
@@ -1299,4 +1149,3 @@ def test_allowed_stances_restriction():
     engines.current_hit_points = 0
     allowed = commander.get_allowed_stances()
     assert allowed == [UnitStance.DO_NOTHING, UnitStance.ATTACK_WEAPON_RANGE]
-

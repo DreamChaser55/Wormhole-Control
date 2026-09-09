@@ -1,16 +1,4 @@
 from player_controller import PlayerController
-"""
-tests/test_game_ai_docking.py
-
-Comprehensive test suite for disambiguated AI docking commands:
-- "dock_in_hangar" for Tiny ships
-- "dock_in_strikecraft_bay" for Strikecraft wings
-- Rules engine supported_commands and command_guidance
-- Schema and CommandBatch validation
-- CommandGateway preflight, slot reservation, and order execution
-- Rejections for mismatched hull sizes, missing carrier bays, and capacity limits
-"""
-
 import pytest
 from unittest.mock import MagicMock
 from geometry import Position
@@ -23,11 +11,21 @@ from unit_components import (
     StrikecraftBayComponent,
     StrikecraftWingComponent,
 )
-from unit_orders import DockOrder
 from game_ai.contracts import Command, CommandBatch, SUPPORTED_COMMANDS
 from game_ai.rules import supported_commands, command_guidance
-from game_ai.observation import build_observation, COMMAND_HELP
+from game_ai.observation import COMMAND_HELP
 from game_ai.commands import CommandGateway
+"""
+tests/test_game_ai_docking.py
+
+Comprehensive test suite for disambiguated AI docking commands:
+- "dock_in_hangar" for Tiny ships
+- "dock_in_strikecraft_bay" for Strikecraft wings
+- Rules engine supported_commands and command_guidance
+- Schema and CommandBatch validation
+- CommandGateway preflight, slot reservation, and order execution
+- Rejections for mismatched hull sizes, missing carrier bays, and capacity limits
+"""
 
 
 @pytest.fixture

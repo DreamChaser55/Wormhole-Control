@@ -16,9 +16,7 @@ expected visual result (outline only, no translucent fill), still culls
 fully off-screen rings, and still de-duplicates identical turret ranges.
 """
 from unittest.mock import MagicMock, patch
-
 import pygame
-
 from rendering.sector_renderer import SectorViewRenderer
 from geometry import Position
 
@@ -273,7 +271,6 @@ def test_range_circles_drawn_when_single_unit_selected():
 
     # Directly verify the guard condition that controls drawing:
     # single selected + owned by current player => should draw.
-    from entities import Unit
     obj = unit
     should_draw = (
         len(game.selected_objects) == 1
@@ -305,4 +302,3 @@ def test_range_circles_suppressed_when_multiple_units_selected():
         assert not should_draw, (
             "Guard should block range circles when multiple units are selected"
         )
-

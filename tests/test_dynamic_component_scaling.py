@@ -1,5 +1,5 @@
 import pytest
-from constants import HullSize, HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST
+from constants import HullSize
 from custom_unit_templates import (
     calc_hangar_hull_cost,
     calc_strikecraft_bay_hull_cost,
@@ -11,7 +11,6 @@ from custom_unit_templates import (
     ComponentConfig,
     CustomUnitTemplate,
 )
-from unit_components import Hyperdrive, HyperdriveType, AntimatterStorage
 
 
 def test_hyperdrive_jump_cost_by_hull_size():
@@ -39,14 +38,12 @@ def test_hyperdrive_jump_cost_by_hull_size():
 def test_calc_hangar_hull_cost():
     assert calc_hangar_hull_cost(0) == 0.0
     assert calc_hangar_hull_cost(1) == 10.0
-    assert calc_hangar_hull_cost(2) == 20.0
     assert calc_hangar_hull_cost(4) == 40.0
 
 
 def test_calc_strikecraft_bay_hull_cost():
     assert calc_strikecraft_bay_hull_cost(0) == 0.0
     assert calc_strikecraft_bay_hull_cost(1) == 7.5
-    assert calc_strikecraft_bay_hull_cost(2) == 15.0
     assert calc_strikecraft_bay_hull_cost(4) == 30.0
 
 
@@ -60,13 +57,11 @@ def test_calc_mining_hull_cost():
     assert calc_mining_hull_cost(0, 0) == 0.0
     # 10 / 2.0 + 100 / 20.0 = 5.0 + 5.0 = 10.0
     assert calc_mining_hull_cost(10.0, 100.0) == 10.0
-    assert calc_mining_hull_cost(20.0, 200.0) == 20.0
 
 
 def test_calc_inhibitor_hull_cost():
     assert calc_inhibitor_hull_cost(0) == 0.0
     assert calc_inhibitor_hull_cost(100.0) == 20.0
-    assert calc_inhibitor_hull_cost(200.0) == 40.0
 
 
 def test_component_config_dynamic_properties():

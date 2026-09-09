@@ -1,21 +1,18 @@
 import pytest
 from unittest.mock import MagicMock, patch
-import os
 import pygame
-
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-pygame.init()
-pygame.font.init()
-
-from entities import Player, Planet, StarType, PlanetType, HullSize, Position
+from entities import Player, Planet, Position
 from galaxy import StarSystem
-from game_settings import GameSettings, PlayerConfig, SpawnProfile, PLAYER_COLOR_PALETTE
+from game_settings import GameSettings, PlayerConfig, SpawnProfile
 from player_controller import PlayerController
 import game_setup
 from galaxy_utils import get_home_systems_mapping
 from rendering.galaxy_renderer import GalaxyViewRenderer
 from save_manager import serialize_player, deserialize_player, deserialize_game_state
 from constants import GRAY, HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR
+
+
+pygame.font.init()
 
 
 class MockGame:
@@ -409,3 +406,4 @@ def test_deserialize_game_state_legacy_fallback():
     assert "Sol" in mapping
     assert mapping["Sol"] == [game.players[0]]
 
+pytestmark = pytest.mark.usefixtures("pygame_context")

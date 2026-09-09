@@ -1,12 +1,10 @@
 """Unit tests for antimatter consumption by HyperspaceInhibitionFieldEmitter."""
-import pytest
 from unittest.mock import MagicMock
-
 from entities import Unit
 from galaxy import Galaxy, StarSystem, Hex
 from utils import HexCoord
 from geometry import Position, Circle
-from constants import HullSize, INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS
+from constants import HullSize
 from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
 from unit_components.antimatter import AntimatterStorage
 

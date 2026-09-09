@@ -1,10 +1,8 @@
-import pytest
 from unittest.mock import MagicMock
 from entities import Unit, Planet, Star, Minefield, Player
 from game import Game
 from constants import HullSize, PlanetType, StarType
 from geometry import Position
-from utils import HexCoord
 
 def test_hex_sidebar_objects_as_buttons_and_colored():
     mock_game = MagicMock()
@@ -268,4 +266,3 @@ def test_apply_player_theme_registers_buttons_and_labels():
     assert "#player_blue_force_button" in theme_dict
     assert "#player_blue_force_label" in theme_dict
     assert theme_dict["#player_blue_force_label"]["colours"]["normal_text"] == "#0080ff"
-

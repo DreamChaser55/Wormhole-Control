@@ -1,29 +1,20 @@
-import os
+import pytest
 import unittest
-import pygame
 import pygame_gui
-
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-
 from geometry import Position, Circle
 from utils import HexCoord
-from game import Game
-from entities import Unit, Player, HullSize, Wormhole
+from entities import Unit, HullSize
 from unit_components import Engines, Hyperdrive, HyperdriveType, AntimatterStorage
-from unit_orders import calculate_required_antimatter, MoveOrder
-from events import IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent
+from unit_orders import calculate_required_antimatter
+from events import IssueMoveOrderEvent
 from custom_unit_templates import get_hyperdrive_system_jump_cost, get_hyperdrive_hex_jump_cost
-from constants import ENGINE_ANTIMATTER_COST_PER_TURN, DEFAULT_ANTIMATTER_CAPACITY
 
 
+@pytest.mark.usefixtures("game_factory")
 class TestAntimatterMoveDialog(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pygame.init()
-        pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game(control_port=0)
+        self.game = self.make_game()
         self.game.start_new_game()
         self.gui = self.game.gui
         self.player = self.game.players[0]
@@ -56,12 +47,6 @@ class TestAntimatterMoveDialog(unittest.TestCase):
         # Add unit to galaxy
         self.game.galaxy.systems["Sol"].add_unit(self.unit)
 
-    def tearDown(self):
-        if hasattr(self, "game") and self.game:
-            self.game.control_service.shutdown()
-            self.game.ai_coordinator.shutdown()
-        if self.gui:
-            self.gui.clear_and_reset()
 
     def test_calculate_required_antimatter_sublight(self):
         """Test calculation of antimatter for sub-light movement within same hex."""
@@ -156,8 +141,6 @@ class TestAntimatterMoveDialog(unittest.TestCase):
             curr_hex_obj.static_inhibition_zones.remove(test_zone)
 
 
-
-
     def test_move_order_sufficient_antimatter_succeeds(self):
         """Test issuing move order with sufficient antimatter assigns order without error modal."""
         self.unit.antimatter_component.current_amount = 200.0
@@ -198,7 +181,3 @@ class TestAntimatterMoveDialog(unittest.TestCase):
         dialog = self.gui.active_dialogs[-1]
         self.assertIsInstance(dialog, pygame_gui.windows.UIMessageWindow)
         self.assertIn("Insufficient Antimatter", dialog.window_display_title)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -6,21 +6,19 @@ human Construct context menus, and AI interfaces (observation catalog, rules, an
 and confirms that strikecraft wings are constructed solely by units with a StrikecraftBayComponent.
 """
 from unittest.mock import MagicMock
-import pytest
-
 from constants import HullSize
 from geometry import Position
 from entities import Unit
 from unit_components import Constructor, StrikecraftBayComponent, WingType
 from unit_orders import ConstructOrder, OrderStatus
-from unit_templates import UNIT_TEMPLATES, register_template, unregister_template
-from tests.test_unit_components import MockUnit, MockPlayer
+from unit_templates import register_template, unregister_template
 from game_ai.contracts import Command
+from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 def test_constructor_buildable_units_excludes_strikecraft_wings():
     """Verify buildable_units property excludes default and custom strikecraft wings."""
-    unit = MockUnit()
+    unit = ComponentUnit()
     constructor = Constructor(unit)
     unit.add_component(constructor)
 
@@ -45,7 +43,7 @@ def test_constructor_buildable_units_excludes_strikecraft_wings():
 
 def test_constructor_can_build_rejects_strikecraft_wings():
     """Verify can_build returns None for strikecraft wing templates."""
-    unit = MockUnit()
+    unit = ComponentUnit()
     constructor = Constructor(unit)
     unit.add_component(constructor)
 
@@ -59,11 +57,11 @@ def test_constructor_can_build_rejects_strikecraft_wings():
 
 def test_construct_order_fails_for_strikecraft_wings():
     """Verify that issuing a ConstructOrder for a strikecraft wing fails."""
-    unit = MockUnit()
+    unit = ComponentUnit()
     constructor = Constructor(unit)
     unit.add_component(constructor)
 
-    player = MockPlayer()
+    player = ComponentPlayer()
     player.id = unit.owner.id
     player.credits = 1000
     unit.game.players = [player]
@@ -123,8 +121,8 @@ def test_ai_observation_construction_catalog_excludes_strikecraft_wings():
     """Verify AI observation construction_templates and unit details omit strikecraft wings."""
     from game_ai.observation import _construction_catalog
 
-    player = MockPlayer()
-    unit = MockUnit()
+    player = ComponentPlayer()
+    unit = ComponentUnit()
     unit.owner = player
     constructor = Constructor(unit)
     unit.add_component(constructor)
@@ -138,7 +136,7 @@ def test_ai_observation_construction_catalog_excludes_strikecraft_wings():
 
 def test_ai_construct_command_validation_rejects_strikecraft_wings():
     """Verify AI command execution rejects construct command for strikecraft wings."""
-    from tests.test_ai_order_contract_v2 import world, issue
+    from tests.support.commands import world, issue
 
     game, player, _, unit = world()
     unit.add_component(Constructor(unit))
@@ -153,7 +151,7 @@ def test_ai_construct_command_validation_rejects_strikecraft_wings():
 
 def test_strikecraft_bay_sole_construction_intact():
     """Verify that StrikecraftBayComponent constructs strikecraft wings properly."""
-    carrier = MockUnit()
+    carrier = ComponentUnit()
     carrier.owner.credits = 500
     bay = StrikecraftBayComponent(carrier, max_slots=2)
     carrier.add_component(bay)

@@ -1,5 +1,9 @@
 import pytest
 from galaxy import Galaxy
+from types import SimpleNamespace
+from galaxy import StarSystem
+from geometry import Vector
+from tests.support.commands import world
 
 def test_wormhole_stability_generation():
     # Test stability values over 5 galaxy generations to ensure we get a mix
@@ -57,7 +61,6 @@ def test_wormhole_diameter_generation():
 def test_wormhole_directional_outskirt_placement():
     from geometry import Vector, hex_distance
     from constants import SQRT3
-    import math
 
     # Create a galaxy instance
     galaxy = Galaxy(num_systems=0)
@@ -123,3 +126,32 @@ def test_comet_outskirt_spawning_distribution():
     # Verify that at least 75% of comets spawn on system outskirts
     assert outskirt_ratio >= 0.75, f"Expected high comet outskirt ratio, got {outskirt_ratio:.2f} ({outskirt_count}/{total_comets})"
 
+
+def test_missing_and_valid_hex_lookups():
+    system = object.__new__(StarSystem)
+    sector = SimpleNamespace(units=[object()], celestial_bodies=[object()])
+    system.hexes = {(0, 0): sector}
+    assert system.get_units_in_hex((9, 9)) == []
+    assert system.get_celestial_bodies_in_hex((9, 9)) == []
+    assert system.get_units_in_hex((0, 0)) is sector.units
+    assert system.get_celestial_bodies_in_hex((0, 0)) is sector.celestial_bodies
+
+
+@pytest.mark.parametrize('origin,destination,coord,success', [
+    ('missing', 'Sol', (0, 0), False), ('Sol', 'missing', (0, 0), False),
+    ('Sol', 'Other', (99, 99), False), ('Sol', 'Other', (0, 0), True),
+])
+def test_transfer_validation_preserves_membership(origin, destination, coord, success):
+    game, player, _, unit = world()
+    galaxy = game.galaxy
+    galaxy.systems['Other'] = StarSystem('Other', Vector(500, 0), radius=2)
+    before = (unit.in_system, unit.in_hex)
+    result = galaxy.move_unit_between_systems(unit, origin, destination, coord)
+    assert result is success
+    if success:
+        assert unit in galaxy.systems['Other'].get_units_in_hex((0, 0))
+        assert unit not in galaxy.systems['Sol'].get_units_in_hex(before[1])
+    else:
+        assert (unit.in_system, unit.in_hex) == before
+        assert unit in galaxy.systems['Sol'].get_units_in_hex(before[1])
+        assert unit not in galaxy.systems['Other'].get_units_in_hex((0, 0))

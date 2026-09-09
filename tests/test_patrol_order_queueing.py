@@ -1,5 +1,4 @@
 from unittest.mock import MagicMock, patch
-import pytest
 from constants import HullSize
 from geometry import Position
 from entities import Unit, Player

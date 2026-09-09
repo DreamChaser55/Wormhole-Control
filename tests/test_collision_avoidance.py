@@ -1,13 +1,14 @@
 import unittest
-import math
 from geometry import Position, Circle, distance, segment_intersects_circle, compute_avoidance_waypoints
 from constants import STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS
 from entities import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Nebula, Storm, Wormhole
 from constants import StarType, PlanetType, NebulaType, StormType
-from unit_orders import MoveOrder, ReachWaypointOrder, PatrolOrder, OrderStatus, OrderType
+from unit_orders import MoveOrder, PatrolOrder, OrderStatus, OrderType
 from unit_components import Engines, Hyperdrive, HyperdriveType, Commander
 from turn_processor import TurnProcessor
-from tests.test_unit_components import MockPlayer, MockUnit
+import pytest
+from geometry import NoSafePathError
+from tests.support.units import ComponentPlayer, ComponentUnit
 
 
 class SimpleHex:
@@ -195,11 +196,11 @@ class TestMoveOrderCollisionAvoidance(unittest.TestCase):
         self.star = Star(in_system="Sol", star_type=StarType.G_TYPE)
         self.hex_00.add_celestial_body(self.star)
 
-        self.player = MockPlayer()
+        self.player = ComponentPlayer()
         self.game.players = [self.player]
         self.game.current_player_index = 0
 
-        self.unit = MockUnit()
+        self.unit = ComponentUnit()
         self.unit.owner = self.player
         self.unit.game = self.game
         self.unit.in_galaxy = self.galaxy
@@ -288,11 +289,11 @@ class TestPatrolOrderCollisionAvoidance(unittest.TestCase):
         self.star = Star(in_system="Sol", star_type=StarType.G_TYPE)
         self.hex_00.add_celestial_body(self.star)
 
-        self.player = MockPlayer()
+        self.player = ComponentPlayer()
         self.game.players = [self.player]
         self.game.current_player_index = 0
 
-        self.unit = MockUnit()
+        self.unit = ComponentUnit()
         self.unit.owner = self.player
         self.unit.game = self.game
         self.unit.in_galaxy = self.galaxy
@@ -326,5 +327,48 @@ class TestPatrolOrderCollisionAvoidance(unittest.TestCase):
         self.assertGreater(len(move_sub.sub_orders), 1)
 
 
-if __name__ == '__main__':
-    unittest.main()
+def assert_clear(points, obstacles, margin=50):
+    # Independent intersection routine checks complete segments, not just vertices.
+    for a, b in zip(points, points[1:]):
+        for obstacle in obstacles:
+            assert not segment_intersects_circle(a, b, Circle(obstacle.center, obstacle.radius + margin - 1e-5))
+
+
+@pytest.mark.parametrize('height,detour', [(0, True), (149, True), (150, False), (151, False)])
+def test_expanded_collision_clearance(height, detour):
+    start, end = Position(-300, height), Position(300, height)
+    obstacles = [Circle(Position(0, 0), 100)]
+    waypoints = compute_avoidance_waypoints(start, end, obstacles)
+    assert bool(waypoints) is detour
+    assert_clear([start, *waypoints, end], obstacles)
+
+
+def test_multiple_obstacles_and_boundary():
+    start, end = Position(-450, 0), Position(450, 0)
+    obstacles = [Circle(Position(-140, 0), 65), Circle(Position(140, -40), 70)]
+    waypoints = compute_avoidance_waypoints(start, end, obstacles, boundary=Circle(Position(0, 0), 500))
+    assert_clear([start, *waypoints, end], obstacles)
+    assert all(p.magnitude() <= 500 for p in waypoints)
+
+
+def test_boundary_chooses_other_bypass_and_impossible_route_fails():
+    start, end = Position(-400, 100), Position(400, 100)
+    obstacles = [Circle(Position(0, 190), 230)]
+    route = compute_avoidance_waypoints(start, end, obstacles, boundary=Circle(Position(0, 0), 450))
+    assert route and all(p.magnitude() <= 450 for p in route)
+    assert_clear([start, *route, end], obstacles)
+    wall = [Circle(Position(0, y), 200) for y in (-400, 0, 400)]
+    with pytest.raises(NoSafePathError):
+        compute_avoidance_waypoints(Position(-450, 0), Position(450, 0), wall, boundary=Circle(Position(0, 0), 500))
+
+
+def test_clearance_band_escape_and_destination_rejection():
+    obstacle = Circle(Position(0, 0), 100)
+    start, end = Position(120, 0), Position(400, 0)
+    route = compute_avoidance_waypoints(start, end, [obstacle])
+    assert route[0].x >= 150
+    assert_clear([*route, end], [obstacle])
+    with pytest.raises(NoSafePathError):
+        compute_avoidance_waypoints(end, start, [obstacle])
+    assert compute_avoidance_waypoints(Position(0, 0), end, [obstacle]) == []
+    assert compute_avoidance_waypoints(end, Position(0, 0), [obstacle]) == []

@@ -1,13 +1,10 @@
+import pytest
 from player_controller import PlayerController
-import os
 import tempfile
 import unittest
 from pathlib import Path
-import pygame
-
 from geometry import Position
 from entities import Player
-from game import Game
 from game_ai.contracts import Command, CommandBatch, TurnPlan, SUPPORTED_COMMANDS
 from game_ai.schema import responses_text_config, TURN_PLAN_SCHEMA
 from game_ai.observation import build_observation, COMMAND_HELP
@@ -15,17 +12,12 @@ from game_ai.prompts import SYSTEM_INSTRUCTIONS
 from game_ai.commands import CommandGateway
 from galaxy import Galaxy, StarSystem
 
-os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-
+@pytest.mark.usefixtures("game_factory")
 class TestGameAIFeedback(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pygame.init()
-        pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game(control_port=0)
+        self.game = self.make_game()
         self.galaxy = Galaxy()
         sys1 = StarSystem("Sol", Position(0, 0), radius=3)
         self.galaxy.systems["Sol"] = sys1
@@ -37,67 +29,6 @@ class TestGameAIFeedback(unittest.TestCase):
         self.game.current_player_index = 1
         self.game.turn_number = 3
 
-    def tearDown(self):
-        if hasattr(self, "game") and self.game:
-            self.game.control_service.shutdown()
-            self.game.ai_coordinator.shutdown()
-
-    def test_supported_commands_and_schema(self):
-        self.assertIn("message_developer", SUPPORTED_COMMANDS)
-        self.assertIn("message_developer", COMMAND_HELP)
-
-        # Verify command properties enum contains message_developer
-        config = responses_text_config()
-        type_enum = TURN_PLAN_SCHEMA["properties"]["commands"]["items"]["properties"]["type"]["enum"]
-        self.assertIn("message_developer", type_enum)
-
-    def test_command_contract_and_serialization(self):
-        raw_command = {
-            "type": "message_developer",
-            "unit_ids": [],
-            "target_id": None,
-            "system_name": None,
-            "hex_coord": None,
-            "position": None,
-            "template_name": None,
-            "amount": None,
-            "stance": None,
-            "queue": False,
-            "ability": None,
-            "minefield_type": None,
-            "target_component": None,
-            "message": "Encountered unexpected carrier bay replenishment cooldown.",
-        }
-        cmd = Command.from_dict(raw_command)
-        self.assertEqual(cmd.type, "message_developer")
-        self.assertIsNone(cmd.target_id)
-        self.assertEqual(cmd.message, "Encountered unexpected carrier bay replenishment cooldown.")
-        self.assertEqual(cmd.unit_ids, ())
-
-        cmd_dict = cmd.to_dict()
-        self.assertEqual(cmd_dict["type"], "message_developer")
-        self.assertEqual(cmd_dict["message"], "Encountered unexpected carrier bay replenishment cooldown.")
-        self.assertEqual(cmd_dict["unit_ids"], [])
-        self.assertIsNone(cmd_dict["target_id"])
-
-        # Test turn plan contract
-        raw_plan = {
-            "plan": ["Report carrier bay observation to developer."],
-            "commands": [raw_command],
-            "memory_patch": {
-                "strategy": "Continue exploration",
-                "objectives": [],
-                "commitments": [],
-                "beliefs": [],
-                "lessons": [],
-                "misc": [],
-            },
-            "end_turn": True,
-        }
-        plan = TurnPlan.from_dict(raw_plan)
-        self.assertEqual(len(plan.batch.commands), 1)
-        self.assertEqual(plan.batch.commands[0].type, "message_developer")
-        self.assertEqual(plan.batch.commands[0].message, "Encountered unexpected carrier bay replenishment cooldown.")
 
     def test_command_gateway_validation(self):
         gateway = CommandGateway(self.game)
@@ -166,11 +97,66 @@ class TestGameAIFeedback(unittest.TestCase):
         self.assertIn("message_developer", obs["command_catalog"]["commands"])
         self.assertIn("developer", obs["command_catalog"]["commands"]["message_developer"]["description"].lower())
 
+
+class TestFeedbackContracts(unittest.TestCase):
+    def test_supported_commands_and_schema(self):
+        self.assertIn("message_developer", SUPPORTED_COMMANDS)
+        self.assertIn("message_developer", COMMAND_HELP)
+
+        # Verify command properties enum contains message_developer
+        config = responses_text_config()
+        type_enum = TURN_PLAN_SCHEMA["properties"]["commands"]["items"]["properties"]["type"]["enum"]
+        self.assertIn("message_developer", type_enum)
+
+    def test_command_contract_and_serialization(self):
+        raw_command = {
+            "type": "message_developer",
+            "unit_ids": [],
+            "target_id": None,
+            "system_name": None,
+            "hex_coord": None,
+            "position": None,
+            "template_name": None,
+            "amount": None,
+            "stance": None,
+            "queue": False,
+            "ability": None,
+            "minefield_type": None,
+            "target_component": None,
+            "message": "Encountered unexpected carrier bay replenishment cooldown.",
+        }
+        cmd = Command.from_dict(raw_command)
+        self.assertEqual(cmd.type, "message_developer")
+        self.assertIsNone(cmd.target_id)
+        self.assertEqual(cmd.message, "Encountered unexpected carrier bay replenishment cooldown.")
+        self.assertEqual(cmd.unit_ids, ())
+
+        cmd_dict = cmd.to_dict()
+        self.assertEqual(cmd_dict["type"], "message_developer")
+        self.assertEqual(cmd_dict["message"], "Encountered unexpected carrier bay replenishment cooldown.")
+        self.assertEqual(cmd_dict["unit_ids"], [])
+        self.assertIsNone(cmd_dict["target_id"])
+
+        # Test turn plan contract
+        raw_plan = {
+            "plan": ["Report carrier bay observation to developer."],
+            "commands": [raw_command],
+            "memory_patch": {
+                "strategy": "Continue exploration",
+                "objectives": [],
+                "commitments": [],
+                "beliefs": [],
+                "lessons": [],
+                "misc": [],
+            },
+            "end_turn": True,
+        }
+        plan = TurnPlan.from_dict(raw_plan)
+        self.assertEqual(len(plan.batch.commands), 1)
+        self.assertEqual(plan.batch.commands[0].type, "message_developer")
+        self.assertEqual(plan.batch.commands[0].message, "Encountered unexpected carrier bay replenishment cooldown.")
+
     def test_system_prompt_contains_message_developer_guidance(self):
         self.assertIn("message_developer", SYSTEM_INSTRUCTIONS)
         self.assertIn("game developer", SYSTEM_INSTRUCTIONS.lower())
         self.assertIn("feedback", SYSTEM_INSTRUCTIONS.lower())
-
-
-if __name__ == "__main__":
-    unittest.main()

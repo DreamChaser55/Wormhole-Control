@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from geometry import Position
 from constants import (
     SECTOR_CIRCLE_CENTER_IN_PX,
-    SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL,
+    SECTOR_CIRCLE_RADIUS_LOGICAL,
     FOG_OF_WAR_COLOR, DEFAULT_SENSOR_SHORT_RANGE,
 )
 
@@ -78,13 +78,6 @@ def _make_unit(player, position, short_range_radius=DEFAULT_SENSOR_SHORT_RANGE):
     s.short_range_radius = short_range_radius
     u.sensors_component = s
     return u
-
-
-@pytest.fixture(autouse=True)
-def init_pygame():
-    pygame.init()
-    yield
-    pygame.quit()
 
 
 class TestDrawFogOfWar:
@@ -285,3 +278,5 @@ class TestDrawFogOfWar:
         area = kwargs.get('area')
         assert area is not None
         assert area.width <= SCREEN_W and area.height <= SCREEN_H
+
+pytestmark = pytest.mark.usefixtures("pygame_context")

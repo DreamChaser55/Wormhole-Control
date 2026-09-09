@@ -3,11 +3,11 @@ from geometry import Position
 from unit_orders import OrderStatus, ReachWaypointOrder
 from unit_components import Engines, Hyperdrive, HyperdriveType
 from unit_components.movement import JumpStatus
-from tests.test_unit_components import MockUnit
+from tests.support.units import ComponentUnit
 
 
 def test_reach_waypoint_order_validation():
-    unit = MockUnit()
+    unit = ComponentUnit()
     # Missing/None parameters -> FAILED
     order = ReachWaypointOrder(unit, {
         "destination_system_name": None,
@@ -19,7 +19,7 @@ def test_reach_waypoint_order_validation():
 
 
 def test_reach_waypoint_order_sublight():
-    unit = MockUnit()
+    unit = ComponentUnit()
     engines = Engines(unit, speed=100.0)
     unit.add_component(engines)
     
@@ -36,7 +36,7 @@ def test_reach_waypoint_order_sublight():
 
 
 def test_reach_waypoint_order_hex_jump():
-    unit = MockUnit()
+    unit = ComponentUnit()
     hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC)
     unit.add_component(hd)
     
@@ -58,7 +58,7 @@ def test_reach_waypoint_order_hyperdrive_error_fails_order():
     ReachWaypointOrder must mark itself as OrderStatus.FAILED and reset hyperdrive state,
     preventing units from being stuck indefinitely in IN_PROGRESS state.
     """
-    unit = MockUnit()
+    unit = ComponentUnit()
     hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5)
     unit.add_component(hd)
 

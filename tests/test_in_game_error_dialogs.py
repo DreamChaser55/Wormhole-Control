@@ -1,48 +1,31 @@
+import pytest
 from player_controller import PlayerController
-import os
 import unittest
-import pygame
-import pygame_gui
-
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-
-from game import Game
 from turn_processor import TurnProcessor
 from entities import Unit, Player, HullSize, Planet
 from geometry import Position
 from utils import HexCoord
 from unit_components import (
     Commander, Engines, Hyperdrive, HyperdriveType, ColonyComponent,
-    RepairComponent, MiningComponent, MinelayerComponent, AntimatterHarvester,
-    AbilityComponent, AbilityType
+    MiningComponent, AbilityComponent, AbilityType
 )
 from events import (
-    IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent, ColonizeEvent, RepairUnitEvent,
-    MineEvent, DockEvent, ContinuousResupplyEvent, LayMinefieldEvent
+    IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent, ColonizeEvent, MineEvent, DockEvent
 )
 from unit_orders import MoveOrder, UseAbilityOrder
 from game_actions import unit_actions
 
 
+@pytest.mark.usefixtures("game_factory")
 class TestInGameErrorDialogs(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pygame.init()
-        pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game(control_port=0)
+        self.game = self.make_game()
         self.game.start_new_game()
         self.gui = self.game.gui
         self.player = self.game.players[0]
         self.player.controller = PlayerController.HUMAN
 
-    def tearDown(self):
-        if hasattr(self, "game") and self.game:
-            self.game.control_service.shutdown()
-            self.game.ai_coordinator.shutdown()
-        if self.gui:
-            self.gui.clear_and_reset()
 
     def test_move_order_without_engines_shows_warning(self):
         unit = Unit(
@@ -301,7 +284,3 @@ class TestInGameErrorDialogs(unittest.TestCase):
         dlg = self.gui.active_dialogs[-1]
         self.assertIn("No Hyperdrive", dlg.window_display_title)
         self.assertIn("no hyperdrive module", dlg.text_block.html_text)
-
-
-if __name__ == "__main__":
-    unittest.main()

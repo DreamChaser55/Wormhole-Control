@@ -1,9 +1,8 @@
 """Offline regressions for the shared Luna/Codex intelligence interface."""
 
 from types import SimpleNamespace
-
 from constants import CI_SWEEP_ANTIMATTER_COST, CI_SWEEP_CREDIT_COST, PlanetType
-from entities import Planet, Player, Unit
+from entities import Planet, Player
 from game_ai.adapters.base import PlanningResult
 from game_ai.command_spec import CONTRACT_VERSION
 from game_ai.commands import CommandGateway
@@ -13,9 +12,9 @@ from game_ai.observation import build_observation
 from game_control_protocol import ControlService
 from geometry import Position
 from player_controller import PlayerController
-from tests.test_stance_visibility import create_combat_ship, create_test_galaxy
 from unit_components import Agent, IntelligenceComponent
 from unit_orders import OrderStatus, OrderType
+from tests.support.combat import create_combat_ship, create_test_galaxy
 
 
 def intelligence_world():

@@ -1,11 +1,8 @@
-import pytest
 from unittest.mock import MagicMock
 from entities import Unit
 from unit_components import AntimatterStorage, Engines, Hyperdrive, HyperdriveType, AbilityComponent, AbilityType
 from turn_processor import TurnProcessor
-from geometry import Position, Circle
-from utils import HexCoord
-from tests.test_unit_components import MockPlayer, MockUnit
+from geometry import Position
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY,
     DEFAULT_ANTIMATTER_REGEN,
@@ -14,9 +11,11 @@ from constants import (
     HYPERDRIVE_HEX_JUMP_COST,
     HullSize
 )
+from tests.support.units import ComponentPlayer, ComponentUnit
+
 
 def test_antimatter_storage_defaults():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = MagicMock()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Test Ship", hull_size=HullSize.MEDIUM, game=game)
     
@@ -27,7 +26,7 @@ def test_antimatter_storage_defaults():
     assert am_comp.regen_rate == DEFAULT_ANTIMATTER_REGEN
 
 def test_antimatter_consumption_and_regen():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = MagicMock()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Test Ship", hull_size=HullSize.MEDIUM, game=game)
     
@@ -52,10 +51,10 @@ def test_antimatter_consumption_and_regen():
 
 def test_sublight_movement_consumes_antimatter():
     game = MagicMock()
-    player = MockPlayer()
+    player = ComponentPlayer()
     
-    # We use a MockUnit but add the required components
-    unit = MockUnit()
+    # We use a ComponentUnit but add the required components
+    unit = ComponentUnit()
     unit.owner = player
     unit.position = Position(0, 0)
     
@@ -86,9 +85,9 @@ def test_sublight_movement_consumes_antimatter():
 
 def test_sublight_movement_fails_without_antimatter():
     game = MagicMock()
-    player = MockPlayer()
+    player = ComponentPlayer()
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.position = Position(0, 0)
     
@@ -118,9 +117,9 @@ def test_sublight_movement_fails_without_antimatter():
 
 def test_hex_jump_consumes_antimatter():
     game = MagicMock()
-    player = MockPlayer()
+    player = ComponentPlayer()
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.position = Position(0, 0)
     unit.in_hex = (0, 0)
@@ -155,9 +154,9 @@ def test_hex_jump_consumes_antimatter():
 
 def test_hex_jump_fails_without_antimatter():
     game = MagicMock()
-    player = MockPlayer()
+    player = ComponentPlayer()
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.position = Position(0, 0)
     unit.in_hex = (0, 0)
@@ -193,7 +192,7 @@ def test_hex_jump_fails_without_antimatter():
     assert hyperdrive.jump_status == hyperdrive.jump_status.ERROR
 
 def test_ability_antimatter_consumption():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = MagicMock()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Test Ship", hull_size=HullSize.MEDIUM, game=game)
     
@@ -225,9 +224,9 @@ def test_ability_antimatter_consumption():
 
 def test_system_jump_consumes_antimatter():
     game = MagicMock()
-    player = MockPlayer()
+    player = ComponentPlayer()
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.position = Position(0, 0)
     unit.in_hex = (1, 1)
@@ -277,9 +276,9 @@ def test_system_jump_consumes_antimatter():
 
 def test_system_jump_fails_without_antimatter():
     game = MagicMock()
-    player = MockPlayer()
+    player = ComponentPlayer()
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.position = Position(0, 0)
     unit.in_hex = (1, 1)

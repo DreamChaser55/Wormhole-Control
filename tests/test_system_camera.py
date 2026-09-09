@@ -1,8 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
-
 import pygame
-
 import game_camera
 from constants import (
     INFO_BOX_WIDTH,

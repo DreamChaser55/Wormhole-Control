@@ -1,18 +1,17 @@
+import pytest
 from player_controller import PlayerController
 import os
 import unittest
-import pygame
 import json
 from collections import deque
-from geometry import Position, Vector
-from constants import HullSize, StarType, PlanetType, NebulaType, StormType
+from geometry import Position
+from constants import HullSize, StarType, PlanetType
 from entities import (
-    Player, GameObject, Star, Planet, Moon, ColonizableAsteroid,
-    MetalAsteroid, AsteroidField, IceField, DebrisField, Nebula, Storm, Comet, Wormhole, Unit
+    Player, GameObject, Star, Planet, Wormhole, Unit
 )
-from unit_components import AntimatterStorage, ColonyComponent, MiningComponent, UnitStance
+from unit_components import UnitStance
 from unit_orders import (
-    AttackOrder, MoveOrder, ColonizeOrder, OrderStatus, OrderType, PatrolOrder,
+    AttackOrder, MoveOrder, OrderStatus, OrderType, PatrolOrder,
     ORDER_CLASS_REGISTRY,
 )
 from utils import generate_short_id
@@ -22,16 +21,12 @@ from save_manager import (
     serialize_unit, deserialize_unit,
     serialize_order, deserialize_order,
     serialize_game_state, deserialize_game_state,
-    save_game_to_file, load_game_from_file, list_save_files, _restore_saved_commander
+    _restore_saved_commander
 )
 
-os.environ["SDL_VIDEODRIVER"] = "dummy"
 
+@pytest.mark.usefixtures("game_factory")
 class TestSaveLoad(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pygame.init()
-        pygame.display.set_mode((1, 1))
 
     def test_player_round_trip(self):
         player = Player("Test Player", (0, 128, 255), controller=PlayerController.HUMAN)
@@ -237,8 +232,7 @@ class TestSaveLoad(unittest.TestCase):
         self.assertFalse(restored.commander_component.orders_queue)
 
     def test_full_game_save_load(self):
-        from game import Game
-        game = Game(control_port=0)
+        game = self.make_game()
         new_game = None
         saved_filepath = None
         try:
@@ -262,7 +256,7 @@ class TestSaveLoad(unittest.TestCase):
             self.assertTrue(os.path.exists(saved_filepath))
 
             # Create fresh game and load
-            new_game = Game(control_port=0)
+            new_game = self.make_game()
             load_success = new_game.load_game(saved_filepath)
             self.assertTrue(load_success)
             self.assertTrue(new_game.game_started)
@@ -282,9 +276,8 @@ class TestSaveLoad(unittest.TestCase):
                 os.remove(saved_filepath)
 
     def test_legacy_zero_object_id_is_preserved_and_counter_advances(self):
-        from game import Game
 
-        game = Game(control_port=0)
+        game = self.make_game()
         restored_game = None
         try:
             self.assertTrue(game.start_new_game())
@@ -298,7 +291,7 @@ class TestSaveLoad(unittest.TestCase):
             legacy_star.id = 0
 
             payload = serialize_game_state(game)
-            restored_game = Game(control_port=0)
+            restored_game = self.make_game()
             self.assertTrue(deserialize_game_state(restored_game, payload))
 
             restored_star = restored_game.galaxy.get_celestial_body_by_id(0)
@@ -322,8 +315,7 @@ class TestSaveLoad(unittest.TestCase):
                 restored_game.ai_coordinator.shutdown()
 
     def test_gui_load_dialog_trigger(self):
-        from game import Game
-        game = Game(control_port=0)
+        game = self.make_game()
         try:
             game.gui.setup_main_menu()
             self.assertIsNotNone(game.gui.load_game_button)
@@ -337,10 +329,9 @@ class TestSaveLoad(unittest.TestCase):
             game.ai_coordinator.shutdown()
 
     def test_load_game_schedules_ai_turn_if_current_player_is_ai(self):
-        from game import Game
         from unittest.mock import patch
 
-        game = Game(control_port=0)
+        game = self.make_game()
         new_game = None
         saved_filepath = None
         try:
@@ -353,7 +344,7 @@ class TestSaveLoad(unittest.TestCase):
             saved_filepath = game.save_game(test_filename)
             self.assertTrue(os.path.exists(saved_filepath))
 
-            new_game = Game(control_port=0)
+            new_game = self.make_game()
             with patch('pygame.time.get_ticks', return_value=3000):
                 load_success = new_game.load_game(saved_filepath)
                 self.assertTrue(load_success)
@@ -381,14 +372,13 @@ class TestSaveLoad(unittest.TestCase):
         self.assertEqual(len(samples), 100)
 
     def test_short_ids_in_player_and_game(self):
-        from game import Game
         player = Player("AI Pilot", (100, 150, 200), controller=PlayerController.OPENAI)
         self.assertEqual(len(player.persistent_id), 8)
         self.assertEqual(len(player.agent_id), 8)
         self.assertTrue(all(c in "0123456789abcdef" for c in player.persistent_id))
         self.assertTrue(all(c in "0123456789abcdef" for c in player.agent_id))
 
-        game = Game(control_port=0)
+        game = self.make_game()
         try:
             self.assertEqual(len(game.campaign_id), 8)
             self.assertTrue(all(c in "0123456789abcdef" for c in game.campaign_id))
@@ -404,7 +394,3 @@ class TestSaveLoad(unittest.TestCase):
         finally:
             game.control_service.shutdown()
             game.ai_coordinator.shutdown()
-
-
-if __name__ == "__main__":
-    unittest.main()

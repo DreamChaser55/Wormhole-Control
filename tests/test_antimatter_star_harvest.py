@@ -1,11 +1,11 @@
 from player_controller import PlayerController
 import pytest
-from entities import Star, StarType, Unit, Player
+from entities import Star, StarType, Unit
 from geometry import Position
-from constants import (
-    StarType, STAR_HARVEST_MULTIPLIERS, DEFAULT_ANTIMATTER_HARVEST_RATE
-)
+from constants import STAR_HARVEST_MULTIPLIERS, DEFAULT_ANTIMATTER_HARVEST_RATE
 from unit_components import AntimatterStorage, AntimatterHarvester
+from unittest.mock import MagicMock
+from constants import HullSize
 
 
 class MockPlayer:
@@ -40,9 +40,6 @@ class FakeGame:
     def __init__(self, galaxy=None):
         self.galaxy = galaxy
 
-
-from unittest.mock import MagicMock
-from constants import HullSize
 
 def make_unit_with_harvester(player, harvest_rate=DEFAULT_ANTIMATTER_HARVEST_RATE, initial_am=0.0, max_am=100.0):
     game = MagicMock()

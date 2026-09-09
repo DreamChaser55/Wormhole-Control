@@ -2,7 +2,6 @@ import pytest
 import pygame
 import pygame_gui
 from unittest.mock import MagicMock
-
 from geometry import Position, Vector
 from constants import CONTEXT_MENU_WIDTH, CONTEXT_MENU_ITEM_HEIGHT, TOP_BAR_HEIGHT
 from gui.context_menu import (
@@ -14,15 +13,6 @@ from gui.context_menu import (
     handle_button_index,
     is_mouse_over_context_menu,
 )
-
-
-@pytest.fixture(autouse=True)
-def setup_pygame_display():
-    pygame.init()
-    try:
-        pygame.display.set_mode((1280, 720))
-    except Exception:
-        pass
 
 
 def test_compute_context_menu_layout_single_column():
@@ -298,3 +288,4 @@ def test_open_context_menu_construct_submenu_expands_and_fits_text():
     for btn in gui.context_menu_buttons:
         assert btn.relative_rect.width == CONTEXT_MENU_WIDTH - 10
 
+pytestmark = pytest.mark.usefixtures("pygame_context")

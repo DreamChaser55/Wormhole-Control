@@ -1,51 +1,24 @@
+import pytest
 from player_controller import PlayerController
 import os
 import unittest
 import pygame
 import pygame_gui
-
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-
-from geometry import Vector
-from gui import GUI_Handler
-from game import Game
 from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate
 from gui.unit_editor_gui.window import UnitEditorWindow
-from gui.unit_editor_gui.template_io import do_save, do_delete
-from entities import Unit, Player, HullSize, Wormhole
+from gui.unit_editor_gui.template_io import do_save
+from entities import Unit, Player, HullSize
 from unit_components import Commander, UnitStance
-from unit_orders import MoveOrder
 from game_actions import handle_gui_action
 
 
+@pytest.mark.usefixtures("game_factory")
 class TestGUIModalDialogs(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pygame.init()
-        pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        import tempfile
-        import custom_unit_templates as ctm
-        self._temp_data_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
-        self._temp_data_file.write(b"{}")
-        self._temp_data_file.close()
-        self._orig_data_file = ctm._DATA_FILE
-        ctm._DATA_FILE = self._temp_data_file.name
-
-        self.game = Game(control_port=0)
+        self.game = self.make_game()
         self.gui = self.game.gui
 
-    def tearDown(self):
-        if hasattr(self, "game") and self.game:
-            self.game.control_service.shutdown()
-            self.game.ai_coordinator.shutdown()
-        if self.gui:
-            self.gui.clear_and_reset()
-        import custom_unit_templates as ctm
-        ctm._DATA_FILE = self._orig_data_file
-        if os.path.exists(self._temp_data_file.name):
-            os.remove(self._temp_data_file.name)
 
     def test_show_message_dialogs(self):
         """Test creating info, warning, and error modal dialogs via GUI_Handler."""
@@ -354,7 +327,6 @@ class TestGUIModalDialogs(unittest.TestCase):
 
     def test_unit_editor_save_as_new_button_direct(self):
         """Test Column 1 Save as New button saves directly for unique names or opens modal for existing names."""
-        from custom_unit_templates import ComponentConfig
         tmp_mgr = CustomTemplateManager()
         editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
         editor_win.show()
@@ -511,7 +483,3 @@ class TestGUIModalDialogs(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             GameSettings(min_system_distance=200.0, max_system_distance=100.0)
         self.assertIn("Min System Distance (200) must be strictly less than Max System Distance (100)", str(ctx.exception))
-
-
-if __name__ == '__main__':
-    unittest.main()

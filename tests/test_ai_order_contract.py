@@ -4,34 +4,18 @@ from collections import deque
 from concurrent.futures import Future
 from types import SimpleNamespace
 from unittest.mock import patch
-
 import pytest
-
 from game_ai.commands import CommandGateway
 from game_ai.contracts import Command, CommandBatch, ContractError, TurnPlan
 from game_ai.observation import build_observation
 from game_ai.order_view import order_layers
 from geometry import Position
 from unit_components import CloakingDevice, UnitStance
-from unit_orders import AttackOrder, MoveOrder, Order, OrderStatus, OrderType, PatrolOrder
-from tests.test_stance_visibility import create_combat_ship, create_test_galaxy
-
-
-def world():
-    galaxy, player, enemy = create_test_galaxy()
-    game = SimpleNamespace(galaxy=galaxy, players=[player, enemy], turn_number=1,
-                           sidebar_needs_update=False, visibility_dirty=False, gui=None)
-    galaxy.game = game
-    unit = create_combat_ship(galaxy, player, "Scout", (0, 0))
-    return game, player, enemy, unit
-
-
-def issue(game, player, *commands):
-    return CommandGateway(game).apply_batch(player, CommandBatch(tuple(commands)))
-
-
-def waypoint(x=500):
-    return {"system_name": "Sol", "hex_coord": [0, 0], "position": [x, 0]}
+from unit_orders import MoveOrder, Order, OrderStatus, OrderType, PatrolOrder
+from galaxy import StarSystem
+from game_control_protocol import ControlService
+from tests.support.combat import create_combat_ship
+from tests.support.commands import world, issue, waypoint
 
 
 @pytest.mark.parametrize("fields", [
@@ -216,7 +200,7 @@ def test_history_identity_roundtrip_and_bounded_exactly_once_outcomes():
 
 @pytest.mark.parametrize("kind", ["construct", "refit"])
 def test_pending_job_cancellation_does_not_refund_or_stop_active_job(kind):
-    from unit_components.constructor import Constructor, BuildableUnit
+    from unit_components.constructor import Constructor
     from unit_orders import ConstructOrder, RefitOrder
     game, player, _, unit = world()
     unit.add_component(Constructor(unit))
@@ -252,7 +236,7 @@ def test_pending_job_cancellation_does_not_refund_or_stop_active_job(kind):
 
 
 def test_socket_partial_response_cached_and_observation_required():
-    from game_control_protocol import ControlService, PROTOCOL_VERSION
+    from game_control_protocol import PROTOCOL_VERSION
     from player_controller import PlayerController
     game, player, _, unit = world()
     game.game_started = True
@@ -470,7 +454,6 @@ def test_luna_and_socket_patrols_have_identical_engine_effects():
     from game_ai.adapters.base import PlanningRequest
     from game_ai.adapters.openai_responses import OpenAIResponsesProvider
     from game_ai.runtime import get_runtime_config
-    from game_control_protocol import ControlService
     from player_controller import PlayerController
     game, player, _, unit = world()
     raw = {"type": "patrol", "unit_ids": [unit.id], "waypoints": [waypoint(), waypoint(700)]}
@@ -536,7 +519,7 @@ def test_queued_construction_cancellation_releases_reservation_without_refund():
 
 def test_unobserved_body_cannot_be_targeted_by_guessed_id():
     from entities import Moon
-    from galaxy import StarSystem, Hex
+    from galaxy import Hex
     from unit_components import ColonyComponent
     game, player, _, unit = world()
     remote = StarSystem("Unseen", Position(9000, 9000), radius=3)
@@ -564,3 +547,27 @@ def test_loading_pending_order_does_not_start_or_record_until_update():
     assert player.credits == 500 and not player.order_history
     unit.commander_component.update()
     assert player.credits == 400 and unit.constructor_component.current_construction_target
+
+
+@pytest.mark.parametrize('stage', ['prepare', 'commit'])
+def test_command_diagnostics_are_private_and_preserve_results(stage, monkeypatch, caplog):
+    game, player, _, unit = world()
+    gateway = CommandGateway(game)
+    secret = 'PRIVATE-COMMAND-EXCEPTION'
+    def failure(*args, **kwargs):
+        raise RuntimeError(secret)
+    command = Command('set_stance', (unit.id,), stance='attack_same_sector')
+    if stage == 'prepare':
+        monkeypatch.setattr(gateway, '_prepare', failure)
+    else:
+        monkeypatch.setattr(unit.commander_component, 'set_stance', failure)
+    result = gateway.apply_batch(player, CommandBatch((command,)))
+    assert not result.accepted
+    assert result.errors[0].code == ('invalid_command' if stage == 'prepare' else 'commit_failed')
+    assert result.applied_count == 0
+    assert result.requires_observation is (stage == 'commit')
+    assert secret not in caplog.text and secret not in str(result)
+    assert f'stage={stage}' in caplog.text
+    assert 'index=0 type=set_stance exception=RuntimeError' in caplog.text
+    assert 'test_ai_order_contract.py' in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)

@@ -27,24 +27,19 @@ from unittest.mock import MagicMock
 from geometry import Position
 from constants import (
     HullSize,
-    DEFAULT_SENSOR_SHORT_RANGE,
-    TAX_RATE,
     CI_SWEEP_CREDIT_COST,
     CI_SWEEP_ANTIMATTER_COST,
     CI_SWEEP_COOLDOWN_TURNS,
-    CI_SWEEP_RANGE,
 )
-from entities import Player, Unit, Planet, Moon, ColonizableAsteroid, Star
+from entities import Player, Unit, Planet
 from unit_components import (
     Sensors,
-    AntimatterStorage,
     Engines,
     Hyperdrive,
     HyperdriveType,
     Weapons,
     Turret,
     TurretType,
-    TurretVariant,
     Defenses,
     IntelligenceComponent,
     Agent,
@@ -65,7 +60,6 @@ from visibility import VisibilityService
 from galaxy import Galaxy, StarSystem
 from custom_unit_templates import (
     CustomUnitTemplate,
-    ComponentConfig,
     calc_intelligence_hull_cost,
     HULL_RESTRICTIONS,
 )
@@ -450,7 +444,6 @@ def test_ci_cooldown_turn_decrement(test_setup):
 
 def test_no_passive_ci_detection_on_turn_end(test_setup):
     p1, p2, galaxy, system, game = test_setup
-    from turn_processor import TurnProcessor
     turn_proc = TurnProcessor(game)
 
     ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
@@ -600,7 +593,7 @@ def test_infiltrated_unit_visibility_and_sidebar(test_setup):
 
 
 def test_eliminate_agent_zero_id(test_setup):
-    from unit_orders.intelligence import EliminateAgentOrder, ExtractAgentOrder, SabotageOrder, RelocateAgentOrder
+    from unit_orders.intelligence import EliminateAgentOrder
     p1, p2, galaxy, system, game = test_setup
 
     ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "CI Ship", HullSize.MEDIUM, game)

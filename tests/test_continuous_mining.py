@@ -1,16 +1,16 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from unit_components import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent, Commander
-from tests.test_unit_components import MockUnit, MockPlayer
-from unit_orders import OrderType, OrderStatus, ContinuousMineOrder, MineOrder, UnloadResourcesOrder
+from unit_orders import OrderType, OrderStatus, ContinuousMineOrder
 from entities import MetalAsteroid, Comet
 from constants import HullSize
+from tests.support.units import ComponentUnit, ComponentPlayer
+
 
 def test_continuous_mining_flow():
     # Setup player and unit
-    player = MockPlayer()
-    unit = MockUnit()
+    player = ComponentPlayer()
+    unit = ComponentUnit()
     unit.owner = player
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
@@ -33,7 +33,7 @@ def test_continuous_mining_flow():
     galaxy.get_celestial_body_by_id.side_effect = lambda bid: asteroid if bid == 999 else None
 
     # Mock systems structure for refinery lookup
-    refinery_unit = MockUnit()
+    refinery_unit = ComponentUnit()
     refinery_unit.id = 1001
     refinery_unit.owner = player
     refinery_unit.in_system = "Sol"
@@ -84,8 +84,8 @@ def test_continuous_mining_flow():
     assert order.sub_orders[0].parameters["target_id"] == 999
 
 def test_continuous_mining_refinery_types():
-    player = MockPlayer()
-    unit = MockUnit()
+    player = ComponentPlayer()
+    unit = ComponentUnit()
     unit.owner = player
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
@@ -105,7 +105,7 @@ def test_continuous_mining_refinery_types():
     galaxy.get_celestial_body_by_id.side_effect = lambda bid: comet if bid == 888 else None
 
     # Setup a metal refinery and a crystal refinery
-    ref_metal = MockUnit()
+    ref_metal = ComponentUnit()
     ref_metal.id = 1001
     ref_metal.owner = player
     ref_metal.in_system = "Sol"
@@ -113,7 +113,7 @@ def test_continuous_mining_refinery_types():
     ref_metal.position = Position(100, 0)
     ref_metal.add_component(MetalRefineryComponent(ref_metal))
 
-    ref_crystal = MockUnit()
+    ref_crystal = ComponentUnit()
     ref_crystal.id = 1002
     ref_crystal.owner = player
     ref_crystal.in_system = "Sol"
@@ -141,8 +141,8 @@ def test_continuous_mining_refinery_types():
     assert order.sub_orders[0].parameters["target_unit_id"] == 1002
 
 def test_continuous_mining_no_refinery():
-    player = MockPlayer()
-    unit = MockUnit()
+    player = ComponentPlayer()
+    unit = ComponentUnit()
     unit.owner = player
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)

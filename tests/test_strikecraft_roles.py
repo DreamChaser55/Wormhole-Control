@@ -1,12 +1,10 @@
-import pytest
-from unittest.mock import MagicMock
-from geometry import Position
 from constants import HullSize
 from unit_components import (
     StrikecraftWingComponent, WingType, Weapons, Turret, TurretType, TurretVariant
 )
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig, TurretConfig
-from tests.test_unit_components import MockUnit as BaseMockUnit, MockPlayer
+from tests.support.units import ComponentUnit as BaseMockUnit
+
 
 class MockUnit(BaseMockUnit):
     @property

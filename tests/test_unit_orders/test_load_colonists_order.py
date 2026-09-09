@@ -3,11 +3,11 @@ from geometry import Position
 from constants import PLANET_RADIUS, DEFAULT_STANDOFF_DISTANCE
 from unit_orders import OrderStatus, OrderType, LoadColonistsOrder
 from unit_components import ColonyComponent
-from tests.test_unit_components import MockUnit
+from tests.support.units import ComponentUnit
 
 
 def test_load_colonists_order_in_range():
-    unit = MockUnit()
+    unit = ComponentUnit()
     colony = MagicMock()
     unit.components[ColonyComponent] = colony
 
@@ -39,7 +39,7 @@ def test_load_colonists_order_in_range():
 
 
 def test_load_colonists_order_same_hex_out_of_range():
-    unit = MockUnit()
+    unit = ComponentUnit()
     colony = MagicMock()
     unit.components[ColonyComponent] = colony
 
@@ -72,7 +72,7 @@ def test_load_colonists_order_same_hex_out_of_range():
 
 
 def test_load_colonists_order_different_sector():
-    unit = MockUnit()
+    unit = ComponentUnit()
     colony = MagicMock()
     unit.components[ColonyComponent] = colony
 

@@ -1,6 +1,4 @@
-import pytest
-from unittest.mock import MagicMock
-from geometry import Position, distance
+from geometry import Position
 from entities import Unit, Player, Minefield
 from constants import HullSize
 from unit_components import (

@@ -1,11 +1,10 @@
 """Automated tests for Gas Giant atmospheric hiding mechanics, orders, visibility, upkeep, UI, and AI."""
-import math
 import pytest
 from constants import PlanetType, HullSize
 from entities import Unit, Planet, Player
 from geometry import Position, distance
 from utils import HexCoord
-from unit_components import Engines, Weapons, HyperspaceInhibitionFieldEmitter, CloakingDevice, Commander, UnitStance
+from unit_components import Engines, Weapons, HyperspaceInhibitionFieldEmitter, CloakingDevice, UnitStance
 from unit_components.weapons import Turret
 from unit_components.enums import TurretType
 from unit_orders.gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
@@ -16,10 +15,15 @@ from gui.sidebar.panels_world import build_celestial_body_panel
 from gui.sidebar.panels_unit import build_unit_panel
 from input_processor.context_menu_builder import build_sector_context_menu_options
 from game_ai.command_spec import COMMAND_SPECS
-from game_ai.rules import supported_commands, capability_blocker, command_guidance
+from game_ai.rules import supported_commands, capability_blocker
 from game_ai.commands import CommandBatch, CommandGateway
 from game_ai.observation import build_observation
 from save_manager import serialize_game_state, deserialize_game_state
+import random
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
+from turn_processor import TurnProcessor
+from unit_orders import MoveOrder
+from tests.support.campaigns import ship
 
 
 class DummyHex:
@@ -302,7 +306,7 @@ def test_sensor_invisibility_and_non_attackable():
     p1 = game.players[0]
     p2 = game.players[1]
 
-    from visibility import VisibilityService, is_unit_visible
+    from visibility import VisibilityService
     snapshot_p2 = VisibilityService.compute(game.galaxy, p2)
     assert is_unit_visible(snapshot_p2, ship) is True
 
@@ -434,7 +438,7 @@ def test_agentic_ai_commands_and_observation():
     assert "attack" not in submerged_ship_data["legal_commands"]
 
 
-def test_save_load_roundtrip_with_submerged_units():
+def test_save_load_roundtrip_with_submerged_units(game_factory):
     game, gas_giant, ship, wing, enemy_ship = create_test_setup()
     gas_giant.hide_unit(ship, game.galaxy)
     assert ship.is_hidden_in_gas_giant is True
@@ -453,8 +457,7 @@ def test_save_load_roundtrip_with_submerged_units():
     assert restored_ship.hidden_in_gas_giant_id == gas_giant.id
 
     # Full game state roundtrip
-    from game import Game
-    full_game = Game(control_port=0)
+    full_game = game_factory()
     try:
         full_game.start_new_game()
         gg = None
@@ -484,7 +487,7 @@ def test_save_load_roundtrip_with_submerged_units():
             gg.hide_unit(test_ship, full_game.galaxy)
 
             payload = serialize_game_state(full_game)
-            restored = Game(control_port=0)
+            restored = game_factory()
             try:
                 deserialize_game_state(restored, payload)
                 loaded_gg = restored.galaxy.get_celestial_body_by_id(gg.id)
@@ -496,3 +499,146 @@ def test_save_load_roundtrip_with_submerged_units():
     finally:
         full_game.control_service.shutdown()
         full_game.ai_coordinator.shutdown()
+
+
+def move(unit):
+    return MoveOrder(unit, {'destination_system_name': 'Sol', 'destination_hex_coord': (0, 0),
+                            'destination_position': Position(1600, 0)})
+
+
+def test_entry_exit_journal_and_fifo_resume(atmosphere):
+    game, giant, unit = atmosphere
+    commander = unit.commander_component
+    commander.set_stance(UnitStance.ATTACK_SAME_SECTOR)
+    entry = EnterGasGiantOrder(unit, {'target_id': giant.id})
+    leave, onward = LeaveGasGiantOrder(unit), move(unit)
+    commander.add_order(entry)
+    commander.add_order(leave)
+    commander.add_order(onward)
+    assert unit.is_hidden_in_gas_giant
+    assert commander.stance == UnitStance.ATTACK_SAME_SECTOR
+    TurnProcessor(game)._process_unit_updates(unit.owner)
+    assert not unit.is_hidden_in_gas_giant
+    assert commander.stance == UnitStance.ATTACK_SAME_SECTOR
+    assert commander.current_order is onward
+    assert [(event['type'], event['outcome']) for event in unit.owner.order_history] == [
+        ('enter_gas_giant', 'completed'), ('leave_gas_giant', 'completed')]
+    entry.cancel()
+    leave.cancel()
+    assert entry.status == leave.status == OrderStatus.COMPLETED
+    assert len(unit.owner.order_history) == 2
+
+
+def test_approached_entry_completes_root_once(atmosphere):
+    game, giant, unit = atmosphere
+    unit.position = Position(1400, 0)
+    entry = EnterGasGiantOrder(unit, {'target_id': giant.id})
+    unit.commander_component.add_order(entry)
+    processor = TurnProcessor(game)
+    for _ in range(12):
+        processor._process_movement(unit.owner)
+        processor._process_unit_updates(unit.owner)
+        if entry.status == OrderStatus.COMPLETED:
+            break
+    assert entry.status == OrderStatus.COMPLETED
+    assert unit.is_hidden_in_gas_giant
+    assert [e['outcome'] for e in unit.owner.order_history] == ['completed']
+
+
+def test_paused_fifo_survives_save_and_can_be_edited(atmosphere):
+    from save_manager import serialize_game_state, deserialize_game_state
+    from game_ai.observation import build_observation
+    from game_ai.contracts import Command
+    game, giant, unit = atmosphere
+    commander = unit.commander_component
+    commander.add_order(EnterGasGiantOrder(unit, {'target_id': giant.id}))
+    paused, leave = move(unit), LeaveGasGiantOrder(unit)
+    commander.add_order(paused)
+    commander.add_order(leave)
+    commander.update()
+    assert commander.current_order is None
+    assert list(commander.orders_queue) == [paused, leave]
+    payload = serialize_game_state(game)
+    assert deserialize_game_state(game, payload)
+    restored = game.galaxy.get_unit_by_id(unit.id)
+    restored.commander_component.update()
+    assert restored.is_hidden_in_gas_giant
+    observed = next(u for u in build_observation(game, game.players[0])['units'] if u['id'] == unit.id)
+    assert observed['queued_orders'][1]['blocked_by_order_id'] == paused.public_id
+    assert 'cancel_order' in observed['legal_commands']
+    assert paused.public_id in observed['command_options']['cancel_order']['order_ids']
+    assert observed['command_options']['set_stance']['values']
+    result = CommandGateway(game).apply_batch(game.players[0], CommandBatch((Command('cancel_order', (unit.id,), order_id=paused.public_id),)))
+    assert result.accepted, result.errors
+    assert not restored.is_hidden_in_gas_giant
+    events = game.players[0].order_history
+    assert [(e['type'], e['outcome']) for e in events] == [
+        ('enter_gas_giant', 'completed'), ('move', 'cancelled'), ('leave_gas_giant', 'completed')]
+
+
+def test_gas_exit_repeated_random_bearings_are_deconflicted(atmosphere, monkeypatch):
+    game, giant, unit = atmosphere
+    other = ship(game, name='second', hull=HullSize.MEDIUM)
+    other.in_galaxy = game.galaxy
+    other.add_component(Engines(other, speed=100))
+    giant.hide_unit(unit, game.galaxy)
+    giant.hide_unit(other, game.galaxy)
+    monkeypatch.setattr(random, 'uniform', lambda *args: 0)
+    p1 = giant.release_unit(unit, game.galaxy)
+    p2 = giant.release_unit(other, game.galaxy)
+    assert p1 is not None and p2 is not None
+    assert distance(p1, p2) >= 50
+    assert distance(p1, giant.position) == pytest.approx(725)
+
+
+def test_gas_exit_boundary_and_blocked_failure(atmosphere, monkeypatch):
+    game, giant, unit = atmosphere
+    giant.position = Position(4999, 0)
+    giant.hide_unit(unit, game.galaxy)
+    monkeypatch.setattr(random, 'uniform', lambda *args: 0)
+    pos = giant.release_unit(unit, game.galaxy)
+    assert pos is not None and pos.magnitude() <= SECTOR_CIRCLE_RADIUS_LOGICAL - 20
+    giant.hide_unit(unit, game.galaxy)
+    blocker = Planet((0, 0), 'Sol')
+    blocker.position, blocker.collision_radius = giant.position, 2000
+    game.galaxy.systems['Sol'].add_celestial_body(blocker)
+    original = unit.position
+    leave = LeaveGasGiantOrder(unit)
+    unit.commander_component.add_order(leave)
+    assert leave.status == OrderStatus.FAILED and leave.failure_reason == 'path_unavailable'
+    assert unit.is_hidden_in_gas_giant and unit in giant.hidden_units
+    assert unit.position == original
+    assert unit not in game.galaxy.systems['Sol'].hexes[(0, 0)].units
+
+
+def test_ai_preflight_gas_queue_dependencies(atmosphere):
+    from game_ai.contracts import Command
+    game, giant, unit = atmosphere
+    result = CommandGateway(game).apply_batch(unit.owner, CommandBatch((
+        Command('enter_gas_giant', (unit.id,), target_id=giant.id),
+        Command('leave_gas_giant', (unit.id,), queue=True),
+        Command('move', (unit.id,), system_name='Sol', hex_coord=(0, 0), position=(1600, 0), queue=True),
+    )))
+    assert result.accepted, result.errors
+    unit.commander_component.update()
+    assert not unit.is_hidden_in_gas_giant
+    assert unit.commander_component.current_order.order_type.name == 'MOVE'
+
+
+def test_blocked_gas_exit_preserves_queue_and_respects_hull_fields(atmosphere):
+    from constants import FieldDensity
+    from entities import IceField
+    game, giant, unit = atmosphere
+    commander = unit.commander_component
+    commander.add_order(EnterGasGiantOrder(unit, {'target_id': giant.id}))
+    leave, onward = LeaveGasGiantOrder(unit), move(unit)
+    commander.add_order(leave)
+    commander.add_order(onward)
+    field = IceField((0, 0), 'Sol', density=FieldDensity.HIGH)
+    game.galaxy.systems['Sol'].add_celestial_body(field)
+    commander.update()
+    assert leave.status == OrderStatus.FAILED
+    assert leave.failure_reason == 'path_unavailable'
+    assert list(commander.orders_queue) == [onward]
+    assert unit.is_hidden_in_gas_giant and unit in giant.hidden_units
+    assert onward.status == OrderStatus.PENDING

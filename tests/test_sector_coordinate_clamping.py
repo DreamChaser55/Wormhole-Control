@@ -1,10 +1,8 @@
 import math
-import pytest
 from geometry import Vector, Position, Circle, clamp_point_to_circle, clamp_vector_magnitude, position_at_distance_from_target
 from sector_utils import (
     get_sector_pixel_center, get_sector_pixel_radius, get_sector_pixel_circle,
-    sector_radius_to_pixels, pixels_to_sector_radius, sector_coords_to_pixels,
-    pixels_to_sector_coords, is_pixel_in_sector, is_position_in_sector, clamp_position_to_sector
+    sector_radius_to_pixels, pixels_to_sector_radius, is_pixel_in_sector, is_position_in_sector, clamp_position_to_sector
 )
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX
 

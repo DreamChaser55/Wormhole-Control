@@ -1,7 +1,5 @@
-import pytest
-from unittest.mock import MagicMock
-from geometry import Position, Circle, distance
-from entities import Unit, Player, OrderType
+from geometry import Position, Circle
+from entities import Unit
 from constants import HullSize
 from unit_components import (
     AbilityComponent,
@@ -12,8 +10,8 @@ from unit_components import (
 )
 from unit_components.abilities.microjump import MicrojumpAbility
 from unit_orders import UseAbilityOrder, OrderStatus
-from tests.test_unit_components import MockPlayer
 from gui.unit_editor_gui.catalog import ABILITY_NAMES
+from tests.support.units import ComponentPlayer
 
 
 class DummyHex:
@@ -62,7 +60,7 @@ def create_test_unit(game=None, position=None):
     if position is None:
         position = Position(0, 0)
 
-    player = MockPlayer()
+    player = ComponentPlayer()
     unit = Unit(
         owner=player,
         position=position,

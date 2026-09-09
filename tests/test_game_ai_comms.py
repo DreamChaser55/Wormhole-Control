@@ -1,28 +1,19 @@
+import pytest
 from player_controller import PlayerController
-import os
 import unittest
-import pygame
-
 from geometry import Position
-from entities import Player, Message
-from game import Game
+from entities import Player
 from game_ai.contracts import Command, CommandBatch, TurnPlan
-from game_ai.schema import responses_text_config, TURN_PLAN_SCHEMA
 from game_ai.observation import build_observation
 from game_ai.commands import CommandGateway
 from galaxy import Galaxy, StarSystem
 
-os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-
+@pytest.mark.usefixtures("game_factory")
 class TestGameAIComms(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pygame.init()
-        pygame.display.set_mode((1280, 720))
 
     def setUp(self):
-        self.game = Game(control_port=0)
+        self.game = self.make_game()
         self.galaxy = Galaxy()
         sys1 = StarSystem("Sol", Position(0, 0), radius=3)
         self.galaxy.systems["Sol"] = sys1
@@ -35,10 +26,6 @@ class TestGameAIComms(unittest.TestCase):
         self.game.current_player_index = 1
         self.game.turn_number = 2
 
-    def tearDown(self):
-        if hasattr(self, "game") and self.game:
-            self.game.control_service.shutdown()
-            self.game.ai_coordinator.shutdown()
 
     def test_observation_conversations(self):
         # Transmissions on Turn 1
@@ -71,50 +58,6 @@ class TestGameAIComms(unittest.TestCase):
         # Check command_reference includes send_message
         self.assertIn("send_message", obs["command_catalog"]["commands"])
 
-    def test_command_contract_and_schema(self):
-        raw_command = {
-            "type": "send_message",
-            "unit_ids": [],
-            "target_id": self.player0.id,
-            "system_name": None,
-            "hex_coord": None,
-            "position": None,
-            "template_name": None,
-            "amount": None,
-            "stance": None,
-            "queue": False,
-            "ability": None,
-            "minefield_type": None,
-            "target_component": None,
-            "message": "Alliance proposal.",
-        }
-        cmd = Command.from_dict(raw_command)
-        self.assertEqual(cmd.type, "send_message")
-        self.assertEqual(cmd.target_id, self.player0.id)
-        self.assertEqual(cmd.message, "Alliance proposal.")
-        self.assertEqual(cmd.unit_ids, ())
-
-        cmd_dict = cmd.to_dict()
-        self.assertEqual(cmd_dict["message"], "Alliance proposal.")
-        self.assertEqual(cmd_dict["unit_ids"], [])
-
-        # Test turn plan contract
-        raw_plan = {
-            "plan": ["Transmit diplomatic proposal to Player 1"],
-            "commands": [raw_command],
-            "memory_patch": {
-                "strategy": "Form alliance",
-                "objectives": [],
-                "commitments": [],
-                "beliefs": [],
-                "lessons": [],
-                "misc": [],
-            },
-            "end_turn": True,
-        }
-        plan = TurnPlan.from_dict(raw_plan)
-        self.assertEqual(len(plan.batch.commands), 1)
-        self.assertEqual(plan.batch.commands[0].message, "Alliance proposal.")
 
     def test_command_gateway_send_message_execution(self):
         gateway = CommandGateway(self.game)
@@ -168,5 +111,48 @@ class TestGameAIComms(unittest.TestCase):
         self.assertEqual(res4.errors[0].code, "invalid_command_contract")
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestCommsContracts(unittest.TestCase):
+    def test_command_contract_and_schema(self):
+        raw_command = {
+            "type": "send_message",
+            "unit_ids": [],
+            "target_id": 1,
+            "system_name": None,
+            "hex_coord": None,
+            "position": None,
+            "template_name": None,
+            "amount": None,
+            "stance": None,
+            "queue": False,
+            "ability": None,
+            "minefield_type": None,
+            "target_component": None,
+            "message": "Alliance proposal.",
+        }
+        cmd = Command.from_dict(raw_command)
+        self.assertEqual(cmd.type, "send_message")
+        self.assertEqual(cmd.target_id, 1)
+        self.assertEqual(cmd.message, "Alliance proposal.")
+        self.assertEqual(cmd.unit_ids, ())
+
+        cmd_dict = cmd.to_dict()
+        self.assertEqual(cmd_dict["message"], "Alliance proposal.")
+        self.assertEqual(cmd_dict["unit_ids"], [])
+
+        # Test turn plan contract
+        raw_plan = {
+            "plan": ["Transmit diplomatic proposal to Player 1"],
+            "commands": [raw_command],
+            "memory_patch": {
+                "strategy": "Form alliance",
+                "objectives": [],
+                "commitments": [],
+                "beliefs": [],
+                "lessons": [],
+                "misc": [],
+            },
+            "end_turn": True,
+        }
+        plan = TurnPlan.from_dict(raw_plan)
+        self.assertEqual(len(plan.batch.commands), 1)
+        self.assertEqual(plan.batch.commands[0].message, "Alliance proposal.")

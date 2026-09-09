@@ -1,14 +1,11 @@
-import os
-import tempfile
-import pytest
-from constants import HullSize, ANTIMATTER_CAPACITY_PER_HULL_POINT
+from constants import HullSize
 from custom_unit_templates import (
     calc_antimatter_hull_cost,
     ComponentConfig,
     CustomUnitTemplate,
     CustomTemplateManager,
 )
-from unit_components import AntimatterStorage, Constructor
+from unit_components import Constructor
 from geometry import Position
 from unit_templates import UNIT_TEMPLATES
 
@@ -55,7 +52,7 @@ def test_custom_unit_template_total_hull_cost_and_validation():
 
 
 def test_hull_dependent_min_antimatter_capacity():
-    from constants import get_min_antimatter_capacity, MIN_ANTIMATTER_CAPACITY_BY_HULL
+    from constants import get_min_antimatter_capacity
 
     assert get_min_antimatter_capacity(HullSize.STRIKECRAFT_WING) == 40.0
     assert get_min_antimatter_capacity(HullSize.TINY) == 60.0
@@ -84,51 +81,36 @@ def test_hull_dependent_min_antimatter_capacity():
     assert tiny_template.validate() == []
 
 
-def test_custom_template_manager_serialization():
-    import custom_unit_templates as ctm
-    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-    tmp.write("{}")
-    tmp.close()
-    orig_data_file = ctm._DATA_FILE
-    ctm._DATA_FILE = tmp.name
-    try:
-        mgr = CustomTemplateManager()
-        comp = ComponentConfig(
-            has_engine=True,
-            engine_speed=100.0,
-            has_antimatter_storage=True,
-            antimatter_capacity=300.0,
-        )
-        template = CustomUnitTemplate(
-            display_name="AM Ser Test",
-            hull_size=HullSize.LARGE,
-            components=comp,
-        )
-        errors = mgr.save_design(template)
-        assert errors == []
+def test_custom_template_manager_serialization(tmp_path):
+    mgr = CustomTemplateManager(data_file=tmp_path / "designs.json")
+    comp = ComponentConfig(
+        has_engine=True,
+        engine_speed=100.0,
+        has_antimatter_storage=True,
+        antimatter_capacity=300.0,
+    )
+    template = CustomUnitTemplate(
+        display_name="AM Ser Test",
+        hull_size=HullSize.LARGE,
+        components=comp,
+    )
+    errors = mgr.save_design(template)
+    assert errors == []
 
-        loaded = mgr.get_design("AM Ser Test")
-        assert loaded is not None
-        assert loaded.components.has_antimatter_storage is True
-        assert loaded.components.antimatter_capacity == 300.0
-        assert loaded.components.antimatter_hull_cost == 15
+    loaded = mgr.get_design("AM Ser Test")
+    assert loaded is not None
+    assert loaded.components.has_antimatter_storage is True
+    assert loaded.components.antimatter_capacity == 300.0
+    assert loaded.components.antimatter_hull_cost == 15
 
-        # Check registered dict format
-        tdict = UNIT_TEMPLATES["AM Ser Test"]
-        assert tdict["has_antimatter_storage"] is True
-        assert tdict["antimatter_capacity"] == 300.0
-        assert tdict["antimatter_hull_cost"] == 15
-    finally:
-        ctm._DATA_FILE = orig_data_file
-        os.unlink(tmp.name)
-        # Clean up any test entries injected into the global UNIT_TEMPLATES
-        for k in list(UNIT_TEMPLATES.keys()):
-            if UNIT_TEMPLATES[k].get("is_custom"):
-                del UNIT_TEMPLATES[k]
+    # Check registered dict format
+    tdict = UNIT_TEMPLATES["AM Ser Test"]
+    assert tdict["has_antimatter_storage"] is True
+    assert tdict["antimatter_capacity"] == 300.0
+    assert tdict["antimatter_hull_cost"] == 15
 
 
-def test_create_unit_from_template_custom_antimatter():
-    import custom_unit_templates as ctm
+def test_create_unit_from_template_custom_antimatter(tmp_path):
 
     class DummyOwner:
         id = 1
@@ -149,51 +131,37 @@ def test_create_unit_from_template_custom_antimatter():
     galaxy = DummyGalaxy()
     owner = DummyOwner()
 
-    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-    tmp.write("{}")
-    tmp.close()
-    orig_data_file = ctm._DATA_FILE
-    ctm._DATA_FILE = tmp.name
-    try:
-        mgr = CustomTemplateManager()
-        comp = ComponentConfig(
-            has_engine=True,
-            engine_speed=100.0,
-            has_antimatter_storage=True,
-            antimatter_capacity=250.0,
-        )
-        template = CustomUnitTemplate(
-            display_name="AM Build Test",
-            hull_size=HullSize.MEDIUM,
-            components=comp,
-        )
-        mgr.save_design(template)
+    mgr = CustomTemplateManager(data_file=tmp_path / "designs.json")
+    comp = ComponentConfig(
+        has_engine=True,
+        engine_speed=100.0,
+        has_antimatter_storage=True,
+        antimatter_capacity=250.0,
+    )
+    template = CustomUnitTemplate(
+        display_name="AM Build Test",
+        hull_size=HullSize.MEDIUM,
+        components=comp,
+    )
+    mgr.save_design(template)
 
-        # Catch added unit
-        created_units = []
-        galaxy.systems["Sol"].add_unit = lambda u: created_units.append(u)
+    # Catch added unit
+    created_units = []
+    galaxy.systems["Sol"].add_unit = lambda u: created_units.append(u)
 
-        constructor.create_unit_from_template(
-            galaxy, "AM Build Test", owner, "Sol", (0, 0), Position(0, 0)
-        )
+    constructor.create_unit_from_template(
+        galaxy, "AM Build Test", owner, "Sol", (0, 0), Position(0, 0)
+    )
 
-        assert len(created_units) == 1
-        u = created_units[0]
-        am_comp = u.antimatter_component
-        assert am_comp is not None
-        assert am_comp.max_capacity == 250.0
-        assert am_comp.hull_cost == 12.5
-    finally:
-        ctm._DATA_FILE = orig_data_file
-        os.unlink(tmp.name)
-        # Clean up any test entries injected into the global UNIT_TEMPLATES
-        for k in list(UNIT_TEMPLATES.keys()):
-            if UNIT_TEMPLATES[k].get("is_custom"):
-                del UNIT_TEMPLATES[k]
+    assert len(created_units) == 1
+    u = created_units[0]
+    am_comp = u.antimatter_component
+    assert am_comp is not None
+    assert am_comp.max_capacity == 250.0
+    assert am_comp.hull_cost == 12.5
 
 
-def test_create_unit_from_template_disabled_antimatter():
-    import custom_unit_templates as ctm
+def test_create_unit_from_template_disabled_antimatter(tmp_path):
 
     class DummyOwner:
         id = 1
@@ -214,39 +182,26 @@ def test_create_unit_from_template_disabled_antimatter():
     galaxy = DummyGalaxy()
     owner = DummyOwner()
 
-    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-    tmp.write("{}")
-    tmp.close()
-    orig_data_file = ctm._DATA_FILE
-    ctm._DATA_FILE = tmp.name
-    try:
-        mgr = CustomTemplateManager()
-        comp = ComponentConfig(
-            has_engine=True,
-            engine_speed=100.0,
-            has_antimatter_storage=False,
-        )
-        template = CustomUnitTemplate(
-            display_name="No AM Test",
-            hull_size=HullSize.MEDIUM,
-            components=comp,
-        )
-        mgr.save_design(template)
+    mgr = CustomTemplateManager(data_file=tmp_path / "designs.json")
+    comp = ComponentConfig(
+        has_engine=True,
+        engine_speed=100.0,
+        has_antimatter_storage=False,
+    )
+    template = CustomUnitTemplate(
+        display_name="No AM Test",
+        hull_size=HullSize.MEDIUM,
+        components=comp,
+    )
+    mgr.save_design(template)
 
-        created_units = []
-        galaxy.systems["Sol"].add_unit = lambda u: created_units.append(u)
+    created_units = []
+    galaxy.systems["Sol"].add_unit = lambda u: created_units.append(u)
 
-        constructor.create_unit_from_template(
-            galaxy, "No AM Test", owner, "Sol", (0, 0), Position(0, 0)
-        )
+    constructor.create_unit_from_template(
+        galaxy, "No AM Test", owner, "Sol", (0, 0), Position(0, 0)
+    )
 
-        assert len(created_units) == 1
-        u = created_units[0]
-        assert u.antimatter_component is None
-    finally:
-        ctm._DATA_FILE = orig_data_file
-        os.unlink(tmp.name)
-        # Clean up any test entries injected into the global UNIT_TEMPLATES
-        for k in list(UNIT_TEMPLATES.keys()):
-            if UNIT_TEMPLATES[k].get("is_custom"):
-                del UNIT_TEMPLATES[k]
+    assert len(created_units) == 1
+    u = created_units[0]
+    assert u.antimatter_component is None

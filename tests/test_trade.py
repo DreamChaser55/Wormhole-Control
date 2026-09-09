@@ -1,7 +1,6 @@
 from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
-
 from constants import (
     HullSize, RED, TRADE_BASE_HULL_COST, TRADE_BASE_INCOME,
     TRADE_INCOME_PER_DISTANCE_UNIT, TRADE_INTERSYSTEM_HOP_DISTANCE,
@@ -11,15 +10,14 @@ from entities import Player, Unit, Planet
 from geometry import Position
 from galaxy import Galaxy, StarSystem
 from unit_components import (
-    TradeComponent, CivilianHabitatComponent, Engines, Hyperdrive,
-    instantiate_unit_from_template
+    TradeComponent, CivilianHabitatComponent, Engines, instantiate_unit_from_template
 )
 from unit_orders import (
     OrderStatus, OrderType, TradeOrder, ContinuousTradeOrder
 )
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig, HULL_RESTRICTIONS
 from gui.unit_editor_gui.catalog import COMPONENT_ROWS, COMPONENT_DESCRIPTIONS
-from save_manager import serialize_unit, deserialize_unit, serialize_order, deserialize_order
+from save_manager import serialize_unit, deserialize_unit
 
 
 class TestTradeComponent(unittest.TestCase):
@@ -429,7 +427,3 @@ class TestTradeSerializationAndCatalog(unittest.TestCase):
             self.assertEqual(unit.trade_component.hull_cost, 10.0)
         finally:
             UNIT_TEMPLATES.pop("Custom Merchant", None)
-
-
-if __name__ == '__main__':
-    unittest.main()

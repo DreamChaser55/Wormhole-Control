@@ -1,21 +1,17 @@
 """ID zero remains opaque and usable through execution, saves and presentation."""
 from types import SimpleNamespace
 from unittest.mock import Mock
-
 import pygame
 import pytest
-
 from geometry import Position
 from entities import Planet, PlanetType, MetalAsteroid, Wormhole
-from constants import HullSize
 from unit_components import ColonyComponent, MiningComponent, AntimatterStorage, Hyperdrive, HyperdriveType
 from unit_orders import (AttackOrder, ProtectOrder, RepairOrder, RefitOrder, DockOrder,
                          TransferAntimatterOrder, MineOrder, ContinuousMineOrder,
                          ColonizeOrder, LoadColonistsOrder, OrderStatus, UseAbilityOrder)
 from unit_orders.gas_giant import EnterGasGiantOrder
 from gui.sidebar.order_formatting import format_order_state_data
-from tests.test_phase2_invariants import atmosphere, preserve_process_state
-from tests.test_persistence_integrity import campaign, ship, legacy_document
+from tests.support.campaigns import campaign, ship, legacy_document
 
 
 @pytest.mark.parametrize('order_type,key', [

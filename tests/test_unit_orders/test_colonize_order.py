@@ -3,11 +3,11 @@ from geometry import Position
 from constants import PLANET_RADIUS, DEFAULT_STANDOFF_DISTANCE
 from unit_orders import OrderStatus, OrderType, ColonizeOrder
 from unit_components import ColonyComponent
-from tests.test_unit_components import MockUnit
+from tests.support.units import ComponentUnit
 
 
 def test_colonize_order_in_range():
-    unit = MockUnit()
+    unit = ComponentUnit()
     colony = MagicMock()
     colony.population_cargo = 50
     unit.components[ColonyComponent] = colony
@@ -39,7 +39,7 @@ def test_colonize_order_in_range():
 
 
 def test_colonize_order_same_hex_out_of_range_spawns_celestial_approach():
-    unit = MockUnit()
+    unit = ComponentUnit()
     colony = MagicMock()
     colony.population_cargo = 50
     unit.components[ColonyComponent] = colony
@@ -75,7 +75,7 @@ def test_colonize_order_same_hex_out_of_range_spawns_celestial_approach():
 
 
 def test_colonize_order_different_sector_spawns_sub_orders():
-    unit = MockUnit()
+    unit = ComponentUnit()
     colony = MagicMock()
     colony.population_cargo = 50
     unit.components[ColonyComponent] = colony
@@ -107,7 +107,7 @@ def test_colonize_order_different_sector_spawns_sub_orders():
 
 
 def test_colonize_order_no_cargo_fails():
-    unit = MockUnit()
+    unit = ComponentUnit()
     colony = MagicMock()
     colony.population_cargo = 0
     unit.components[ColonyComponent] = colony

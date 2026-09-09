@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 from entities import Unit
 from game import Game
@@ -392,7 +391,3 @@ def test_stop_selected_units_multi_selection():
     from events import CancelOrdersEvent
     assert isinstance(published_event, CancelOrdersEvent)
     assert published_event.units == [unit1]
-
-
-
-

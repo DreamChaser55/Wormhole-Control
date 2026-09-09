@@ -1,5 +1,4 @@
 from player_controller import PlayerController
-import pytest
 from unittest.mock import MagicMock
 from pygame import Color
 from game import Game

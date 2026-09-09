@@ -7,22 +7,19 @@
 - AI rule generation and command preflight rejection
 """
 
-import pytest
 import math
 from utils import HexCoord
-from geometry import Position, Circle, distance
+from geometry import Position, distance
 from constants import (
-    HullSize, StormType, CELESTIAL_FIELD_RADIUS, STORM_RADIUS,
-    ASTEROID_FIELD_SPEED_MOD, ICE_FIELD_SPEED_MOD, DEBRIS_FIELD_SPEED_MOD,
-    DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE
+    HullSize, StormType, STORM_RADIUS,
+    DEBRIS_FIELD_HAZARD_DAMAGE
 )
 from entities import (
-    Unit, AsteroidField, IceField, DebrisField, Storm,
-    is_position_in_magnetic_storm
+    Unit, AsteroidField, IceField, DebrisField, Storm
 )
 from unit_components import (
-    Engines, Hyperdrive, HyperdriveType, Commander, StrikecraftBayComponent,
-    StrikecraftWingComponent, WingType, Defenses, TurretType
+    Engines, StrikecraftBayComponent,
+    StrikecraftWingComponent, WingType, TurretType
 )
 from unit_orders import (
     OrderStatus, MoveOrder, ReachWaypointOrder, DeployUnitOrder, DeployAllWingsOrder

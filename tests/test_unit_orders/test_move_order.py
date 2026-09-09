@@ -6,12 +6,14 @@ from unit_orders import OrderStatus, OrderType, MoveOrder, ReachWaypointOrder
 from unit_components import Engines, Hyperdrive, HyperdriveType, Commander
 from unit_components.antimatter import AntimatterStorage
 from unit_components.movement import JumpStatus
-from tests.test_unit_components import MockUnit
 from constants import HullSize
 from events import JumpInterhexEvent, EventBus
 from order_system import OrderSystem
 from turn_processor import TurnProcessor
 from save_manager import serialize_order, deserialize_order
+import pytest
+from entities import Planet
+from tests.support.units import ComponentUnit
 
 
 def _approach_hex(zones=None, boundary_radius=5000.0):
@@ -23,7 +25,7 @@ def _approach_hex(zones=None, boundary_radius=5000.0):
 
 
 def test_move_order_plan_route_same_hex():
-    unit = MockUnit()
+    unit = ComponentUnit()
     engines = Engines(unit, speed=50.0)
     unit.add_component(engines)
     
@@ -43,7 +45,7 @@ def test_move_order_plan_route_same_hex():
 
 
 def test_move_order_rejects_destroyed_engines_for_same_hex_travel():
-    unit = MockUnit()
+    unit = ComponentUnit()
     engines = Engines(unit, speed=50.0)
     engines.current_hit_points = 0
     unit.add_component(engines)
@@ -61,13 +63,13 @@ def test_move_order_rejects_destroyed_engines_for_same_hex_travel():
 
 
 def test_unit_approach_same_sector_uses_nearer_line_circle_intersection():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
     unit.position = Position(0.0, 0.0)
     unit.add_component(Engines(unit, speed=50.0))
 
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 501
     target.name = "Target"
     target.in_system = "Sol"
@@ -91,14 +93,14 @@ def test_unit_approach_same_sector_uses_nearer_line_circle_intersection():
 
 
 def test_unit_approach_different_sector_inhibited_uses_outward_intersection():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
     unit.position = Position(0.0, 0.0)
     unit.add_component(Engines(unit, speed=50.0))
     unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
 
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 502
     target.name = "Inhibited Target"
     target.in_system = "Sol"
@@ -128,13 +130,13 @@ def test_unit_approach_different_sector_inhibited_uses_outward_intersection():
 
 
 def test_unit_approach_different_sector_uninhibited_uses_random_circle_point_once():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
     unit.position = Position(0.0, 0.0)
     unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
 
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 503
     target.name = "Open Target"
     target.in_system = "Sol"
@@ -160,13 +162,13 @@ def test_unit_approach_different_sector_uninhibited_uses_random_circle_point_onc
 
 
 def test_unit_approach_uninhibited_rejects_illegal_random_candidate():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
     unit.position = Position(0.0, 0.0)
     unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
 
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 504
     target.name = "Open Target"
     target.in_system = "Sol"
@@ -191,12 +193,12 @@ def test_unit_approach_uninhibited_rejects_illegal_random_candidate():
 
 
 def test_unit_approach_field_center_uses_deterministic_axis_fallback():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
     unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
 
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 505
     target.name = "Centered Target"
     target.in_system = "Sol"
@@ -217,8 +219,8 @@ def test_unit_approach_field_center_uses_deterministic_axis_fallback():
 
 
 def test_unit_approach_fails_for_missing_target_or_unavailable_circle():
-    unit = MockUnit()
-    target = MockUnit()
+    unit = ComponentUnit()
+    target = ComponentUnit()
     target.id = 506
     target.in_system = "Sol"
     target.in_hex = (0, 1)
@@ -249,8 +251,8 @@ def test_unit_approach_fails_for_missing_target_or_unavailable_circle():
 
 
 def test_unit_approach_fails_cleanly_for_invalid_distance():
-    unit = MockUnit()
-    target = MockUnit()
+    unit = ComponentUnit()
+    target = ComponentUnit()
     target.id = 508
 
     galaxy = MagicMock()
@@ -264,12 +266,12 @@ def test_unit_approach_fails_cleanly_for_invalid_distance():
 
 
 def test_inhibited_unit_approach_does_not_substitute_inward_boundary_point():
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
     unit.add_component(Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5))
 
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 509
     target.in_system = "Sol"
     target.in_hex = (0, 1)
@@ -293,8 +295,8 @@ def test_inhibited_unit_approach_does_not_substitute_inward_boundary_point():
 
 
 def test_unit_approach_parameters_round_trip_through_order_serialization():
-    unit = MockUnit()
-    target = MockUnit()
+    unit = ComponentUnit()
+    target = ComponentUnit()
     target.id = 507
     target.in_system = "Sol"
     target.in_hex = (2, 3)
@@ -320,7 +322,7 @@ def test_unit_approach_parameters_round_trip_through_order_serialization():
 
 
 def test_move_order_plan_route_hex_jump_within_range():
-    unit = MockUnit()
+    unit = ComponentUnit()
     hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5)
     unit.add_component(hd)
     
@@ -346,7 +348,7 @@ def test_move_order_plan_route_hex_jump_within_range():
 
 
 def test_move_order_plan_route_multi_stage_hex_jump():
-    unit = MockUnit()
+    unit = ComponentUnit()
     hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=2)
     unit.add_component(hd)
     
@@ -384,7 +386,7 @@ def test_move_order_plan_route_multi_stage_hex_jump():
 
 def test_move_order_inter_system_routing():
     # Setup unit with Hyperdrive and Engines in Sol
-    unit = MockUnit()
+    unit = ComponentUnit()
     hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5)
     engines = Engines(unit, speed=50.0)
     unit.add_component(hd)
@@ -472,7 +474,7 @@ def test_move_order_inter_system_routing():
 
 def test_move_order_inhibition_escape():
     # Setup unit with Hyperdrive in Sol at Position(10, 10)
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.position = Position(10, 10)
     hd = Hyperdrive(unit, drive_type=HyperdriveType.ADVANCED, jump_range=5)
     unit.add_component(hd)
@@ -532,7 +534,7 @@ def test_move_order_inhibition_escape():
 
 def test_inter_system_jump_drive_type_validation():
     # Test ReachWaypointOrder inter-system jump with BASIC drive fails
-    unit_basic = MockUnit()
+    unit_basic = ComponentUnit()
     hd_basic = Hyperdrive(unit_basic, drive_type=HyperdriveType.BASIC)
     unit_basic.add_component(hd_basic)
     
@@ -547,7 +549,7 @@ def test_inter_system_jump_drive_type_validation():
     assert order_reach_basic.status == OrderStatus.FAILED
 
     # Test ReachWaypointOrder inter-system jump with ADVANCED drive starts/proceeds
-    unit_adv = MockUnit()
+    unit_adv = ComponentUnit()
     hd_adv = Hyperdrive(unit_adv, drive_type=HyperdriveType.ADVANCED)
     unit_adv.add_component(hd_adv)
     
@@ -585,7 +587,7 @@ def test_handle_jump_interhex_same_hex_different_system():
     game = MagicMock()
     order_sys = OrderSystem(game, event_bus)
     
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.in_system = "Sol"
     unit.in_hex = (0, 5)
     unit.add_component(Hyperdrive(unit))
@@ -609,7 +611,7 @@ def test_handle_jump_interhex_same_hex_different_system():
 
 
 def test_move_order_plan_route_clears_sub_orders_on_failure(caplog):
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.in_system = "Sol"
     unit.in_hex = (0, 5)
     unit.hull_size = HullSize.HUGE
@@ -652,7 +654,7 @@ def test_handle_inhibited_waypoint_intermediate_safe_distance():
     inhibition field, the landing position must be placed outside the field
     (at zone.radius + 1.0), so the unit can immediately re-engage its hyperdrive.
     """
-    unit = MockUnit()
+    unit = ComponentUnit()
     # Jump range of 2; destination at hex (0, 4) forces an intermediate stop at (0, 2).
     hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=2)
     unit.add_component(hd)
@@ -732,7 +734,7 @@ def test_handle_inhibited_waypoint_intermediate_multiple_zones():
     The net escape direction (sum of unit vectors away from each zone) points
     roughly along +x, so the algorithm converges in at most two passes.
     """
-    unit = MockUnit()
+    unit = ComponentUnit()
     hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=2)
     unit.add_component(hd)
 
@@ -794,7 +796,7 @@ def test_turn_processor_failed_hex_jump_does_not_mutate_position():
     When a hex jump fails in turn_processor (e.g. due to insufficient antimatter),
     the unit's position should NOT be mutated to target_pos.
     """
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.position = Position(0.0, 0.0)
     unit.in_hex = (0, 0)
     unit.in_system = "Sol"
@@ -839,7 +841,7 @@ def test_direct_wormhole_same_sector_destination_sublight_move():
     is in the same sector as the exit wormhole but at a different (x, y) coordinate,
     MoveOrder must schedule the wormhole jump followed by a sub-light move to the final coordinates.
     """
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.position = Position(100.0, 100.0)
     unit.in_hex = (1, 1)
     unit.in_system = "Sol"
@@ -910,3 +912,32 @@ def test_direct_wormhole_same_sector_destination_sublight_move():
     assert order.sub_orders[2].parameters["destination_system_name"] == "Alpha Centauri"
     assert order.sub_orders[2].parameters["destination_hex_coord"] == (0, 0)
     assert order.sub_orders[2].parameters["destination_position"] == Position(300.0, 300.0)
+
+
+@pytest.mark.parametrize('order_class', [MoveOrder, ReachWaypointOrder])
+def test_unavailable_route_fails_order_without_engine_target(atmosphere, order_class):
+    game, giant, unit = atmosphere
+    order = order_class(unit, {'destination_system_name': 'Sol', 'destination_hex_coord': (0, 0),
+                               'destination_position': Position(giant.collision_radius + 10, 0)})
+    unit.commander_component.add_order(order)
+    assert order.status == OrderStatus.FAILED
+    assert order.failure_reason == 'path_unavailable'
+    assert unit.engines_component.move_target is None
+
+
+def test_failed_later_route_leg_cannot_start_earlier_jump(atmosphere):
+    from unit_components import Hyperdrive
+    game, _, unit = atmosphere
+    unit.add_component(Hyperdrive(unit))
+    world = Planet((1, 0), 'Sol')
+    system = game.galaxy.systems['Sol']
+    system.add_celestial_body(world)
+    system.hexes[(1, 0)].update_static_inhibition_zones()
+    order = MoveOrder(unit, {'destination_system_name': 'Sol', 'destination_hex_coord': (1, 0),
+                            'destination_position': Position(world.collision_radius + 10, 0)})
+    unit.commander_component.add_order(order)
+    assert order.status == OrderStatus.FAILED and order.failure_reason == 'path_unavailable'
+    assert not order.sub_orders
+    unit.commander_component.update()
+    assert unit.engines_component.move_target is None
+    assert unit.hyperdrive_component.hex_jump_target is None

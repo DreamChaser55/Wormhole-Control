@@ -1,23 +1,16 @@
 """Unit and integration tests for the two-stage New Game Wizard and home star system assignment."""
 from __future__ import annotations
-
-import os
 import pygame
 import pygame_gui
 import pytest
 from unittest.mock import MagicMock
-
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-pygame.init()
-pygame.font.init()
-
 from constants import Vector
-from game_settings import GameSettings, PlayerConfig, SpawnProfile, PLAYER_COLOR_PALETTE
-from player_controller import PlayerController
+from game_settings import GameSettings
 from gui.layout_new_game_wizard import NewGameWizard
-from rendering.galaxy_renderer import draw_galaxy_preview, get_system_at_preview_point
 import game_setup
-from entities import Planet
+
+
+pygame.font.init()
 
 
 class MockGame:
@@ -508,5 +501,4 @@ def test_wizard_stage_2_layout_and_economy_grid(wizard_env):
     ctrl_rect = wizard._player_type_buttons[0].get_relative_rect()
     assert ctrl_rect.width >= 100
 
-
-
+pytestmark = pytest.mark.usefixtures("pygame_context")

@@ -1,12 +1,11 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from entities import Unit
 from constants import HullSize
 from unit_components import AbilityComponent, AbilityType, Engines, AntimatterStorage
 from unit_orders import UseAbilityOrder, OrderStatus, OrderType
-from tests.test_unit_components import MockPlayer
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig
+from tests.support.units import ComponentPlayer
 
 
 class DummyGame:
@@ -18,8 +17,8 @@ class DummyGame:
 
 
 def test_drain_antimatter_success():
-    player_caster = MockPlayer("Caster Player")
-    player_target = MockPlayer("Target Player")
+    player_caster = ComponentPlayer("Caster Player")
+    player_target = ComponentPlayer("Target Player")
     player_target.id = 2
     game = DummyGame()
 
@@ -52,8 +51,8 @@ def test_drain_antimatter_success():
 
 
 def test_drain_antimatter_partial():
-    player_caster = MockPlayer("Caster Player")
-    player_target = MockPlayer("Target Player")
+    player_caster = ComponentPlayer("Caster Player")
+    player_target = ComponentPlayer("Target Player")
     player_target.id = 2
     game = DummyGame()
 
@@ -86,8 +85,8 @@ def test_drain_antimatter_partial():
 
 
 def test_drain_antimatter_out_of_range():
-    player_caster = MockPlayer("Caster Player")
-    player_target = MockPlayer("Target Player")
+    player_caster = ComponentPlayer("Caster Player")
+    player_target = ComponentPlayer("Target Player")
     player_target.id = 2
     game = DummyGame()
 
@@ -125,7 +124,7 @@ def test_drain_antimatter_out_of_range():
 
 
 def test_drain_antimatter_fails_friendly_target():
-    player = MockPlayer()
+    player = ComponentPlayer()
     game = DummyGame()
 
     caster = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -157,8 +156,8 @@ def test_drain_antimatter_fails_friendly_target():
 
 
 def test_drain_antimatter_fails_no_antimatter_target():
-    player_caster = MockPlayer("Caster Player")
-    player_target = MockPlayer("Target Player")
+    player_caster = ComponentPlayer("Caster Player")
+    player_target = ComponentPlayer("Target Player")
     player_target.id = 2
     game = DummyGame()
 

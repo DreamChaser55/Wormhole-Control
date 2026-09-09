@@ -4,18 +4,18 @@ from unit_orders import OrderStatus, OrderType, UnloadResourcesOrder
 from unit_components import (
     MiningComponent, MetalRefineryComponent, CrystalRefineryComponent, Commander
 )
-from tests.test_unit_components import MockUnit
 from order_system import OrderSystem
 from events import UnloadResourcesEvent
+from tests.support.units import ComponentUnit
 
 
 def test_unload_resources_order():
-    unit = MockUnit()
+    unit = ComponentUnit()
     mining_comp = MiningComponent(unit, mining_rate=10, max_cargo=50, mining_range=100.0)
     mining_comp.raw_metal_cargo = 20
     unit.add_component(mining_comp)
     
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 999
     target.name = "Refinery Station"
     target.in_system = "Sol"
@@ -53,7 +53,7 @@ def test_unload_resources_order():
 
 
 def test_unload_resources_matching_refinery():
-    unit = MockUnit()
+    unit = ComponentUnit()
     mining_comp = MiningComponent(unit, mining_rate=10, max_cargo=100, mining_range=100.0)
     mining_comp.raw_metal_cargo = 30
     mining_comp.raw_crystal_cargo = 40
@@ -64,7 +64,7 @@ def test_unload_resources_matching_refinery():
     unit.position = Position(0, 0)
     
     # 1. Target with metal refinery only
-    target_metal = MockUnit()
+    target_metal = ComponentUnit()
     target_metal.id = 901
     target_metal.name = "Metal Refinery Station"
     target_metal.in_system = "Sol"
@@ -92,7 +92,7 @@ def test_unload_resources_matching_refinery():
     mining_comp.raw_metal_cargo = 30
     mining_comp.raw_crystal_cargo = 40
     
-    target_crystal = MockUnit()
+    target_crystal = ComponentUnit()
     target_crystal.id = 902
     target_crystal.name = "Crystal Refinery Station"
     target_crystal.in_system = "Sol"
@@ -118,20 +118,20 @@ def test_unload_resources_matching_refinery():
 
 def test_order_system_handle_unload_resources():
     # Setup two mock units. unit_metal has metal cargo. unit_crystal has crystal cargo.
-    unit_metal = MockUnit()
+    unit_metal = ComponentUnit()
     unit_metal.add_component(Commander(unit_metal))
     mining_metal = MiningComponent(unit_metal, max_cargo=50)
     mining_metal.raw_metal_cargo = 10
     unit_metal.add_component(mining_metal)
     
-    unit_crystal = MockUnit()
+    unit_crystal = ComponentUnit()
     unit_crystal.add_component(Commander(unit_crystal))
     mining_crystal = MiningComponent(unit_crystal, max_cargo=50)
     mining_crystal.raw_crystal_cargo = 10
     unit_crystal.add_component(mining_crystal)
     
     # Target refinery has metal refinery only
-    target_refinery = MockUnit()
+    target_refinery = ComponentUnit()
     target_refinery.id = 777
     refinery_metal = MetalRefineryComponent(target_refinery)
     target_refinery.add_component(refinery_metal)

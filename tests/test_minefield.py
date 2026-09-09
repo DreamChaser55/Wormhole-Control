@@ -2,10 +2,8 @@ from player_controller import PlayerController
 import pytest
 from entities import Player, Unit, Minefield, HullSize
 from geometry import Position
-from utils import HexCoord
 from constants import (
-    MINEFIELD_CREDIT_COST, MINEFIELD_ANTIMATTER_COST, MAX_MINEFIELDS_PER_HEX,
-    MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS
+    MINEFIELD_CREDIT_COST, MINEFIELD_ANTIMATTER_COST
 )
 from unit_components import MinelayerComponent, AntimatterStorage, Sensors
 from unit_orders import LayMinefieldOrder, OrderStatus
@@ -13,6 +11,9 @@ from visibility import VisibilityService, is_minefield_visible
 from galaxy import StarSystem, Galaxy
 from turn_processor import TurnProcessor
 import save_manager
+from unit_components import Engines
+from unit_orders import MoveOrder
+from tests.support.campaigns import campaign, ship
 
 
 class MockGame:
@@ -181,7 +182,7 @@ def test_minefield_save_and_load():
 
 
 def test_gui_lay_minefield_action():
-    from events import EventBus, LayMinefieldEvent
+    from events import EventBus
     from order_system import OrderSystem
 
     game = MockGame()
@@ -386,7 +387,71 @@ def test_remove_minefield_via_game_action():
     assert game.sidebar_needs_update is True
 
 
+@pytest.mark.parametrize('players', [2, 3, 6])
+@pytest.mark.parametrize('moving', [False, True])
+def test_mine_damage_once_per_owner_turn(players, moving):
+    game = campaign()
+    game.players = [Player(str(i), (10, 20, 30), team_id=i+1) for i in range(players)]
+    victim = ship(game, owner=0)
+    victim.position = Position(0, 0)
+    field = Minefield(game.players[1], Position(0, 0), (0, 0), 'Sol', mines_remaining=20, mine_damage=20)
+    game.galaxy.systems['Sol'].hexes[(0, 0)].minefields.append(field)
+    processor = TurnProcessor(game)
+    if moving:
+        victim.position = Position(1000, 0)
+        processor._process_movement = lambda player: setattr(victim, 'position', Position(0, 0)) if player is victim.owner else None
+    else:
+        processor._process_movement = lambda player: None
+    hp = victim.current_hit_points
+    for _ in range(2):
+        for player in game.players:
+            processor.process_player_turn(player)
+    assert hp - victim.current_hit_points == 40
+    assert field.mines_remaining == 18
 
 
+def test_mines_overlap_alliances_and_stored_units(atmosphere):
+    from unit_components import HangarComponent
+    game, giant, hidden = atmosphere
+    victim = ship(game, hull=HullSize.HUGE)
+    carrier = ship(game, name='carrier')
+    carrier.position = Position(1500, 0)
+    docked = ship(game, name='docked', hull=HullSize.TINY)
+    carrier.add_component(HangarComponent(carrier, max_slots=1))
+    assert carrier.hangar_component.dock(docked, game.galaxy)
+    assert giant.hide_unit(hidden, game.galaxy)
+    hidden_hp, docked_hp, victim_hp = hidden.current_hit_points, docked.current_hit_points, victim.current_hit_points
+    sector = game.galaxy.systems['Sol'].hexes[(0, 0)]
+    hostile = [Minefield(game.players[1], Position(0, 0), (0, 0), 'Sol', mines_remaining=5, mine_damage=20) for _ in range(2)]
+    ally = Player('Ally', (20, 30, 40), team_id=victim.owner.team_id)
+    friendly = Minefield(ally, Position(0, 0), (0, 0), 'Sol', mines_remaining=5)
+    sector.minefields.extend([*hostile, friendly])
+    TurnProcessor(game)._process_minefield_detonations(victim.owner)
+    assert victim.current_hit_points == victim_hp - 40
+    assert [field.mines_remaining for field in sector.minefields] == [4, 4, 5]
+    assert hidden.current_hit_points == hidden_hp and docked.current_hit_points == docked_hp
 
 
+def test_mine_crossing_without_final_contact_and_lethal_overlap():
+    game = campaign()
+    victim = ship(game, hull=HullSize.TINY)
+    sector = game.galaxy.systems['Sol'].hexes[(0, 0)]
+    fields = [Minefield(game.players[1], Position(0, 0), (0, 0), 'Sol', mines_remaining=2, mine_damage=10000) for _ in range(2)]
+    sector.minefields.extend(fields)
+    victim.position = Position(-1000, 0)
+    victim.add_component(Engines(victim, speed=2000))
+    victim.add_component(AntimatterStorage(victim, max_capacity=1000))
+    victim.antimatter_component.current_amount = 1000
+    victim.commander_component.add_order(MoveOrder(victim, {
+        'destination_system_name': 'Sol', 'destination_hex_coord': (0, 0),
+        'destination_position': Position(1000, 0)}))
+    processor = TurnProcessor(game)
+    # The complete engine movement crosses the field but ends outside it.
+    processor._process_movement(victim.owner)
+    assert victim.position == Position(1000, 0)
+    processor._process_minefield_detonations(victim.owner)
+    assert [field.mines_remaining for field in fields] == [2, 2]
+    victim.position = Position(0, 0)
+    processor._process_minefield_detonations(victim.owner)
+    assert victim.current_hit_points == 0 and victim not in sector.units
+    assert [field.mines_remaining for field in fields] == [1, 2]

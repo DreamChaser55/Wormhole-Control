@@ -1,13 +1,12 @@
 import pytest
-
 from geometry import Position
-from tests.test_unit_components import MockUnit
 from unit_components import Commander, Turret, TurretType, Weapons
 from unit_orders import AttackOrder, Order, OrderStatus, OrderType
+from tests.support.units import ComponentUnit
 
 
 def _combatants():
-    attacker = MockUnit()
+    attacker = ComponentUnit()
     attacker.id = 100
     attacker.position = Position(0, 0)
     attacker.add_component(Commander(attacker))
@@ -23,7 +22,7 @@ def _combatants():
     weapons.add_turret(turret)
     attacker.add_component(weapons)
 
-    target = MockUnit()
+    target = ComponentUnit()
     target.id = 200
     target.position = Position(50, 0)
     target.current_hit_points = 100
@@ -121,7 +120,7 @@ def test_automated_combat_authorizes_active_front_attack_sub_order(parent_order_
 
 def test_active_attack_cannot_fire_at_a_different_cached_target():
     attacker, target, weapons, turret = _combatants()
-    authorized_target = MockUnit()
+    authorized_target = ComponentUnit()
     authorized_target.id = 300
     commander = attacker.commander_component
     attack = AttackOrder(attacker, {"target_unit_id": authorized_target.id})

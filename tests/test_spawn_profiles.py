@@ -1,14 +1,10 @@
 """Unit and integration tests for player and unit spawn profiles."""
-import os
 import pytest
 import pygame
 import pygame_gui
-from unittest.mock import MagicMock, patch
-
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-
-from constants import HullSize, PLANET_RADIUS, Vector
-from entities import Planet, Player, Unit
+from unittest.mock import MagicMock
+from constants import PLANET_RADIUS, Vector
+from entities import Planet
 from game_settings import (
     GameSettings,
     PlayerConfig,
@@ -206,7 +202,7 @@ def test_start_new_game_testing_spawn_profile():
 
 def test_new_game_wizard_spawn_profile_ui():
     """Test NewGameWizard UI spawn profile button, cycling, snapshot, and settings generation."""
-    pygame.init()
+
     screen = pygame.display.set_mode((1280, 720))
     manager = pygame_gui.UIManager((1280, 720))
 
@@ -249,4 +245,6 @@ def test_new_game_wizard_spawn_profile_ui():
     assert action["settings"].spawn_profile == SpawnProfile.TESTING
 
     wizard.kill()
-    pygame.quit()
+
+
+pytestmark = pytest.mark.usefixtures("pygame_context")

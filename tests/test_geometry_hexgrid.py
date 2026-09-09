@@ -1,5 +1,4 @@
 import math
-import pytest
 from geometry import Vector, Position, Circle, distance, distance_sq, hex_distance, is_point_in_circle, do_circles_intersect, is_circle_contained, get_closest_point_on_circle_edge, move_towards_position
 import hexgrid_utils
 
@@ -132,4 +131,3 @@ def test_hex_coord_namedtuple():
     neighbors = hexgrid_utils.hex_neighbors(coord)
     assert len(neighbors) == 6
     assert all(hasattr(n, 'q') and hasattr(n, 'r') for n in neighbors)
-

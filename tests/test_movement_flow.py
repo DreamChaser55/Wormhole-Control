@@ -1,10 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from turn_processor import TurnProcessor
-from unit_orders import MoveOrder, Order, OrderStatus, OrderType, ReachWaypointOrder
+from unit_orders import MoveOrder, Order, OrderStatus, OrderType
 from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus
-from tests.test_unit_components import MockPlayer, MockUnit
+from tests.support.units import ComponentPlayer, ComponentUnit
+
 
 class SimpleHex:
     def __init__(self, q, r, in_system):
@@ -123,12 +123,12 @@ def test_integration_sublight_movement_flow():
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
     
-    player = MockPlayer()
+    player = ComponentPlayer()
     game.players = [player]
     game.current_player_index = 0
     
     # Setup Unit
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.game = game
     unit.in_galaxy = galaxy
@@ -183,11 +183,11 @@ def test_destroying_engines_fails_active_sublight_move_without_spending_antimatt
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
 
-    player = MockPlayer()
+    player = ComponentPlayer()
     game.players = [player]
     game.current_player_index = 0
 
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.game = game
     unit.in_galaxy = galaxy
@@ -238,11 +238,11 @@ def test_destroyed_engines_do_not_block_hyperdrive_only_jump():
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
 
-    player = MockPlayer()
+    player = ComponentPlayer()
     game.players = [player]
     game.current_player_index = 0
 
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.game = game
     unit.in_galaxy = galaxy
@@ -276,7 +276,7 @@ def test_integration_wormhole_jump_flow():
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
     
-    player = MockPlayer()
+    player = ComponentPlayer()
     game.players = [player]
     game.current_player_index = 0
     
@@ -291,7 +291,7 @@ def test_integration_wormhole_jump_flow():
     galaxy.systems["Vega"].hexes[(-1, -1)].celestial_bodies.append(wh_vega)
     
     # Setup Unit in Sol at (0, 0)
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.game = game
     unit.in_galaxy = galaxy
@@ -370,7 +370,7 @@ def test_integration_multi_system_movement():
     }
     game.galaxy = galaxy
     
-    player = MockPlayer()
+    player = ComponentPlayer()
     game.players = [player]
     game.current_player_index = 0
     
@@ -391,7 +391,7 @@ def test_integration_multi_system_movement():
     galaxy.systems["Sirius"].hexes[(-2, 2)].celestial_bodies.append(wh_sirius_from_vega)
     
     # Setup Unit in Sol at (0, 0)
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.game = game
     unit.in_galaxy = galaxy
@@ -469,7 +469,7 @@ def test_unstable_wormhole_damage():
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
     
-    player = MockPlayer()
+    player = ComponentPlayer()
     game.players = [player]
     game.current_player_index = 0
     
@@ -486,7 +486,7 @@ def test_unstable_wormhole_damage():
     galaxy.systems["Vega"].hexes[(-1, -1)].celestial_bodies.append(wh_vega)
     
     # Setup Unit in Sol at (1, 1)
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.owner = player
     unit.game = game
     unit.in_galaxy = galaxy
@@ -582,7 +582,7 @@ def test_wormhole_diameter_restrictions_movement_planning():
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
     
-    player = MockPlayer()
+    player = ComponentPlayer()
     game.players = [player]
     game.current_player_index = 0
 
@@ -603,7 +603,7 @@ def test_wormhole_diameter_restrictions_movement_planning():
     }
 
     # Case 1: MEDIUM ship can make the move
-    unit_medium = MockUnit()
+    unit_medium = ComponentUnit()
     unit_medium.hull_size = HullSize.MEDIUM
     unit_medium.owner = player
     unit_medium.game = game
@@ -631,7 +631,7 @@ def test_wormhole_diameter_restrictions_movement_planning():
     assert len(move_order_m.sub_orders) == 2
 
     # Case 2: HUGE ship should fail to plan path
-    unit_huge = MockUnit()
+    unit_huge = ComponentUnit()
     unit_huge.hull_size = HullSize.HUGE
     unit_huge.owner = player
     unit_huge.game = game

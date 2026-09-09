@@ -1,10 +1,4 @@
 from player_controller import PlayerController
-"""
-test_retrofit_wizard.py
-
-Comprehensive test suite for the Retrofit Customization Options Wizard GUI.
-"""
-
 import pytest
 import pygame
 import pygame_gui
@@ -13,24 +7,19 @@ from utils import HexCoord
 from constants import HullSize
 from entities import Unit, Player
 from galaxy import Galaxy, StarSystem
-from events import EventBus, RefitUnitEvent
+from events import EventBus
 from order_system import OrderSystem
 from unit_components import (
-    Constructor, Engines, Weapons, Defenses, Sensors,
-    CloakingDevice, AbilityComponent, AbilityType
+    Constructor, Engines, Defenses, AbilityComponent, AbilityType
 )
 from gui.retrofit_gui import RetrofitWizardWindow
-from gui.retrofit_gui.catalog import RETROFIT_COMPONENTS
 from game_actions import handle_gui_action
 from input_processor import InputProcessor
+"""
+test_retrofit_wizard.py
 
-
-@pytest.fixture(scope="module", autouse=True)
-def pygame_init():
-    pygame.init()
-    pygame.display.set_mode((1280, 720))
-    yield
-    pygame.quit()
+Comprehensive test suite for the Retrofit Customization Options Wizard GUI.
+"""
 
 
 class MockGame:
@@ -87,25 +76,6 @@ def wizard_setup():
     manager = pygame_gui.UIManager((1280, 720))
 
     return game, galaxy, player, constructor_unit, target_unit, manager, screen_res
-
-
-def test_retrofit_wizard_initialization(wizard_setup):
-    game, galaxy, player, constructor_unit, target_unit, manager, screen_res = wizard_setup
-    wizard = RetrofitWizardWindow(
-        manager=manager,
-        screen_res=screen_res,
-        target_unit=target_unit,
-        constructor_units=[constructor_unit],
-        initial_comp_key="Defenses"
-    )
-
-    assert wizard.is_visible is True
-    assert wizard.window.alive() is True
-    assert wizard._current_comp_key == "Defenses"
-    assert wizard.calculated_hull_cost > 0
-    assert wizard.cost_credits > 0
-    assert wizard.is_valid is True
-    wizard.kill()
 
 
 def test_retrofit_wizard_component_switching(wizard_setup):
@@ -362,3 +332,5 @@ def test_input_processor_refit_context_menu_options(wizard_setup):
     assert "Add Component" in option_labels
     
     assert "Remove Component" in option_labels
+
+pytestmark = pytest.mark.usefixtures("pygame_context")

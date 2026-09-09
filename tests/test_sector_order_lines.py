@@ -788,5 +788,3 @@ def test_sector_view_queued_orders_without_sub_orders_sequential():
         drawn = line_pairs()
         assert ((0.0, 0.0), (100.0, 100.0)) in drawn
         assert ((100.0, 100.0), (200.0, 200.0)) in drawn
-
-

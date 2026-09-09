@@ -1,10 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from unit_components import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent, Commander
-from tests.test_unit_components import MockUnit, MockPlayer
-from unit_orders import OrderType, UnloadResourcesOrder
+from unit_orders import OrderType
 from constants import HullSize
+from tests.support.units import ComponentUnit, ComponentPlayer
+
 
 class DummyGame:
     def __init__(self):
@@ -14,7 +14,7 @@ class DummyGame:
 
 def test_unload_resources_nearest_no_cargo():
     # Setup mock unit, mining component with 0 cargo
-    unit = MockUnit()
+    unit = ComponentUnit()
     mining_comp = MiningComponent(unit, max_cargo=100.0)
     unit.add_component(mining_comp)
     
@@ -27,7 +27,7 @@ def test_unload_resources_nearest_no_cargo():
 
 def test_unload_resources_nearest_with_cargo():
     # Setup mock unit, mining component with cargo
-    unit = MockUnit()
+    unit = ComponentUnit()
     mining_comp = MiningComponent(unit, max_cargo=100.0)
     mining_comp.raw_metal_cargo = 20.0
     unit.add_component(mining_comp)
@@ -42,10 +42,10 @@ def test_unload_resources_nearest_with_cargo():
 
 def test_handle_gui_action_unload_resources_nearest():
     # Setup player
-    player = MockPlayer()
+    player = ComponentPlayer()
     
     # Setup miner unit
-    miner = MockUnit()
+    miner = ComponentUnit()
     miner.id = 1
     miner.owner = player
     miner.in_system = "Sol"
@@ -62,7 +62,7 @@ def test_handle_gui_action_unload_resources_nearest():
     miner.add_component(mining_comp)
 
     # Setup close metal refinery
-    ref_metal = MockUnit()
+    ref_metal = ComponentUnit()
     ref_metal.id = 2
     ref_metal.owner = player
     ref_metal.in_system = "Sol"
@@ -71,7 +71,7 @@ def test_handle_gui_action_unload_resources_nearest():
     ref_metal.add_component(MetalRefineryComponent(ref_metal))
     
     # Setup far metal refinery
-    ref_metal_far = MockUnit()
+    ref_metal_far = ComponentUnit()
     ref_metal_far.id = 3
     ref_metal_far.owner = player
     ref_metal_far.in_system = "Vega"
@@ -80,7 +80,7 @@ def test_handle_gui_action_unload_resources_nearest():
     ref_metal_far.add_component(MetalRefineryComponent(ref_metal_far))
 
     # Setup crystal refinery
-    ref_crystal = MockUnit()
+    ref_crystal = ComponentUnit()
     ref_crystal.id = 4
     ref_crystal.owner = player
     ref_crystal.in_system = "Sol"
@@ -150,8 +150,8 @@ def test_handle_gui_action_unload_resources_nearest():
 
 def test_handle_gui_action_unload_resources_nearest_shift():
     # Setup player and miner with cargo and one refinery
-    player = MockPlayer()
-    miner = MockUnit()
+    player = ComponentPlayer()
+    miner = ComponentUnit()
     miner.id = 1
     miner.owner = player
     miner.in_system = "Sol"
@@ -173,7 +173,7 @@ def test_handle_gui_action_unload_resources_nearest_shift():
     miner.add_component(mining_comp)
 
     # Setup metal refinery
-    ref_metal = MockUnit()
+    ref_metal = ComponentUnit()
     ref_metal.id = 2
     ref_metal.owner = player
     ref_metal.in_system = "Sol"

@@ -2,11 +2,11 @@ from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders import OrderStatus, OrderType, MineOrder
 from unit_components import MiningComponent
-from tests.test_unit_components import MockUnit
+from tests.support.units import ComponentUnit
 
 
 def test_mine_order():
-    unit = MockUnit()
+    unit = ComponentUnit()
     mining_comp = MiningComponent(unit, mining_rate=10, max_cargo=50, mining_range=100.0)
     unit.add_component(mining_comp)
     

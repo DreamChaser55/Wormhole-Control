@@ -1,12 +1,11 @@
 import unittest
 from unittest.mock import MagicMock, patch
-
 from constants import HullSize
 from custom_unit_templates import (
-    CustomUnitTemplate, ComponentConfig, calc_marines_hull_cost, MARINES_HULL_COST_PER_MARINE
+    CustomUnitTemplate, calc_marines_hull_cost, MARINES_HULL_COST_PER_MARINE
 )
 from unit_components import (
-    MarinesComponent, AbilityComponent, AbilityType, Defenses, Engines, Weapons
+    MarinesComponent
 )
 from unit_components.abilities.capture_unit import CaptureUnitAbility
 
@@ -102,7 +101,3 @@ class TestCaptureUnitWithMarines(unittest.TestCase):
         result = ability.on_activate(ability_comp, self.galaxy, target_unit_id=99)
         self.assertFalse(result)
         self.assertEqual(self.target_unit.owner, self.enemy_player)
-
-
-if __name__ == "__main__":
-    unittest.main()

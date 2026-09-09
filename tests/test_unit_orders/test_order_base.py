@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders import (
@@ -6,12 +5,12 @@ from unit_orders import (
     ConstructOrder, RepairOrder, DockOrder, DeployUnitOrder,
     DeployAllWingsOrder, UseAbilityOrder
 )
-from tests.test_unit_components import MockUnit
 from game import Game
+from tests.support.units import ComponentUnit
 
 
 def test_order_cancellation_cascade():
-    unit = MockUnit()
+    unit = ComponentUnit()
     order = MoveOrder(unit, {
         "destination_system_name": "Sol",
         "destination_hex_coord": (0, 0),
@@ -40,10 +39,8 @@ def test_order_formatting():
             self.sidebar_needs_update = False
 
     game = MockGame()
-    unit = MockUnit()
+    unit = ComponentUnit()
     unit.game = game
-    unit.hangar_component = None
-    unit.strikecraft_bay_component = None
 
     # 1. ConstructOrder formatting
     construct_order = ConstructOrder(unit, {
@@ -62,7 +59,7 @@ def test_order_formatting():
     repair_order = RepairOrder(unit, {
         "target_unit_id": 456
     })
-    target_unit = MockUnit()
+    target_unit = ComponentUnit()
     target_unit.id = 456
     target_unit.name = "Friendly Ship"
     game.galaxy.get_unit_by_id.return_value = target_unit
@@ -77,7 +74,7 @@ def test_order_formatting():
     dock_order = DockOrder(unit, {
         "target_carrier_id": 789
     })
-    carrier_unit = MockUnit()
+    carrier_unit = ComponentUnit()
     carrier_unit.id = 789
     carrier_unit.name = "Huge Carrier"
     game.galaxy.get_unit_by_id.return_value = carrier_unit

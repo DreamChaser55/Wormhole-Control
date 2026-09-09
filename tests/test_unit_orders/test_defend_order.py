@@ -2,16 +2,16 @@ from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders import OrderStatus, OrderType, DefendOrder
 from unit_components import Commander, Engines, Weapons, Turret, TurretType, TurretVariant
-from tests.test_unit_components import MockUnit, MockPlayer
+from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 def test_defend_order_travel_and_hold():
-    defender = MockUnit()
+    defender = ComponentUnit()
     defender.name = "Defender"
     defender.add_component(Commander(defender))
     engines = Engines(defender, speed=50.0)
     defender.add_component(engines)
-    defender.owner = MockPlayer("Player1")
+    defender.owner = ComponentPlayer("Player1")
     defender.in_system = "Sol"
     defender.in_hex = (0, 0)
     defender.position = Position(0, 0)
@@ -47,10 +47,10 @@ def test_defend_order_travel_and_hold():
 
 
 def test_defend_order_combat_engagement_and_resume():
-    player1 = MockPlayer("Player1")
-    player2 = MockPlayer("Player2")
+    player1 = ComponentPlayer("Player1")
+    player2 = ComponentPlayer("Player2")
 
-    defender = MockUnit()
+    defender = ComponentUnit()
     defender.name = "Defender"
     defender.owner = player1
     defender.add_component(Commander(defender))
@@ -73,7 +73,7 @@ def test_defend_order_combat_engagement_and_resume():
     defender.in_hex = (0, 0)
     defender.position = Position(100, 100)
 
-    enemy = MockUnit()
+    enemy = ComponentUnit()
     enemy.id = 999
     enemy.name = "EnemyRaider"
     enemy.owner = player2
@@ -119,10 +119,10 @@ def test_defend_order_combat_engagement_and_resume():
 
 
 def test_defend_order_celestial_body_target():
-    defender = MockUnit()
+    defender = ComponentUnit()
     defender.name = "Defender"
     defender.add_component(Commander(defender))
-    defender.owner = MockPlayer("Player1")
+    defender.owner = ComponentPlayer("Player1")
     defender.in_system = "Sol"
     defender.in_hex = (0, 0)
     defender.position = Position(0, 0)

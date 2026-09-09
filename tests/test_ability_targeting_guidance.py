@@ -1,5 +1,4 @@
 from player_controller import PlayerController
-import pytest
 from unittest.mock import MagicMock, patch
 import pygame
 from geometry import Position
@@ -156,7 +155,6 @@ def test_sector_overlay_targeting_mode_microjump_no_range_ring():
 
     # Microjump has range 0.0 (entire sector), so no range ring is drawn
     parent._draw_range_ring.assert_not_called()
-
 
 
 def test_input_processor_left_click_protection_in_targeting_mode():

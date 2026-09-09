@@ -242,14 +242,14 @@ python game.py --smoke-test
 ```
 
 ### Automated Test Suite
-Wormhole Control includes a comprehensive automated test suite consisting of an extensive offline regression suite covering economy, combat, movement, AI logic, order trees, and GUI handlers:
+The offline pytest suite covers gameplay rules, saves and migrations, AI command and information boundaries, and GUI interactions. Tests use temporary storage and fake AI providers; no API key is needed.
 
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-CI checks undefined names with Ruff, verifies generated reference blocks, and runs smoke/full tests on Linux Python 3.10–3.14 plus Windows Python 3.14. Local checks:
+CI checks undefined names with Ruff, verifies generated reference blocks, and runs the full suite once on Linux Python 3.10 and 3.14 plus Windows Python 3.14. Clean-process smoke tests are included in the full suite. To run just those locally, use `python -m pytest -m smoke`. Other local checks:
 
 ```bash
 python -m ruff check .
@@ -259,6 +259,14 @@ python scripts/generate_reference.py --check
 Refresh generated tables with `python scripts/generate_reference.py`. Gameplay effects and strict setup rules are described in the [Reference Manual](docs/REFERENCE.md#new-campaign-validation).
 
 Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests`, `markers = smoke`).
+
+Shared scenarios live in `tests/support`; test modules do not import one another.
+`tests/conftest.py` configures headless SDL before application imports, isolates
+user storage and process state, and owns Pygame/full-game lifecycle fixtures.
+Use real entities when testing game rules, and doubles only for collaborators.
+Prefer observable outcomes and distinct boundaries over literal tuning values or
+implementation call counts. See [the test cleanup ledger](docs/TEST_SUITE_CLEANUP.md)
+for retained coverage and the pruning rationale.
 
 ### Debug log
 

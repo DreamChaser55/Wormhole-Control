@@ -1,16 +1,13 @@
 from __future__ import annotations
-
 import io
 import json
 import socket
-import threading
 import time
 import unittest
 from concurrent.futures import Future
 from contextlib import redirect_stderr, redirect_stdout
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-
 import game_control
 from game import Game
 from game_ai.commands import CommandError, CommandResult
@@ -24,6 +21,7 @@ from game_control_protocol import (
 )
 from player_controller import PlayerController
 from turn_processor import TurnProcessor
+import pytest
 
 
 class _Player:
@@ -277,39 +275,32 @@ class ControlServiceTests(unittest.TestCase):
         self.assertEqual(self.game.pending_ai_turn_end_time, 0)
 
     def test_socket_dispatch_runs_through_pump_and_enforces_size_limit(self):
+        from concurrent.futures import ThreadPoolExecutor
+
         self.service.start()
-        response_holder = {}
 
-        def client():
-            with socket.create_connection(("127.0.0.1", self.service.port), timeout=2) as connection:
-                connection.sendall(json.dumps(_request("status")).encode() + b"\n")
-                response_holder["response"] = json.loads(connection.makefile("rb").readline())
+        def client(payload):
+            with socket.create_connection(("127.0.0.1", self.service.port), timeout=5) as connection:
+                connection.sendall(payload + b"\n")
+                with connection.makefile("rb") as response:
+                    return json.loads(response.readline())
 
-        thread = threading.Thread(target=client)
-        thread.start()
-        deadline = time.monotonic() + 2
-        while thread.is_alive() and time.monotonic() < deadline:
-            self.service.pump()
-            time.sleep(0.005)
-        thread.join(timeout=1)
-        self.assertTrue(response_holder["response"]["ok"])
+        def exchange(payload):
+            # Surface client exceptions directly and always join the worker.
+            # The bound accommodates scheduling on loaded Windows CI hosts.
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                result = executor.submit(client, payload)
+                deadline = time.monotonic() + 5
+                while not result.done() and time.monotonic() < deadline:
+                    self.service.pump()
+                    time.sleep(0.005)
+                return result.result(timeout=1)
 
-        def oversized_client():
-            with socket.create_connection(("127.0.0.1", self.service.port), timeout=2) as connection:
-                connection.sendall(b"{" + (b" " * MAX_REQUEST_BYTES) + b"\n")
-                response_holder["oversized"] = json.loads(connection.makefile("rb").readline())
-
-        thread = threading.Thread(target=oversized_client)
-        thread.start()
-        deadline = time.monotonic() + 2
-        while thread.is_alive() and time.monotonic() < deadline:
-            self.service.pump()
-            time.sleep(0.005)
-        thread.join(timeout=1)
-        oversized = response_holder["oversized"]
+        response = exchange(json.dumps(_request("status")).encode())
+        self.assertTrue(response["ok"])
+        oversized = exchange(b"{" + (b" " * MAX_REQUEST_BYTES))
         self.assertEqual(oversized["error"]["code"], "request_too_large")
         self.assertIsNotNone(oversized["state"])
-        self.service.shutdown()
 
     def tearDown(self):
         self.service.shutdown()
@@ -391,5 +382,8 @@ class ControlCliTests(unittest.TestCase):
         launch.assert_not_called()
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.parametrize('host', ['localhost', '0.0.0.0', '::1', '192.0.2.1', None])
+def test_control_rejects_unsupported_hosts(host):
+    with pytest.raises(ValueError, match='127.0.0.1'):
+        ControlService(None, host=host, port=0)
+    assert not ControlService(None, host='127.0.0.1', port=0).is_running

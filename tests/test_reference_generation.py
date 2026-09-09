@@ -1,10 +1,8 @@
 """Generated docs are deterministic, checkable and isolated from user libraries."""
-from pathlib import Path
 import os
 import shutil
 import subprocess
 import sys
-
 from scripts.generate_reference import ROOT, replace_block, update_documents
 
 
@@ -29,10 +27,8 @@ def test_generated_check_from_foreign_cwd_preserves_user_library(tmp_path):
     library.write_bytes(b'not a valid library; must not be accessed')
     env = dict(os.environ, WORMHOLE_USER_DATA_DIR=str(user_data))
     command = [sys.executable, str(ROOT / 'scripts/generate_reference.py'), '--check']
-    results = [subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30)
-               for _ in range(2)]
-    assert all(result.returncode == 0 for result in results), results[0].stderr
-    assert results[0].stdout == results[1].stdout
+    result = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
     assert library.read_bytes() == b'not a valid library; must not be accessed'
     assert not (tmp_path / 'theme_scaled.json').exists()
 

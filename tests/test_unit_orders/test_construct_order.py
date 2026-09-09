@@ -3,8 +3,8 @@ from geometry import Position
 from constants import HullSize
 from unit_orders import OrderStatus, ConstructOrder
 from unit_components import Constructor
-from tests.test_unit_components import MockUnit, MockPlayer
 from unit_templates import register_template, unregister_template
+from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 def test_construct_order():
@@ -17,14 +17,14 @@ def test_construct_order():
 
     try:
         # Setup unit and constructor component
-        unit = MockUnit()
+        unit = ComponentUnit()
         constructor = Constructor(unit, hull_cost=10)
         unit.add_component(constructor)
 
         galaxy = MagicMock()
         
         # Mock player credits and matching owner ID
-        player = MockPlayer()
+        player = ComponentPlayer()
         player.id = unit.owner.id
         player.credits = 500
         unit.game.players = [player]

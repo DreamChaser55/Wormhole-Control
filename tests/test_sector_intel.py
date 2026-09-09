@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 from entities import Player, Unit, Position
 from constants import HullSize
