@@ -2,6 +2,13 @@ import pygame
 import math
 from pygame import Color
 from geometry import Position
+from constants import SELECTION_HIGHLIGHT_COLOR
+
+
+def selection_color_for(obj):
+    """Use the selected object's current owner color, or white when unowned."""
+    owner = getattr(obj, 'owner', None)
+    return owner.color if owner is not None else SELECTION_HIGHLIGHT_COLOR
 
 
 def draw_dotted_line(surface: pygame.Surface, color: Color, start, end, width: int = 1,

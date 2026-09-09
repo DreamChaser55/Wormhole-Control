@@ -12,6 +12,7 @@ from domain.minefields import Minefield
 from visibility import is_minefield_visible
 from galaxy import Hex
 from geometry import Position
+from rendering.drawing_utils import selection_color_for
 
 
 class SystemViewRenderer:
@@ -193,7 +194,7 @@ class SystemViewRenderer:
                     pygame.draw.circle(self.screen, body_color, (hex_center_pixel.x, hex_center_pixel.y), body_radius)
 
                 if body in self.game.selected_objects:
-                    pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 2)
+                    pygame.draw.circle(self.overlay_surface, selection_color_for(body), (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 2)
 
             # Draw Minefields
             visible_mfs = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
@@ -280,7 +281,7 @@ class SystemViewRenderer:
                             p1 = (cx, cy - r)
                             p2 = (cx - int(r * 0.8), cy + int(r * 0.6))
                             p3 = (cx + int(r * 0.8), cy + int(r * 0.6))
-                            pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, [p1, p2, p3], 2)
+                            pygame.draw.polygon(self.overlay_surface, selection_color_for(unit), [p1, p2, p3], 2)
                             
                     elif shape_type == 'triangle':
                         p1 = (unit_screen_x, unit_screen_y - current_icon_base_size)
@@ -289,7 +290,7 @@ class SystemViewRenderer:
                         main_shape_points = [p1, p2, p3]
                         pygame.draw.polygon(self.screen, unit_color, main_shape_points)
                         if unit in self.game.selected_objects:
-                            pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, main_shape_points, 2)
+                            pygame.draw.polygon(self.overlay_surface, selection_color_for(unit), main_shape_points, 2)
                         
                     else: # 'square'
                         half_size = int(current_icon_base_size)
@@ -300,7 +301,7 @@ class SystemViewRenderer:
                         main_shape_points = [p1, p2, p3, p4]
                         pygame.draw.polygon(self.screen, unit_color, main_shape_points)
                         if unit in self.game.selected_objects:
-                            pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, main_shape_points, 2)
+                            pygame.draw.polygon(self.overlay_surface, selection_color_for(unit), main_shape_points, 2)
 
                     # Draw spy indicator if unit is infiltrated by current player
                     current_viewer = getattr(self.game, 'current_player', None)

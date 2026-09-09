@@ -63,6 +63,8 @@ Wormhole Control organizes space into three interconnected strategic perspective
 - **System View (`S`)**: System-level hexgrid map showing orbital sectors radiating outward from the central star, along with celestial bodies, wormhole routes, and sector-level fog of war. Systems are automatically fitted to the unobstructed map area and support mouse-wheel zoom plus middle-drag or arrow-key panning.
 - **Sector View**: Tactical view providing a granular look at celestial objects, orbital structures, individual starships, weapon range circles, minefields, and real-time movement trajectories in a specific sector.
 
+Existing object selection highlights in System and Sector views use the selected object's owner's faction color, including units, colonies, and Sector View minefields. Unowned objects retain white highlights. Each selected object uses its own owner's color, and ownership changes update the highlight immediately. The blue drag-selection rectangle and hex highlights retain their existing colors.
+
 ### Turns and Resource Economy
 
 Matches operate on a hot-seat turn sequence. When finished issuing commands, press **`E`** or click **End Turn** on the HUD. This resolves that player's movement, mine contacts, resource income, upkeep, population growth and combat before advancing.

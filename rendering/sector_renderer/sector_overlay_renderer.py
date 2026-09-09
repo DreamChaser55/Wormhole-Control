@@ -1,7 +1,8 @@
 from display_config import display_config_for
 import sys
 import math
-from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, FOG_OF_WAR_COLOR, XP_SPEED_BONUS
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, FOG_OF_WAR_COLOR, XP_SPEED_BONUS
+from rendering.drawing_utils import selection_color_for
 from geometry import distance, Position
 from domain.units import Unit
 from unit_orders.base import OrderType
@@ -62,6 +63,7 @@ class SectorOverlayRenderer:
     def draw_selection_brackets(self, obj, obj_pixel_pos, dynamic_radius, obj_radius_logical):
         """Draws corner brackets with each arm spanning one quarter of the box side."""
         if obj in self.game.selected_objects:
+            selection_color = selection_color_for(obj)
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             r = pixel_radius + 5
             tick_length = (2 * r) * SELECTION_BRACKET_SIDE_FRACTION
@@ -74,7 +76,7 @@ class SectorOverlayRenderer:
             # Top-Left corner bracket
             _sr().pygame.draw.lines(
                 self.overlay_surface,
-                SELECTION_HIGHLIGHT_COLOR,
+                selection_color,
                 False,
                 [(left + tick_length, top), (left, top), (left, top + tick_length)],
                 2
@@ -82,7 +84,7 @@ class SectorOverlayRenderer:
             # Top-Right corner bracket
             _sr().pygame.draw.lines(
                 self.overlay_surface,
-                SELECTION_HIGHLIGHT_COLOR,
+                selection_color,
                 False,
                 [(right - tick_length, top), (right, top), (right, top + tick_length)],
                 2
@@ -90,7 +92,7 @@ class SectorOverlayRenderer:
             # Bottom-Left corner bracket
             _sr().pygame.draw.lines(
                 self.overlay_surface,
-                SELECTION_HIGHLIGHT_COLOR,
+                selection_color,
                 False,
                 [(left + tick_length, bottom), (left, bottom), (left, bottom - tick_length)],
                 2
@@ -98,7 +100,7 @@ class SectorOverlayRenderer:
             # Bottom-Right corner bracket
             _sr().pygame.draw.lines(
                 self.overlay_surface,
-                SELECTION_HIGHLIGHT_COLOR,
+                selection_color,
                 False,
                 [(right - tick_length, bottom), (right, bottom), (right, bottom - tick_length)],
                 2
