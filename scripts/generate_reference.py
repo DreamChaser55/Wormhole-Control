@@ -83,7 +83,6 @@ def generated_blocks():
             [('Ice field', f'-{ICE_FIELD_COOLDOWN_REDUCTION} turn to cooldown reset when firing'),
              ('Nitrogen nebula', f'-{NITROGEN_NEBULA_COOLDOWN_REDUCTION} turn to cooldown reset when firing'),
              ('Oxygen nebula', f'{OXYGEN_NEBULA_SPLASH_DAMAGE_MOD:g}x splash damage taken')]),
-        'readme-abilities': f'The designer offers **{len(abilities)} special abilities**: ' + ', '.join(a.name for a in abilities) + '.',
     }
     return blocks
 
@@ -99,8 +98,7 @@ def replace_block(text, key, generated):
 def update_documents(blocks, *, check=False, root=ROOT):
     """Return stale relative paths. Check mode never writes any document."""
     stale = []
-    for relative, keys in {'docs/REFERENCE.md': ('components', 'abilities', 'order-count', 'planets', 'environment'),
-                           'README.md': ('readme-abilities',)}.items():
+    for relative, keys in {'docs/REFERENCE.md': ('components', 'abilities', 'order-count', 'planets', 'environment')}.items():
         path = root / relative
         original = path.read_text(encoding='utf-8')
         result = original

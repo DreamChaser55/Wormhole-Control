@@ -1,8 +1,102 @@
 # Wormhole Control — Reference Manual
 
-This document contains in-depth reference data, data structures, catalogues, enums, and architecture notes for **Wormhole Control**.
+This document contains player guidance, in-depth reference data, data structures, catalogues, enums, architecture notes, and development instructions for **Wormhole Control**. For installation and a short introduction, see the [README](../README.md).
 
 ---
+
+## Contents
+
+- [Playing the Game](#playing-the-game)
+- [1. Project Structure](#1-project-structure)
+- [2. Hull Sizes](#2-hull-sizes)
+- [3. Component Catalogue](#3-component-catalogue)
+- [4. Special Abilities](#4-special-abilities)
+- [5. Order Types](#5-order-types)
+- [6. Universe Objects & Celestial Bodies](#6-universe-objects--celestial-bodies)
+- [7. Enums Quick Reference](#7-enums-quick-reference)
+- [8. Architecture & Subsystems](#8-architecture--subsystems)
+- [9. Intelligence, Counter-Intelligence & Sabotage Systems](#9-intelligence-counter-intelligence--sabotage-systems)
+- [10. Diplomacy & Team Systems](#10-diplomacy--team-systems)
+- [11. Celestial Collision Avoidance](#11-celestial-collision-avoidance)
+- [AI order control (observation 5, command contract 3)](#ai-order-control-observation-5-command-contract-3)
+- [12. Celestial Bodies & Environmental Mechanics](#12-celestial-bodies--environmental-mechanics)
+- [13. Damage & Minefield Resolution](#13-damage--minefield-resolution)
+- [Runtime storage and API failure contracts](#runtime-storage-and-api-failure-contracts)
+- [New-campaign validation](#new-campaign-validation)
+- [Development and Testing](#development-and-testing)
+
+## Playing the Game
+
+### Campaign Setup
+
+Click **New Game** on the main menu to open the two-stage New Game Wizard.
+
+1. **Galaxy Setup & Preview:** Adjust the star system count (5–30), minimum/maximum system radius (3–12), wormhole connectivity density (0–100%), and minimum/maximum inter-system distances. Click **Generate Map** to re-roll the map and preview its topology, system positions, and wormhole conduits. Select **Next: Players & Economy ➔** to continue.
+2. **Factions & Starting Conditions:** Choose the **Normal** campaign or **Testing** sandbox [spawn profile](#spawn-profiles-spawnprofile--2-total). Configure 2–6 players, names, faction colors, and controllers. The player-type button cycles through Human, Codex, AI: Medium, AI: High, and AI: Low. Set starting credits, metal, crystal, and homeworld population.
+3. **Home Systems:** Choose **Random** assignment or **Specified** homes. For specified homes, cycle systems using the ◀/▶ buttons or click systems in the Map Preview. The spawn-profile rules govern distinct and shared homes.
+4. Click **Start Game** to generate the campaign and begin turn 1. **◀ Back to Map** returns to Stage 1 while preserving player choices.
+
+See [new-campaign validation](#new-campaign-validation) for complete settings restrictions and [automated player setup](../README.md#automated-players) for controller configuration.
+
+### Controls
+
+| Input | Action |
+|---|---|
+| **Left Click** | Select unit, solid celestial body, or destination target (non-solid bodies are selected via hex sidebar) |
+| **Shift + Left Click** | Add / remove unit from multi-unit selection |
+| **Left Drag** | Draw selection box to select multiple units |
+| **Right Click** | Open contextual action menu or issue direct unit command |
+| **Shift + Order** | Queue new order behind current/existing orders (all order types) |
+| **Middle Mouse Drag** | Pan the System or Sector View camera |
+| **Mouse Wheel** | Zoom the System or Sector View camera in / out |
+| **G** | Switch to **Galaxy View** |
+| **S** | Switch to **System View** |
+| **E** | **End Turn** (process actions and advance to next player) |
+| **ESC** | Open In-Game Menu / Cancel targeting mode / Deselect |
+| **Arrow Keys** | Pan the System or Sector View camera |
+
+### The Three Views
+
+Wormhole Control organizes space into three interconnected strategic perspectives:
+
+- **Galaxy View (`G`)**: Strategic overview of the known galaxy showing all star systems, player home system color markers (including concentric circles for systems shared by multiple players), and wormhole conduits connecting distant systems.
+- **System View (`S`)**: System-level hexgrid map showing orbital sectors radiating outward from the central star, along with celestial bodies, wormhole routes, and sector-level fog of war. Systems are automatically fitted to the unobstructed map area and support mouse-wheel zoom plus middle-drag or arrow-key panning.
+- **Sector View**: Tactical view providing a granular look at celestial objects, orbital structures, individual starships, weapon range circles, minefields, and real-time movement trajectories in a specific sector.
+
+### Turns and Resource Economy
+
+Matches operate on a hot-seat turn sequence. When finished issuing commands, press **`E`** or click **End Turn** on the HUD. This resolves that player's movement, mine contacts, resource income, upkeep, population growth and combat before advancing.
+
+- **Credits**: General empire treasury generated from colonized populations and civilian habitats. Credits fund ship construction, space installations, and ongoing fleet upkeep.
+- **Metal**: Extracted from metal asteroids by mining ships. Refined at Metal Refineries to construct ship hulls and orbital infrastructure.
+- **Crystal**: Rare crystalline mineral harvested from comets. Refined at Crystal Refineries to build advanced sensors, weapons, and hyperdrives.
+- **Antimatter**: High-energy fuel stored in per-unit storage tanks. Powers sublight engine burn, hyperdrive jumps, cloaking fields, and special abilities. Antimatter can be gathered by **Antimatter Harvester** ships stationed near stars and transferred to other ships.
+
+### Movement and Fleet Operations
+
+Sublight engines consume antimatter to move within a sector. Basic hyperdrives enable adjacent-sector hex jumps within a system; advanced hyperdrives also allow inter-system wormhole travel. The Microjump ability repositions a ship within its sector, subject to [collision and field restrictions](#11-celestial-collision-avoidance). Inhibitor ships prevent enemy hyperspace entry and exit within their fields; massive celestial bodies also inhibit nearby jumps.
+
+Mining and harvesting ships can maintain supply loops with **Continuous Mine** and **Continuous Resupply**; harvesters collect antimatter from stars and hydrogen nebulae. Constructors build orbital platforms, shipyards, refineries, and stations. See [order types](#5-order-types) for logistics workflows and [components](#3-component-catalogue) for construction, habitat, and orbital-defense requirements.
+
+### Combat, Detection, and Expansion
+
+Armor counters mass drivers, Shields counter beams, and Point Defense counters missiles. Units gain combat experience (XP), ranking up to improve weapon damage, defensive ratings, sublight speed, and hyperdrive jump ranges. See [turret types and variants](#turret-types--variants-turrettype--turretvariant--3--3), [standing engagement policies](#unit-stances-unitstance--5-total), and [damage and minefield resolution](#13-damage--minefield-resolution) for detailed combat rules. Boarding uses Marines and the [Capture Unit ability](#4-special-abilities); carrier fighters and bombers are covered under [strikecraft wing types](#strikecraft-wing-types-wingtype--2-total).
+
+Ships and stations provide short-range visual circles and long-range inter-sector detection. Unexplored space stays hidden; explored sectors retain last-seen turn intel until active sensors refresh it. See [visibility and allied sensor sharing](#102-sensor-sharing-visibility--stealth), [cloaking components](#3-component-catalogue), and [intelligence operations](#9-intelligence-counter-intelligence--sabotage-systems) for concealment and covert reconnaissance.
+
+Colony ships settle habitable planets, moons, and colonizable asteroids. Consult [planetary traits](#121-planetary-classification--traits) for population growth and passive resource yields, and [environmental mechanics](#12-celestial-bodies--environmental-mechanics) for tactical cover, hazards, and gas-giant hiding.
+
+### Unit Designer
+
+Open the **Unit Designer** from the main menu or in-game menu to create starship templates. Choose a [hull size](#2-hull-sizes), tune engines, hyperdrives, turrets, and defenses with dynamic hull costs, and install fixed utility modules such as refineries, colony pods, and hangars. The [component catalogue](#3-component-catalogue) and [special abilities table](#4-special-abilities) describe available equipment and restrictions.
+
+Saved designs immediately become available for construction in active shipyards. Designs live in a separate user-data library; see [custom-design storage and migration](#custom-design-storage-and-migration) for paths, recovery, and upgrades.
+
+### Saving and Loading
+
+Open the in-game menu (**Esc**) and select **Save Game** to write a JSON campaign under `saves/`. Select **Load Game** on the main title screen or in-game menu to resume a campaign. See [save integrity](#107-save-format-40-integrity) and [Campaign persistence](SAVE_FORMAT.md) for preserved state, validation guarantees, and legacy migration warnings.
+
+Built-in AI players keep canonical long-term memory in the campaign save; a readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`. See [AI memory and persistence](AGENTIC_AI.md#memory-and-persistence) for its lifecycle, and [communications persistence](#106-inter-player-communications--markdown-persistence) for real-time and campaign-specific transmission logs.
 
 ## 1. Project Structure
 
@@ -61,7 +155,6 @@ Wormhole-Control/
 │   ├── star_names.json
 │   └── unit_templates.json
 ├── docs/
-│   ├── ARCHITECTURE_BOUNDARIES.md
 │   ├── AGENTIC_AI.md
 │   ├── CODEX_CONTROL.md
 │   ├── REFERENCE.md
@@ -537,9 +630,8 @@ through `entities`, `unit_orders` and `unit_components`. Core imports require no
 Pygame/GUI/display initialization. `Game` discovers or accepts an immutable
 `DisplayConfig` during construction and provides it to presentation and input code;
 display values in `constants.py` are fixed compatibility defaults. Runtime turn
-presentation uses an optional `TurnPresentation` adapter. See the [boundary and
-ownership contracts](ARCHITECTURE_BOUNDARIES.md) for canonical modules, migration
-aliases, exception-review decisions and quality gates.
+presentation uses an optional `TurnPresentation` adapter. See [Development and
+Testing](#development-and-testing) for import-boundary checks and quality gates.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -576,6 +668,13 @@ aliases, exception-review decisions and quality gates.
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations. System and sector views maintain independent transient cameras with cursor-anchored smooth zoom, middle-drag and arrow-key panning; newly opened systems auto-fit inside the HUD-free gameplay rectangle. The galaxy renderer highlights player home systems dynamically using each player's faction color, rendering concentric circles for systems containing multiple player homeworlds.
 - **Two-Stage Campaign Setup & Home Star System Assignment (`gui/layout_new_game_wizard.py`, `game_settings.py`, `game_setup.py`)**: Stage 1 generates and previews the map; Stage 2 configures factions, economy and home assignments. Specified homes must be distinct for Normal and may be shared for Testing. An isolated campaign is validated before commit; see [spawn profiles](#spawn-profiles-spawnprofile--2-total).
 - **Resolution Independence (`display_config.py`, `gui/theme_loader.py`)**: Uses per-application metrics for rendering, camera transforms and input. Each UI manager receives a fresh theme scaled to its resolution, absolute bundled font paths and idempotent rich-text font preloading. No generated theme file is written. Retrofit turret summaries wrap to measured text width.
+
+### Configuration and Data Files
+
+- `data/` contains bundled unit templates, spawn rates, and star names. Custom designs use the [user-data library](#custom-design-storage-and-migration).
+- `constants.py` provides game tuning constants, colors, and fixed compatibility display defaults; importing it does not discover or initialize a display.
+- `display_config.py` defines immutable per-application resolution and UI metrics. `Game(display_config=DisplayConfig(1920, 1080, False))` accepts explicit dimensions; otherwise bootstrap discovers the display.
+- `WORMHOLE_FULLSCREEN=true` forces full-screen display mode.
 
 ---
 
@@ -940,13 +1039,35 @@ This is a position check: crossing a field without ending inside it does not tri
 
 ## Runtime storage and API failure contracts
 
-Custom designs use platform user-data storage with an absolute `WORMHOLE_USER_DATA_DIR` override; see [storage paths and upgrade sequencing](../README.md#custom-design-storage-and-migration). `CustomTemplateManager(data_file=..., legacy_file=...)` supports isolated libraries; an explicit data path disables automatic legacy discovery. Migration validates the complete library before copying, preserves legacy bytes, and never replaces an existing user library. Historical designs are decoded without retroactive hull-budget validation. The legacy file is no longer distributed or tracked; migration still accepts an existing legacy file, and fresh installations start with an empty library.
+### Custom-design storage and migration
 
-Design saves, renames, and deletions persist through atomic replacement before updating the manager or `UNIT_TEMPLATES`. Successful return values and validation-error lists are unchanged. Storage failures raise `TemplatePersistenceError`, which the editor displays without reporting success. Loading reports failures through `last_load_error` and logging, retaining existing state and blocking subsequent writes until a successful reload.
+Custom designs are stored as `custom_unit_templates.json` in:
+
+- Windows: `%LOCALAPPDATA%/WormholeControl` (fallback: `~/AppData/Local/WormholeControl`).
+- macOS: `~/Library/Application Support/WormholeControl`.
+- Linux: `$XDG_DATA_HOME/WormholeControl` (fallback: `~/.local/share/WormholeControl`).
+
+Set `WORMHOLE_USER_DATA_DIR` to an **absolute directory path** to use another location. Tests automatically use temporary user storage, including child processes.
+
+Fresh installations start with an empty custom-design library. On first use, when no user library exists and a legacy `data/custom_unit_templates.json` file is present, the game validates the complete library before copying it. It leaves the original bytes intact. An existing user library, including an empty one, always takes precedence. Migration preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation.
+
+Malformed libraries and storage failures are reported in the log. Repair a malformed library and restart the game to reload it; the persistence failure contract below describes how failed operations preserve existing state.
+
+**Upgrade sequence:** The legacy library has been removed from version control. An existing user-data library is retained. Users upgrading from a version that stored designs in the checkout should back up that file before updating, then copy it into their user-data directory while the game is closed. Migration support remains available if a legacy file is supplied; it never overwrites an existing user library.
+
+`CustomTemplateManager(data_file=..., legacy_file=...)` supports isolated libraries; an explicit data path disables automatic legacy discovery.
+
+### Persistence and API failure behavior
+
+Design saves, renames, and deletions persist through atomic replacement before updating the manager or `UNIT_TEMPLATES`. Successful return values and validation-error lists are unchanged. Storage failures raise `TemplatePersistenceError`, which the editor displays without reporting success. Loading reports failures through `last_load_error` and logging, retaining existing state and blocking subsequent writes until a successful reload. Failed saves, renames, and deletions preserve the previous disk library and registered designs.
 
 Missing-hex lookups return empty lists; valid lookups return the live sector collections. Inter-system transfers return `False` for unknown systems or invalid destination hexes without changing unit location or membership. `ControlService(host=...)` accepts only `127.0.0.1` and raises `ValueError` for other values before creating a socket.
 
-Unexpected command preparation/commit failures retain their existing public error contracts, atomic preflight, and partial-commit recovery rules. Internal diagnostics include stage, command index/type, exception class, and traceback frame locations only; exception messages, payloads, source lines, observations, memory, and locals are omitted. Resource paths resolve from the application module or PyInstaller bundle, never the working directory.
+Unexpected command preparation/commit failures retain their existing public error contracts, atomic preflight, and partial-commit recovery rules. Internal diagnostics include stage, command index/type, exception class, and traceback frame locations only; exception messages, payloads, source lines, observations, memory, and locals are omitted. Resource paths resolve from the application module or PyInstaller bundle, never the working directory. UI themes are scaled in memory; `theme_scaled.json` is no longer generated. Campaign saves and logs keep their existing locations.
+
+### Debug log
+
+Each game run produces a `game.log` text file in the root folder containing the debug log. AI telemetry and developer-feedback files are described under [AI failure behavior](AGENTIC_AI.md#failure-behavior).
 
 
 ## New-campaign validation
@@ -957,4 +1078,45 @@ Player names are trimmed, 1–80 characters, unique ignoring case and contain no
 
 `GameSettings.validation_issues()` returns field/code/message records without mutation; `validate()` retains its list-of-strings interface. Invalid construction raises `SettingsValidationError`, a `ValueError` subclass. `preview_only=True` is a constructor-only map validation mode for previews, not a campaign validation bypass. Preparation always revalidates full settings before isolation and checks the generated topology again before commit. The control adapter retains its envelope and public error codes, including the exactly-one-Codex-player requirement. Save loading does not enforce new-campaign restrictions.
 
-Generated blocks are maintained with `python scripts/generate_reference.py`; `--check` detects drift without writing. Numeric tables come from runtime constants and registries; the explanatory prose remains hand-maintained.
+## Development and Testing
+
+### Smoke Tests
+
+For fast verification of clean imports, module boundaries, headless game launch, and test collection:
+
+```bash
+# Run the fast import & launch smoke test suite
+python -m pytest -m smoke
+
+# Or execute a headless launch smoke test directly
+python game.py --smoke-test
+```
+
+### Automated Test Suite
+
+The offline pytest suite covers gameplay rules, saves and migrations, AI command and information boundaries, and GUI interactions. Tests use temporary storage and fake AI providers; no API key is needed.
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+CI checks undefined names with Ruff, adds broader lint and type checks at domain boundaries, verifies generated reference blocks, and runs the full suite once on Linux Python 3.10 and 3.14 plus Windows Python 3.14. Clean-process import tests enforce the core/UI boundary. To run launch smoke tests locally, use `python -m pytest -m smoke`. Other local checks:
+
+```bash
+python -m ruff check .
+python scripts/check_import_boundaries.py
+python -m mypy
+python scripts/generate_reference.py --check
+```
+
+Refresh generated tables with `python scripts/generate_reference.py`. Numeric tables come from runtime constants and registries; explanatory prose remains hand-maintained. The README is hand-maintained and is not a generation target. See [new-campaign validation](#new-campaign-validation) for strict setup rules.
+
+Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests`, `markers = smoke`).
+
+Shared scenarios live in `tests/support`; test modules do not import one another.
+`tests/conftest.py` configures headless SDL before application imports, isolates
+user storage and process state, and owns Pygame/full-game lifecycle fixtures.
+Use real entities when testing game rules, and doubles only for collaborators.
+Prefer observable outcomes and distinct boundaries over literal tuning values or
+implementation call counts. See [Architecture & Subsystems](#8-architecture--subsystems) for the domain and presentation responsibilities those boundaries protect.

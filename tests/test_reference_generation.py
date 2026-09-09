@@ -11,13 +11,14 @@ def test_check_mode_reports_stale_blocks_without_writing(tmp_path):
     shutil.copyfile(ROOT / 'docs/REFERENCE.md', tmp_path / 'docs/REFERENCE.md')
     shutil.copyfile(ROOT / 'README.md', tmp_path / 'README.md')
     blocks = {key: 'generated fixture' for key in
-              ('components', 'abilities', 'order-count', 'planets', 'environment', 'readme-abilities')}
+              ('components', 'abilities', 'order-count', 'planets', 'environment')}
     before = {p: p.read_bytes() for p in tmp_path.rglob('*.md')}
-    assert update_documents(blocks, check=True, root=tmp_path) == ['docs/REFERENCE.md', 'README.md']
+    assert update_documents(blocks, check=True, root=tmp_path) == ['docs/REFERENCE.md']
     assert all(p.read_bytes() == content for p, content in before.items())
-    update_documents(blocks, root=tmp_path)
+    assert update_documents(blocks, root=tmp_path) == ['docs/REFERENCE.md']
     assert update_documents(blocks, check=True, root=tmp_path) == []
     assert update_documents(blocks, root=tmp_path) == []
+    assert (tmp_path / 'README.md').read_bytes() == before[tmp_path / 'README.md']
 
 
 def test_generated_check_from_foreign_cwd_preserves_user_library(tmp_path):

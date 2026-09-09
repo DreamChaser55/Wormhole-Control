@@ -1,310 +1,82 @@
 # Wormhole Control
 
-**Wormhole Control** is a 2D turn-based 4X space strategy game prototype written in Python using `pygame-ce` and `pygame_gui`. Players command star fleets, colonize celestial bodies, manage supply lines, and wage tactical warfare across a procedural galaxy of star systems linked by wormholes.
+**Wormhole Control** is a 2D turn-based 4X space strategy game written in Python using `pygame-ce` and `pygame_gui`. Command fleets, colonize celestial bodies, manage supply lines, and fight across a procedural galaxy of star systems linked by wormholes. The tactical display takes inspiration from naval Combat Information Center consoles, using vector icons, range rings, and sensor cones across three strategic views.
 
-The game uses a deliberately simple, tactical display aesthetic inspired by naval Combat Information Center (CIC) bridge consoles. Clean vector icons, range rings, and sensor cones provide full situational awareness across all three strategic zoom levels.
-
----
-
-## Status
-
-**Wormhole Control is an active prototype.** The game supports single-machine hot-seat multiplayer for 2 to 6 human, Codex-controlled, or agentic OpenAI-powered players. Automated players receive only player-visible state and issue validated engine commands.
-
----
+**This is an active prototype.** Matches support single-machine hot-seat play for 2–6 human, Codex-controlled, or built-in OpenAI players. Automated players receive player-visible information and issue validated game commands.
 
 ## Getting Started
 
-### Requirements
-- **Python 3.10+** (Verified working on Python 3.14.3)
-- **pygame-ce** (Verified working on 2.5.7)
-- **pygame_gui** (Verified working on 0.6.14)
-- **OpenAI Python SDK** (only for built-in OpenAI players)
+Install **Python 3.10+**, then run these commands from the repository root:
 
-### Installation & Launch
+```bash
+pip install -r requirements.txt
+python game.py
+```
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+The requirements install the graphics libraries and OpenAI Python SDK. An API key is needed only when using built-in OpenAI players; you can start a human-only match without one.
 
-2. **Launch the game:**
-   ```bash
-   python game.py
-   ```
+To begin a campaign:
 
-3. **Start a campaign:**
-   - Click **New Game** to open the **New Game Wizard** (two-stage configuration flow).
-   - **Stage 1: Galaxy Setup & Preview**:
-     - Adjust galaxy generation parameters: star system count (5–30), min/max system radius (3–12), wormhole connectivity density (0–100%), and min/max inter-system distances.
-     - Click **Generate Map** to re-roll and view the procedural galaxy topology, star system positions, and wormhole conduits in the live Map Preview.
-     - Click **Next: Players & Economy ➔** to proceed to Stage 2.
-   - **Stage 2: Factions & Starting Conditions**:
-     - Select the **Spawn Profile**: **Normal** (authentic 4X starting state with each player starting with a constructor station, constructor ship, colonizer ship, and antimatter harvester) or **Testing** (sandbox profile with all players in Sol equipped with testing ships and stations of all sizes).
-     - Configure player count (2–6), custom names, faction colors, and controller type. The player-type button cycles through Human, Codex, AI: Medium, AI: High, and AI: Low.
-     - Choose **Home Systems** assignment mode:
-       - **Random**: Automatically distributes player homeworlds across generated star systems.
-       - **Specified**: Assign specific home star systems to each player by cycling systems using the ◀/▶ buttons or clicking directly on star systems in the interactive Map Preview viewport.
-     - Customize starting economies (credits, metal, crystal, and homeworld population).
-   - Click **Start Game** to generate the campaign and begin turn 1. Use **◀ Back to Map** anytime to return to Stage 1 and modify map parameters while preserving player choices.
+1. Click **New Game**. In the first wizard stage, generate a map and inspect its preview.
+2. Select **Next: Players & Economy ➔**, choose the **Normal** spawn profile for a standard campaign, and configure your players and starting conditions. **Testing** provides a sandbox fleet for experimenting with units.
+3. Click **Start Game** to begin turn 1. Use **◀ Back to Map** if you want to revise the galaxy before starting.
 
----
+The [campaign setup reference](docs/REFERENCE.md#campaign-setup) explains map settings, player controllers, and home-system assignment.
 
-## Controls
+## Playing the Game
+
+Explore star systems, establish colonies, build ships, and keep your fleets supplied while deciding where to engage opponents. Credits, metal, and crystal support your empire; ships carry antimatter for movement and equipment. Sensors reveal nearby space, so reconnaissance helps you choose routes and targets.
+
+Use **Galaxy View** (`G`) to see systems and wormhole connections, **System View** (`S`) to inspect a system's sectors, and **Sector View** for individual ships, celestial objects, and tactical positioning. The System and Sector cameras support zooming and panning.
+
+Select a unit and use its contextual actions to issue orders. Hold **Shift** when issuing an order to queue it behind existing work. When finished, press **E** or click **End Turn** to resolve your player's actions and advance to the next player.
 
 | Input | Action |
 |---|---|
-| **Left Click** | Select unit, solid celestial body, or destination target (non-solid bodies are selected via hex sidebar) |
-| **Shift + Left Click** | Add / remove unit from multi-unit selection |
-| **Left Drag** | Draw selection box to select multiple units |
-| **Right Click** | Open contextual action menu or issue direct unit command |
-| **Shift + Order** | Queue new order behind current/existing orders (all order types) |
-| **Middle Mouse Drag** | Pan the System or Sector View camera |
-| **Mouse Wheel** | Zoom the System or Sector View camera in / out |
-| **G** | Switch to **Galaxy View** |
-| **S** | Switch to **System View** |
-| **E** | **End Turn** (process actions and advance to next player) |
-| **ESC** | Open In-Game Menu / Cancel targeting mode / Deselect |
-| **Arrow Keys** | Pan the System or Sector View camera |
+| Left click | Select a unit, solid body, or destination |
+| Shift + left click / left drag | Adjust a multi-unit selection / box-select units |
+| Right click | Open contextual actions or issue a direct command |
+| Shift + order | Queue an order behind existing work |
+| Middle drag / arrow keys | Pan the System or Sector camera |
+| Mouse wheel | Zoom the System or Sector camera |
+| G / S | Switch to Galaxy / System View |
+| E | End Turn |
+| Esc | Open the in-game menu, cancel targeting, or deselect |
 
----
+Inspect non-solid bodies, such as nebulae and storms, through their hex sidebar. For rules and detailed interaction guidance, see [Playing the Game](docs/REFERENCE.md#playing-the-game).
 
-## The Three Views
+Open the **Unit Designer** from the main or in-game menu to create ship templates for construction. Open **Save Game** from the in-game menu to save a campaign; **Load Game** is available from the main menu and during a match. Custom designs use a separate [user-data library](docs/REFERENCE.md#custom-design-storage-and-migration).
 
-Wormhole Control organizes space into three interconnected strategic perspectives:
+## Automated Players
 
-- **Galaxy View (`G`)**: Strategic overview of the known galaxy showing all star systems, player home system color markers (including concentric circles for systems shared by multiple players), and wormhole conduits connecting distant systems.
-- **System View (`S`)**: System-level hexgrid map showing orbital sectors radiating outward from the central star, along with celestial bodies, wormhole routes, and sector-level fog of war. Systems are automatically fitted to the unobstructed map area and support mouse-wheel zoom plus middle-drag or arrow-key panning.
-- **Sector View**: Tactical view providing a granular look at celestial objects, orbital structures, individual starships, weapon range circles, minefields, and real-time movement trajectories in a specific sector.
+**Built-in OpenAI players:** Choose an AI controller in the New Game Wizard. Set `OPENAI_API_KEY`, or place the raw key in the ignored `API_keys/OpenAI.key` file; the environment variable takes precedence. Choose **Low** reasoning for faster turns, **Medium** for the default, or **High** for more strategic reasoning. The in-game **AI Settings** menu controls repair retries. See [Agentic AI Architecture](docs/AGENTIC_AI.md) for model configuration, memory, limits, and failure recovery.
 
----
+**Codex-controlled players:** Codex can launch the visible game, create a campaign, observe its player's state, issue orders, and end turns through the local control bridge. No API key is required for this controller. Follow the [Codex Control guide](docs/CODEX_CONTROL.md) for setup and the play loop.
 
-## Core Gameplay
+## Development
 
-### Turns & Players
-Matches operate on a hot-seat turn sequence. When finished issuing commands, press **`E`** or click **End Turn** on the HUD. This resolves that player's movement, mine contacts, resource income, upkeep, population growth and combat before advancing.
-
-### Resource Economy
-- **Credits**: General empire treasury generated from colonized populations and civilian habitats. Credits fund ship construction, space installations, and ongoing fleet upkeep.
-- **Metal**: Extracted from metal asteroids by mining ships. Refined at Metal Refineries to construct ship hulls and orbital infrastructure.
-- **Crystal**: Rare crystalline mineral harvested from comets. Refined at Crystal Refineries to build advanced sensors, weapons, and hyperdrives.
-- **Antimatter**: High-energy fuel stored in per-unit storage tanks. Powers sublight engine burn, hyperdrive jumps, cloaking fields, and special abilities. Antimatter can be gathered by **Antimatter Harvester** ships stationed near stars and transferred to other ships.
-
-### Movement & FTL
-- **Sublight Propulsion**: Standard thruster movement within a sector hex powered by engines and antimatter.
-- **Hex Jumps**: Short-range hyperdrive jumps between adjacent sectors within the same star system (requires **Basic Hyperdrive**).
-- **Wormhole Traversal**: Long-range inter-system travel through natural spacetime wormholes (requires **Advanced Hyperdrive**).
-- **Tactical Microjumps**: Instant short-distance teleportation via special ability to bypass hazards or reposition in combat.
-- **Hyperspace Inhibition**: Dedicated inhibitor ships project interdiction fields that prevent enemy vessels from entering or exiting hyperspace within their radius. Gravitational fields from massive celestial bodies also prevent hyperspace jumps in their vicinity.
-
-### Combat & Warfare
-- **Weapon Systems**: Mount Mass Driver (kinetic), Beam (laser), or Missile (guided payload) turrets across Standard, Anti-Strikecraft, and Long-Range variants.
-- **Hull Durability & Defenses**: Ships feature customizable Armor (counters mass drivers), Shields (counters beams), and Point Defense (counters missiles) systems to mitigate incoming damage.
-- **Unit Stances**: Configure a persistent standing engagement policy (Do Nothing, Attack in Weapon Range, Attack in Sector, Attack in Jump Range, or Attack in System). Explicit orders temporarily suspend stance pursuits and always take priority; the stance resumes when explicit work finishes. **Stop Unit** cancels everything and selects Do Nothing.
-- **Combat Experience (XP)**: Units gain experience from battle, ranking up to boost weapon damage, defensive ratings, sublight speed, and hyperdrive jump ranges.
-- **Boarding Actions**: Deploy specialized Marine strike teams to breach and capture enemy vessels.
-- **Minefields**: Enemy contact is checked after movement on the ship owner's turn, including stationary ships; see [minefield cadence](docs/REFERENCE.md#132-minefield-cadence). Minelayers can deploy Anti-Ship and Anti-Strikecraft minefields for tactical area denial.
-- **Strikecraft Wings**: Carriers deploy Fighter wings (air superiority) and Bomber wings (heavy anti-ship strikes). Strikecraft wings are nimble enough to ignore negative movement speed penalties from fields and debris field abrasion, but are banned from entering or launching within violent Magnetic Storms.
-
-### Detection & Intel
-- **Sensor Horizons**: Ships and stations project short-range visual circles and long-range inter-sector sensor detection.
-- **Fog of War & Sector Intel**: Unexplored regions remain hidden; explored sectors remember last-seen turn intel until refreshed by active sensors.
-- **Cloaking Devices**: Active cloaking fields hide ships from enemy inter-sector long-range sensors at the cost of continuous antimatter consumption. Basic cloaks shield individual ships, while Advanced cloaks project an area-of-effect stealth field hiding entire fleet formations.
-- **Nebula & Asteroid Field Concealment**: Starships stationed inside a nebula cloud or an asteroid field are naturally concealed from enemy long-range (inter-sector) radar presence, requiring enemy ships to move within short-range visual range to achieve detailed detection.
-- **Espionage & Counter-Intelligence**: Infiltrate enemy vessels and colonies with covert operatives to tap their sensor horizons and execute subsystem sabotage. Counter-Intelligence ships can execute active sector sweeps to detect and eliminate hostile spies.
-
-### Expansion & Infrastructure
-- **Colonization**: Dispatch colony ships to settle habitable planets, moons, and colonizable asteroids. Different planetary classes feature distinct growth rates and passive resource extraction (e.g. Volcanic and Ferrous worlds generate passive metal; Ice and Greenhouse worlds yield passive crystal). Massive Gas Giants cannot be colonized.
-- **Automated Logistics & Harvesting**: Set mining and harvester ships to automated loops (**Continuous Mine** and **Continuous Resupply**) to keep refineries supplied and fleets fueled. Antimatter Harvesters can gather fuel from Stars and Hydrogen Nebulae.
-- **Orbital Construction**: Constructors assemble orbital defense platforms, shipyards, refineries, and stations.
-- **Civilian Habitats**: Deploy habitat modules to colonized sectors to provide direct economic bonuses, supported up to finite colony population limits.
-- **Orbital Defense**: Deploy tactical defense modules in colonized sectors to project an area-of-effect attack/defense buff aura for friendly ships in radius, supported up to colony population limits with additive stacking.
-
-### Celestial Environments & Tactical Cover
-- **Celestial Field Density**:
-  - Asteroid Fields, Ice Fields, and Debris Fields feature varying **Density** levels:
-    - **Low Density**: Passable by hulls up to `LARGE` (blocks `HUGE` ships and stations).
-    - **Medium Density**: Passable by hulls up to `MEDIUM` (blocks `LARGE` and `HUGE`).
-    - **High Density**: Passable only by `SMALL`, `TINY`, and `STRIKECRAFT_WING` units (blocks `MEDIUM`, `LARGE`, and `HUGE`).
-    - Strikecraft Wings can traverse fields of any density level.
-  - Impassable fields act as physical obstacles for pathfinding and collision avoidance, blocking movement orders, microjumps, and carrier launches.
-- **Tactical Cover & Field Effects**:
-  - **Visual Radius Indicators**: In Sector View, all non-solid bodies (nebulae, storms, asteroid fields, ice fields, and debris fields) are outlined by a distinctive turquoise tactical circle marking their exact area of effect and boundary for the player.
-  - **Ice Fields**: Cryogenic ice particles scatter incoming energy beams, granting defense mitigation against beam attacks (see the [cover table](docs/REFERENCE.md#123-environmental-fields--tactical-cover)), a shorter cooldown reset when firing, and sublight speed drag.
-  - **Debris Fields**: Dense wreckage fragments intercept ballistic munitions, granting defense mitigation against kinetic and missile attacks (see the [cover table](docs/REFERENCE.md#123-environmental-fields--tactical-cover)), sublight drag, and high-speed navigation abrasion damage scaled by field density.
-  - **Asteroid Fields**: Dense asteroid fields scatter long-range radar sensors, with sublight drag scaled by density.
-- **Gas Giant Atmospheric Hiding**: Ships with sublight engines can hide in gas giants, preserving stance and queued orders. Departure requires a safe position; blocked exits leave the ship hidden. Queues follow strict FIFO, so outside-space work ahead of Leave pauses the queue. See the [canonical gas-giant rules](docs/REFERENCE.md#125-gas-giant-atmospheric-hiding).
-- **Environmental Hazards**:
-  - **Black Holes**: Extreme gravitational tidal distortion inflicts 15 hull damage per turn within 750 radius of the singularity.
-  - **Pulsars**: Sweeping magnetic radiation pulses drain 5% of a ship's current antimatter reserves per turn.
-  - **Debris Field Abrasion**: Moving at high sublight velocities (speed > 50) through debris clouds inflicts damage per turn scaled by density (1 Low, 2 Medium, 3 High; strikecraft wings are exempt).
-  - **Space Storms**: Plasma storms inflict 8 thermal damage per turn; Magnetic storms drain 6 antimatter per turn and jam long-range radar sensors (strikecraft wings are banned from entering or launching in magnetic storms); Radiation storms inflict 4 component damage per turn to a random functional subsystem.
-
----
-
-## Ship Design
-
-Access the **Unit Designer** from the main menu or the in-game menu to build and customize starship templates:
-
-- **Hull Sizing**: Choose from 6 hull classes (`STRIKECRAFT_WING`, `TINY`, `SMALL`, `MEDIUM`, `LARGE`, `HUGE`), each offering distinct capacity budgets, baseline hit points, and construction costs.
-- **Dynamic & Fixed Components**: Tune sublight engines, hyperdrives, turrets, and defense ratings with dynamically scaling hull costs, or install fixed utility modules like refineries, colony pods, and hangars.
-
-<!-- BEGIN GENERATED: readme-abilities -->
-The designer offers **10 special abilities**: Adaptive Forcefield, Cluster Warhead, Designate Target, Ion Bolt, Missile Batteries, Repair Cloud, Capture Unit, Drain Antimatter, Microjump, Scan for Minefields.
-<!-- END GENERATED: readme-abilities -->
-
-- **Persistence**: Saved designs are stored in your user-data library and immediately become available for construction in active shipyards. See [custom-design storage and migration](#custom-design-storage-and-migration).
-
-> For complete component hull costs, stat scaling formulas, and ability tables, consult the [Reference Manual](docs/REFERENCE.md).
-
----
-
-## Saving & Loading
-
-- **Save Game**: Open the in-game menu (`ESC`) and select **Save Game** to persist complete game state to JSON format under the `saves/` directory. Save format 4.0 preserves component damage, refitted equipment, turret cooldowns, ability definitions and timers, stances, explicit orders, and outcome history. See [the save-format reference](docs/SAVE_FORMAT.md) for compatibility and migration limits.
-- **Load Game**: Resume previous campaigns from the **Load Game** menu on the main title screen or inside an active match. Saves are validated and reconciled before commit; invalid saves leave the running campaign and AI turn unchanged. Legacy 3.x saves migrate with a warning about state the older format omitted.
-- **AI Memory**: Built-in OpenAI players keep canonical long-term memory in each save. A readable derived copy is generated at `saves/agent_memory/<campaign>/<agent>/memory.md`.
-- **Comms Log**: In-game player communications are logged in real-time to `saves/comms.md`. Campaign-specific transmission logs are also generated at `saves/comms/<campaign>/comms.md` during saves.
-
-## Agentic AI
-
-AI players use the OpenAI Responses API with strict Structured Outputs. Configure the API key through `OPENAI_API_KEY`, or place the raw key in the ignored `API_keys/OpenAI.key` file. Environment configuration takes precedence. Secrets are never written to saves, memory, reports, or telemetry.
-
-All AI players use **GPT-5.6 Luna**. The New Game Wizard exposes the model's
-reasoning effort directly:
-
-- **Low** — fastest, lowest-reasoning configuration.
-- **Medium** — default configuration.
-- **High** — more reasoning for difficult strategic turns.
-
-The three levels share the same 7,000-output-token limit, 120-second timeout,
-and 40-command turn limit, so the selected level changes only Luna's reasoning
-effort.
-
-Planning runs outside the Pygame thread. The schema-5 observation distinguishes
-hardware-supported commands from currently legal actions, supplies bounded option
-lists, reports inhibitor state and activation eligibility, and keeps remote
-systems compact until friendly forces approach them.
-Returned command batches are preflighted atomically before the game is mutated;
-ordered dependencies such as loading colonists and then queueing colonization are
-validated together.
-
-Open **AI Settings** from the in-game pause menu to configure 1–5 repair retries
-separately for each AI player (2 by default). A retry is an additional model
-request after the initial output and receives the immediately preceding rejected
-plan plus its exact validation errors. Changes take effect on that AI's next turn
-and persist with normal game saves. The selected reasoning effort is retained for
-repairs. After the configured retries are exhausted, failures leave the End Turn
-button available for manual recovery.
-Each planning attempt writes bounded operational telemetry (model, reasoning,
-usage, latency, command summaries, validation errors, and retry outcome) without
-persisting prompts, observations, memory, analysis, raw model output, or SDK
-request bodies. AI agents can also message the game developer (`message_developer`)
-to report gameplay bugs, rule confusions, or balance suggestions directly to
-`saves/ai_feedback.md`.
-
-Both AI interfaces use observation schema **5** and command contract **3**. Friendly
-units expose separate standing, current, and queued orders, tactical ranges, and
-persistent completion/failure/cancellation history. The command catalog is included
-in observations. AI patrols accept explicit routes; `cancel_order` cancels one
-explicit root, and `clear_explicit_orders` preserves stance. `cancel_orders` remains
-full Stop. Intelligence ships can infiltrate visible hostile ships and colonies,
-extract owned agents, run CI sweeps, and eliminate discovered enemy agents. Embedded
-agents can be sabotaged or relocated through player-level commands that do not alter
-ship orders. Unexpected commit exceptions stop the batch without rollback: completed
-operations are reported, the failing operation may have partial effects, and Codex
-must observe again before issuing commands or ending its turn.
-
-See [Agentic AI Architecture](docs/AGENTIC_AI.md) for the full design and evaluation workflow.
-
-## Codex-Controlled Player
-
-Codex can launch the visible game, create a campaign containing exactly one Codex player, observe fog-of-war-safe state, submit incremental command batches with atomic preflight, and end turns through the loopback-only JSON bridge:
-
-```powershell
-python .\game_control.py '{"action":"status"}'
-```
-
-No API key is required because the bridge makes no OpenAI API calls. See the [Codex Control Protocol v2 guide](docs/CODEX_CONTROL.md) for setup schemas, the play loop, PowerShell/stdin examples, port configuration, errors, retries, and sandbox guidance.
-
----
-
-## Development & Testing
-
-### Smoke Tests
-For fast verification of clean imports, module boundaries, headless game launch, and test collection:
-
-```bash
-# Run the fast import & launch smoke test suite
-python -m pytest -m smoke
-
-# Or execute a headless launch smoke test directly
-python game.py --smoke-test
-```
-
-### Automated Test Suite
-The offline pytest suite covers gameplay rules, saves and migrations, AI command and information boundaries, and GUI interactions. Tests use temporary storage and fake AI providers; no API key is needed.
+Install the development dependencies and run the offline test suite:
 
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-CI checks undefined names with Ruff, adds broader lint and type checks at domain boundaries, verifies generated reference blocks, and runs the full suite once on Linux Python 3.10 and 3.14 plus Windows Python 3.14. Clean-process import tests enforce the core/UI boundary. To run launch smoke tests locally, use `python -m pytest -m smoke`. Other local checks:
+For fast import and launch smoke checks:
 
 ```bash
-python -m ruff check .
-python scripts/check_import_boundaries.py
-python -m mypy
-python scripts/generate_reference.py --check
+python -m pytest -m smoke
 ```
 
-Refresh generated tables with `python scripts/generate_reference.py`. Gameplay effects and strict setup rules are described in the [Reference Manual](docs/REFERENCE.md#new-campaign-validation).
+Tests use temporary storage and fake AI providers, so no API key is needed. See [Development and Testing](docs/REFERENCE.md#development-and-testing) for quality checks, CI coverage, test conventions, and reference-table generation.
 
-Configuration is specified in `pytest.ini` (`pythonpath = .`, `testpaths = tests`, `markers = smoke`).
+## Documentation
 
-Shared scenarios live in `tests/support`; test modules do not import one another.
-`tests/conftest.py` configures headless SDL before application imports, isolates
-user storage and process state, and owns Pygame/full-game lifecycle fixtures.
-Use real entities when testing game rules, and doubles only for collaborators.
-Prefer observable outcomes and distinct boundaries over literal tuning values or
-implementation call counts. See [the test cleanup ledger](docs/TEST_SUITE_CLEANUP.md)
-for retained coverage and the pruning rationale.
-
-### Debug log
-
-Each run of the game produces a `game.log` text file in the root folder, containing the debug log.
-
-### Custom-design storage and migration
-
-Custom designs are stored as `custom_unit_templates.json` in:
-
-- Windows: `%LOCALAPPDATA%/WormholeControl` (fallback: `~/AppData/Local/WormholeControl`).
-- macOS: `~/Library/Application Support/WormholeControl`.
-- Linux: `$XDG_DATA_HOME/WormholeControl` (fallback: `~/.local/share/WormholeControl`).
-
-Set `WORMHOLE_USER_DATA_DIR` to an **absolute directory path** to use another location. Tests automatically use temporary user storage, including child processes.
-
-Fresh installations start with an empty custom-design library. On first use, when no user library exists and a legacy `data/custom_unit_templates.json` file is present, the game validates and copies that library. It leaves the original intact. An existing user library, including an empty one, always takes precedence. Migration preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation.
-
-Malformed libraries and storage failures are reported in the log. Failed loading blocks subsequent writes until the library is repaired and reloaded (restart the game after repairing it). Failed saves, renames, and deletions show an editor error and preserve the previous disk library and registered designs. Writes use atomic replacement.
-
-**Upgrade sequence:** The legacy library has been removed from version control. An existing user-data library is retained. Users upgrading from a version that stored designs in the checkout should back up that file before updating, then copy it into their user-data directory while the game is closed. Migration support remains available if a legacy file is supplied; it never overwrites an existing user library.
-
-Bundled assets resolve relative to the application, independent of the current working directory. UI themes are scaled in memory; `theme_scaled.json` is no longer generated. Campaign saves and logs keep their existing locations.
-
-### Configuration & Data Files
-- `data/`: Contains bundled unit templates, spawn rates and star names. Custom designs live in the user-data directory.
-- `constants.py`: Game tuning constants, colors, and fixed compatibility display defaults; importing constants does not discover or initialize a display.
-- `display_config.py`: Immutable per-application resolution and UI metrics. `Game(display_config=DisplayConfig(1920, 1080, False))` supports explicit dimensions; otherwise bootstrap discovers the display.
-- **Environment Flags**:
-  - `WORMHOLE_FULLSCREEN=true`: Forces full-screen display mode.
-
-> For the full repository file tree and architecture breakdown, see the [Reference Manual](docs/REFERENCE.md).
-
-See [import and ownership boundaries](docs/ARCHITECTURE_BOUNDARIES.md) for canonical domain imports, compatibility aliases, display bootstrap, turn presentation and the exception review.
-
----
+- [Reference Manual](docs/REFERENCE.md): Player guidance, gameplay rules, ship catalogues, architecture, storage, and development.
+- [Agentic AI Architecture](docs/AGENTIC_AI.md): Built-in AI configuration, information boundaries, and evaluation.
+- [Codex Control guide](docs/CODEX_CONTROL.md): Local control setup, commands, and recovery.
+- [Campaign persistence](docs/SAVE_FORMAT.md): Save schemas, compatibility, and migrations.
 
 ## License
 
-This project is licensed under the terms of the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
