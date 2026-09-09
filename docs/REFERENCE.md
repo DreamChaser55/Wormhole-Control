@@ -88,7 +88,7 @@ Colony ships settle habitable planets, moons, and colonizable asteroids. Consult
 
 ### Unit Designer
 
-Open the **Unit Designer** from the main menu or in-game menu to create starship templates. Choose a [hull size](#2-hull-sizes), tune engines, hyperdrives, turrets, and defenses with dynamic hull costs, and install fixed utility modules such as refineries, colony pods, and hangars. The [component catalogue](#3-component-catalogue) and [special abilities table](#4-special-abilities) describe available equipment and restrictions.
+Click **Unit Editor** beside **Comms** in the bottom panel to open the **Unit Designer** and create starship templates. The button is available in Galaxy, System, and Sector views without opening the in-game menu. Choose a [hull size](#2-hull-sizes), tune engines, hyperdrives, turrets, and defenses with dynamic hull costs, and install fixed utility modules such as refineries, colony pods, and hangars. The [component catalogue](#3-component-catalogue) and [special abilities table](#4-special-abilities) describe available equipment and restrictions.
 
 Saved designs immediately become available for construction in active shipyards. Designs live in a separate user-data library; see [custom-design storage and migration](#custom-design-storage-and-migration) for paths, recovery, and upgrades.
 

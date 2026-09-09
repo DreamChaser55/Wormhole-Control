@@ -166,8 +166,18 @@ def setup_game_ui(gui) -> None:
         object_id='#comms_button'
     )
 
+    unit_editor_button_width = int(120 * gui.scale_x)
+    unit_editor_button_rect = pygame.Rect(comms_button_rect.right + padding, padding, unit_editor_button_width, -1)
+    gui.unit_editor_button = pygame_gui.elements.UIButton(
+        relative_rect=unit_editor_button_rect,
+        text='Unit Editor',
+        manager=gui.manager,
+        container=gui.bottom_bar_panel,
+        object_id='#unit_editor_button'
+    )
+
     # --- Resource Readouts in Bottom Bar (Spacious Layout) ---
-    resource_start_x = comms_button_rect.right + int(25 * gui.scale_x)
+    resource_start_x = unit_editor_button_rect.right + int(25 * gui.scale_x)
     resource_spacing = int(20 * gui.scale_x)
     credits_label_width = int(220 * gui.scale_x)
     metal_label_width = int(180 * gui.scale_x)

@@ -111,6 +111,9 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         elif gui.comms_button and event.ui_element == gui.comms_button:
             logger.debug("Comms button pressed (GUI)")
             action_result = {'action': 'toggle_comms'}
+        elif gui.unit_editor_button and event.ui_element == gui.unit_editor_button:
+            logger.debug("Unit Editor button pressed (GUI)")
+            action_result = {'action': 'toggle_unit_editor'}
         elif gui.back_button and event.ui_element == gui.back_button:
             logger.debug("Back button pressed (GUI)")
             action_result = {'action': 'navigate_back'}
@@ -155,10 +158,6 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         elif gui.quit_to_menu_button and event.ui_element == gui.quit_to_menu_button:
             logger.debug("Quit to Main Menu button pressed (GUI)")
             action_result = {'action': 'quit_to_main_menu'}
-        elif gui.unit_editor_button and event.ui_element == gui.unit_editor_button:
-            logger.debug("Unit Editor button pressed (GUI)")
-            action_result = {'action': 'toggle_unit_editor'}
-
         # 9. New Game Wizard Buttons
         elif gui.new_game_wizard and gui.new_game_wizard.is_alive:
             wizard_action = gui.new_game_wizard.process_event(event)
