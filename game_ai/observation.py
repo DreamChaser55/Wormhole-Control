@@ -629,7 +629,7 @@ def _safe_game_metric(game: Any, name: str, player: Any) -> float | None:
         return None
     try:
         return _rounded(method(player))
-    except Exception:
+    except (TypeError, ValueError, OverflowError):
         return None
 
 

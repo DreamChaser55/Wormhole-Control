@@ -2,8 +2,11 @@ import logging
 import math
 from unittest.mock import MagicMock, patch
 from geometry import Position, Circle, distance as geo_distance, is_point_in_circle as geo_in_circle
-from unit_orders import OrderStatus, OrderType, MoveOrder, ReachWaypointOrder
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.movement import MoveOrder, ReachWaypointOrder
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType
+from unit_components.commander import Commander
 from unit_components.antimatter import AntimatterStorage
 from unit_components.movement import JumpStatus
 from constants import HullSize
@@ -12,7 +15,7 @@ from order_system import OrderSystem
 from turn_processor import TurnProcessor
 from save_manager import serialize_order, deserialize_order
 import pytest
-from entities import Planet
+from domain.celestials import Planet
 from tests.support.units import ComponentUnit
 
 
@@ -926,7 +929,7 @@ def test_unavailable_route_fails_order_without_engine_target(atmosphere, order_c
 
 
 def test_failed_later_route_leg_cannot_start_earlier_jump(atmosphere):
-    from unit_components import Hyperdrive
+    from unit_components.movement import Hyperdrive
     game, _, unit = atmosphere
     unit.add_component(Hyperdrive(unit))
     world = Planet((1, 0), 'Sol')

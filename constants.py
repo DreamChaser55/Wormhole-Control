@@ -1,18 +1,3 @@
-import pygame
-import os
-import ctypes
-
-# Disable Windows OS window scaling to ensure 1:1 pixel perfect resolution
-if os.name == 'nt':
-    try:
-        # Windows 8.1 and later
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)
-    except Exception:
-        try:
-            # Windows Vista and later
-            ctypes.windll.user32.SetProcessDPIAware()
-        except Exception:
-            pass
 from typing import Dict, Optional, Tuple, Any
 
 from geometry import Vector, Position, NAVIGATION_CLEARANCE
@@ -25,37 +10,12 @@ PROFILE = False
 # Math constants
 SQRT3 = 1.7320508075688772
 
-# Fullscreen mode config (supports environment override)
-FULLSCREEN = os.environ.get("WORMHOLE_FULLSCREEN", "True").lower() == "true"
-
-# Function to determine screen resolution safely
-def detect_screen_resolution(fullscreen: bool = FULLSCREEN) -> Vector:
-    """Determine screen resolution safely, falling back to DEFAULT_RES on error or in headless environments."""
-    if fullscreen:
-        try:
-            had_to_init = False
-            if not pygame.display.get_init():
-                pygame.display.init()
-                had_to_init = True
-            
-            info = pygame.display.Info()
-            res = DEFAULT_RES
-            if info.current_w > 0 and info.current_h > 0:
-                res = Vector(info.current_w, info.current_h)
-                
-            if had_to_init:
-                pygame.display.quit()
-            return res
-        except Exception:
-            return DEFAULT_RES
-    return DEFAULT_RES
-
-# Determine resolution at game start
-DEFAULT_RES = Vector(2560, 1440)
-SCREEN_RES = detect_screen_resolution(FULLSCREEN)
-
-# UI Constants
-TEXT_SCALE = (SCREEN_RES.y / 720.0) ** 1.15
+# Compatibility defaults only. Runtime UI metrics belong to DisplayConfig.
+from display_config import DEFAULT_DISPLAY_CONFIG
+FULLSCREEN = DEFAULT_DISPLAY_CONFIG.fullscreen
+DEFAULT_RES = DEFAULT_DISPLAY_CONFIG.resolution
+SCREEN_RES = DEFAULT_RES
+TEXT_SCALE = DEFAULT_DISPLAY_CONFIG.text_scale
 
 # Logical Galaxy Constants
 LOGICAL_GALAXY_SIZE = Vector(2560.0, 1440.0)
@@ -474,7 +434,7 @@ STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN = 4.0
 BLACK_HOLE_INHIBITION_RADIUS = 4500.0
 BLACK_HOLE_EVENT_HORIZON_RADIUS = 750.0
 BLACK_HOLE_EVENT_HORIZON_DAMAGE = 15.0
-PULSAR_SHIELD_DRAIN_PERCENT = 0.05
+PULSAR_ANTIMATTER_DRAIN_PERCENT = 0.05
 GIANT_STAR_RADIUS = 900.0
 GIANT_STAR_INHIBITION_RADIUS = 3750.0
 
@@ -608,3 +568,6 @@ def get_min_antimatter_capacity(hull_size: Optional[HullSize] = None) -> float:
         return MIN_ANTIMATTER_CAPACITY
     return MIN_ANTIMATTER_CAPACITY_BY_HULL.get(hull_size, MIN_ANTIMATTER_CAPACITY)
 
+
+# Compatibility alias: pulsars drain antimatter, not shields.
+PULSAR_SHIELD_DRAIN_PERCENT = PULSAR_ANTIMATTER_DRAIN_PERCENT

@@ -1,9 +1,8 @@
 from geometry import Position
-from unit_components import (
-    UnitStance, CloakingDevice
-)
+from unit_components.enums import UnitStance
+from unit_components.cloaking import CloakingDevice
 from unit_components.enums import CloakingType
-from unit_orders import AttackOrder
+from unit_orders.combat import AttackOrder
 from visibility import VisibilityService, is_unit_visible, hex_has_presence
 from tests.support.combat import create_test_galaxy, create_combat_ship
 
@@ -195,7 +194,7 @@ def test_stance_infiltrated_target_visible():
 
 def test_patrol_order_respects_visibility():
     """Patrolling unit will only attack enemies that are visible under sensor visibility rules."""
-    from unit_orders import PatrolOrder
+    from unit_orders.patrol import PatrolOrder
     galaxy, p1, p2 = create_test_galaxy()
 
     p1_ship = create_combat_ship(galaxy, p1, "P1 Patrol", (0, 0), pos=(0, 0), short_range=500.0, long_range=0)
@@ -220,7 +219,7 @@ def test_patrol_order_respects_visibility():
 
 def test_protect_order_respects_visibility():
     """Protecting unit will only intercept enemies that are visible under sensor visibility rules."""
-    from unit_orders import ProtectOrder
+    from unit_orders.combat import ProtectOrder
     galaxy, p1, p2 = create_test_galaxy()
 
     p1_vip = create_combat_ship(galaxy, p1, "P1 VIP", (0, 0), pos=(0, 0), short_range=500.0, long_range=0)

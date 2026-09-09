@@ -1,14 +1,17 @@
 from unittest.mock import MagicMock
 from geometry import Position, Circle
-from unit_components import (
-    Engines, Hyperdrive, HyperdriveType, JumpStatus, SabotageType,
-    HyperspaceInhibitionFieldEmitter, Commander, UnitStance,
-    Turret, TurretType, TurretVariant, Weapons, ColonyComponent,
-    Constructor, RepairComponent,
-    MiningComponent, MetalRefineryComponent, CrystalRefineryComponent,
-    Defenses
-)
-from unit_orders import AttackOrder, Order, OrderStatus, OrderType
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType, JumpStatus, SabotageType, UnitStance, TurretType, TurretVariant
+from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
+from unit_components.commander import Commander
+from unit_components.weapons import Turret, Weapons
+from unit_components.colony import ColonyComponent
+from unit_components.constructor import Constructor
+from unit_components.repair import RepairComponent
+from unit_components.mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
+from unit_components.defenses import Defenses
+from unit_orders.combat import AttackOrder
+from unit_orders.base import Order, OrderStatus, OrderType
 from constants import HullSize
 from tests.support.units import ComponentPlayer, ComponentUnit
 
@@ -560,7 +563,7 @@ def test_mining_component():
     unit = ComponentUnit()
     mining = MiningComponent(unit, mining_rate=10.0, max_cargo=50.0)
     
-    from entities import MetalAsteroid, AsteroidField
+    from domain.celestials import MetalAsteroid, AsteroidField
     asteroid = MetalAsteroid(in_hex=(0,0), in_system="Sol")
     asteroid.position = Position(10, 0) # within 200 range
     
@@ -602,7 +605,7 @@ def test_mining_component():
     assert mining.raw_metal_cargo == 0.0
 
     # Target comet (crystal mining)
-    from entities import Comet
+    from domain.celestials import Comet
     comet = Comet(in_hex=(0,0), in_system="Sol")
     comet.position = Position(0, 0)
     mining.set_target(comet)
@@ -610,8 +613,8 @@ def test_mining_component():
     assert mining.raw_crystal_cargo == 10.0
 
 def test_colonizable_vs_metal_asteroid():
-    from entities import ColonizableAsteroid, MetalAsteroid
-    from unit_components import ColonyComponent
+    from domain.celestials import ColonizableAsteroid, MetalAsteroid
+    from unit_components.colony import ColonyComponent
 
     unit = ComponentUnit()
     unit.owner = ComponentPlayer()
@@ -939,7 +942,8 @@ def test_weapons_sidebar_data():
 
 def test_unit_template_name_assignment():
     from unittest.mock import MagicMock
-    from unit_components import Constructor, WingType
+    from unit_components.constructor import Constructor
+    from unit_components.enums import WingType
     from constants import HullSize
     from geometry import Position
     import unit_components
@@ -978,7 +982,7 @@ def test_unit_template_name_assignment():
         assert unit.template_name == "Test Template Friendly Name"
 
         # 2. Test auto-construction in StrikecraftBayComponent assigns template_name
-        from unit_components import StrikecraftBayComponent
+        from unit_components.strikecraft import StrikecraftBayComponent
         carrier_unit = ComponentUnit()
         carrier_unit.game = owner_unit.game
         bay = StrikecraftBayComponent(carrier_unit, max_slots=2)
@@ -996,7 +1000,7 @@ def test_unit_template_name_assignment():
 
 
 def test_unit_template_name_in_sidebar():
-    from entities import Unit
+    from domain.units import Unit
     from game import Game
     from unittest.mock import MagicMock
     from constants import HullSize

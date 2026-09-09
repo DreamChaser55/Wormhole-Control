@@ -2,8 +2,10 @@ import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize, NebulaType, NEBULA_RADIUS
-from entities import Player, Unit, Nebula
-from unit_components import Sensors
+from domain.players import Player
+from domain.units import Unit
+from domain.celestials import Nebula
+from unit_components.sensors import Sensors
 from visibility import VisibilityService, is_unit_visible, hex_has_presence, is_unit_in_nebula
 from galaxy import Galaxy, StarSystem
 

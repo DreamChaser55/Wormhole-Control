@@ -2,7 +2,7 @@ import logging
 from typing import Optional, TYPE_CHECKING
 from geometry import Position, is_point_in_circle, clamp_point_to_circle, Circle
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from ..enums import AbilityType
 from .base import AbilityDefinition, AbilityInstance
 
@@ -85,7 +85,7 @@ class MicrojumpAbility(AbilityInstance):
                         )
                     return False
 
-        from entities import is_position_blocked_by_celestial_field
+        from domain.celestials import is_position_blocked_by_celestial_field
         if is_position_blocked_by_celestial_field(galaxy, unit.in_system, unit.in_hex, target_position, unit):
             logger.debug(f"[{unit.name}] Microjump failed: Destination position is inside an impassable dense celestial field.")
             gui = getattr(getattr(unit, 'game', None), 'gui', None)

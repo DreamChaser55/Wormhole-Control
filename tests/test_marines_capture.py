@@ -4,9 +4,7 @@ from constants import HullSize
 from custom_unit_templates import (
     CustomUnitTemplate, calc_marines_hull_cost, MARINES_HULL_COST_PER_MARINE
 )
-from unit_components import (
-    MarinesComponent
-)
+from unit_components.marines import MarinesComponent
 from unit_components.abilities.capture_unit import CaptureUnitAbility
 
 

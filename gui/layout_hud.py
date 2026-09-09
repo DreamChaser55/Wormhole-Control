@@ -1,16 +1,17 @@
 """HUD bar layout and updating functions."""
+from display_config import display_config_for
 import logging
 import typing
 import pygame
 import pygame_gui
 from pygame import Color
 
-from constants import TOP_BAR_HEIGHT, INFO_BOX_WIDTH
+
 
 from .theme_loader import create_player_scifi_theme_colors
 
 if typing.TYPE_CHECKING:
-    from entities import Player
+    from domain.players import Player
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +28,14 @@ def setup_game_ui(gui) -> None:
     padding = int(5 * gui.scale_y)
 
     # --- Side Bar Info Panel (Spans full window height) ---
-    side_bar_info_panel_x = gui.screen_res.x - INFO_BOX_WIDTH
+    side_bar_info_panel_x = gui.screen_res.x - display_config_for(gui).info_box_width
     side_bar_info_panel_y = 0
     side_bar_info_panel_h = gui.screen_res.y
 
     side_bar_info_panel_rect = pygame.Rect(
         side_bar_info_panel_x,
         side_bar_info_panel_y,
-        INFO_BOX_WIDTH,
+        display_config_for(gui).info_box_width,
         side_bar_info_panel_h
     )
 
@@ -47,7 +48,7 @@ def setup_game_ui(gui) -> None:
 
     # --- Top Bar Panel (Spans to left edge of sidebar) ---
     top_panel_width = side_bar_info_panel_x
-    top_panel_rect = pygame.Rect(0, 0, top_panel_width, TOP_BAR_HEIGHT)
+    top_panel_rect = pygame.Rect(0, 0, top_panel_width, display_config_for(gui).top_bar_height)
     gui.top_bar_panel = pygame_gui.elements.UIPanel(
         relative_rect=top_panel_rect,
         starting_height=1,
@@ -99,7 +100,7 @@ def setup_game_ui(gui) -> None:
     turn_label_right = end_turn_button_rect.left - padding
     turn_label_left = max(view_label_rect.right + indicator_size + 2 * padding, turn_label_right - turn_label_width)
     indicator_x = turn_label_left - indicator_size - padding
-    indicator_y = (TOP_BAR_HEIGHT - indicator_size) // 2
+    indicator_y = (display_config_for(gui).top_bar_height - indicator_size) // 2
 
     indicator_rect = pygame.Rect(
         indicator_x,
@@ -133,9 +134,9 @@ def setup_game_ui(gui) -> None:
     bottom_panel_width = side_bar_info_panel_x
     bottom_panel_rect = pygame.Rect(
         0,
-        gui.screen_res.y - TOP_BAR_HEIGHT,
+        gui.screen_res.y - display_config_for(gui).top_bar_height,
         bottom_panel_width,
-        TOP_BAR_HEIGHT
+        display_config_for(gui).top_bar_height
     )
     gui.bottom_bar_panel = pygame_gui.elements.UIPanel(
         relative_rect=bottom_panel_rect,
@@ -206,9 +207,9 @@ def setup_game_ui(gui) -> None:
 
     # --- Galaxy Generation Rect ---
     galaxy_rect_x = 0
-    galaxy_rect_y = TOP_BAR_HEIGHT
+    galaxy_rect_y = display_config_for(gui).top_bar_height
     galaxy_rect_width = side_bar_info_panel_x
-    galaxy_rect_height = gui.screen_res.y - TOP_BAR_HEIGHT * 2
+    galaxy_rect_height = gui.screen_res.y - display_config_for(gui).top_bar_height * 2
     gui.galaxy_generation_rect = pygame.Rect(galaxy_rect_x, galaxy_rect_y, galaxy_rect_width, galaxy_rect_height)
 
     gui.hide_all_panels()

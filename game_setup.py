@@ -6,11 +6,13 @@ import copy
 from types import SimpleNamespace
 
 from constants import PlanetType
-from entities import Player, Planet, Star, Wormhole
+from domain.players import Player
+from domain.celestials import Planet, Star, Wormhole
 from galaxy import Galaxy, StarSystem
 from geometry import Position
-from unit_components import instantiate_unit_from_template
-from utils import HexCoord, generate_short_id
+from unit_components.constructor import instantiate_unit_from_template
+from domain.coordinates import HexCoord
+from utils import generate_short_id
 from game_settings import GameSettings, SpawnProfile, normalize_spawn_profile, validate_start_conditions
 
 logger = logging.getLogger(__name__)
@@ -73,9 +75,9 @@ def prepare_new_campaign(settings):
     from campaign_graph import iter_objects, iter_units
     from campaign_persistence import PreparedCampaign, reconcile
     from persistence_context import isolated_allocations
-    from entities import GameObject
-    from unit_components import Agent
-    from unit_orders import Order
+    from domain.identity import GameObject
+    from unit_components.intelligence import Agent
+    from unit_orders.base import Order
 
     errors = settings.validate()
     if errors:

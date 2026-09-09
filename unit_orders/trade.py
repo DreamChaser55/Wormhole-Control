@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 import typing
 from typing import Dict, Optional, Any, List, Tuple, TYPE_CHECKING
@@ -9,7 +10,7 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,8 @@ class TradeOrder(Order):
     """Order instructing a ship with a TradeComponent to travel to an active
     Civilian Habitat unit and execute a trade transaction.
     """
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.TRADE, parameters, parent_order)
 
@@ -112,6 +115,8 @@ class ContinuousTradeOrder(Order):
     """Automated order where a trade ship continuously travels between active
     Civilian Habitat components located in different sectors to maximize trade income.
     """
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.CONTINUOUS_TRADE, parameters, parent_order)
 

@@ -1,9 +1,14 @@
 from unittest.mock import MagicMock, patch
 from constants import HullSize
 from geometry import Position
-from entities import Unit, Player
-from unit_components import Engines, Commander, AntimatterStorage
-from unit_orders import OrderType, PatrolOrder, MoveOrder
+from domain.units import Unit
+from domain.players import Player
+from unit_components.movement import Engines
+from unit_components.commander import Commander
+from unit_components.antimatter import AntimatterStorage
+from unit_orders.base import OrderType
+from unit_orders.patrol import PatrolOrder
+from unit_orders.movement import MoveOrder
 from events import IssuePatrolOrderEvent, EventBus
 from order_system import OrderSystem
 from input_processor.context_menu_builder import build_sector_context_menu_options

@@ -5,7 +5,7 @@ from constants import (
     PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS,
     DEFAULT_STANDOFF_DISTANCE, SECTOR_CIRCLE_RADIUS_LOGICAL
 )
-from unit_orders import MoveOrder
+from unit_orders.movement import MoveOrder
 from hexgrid_utils import hex_to_pixel
 from save_manager import serialize_order, deserialize_order
 from tests.support.units import ComponentUnit, ComponentPlayer

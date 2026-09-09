@@ -1,10 +1,14 @@
 import unittest
 from geometry import Position, Circle, distance, segment_intersects_circle, compute_avoidance_waypoints
 from constants import STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS
-from entities import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Nebula, Storm, Wormhole
+from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Nebula, Storm, Wormhole
 from constants import StarType, PlanetType, NebulaType, StormType
-from unit_orders import MoveOrder, PatrolOrder, OrderStatus, OrderType
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander
+from unit_orders.movement import MoveOrder
+from unit_orders.patrol import PatrolOrder
+from unit_orders.base import OrderStatus, OrderType
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType
+from unit_components.commander import Commander
 from turn_processor import TurnProcessor
 import pytest
 from geometry import NoSafePathError

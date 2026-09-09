@@ -1,15 +1,13 @@
 from geometry import Position, Circle
-from entities import Unit
+from domain.units import Unit
 from constants import HullSize
-from unit_components import (
-    AbilityComponent,
-    AbilityType,
-    AntimatterStorage,
-    Hyperdrive,
-    HyperdriveType,
-)
+from unit_components.abilities import AbilityComponent
+from unit_components.enums import AbilityType, HyperdriveType
+from unit_components.antimatter import AntimatterStorage
+from unit_components.movement import Hyperdrive
 from unit_components.abilities.microjump import MicrojumpAbility
-from unit_orders import UseAbilityOrder, OrderStatus
+from unit_orders.abilities import UseAbilityOrder
+from unit_orders.base import OrderStatus
 from gui.unit_editor_gui.catalog import ABILITY_NAMES
 from tests.support.units import ComponentPlayer
 

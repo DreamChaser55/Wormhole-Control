@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -7,7 +8,8 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit, CelestialBody
+    from domain.units import Unit
+    from domain.celestials import CelestialBody
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,8 @@ class TransferAntimatterOrder(Order):
     transfers ANTIMATTER_TRANSFER_RATE per turn until the target is full
     or the source is depleted.
     """
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.TRANSFER_ANTIMATTER, parameters, parent_order)
 
@@ -85,7 +89,7 @@ class TransferAntimatterOrder(Order):
             logger.debug(f"TRANSFER_ANTIMATTER order failed: Target unit {target_unit_id} not found.")
             return
 
-        from entities import are_allies
+        from domain.players import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
             self.fail("target_unavailable")
             logger.debug(f"TRANSFER_ANTIMATTER order failed: Target unit {target_unit.name} is not friendly/allied.")
@@ -120,7 +124,7 @@ class TransferAntimatterOrder(Order):
         target_unit_id = self.parameters.get("target_unit_id")
         target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None else None
 
-        from entities import are_allies
+        from domain.players import are_allies
         if (not target_unit or not are_allies(self.unit.owner, target_unit.owner) or
                 not target_unit.antimatter_component or not self.unit.antimatter_component):
             self.status = OrderStatus.FAILED
@@ -180,6 +184,8 @@ class ContinuousResupplyOrder(Order):
     star (order stays IN_PROGRESS) rather than failing, so it can react as
     soon as demand arises.
     """
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True), OrderTargetField('target_id', 'celestial', public=True),)
+
 
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.CONTINUOUS_RESUPPLY, parameters, parent_order)

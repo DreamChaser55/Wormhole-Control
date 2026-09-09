@@ -25,9 +25,10 @@ _case_ids = count()
 def isolated_process_state(monkeypatch):
     """Restore global allocators and registries; never share mutable user storage."""
     import random
-    from entities import GameObject, Player
-    from unit_components import Agent
-    from unit_orders import Order
+    from domain.identity import GameObject
+    from domain.players import Player
+    from unit_components.intelligence import Agent
+    from unit_orders.base import Order
     from unit_templates import UNIT_TEMPLATES
     import save_manager
 
@@ -78,8 +79,8 @@ def game_factory(pygame_context, tmp_path, monkeypatch, request):
     monkeypatch.chdir(tmp_path)
     games = []
 
-    def create():
-        game = Game(control_port=0)
+    def create(*, display_config=None):
+        game = Game(control_port=0, display_config=display_config)
         games.append(game)
         return game
 

@@ -2,9 +2,12 @@ from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
 from constants import HullSize, RED
-from entities import Player, Unit, Planet, Moon, ColonizableAsteroid, MetalAsteroid
+from domain.players import Player
+from domain.units import Unit
+from domain.celestials import Planet, Moon, ColonizableAsteroid, MetalAsteroid
 from galaxy import Galaxy, StarSystem
-from unit_components import CivilianHabitatComponent, instantiate_unit_from_template
+from unit_components.civilian_habitat import CivilianHabitatComponent
+from unit_components.constructor import instantiate_unit_from_template
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig
 from turn_processor import TurnProcessor
 from gui.unit_editor_gui.catalog import COMPONENT_ROWS, COMPONENT_DESCRIPTIONS

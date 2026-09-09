@@ -1,8 +1,9 @@
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
-from unit_orders import OrderStatus, ConstructOrder
-from unit_components import Constructor
+from unit_orders.base import OrderStatus
+from unit_orders.construction import ConstructOrder
+from unit_components.constructor import Constructor
 from unit_templates import register_template, unregister_template
 from tests.support.units import ComponentUnit, ComponentPlayer
 

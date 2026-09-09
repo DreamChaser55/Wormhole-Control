@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pygame
 from constants import BLUE, HullSize, HYPERDRIVE_RANGE_HEX_FILL_COLOR, MAX_UNIT_XP
-from entities import Player, Unit
+from domain.players import Player
+from domain.units import Unit
 from geometry import Position
 from rendering.system_renderer import SystemViewRenderer
-from unit_components import Hyperdrive, HyperdriveType
+from unit_components.movement import Hyperdrive
+from unit_components.enums import HyperdriveType
 """Tests for hyperdrive inter-sector jump distance hexgrid highlight in System View."""
 
 

@@ -3,7 +3,7 @@ import logging
 import typing
 from typing import Optional, List, ClassVar, TYPE_CHECKING
 from geometry import Position
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from ..enums import AbilityType
 
 if TYPE_CHECKING:

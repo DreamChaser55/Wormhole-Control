@@ -1,7 +1,8 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import Position, distance
 from constants import HullSize
 from .base import Order, OrderStatus, OrderType
@@ -10,12 +11,14 @@ from .combat import AttackOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
 
 class PatrolOrder(Order):
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.PATROL, parameters, parent_order)
         self.start_system_name = None
@@ -134,7 +137,7 @@ class PatrolOrder(Order):
                     turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
             visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
 
-        from entities import are_enemies
+        from domain.players import are_enemies
         from visibility import is_unit_visible
         for unit in hex_obj.units:
             if are_enemies(self.unit.owner, unit.owner) and unit.current_hit_points > 0:
@@ -170,7 +173,7 @@ class PatrolOrder(Order):
                     or galaxy_ref
                 )
                 target_unit = galaxy.get_unit_by_id(target_id) if target_id is not None and galaxy else None
-                from entities import are_enemies
+                from domain.players import are_enemies
                 if (not target_unit or 
                     target_unit.current_hit_points <= 0 or 
                     not are_enemies(self.unit.owner, target_unit.owner) or

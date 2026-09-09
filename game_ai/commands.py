@@ -80,7 +80,7 @@ def _stop_and_idle(commander: Any) -> None:
         method()
         return
     commander.clear_orders()
-    from unit_components import UnitStance
+    from unit_components.enums import UnitStance
     commander.stance = UnitStance.DO_NOTHING
 
 
@@ -99,7 +99,7 @@ class _Prepared:
     command_index: int = -1
     unit_id: int | None = None
     command_type: str = ""
-    order_id: str | None = None
+    public_order_id: str | None = None
 
 
 class _BatchProjection:
@@ -637,7 +637,7 @@ class CommandGateway:
     @staticmethod
     def _operation_result(operation, status, uncertain=False):
         return {"command_index": operation.command_index, "unit_id": operation.unit_id,
-                "type": operation.command_type, "order_id": operation.order_id,
+                "type": operation.command_type, "order_id": operation.public_order_id,
                 "status": status, "may_have_partial_effects": uncertain}
 
     def _mark_dirty(self):
@@ -666,7 +666,7 @@ class CommandGateway:
             return [_Prepared(lambda unit=unit: _clear_explicit_orders(unit.commander_component), f"Cleared explicit orders for unit {unit.id}.") for unit in units]
         if command.type == "cancel_order":
             order = projection._edit_target["order"]
-            return [_Prepared(lambda: units[0].commander_component.cancel_order(order.order_id), f"Cancelled order {order.public_id}.", order_id=order.public_id)]
+            return [_Prepared(lambda: units[0].commander_component.cancel_order(order.local_order_id), f"Cancelled order {order.public_id}.", public_order_id=order.public_id)]
         if command.type == "append_patrol_waypoints":
             entry = projection.target_order(command, units[0])
             if entry["type"] != "patrol":
@@ -678,7 +678,7 @@ class CommandGateway:
             def append():
                 for waypoint in waypoints:
                     order.add_waypoint(waypoint["system_name"], waypoint["hex_coord"], waypoint["position"])
-            return [_Prepared(append, f"Extended patrol {order.public_id}.", order_id=order.public_id)]
+            return [_Prepared(append, f"Extended patrol {order.public_id}.", public_order_id=order.public_id)]
 
         if command.type == "set_stance":
             return self._prepare_stance(units, command.stance)
@@ -711,51 +711,37 @@ class CommandGateway:
         for unit in units:
             self._require_capability(unit, command.type)
             self._validate_unit_command(unit, command, projection)
-            public_id = uuid.uuid4().hex
+            public_order_id = uuid.uuid4().hex
 
-            def apply(unit=unit, factory=order_factory, public_id=public_id, queue=command.queue):
+            def apply(unit=unit, factory=order_factory, public_order_id=public_order_id, queue=command.queue):
                 order = factory(unit)
-                order.public_id = public_id
+                order.public_id = public_order_id
                 if not queue:
                     _clear_explicit_orders(unit.commander_component)
                 unit.commander_component.add_order(order)
 
             operations.append(
-                _Prepared(apply=apply, receipt=f"{command.type} issued for unit {unit.id}.", order_id=public_id)
+                _Prepared(apply=apply, receipt=f"{command.type} issued for unit {unit.id}.", public_order_id=public_order_id)
             )
         return operations
 
     def _order_factory(self, player: Any, command: Any):
         from geometry import Position
-        from unit_orders import (
-            AttackOrder,
-            ColonizeOrder,
-            ConstructOrder,
-            ContinuousMineOrder,
-            ContinuousResupplyOrder,
-            ContinuousTradeOrder,
-            DefendOrder,
-            DeployAllWingsOrder,
-            DeployUnitOrder,
-            DockOrder,
-            LayMinefieldOrder,
-            LoadColonistsOrder,
-            MineOrder,
-            MoveOrder,
-            PatrolOrder,
-            ProtectOrder,
-            RepairOrder,
-            TradeOrder,
-            TransferAntimatterOrder,
-            UnloadResourcesOrder,
-            UseAbilityOrder,
-            InfiltrateUnitOrder,
-            InfiltratePlanetOrder,
-            ExtractAgentOrder,
-            EliminateAgentOrder,
-            EnterGasGiantOrder,
-            LeaveGasGiantOrder,
-        )
+        from unit_orders.combat import AttackOrder, ProtectOrder
+        from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
+        from unit_orders.construction import ConstructOrder
+        from unit_orders.mining import ContinuousMineOrder, MineOrder, UnloadResourcesOrder
+        from unit_orders.antimatter import ContinuousResupplyOrder, TransferAntimatterOrder
+        from unit_orders.trade import ContinuousTradeOrder, TradeOrder
+        from unit_orders.defend import DefendOrder
+        from unit_orders.hangar import DeployAllWingsOrder, DeployUnitOrder, DockOrder
+        from unit_orders.minelayer import LayMinefieldOrder
+        from unit_orders.movement import MoveOrder
+        from unit_orders.patrol import PatrolOrder
+        from unit_orders.repair import RepairOrder
+        from unit_orders.abilities import UseAbilityOrder
+        from unit_orders.intelligence import InfiltrateUnitOrder, InfiltratePlanetOrder, ExtractAgentOrder, EliminateAgentOrder
+        from unit_orders.gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
         from unit_orders.combat import resolve_component_type
 
         target_unit = None
@@ -1105,8 +1091,9 @@ class CommandGateway:
 
     def _ability_factory(self, command: Any, target_unit: Any):
         from geometry import Position
-        from unit_components import ABILITY_DEFINITIONS, AbilityType
-        from unit_orders import UseAbilityOrder
+        from unit_components.abilities import ABILITY_DEFINITIONS
+        from unit_components.enums import AbilityType
+        from unit_orders.abilities import UseAbilityOrder
 
         if not command.ability:
             raise _Rejected("missing_field", "use_ability requires ability.")
@@ -1136,7 +1123,7 @@ class CommandGateway:
         )
 
     def _prepare_stance(self, units: list[Any], stance_value: str | None):
-        from unit_components import UnitStance
+        from unit_components.enums import UnitStance
 
         try:
             stance = UnitStance(stance_value)
@@ -1250,7 +1237,8 @@ class CommandGateway:
     def _prepare_ci_sweep(
         self, units: list[Any], projection: _BatchProjection
     ) -> list[_Prepared]:
-        from unit_orders import CISweepOrder, OrderStatus
+        from unit_orders.intelligence import CISweepOrder
+        from unit_orders.base import OrderStatus
 
         operations = []
         for unit in projection.plan_ci_sweeps(units):
@@ -1439,7 +1427,7 @@ class CommandGateway:
 
         if command.type == "move":
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             dest_pos = self._destination(command)
             if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
                 if is_position_in_magnetic_storm(self.game.galaxy, command.system_name, tuple(command.hex_coord), dest_pos):
@@ -1448,7 +1436,7 @@ class CommandGateway:
                 raise _Rejected("hazard_blocked", f"Unit '{unit.name}' ({unit.hull_size.name}) is too large to enter this dense celestial field.")
         elif command.type == "patrol":
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             if command.waypoints:
                 for wp in self._waypoints(command.waypoints):
                     if getattr(unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
@@ -1465,7 +1453,7 @@ class CommandGateway:
                     raise _Rejected("hazard_blocked", f"Unit '{unit.name}' ({unit.hull_size.name}) is too large to enter this dense celestial field.")
         elif command.type == "defend":
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             if command.position is not None and command.system_name is not None and command.hex_coord is not None:
                 from geometry import Position
                 defend_pos = Position(*command.position)
@@ -1527,7 +1515,8 @@ class CommandGateway:
                 raise _Rejected(
                     "target_unavailable", "The docked unit is unavailable."
                 )
-            from entities import is_position_in_magnetic_storm, HullSize
+            from domain.celestials import is_position_in_magnetic_storm
+            from constants import HullSize
             if getattr(docked_unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
                 if is_position_in_magnetic_storm(self.game.galaxy, unit.in_system, unit.in_hex, unit.position):
                     raise _Rejected(
@@ -1540,7 +1529,7 @@ class CommandGateway:
                     "capability_unavailable",
                     f"Unit {unit.id} has no strikecraft bay.",
                 )
-            from entities import is_position_in_magnetic_storm
+            from domain.celestials import is_position_in_magnetic_storm
             if is_position_in_magnetic_storm(self.game.galaxy, unit.in_system, unit.in_hex, unit.position):
                 raise _Rejected(
                     "hazard_blocked", "Cannot launch strikecraft wings in a magnetic storm."
@@ -1569,7 +1558,7 @@ class CommandGateway:
                     f"Unit {unit.id} has no antimatter storage for resupply.",
                 )
         elif command.type == "use_ability":
-            from unit_components import AbilityType
+            from unit_components.enums import AbilityType
 
             try:
                 ability_type = AbilityType(command.ability)

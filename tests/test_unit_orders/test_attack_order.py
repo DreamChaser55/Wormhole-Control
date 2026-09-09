@@ -1,7 +1,10 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_orders import OrderStatus, OrderType, AttackOrder
-from unit_components import Engines, Hyperdrive, HyperdriveType, Weapons
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.combat import AttackOrder
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType
+from unit_components.weapons import Weapons
 from tests.support.units import ComponentUnit
 
 

@@ -1,15 +1,20 @@
 from player_controller import PlayerController
 import pytest
 from geometry import Position
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from constants import HullSize
-from entities import Unit, Player
+from domain.units import Unit
+from domain.players import Player
 from galaxy import Galaxy, StarSystem
-from unit_components import (
-    Constructor, Defenses, Weapons, Engines, RepairComponent, MiningComponent,
-    HangarComponent
-)
-from unit_orders import RefitOrder, OrderStatus, OrderType
+from unit_components.constructor import Constructor
+from unit_components.defenses import Defenses
+from unit_components.weapons import Weapons
+from unit_components.movement import Engines
+from unit_components.repair import RepairComponent
+from unit_components.mining import MiningComponent
+from unit_components.hangar import HangarComponent
+from unit_orders.refit import RefitOrder
+from unit_orders.base import OrderStatus, OrderType
 from events import RefitUnitEvent, EventBus
 from order_system import OrderSystem
 from save_manager import serialize_unit, deserialize_unit

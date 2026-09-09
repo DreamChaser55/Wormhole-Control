@@ -4,7 +4,7 @@ import pygame
 import pygame_gui
 from unittest.mock import MagicMock
 from constants import PLANET_RADIUS, Vector
-from entities import Planet
+from domain.celestials import Planet
 from game_settings import (
     GameSettings,
     PlayerConfig,

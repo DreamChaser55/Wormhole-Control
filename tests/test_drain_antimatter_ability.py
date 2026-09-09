@@ -1,9 +1,13 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from entities import Unit
+from domain.units import Unit
 from constants import HullSize
-from unit_components import AbilityComponent, AbilityType, Engines, AntimatterStorage
-from unit_orders import UseAbilityOrder, OrderStatus, OrderType
+from unit_components.abilities import AbilityComponent
+from unit_components.enums import AbilityType
+from unit_components.movement import Engines
+from unit_components.antimatter import AntimatterStorage
+from unit_orders.abilities import UseAbilityOrder
+from unit_orders.base import OrderStatus, OrderType
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig
 from tests.support.units import ComponentPlayer
 

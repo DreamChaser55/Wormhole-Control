@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, TYPE_CHECKING
 from geometry import Position, distance
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from ..enums import AbilityType
 from .base import AbilityDefinition, AbilityInstance
 
@@ -52,7 +52,7 @@ class RepairCloudAbility(AbilityInstance):
         hex_obj = system.hexes.get(component.unit.in_hex)
         if not hex_obj:
             return
-        from entities import are_allies
+        from domain.players import are_allies
         heal_per_turn = 5
         for unit in hex_obj.units:
             if not are_allies(unit.owner, component.unit.owner):

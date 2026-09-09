@@ -1,10 +1,11 @@
+from unit_orders.base import OrderTargetField
 import logging
 import math
 import random
 import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import (
     Position, Vector, distance, hex_distance, is_point_in_circle,
     get_closest_point_on_circle_edge, clamp_point_to_circle, Circle,
@@ -17,7 +18,8 @@ from .base import Order, OrderStatus, OrderType
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit, CelestialBody
+    from domain.units import Unit
+    from domain.celestials import CelestialBody
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +47,7 @@ def get_hex_collision_obstacles(
         return []
     obstacles = []
     from constants import HullSize, StormType, STORM_RADIUS, CELESTIAL_FIELD_RADIUS
-    from entities import Storm, AsteroidField, DebrisField, IceField
+    from domain.celestials import Storm, AsteroidField, DebrisField, IceField
     is_strikecraft = getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING
     for body in getattr(hex_obj, 'celestial_bodies', []):
         r = getattr(body, 'collision_radius', 0.0)
@@ -112,7 +114,7 @@ class ReachWaypointOrder(Order):
                 return
 
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             if self.unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, dest_system, dest_hex, dest_position):
                 self.fail("hazard_blocked")
                 logger.debug(f"[{self.unit.name} (id:{self.order_id})] REACH_WAYPOINT(id:{self.order_id}): FAILED (strikecraft wings cannot enter magnetic storms).")
@@ -153,7 +155,7 @@ class ReachWaypointOrder(Order):
             
         # Inter-system travel requires navigating via a wormhole connecting the two systems.
         else: # current_system != dest_system
-            from unit_components import HyperdriveType
+            from unit_components.enums import HyperdriveType
             if (
                 not self.unit.hyperdrive_component
                 or not self.unit.hyperdrive_component.is_functional
@@ -276,7 +278,7 @@ class ReachWaypointOrder(Order):
         if self.unit.in_system == dest_system:
             drive.set_hex_jump_target((dest_hex, dest_position), self.order_id)
             return
-        from unit_components import HyperdriveType
+        from unit_components.enums import HyperdriveType
         if drive.drive_type == HyperdriveType.ADVANCED:
             wormhole = self.find_wormhole_to_system(self.unit.in_system, dest_system, galaxy_ref, self.unit.hull_size)
             if wormhole:
@@ -284,6 +286,8 @@ class ReachWaypointOrder(Order):
 
 
 class MoveOrder(Order):
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True), OrderTargetField('target_celestial_id', 'celestial', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.MOVE, parameters, parent_order)
 
@@ -466,7 +470,7 @@ class MoveOrder(Order):
                         "FAILED (could not find an uninhibited standoff point after 128 attempts)."
                     )
         from constants import HullSize
-        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+        from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
             if is_position_in_magnetic_storm(galaxy_ref, target_unit.in_system, target_unit.in_hex, resolved_position):
                 self.fail("hazard_blocked")
@@ -584,7 +588,7 @@ class MoveOrder(Order):
             resolved_position = clamp_point_to_circle(resolved_position, boundary_circle)
 
         from constants import HullSize
-        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+        from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if self.unit.hull_size == HullSize.STRIKECRAFT_WING:
             if is_position_in_magnetic_storm(galaxy_ref, target_body.in_system, target_body.in_hex, resolved_position):
                 self.fail("hazard_blocked")
@@ -773,7 +777,7 @@ class MoveOrder(Order):
             return
 
         from constants import HullSize
-        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+        from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if self.unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, dest_system, dest_hex, dest_position):
             self.fail("hazard_blocked")
             logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (strikecraft wings cannot enter magnetic storms).")
@@ -802,7 +806,7 @@ class MoveOrder(Order):
 
         # Inter-system travel: Destination is in a different system.
         if current_system != dest_system:
-            from unit_components import HyperdriveType
+            from unit_components.enums import HyperdriveType
             if not self.unit.hyperdrive_component or self.unit.hyperdrive_component.drive_type != HyperdriveType.ADVANCED:
                 self.fail("path_unavailable")
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.order_id}): plan_route: FAILED (cannot jump system, no advanced hyperdrive).")

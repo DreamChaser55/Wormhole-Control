@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
@@ -9,12 +10,14 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
 
 class MineOrder(Order):
+    target_fields = (OrderTargetField('target_id', 'celestial', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.MINE, parameters, parent_order)
 
@@ -74,6 +77,8 @@ class MineOrder(Order):
 
 
 class UnloadResourcesOrder(Order):
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.UNLOAD_RESOURCES, parameters, parent_order)
 
@@ -149,6 +154,8 @@ class UnloadResourcesOrder(Order):
 
 
 class ContinuousMineOrder(Order):
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True), OrderTargetField('target_id', 'celestial', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.CONTINUOUS_MINE, parameters, parent_order)
 
@@ -200,7 +207,7 @@ class ContinuousMineOrder(Order):
         has_crystal = mining_comp.raw_crystal_cargo > 0
 
         target = galaxy_ref.get_celestial_body_by_id(self.parameters.get("target_id"))
-        from entities import MetalAsteroid, Comet
+        from domain.celestials import MetalAsteroid, Comet
         if not has_metal and not has_crystal and target:
             if isinstance(target, MetalAsteroid):
                 has_metal = True

@@ -1,7 +1,7 @@
 
 
 import pytest
-from unit_components import Defenses
+from unit_components.defenses import Defenses
 from unit_components.enums import TurretType
 
 @pytest.mark.parametrize('amount,reduction,damage', [

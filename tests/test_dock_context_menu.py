@@ -12,9 +12,12 @@ import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
-from entities import Player, Unit
+from domain.players import Player
+from domain.units import Unit
 from galaxy import Galaxy, StarSystem
-from unit_components import HangarComponent, StrikecraftBayComponent, StrikecraftWingComponent, Commander
+from unit_components.hangar import HangarComponent
+from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
+from unit_components.commander import Commander
 from events import DockEvent
 from input_processor.context_menu_builder import build_sector_context_menu_options
 from input_processor.context_actions import handle_context_menu_action
@@ -156,7 +159,7 @@ def test_context_action_dock_in_strikecraft_bay_filters_to_wings(dock_setup):
 
 def test_order_system_handle_dock_creates_order_for_wing(dock_setup):
     from order_system import OrderSystem
-    from unit_orders import DockOrder
+    from unit_orders.hangar import DockOrder
 
     p1, galaxy, system, game = dock_setup
     order_sys = OrderSystem(game, game.event_bus)

@@ -1,10 +1,15 @@
 from player_controller import PlayerController
 import pytest
-from entities import Player, Unit, Position, Minefield, HullSize
+from domain.players import Player
+from domain.units import Unit
+from geometry import Position
+from domain.minefields import Minefield
+from constants import HullSize
 from galaxy import Galaxy, StarSystem
 from game_settings import PlayerConfig, GameSettings
 from visibility import VisibilityService, is_unit_visible, is_minefield_visible
-from unit_components import Sensors, CloakingDevice
+from unit_components.sensors import Sensors
+from unit_components.cloaking import CloakingDevice
 from unit_components.enums import CloakingType
 from unit_components.abilities.repair_cloud import RepairCloudAbility
 from unit_components.abilities.cluster_warhead import ClusterWarheadAbility
@@ -14,7 +19,7 @@ from unit_components.abilities.designate_target import DesignateTargetAbility
 from unit_components.intelligence import IntelligenceComponent, Agent
 from unit_orders.intelligence import InfiltrateUnitOrder, CISweepOrder
 from save_manager import serialize_player, deserialize_player
-from utils import HexCoord
+from domain.coordinates import HexCoord
 
 
 def make_unit(name: str, owner: Player, system: str = "Sol", hex_coord: HexCoord = (0, 0), pos: Position = Position(0, 0), hull_size: HullSize = HullSize.MEDIUM) -> Unit:

@@ -6,7 +6,7 @@ import heapq
 import typing
 import math
 
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import hex_distance
 from constants import HullSize
 

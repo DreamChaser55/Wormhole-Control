@@ -8,10 +8,11 @@ from .enums import MinefieldType
 from constants import MINEFIELD_CREDIT_COST, MINEFIELD_ANTIMATTER_COST, MINELAYER_HULL_COST, MAX_MINEFIELDS_PER_HEX
 
 if TYPE_CHECKING:
-    from entities import Unit, Minefield
+    from domain.units import Unit
+    from domain.minefields import Minefield
     from galaxy import Galaxy
     from game import Game
-    from utils import HexCoord
+    from domain.coordinates import HexCoord
     from geometry import Position
 
 logger = logging.getLogger(__name__)
@@ -102,7 +103,7 @@ class MinelayerComponent(UnitComponent):
             logger.debug(f"Cannot lay minefield: {reason}")
             return None
 
-        from entities import Minefield  # avoid circular import
+        from domain.minefields import Minefield
         system = galaxy.systems[system_name]
         hex_obj = system.hexes[hex_coord]
 

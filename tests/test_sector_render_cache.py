@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 import pygame
 from rendering.sector_renderer import _BoundedSurfaceCache, SectorViewRenderer
 from geometry import Position
-from entities import Storm, Nebula
+from domain.celestials import Storm, Nebula
 from constants import StormType, NebulaType
 
 

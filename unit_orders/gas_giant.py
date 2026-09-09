@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -8,7 +9,8 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit, Planet
+    from domain.units import Unit
+    from domain.celestials import Planet
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,8 @@ def within_gas_giant_range(unit: 'Unit', target: Any) -> bool:
 
 
 class EnterGasGiantOrder(Order):
+    target_fields = (OrderTargetField('target_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.ENTER_GAS_GIANT, parameters, parent_order)
 

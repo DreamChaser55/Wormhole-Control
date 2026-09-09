@@ -1,11 +1,13 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from entities import Player, Unit
+from domain.players import Player
+from domain.units import Unit
 from galaxy import Galaxy, StarSystem, Hex
-from unit_components import (
-    Commander, Weapons, Turret, TurretType, TurretVariant,
-    Engines, Hyperdrive, HyperdriveType, Sensors
-)
+from unit_components.commander import Commander
+from unit_components.weapons import Weapons, Turret
+from unit_components.enums import TurretType, TurretVariant, HyperdriveType
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.sensors import Sensors
 from constants import HullSize
 
 

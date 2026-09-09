@@ -29,7 +29,7 @@ from . import layout
 from . import param_readers
 
 if typing.TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,8 @@ class RetrofitWizardWindow:
         shift_pressed: bool = False,
     ):
         self.manager = manager
+        from gui.theme_loader import preload_rich_text_fonts
+        preload_rich_text_fonts(manager)
         self.screen_res = screen_res
         self.target_unit = target_unit
         self.constructor_units = constructor_units

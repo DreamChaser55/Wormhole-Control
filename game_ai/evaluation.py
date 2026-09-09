@@ -278,7 +278,8 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
     """Executable version of the zero-cargo colony opening regression."""
 
     def build():
-        from entities import Moon, Planet, PlanetType
+        from domain.celestials import Moon, Planet
+        from constants import PlanetType
 
         class Player:
             id = 1

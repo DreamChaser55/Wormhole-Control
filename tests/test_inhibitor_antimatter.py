@@ -1,8 +1,8 @@
 """Unit tests for antimatter consumption by HyperspaceInhibitionFieldEmitter."""
 from unittest.mock import MagicMock
-from entities import Unit
+from domain.units import Unit
 from galaxy import Galaxy, StarSystem, Hex
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import Position, Circle
 from constants import HullSize
 from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter

@@ -5,7 +5,7 @@ from .base import Order, OrderStatus, OrderType
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 

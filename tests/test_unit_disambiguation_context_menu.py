@@ -5,7 +5,7 @@ import pygame
 import pygame_gui
 from geometry import Position, Vector
 from constants import HullSize
-from entities import Unit
+from domain.units import Unit
 from input_processor import (
     InputProcessor,
     get_units_under_mouse,
@@ -85,7 +85,7 @@ def test_get_units_under_mouse_multiple_units():
     unit3 = Unit(owner=player1, position=Position(5000, 5000), in_hex=(0, 0), in_system="Sol", name="Far Unit", hull_size=HullSize.SMALL, game=game)
     hex_obj.units = [unit1, unit2, unit3]
 
-    with patch('input_processor.hover_tracker.sector_coords_to_pixels', side_effect=lambda pos, zoom, pan: pos):
+    with patch('input_processor.hover_tracker.sector_coords_to_pixels', side_effect=lambda pos, zoom, pan, **kwargs: pos):
         with patch('input_processor.hover_tracker.sector_radius_to_pixels', return_value=30.0):
             # Click directly over Position(100, 100)
             matching = get_units_under_mouse(game, Position(100, 100))
@@ -105,7 +105,7 @@ def test_get_units_under_mouse_filters_invisible():
     # Cloaked unit is invisible
     game.is_unit_visible = lambda u: u.name == "Visible Unit"
 
-    with patch('input_processor.hover_tracker.sector_coords_to_pixels', side_effect=lambda pos, zoom, pan: pos):
+    with patch('input_processor.hover_tracker.sector_coords_to_pixels', side_effect=lambda pos, zoom, pan, **kwargs: pos):
         with patch('input_processor.hover_tracker.sector_radius_to_pixels', return_value=30.0):
             matching = get_units_under_mouse(game, Position(100, 100))
             assert len(matching) == 1
@@ -117,7 +117,8 @@ def test_build_sector_unit_disambiguation_menu():
 
     # Actor unit selected by player 1
     actor = Unit(owner=player1, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Player Battleship", hull_size=HullSize.LARGE, game=game)
-    from unit_components import Weapons, Turret, TurretType, TurretVariant
+    from unit_components.weapons import Weapons, Turret
+    from unit_components.enums import TurretType, TurretVariant
     weapons = Weapons(actor)
     weapons.turrets.append(Turret(TurretType.MASS_DRIVER, 10, 500, 2, actor, variant=TurretVariant.STANDARD))
     actor.add_component(weapons)

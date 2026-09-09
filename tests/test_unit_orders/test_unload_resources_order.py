@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_orders import OrderStatus, OrderType, UnloadResourcesOrder
-from unit_components import (
-    MiningComponent, MetalRefineryComponent, CrystalRefineryComponent, Commander
-)
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.mining import UnloadResourcesOrder
+from unit_components.mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
+from unit_components.commander import Commander
 from order_system import OrderSystem
 from events import UnloadResourcesEvent
 from tests.support.units import ComponentUnit

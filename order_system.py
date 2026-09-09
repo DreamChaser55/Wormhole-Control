@@ -10,19 +10,25 @@ from events import (
     SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent,
     EnterGasGiantEvent, LeaveGasGiantEvent
 )
-from unit_orders import (
-    MoveOrder, AttackOrder, ColonizeOrder, LoadColonistsOrder, ConstructOrder, RepairOrder,
-    MineOrder, UnloadResourcesOrder, DockOrder, PatrolOrder, UseAbilityOrder, ProtectOrder,
-    ContinuousMineOrder, TransferAntimatterOrder, ContinuousResupplyOrder, LayMinefieldOrder,
-    RefitOrder, TradeOrder, ContinuousTradeOrder, calculate_required_antimatter,
-    InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder,
-    CISweepOrder, EliminateAgentOrder, ExtractAgentOrder,
-    EnterGasGiantOrder, LeaveGasGiantOrder
-)
+from unit_orders.movement import MoveOrder, calculate_required_antimatter
+from unit_orders.combat import AttackOrder, ProtectOrder
+from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
+from unit_orders.construction import ConstructOrder
+from unit_orders.repair import RepairOrder
+from unit_orders.mining import MineOrder, UnloadResourcesOrder, ContinuousMineOrder
+from unit_orders.hangar import DockOrder
+from unit_orders.patrol import PatrolOrder
+from unit_orders.abilities import UseAbilityOrder
+from unit_orders.antimatter import TransferAntimatterOrder, ContinuousResupplyOrder
+from unit_orders.minelayer import LayMinefieldOrder
+from unit_orders.refit import RefitOrder
+from unit_orders.trade import TradeOrder, ContinuousTradeOrder
+from unit_orders.intelligence import InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder, CISweepOrder, EliminateAgentOrder, ExtractAgentOrder
+from unit_orders.gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
 
 from sector_utils import random_point_in_sector
 from constants import HullSize
-from unit_orders import OrderType
+from unit_orders.base import OrderType
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +134,7 @@ class OrderSystem:
             if not self.validate_engines_for_unit(unit, "move"):
                 continue
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             if unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(self.game.galaxy, event.system_name, event.sector_coord, event.destination):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -173,7 +179,7 @@ class OrderSystem:
             if not self.validate_engines_for_unit(unit, "patrol"):
                 continue
             from constants import HullSize
-            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             if unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(self.game.galaxy, event.system_name, event.sector_coord, event.destination):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(

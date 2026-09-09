@@ -3,7 +3,7 @@ from pygame import Color
 from gui.theme_loader import create_player_scifi_theme_colors
 from gui.layout_hud import update_hud_panel_colors
 from game import Game
-from entities import Player
+from domain.players import Player
 
 
 def test_create_player_scifi_theme_colors_blue():

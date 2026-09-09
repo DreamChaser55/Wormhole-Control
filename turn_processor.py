@@ -2,15 +2,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-import pygame
 import random
 import typing
 
-from utils import HexCoord, ProfileTimer
+from domain.coordinates import HexCoord
+from utils import ProfileTimer
 from geometry import Vector, Position, distance, hex_distance, Circle, is_point_in_circle
 from sector_utils import move_towards_position
-from entities import Unit, Wormhole, Planet, Moon, ColonizableAsteroid
-from unit_components import JumpStatus, Commander
+from domain.units import Unit
+from domain.celestials import Wormhole, Planet, Moon, ColonizableAsteroid
+from unit_components.enums import JumpStatus
+from unit_components.commander import Commander
 from visibility import VisibilityService
 from constants import (
     UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS,
@@ -18,13 +20,16 @@ from constants import (
     HYDROGEN_NEBULA_AM_BURN_MOD, CELESTIAL_FIELD_RADIUS, STORM_RADIUS,
     NebulaType, StormType, StarType
 )
-from player_controller import PlayerController
+from turn_presentation import NullTurnPresentation, TurnPresentation
 from economy import calculate_unit_upkeep, calculate_player_upkeep
 
 
 class TurnProcessor:
-    def __init__(self, game_instance, rng=None):
+    def __init__(self, game_instance, rng=None, *, presentation: typing.Optional[TurnPresentation] = None):
         self.game = game_instance
+        self.presentation = presentation if presentation is not None else (
+            getattr(game_instance, '__dict__', {}).get('turn_presentation') or NullTurnPresentation()
+        )
         self.rng = rng or getattr(game_instance, 'rng', None) or random
 
     def end_turn(self):
@@ -47,29 +52,13 @@ class TurnProcessor:
         next_player = self.game.players[self.game.current_player_index]
         logger.debug(f"\n--- Turn {new_turn_num} - Start of {next_player.name}'s Turn ---")
 
-        self.game.update_player_turn_display()
-        self.game.update_side_bar_content() # Update info box after changing turn
-
-        # If next player is human and has unread messages, or comms window is open, refresh/show comms
-        if next_player.controller == PlayerController.HUMAN and hasattr(self.game, 'gui') and self.game.gui:
-            unread = self.game.get_unread_messages_for_player(next_player.id)
-            if unread:
-                self.game.gui.open_communications_window()
-            elif self.game.gui.is_communications_window_open():
-                self.game.gui.communications_window.refresh_message_log()
+        self.presentation.refresh_player_turn(next_player)
 
         self.check_and_schedule_ai_turn()
 
     def check_and_schedule_ai_turn(self):
-        """Schedule the active AI after a short delay so the UI can show the turn."""
-        if not getattr(self.game, 'players', None) or not (0 <= getattr(self.game, 'current_player_index', 0) < len(self.game.players)):
-            return
-        current_player = self.game.players[self.game.current_player_index]
-        if current_player.controller == PlayerController.OPENAI:
-            logger.debug(f"Scheduling agentic AI turn for {current_player.name}")
-            self.game.pending_ai_turn_end_time = pygame.time.get_ticks() + 500
-        else:
-            self.game.pending_ai_turn_end_time = 0
+        """Delegate presentation delay; domain-only processors do not schedule AI."""
+        self.presentation.schedule_ai_turn()
 
     def process_turn(self, player=None):
         """Processes actions that occur at the end of a player's turn (movement, jumps, economy, unit updates)."""
@@ -213,7 +202,7 @@ class TurnProcessor:
                                 speed_mult = getattr(body, 'speed_multiplier', None)
                                 if speed_mult is not None and unit.hull_size != HullSize.STRIKECRAFT_WING:
                                     speed_mod = min(speed_mod, speed_mult)
-                                from entities import Nebula
+                                from domain.celestials import Nebula
                                 if isinstance(body, Nebula) and getattr(body, 'nebula_type', None) == NebulaType.HYDROGEN:
                                     in_hydrogen_nebula = True
 
@@ -234,7 +223,7 @@ class TurnProcessor:
                     target_pos_in_sector = unit.engines_component.move_target
                     new_pos = move_towards_position(unit.position, target_pos_in_sector, effective_speed)
                     if unit.hull_size == HullSize.STRIKECRAFT_WING and current_hex_obj:
-                        from entities import Storm
+                        from domain.celestials import Storm
                         for body in current_hex_obj.celestial_bodies:
                             if isinstance(body, Storm) and getattr(body, 'storm_type', None) == StormType.MAGNETIC:
                                 storm_radius = getattr(body, 'radius', STORM_RADIUS)
@@ -251,7 +240,7 @@ class TurnProcessor:
                                     logger.debug(f"   {unit.name} (strikecraft wing) halted at boundary of magnetic storm.")
                                     break
                     if current_hex_obj:
-                        from entities import AsteroidField, DebrisField, IceField
+                        from domain.celestials import AsteroidField, DebrisField, IceField
                         for body in current_hex_obj.celestial_bodies:
                             if isinstance(body, (AsteroidField, DebrisField, IceField)):
                                 if hasattr(body, 'can_unit_enter') and not body.can_unit_enter(unit):
@@ -419,11 +408,10 @@ class TurnProcessor:
                                         logger.debug(f"   Wormhole instability damages {unit.name}'s hull for {damage_amount} damage.")
                                         unit.take_damage(damage_amount)
 
-                                    if getattr(self.game, 'gui', None) and unit.owner.controller == PlayerController.HUMAN:
-                                        self.game.gui.show_warning_dialog(
-                                            f"Unit <b>{unit.name}</b> sustained structural damage jumping through unstable wormhole <b>{entry_wormhole.name}</b> ({damage_amount} damage)!",
-                                            title="Wormhole Damage"
-                                        )
+                                    self.presentation.warn_human(unit.owner,
+                                        f"Unit <b>{unit.name}</b> sustained structural damage jumping through unstable wormhole <b>{entry_wormhole.name}</b> ({damage_amount} damage)!",
+                                        title="Wormhole Damage"
+                                    )
 
                             hd_comp.start_recharge(expected_order_id) # Clears this jump's target and sets status to CHARGING
                         else:
@@ -536,12 +524,12 @@ class TurnProcessor:
         if not self.game.galaxy or not self.game.galaxy.systems:
             return
 
-        from entities import Storm, Star, DebrisField
+        from domain.celestials import Storm, Star, DebrisField
         from constants import (
             STORM_PLASMA_DAMAGE_PER_TURN, STORM_MAGNETIC_AM_DRAIN_PER_TURN,
             STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN,
             BLACK_HOLE_EVENT_HORIZON_RADIUS, BLACK_HOLE_EVENT_HORIZON_DAMAGE,
-            PULSAR_SHIELD_DRAIN_PERCENT,
+            PULSAR_ANTIMATTER_DRAIN_PERCENT,
             DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE
         )
 
@@ -611,17 +599,19 @@ class TurnProcessor:
                         elif star.star_type == StarType.PULSAR:
                             am_comp = getattr(unit, 'antimatter_component', None)
                             if am_comp and am_comp.current_amount > 0:
-                                drain = am_comp.current_amount * PULSAR_SHIELD_DRAIN_PERCENT
+                                drain = am_comp.current_amount * PULSAR_ANTIMATTER_DRAIN_PERCENT
                                 am_comp.consume(drain)
                                 logger.debug(f"{unit.name} drained {drain:.1f} AM by Pulsar radiation in {system.name}")
 
         if hazards_encountered and getattr(current_player, 'is_human', False):
-            gui = getattr(self.game, 'gui', None)
-            if gui and hasattr(gui, 'show_warning_dialog'):
-                summary_msg = "<br>".join(hazards_encountered[:5])
-                if len(hazards_encountered) > 5:
-                    summary_msg += f"<br>...and {len(hazards_encountered) - 5} more."
-                gui.show_warning_dialog("Environmental Hazard Alert", f"Your units encountered environmental hazards this turn:<br><br>{summary_msg}")
+            summary_msg = "<br>".join(hazards_encountered[:5])
+            if len(hazards_encountered) > 5:
+                summary_msg += f"<br>...and {len(hazards_encountered) - 5} more."
+            self.presentation.warn_human(
+                current_player,
+                f"Your units encountered environmental hazards this turn:<br><br>{summary_msg}",
+                title="Environmental Hazard Alert",
+            )
 
     def _process_resource_generation(self, current_player):
         total_credits_generated = 0
@@ -652,7 +642,7 @@ class TurnProcessor:
                         if p_crystal > 0:
                             current_player.crystal += p_crystal
                     else:
-                        from entities import are_enemies
+                        from domain.players import are_enemies
                         if body.owner and are_enemies(current_player, body.owner) and getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list):
                             if any(getattr(a, 'owner', None) == current_player and getattr(a, 'active_sabotage', None) == SabotageType.ECONOMY for a in body.infiltrating_agents):
                                 siphoned = base_tax * 0.25
@@ -685,8 +675,8 @@ class TurnProcessor:
         total_upkeep = calculate_player_upkeep(self.game.galaxy, current_player)
 
         if total_upkeep > 0:
-            if current_player.credits < total_upkeep and getattr(self.game, 'gui', None) and current_player.controller == PlayerController.HUMAN:
-                self.game.gui.show_warning_dialog(
+            if current_player.credits < total_upkeep:
+                self.presentation.warn_human(current_player,
                     f"Treasury depleted! Unable to fully pay total unit upkeep of <b>{total_upkeep:.0f}</b> credits.",
                     title="Upkeep Shortage"
                 )
@@ -743,11 +733,10 @@ class TurnProcessor:
 
                         if distance(unit.position, minefield.position) <= minefield.detonation_radius:
                             minefield.detonate_against(unit)
-                            if getattr(self.game, 'gui', None) and unit.owner.controller == PlayerController.HUMAN:
-                                self.game.gui.show_warning_dialog(
-                                    f"Unit <b>{unit.name}</b> triggered an enemy minefield in sector <b>{hex_coord}</b>!",
-                                    title="Minefield Detonation"
-                                )
+                            self.presentation.warn_human(unit.owner,
+                                f"Unit <b>{unit.name}</b> triggered an enemy minefield in sector <b>{hex_coord}</b>!",
+                                title="Minefield Detonation"
+                            )
                             if minefield.mines_remaining <= 0:
                                 minefields_to_remove.append(minefield)
                                 break

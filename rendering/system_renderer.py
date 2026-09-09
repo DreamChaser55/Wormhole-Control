@@ -1,20 +1,14 @@
+from display_config import display_config_for
 import pygame
 import random
 import math
-from constants import (
-    DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE,
-    SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY,
-    HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR,
-    XP_JUMP_RANGE_BONUS, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS,
-    STORM_LIGHTNING_COLOR, SQRT3, HEX_SIZE, WORMHOLE_LINE_COLOR, TEXT_SCALE, FOG_PRESENCE_COLOR,
-    STAR_COLORS, DARK_RED
-)
+from constants import DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE, SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY, HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR, XP_JUMP_RANGE_BONUS, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS, STORM_LIGHTNING_COLOR, SQRT3, WORMHOLE_LINE_COLOR, FOG_PRESENCE_COLOR, STAR_COLORS, DARK_RED
 
 from hexgrid_utils import get_hex_vertices, hex_to_pixel, hex_distance
-from entities import (
-    Star, Planet, Wormhole, Unit, CelestialBody, OrderType, Moon, ColonizableAsteroid, MetalAsteroid, 
-    AsteroidField, IceField, Nebula, Storm, Comet, DebrisField, Minefield
-)
+from domain.celestials import Star, Planet, Wormhole, CelestialBody, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
+from domain.units import Unit
+from unit_orders.base import OrderType
+from domain.minefields import Minefield
 from visibility import is_minefield_visible
 from galaxy import Hex
 from geometry import Position
@@ -36,16 +30,10 @@ class SystemViewRenderer:
         return pan_offset if isinstance(pan_offset, Position) else Position(0, 0)
 
     def _hex_to_pixel(self, q, r):
-        try:
-            return hex_to_pixel(q, r, self._system_zoom(), self._system_pan_offset())
-        except TypeError:
-            return hex_to_pixel(q, r)
+        return hex_to_pixel(q, r, self._system_zoom(), self._system_pan_offset(), display_config=display_config_for(self.game))
 
     def _hex_vertices(self, q, r):
-        try:
-            return get_hex_vertices(q, r, self._system_zoom(), self._system_pan_offset())
-        except TypeError:
-            return get_hex_vertices(q, r)
+        return get_hex_vertices(q, r, self._system_zoom(), self._system_pan_offset(), display_config=display_config_for(self.game))
 
     def _map_scale(self):
         return (self.screen.get_height() / 720.0) * self._system_zoom()
@@ -108,14 +96,14 @@ class SystemViewRenderer:
                     if dist > 0:
                         ux = dx / dist
                         uy = dy / dist
-                        edge_radius = (system.radius + 0.5) * SQRT3 * HEX_SIZE * self._system_zoom()
+                        edge_radius = (system.radius + 0.5) * SQRT3 * display_config_for(self.game).hex_size * self._system_zoom()
                         end_x = int(center_px.x + edge_radius * ux)
                         end_y = int(center_px.y + edge_radius * uy)
                         pygame.draw.line(self.screen, WORMHOLE_LINE_COLOR, (wh_px.x, wh_px.y), (end_x, end_y), 2)
 
                         # Draw destination system name at the end of the line
                         scale_val = self.screen.get_height() / 720.0
-                        font_size = max(1, int(10 * TEXT_SCALE))
+                        font_size = max(1, int(10 * display_config_for(self.game).text_scale))
                         font = pygame.font.Font(None, font_size)
                         text_surface = font.render(body.exit_system_name, True, WORMHOLE_LINE_COLOR)
                         text_rect = text_surface.get_rect()

@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 import typing
 from typing import Dict, Optional, Any, List, Tuple, TYPE_CHECKING
@@ -9,7 +10,8 @@ from unit_components.enums import SabotageType
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit, CelestialBody
+    from domain.units import Unit
+    from domain.celestials import CelestialBody
     from unit_components.intelligence import Agent
 
 logger = logging.getLogger(__name__)
@@ -19,10 +21,17 @@ INTELLIGENCE_OPERATIONAL_RANGE = 500.0
 
 class InfiltrateUnitOrder(Order):
     """Order instructing an Intelligence unit to deploy a covert agent onto an enemy unit in range."""
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.INFILTRATE_UNIT, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        """Validate target_unit_id, approach if needed, then spend one agent capacity.
+
+        A successful operation attaches the owned agent to the hostile unit and
+        completes synchronously when in range. Invalid targets/capacity fail the
+        order; callers enforce player visibility before issuance. Returns None."""
         super().execute(galaxy_ref)
 
         target_unit_id = self.parameters.get("target_unit_id")
@@ -37,7 +46,7 @@ class InfiltrateUnitOrder(Order):
             logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: target unit {target_unit_id} not found.")
             return
 
-        from entities import are_allies, are_enemies
+        from domain.players import are_allies, are_enemies
         if are_allies(self.unit.owner, target_unit.owner):
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: cannot infiltrate friendly or allied unit.")
@@ -96,10 +105,17 @@ class InfiltrateUnitOrder(Order):
 
 class InfiltratePlanetOrder(Order):
     """Order instructing an Intelligence unit to deploy a covert agent onto an enemy colonized celestial body."""
+    target_fields = (OrderTargetField('target_body_id', 'celestial', public=False),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.INFILTRATE_PLANET, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        """Resolve target_body_id (or legacy body name/system/hex), then infiltrate.
+
+        The target must be an enemy colony. Approach work precedes deployment;
+        success consumes agent capacity and attaches the agent before completion.
+        Expected rule failures set FAILED; callers own visibility checks."""
         super().execute(galaxy_ref)
 
         target_body_id = self.parameters.get("target_body_id")
@@ -122,7 +138,7 @@ class InfiltratePlanetOrder(Order):
             return
 
         body_owner = getattr(target_body, 'owner', None)
-        from entities import are_allies
+        from domain.players import are_allies
         if not body_owner or are_allies(self.unit.owner, body_owner):
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] INFILTRATE_PLANET failed: celestial body is unowned or friendly/allied.")
@@ -172,10 +188,17 @@ class InfiltratePlanetOrder(Order):
 
 class RelocateAgentOrder(Order):
     """Order relocating an agent from one infiltrated host to another within operational range."""
+    target_fields = (OrderTargetField('destination_id', 'object', public=False),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.RELOCATE_AGENT, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        """Move an owned agent from its current host to an in-range hostile host.
+
+        agent_id, target_type and destination_id identify the operation. Source
+        and destination must share a sector; failure preserves the source link.
+        Success moves the same agent and clears its prior sabotage. Returns None."""
         super().execute(galaxy_ref)
 
         agent_id = self.parameters.get("agent_id")
@@ -247,7 +270,7 @@ class RelocateAgentOrder(Order):
             return
 
         dest_owner = getattr(dest_target, 'owner', None)
-        from entities import are_allies
+        from domain.players import are_allies
         if not dest_owner or are_allies(self.unit.owner, dest_owner):
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: destination target is unowned or friendly/allied.")
@@ -280,6 +303,11 @@ class SabotageOrder(Order):
         super().__init__(unit, OrderType.SABOTAGE, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        """Set sabotage_type on the hostile host of the owned agent_id.
+
+        Resolves the attached agent, validates the target kind, and applies host
+        side effects immediately. Completes or fails via order status; no approach
+        work or ship resource charge is created. Returns None."""
         super().execute(galaxy_ref)
 
         agent_id = self.parameters.get("agent_id")
@@ -326,7 +354,8 @@ class SabotageOrder(Order):
             logger.debug(f"[{self.unit.name}] SABOTAGE order failed: agent is unavailable.")
             return
 
-        from entities import Unit, Planet, Moon, ColonizableAsteroid
+        from domain.units import Unit
+        from domain.celestials import Planet, Moon, ColonizableAsteroid
         allowed = (
             {SabotageType.ENGINES, SabotageType.WEAPONS, SabotageType.DEFENSES,
              SabotageType.HYPERDRIVE, SabotageType.SENSORS, SabotageType.ANTIMATTER}
@@ -354,6 +383,11 @@ class CISweepOrder(Order):
         super().__init__(unit, OrderType.CI_SWEEP, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        """Spend sweep costs once and discover hostile agents on nearby allied assets.
+
+        Requires a functional CI suite, cooldown readiness, credits and antimatter.
+        After validation, costs and cooldown commit even if no agents are found.
+        Discovery changes agent state; this operation does not eliminate agents."""
         super().execute(galaxy_ref)
 
         from constants import CI_SWEEP_CREDIT_COST, CI_SWEEP_ANTIMATTER_COST, CI_SWEEP_COOLDOWN_TURNS
@@ -396,7 +430,7 @@ class CISweepOrder(Order):
         intel_comp.ci_cooldown_remaining = CI_SWEEP_COOLDOWN_TURNS
 
         discovered_count = 0
-        from entities import are_allies, are_enemies
+        from domain.players import are_allies, are_enemies
         for target_u in hex_obj.units:
             if are_allies(self.unit.owner, target_u.owner) and hasattr(target_u, 'infiltrating_agents'):
                 if distance(self.unit.position, target_u.position) <= INTELLIGENCE_OPERATIONAL_RANGE:
@@ -424,6 +458,11 @@ class EliminateAgentOrder(Order):
         super().__init__(unit, OrderType.ELIMINATE_AGENT, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        """Approach and remove the discovered hostile agent_id from an allied host.
+
+        Revalidates host relationship and discovery before elimination. Invalid
+        references fail the order; out-of-range work inserts a Move child.
+        Visibility eligibility belongs to the command/input boundary. Returns None."""
         super().execute(galaxy_ref)
 
         agent_id = self.parameters.get("agent_id")
@@ -478,7 +517,7 @@ class EliminateAgentOrder(Order):
             logger.debug(f"[{self.unit.name}] ELIMINATE_AGENT failed: agent {agent_id} not found.")
             return
 
-        from entities import are_allies, are_enemies
+        from domain.players import are_allies, are_enemies
         if (
             not agent.is_discovered
             or not are_enemies(self.unit.owner, agent.owner)
@@ -554,6 +593,11 @@ class ExtractAgentOrder(Order):
         super().__init__(unit, OrderType.EXTRACT_AGENT, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        """Recover an owned agent_id into this intelligence ship when in range.
+
+        Resolves the live host and checks receiver capacity before removal.
+        Approach work is inserted when needed; success releases the host link
+        and restores onboard agent capacity. Rule failures set FAILED."""
         super().execute(galaxy_ref)
 
         agent_id = self.parameters.get("agent_id")

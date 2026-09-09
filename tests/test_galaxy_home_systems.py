@@ -1,7 +1,9 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import pygame
-from entities import Player, Planet, Position
+from domain.players import Player
+from domain.celestials import Planet
+from geometry import Position
 from galaxy import StarSystem
 from game_settings import GameSettings, PlayerConfig, SpawnProfile
 from player_controller import PlayerController

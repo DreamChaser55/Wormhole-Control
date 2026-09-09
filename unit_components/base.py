@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from game import Game
 
 class UnitComponent:

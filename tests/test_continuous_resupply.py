@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_components import AntimatterHarvester, Commander
-from unit_orders import OrderStatus, OrderType, ContinuousResupplyOrder
-from entities import Star
+from unit_components.antimatter import AntimatterHarvester
+from unit_components.commander import Commander
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.antimatter import ContinuousResupplyOrder
+from domain.celestials import Star
 from events import ContinuousResupplyEvent, EventBus
 from order_system import OrderSystem
 from constants import HullSize, StarType

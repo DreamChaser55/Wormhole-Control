@@ -6,15 +6,17 @@ from constants import (
     TRADE_INCOME_PER_DISTANCE_UNIT, TRADE_INTERSYSTEM_HOP_DISTANCE,
     TRADE_ARRIVAL_RANGE,
 )
-from entities import Player, Unit, Planet
+from domain.players import Player
+from domain.units import Unit
+from domain.celestials import Planet
 from geometry import Position
 from galaxy import Galaxy, StarSystem
-from unit_components import (
-    TradeComponent, CivilianHabitatComponent, Engines, instantiate_unit_from_template
-)
-from unit_orders import (
-    OrderStatus, OrderType, TradeOrder, ContinuousTradeOrder
-)
+from unit_components.trade import TradeComponent
+from unit_components.civilian_habitat import CivilianHabitatComponent
+from unit_components.movement import Engines
+from unit_components.constructor import instantiate_unit_from_template
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.trade import TradeOrder, ContinuousTradeOrder
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig, HULL_RESTRICTIONS
 from gui.unit_editor_gui.catalog import COMPONENT_ROWS, COMPONENT_DESCRIPTIONS
 from save_manager import serialize_unit, deserialize_unit

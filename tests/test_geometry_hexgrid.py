@@ -115,7 +115,7 @@ def test_hexgrid_utils():
         assert isinstance(v, Position)
 
 def test_hex_coord_namedtuple():
-    from utils import HexCoord
+    from domain.coordinates import HexCoord
     coord = HexCoord(3, -2)
     assert coord.q == 3
     assert coord.r == -2

@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, List, Dict, Optional, Any
 from .base import UnitComponent
 
 if TYPE_CHECKING:
-    from entities import Unit, CelestialBody, Planet, Moon, ColonizableAsteroid
+    from domain.units import Unit
+    from domain.celestials import CelestialBody, Planet, Moon, ColonizableAsteroid
     from galaxy import Galaxy
     from game import Game
 
@@ -59,7 +60,7 @@ class CivilianHabitatComponent(UnitComponent):
         if not hex_obj:
             return False
 
-        from entities import Planet, Moon, ColonizableAsteroid
+        from domain.celestials import Planet, Moon, ColonizableAsteroid
         for body in hex_obj.celestial_bodies:
             if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
                 if getattr(body, 'owner', None) == self.unit.owner and getattr(body, 'population', 0) > 0:
@@ -129,7 +130,7 @@ class CivilianHabitatComponent(UnitComponent):
 
         sector_capacity = 0
         has_colonized_body = False
-        from entities import Planet, Moon, ColonizableAsteroid
+        from domain.celestials import Planet, Moon, ColonizableAsteroid
         for body in hex_obj.celestial_bodies:
             if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
                 if getattr(body, 'owner', None) == self.unit.owner and getattr(body, 'population', 0) > 0:

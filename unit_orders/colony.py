@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -8,7 +9,7 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,8 @@ def within_colony_range(unit, target):
 
 
 class ColonizeOrder(Order):
+    target_fields = (OrderTargetField('target_id', 'celestial', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.COLONIZE, parameters, parent_order)
 
@@ -93,6 +96,8 @@ class ColonizeOrder(Order):
 
 
 class LoadColonistsOrder(Order):
+    target_fields = (OrderTargetField('target_id', 'celestial', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.LOAD_COLONISTS, parameters, parent_order)
 

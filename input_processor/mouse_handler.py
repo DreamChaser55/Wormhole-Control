@@ -1,10 +1,11 @@
 """Mouse event processing, camera dragging, box selection, and click dispatch."""
+from display_config import display_config_for
 import typing
 import logging
 import pygame
 from geometry import Position, distance_sq
 import sys
-from entities import Unit
+from domain.units import Unit
 from events import UseAbilityEvent
 from input_processor.context_menu_builder import (
     build_system_context_menu_options,
@@ -138,7 +139,7 @@ def handle_mouse_button_up(game, gui, mouse_pos: Position, event: pygame.event.E
                     for unit in hex_obj.units:
                         if not game.is_unit_visible(unit):
                             continue
-                        unit_pixel_pos = sector_coords_to_pixels(unit.position, game.sector_zoom, game.sector_pan_offset)
+                        unit_pixel_pos = sector_coords_to_pixels(unit.position, game.sector_zoom, game.sector_pan_offset, display_config=display_config_for(game))
                         if selection_rect.collidepoint(unit_pixel_pos.to_tuple()):
                             selected_units_in_box.append(unit)
 
@@ -206,7 +207,7 @@ def handle_mouse_motion(game, mouse_pos: Position) -> None:
 def _get_shift_pressed() -> bool:
     try:
         return bool(pygame.key.get_mods() & pygame.KMOD_SHIFT)
-    except Exception:
+    except pygame.error:
         return False
 
 
@@ -238,7 +239,7 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
 
         if selected_units:
             clicked_object = game.sector_view_mouse_hover_object
-            clicked_sector_coord = pixels_to_sector_coords(position, game.sector_zoom, game.sector_pan_offset)
+            clicked_sector_coord = pixels_to_sector_coords(position, game.sector_zoom, game.sector_pan_offset, display_config=display_config_for(game))
 
             if is_right_click:
                 if requires_unit and isinstance(clicked_object, Unit):
@@ -341,8 +342,8 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
         if not isinstance(pan_offset, Position):
             pan_offset = Position(0, 0)
 
-        if is_pixel_in_sector(position, zoom, pan_offset):
-            clicked_sector_coord = pixels_to_sector_coords(position, zoom, pan_offset)
+        if is_pixel_in_sector(position, zoom, pan_offset, display_config=display_config_for(game)):
+            clicked_sector_coord = pixels_to_sector_coords(position, zoom, pan_offset, display_config=display_config_for(game))
             if is_right_click:
                 units_under_mouse = get_units_under_mouse(game, position)
                 if len(units_under_mouse) >= 2:

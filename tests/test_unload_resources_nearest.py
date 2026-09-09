@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_components import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent, Commander
-from unit_orders import OrderType
+from unit_components.mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
+from unit_components.commander import Commander
+from unit_orders.base import OrderType
 from constants import HullSize
 from tests.support.units import ComponentUnit, ComponentPlayer
 

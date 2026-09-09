@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -7,7 +8,7 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +22,15 @@ class UseAbilityOrder(Order):
     target position, no auto-movement is performed — the position is used directly.
     For self-targeted abilities neither target is required.
     """
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.USE_ABILITY, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
 
-        from unit_components import AbilityType
+        from unit_components.enums import AbilityType
 
         if not self.unit.ability_component:
             logger.debug(f"[{self.unit.name}] USE_ABILITY order failed: unit has no AbilityComponent.")
@@ -58,7 +61,7 @@ class UseAbilityOrder(Order):
             self.status = OrderStatus.FAILED
             return
 
-        from unit_components import ABILITY_DEFINITIONS
+        from unit_components.abilities import ABILITY_DEFINITIONS
         defn = ABILITY_DEFINITIONS.get(ability_type)
         if not defn:
             self.status = OrderStatus.FAILED
@@ -87,7 +90,7 @@ class UseAbilityOrder(Order):
                             )
                         self.status = OrderStatus.FAILED
                         return
-                from unit_components import Defenses
+                from unit_components.defenses import Defenses
                 if target_unit.weapons_component and not target_unit.weapons_component.is_destroyed:
                     logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} weapons are active.")
                     gui = getattr(getattr(self.unit, 'game', None), 'gui', None)

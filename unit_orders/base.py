@@ -4,14 +4,29 @@ import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING, Deque
 from enum import Enum, auto
 from collections import deque
+from dataclasses import dataclass
 
 from constants import HullSize
 
 if TYPE_CHECKING:
-    from galaxy import Galaxy, Wormhole
-    from entities import Unit
+    from galaxy import Galaxy
+    from domain.celestials import Wormhole
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class OrderTargetField:
+    """A parameter identifying an object; order classes own field meaning.
+
+    Only public fields participate in the existing observation's primary-target
+    selection. Agent hosts and relocation destinations retain their own visibility
+    contract and are not implicitly exposed through generic order serialization.
+    """
+    name: str
+    kind: str
+    public: bool = True
 
 
 class OrderStatus(Enum):
@@ -69,6 +84,20 @@ class Order:
     is considered complete. This creates a recursive order structure.
     """
     order_counter = 0
+    target_fields: tuple[OrderTargetField, ...] = ()
+
+    @property
+    def local_order_id(self) -> int:
+        """Process-local actuator/subtree identity; public commands use public_id."""
+        return self.order_id
+
+    def primary_target_reference(self):
+        """Return the first declared public (kind, ID), retaining legacy ID zero."""
+        for field in self.target_fields:
+            value = self.parameters.get(field.name)
+            if field.public and value is not None:
+                return field.kind, value
+        return None
 
     def __init__(self, unit: 'Unit', order_type: OrderType, parameters: Dict[str, Any] = None, parent_order: Optional['Order'] = None):
         self.unit = unit
@@ -125,12 +154,13 @@ class Order:
         logger.debug(f"  Added sub-order {sub_order.order_type.name} (id:{sub_order.order_id}) to order {self.order_type.name} (id:{self.order_id}) for unit {self.unit.name} (id:{self.unit.id}).")
         
     def remove_sub_order(self, order_id: typing.Union[str, int]) -> bool:
-        """Remove a sub-order from the queue by its ID.
+        """Remove a sub-order by its process-local ID (legacy keyword order_id).
         
         Returns True if the order was found and removed, False otherwise.
         """
-        for i, order in enumerate(self.sub_orders):
-            if order.order_id == order_id:
+        local_order_id = order_id
+        for order in self.sub_orders:
+            if order.order_id == local_order_id:
                 self.sub_orders.remove(order)
                 return True
         return False

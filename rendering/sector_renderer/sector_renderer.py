@@ -1,15 +1,14 @@
+from display_config import display_config_for
 import pygame
 import math
 from collections import OrderedDict
-from constants import (
-    SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL, WORMHOLE_RADIUS,
-    FOG_PRESENCE_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR,
-    TEXT_SCALE, XP_SPEED_BONUS
-)
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, WORMHOLE_RADIUS, FOG_PRESENCE_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, XP_SPEED_BONUS
 
 from sector_utils import sector_coords_to_pixels
 from geometry import Position
-from entities import Unit, OrderType, OrderStatus, Minefield
+from domain.units import Unit
+from unit_orders.base import OrderType, OrderStatus
+from domain.minefields import Minefield
 from rendering.drawing_utils import draw_shape, draw_dotted_line
 
 from rendering.sector_renderer.sector_grid_renderer import SectorGridRenderer
@@ -299,7 +298,7 @@ class SectorViewRenderer:
         zoom = self.game.sector_zoom
         if not isinstance(zoom, (int, float)):
             zoom = 1.0
-        dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
+        dynamic_radius = display_config_for(self.game).sector_radius * zoom
 
         # 1. Selection Box (if dragging)
         self.overlay_renderer.draw_selection_box()
@@ -329,7 +328,7 @@ class SectorViewRenderer:
         has_hidden = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
         
         if has_hidden and self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
-            font_size = max(12, int(14 * TEXT_SCALE))
+            font_size = max(12, int(14 * display_config_for(self.game).text_scale))
             hud_font = pygame.font.Font(None, font_size)
             text_surface = hud_font.render("WARNING: Enemy presence detected in sector", True, FOG_PRESENCE_COLOR)
             text_rect = text_surface.get_rect(center=(self.screen.get_width() // 2, 60))

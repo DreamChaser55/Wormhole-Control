@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -8,7 +9,7 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,8 @@ def resolve_component_type(comp_spec: Any) -> Optional[type]:
 
 
 class AttackOrder(Order):
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.ATTACK, parameters, parent_order)
 
@@ -113,7 +116,7 @@ class AttackOrder(Order):
 
         target_component_type = resolve_component_type(self.parameters.get("target_component_type"))
 
-        from entities import are_enemies
+        from domain.players import are_enemies
         weapons = self.unit.weapons_component
         if not target_unit or not are_enemies(self.unit.owner, target_unit.owner):
             self.fail("target_unavailable")
@@ -166,7 +169,7 @@ class AttackOrder(Order):
         galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
         target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None and galaxy else None
 
-        from entities import are_enemies
+        from domain.players import are_enemies
         if (
             not target_unit
             or target_unit.current_hit_points <= 0
@@ -262,7 +265,7 @@ class AttackOrder(Order):
         target_unit = galaxy_ref.get_unit_by_id(target_unit_id) if galaxy_ref else None
         target_component_type_str = self.parameters.get("target_component_type")
 
-        from entities import are_enemies
+        from domain.players import are_enemies
         if (
             not target_unit
             or target_unit.current_hit_points <= 0
@@ -304,7 +307,7 @@ class AttackOrder(Order):
         target_id = self.parameters.get("target_unit_id")
         target = galaxy_ref.get_unit_by_id(target_id) if target_id is not None else None
         weapons = self.unit.weapons_component
-        from entities import are_enemies
+        from domain.players import are_enemies
         if target and weapons and are_enemies(self.unit.owner, target.owner) and weapons.eligible_turrets_for(target):
             weapons.set_target(target, resolve_component_type(self.parameters.get("target_component_type")))
         elif weapons:
@@ -314,6 +317,8 @@ class AttackOrder(Order):
 
 
 class ProtectOrder(Order):
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.PROTECT, parameters, parent_order)
 
@@ -346,7 +351,7 @@ class ProtectOrder(Order):
             logger.debug(f"PROTECT order failed: Target unit {target_unit_id} not found.")
             return
 
-        from entities import are_allies
+        from domain.players import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
             self.fail("target_unavailable")
             logger.debug(f"PROTECT order failed: Target unit {target_unit.name} is not allied.")
@@ -385,7 +390,7 @@ class ProtectOrder(Order):
                     turn_num = getattr(galaxy_ref.game, 'turn_number', 1)
             visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
 
-        from entities import are_enemies
+        from domain.players import are_enemies
         from visibility import is_unit_visible
         for candidate in hex_obj.units:
             if are_enemies(self.unit.owner, candidate.owner) and candidate.current_hit_points > 0:
@@ -414,7 +419,7 @@ class ProtectOrder(Order):
         galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
         target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None and galaxy else None
 
-        from entities import are_allies
+        from domain.players import are_allies
         if (
             not target_unit
             or target_unit.current_hit_points <= 0
@@ -439,7 +444,7 @@ class ProtectOrder(Order):
                 has_attack_order = True
                 enemy_id = current_sub.parameters.get("target_unit_id")
                 enemy_unit = galaxy.get_unit_by_id(enemy_id) if enemy_id is not None and galaxy else None
-                from entities import are_enemies
+                from domain.players import are_enemies
 
                 is_in_range = False
                 if (enemy_unit and 

@@ -2,9 +2,10 @@
 import typing
 from constants import MAX_UNIT_XP, UPKEEP_COST_PER_HULL_POINT
 from economy import calculate_unit_upkeep
-from entities import Unit, are_enemies
+from domain.units import Unit
+from domain.players import are_enemies
 from component_visibility import component_is_public
-from unit_components import IntelligenceComponent
+from unit_components.intelligence import IntelligenceComponent
 
 
 def hit_point_style_id(unit: Unit) -> str:

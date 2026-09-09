@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_orders import OrderStatus, OrderType, RepairOrder
-from unit_components import RepairComponent
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.repair import RepairOrder
+from unit_components.repair import RepairComponent
 from tests.support.units import ComponentUnit
 
 

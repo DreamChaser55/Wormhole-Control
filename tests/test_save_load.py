@@ -6,14 +6,16 @@ import json
 from collections import deque
 from geometry import Position
 from constants import HullSize, StarType, PlanetType
-from entities import (
-    Player, GameObject, Star, Planet, Wormhole, Unit
-)
-from unit_components import UnitStance
-from unit_orders import (
-    AttackOrder, MoveOrder, OrderStatus, OrderType, PatrolOrder,
-    ORDER_CLASS_REGISTRY,
-)
+from domain.players import Player
+from domain.identity import GameObject
+from domain.celestials import Star, Planet, Wormhole
+from domain.units import Unit
+from unit_components.enums import UnitStance
+from unit_orders.combat import AttackOrder
+from unit_orders.movement import MoveOrder
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.patrol import PatrolOrder
+from unit_orders.registry import ORDER_CLASS_REGISTRY
 from utils import generate_short_id
 from save_manager import (
     serialize_player, deserialize_player,

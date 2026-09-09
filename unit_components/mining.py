@@ -7,7 +7,8 @@ from geometry import distance
 from constants import MINING_RATE_PER_HULL_POINT, MINING_CARGO_PER_HULL_POINT
 
 if TYPE_CHECKING:
-    from entities import Unit, CelestialBody
+    from domain.units import Unit
+    from domain.celestials import CelestialBody
     from galaxy import Galaxy
     from game import Game
 
@@ -114,7 +115,7 @@ class MiningComponent(UnitComponent):
         available_space = self.max_cargo - total_cargo
         amount_to_mine = min(self.mining_rate, available_space)
 
-        from entities import MetalAsteroid, Comet
+        from domain.celestials import MetalAsteroid, Comet
         if isinstance(self.mining_target, MetalAsteroid):
             # Infinite yield: we extract mining_rate without depleting the asteroid
             self.raw_metal_cargo += amount_to_mine

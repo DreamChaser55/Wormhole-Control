@@ -6,11 +6,11 @@
 
 ## Current assessment
 
-The remaining finding is **WC-016: maintainability risk concentrated in dispatchers and import boundaries**. Command interpretation, presentation, component construction and turn processing still distribute related rules across several modules. Changes to one mechanic can therefore require coordinated edits in human input, AI validation, order execution and rendering.
+The remaining finding is **WC-016: maintainability risk concentrated in mechanic dispatchers**. Command interpretation, presentation, component construction and turn processing still distribute related rules across several modules. Changes to one mechanic can therefore require coordinated edits in human input, AI validation, order execution and rendering.
 
-This report describes remaining work rather than a fresh gameplay audit. The recommendations below distinguish the open architecture finding from maintenance follow-ups and optional extensions. No new test run or runtime warning measurement is claimed here.
+This report distinguishes the still-open mechanic-consolidation work from the completed import/ownership maintenance sprint and optional extensions. Roadmap points #2 and #3 have been implemented within their agreed incremental scope. The final local Windows Python 3.12.14 run passed **1,371 tests and 10 subtests with no warnings**. Native desktop scale checks and the CI platform matrix remain external validation, not claimed local results.
 
-## WC-016 — dispatchers and import boundaries
+## WC-016 — mechanic dispatchers (still open)
 
 **Severity:** Maintainability. **Confidence:** Confirmed. **Status:** Open.
 
@@ -34,57 +34,38 @@ Decompose by mechanic: let each command, order or component descriptor supply ap
 
 The intended outcome is fewer independent interpretations of a mechanic. Splitting long functions into arbitrary helpers alone would leave the maintenance risk in place.
 
-### Core/UI coupling and implicit exports
+## Completed maintenance sprint — roadmap #2 and #3
 
-`game.py` eagerly imports GUI and rendering modules. `entities.py` aggregates players, celestial bodies, units, diplomacy and component/order imports. Some consumers use those imported names as indirect APIs; for example, `game.py` imports `Order` through `entities.py` rather than its defining module, `unit_orders/base.py`.
+### Import and ownership boundaries
 
-Move consumers toward imports from defining modules. Make any intentionally supported compatibility exports explicit and migrate their consumers gradually. Separate stable domain groups and UI adapters incrementally, with a core import boundary that does not require a display or GUI initialization.
+- Display discovery, fullscreen environment handling and Windows DPI setup now live in explicit application bootstrap. `DisplayConfig` supplies per-instance metrics to GUI, rendering, cameras and input. Constants expose fixed compatibility defaults; importing core modules cannot initialize or query a display.
+- Canonical domain groups contain coordinates/object identity, communications, players/diplomacy, celestial bodies, minefields and units. `entities`, `unit_orders` and `unit_components` preserve explicit lazy compatibility exports and class identity. Repository consumers use defining modules; the existing order registry remains authoritative.
+- `TurnProcessor` delegates notifications, communications refresh and AI timing to an application adapter. Standalone domain use has a null presentation port. `Game.turn_processor` is canonical, with `turn_manager` forwarding to it.
+- Commander retains queue/stance ownership and consolidates foreground retirement. Order retains subtree transitions and once-only outcomes; concrete orders retain actuator cleanup and charge/refund ownership. Restore uses its dedicated non-replaying path. No additional lifecycle framework was introduced.
 
-### Import-time platform initialization
+### Contracts and GUI polish
 
-`constants.py` changes Windows DPI awareness at module scope and calls `detect_screen_resolution` to initialize `SCREEN_RES`. That helper can initialize, query and quit the Pygame display. Importing domain constants can consequently manipulate process-global GUI state and make import order significant.
+- Internal naming and the `local_order_id` alias distinguish process-local order identity from public UUIDs; wire/save fields remain unchanged. New coordinate contracts use `HexCoord` and `hex_coord`, retaining historical keywords. The pulsar drain constant now names antimatter, with an old-name alias.
+- Order classes declare narrow target-field metadata for generic inspection, including object namespaces and private agent-host handling. This does not consolidate mechanic dispatch or eligibility and does not add a parallel mechanic catalog.
+- Ownership APIs, synchronous events and intelligence execution document validation responsibility, immediate/delayed effects, failure behavior and cleanup. Predictable platform/conversion catches were narrowed; GUI/I/O/thread containment and command partial-commit recovery remain. The [exception review](docs/ARCHITECTURE_BOUNDARIES.md#exception-review) records retained boundaries.
+- Rich-text font variants preload idempotently for application and standalone designer/retrofit managers. Retrofit turret summaries wrap to measured width. The previous targeted baseline was 89 passes with 20 warnings; the affected scenarios are now warning-free.
 
-Move OS/display initialization into application bootstrap and provide the computed display configuration to UI code. Keep game-rule constants independent of display discovery.
+### Quality checks and validation limits
 
-## Additional maintenance recommendations
-
-### Contracts, naming and domain ownership
-
-Document non-trivial public state-changing functions with their purpose, inputs, return values, failure behavior, side effects and ownership rules. Prioritize domain mutations, event handlers, command entry points and intelligence orders. Explain surprising lifecycle, cadence, canonical-state and visibility constraints where callers need them; avoid comment-density targets and comments that merely restate control flow.
-
-Retain these API consistency improvements:
-
-- Distinguish external `order_id` values (`Order.public_id`) from process-local `Order.order_id` values in internal naming or explicit aliases, preserving published interfaces during migration.
-- Align `game.turn_manager` with its `TurnProcessor` role, and standardize axial-coordinate vocabulary across `in_hex`, `hex_coord`, `sector` and `sector_coord`.
-- Give generic target-handling code explicit metadata for object-specific target fields rather than guessing among field names. Standardize component naming through stable registry keys before considering broad class renames.
-- Rename `PULSAR_SHIELD_DRAIN_PERCENT` to reflect its antimatter-drain use in `TurnProcessor._process_environmental_hazards`.
-- Consider distinct position/displacement types where they prevent meaningful mistakes; `geometry.py` currently aliases `Position` to `Vector`.
-- Use a consistent annotation style compatible with the documented Python 3.10 minimum.
-
-Process-global object and order counters remain an isolation concern. Campaign-owned allocation and smaller domain groups could reduce cross-imports and make independent simulations easier to run.
-
-A general model of legal order transitions remains an architectural extension. Focus on consolidating transition ownership across order types and explicit/standing work, rather than adding another lifecycle layer with overlapping responsibilities.
-
-### Exception handling and GUI polish
-
-Review broad exception handlers in internal state transitions. Retain appropriate containment at I/O, GUI and thread boundaries; narrow internal catches or propagate programming failures with safe diagnostics. This is a general review recommendation, not a claim of a newly confirmed runtime defect.
-
-Investigate residual `pygame_gui` layout and font warnings using the affected designer, wizard and other GUI scenarios. Adjust sizing and font preloading where needed, and verify the affected views at supported display scales. Establish the current warning set before making claims about its size or severity.
-
-### Quality automation and testing extensions
-
-- Extend lint and type checking incrementally beyond the current undefined-name rules, concentrating on domain boundaries and public contracts.
-- Consider meaningful core-logic coverage gates and stricter reproducible runtime dependency resolution; the OpenAI SDK currently uses a version range.
-- Add property-based exploration for save round trips, ID allocation, galaxy settings and geometric routing. Preserve existing focused behavior tests rather than duplicating them.
-- Treat deterministic replay and broader compatibility snapshots as optional extensions described below.
+- Added static core dependency checks, fresh-process blocked-import/display tests, focused F/E9 lint and strict mypy checks on new boundary contracts. Existing generated-reference and behavior gates remain.
+- Real widgets were tested at 1280×720, 1920×1080 and 2560×1440, including designer, both wizard stages, retrofit, HUD and dialogs. Representative rendered images were visually inspected. Missing/duplicate font-preload and undersized-label warnings are blocking failures in these scenarios.
+- The local full suite passed 1,371 tests plus 10 subtests without warnings. Targeted lint, mypy, import-boundary checks and generated-reference consistency passed. Windows subprocess checks verify per-monitor DPI awareness. Linux Python 3.10/3.14 and Windows Python 3.14 remain configured in CI; this host's local runtime is Windows Python 3.12.14.
+- Physical Windows desktop checks at 100%, 150% and 200% scaling remain a release validation task. Automated tests do not alter the user's desktop settings or claim to replace those checks.
 
 ## Remaining roadmap
 
-1. **Consolidate mechanic interpretation.** Select one command/component family, extend its existing descriptors, and migrate its human input, AI guidance/validation, construction and presentation consumers. Preserve public behavior while reducing duplicated decisions.
-2. **Establish import and ownership boundaries.** Move display discovery to bootstrap, migrate implicit imports to defining modules, and separate stable domain groups. Consolidate general order-transition ownership where it simplifies existing behavior.
-3. **Improve contracts and polish.** Address the naming, docstring, exception-review and GUI recommendations above. Introduce broader quality gates incrementally as their signal becomes useful.
+1. **Consolidate mechanic interpretation — open, separate sprint.** Select one command/component family, extend its existing descriptors, and migrate human input, AI guidance/validation, construction and presentation consumers. Preserve public behavior while reducing duplicated decisions.
+2. **Establish import and ownership boundaries — implemented.** Preserve the new bootstrap, domain dependency direction and existing transition owners as mechanic work proceeds.
+3. **Improve contracts and polish — implemented within the focused scope.** Maintain the new checks and complete the external display-scale/platform validation described above.
 
-Acceptance should be demonstrated through preserved gameplay and public contracts, fewer parallel rule definitions, and domain imports that do not initialize a display. Feature extensions below are separate choices, not prerequisites for this refactoring.
+Campaign-owned allocation, a generalized lifecycle framework, distinct position/displacement classes, property-based exploration, coverage thresholds and dependency locking were explicitly deferred. A standalone headless simulation API is also deferred. The feature opportunities below remain separate choices, not prerequisites for this sprint.
+
+See [import, display and mutation boundaries](docs/ARCHITECTURE_BOUNDARIES.md) for the canonical module map, public compatibility contracts and review decisions.
 
 ## Optional design opportunities
 

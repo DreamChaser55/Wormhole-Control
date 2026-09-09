@@ -1,3 +1,4 @@
+from display_config import display_config_for
 import logging
 
 logger = logging.getLogger(__name__)
@@ -7,7 +8,7 @@ import pygame_gui
 import typing
 from pygame import Color
 
-from constants import INFO_BOX_WIDTH, TOP_BAR_HEIGHT, BLUE
+from constants import BLUE
 from utils import ContextMenuOption
 from geometry import Vector, Position
 from .theme_loader import build_ui_manager
@@ -17,14 +18,17 @@ from .sidebar import view as sidebar_view
 from .communications_window import CommunicationsWindow
 if typing.TYPE_CHECKING:
     from game import Game
-    from entities import Player, Unit
+    from domain.players import Player
+    from domain.units import Unit
     from .unit_editor_gui import UnitEditorWindow
     from .retrofit_gui import RetrofitWizardWindow
 
 
 class GUI_Handler:
     """Manages the Pygame GUI elements."""
-    def __init__(self, screen_res: Vector, game_instance: 'Game'):
+    def __init__(self, screen_res: Vector, game_instance: 'Game', *, display_config=None):
+        from display_config import display_config_for
+        self.display_config = display_config or display_config_for(screen_res)
         self.screen_res = screen_res
         self.game_instance = game_instance
         self.scale_x = screen_res.x / 1280.0

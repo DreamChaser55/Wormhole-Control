@@ -5,7 +5,8 @@ import dataclasses
 from .base import UnitComponent
 
 if TYPE_CHECKING:
-    from entities import Unit, Planet
+    from domain.units import Unit
+    from domain.celestials import Planet
     from game import Game
 
 logger = logging.getLogger(__name__)

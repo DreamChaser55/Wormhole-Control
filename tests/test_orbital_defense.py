@@ -9,11 +9,14 @@ from constants import (
     ORBITAL_DEFENSE_HULL_COST,
 )
 from geometry import Position
-from entities import Player, Unit, Planet, Moon, ColonizableAsteroid, MetalAsteroid
+from domain.players import Player
+from domain.units import Unit
+from domain.celestials import Planet, Moon, ColonizableAsteroid, MetalAsteroid
 from galaxy import Galaxy, StarSystem
-from unit_components import (
-    OrbitalDefenseComponent, Weapons, Turret, Defenses, TurretType,
-)
+from unit_components.orbital_defense import OrbitalDefenseComponent
+from unit_components.weapons import Weapons, Turret
+from unit_components.defenses import Defenses
+from unit_components.enums import TurretType
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig
 from gui.unit_editor_gui.catalog import COMPONENT_ROWS, COMPONENT_DESCRIPTIONS
 from save_manager import serialize_unit, deserialize_unit

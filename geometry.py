@@ -2,7 +2,7 @@ import typing
 import math
 import random
 import dataclasses
-from utils import HexCoord
+from domain.coordinates import HexCoord
 
 # --- Vector Class ---
 @dataclasses.dataclass

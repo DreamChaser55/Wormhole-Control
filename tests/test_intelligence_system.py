@@ -31,31 +31,17 @@ from constants import (
     CI_SWEEP_ANTIMATTER_COST,
     CI_SWEEP_COOLDOWN_TURNS,
 )
-from entities import Player, Unit, Planet
-from unit_components import (
-    Sensors,
-    Engines,
-    Hyperdrive,
-    HyperdriveType,
-    Weapons,
-    Turret,
-    TurretType,
-    Defenses,
-    IntelligenceComponent,
-    Agent,
-    SabotageType,
-)
-from unit_orders import (
-    InfiltrateUnitOrder,
-    InfiltratePlanetOrder,
-    RelocateAgentOrder,
-    SabotageOrder,
-    CISweepOrder,
-    EliminateAgentOrder,
-    ExtractAgentOrder,
-    OrderStatus,
-    OrderType,
-)
+from domain.players import Player
+from domain.units import Unit
+from domain.celestials import Planet
+from unit_components.sensors import Sensors
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType, TurretType, SabotageType
+from unit_components.weapons import Weapons, Turret
+from unit_components.defenses import Defenses
+from unit_components.intelligence import IntelligenceComponent, Agent
+from unit_orders.intelligence import InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder, CISweepOrder, EliminateAgentOrder, ExtractAgentOrder
+from unit_orders.base import OrderStatus, OrderType
 from visibility import VisibilityService
 from galaxy import Galaxy, StarSystem
 from custom_unit_templates import (
@@ -724,7 +710,7 @@ def test_friendly_unit_intelligence_visible_in_sidebar(test_setup):
 
 def test_enemy_unit_intelligence_hidden_from_attack_context_menu(test_setup):
     from input_processor.context_menu_builder import build_sector_context_menu_options
-    from unit_components import HyperspaceInhibitionFieldEmitter
+    from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
     p1, p2, galaxy, system, game = test_setup
 
     # Player 1 warship with weapons

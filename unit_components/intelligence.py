@@ -6,7 +6,9 @@ from .base import UnitComponent
 from .enums import SabotageType
 
 if TYPE_CHECKING:
-    from entities import Unit, Player, CelestialBody
+    from domain.units import Unit
+    from domain.players import Player
+    from domain.celestials import CelestialBody
     from game import Game
 
 logger = logging.getLogger(__name__)
@@ -189,7 +191,7 @@ class IntelligenceComponent(UnitComponent):
             logger.debug(f"[{self.unit.name}] Intelligence component cannot deploy agent: no available agents.")
             return None
 
-        from entities import Unit
+        from domain.units import Unit
         target_type = "UNIT" if isinstance(target_obj, Unit) else "CELESTIAL_BODY"
 
         agent = Agent(
@@ -244,7 +246,7 @@ class IntelligenceComponent(UnitComponent):
             if getattr(game_state, 'players', None) and 0 <= getattr(game_state, 'current_player_index', 0) < len(game_state.players)
             else getattr(game_state, 'current_player', None)
         )
-        from entities import are_enemies
+        from domain.players import are_enemies
         return are_enemies(current_player, self.unit.owner)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:

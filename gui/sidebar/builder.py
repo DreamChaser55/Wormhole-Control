@@ -2,7 +2,9 @@
 import logging
 import constants
 from utils import Timer, color_to_hex
-from entities import CelestialBody, Minefield, Unit
+from domain.celestials import CelestialBody
+from domain.minefields import Minefield
+from domain.units import Unit
 from galaxy import StarSystem, Hex
 from .panels_world import (
     build_system_panel, build_hex_panel,

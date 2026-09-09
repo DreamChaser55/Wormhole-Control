@@ -1,7 +1,9 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_orders import OrderStatus, ReachWaypointOrder
-from unit_components import Engines, Hyperdrive, HyperdriveType
+from unit_orders.base import OrderStatus
+from unit_orders.movement import ReachWaypointOrder
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType
 from unit_components.movement import JumpStatus
 from tests.support.units import ComponentUnit
 

@@ -13,9 +13,9 @@ Coverage:
 
 import pytest
 from unittest.mock import patch
-from unit_components import (
-    Turret, TurretType, TurretVariant, Defenses,
-)
+from unit_components.weapons import Turret
+from unit_components.enums import TurretType, TurretVariant
+from unit_components.defenses import Defenses
 from constants import (
     HullSize,
     MAX_UNIT_XP,
@@ -24,7 +24,7 @@ from constants import (
     XP_SPEED_BONUS,
     XP_JUMP_RANGE_BONUS,
 )
-from entities import Unit
+from domain.units import Unit
 from tests.support.campaigns import campaign, ship
 
 

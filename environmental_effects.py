@@ -20,7 +20,7 @@ class EnvironmentalModifiers:
 
 def effects_for_body(body):
     """Return public numeric effects for an already-visible celestial body."""
-    from entities import IceField, DebrisField, Nebula
+    from domain.celestials import IceField, DebrisField, Nebula
     if isinstance(body, IceField):
         return {'cooldown_reduction': ICE_FIELD_COOLDOWN_REDUCTION,
                 'beam_cover': body.beam_defense_bonus}

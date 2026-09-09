@@ -66,7 +66,8 @@ def discovered_enemy_agent_hosts(galaxy: Any, player: Any) -> list[tuple[Any, An
 
 
 def host_kind(host: Any) -> str | None:
-    from entities import ColonizableAsteroid, Moon, Planet, Unit
+    from domain.celestials import ColonizableAsteroid, Moon, Planet
+    from domain.units import Unit
 
     if isinstance(host, Unit):
         return "unit"

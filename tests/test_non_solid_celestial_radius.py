@@ -7,12 +7,9 @@ from constants import (
     SECTOR_CIRCLE_RADIUS_IN_PX, PlanetType, NebulaType, StormType, StarType,
     FieldDensity, HYDROGEN_NEBULA_HARVEST_MULTIPLIER
 )
-from entities import (
-    AsteroidField, IceField, DebrisField, Nebula, Storm,
-    Planet, Star
-)
+from domain.celestials import AsteroidField, IceField, DebrisField, Nebula, Storm, Planet, Star
 from geometry import Position
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from game_ai.observation import _body_view
 from game_ai.rules import is_antimatter_source
 from rendering.sector_renderer.sector_celestial_renderer import SectorCelestialRenderer

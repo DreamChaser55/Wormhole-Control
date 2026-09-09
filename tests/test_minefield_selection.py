@@ -2,8 +2,8 @@ import pytest
 from player_controller import PlayerController
 from unittest.mock import MagicMock
 from geometry import Position
-from entities import Minefield
-from unit_components import MinefieldType
+from domain.minefields import Minefield
+from unit_components.enums import MinefieldType
 from input_processor import InputProcessor
 from sector_utils import get_minefield_dot_pixel_positions
 from galaxy import Galaxy, StarSystem, Hex

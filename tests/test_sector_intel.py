@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock
-from entities import Player, Unit, Position
+from domain.players import Player
+from domain.units import Unit
+from geometry import Position
 from constants import HullSize
 from galaxy import StarSystem, Galaxy
-from unit_components import Sensors
+from unit_components.sensors import Sensors
 from visibility import VisibilityService
 from gui.sidebar.panels_world import build_hex_panel
 from save_manager import serialize_player, deserialize_player

@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_orders import OrderStatus, OrderType, MineOrder
-from unit_components import MiningComponent
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.mining import MineOrder
+from unit_components.mining import MiningComponent
 from tests.support.units import ComponentUnit
 
 

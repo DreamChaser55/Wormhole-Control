@@ -1,7 +1,7 @@
 """HTML order-text formatting utilities for UI sidebar order queues."""
 import typing
 from geometry import Position
-from entities import Order
+from unit_orders.base import Order
 
 # Styling color constants
 MOVE_TYPE_COLOR = "#87CEEB"            # Cyan for Move order type

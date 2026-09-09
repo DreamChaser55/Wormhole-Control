@@ -2,17 +2,23 @@ import pytest
 from player_controller import PlayerController
 import unittest
 from turn_processor import TurnProcessor
-from entities import Unit, Player, HullSize, Planet
+from domain.units import Unit
+from domain.players import Player
+from constants import HullSize
+from domain.celestials import Planet
 from geometry import Position
-from utils import HexCoord
-from unit_components import (
-    Commander, Engines, Hyperdrive, HyperdriveType, ColonyComponent,
-    MiningComponent, AbilityComponent, AbilityType
-)
+from domain.coordinates import HexCoord
+from unit_components.commander import Commander
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType, AbilityType
+from unit_components.colony import ColonyComponent
+from unit_components.mining import MiningComponent
+from unit_components.abilities import AbilityComponent
 from events import (
     IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent, ColonizeEvent, MineEvent, DockEvent
 )
-from unit_orders import MoveOrder, UseAbilityOrder
+from unit_orders.movement import MoveOrder
+from unit_orders.abilities import UseAbilityOrder
 from game_actions import unit_actions
 
 

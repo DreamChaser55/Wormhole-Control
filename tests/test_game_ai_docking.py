@@ -3,14 +3,12 @@ import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
-from entities import Player, Unit
+from domain.players import Player
+from domain.units import Unit
 from galaxy import Galaxy, StarSystem
-from unit_components import (
-    Commander,
-    HangarComponent,
-    StrikecraftBayComponent,
-    StrikecraftWingComponent,
-)
+from unit_components.commander import Commander
+from unit_components.hangar import HangarComponent
+from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
 from game_ai.contracts import Command, CommandBatch, SUPPORTED_COMMANDS
 from game_ai.rules import supported_commands, command_guidance
 from game_ai.observation import COMMAND_HELP

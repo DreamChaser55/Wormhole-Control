@@ -25,7 +25,7 @@ def iter_objects(galaxy):
 
 
 def iter_units(galaxy):
-    from entities import Unit
+    from domain.units import Unit
     for obj, container in iter_objects(galaxy):
         if isinstance(obj, Unit):
             yield obj, container

@@ -1,9 +1,10 @@
 """Sidebar view widget factory, section state tracking, and clearing."""
+from display_config import display_config_for
 import typing
 import pygame
 import pygame_gui
 
-from constants import INFO_BOX_WIDTH, TEXT_SCALE
+
 
 
 def clear_side_bar_content(gui) -> None:
@@ -208,7 +209,7 @@ def update_side_bar_content(gui, data_list: typing.List[dict]) -> None:
     element_padding = 3
     gap = 4
     base_container_rect = gui.side_bar_info_panel.get_container().get_rect()
-    base_container_width = base_container_rect.width if base_container_rect else INFO_BOX_WIDTH
+    base_container_width = base_container_rect.width if base_container_rect else display_config_for(gui).info_box_width
     indent_size = 15
 
     rows: typing.List[typing.List[dict]] = []
@@ -238,7 +239,7 @@ def update_side_bar_content(gui, data_list: typing.List[dict]) -> None:
             item_type = item_data.get('type')
             object_id_str = item_data.get('object_id', None)
             class_id_str = item_data.get('class_id', None)
-            height_from_data = int(item_data.get('height', 25) * TEXT_SCALE)
+            height_from_data = int(item_data.get('height', 25) * display_config_for(gui).text_scale)
 
             target_container_for_element = gui.side_bar_info_panel.get_container()
             current_element_y = current_y_offset

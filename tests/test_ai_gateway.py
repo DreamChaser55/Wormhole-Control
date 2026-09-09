@@ -16,7 +16,8 @@ from tests.support.ai import _Player, _unit
 class TestInformationBoundaryAndGateway(unittest.TestCase):
     @staticmethod
     def _colony_fixture(*, population=50, unit_count=1):
-        from entities import Moon, Planet, PlanetType
+        from domain.celestials import Moon, Planet
+        from constants import PlanetType
 
         player = _Player(1, 1)
         units = [_unit(10 + index, player) for index in range(unit_count)]
@@ -57,7 +58,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         *, positions=((0, 0),), active_ids=(), static_zones=()
     ):
         from geometry import Circle, Position
-        from unit_components import HyperspaceInhibitionFieldEmitter
+        from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
 
         player = _Player(1, 1)
         units = [_unit(10 + index, player) for index in range(len(positions))]
@@ -430,7 +431,8 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         self.assertEqual(unit.commander_component.clear_count, 0)
 
     def test_colony_sources_targets_and_capacity_are_validated_before_commit(self):
-        from entities import Star, StarType
+        from domain.celestials import Star
+        from constants import StarType
 
         def assert_rejected(configure, make_command, expected_code):
             player, units, source, target, game = self._colony_fixture()
@@ -527,7 +529,8 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         self.assertEqual(unit_view["conditional_commands"][0]["type"], "colonize")
 
     def test_hybrid_observation_summarizes_remote_neutral_bodies(self):
-        from entities import Moon, Planet, PlanetType, Star, StarType
+        from domain.celestials import Moon, Planet, Star
+        from constants import PlanetType, StarType
 
         player = _Player(1, 1)
         unit = _unit(10, player)
@@ -594,7 +597,8 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         )
 
     def test_large_hybrid_observation_stays_below_character_budget(self):
-        from entities import Planet, PlanetType, Star, StarType
+        from domain.celestials import Planet, Star
+        from constants import PlanetType, StarType
 
         player = _Player(1, 1)
         unit = _unit(10, player)
@@ -640,7 +644,9 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
     @staticmethod
     def _combat_fixture():
         from geometry import Position
-        from unit_components import Engines, Weapons, Hyperdrive, HyperdriveType
+        from unit_components.movement import Engines, Hyperdrive
+        from unit_components.weapons import Weapons
+        from unit_components.enums import HyperdriveType
 
         player = _Player(1, 1)
         enemy_player = _Player(2, 2)
@@ -648,7 +654,8 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         my_unit = _unit(10, player)
         my_unit.engines_component = Engines(my_unit, speed=50.0)
         my_unit.weapons_component = Weapons(my_unit)
-        from unit_components import Turret, TurretType
+        from unit_components.weapons import Turret
+        from unit_components.enums import TurretType
         my_unit.weapons_component.add_turret(Turret(TurretType.MASS_DRIVER, 20, 300, 1, my_unit))
         my_unit.components = {
             Engines: my_unit.engines_component,

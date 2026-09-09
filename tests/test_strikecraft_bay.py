@@ -1,15 +1,16 @@
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
-from unit_components import StrikecraftWingComponent, StrikecraftBayComponent
-from unit_orders import OrderStatus, DockOrder, DeployUnitOrder, DeployAllWingsOrder
+from unit_components.strikecraft import StrikecraftWingComponent, StrikecraftBayComponent
+from unit_orders.base import OrderStatus
+from unit_orders.hangar import DockOrder, DeployUnitOrder, DeployAllWingsOrder
 from tests.support.units import ComponentUnit as BaseMockUnit
 
 
 class MockUnit(BaseMockUnit):
     @property
     def hangar_component(self):
-        from unit_components import HangarComponent
+        from unit_components.hangar import HangarComponent
         return self.get_component(HangarComponent)
 
     @property

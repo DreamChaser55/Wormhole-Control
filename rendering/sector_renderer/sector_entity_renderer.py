@@ -1,11 +1,9 @@
+from display_config import display_config_for
 import sys
-from constants import (
-    SECTOR_CIRCLE_RADIUS_LOGICAL, WHITE, RED,
-    HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE,
-    ICON_DOT_RADIUS, ICON_DOT_SPACING, TEXT_SCALE
-)
-from entities import Unit, Minefield
-from unit_components import MinefieldType
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, WHITE, RED, HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE, ICON_DOT_RADIUS, ICON_DOT_SPACING
+from domain.units import Unit
+from domain.minefields import Minefield
+from unit_components.enums import MinefieldType
 
 
 def _sr():
@@ -189,7 +187,7 @@ class SectorEntityRenderer:
             if dot_bottom > bottom_y:
                 bottom_y = dot_bottom
                 
-        name_font_size = max(1, int(10 * TEXT_SCALE))
+        name_font_size = max(1, int(10 * display_config_for(self.game).text_scale))
         if name_font_size not in self.parent._font_cache:
             self.parent._font_cache[name_font_size] = _sr().pygame.font.Font(None, name_font_size)
         name_font = self.parent._font_cache[name_font_size]
@@ -206,7 +204,7 @@ class SectorEntityRenderer:
                 agent = next((ag for ag in getattr(unit_obj, 'infiltrating_agents', []) if ag.owner == current_viewer), None)
                 badge_text = f"[SABOTAGED: {agent.active_sabotage.name}]" if (agent and agent.active_sabotage) else "[INFILTRATED]"
                 badge_color = (255, 140, 40) if (agent and agent.active_sabotage) else (50, 220, 255)
-                badge_font_size = max(1, int(9 * TEXT_SCALE))
+                badge_font_size = max(1, int(9 * display_config_for(self.game).text_scale))
                 if badge_font_size not in self.parent._font_cache:
                     self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
                 badge_font = self.parent._font_cache[badge_font_size]
@@ -220,7 +218,7 @@ class SectorEntityRenderer:
                 if has_discovered:
                     badge_text = "[DISCOVERED SPY]"
                     badge_color = (255, 100, 100)
-                    badge_font_size = max(1, int(9 * TEXT_SCALE))
+                    badge_font_size = max(1, int(9 * display_config_for(self.game).text_scale))
                     if badge_font_size not in self.parent._font_cache:
                         self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
                     badge_font = self.parent._font_cache[badge_font_size]

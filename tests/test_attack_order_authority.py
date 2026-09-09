@@ -1,7 +1,10 @@
 import pytest
 from geometry import Position
-from unit_components import Commander, Turret, TurretType, Weapons
-from unit_orders import AttackOrder, Order, OrderStatus, OrderType
+from unit_components.commander import Commander
+from unit_components.weapons import Turret, Weapons
+from unit_components.enums import TurretType
+from unit_orders.combat import AttackOrder
+from unit_orders.base import Order, OrderStatus, OrderType
 from tests.support.units import ComponentUnit
 
 

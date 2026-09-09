@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from geometry import Position
-from entities import Player
+from domain.players import Player
 from game_ai.contracts import Command, CommandBatch, TurnPlan, SUPPORTED_COMMANDS
 from game_ai.schema import responses_text_config, TURN_PLAN_SCHEMA
 from game_ai.observation import build_observation, COMMAND_HELP

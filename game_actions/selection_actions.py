@@ -1,7 +1,7 @@
 """GUI action handlers for selection and sidebar-state switching."""
 import logging
 import typing
-from entities import Minefield
+from domain.minefields import Minefield
 
 logger = logging.getLogger(__name__)
 

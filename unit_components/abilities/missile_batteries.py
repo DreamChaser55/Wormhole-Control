@@ -3,7 +3,7 @@ import math
 from typing import Optional, List, TYPE_CHECKING
 from geometry import Position, distance
 from constants import HullSize
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from ..enums import AbilityType, TurretType
 from ..weapons import Weapons, Turret
 from .base import AbilityDefinition, AbilityInstance
@@ -64,7 +64,7 @@ class MissileBatteriesAbility(AbilityInstance):
         deploy_radius: float = 60.0,
     ) -> List[int]:
         """Spawns temporary missile platform units around the caster and returns their IDs."""
-        from entities import Unit
+        from domain.units import Unit
         spawned_ids = []
         for i in range(num_platforms):
             angle = (2 * math.pi / num_platforms) * i
@@ -105,8 +105,8 @@ class MissileBatteriesAbility(AbilityInstance):
 
     def _auto_target_platforms(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
         """Issue Attack orders against the nearest enemy for active missile platforms."""
-        from unit_orders import AttackOrder
-        from entities import are_enemies
+        from unit_orders.combat import AttackOrder
+        from domain.players import are_enemies
 
         system = galaxy.systems.get(component.unit.in_system)
         if not system:

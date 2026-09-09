@@ -3,15 +3,18 @@ import pytest
 import pygame
 import pygame_gui
 from geometry import Position
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from constants import HullSize
-from entities import Unit, Player
+from domain.units import Unit
+from domain.players import Player
 from galaxy import Galaxy, StarSystem
 from events import EventBus
 from order_system import OrderSystem
-from unit_components import (
-    Constructor, Engines, Defenses, AbilityComponent, AbilityType
-)
+from unit_components.constructor import Constructor
+from unit_components.movement import Engines
+from unit_components.defenses import Defenses
+from unit_components.abilities import AbilityComponent
+from unit_components.enums import AbilityType
 from gui.retrofit_gui import RetrofitWizardWindow
 from game_actions import handle_gui_action
 from input_processor import InputProcessor

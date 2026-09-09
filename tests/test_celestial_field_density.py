@@ -4,11 +4,10 @@ from constants import (
     FieldDensity, HullSize, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
     DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE
 )
-from entities import (
-    AsteroidField, DebrisField, IceField, Player, Unit,
-    is_position_blocked_by_celestial_field
-)
-from utils import HexCoord
+from domain.celestials import AsteroidField, DebrisField, IceField, is_position_blocked_by_celestial_field
+from domain.players import Player
+from domain.units import Unit
+from domain.coordinates import HexCoord
 from geometry import Position
 from galaxy import StarSystem, Hex, Galaxy
 
@@ -121,7 +120,7 @@ def test_movement_obstacle_detection():
 
 def test_order_rejection_hazard_blocked():
     from unit_orders.movement import ReachWaypointOrder
-    from unit_components import Engines
+    from unit_components.movement import Engines
 
     system = StarSystem(name="Gamma", position=(0.0, 0.0))
     hex_coord = HexCoord(0, 0)
@@ -215,7 +214,8 @@ def test_ai_observation_and_command_validation():
 
 def test_turn_processor_boundary_clamping():
     from turn_processor import TurnProcessor
-    from unit_components import Engines, Commander
+    from unit_components.movement import Engines
+    from unit_components.commander import Commander
     from unit_orders.movement import ReachWaypointOrder
 
     galaxy = Galaxy()
@@ -238,7 +238,7 @@ def test_turn_processor_boundary_clamping():
     large_ship.add_component(Commander(unit=large_ship))
     system.hexes[hex_coord].units.append(large_ship)
 
-    from unit_orders import OrderStatus
+    from unit_orders.base import OrderStatus
 
     order = ReachWaypointOrder(large_ship, {
         "destination_system_name": "Sol",

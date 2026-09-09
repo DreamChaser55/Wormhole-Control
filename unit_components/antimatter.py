@@ -12,7 +12,8 @@ from constants import (
 )
 
 if TYPE_CHECKING:
-    from entities import Unit, CelestialBody
+    from domain.units import Unit
+    from domain.celestials import CelestialBody
     from galaxy import Galaxy
     from game import Game
 
@@ -142,7 +143,7 @@ class AntimatterHarvester(UnitComponent):
         hex_obj = system.hexes.get(self.unit.in_hex)
         if not hex_obj:
             return None
-        from entities import Star, Nebula
+        from domain.celestials import Star, Nebula
         from constants import NebulaType
         for body in hex_obj.celestial_bodies:
             if distance(self.unit.position, body.position) <= self.harvest_range:

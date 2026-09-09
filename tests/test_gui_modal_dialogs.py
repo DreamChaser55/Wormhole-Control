@@ -7,8 +7,11 @@ import pygame_gui
 from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate
 from gui.unit_editor_gui.window import UnitEditorWindow
 from gui.unit_editor_gui.template_io import do_save
-from entities import Unit, Player, HullSize
-from unit_components import Commander, UnitStance
+from domain.units import Unit
+from domain.players import Player
+from constants import HullSize
+from unit_components.commander import Commander
+from unit_components.enums import UnitStance
 from game_actions import handle_gui_action
 
 
@@ -35,7 +38,8 @@ class TestGUIModalDialogs(unittest.TestCase):
         self.assertEqual(len(self.gui.active_dialogs), 3)
 
         # Verify scaled title bar height and close button font sizing
-        from constants import TEXT_SCALE
+        from display_config import display_config_for
+        TEXT_SCALE = display_config_for(self.gui).text_scale
         expected_tb_h = int(30 * TEXT_SCALE)
         self.assertAlmostEqual(info_dlg.title_bar_height, expected_tb_h, delta=2)
         if info_dlg.close_window_button:
@@ -356,7 +360,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         """Test setting disallowed stance triggers warning popup dialog."""
         self.game.start_new_game()
         player = self.game.players[0]
-        from utils import HexCoord
+        from domain.coordinates import HexCoord
         from geometry import Position
         unit = Unit(
             name="Test Ship",

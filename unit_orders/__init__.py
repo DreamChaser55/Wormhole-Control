@@ -1,107 +1,58 @@
-from .base import OrderStatus, OrderType, Order
-from .movement import ReachWaypointOrder, MoveOrder, calculate_required_antimatter
-from .patrol import PatrolOrder
-from .combat import AttackOrder, ProtectOrder
-from .stance import StanceOrder
-from .defend import DefendOrder
-from .inhibitor import ToggleInhibitorOrder
-from .colony import ColonizeOrder, LoadColonistsOrder
-from .construction import ConstructOrder
-from .repair import RepairOrder
-from .antimatter import TransferAntimatterOrder, ContinuousResupplyOrder
-from .mining import MineOrder, UnloadResourcesOrder, ContinuousMineOrder
-from .hangar import DockOrder, DeployUnitOrder, DeployAllWingsOrder
-from .abilities import UseAbilityOrder
-from .minelayer import LayMinefieldOrder
-from .refit import RefitOrder
-from .trade import TradeOrder, ContinuousTradeOrder
-from .intelligence import (
-    InfiltrateUnitOrder,
-    InfiltratePlanetOrder,
-    RelocateAgentOrder,
-    SabotageOrder,
-    CISweepOrder,
-    EliminateAgentOrder,
-    ExtractAgentOrder,
-)
-from .gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
+"""Explicit, lazy order exports; the persistence registry lives in registry."""
+from importlib import import_module
 
-# The single authoritative mapping used by persistence and coverage tests.
-ORDER_CLASS_REGISTRY = {
-    OrderType.REACH_WAYPOINT: ReachWaypointOrder,
-    OrderType.MOVE: MoveOrder,
-    OrderType.PATROL: PatrolOrder,
-    OrderType.ATTACK: AttackOrder,
-    OrderType.DEFEND: DefendOrder,
-    OrderType.PROTECT: ProtectOrder,
-    OrderType.TOGGLE_INHIBITOR: ToggleInhibitorOrder,
-    OrderType.COLONIZE: ColonizeOrder,
-    OrderType.LOAD_COLONISTS: LoadColonistsOrder,
-    OrderType.CONSTRUCT: ConstructOrder,
-    OrderType.REPAIR: RepairOrder,
-    OrderType.MINE: MineOrder,
-    OrderType.UNLOAD_RESOURCES: UnloadResourcesOrder,
-    OrderType.DOCK: DockOrder,
-    OrderType.DEPLOY_UNIT: DeployUnitOrder,
-    OrderType.DEPLOY_ALL_WINGS: DeployAllWingsOrder,
-    OrderType.USE_ABILITY: UseAbilityOrder,
-    OrderType.CONTINUOUS_MINE: ContinuousMineOrder,
-    OrderType.TRANSFER_ANTIMATTER: TransferAntimatterOrder,
-    OrderType.CONTINUOUS_RESUPPLY: ContinuousResupplyOrder,
-    OrderType.LAY_MINEFIELD: LayMinefieldOrder,
-    OrderType.REFIT_UNIT: RefitOrder,
-    OrderType.TRADE: TradeOrder,
-    OrderType.CONTINUOUS_TRADE: ContinuousTradeOrder,
-    OrderType.INFILTRATE_UNIT: InfiltrateUnitOrder,
-    OrderType.INFILTRATE_PLANET: InfiltratePlanetOrder,
-    OrderType.RELOCATE_AGENT: RelocateAgentOrder,
-    OrderType.SABOTAGE: SabotageOrder,
-    OrderType.CI_SWEEP: CISweepOrder,
-    OrderType.ELIMINATE_AGENT: EliminateAgentOrder,
-    OrderType.EXTRACT_AGENT: ExtractAgentOrder,
-    OrderType.ENTER_GAS_GIANT: EnterGasGiantOrder,
-    OrderType.LEAVE_GAS_GIANT: LeaveGasGiantOrder,
-    OrderType.STANCE: StanceOrder,
-}
+_EXPORTS = {'OrderStatus': ('unit_orders.base', 'OrderStatus'),
+ 'OrderType': ('unit_orders.base', 'OrderType'),
+ 'Order': ('unit_orders.base', 'Order'),
+ 'ReachWaypointOrder': ('unit_orders.movement', 'ReachWaypointOrder'),
+ 'MoveOrder': ('unit_orders.movement', 'MoveOrder'),
+ 'calculate_required_antimatter': ('unit_orders.movement', 'calculate_required_antimatter'),
+ 'PatrolOrder': ('unit_orders.patrol', 'PatrolOrder'),
+ 'AttackOrder': ('unit_orders.combat', 'AttackOrder'),
+ 'ProtectOrder': ('unit_orders.combat', 'ProtectOrder'),
+ 'StanceOrder': ('unit_orders.stance', 'StanceOrder'),
+ 'DefendOrder': ('unit_orders.defend', 'DefendOrder'),
+ 'ToggleInhibitorOrder': ('unit_orders.inhibitor', 'ToggleInhibitorOrder'),
+ 'ColonizeOrder': ('unit_orders.colony', 'ColonizeOrder'),
+ 'LoadColonistsOrder': ('unit_orders.colony', 'LoadColonistsOrder'),
+ 'ConstructOrder': ('unit_orders.construction', 'ConstructOrder'),
+ 'RepairOrder': ('unit_orders.repair', 'RepairOrder'),
+ 'TransferAntimatterOrder': ('unit_orders.antimatter', 'TransferAntimatterOrder'),
+ 'ContinuousResupplyOrder': ('unit_orders.antimatter', 'ContinuousResupplyOrder'),
+ 'MineOrder': ('unit_orders.mining', 'MineOrder'),
+ 'UnloadResourcesOrder': ('unit_orders.mining', 'UnloadResourcesOrder'),
+ 'ContinuousMineOrder': ('unit_orders.mining', 'ContinuousMineOrder'),
+ 'DockOrder': ('unit_orders.hangar', 'DockOrder'),
+ 'DeployUnitOrder': ('unit_orders.hangar', 'DeployUnitOrder'),
+ 'DeployAllWingsOrder': ('unit_orders.hangar', 'DeployAllWingsOrder'),
+ 'UseAbilityOrder': ('unit_orders.abilities', 'UseAbilityOrder'),
+ 'LayMinefieldOrder': ('unit_orders.minelayer', 'LayMinefieldOrder'),
+ 'RefitOrder': ('unit_orders.refit', 'RefitOrder'),
+ 'TradeOrder': ('unit_orders.trade', 'TradeOrder'),
+ 'ContinuousTradeOrder': ('unit_orders.trade', 'ContinuousTradeOrder'),
+ 'InfiltrateUnitOrder': ('unit_orders.intelligence', 'InfiltrateUnitOrder'),
+ 'InfiltratePlanetOrder': ('unit_orders.intelligence', 'InfiltratePlanetOrder'),
+ 'RelocateAgentOrder': ('unit_orders.intelligence', 'RelocateAgentOrder'),
+ 'SabotageOrder': ('unit_orders.intelligence', 'SabotageOrder'),
+ 'CISweepOrder': ('unit_orders.intelligence', 'CISweepOrder'),
+ 'EliminateAgentOrder': ('unit_orders.intelligence', 'EliminateAgentOrder'),
+ 'ExtractAgentOrder': ('unit_orders.intelligence', 'ExtractAgentOrder'),
+ 'EnterGasGiantOrder': ('unit_orders.gas_giant', 'EnterGasGiantOrder'),
+ 'LeaveGasGiantOrder': ('unit_orders.gas_giant', 'LeaveGasGiantOrder'),
+ 'ORDER_CLASS_REGISTRY': ('unit_orders.registry', 'ORDER_CLASS_REGISTRY')}
+__all__ = list(_EXPORTS)
 
-__all__ = [
-    "OrderStatus",
-    "OrderType",
-    "Order",
-    "ReachWaypointOrder",
-    "MoveOrder",
-    "calculate_required_antimatter",
-    "PatrolOrder",
-    "AttackOrder",
-    "ProtectOrder",
-    "StanceOrder",
-    "DefendOrder",
-    "ToggleInhibitorOrder",
-    "ColonizeOrder",
-    "LoadColonistsOrder",
-    "ConstructOrder",
-    "RepairOrder",
-    "RefitOrder",
-    "TransferAntimatterOrder",
-    "ContinuousResupplyOrder",
-    "MineOrder",
-    "UnloadResourcesOrder",
-    "ContinuousMineOrder",
-    "DockOrder",
-    "DeployUnitOrder",
-    "DeployAllWingsOrder",
-    "UseAbilityOrder",
-    "LayMinefieldOrder",
-    "TradeOrder",
-    "ContinuousTradeOrder",
-    "InfiltrateUnitOrder",
-    "InfiltratePlanetOrder",
-    "RelocateAgentOrder",
-    "SabotageOrder",
-    "CISweepOrder",
-    "EliminateAgentOrder",
-    "ExtractAgentOrder",
-    "EnterGasGiantOrder",
-    "LeaveGasGiantOrder",
-    "ORDER_CLASS_REGISTRY",
-]
+
+def __getattr__(name):
+    if name not in _EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module, attribute = _EXPORTS[name]
+    value = import_module(module)
+    if attribute is not None:
+        value = getattr(value, attribute)
+    globals()[name] = value
+    return value
+
+
+def __dir__():
+    return sorted(set(globals()) | set(__all__))

@@ -7,19 +7,33 @@ from unittest.mock import Mock
 import json
 import random
 import pytest
-from entities import Player, GameObject, Unit, Minefield, Planet
+from domain.players import Player
+from domain.identity import GameObject
+from domain.units import Unit
+from domain.minefields import Minefield
+from domain.celestials import Planet
 from geometry import Position, Vector
 from constants import HullSize, PlanetType
-from unit_components import (
-    Agent, UnitComponent, Commander, Weapons, Turret, TurretType, TurretVariant,
-    AbilityComponent, AbilityType, Engines, Sensors, HyperspaceInhibitionFieldEmitter,
-    HangarComponent, StrikecraftBayComponent, StrikecraftWingComponent,
-    IntelligenceComponent, MiningComponent, Constructor, RepairComponent,
-)
+from unit_components.intelligence import Agent, IntelligenceComponent
+from unit_components.base import UnitComponent
+from unit_components.commander import Commander
+from unit_components.weapons import Weapons, Turret
+from unit_components.enums import TurretType, TurretVariant, AbilityType
+from unit_components.abilities import AbilityComponent
+from unit_components.movement import Engines
+from unit_components.sensors import Sensors
+from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
+from unit_components.hangar import HangarComponent
+from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
+from unit_components.mining import MiningComponent
+from unit_components.constructor import Constructor
+from unit_components.repair import RepairComponent
 from unit_components.abilities import AbilityInstance
 from unit_components.abilities.registry import ABILITY_CLASSES
 from unit_components.persistence import component_registry, restore_component
-from unit_orders import MoveOrder, AttackOrder, Order, OrderStatus
+from unit_orders.movement import MoveOrder
+from unit_orders.combat import AttackOrder
+from unit_orders.base import Order, OrderStatus
 from campaign_graph import iter_objects, iter_units, find_unit
 from campaign_persistence import prepare_campaign, reconcile
 from save_manager import serialize_game_state, deserialize_game_state
@@ -518,7 +532,8 @@ def test_destroyed_carrier_detaches_surviving_wings_before_save(end):
 
 @pytest.mark.parametrize("job", ["construction", "refit"])
 def test_paid_job_survives_load_completes_or_refunds_once(job):
-    from unit_orders import ConstructOrder, RefitOrder
+    from unit_orders.construction import ConstructOrder
+    from unit_orders.refit import RefitOrder
     game = campaign()
     builder, target = ship(game, "builder"), ship(game, "target")
     builder.add_component(Constructor(builder))
@@ -555,7 +570,7 @@ def test_paid_job_survives_load_completes_or_refunds_once(job):
     assert builder.commander_component.current_order is None
     assert game.players[0].credits == 100000 - charge
     if job == "refit":
-        from unit_components import Defenses
+        from unit_components.defenses import Defenses
         assert find_unit(game.galaxy, target.id).get_component(Defenses).armor == 50
     else:
         assert len(list(iter_units(game.galaxy))) == 3

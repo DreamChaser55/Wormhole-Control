@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -7,12 +8,14 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
 
 class RepairOrder(Order):
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.REPAIR, parameters, parent_order)
 
@@ -50,7 +53,7 @@ class RepairOrder(Order):
             logger.debug(f"REPAIR order failed: Target unit {target_unit_id} not found.")
             return
 
-        from entities import are_allies
+        from domain.players import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
             self.fail("target_unavailable")
             logger.debug(f"REPAIR order failed: Target unit {target_unit.name} is not friendly/allied.")

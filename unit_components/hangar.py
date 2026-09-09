@@ -9,7 +9,7 @@ from geometry import Position
 from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL, HANGAR_HULL_COST_PER_SLOT
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from game import Game
 

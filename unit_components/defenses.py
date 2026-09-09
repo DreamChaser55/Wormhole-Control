@@ -8,7 +8,7 @@ from .enums import TurretType
 from constants import XP_DEFENSE_BONUS
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from game import Game
 
 DEFENSE_PER_HULL_POINT: float = 3.0

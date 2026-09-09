@@ -2,7 +2,7 @@ import pytest
 from player_controller import PlayerController
 import unittest
 from geometry import Position
-from entities import Player
+from domain.players import Player
 from game_ai.contracts import Command, CommandBatch, TurnPlan
 from game_ai.observation import build_observation
 from game_ai.commands import CommandGateway

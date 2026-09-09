@@ -2,7 +2,9 @@
 import typing
 
 from constants import TAX_RATE, UPKEEP_COST_PER_HULL_POINT
-from entities import Planet, Moon, ColonizableAsteroid, HullSize, Player
+from domain.celestials import Planet, Moon, ColonizableAsteroid
+from constants import HullSize
+from domain.players import Player
 
 
 def calculate_player_income(galaxy: typing.Any, player: Player) -> float:

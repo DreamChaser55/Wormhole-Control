@@ -12,17 +12,19 @@ from pygame import Color
 from game_logging import GameLogFormatter, setup_logging
 from game_camera import CAMERA_SMOOTH_SPEED
 
-setup_logging(log_to_file=False)
 logger = logging.getLogger(__name__)
 
 # Local module imports
-from constants import SCREEN_RES, FULLSCREEN, PROFILE, RED, BLUE, YELLOW
-from utils import HexCoord, generate_short_id
+from constants import PROFILE, RED, BLUE, YELLOW
+from display_config import DisplayConfig
+from application_bootstrap import configure_dpi_awareness, discover_display_config
+from domain.coordinates import HexCoord
+from utils import generate_short_id
 from geometry import Position
-from entities import Player, Unit, Order, Conversation, Message
-from gui import GUI_Handler
-from renderer import Renderer
-from input_processor import InputProcessor
+from domain.players import Player
+from domain.units import Unit
+from unit_orders.base import Order
+from domain.communications import Conversation, Message
 from turn_processor import TurnProcessor
 from events import EventBus
 from order_system import OrderSystem
@@ -41,23 +43,38 @@ from player_controller import PlayerController
 import game_camera
 import economy
 import game_setup
-from gui import sidebar
-import game_actions
 
 # --- Game Class ---
 class Game:
     """Main game class, handles initialization, game loop, drawing, and input."""
-    def __init__(self, *, control_port: typing.Optional[int] = None):
+    @property
+    def turn_manager(self):
+        """Compatibility alias; the TurnProcessor instance has one canonical owner."""
+        return self.turn_processor
+
+    @turn_manager.setter
+    def turn_manager(self, value):
+        self.turn_processor = value
+
+    def __init__(self, *, control_port: typing.Optional[int] = None,
+                 display_config: typing.Optional[DisplayConfig] = None):
+        from gui import GUI_Handler
+        from renderer import Renderer
+        from input_processor import InputProcessor
+
+        if display_config is not None:
+            configure_dpi_awareness()
+        self.display_config = display_config or discover_display_config()
         pygame.init()
         pygame.display.set_caption("Wormhole Control")
-        if FULLSCREEN:
-            self.screen = pygame.display.set_mode(SCREEN_RES.to_tuple(), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+        if self.display_config.fullscreen:
+            self.screen = pygame.display.set_mode(self.display_config.resolution.to_tuple(), pygame.FULLSCREEN | pygame.DOUBLEBUF)
         else:
-            self.screen = pygame.display.set_mode(SCREEN_RES.to_tuple())
+            self.screen = pygame.display.set_mode(self.display_config.resolution.to_tuple())
         self.clock = pygame.time.Clock()
         
         # Instantiate the GUI Handler
-        self.gui = GUI_Handler(SCREEN_RES, self)
+        self.gui = GUI_Handler(self.display_config.resolution, self, display_config=self.display_config)
 
         # Game State - Controls the current game status and view context
         self.is_running = True  # Controls the main game loop
@@ -96,7 +113,7 @@ class Game:
         self.developer_feedback: typing.List[typing.Dict[str, typing.Any]] = []
 
         # Alpha Surface for drawing overlays (highlights and order lines)
-        self.overlay_surface = pygame.Surface(SCREEN_RES.to_tuple(), pygame.SRCALPHA)
+        self.overlay_surface = pygame.Surface(self.display_config.resolution.to_tuple(), pygame.SRCALPHA)
 
 
         # Instantiate the Renderer
@@ -110,7 +127,9 @@ class Game:
         self.input_processor = InputProcessor(self)
 
         # Instantiate the TurnProcessor
-        self.turn_manager = TurnProcessor(self)
+        from game_actions.turn_presentation import ApplicationTurnPresentation
+        self.turn_presentation = ApplicationTurnPresentation(self)
+        self.turn_processor = TurnProcessor(self, presentation=self.turn_presentation)
         self.ai_coordinator = AgentTurnCoordinator(self)
         self.control_service = ControlService(self, port=control_port)
         try:
@@ -208,6 +227,7 @@ class Game:
             'update_ai_repair_retries', 'end_turn',
         }:
             return
+        import game_actions
         game_actions.handle_gui_action(self, action)
 
     def is_ai_input_locked(self) -> bool:
@@ -318,14 +338,14 @@ class Game:
         """Delegates end_turn processing to the TurnProcessor instance."""
         if self.ai_coordinator.is_busy:
             self.ai_coordinator.reset()
-        self.turn_manager.end_turn()
+        self.turn_processor.end_turn()
         self.visibility_dirty = True
         self.sidebar_needs_update = True # Ensure sidebar refreshes after turn processing
 
     def check_and_schedule_ai_turn(self):
         """Schedules automated turn completion if the active player is an AI."""
-        if hasattr(self, 'turn_manager') and self.turn_manager:
-            self.turn_manager.check_and_schedule_ai_turn()
+        if getattr(self, 'turn_processor', None):
+            self.turn_processor.check_and_schedule_ai_turn()
 
 
     def update_view_specific_labels(self):
@@ -341,14 +361,17 @@ class Game:
 
     def _format_order_state_data(self, state_data: dict) -> list:
         """Formats raw order state parameters into HTML-styled text strings for sidebar display."""
+        from gui import sidebar
         return sidebar.format_order_state_data(state_data, getattr(self, 'galaxy', None))
 
     def _generate_order_data_recursive(self, order: Order, current_indent_level: int) -> str:
         """Helper method to recursively generate an HTML-formatted string representing an order tree."""
+        from gui import sidebar
         return sidebar.generate_order_data_html(order, current_indent_level, getattr(self, 'galaxy', None))
 
     def update_side_bar_content(self):
         """Constructs and updates the sidebar data payload based on current selections and view mode."""
+        from gui import sidebar
         sidebar.update_side_bar_content(self)
 
     def get_player_income(self, player: Player) -> float:

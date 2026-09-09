@@ -10,10 +10,7 @@ import uuid
 from pathlib import Path
 
 # Type definitions
-class HexCoord(typing.NamedTuple):
-    """Axial coordinates for the hex grid (q: axial column/diagonal, r: axial row)."""
-    q: int
-    r: int
+from domain.coordinates import HexCoord as HexCoord
 
 ContextMenuOption = typing.Union[
     typing.Tuple[str, str],                                                  # Flat option: (label, action_id)
@@ -125,7 +122,7 @@ def color_to_hex(color) -> str:
             return f"#{color.r:02x}{color.g:02x}{color.b:02x}"
         if isinstance(color, (tuple, list)) and len(color) >= 3:
             return f"#{int(color[0]):02x}{int(color[1]):02x}{int(color[2]):02x}"
-    except Exception:
+    except (TypeError, ValueError, OverflowError):
         pass
     return "#A0A0B0"
 

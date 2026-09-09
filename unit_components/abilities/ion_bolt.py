@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, TYPE_CHECKING
 from geometry import Position
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from ..enums import AbilityType
 from .base import AbilityDefinition, AbilityInstance
 

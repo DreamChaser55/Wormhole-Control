@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -9,7 +10,7 @@ from unit_components.constructor import get_component_class_by_name, get_compone
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,8 @@ def get_hull_restriction_flag(component_name: str) -> str:
 
 class RefitOrder(Order):
     """Order instructing a unit with a Constructor to add or remove components on a friendly unit."""
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.REFIT_UNIT, parameters, parent_order)
 
@@ -95,7 +98,7 @@ class RefitOrder(Order):
             logger.debug(f"REFIT order failed: Target unit {target_unit_id} not found or destroyed.")
             return
 
-        from entities import are_allies
+        from domain.players import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
             self.status = OrderStatus.FAILED
             logger.debug(f"REFIT order failed: Target unit {target_unit.name} is not friendly/allied.")

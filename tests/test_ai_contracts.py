@@ -266,7 +266,7 @@ class TestMemory(unittest.TestCase):
 
     def test_player_identity_reasoning_and_memory_survive_save_round_trip(self):
 
-        from entities import Player
+        from domain.players import Player
         from save_manager import deserialize_player, serialize_player
 
         player = Player(

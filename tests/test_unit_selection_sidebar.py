@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock
-from entities import Unit
+from domain.units import Unit
 from game import Game
 from constants import HullSize
 from geometry import Position
@@ -275,7 +275,7 @@ def test_stop_unit_button_visibility():
     assert len(stop_buttons) == 0
 
     # Case 2: Add order -> Stop Unit button SHOULD be present
-    from unit_orders import MoveOrder
+    from unit_orders.movement import MoveOrder
     order = MoveOrder(unit, {"destination_system_name": "Sol", "destination_hex_coord": (0, 0), "destination_position": Position(10, 10)})
     unit.commander_component.add_order(order)
     assert unit.commander_component.get_active_orders_count() > 0
@@ -310,7 +310,7 @@ def test_handle_gui_action_stop_unit():
     unit.id = 302
     mock_game.galaxy.get_unit_by_id.side_effect = lambda uid: unit if uid == 302 else None
 
-    from unit_orders import MoveOrder
+    from unit_orders.movement import MoveOrder
     order = MoveOrder(unit, {"destination_system_name": "Sol", "destination_hex_coord": (0, 0), "destination_position": Position(10, 10)})
     unit.commander_component.add_order(order)
     assert unit.commander_component.current_order is not None
@@ -372,7 +372,7 @@ def test_stop_selected_units_multi_selection():
     assert len(stop_multi) == 0
 
     # Add order to unit1 -> Stop Selected Units button appears
-    from unit_orders import MoveOrder
+    from unit_orders.movement import MoveOrder
     order = MoveOrder(unit1, {"destination_system_name": "Sol", "destination_hex_coord": (0, 0), "destination_position": Position(10, 10)})
     unit1.commander_component.add_order(order)
 

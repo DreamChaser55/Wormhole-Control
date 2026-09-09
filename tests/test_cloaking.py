@@ -20,13 +20,12 @@ from constants import (
     CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN,
     DEFAULT_ADVANCED_CLOAKING_RADIUS,
 )
-from entities import Player, Unit
-from unit_components import (
-    Sensors,
-    AntimatterStorage,
-    CloakingDevice,
-    CloakingType,
-)
+from domain.players import Player
+from domain.units import Unit
+from unit_components.sensors import Sensors
+from unit_components.antimatter import AntimatterStorage
+from unit_components.cloaking import CloakingDevice
+from unit_components.enums import CloakingType
 from visibility import VisibilityService, is_unit_visible, hex_has_presence
 from galaxy import Galaxy, StarSystem
 from custom_unit_templates import (

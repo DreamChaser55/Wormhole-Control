@@ -1,7 +1,7 @@
 import dataclasses
 import typing
 from typing import Set, Tuple, Dict, List, Optional, TYPE_CHECKING
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import distance
 from hexgrid_utils import hexes_within_range
 from constants import (
@@ -11,7 +11,9 @@ from constants import (
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Player, Unit, Nebula
+    from domain.players import Player
+    from domain.units import Unit
+    from domain.celestials import Nebula
 
 @dataclasses.dataclass
 class VisibilitySnapshot:
@@ -25,7 +27,7 @@ def _are_allies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
         return False
     if p1 is p2:
         return True
-    from entities import Player
+    from domain.players import Player
     if isinstance(p1, Player):
         return p1.is_allied_with(p2)
     if isinstance(p2, Player):
@@ -44,7 +46,7 @@ def _are_allies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
 def _are_enemies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
     if p1 is None or p2 is None:
         return False
-    from entities import Player
+    from domain.players import Player
     if isinstance(p1, Player):
         return p1.is_enemy_of(p2)
     if isinstance(p2, Player):
@@ -95,7 +97,7 @@ class VisibilityService:
 
                             # Environmental sensor effects on observer unit
                             for b in hex_obj.celestial_bodies:
-                                from entities import Nebula, Storm
+                                from domain.celestials import Nebula, Storm
                                 if isinstance(b, Nebula) and getattr(b, 'nebula_type', None) == NebulaType.DUST:
                                     if distance(unit.position, b.position) <= getattr(b, 'radius', NEBULA_RADIUS):
                                         sr_radius *= DUST_NEBULA_SENSOR_MOD
@@ -125,7 +127,7 @@ class VisibilityService:
                                 active_area_cloaks[hex_key].append((unit.owner, unit.position, cloaking.area_radius))
 
                 for body in hex_obj.celestial_bodies:
-                    from entities import Nebula, AsteroidField
+                    from domain.celestials import Nebula, AsteroidField
                     if isinstance(body, (Nebula, AsteroidField)):
                         hex_key = (system_name, hex_coord)
                         if hex_key not in nebulae_by_hex:
@@ -253,7 +255,7 @@ def is_unit_in_nebula(unit: Optional['Unit'], galaxy: Optional['Galaxy'] = None)
     hex_obj = system.hexes.get(unit.in_hex)
     if not hex_obj:
         return False
-    from entities import Nebula
+    from domain.celestials import Nebula
     for body in hex_obj.celestial_bodies:
         if isinstance(body, Nebula):
             neb_radius = getattr(body, 'radius', NEBULA_RADIUS)
@@ -276,7 +278,7 @@ def is_unit_in_asteroid_field(unit: Optional['Unit'], galaxy: Optional['Galaxy']
     hex_obj = system.hexes.get(unit.in_hex)
     if not hex_obj:
         return False
-    from entities import AsteroidField
+    from domain.celestials import AsteroidField
     for body in hex_obj.celestial_bodies:
         if isinstance(body, AsteroidField):
             field_radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)

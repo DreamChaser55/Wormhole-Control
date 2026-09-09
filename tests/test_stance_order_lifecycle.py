@@ -3,9 +3,13 @@ from unittest.mock import Mock
 from geometry import Position
 from turn_processor import TurnProcessor
 from constants import HullSize
-from unit_components import AntimatterStorage, Turret, TurretType, TurretVariant, UnitStance
+from unit_components.antimatter import AntimatterStorage
+from unit_components.weapons import Turret
+from unit_components.enums import TurretType, TurretVariant, UnitStance
 from unit_components.enums import SabotageType
-from unit_orders import AttackOrder, Order, OrderStatus, OrderType, ProtectOrder, ReachWaypointOrder
+from unit_orders.combat import AttackOrder, ProtectOrder
+from unit_orders.base import Order, OrderStatus, OrderType
+from unit_orders.movement import ReachWaypointOrder
 from tests.support.combat import create_combat_ship, create_test_galaxy
 
 
@@ -198,7 +202,7 @@ def test_sabotaged_hyperdrive_removes_jump_stances_and_resets_policy():
 
 def test_loaded_explicit_movement_rebinds_new_waypoint_ownership():
     from save_manager import deserialize_order, serialize_order
-    from unit_orders import MoveOrder
+    from unit_orders.movement import MoveOrder
 
     galaxy, player, _ = create_test_galaxy()
     unit = create_combat_ship(galaxy, player, "Courier", (0, 0))
@@ -262,7 +266,7 @@ def test_restoring_queue_only_resumes_in_progress_order_without_replaying_startu
 
 def test_stance_pursuit_waypoints_are_rendered_as_current_through_all_levels():
     from rendering.sector_renderer.sector_overlay_renderer import SectorOverlayRenderer
-    from unit_orders import MoveOrder
+    from unit_orders.movement import MoveOrder
 
     galaxy, player, enemy_player = create_test_galaxy()
     attacker = create_combat_ship(galaxy, player, "Guard", (0, 0), short_range=2000.0)

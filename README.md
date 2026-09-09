@@ -249,10 +249,12 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-CI checks undefined names with Ruff, verifies generated reference blocks, and runs the full suite once on Linux Python 3.10 and 3.14 plus Windows Python 3.14. Clean-process smoke tests are included in the full suite. To run just those locally, use `python -m pytest -m smoke`. Other local checks:
+CI checks undefined names with Ruff, adds broader lint and type checks at domain boundaries, verifies generated reference blocks, and runs the full suite once on Linux Python 3.10 and 3.14 plus Windows Python 3.14. Clean-process import tests enforce the core/UI boundary. To run launch smoke tests locally, use `python -m pytest -m smoke`. Other local checks:
 
 ```bash
 python -m ruff check .
+python scripts/check_import_boundaries.py
+python -m mypy
 python scripts/generate_reference.py --check
 ```
 
@@ -292,11 +294,14 @@ Bundled assets resolve relative to the application, independent of the current w
 
 ### Configuration & Data Files
 - `data/`: Contains bundled unit templates, spawn rates and star names. Custom designs live in the user-data directory.
-- `constants.py`: Central repository for game tuning constants, colors, and resolution definitions.
+- `constants.py`: Game tuning constants, colors, and fixed compatibility display defaults; importing constants does not discover or initialize a display.
+- `display_config.py`: Immutable per-application resolution and UI metrics. `Game(display_config=DisplayConfig(1920, 1080, False))` supports explicit dimensions; otherwise bootstrap discovers the display.
 - **Environment Flags**:
   - `WORMHOLE_FULLSCREEN=true`: Forces full-screen display mode.
 
 > For the full repository file tree and architecture breakdown, see the [Reference Manual](docs/REFERENCE.md).
+
+See [import and ownership boundaries](docs/ARCHITECTURE_BOUNDARIES.md) for canonical domain imports, compatibility aliases, display bootstrap, turn presentation and the exception review.
 
 ---
 

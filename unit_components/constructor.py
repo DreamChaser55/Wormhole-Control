@@ -28,7 +28,7 @@ from .enums import (
     WingType, AbilityType, CloakingType
 )
 
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import Position
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_HARVEST_RATE,
@@ -40,7 +40,8 @@ from constants import (
 from unit_templates import UNIT_TEMPLATES
 
 if TYPE_CHECKING:
-    from entities import Unit, Player
+    from domain.units import Unit
+    from domain.players import Player
     from galaxy import Galaxy
     from game import Game
 
@@ -65,7 +66,7 @@ def instantiate_unit_from_template(
     both the constructor component **and** :func:`~game.Game.spawn_units` can
     share the same logic without code duplication.
     """
-    from entities import Unit  # avoid circular import
+    from domain.units import Unit
 
     template = UNIT_TEMPLATES.get(template_name)
     if not template:

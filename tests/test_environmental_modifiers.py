@@ -3,13 +3,17 @@ from types import SimpleNamespace
 import json
 import pytest
 from constants import FieldDensity, HullSize, NebulaType
-from entities import IceField, Nebula, Player
+from domain.celestials import IceField, Nebula
+from domain.players import Player
 from environmental_effects import modifiers_for_unit
 from geometry import Position
 from turn_processor import TurnProcessor
-from unit_components import Weapons, Turret, TurretType, TurretVariant, Commander
+from unit_components.weapons import Weapons, Turret
+from unit_components.enums import TurretType, TurretVariant
+from unit_components.commander import Commander
 from unit_components.abilities.cluster_warhead import ClusterWarheadAbility
-from unit_orders import AttackOrder, OrderStatus
+from unit_orders.combat import AttackOrder
+from unit_orders.base import OrderStatus
 from save_manager import serialize_game_state, deserialize_game_state
 from game_ai.observation import build_observation
 from tests.support.campaigns import campaign, ship

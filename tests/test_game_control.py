@@ -1,4 +1,5 @@
 from __future__ import annotations
+from game_actions.turn_presentation import ApplicationTurnPresentation
 import io
 import json
 import socket
@@ -271,7 +272,7 @@ class ControlServiceTests(unittest.TestCase):
             coordinator.shutdown()
 
         self.game.pending_ai_turn_end_time = 123
-        TurnProcessor(self.game).check_and_schedule_ai_turn()
+        TurnProcessor(self.game, presentation=ApplicationTurnPresentation(self.game)).check_and_schedule_ai_turn()
         self.assertEqual(self.game.pending_ai_turn_end_time, 0)
 
     def test_socket_dispatch_runs_through_pump_and_enforces_size_limit(self):

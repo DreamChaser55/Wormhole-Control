@@ -4,3 +4,14 @@ extend-exclude = [".codex_test_cache", ".pytest_tmp", "saves", "build", "dist"]
 
 [tool.ruff.lint]
 select = ["F821", "F822", "F823"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["display_config.py", "application_bootstrap.py", "domain/coordinates.py", "domain/identity.py", "turn_presentation.py", "game_actions/turn_presentation.py", "scripts/check_import_boundaries.py"]
+strict = true
+follow_imports = "silent"
+cache_dir = ".codex_test_cache/mypy"
+
+[[tool.mypy.overrides]]
+module = ["pygame", "pygame.*", "pygame_gui", "pygame_gui.*"]
+ignore_missing_imports = true

@@ -1,9 +1,10 @@
 import pytest
 from constants import HullSize, PlanetType
-from entities import Planet
+from domain.celestials import Planet
 from geometry import Position
 from game_settings import GameSettings, PlayerConfig, SpawnProfile
-from unit_components import Engines, AntimatterStorage
+from unit_components.movement import Engines
+from unit_components.antimatter import AntimatterStorage
 
 from tests.support.campaigns import campaign, ship
 

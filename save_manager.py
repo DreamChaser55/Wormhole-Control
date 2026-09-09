@@ -28,32 +28,52 @@ from game_ai.runtime import (
 from constants import (
     HullSize, StarType, PlanetType, NebulaType, StormType, HULL_CAPACITIES, HIT_POINTS, FieldDensity
 )
-from entities import (
-    Player, GameObject, CelestialBody, Star, Planet, Moon, ColonizableAsteroid,
-    MetalAsteroid, AsteroidField, IceField, DebrisField, Nebula, Storm, Comet, Wormhole, Unit, Minefield,
-    Conversation, Message
-)
+from domain.players import Player
+from domain.identity import GameObject
+from domain.celestials import CelestialBody, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, DebrisField, Nebula, Storm, Comet, Wormhole
+from domain.units import Unit
+from domain.minefields import Minefield
+from domain.communications import Conversation, Message
 from galaxy import Galaxy, StarSystem, Hex
-from unit_components import (
-    AntimatterStorage, AntimatterHarvester, Engines, Hyperdrive, HyperdriveType,
-    Commander, HyperspaceInhibitionFieldEmitter, Weapons, Defenses, Turret,
-    ColonyComponent, CivilianHabitatComponent, OrbitalDefenseComponent, TradeComponent, Constructor, RepairComponent, MiningComponent,
-    MetalRefineryComponent, CrystalRefineryComponent, HangarComponent,
-    StrikecraftBayComponent, StrikecraftWingComponent, Sensors, AbilityComponent,
-    MinelayerComponent, MarinesComponent, CloakingDevice, IntelligenceComponent,
-    instantiate_unit_from_template, instantiate_component_for_unit, get_component_class_by_name,
-    UnitStance
-)
-from unit_orders import (
-    Order, OrderStatus, OrderType,
-    MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
-    LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
-    RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
-    UseAbilityOrder, ProtectOrder, ContinuousMineOrder, TransferAntimatterOrder,
-    ContinuousResupplyOrder, LayMinefieldOrder, RefitOrder, TradeOrder, ContinuousTradeOrder,
-    InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder,
-    CISweepOrder, EliminateAgentOrder, ExtractAgentOrder, ORDER_CLASS_REGISTRY
-)
+from unit_components.antimatter import AntimatterStorage, AntimatterHarvester
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType, UnitStance
+from unit_components.commander import Commander
+from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
+from unit_components.weapons import Weapons, Turret
+from unit_components.defenses import Defenses
+from unit_components.colony import ColonyComponent
+from unit_components.civilian_habitat import CivilianHabitatComponent
+from unit_components.orbital_defense import OrbitalDefenseComponent
+from unit_components.trade import TradeComponent
+from unit_components.constructor import Constructor, instantiate_unit_from_template, instantiate_component_for_unit, get_component_class_by_name
+from unit_components.repair import RepairComponent
+from unit_components.mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
+from unit_components.hangar import HangarComponent
+from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
+from unit_components.sensors import Sensors
+from unit_components.abilities import AbilityComponent
+from unit_components.minelayer import MinelayerComponent
+from unit_components.marines import MarinesComponent
+from unit_components.cloaking import CloakingDevice
+from unit_components.intelligence import IntelligenceComponent
+from unit_orders.base import Order, OrderStatus, OrderType
+from unit_orders.movement import MoveOrder, ReachWaypointOrder
+from unit_orders.combat import AttackOrder, ProtectOrder
+from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
+from unit_orders.construction import ConstructOrder
+from unit_orders.inhibitor import ToggleInhibitorOrder
+from unit_orders.patrol import PatrolOrder
+from unit_orders.repair import RepairOrder
+from unit_orders.mining import MineOrder, UnloadResourcesOrder, ContinuousMineOrder
+from unit_orders.hangar import DockOrder, DeployUnitOrder
+from unit_orders.abilities import UseAbilityOrder
+from unit_orders.antimatter import TransferAntimatterOrder, ContinuousResupplyOrder
+from unit_orders.minelayer import LayMinefieldOrder
+from unit_orders.refit import RefitOrder
+from unit_orders.trade import TradeOrder, ContinuousTradeOrder
+from unit_orders.intelligence import InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder, CISweepOrder, EliminateAgentOrder, ExtractAgentOrder
+from unit_orders.registry import ORDER_CLASS_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -364,7 +384,7 @@ def serialize_galaxy(galaxy: Galaxy) -> dict:
 
 def serialize_game_state(game: Any) -> dict:
     """Serializes the entire Game instance into a JSON-compatible dictionary."""
-    from unit_components import Agent
+    from unit_components.intelligence import Agent
     object_counter = GameObject.object_counter
     player_counter = Player.player_counter
 
@@ -504,7 +524,7 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player], gam
         body.inhibition_field_radius = data["inhibition_field_radius"]
 
     if "infiltrating_agents" in data:
-        from unit_components import Agent
+        from unit_components.intelligence import Agent
         body.infiltrating_agents = [Agent.from_dict(ad, players_by_id, body) for ad in data["infiltrating_agents"]]
 
     if "hidden_units" in data and game is not None:
@@ -615,7 +635,7 @@ def _restore_saved_commander(unit: Unit, game: Any) -> None:
 
 def _build_unit_from_template(template_name: str, owner: Player, position: Position, in_hex: Tuple[int, int], in_system: str, game: Any, custom_name: str) -> Unit:
     from unit_templates import UNIT_TEMPLATES
-    from unit_components import TurretVariant, TurretType
+    from unit_components.enums import TurretVariant, TurretType
     template = UNIT_TEMPLATES.get(template_name)
     if not template:
         return Unit(owner=owner, position=position, in_hex=in_hex, in_system=in_system, name=custom_name, hull_size=HullSize.MEDIUM, game=game, template_name=template_name)
@@ -700,7 +720,7 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
         new_unit.add_component(StrikecraftBayComponent(new_unit, max_slots=template.get("strikecraft_bay_slots", 0)))
 
     if new_unit.hull_size == HullSize.STRIKECRAFT_WING:
-        from unit_components import WingType
+        from unit_components.enums import WingType
         wing_type_str = template.get("wing_type", "FIGHTER")
         wing_type = WingType[wing_type_str.upper()] if hasattr(WingType, wing_type_str.upper()) else WingType.FIGHTER
         new_unit.add_component(StrikecraftWingComponent(new_unit, wing_type=wing_type))
@@ -749,7 +769,7 @@ def _build_unit_from_template(template_name: str, owner: Player, position: Posit
         new_unit.add_component(CloakingDevice(new_unit, device_type=c_type, area_radius=c_radius, hull_cost=c_cost))
 
     if template.get("has_intelligence_component"):
-        from unit_components import IntelligenceComponent
+        from unit_components.intelligence import IntelligenceComponent
         i_count = int(template.get("intelligence_agents_count", 1))
         i_ci = bool(template.get("has_counter_intelligence", False))
         i_cost = template.get("intelligence_hull_cost")
@@ -794,7 +814,7 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
         unit.add_component(component)
     if not unit.commander_component:
         raise ValueError(f"unit {unit.id}: missing Commander")
-    from unit_components import Agent
+    from unit_components.intelligence import Agent
     unit.infiltrating_agents = [Agent.from_dict(a, players_by_id, unit) for a in data["infiltrating_agents"]]
     return unit
 
@@ -867,7 +887,7 @@ def _deserialize_legacy_unit(data: dict, players_by_id: Dict[int, Player], game:
             unit.mining_component.raw_crystal_cargo = comp_fields.get("raw_crystal_cargo", unit.mining_component.raw_crystal_cargo)
             unit.mining_component.max_cargo = comp_fields.get("max_cargo", unit.mining_component.max_cargo)
         elif comp_name == "Hyperdrive" and unit.hyperdrive_component:
-            from unit_components import JumpStatus
+            from unit_components.enums import JumpStatus
             unit.hyperdrive_component.recharge_time_remaining = comp_fields.get("recharge_time_remaining", 0)
             status_str = comp_fields.get("jump_status", "READY")
             if hasattr(JumpStatus, status_str):
@@ -914,7 +934,7 @@ def _deserialize_legacy_unit(data: dict, players_by_id: Dict[int, Player], game:
                 docked_u = deserialize_unit(docked_data, players_by_id, game)
                 unit.hangar_component.docked_units.append(docked_u)
         elif comp_name == "StrikecraftBayComponent" and unit.strikecraft_bay_component:
-            from unit_components import WingType
+            from unit_components.enums import WingType
             unit.strikecraft_bay_component.docked_units.clear()
             for docked_data in comp_fields.get("docked_units", []):
                 docked_u = deserialize_unit(docked_data, players_by_id, game)
@@ -927,7 +947,7 @@ def _deserialize_legacy_unit(data: dict, players_by_id: Dict[int, Player], game:
             if hasattr(WingType, wing_type_str):
                 unit.strikecraft_bay_component.build_wing_type = WingType[wing_type_str]
         elif comp_name == "StrikecraftWingComponent" and unit.strikecraft_wing_component:
-            from unit_components import WingType
+            from unit_components.enums import WingType
             wing_type_str = comp_fields.get("wing_type", "FIGHTER")
             if hasattr(WingType, wing_type_str):
                 unit.strikecraft_wing_component.wing_type = WingType[wing_type_str]
@@ -955,7 +975,7 @@ def _deserialize_legacy_unit(data: dict, players_by_id: Dict[int, Player], game:
 
     # Restore infiltrating agents if present
     if "infiltrating_agents" in data:
-        from unit_components import Agent
+        from unit_components.intelligence import Agent
         unit.infiltrating_agents = [Agent.from_dict(ad, players_by_id, unit) for ad in data["infiltrating_agents"]]
 
     # Commander state is restored after all units exist so target references resolve.

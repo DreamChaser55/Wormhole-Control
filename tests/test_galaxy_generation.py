@@ -102,7 +102,7 @@ def test_wormhole_directional_outskirt_placement():
 
 
 def test_comet_outskirt_spawning_distribution():
-    from entities import Comet
+    from domain.celestials import Comet
     from geometry import hex_distance
     import math
 

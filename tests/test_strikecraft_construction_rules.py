@@ -8,9 +8,12 @@ and confirms that strikecraft wings are constructed solely by units with a Strik
 from unittest.mock import MagicMock
 from constants import HullSize
 from geometry import Position
-from entities import Unit
-from unit_components import Constructor, StrikecraftBayComponent, WingType
-from unit_orders import ConstructOrder, OrderStatus
+from domain.units import Unit
+from unit_components.constructor import Constructor
+from unit_components.strikecraft import StrikecraftBayComponent
+from unit_components.enums import WingType
+from unit_orders.construction import ConstructOrder
+from unit_orders.base import OrderStatus
 from unit_templates import register_template, unregister_template
 from game_ai.contracts import Command
 from tests.support.units import ComponentUnit, ComponentPlayer
@@ -83,7 +86,7 @@ def test_construct_order_fails_for_strikecraft_wings():
 def test_context_menu_construct_options_exclude_strikecraft_wings():
     """Verify right-click Construct submenu options do not list strikecraft wings."""
     from input_processor.context_menu_builder import build_sector_context_menu_options
-    from entities import Player
+    from domain.players import Player
 
     game = MagicMock()
     player = Player(name="Player 1", color=(0, 255, 0))

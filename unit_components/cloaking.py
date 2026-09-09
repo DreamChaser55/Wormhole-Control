@@ -13,7 +13,7 @@ from constants import (
 from geometry import distance, Position
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from game import Game
 
 logger = logging.getLogger(__name__)

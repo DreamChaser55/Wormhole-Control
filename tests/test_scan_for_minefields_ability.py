@@ -1,13 +1,12 @@
 from geometry import Position
-from entities import Unit, Player, Minefield
+from domain.units import Unit
+from domain.players import Player
+from domain.minefields import Minefield
 from constants import HullSize
-from unit_components import (
-    AbilityComponent,
-    AbilityType,
-    AntimatterStorage,
-    Sensors,
-    MinefieldType,
-)
+from unit_components.abilities import AbilityComponent
+from unit_components.enums import AbilityType, MinefieldType
+from unit_components.antimatter import AntimatterStorage
+from unit_components.sensors import Sensors
 from unit_components.abilities.scan_for_minefields import ScanForMinefieldsAbility
 from unit_components.abilities.registry import ABILITY_DEFINITIONS, ABILITY_CLASSES
 from custom_unit_templates import ABILITY_REQUIRED_COMPONENTS

@@ -444,9 +444,13 @@ def rebuild_wizard_turret_list(wizard: RetrofitWizardWindow) -> None:
         disp_cooldown = tc["cooldown"] * 3 if tc.get("variant") == "LONG_RANGE" else tc["cooldown"]
         text = f"{tc['type']} ({tc.get('variant', 'STANDARD').lower()}) dmg:{tc['damage']:.0f} rng:{disp_range:.0f} cd:{disp_cooldown}"
 
-        lbl = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(lx, ly, int(lw * 0.80), small_h),
-            text=text,
+        from gui.text_layout import wrap_text_to_lines
+        font = wizard.manager.ui_theme.get_font(['text_box', '#turret_item_label'])
+        lines, line_height = wrap_text_to_lines(text, max(1, int(lw * 0.80) - 20), font)
+        row_height = max(small_h, len(lines) * (line_height + 4) + 20)
+        lbl = pygame_gui.elements.UITextBox(
+            relative_rect=pygame.Rect(lx, ly, int(lw * 0.80), row_height),
+            html_text='<br>'.join(lines),
             manager=wizard.manager,
             container=wizard._controls_container,
             object_id="#turret_item_label",
@@ -461,4 +465,4 @@ def rebuild_wizard_turret_list(wizard: RetrofitWizardWindow) -> None:
             object_id="#turret_remove_button",
         )
         wizard._turret_remove_buttons.append(rbtn)
-        ly += small_h + 3
+        ly += row_height + 3

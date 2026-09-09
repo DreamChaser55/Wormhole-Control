@@ -1,6 +1,7 @@
 """Persistent standing stance order and its transient engagement subtree."""
 
 from __future__ import annotations
+from unit_orders.base import OrderTargetField
 
 import logging
 from typing import Any, Dict, Optional, TYPE_CHECKING
@@ -11,7 +12,7 @@ from .base import Order, OrderStatus, OrderType
 from .combat import AttackOrder
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from unit_components.enums import UnitStance
 
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 class StanceOrder(Order):
     """A persistent policy which owns at most one transient Attack order."""
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+
 
     def __init__(
         self,
@@ -85,7 +88,7 @@ class StanceOrder(Order):
         if target is None or target.current_hit_points <= 0:
             return "target missing or destroyed"
 
-        from entities import are_enemies
+        from domain.players import are_enemies
         if not are_enemies(self.unit.owner, target.owner):
             return "target is no longer an enemy"
         if target.in_system != self.unit.in_system:
@@ -96,7 +99,7 @@ class StanceOrder(Order):
             return "no eligible turret"
 
         from constants import HullSize, StormType, STORM_RADIUS
-        from entities import is_position_in_magnetic_storm, Storm
+        from domain.celestials import is_position_in_magnetic_storm, Storm
         if self.unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, target.in_system, target.in_hex, target.position):
             system = galaxy_ref.systems.get(target.in_system)
             hex_obj = system.hexes.get(target.in_hex) if system else None
@@ -115,7 +118,7 @@ class StanceOrder(Order):
                 return "target is inside a magnetic storm and out of reach"
 
         from constants import CELESTIAL_FIELD_RADIUS
-        from entities import is_position_blocked_by_celestial_field, AsteroidField, DebrisField, IceField
+        from domain.celestials import is_position_blocked_by_celestial_field, AsteroidField, DebrisField, IceField
         if is_position_blocked_by_celestial_field(galaxy_ref, target.in_system, target.in_hex, target.position, self.unit):
             system = galaxy_ref.systems.get(target.in_system)
             hex_obj = system.hexes.get(target.in_hex) if system else None

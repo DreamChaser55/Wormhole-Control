@@ -1,5 +1,8 @@
 from player_controller import PlayerController
-from entities import Player, Unit, Minefield, HullSize
+from domain.players import Player
+from domain.units import Unit
+from domain.minefields import Minefield
+from constants import HullSize
 from geometry import Position
 from galaxy import StarSystem, Galaxy
 from turn_processor import TurnProcessor

@@ -2,7 +2,7 @@ from player_controller import PlayerController
 from unittest.mock import MagicMock
 from pygame import Color
 from game import Game
-from entities import Player
+from domain.players import Player
 
 class DummyGame(Game):
     def __init__(self):

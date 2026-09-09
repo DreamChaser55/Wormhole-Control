@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -8,7 +9,7 @@ from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,8 @@ DOCKING_RANGE = 100.0
 
 
 class DockOrder(Order):
+    target_fields = (OrderTargetField('target_carrier_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.DOCK, parameters, parent_order)
 
@@ -91,6 +94,8 @@ class DockOrder(Order):
 
 
 class DeployUnitOrder(Order):
+    target_fields = (OrderTargetField('docked_unit_id', 'unit', public=True),)
+
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.DEPLOY_UNIT, parameters, parent_order)
 
@@ -142,7 +147,7 @@ class DeployUnitOrder(Order):
             logger.debug(f"DEPLOY_UNIT order failed: Docked unit {docked_unit_id} not found in hangar or strikecraft bay.")
             return
 
-        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+        from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if docked_unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position):
             self.fail("hazard_blocked")
             logger.debug(f"DEPLOY_UNIT order failed: Cannot launch strikecraft wing {docked_unit.name} in a magnetic storm.")
@@ -187,7 +192,7 @@ class DeployAllWingsOrder(Order):
             return
 
         comp = self.unit.strikecraft_bay_component
-        from entities import is_position_in_magnetic_storm
+        from domain.celestials import is_position_in_magnetic_storm
         if is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position):
             self.fail("hazard_blocked")
             logger.debug(f"DEPLOY_ALL_WINGS order failed: Cannot launch strikecraft wings from {self.unit.name} in a magnetic storm.")

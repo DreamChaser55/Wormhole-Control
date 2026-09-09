@@ -1,5 +1,6 @@
 from types import SimpleNamespace
-from entities import Player, Unit
+from domain.players import Player
+from domain.units import Unit
 from galaxy import Galaxy, StarSystem, Hex
 from geometry import Position
 from constants import HullSize

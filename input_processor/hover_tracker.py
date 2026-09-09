@@ -1,4 +1,5 @@
 """Spatial entity hover state tracking across galaxy, system, and sector views."""
+from display_config import display_config_for
 import typing
 import logging
 from constants import (
@@ -13,10 +14,8 @@ from sector_utils import (
     get_minefield_dot_pixel_positions,
     get_minefield_dot_radius_px,
 )
-from entities import (
-    Unit, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet,
-    Wormhole, AsteroidField, IceField, DebrisField, Nebula, Storm
-)
+from domain.units import Unit
+from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField, IceField, DebrisField, Nebula, Storm
 from galaxy_utils import logical_to_screen_galaxy
 
 logger = logging.getLogger(__name__)
@@ -74,7 +73,7 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
         if system:
             zoom = game.system_zoom if isinstance(getattr(game, 'system_zoom', 1.0), (int, float)) else 1.0
             pan_offset = game.system_pan_offset if isinstance(getattr(game, 'system_pan_offset', None), Position) else Position(0, 0)
-            hover_hex = pixel_to_hex(mouse_pos.x, mouse_pos.y, zoom, pan_offset)
+            hover_hex = pixel_to_hex(mouse_pos.x, mouse_pos.y, zoom, pan_offset, display_config=display_config_for(game))
             if hover_hex in system.hexes:
                 game.system_view_mouse_hover_hex = hover_hex
 
@@ -101,7 +100,7 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                         continue
                     if not getattr(obj, 'is_solid', True):
                         continue
-                    pixel_pos = sector_coords_to_pixels(obj.position, zoom, pan_offset)
+                    pixel_pos = sector_coords_to_pixels(obj.position, zoom, pan_offset, display_config=display_config_for(game))
 
                     obj_radius_logical = 0
                     if isinstance(obj, Star):
@@ -123,7 +122,7 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                     else:
                         obj_radius_logical = 13.89
 
-                    obj_radius = sector_radius_to_pixels(obj_radius_logical, zoom)
+                    obj_radius = sector_radius_to_pixels(obj_radius_logical, zoom, display_config=display_config_for(game))
                     actual_click_radius = obj_radius * SECTOR_OBJECT_CLICK_RADIUS_MULT
                     click_radius_sq = (max(actual_click_radius, 5.0))**2
                     if click_radius_sq < 5**2:
@@ -136,11 +135,11 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
 
                 # Check Minefield mine count icons (dots/diamonds)
                 visible_minefields = [mf for mf in getattr(hex_obj, 'minefields', []) if game.is_minefield_visible(mf)]
-                dot_radius_px = get_minefield_dot_radius_px(zoom)
+                dot_radius_px = get_minefield_dot_radius_px(zoom, display_config=display_config_for(game))
                 dot_click_radius = max(dot_radius_px * SECTOR_OBJECT_CLICK_RADIUS_MULT, 5.0)
                 dot_click_radius_sq = dot_click_radius ** 2
                 for mf in visible_minefields:
-                    dot_positions = get_minefield_dot_pixel_positions(mf.position, mf.mines_remaining, zoom, pan_offset)
+                    dot_positions = get_minefield_dot_pixel_positions(mf.position, mf.mines_remaining, zoom, pan_offset, display_config=display_config_for(game))
                     for d_x, d_y in dot_positions:
                         dist_sq_val = (mouse_pos.x - d_x) ** 2 + (mouse_pos.y - d_y) ** 2
                         if dist_sq_val < dot_click_radius_sq and dist_sq_val < min_dist_sq:
@@ -183,10 +182,10 @@ def get_units_under_mouse(game, mouse_pos: Position) -> typing.List[Unit]:
     for unit in hex_obj.units:
         if not game.is_unit_visible(unit):
             continue
-        pixel_pos = sector_coords_to_pixels(unit.position, zoom, pan_offset)
+        pixel_pos = sector_coords_to_pixels(unit.position, zoom, pan_offset, display_config=display_config_for(game))
         scale_factor = HULL_BASE_ICON_SCALES[unit.hull_size]
         effective_icon_size = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
-        obj_radius = sector_radius_to_pixels(effective_icon_size, zoom)
+        obj_radius = sector_radius_to_pixels(effective_icon_size, zoom, display_config=display_config_for(game))
         actual_click_radius = obj_radius * SECTOR_OBJECT_CLICK_RADIUS_MULT
         click_radius_sq = (max(actual_click_radius, 5.0)) ** 2
         if click_radius_sq < 5 ** 2:

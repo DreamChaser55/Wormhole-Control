@@ -131,7 +131,7 @@ def test_wizard_zero_resources_are_not_replaced_by_defaults():
 
 @pytest.mark.parametrize('invalid_input', [False, True])
 def test_failed_preview_preserves_previous_map_and_allocators(monkeypatch, invalid_input):
-    from entities import GameObject
+    from domain.identity import GameObject
     from persistence_context import allocate_id
     wizard = wizard_input()
     previous = object()

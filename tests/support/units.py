@@ -6,9 +6,11 @@ lifecycle, diplomacy and XP always execute the production entity methods.
 from unittest.mock import MagicMock
 
 from constants import HullSize
-from entities import Player, Unit
+from domain.players import Player
+from domain.units import Unit
 from geometry import Position
-from unit_components import Commander, Sensors
+from unit_components.commander import Commander
+from unit_components.sensors import Sensors
 
 
 class ComponentPlayer(Player):

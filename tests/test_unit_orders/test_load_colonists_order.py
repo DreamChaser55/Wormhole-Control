@@ -1,8 +1,9 @@
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import PLANET_RADIUS, DEFAULT_STANDOFF_DISTANCE
-from unit_orders import OrderStatus, OrderType, LoadColonistsOrder
-from unit_components import ColonyComponent
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.colony import LoadColonistsOrder
+from unit_components.colony import ColonyComponent
 from tests.support.units import ComponentUnit
 
 

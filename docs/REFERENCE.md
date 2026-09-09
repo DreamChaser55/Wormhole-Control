@@ -12,8 +12,10 @@ Wormhole-Control/
 ├── README.md
 ├── campaign_graph.py
 ├── campaign_persistence.py
+├── application_bootstrap.py
 ├── component_visibility.py
 ├── constants.py
+├── display_config.py
 ├── custom_unit_templates.py
 ├── economy.py
 ├── entities.py
@@ -47,6 +49,7 @@ Wormhole-Control/
 ├── theme.json
 ├── timed_effects.py
 ├── turn_processor.py
+├── turn_presentation.py
 ├── unit_templates.py
 ├── utils.py
 ├── visibility.py
@@ -58,15 +61,25 @@ Wormhole-Control/
 │   ├── star_names.json
 │   └── unit_templates.json
 ├── docs/
+│   ├── ARCHITECTURE_BOUNDARIES.md
 │   ├── AGENTIC_AI.md
 │   ├── CODEX_CONTROL.md
 │   ├── REFERENCE.md
 │   └── SAVE_FORMAT.md
+├── domain/  # Canonical classes; entities.py is an explicit lazy compatibility facade
+│   ├── coordinates.py
+│   ├── identity.py
+│   ├── communications.py
+│   ├── players.py
+│   ├── celestials.py
+│   ├── minefields.py
+│   └── units.py
 ├── fonts/  # Bundled font families
 ├── game_actions/
 │   ├── __init__.py
 │   ├── app_actions.py
 │   ├── selection_actions.py
+│   ├── turn_presentation.py
 │   └── unit_actions.py
 ├── game_ai/
 │   ├── __init__.py
@@ -151,6 +164,7 @@ Wormhole-Control/
 │   │   └── sector_renderer.py
 │   └── system_renderer.py
 ├── scripts/
+│   ├── check_import_boundaries.py
 │   └── generate_reference.py
 ├── unit_components/
 │   ├── __init__.py
@@ -212,6 +226,7 @@ Wormhole-Control/
 │   ├── refit.py
 │   ├── repair.py
 │   ├── stance.py
+│   ├── registry.py
 │   └── trade.py
 ├── tests/  # Offline behavior suites, shared support scenarios, and lifecycle fixtures
 └── saves/  # Runtime campaigns and logs
@@ -517,6 +532,15 @@ Normal requires at least as many requested and actual systems as players, unique
 
 ## 8. Architecture & Subsystems
 
+Domain types now live in `domain` groups, with explicit lazy compatibility exports
+through `entities`, `unit_orders` and `unit_components`. Core imports require no
+Pygame/GUI/display initialization. `Game` discovers or accepts an immutable
+`DisplayConfig` during construction and provides it to presentation and input code;
+display values in `constants.py` are fixed compatibility defaults. Runtime turn
+presentation uses an optional `TurnPresentation` adapter. See the [boundary and
+ownership contracts](ARCHITECTURE_BOUNDARIES.md) for canonical modules, migration
+aliases, exception-review decisions and quality gates.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         game.py                             │
@@ -544,14 +568,14 @@ Normal requires at least as many requested and actual systems as players, unique
 
 - **Event Bus (`events.py`)**: Decouples input handling, order queuing, and UI notifications using a lightweight publish/subscribe pattern.
 - **Inter-system Routing (`pathfinding.py`)**: Unweighted Dijkstra selects shortest feasible system routes; intra-system jump waypoints use cube-coordinate interpolation on the hex grid.
-- **Order System (`order_system.py`)**: Manages hierarchical order lifecycles (parent orders and dynamically generated sub-orders), route pathfinding, jump safety checks, and continuous loops.
+- **Order System (`order_system.py`)**: Adapts human events into order issuance. Commander owns explicit queue promotion and stance arbitration; Order owns subtree status/cancellation and outcome recording; concrete orders own movement, continuous loops and actuator/job cleanup.
 - **Field Refitting System (`unit_orders/refit.py`, `unit_components/constructor.py`)**: Enables units with a `Constructor` to dynamically install components onto, or strip components from, friendly and allied units within build range (500 logical units). Component addition costs `Used Hull × 30` credits and requires `max(1, round(Hull / 5))` turns. Component removal takes 1 turn and grants an immediate 50% salvage credit refund. Orders automatically enforce hull size restrictions, headroom limits, and docked carrier craft safety checks, prepending `MoveOrder` approach sub-orders if out of range.
 - **Visibility & Sensor Sharing (`visibility.py`)**: Computes sector-by-sector and in-hex sensor horizons. Generates fog-of-war masks, unifies short-range and long-range sensor coverage across all allied players, shares stealth area cloaking protection, conceals units inside nebulae from long-range sensors, and persists last-known sector intel per player.
 - **Diplomacy & Team System (`entities.py`, `game_settings.py`, `game_setup.py`, `save_manager.py`)**: Manages static multi-team configurations established during game setup. Evaluates relations (`is_allied_with`, `is_enemy_of`) to govern sensor sharing, tactical combat engagement, logistics sharing, area buffs, friendly fire prevention, and covert espionage targeting.
 - **Sub-light Navigation & Celestial Collision Avoidance (`geometry.py`, `unit_orders/movement.py`)**: Verified tangent-polygon routes avoid expanded solid bodies and hull-blocking fields within the sector boundary; see [collision avoidance](#11-celestial-collision-avoidance).
 - **GUI & Renderer Packages (`gui/`, `rendering/`)**: Strict facade pattern isolating UI widget hierarchies and layout managers from pygame-ce rendering loops and mathematical spatial transformations. System and sector views maintain independent transient cameras with cursor-anchored smooth zoom, middle-drag and arrow-key panning; newly opened systems auto-fit inside the HUD-free gameplay rectangle. The galaxy renderer highlights player home systems dynamically using each player's faction color, rendering concentric circles for systems containing multiple player homeworlds.
 - **Two-Stage Campaign Setup & Home Star System Assignment (`gui/layout_new_game_wizard.py`, `game_settings.py`, `game_setup.py`)**: Stage 1 generates and previews the map; Stage 2 configures factions, economy and home assignments. Specified homes must be distinct for Normal and may be shared for Testing. An isolated campaign is validated before commit; see [spawn profiles](#spawn-profiles-spawnprofile--2-total).
-- **Resolution Independence (`theme_loader.py`, `TEXT_SCALE`)**: Scales a fresh theme dictionary in memory for each UI manager, with absolute bundled font paths and existing preloading/fallback behavior. No generated theme file is written.
+- **Resolution Independence (`display_config.py`, `gui/theme_loader.py`)**: Uses per-application metrics for rendering, camera transforms and input. Each UI manager receives a fresh theme scaled to its resolution, absolute bundled font paths and idempotent rich-text font preloading. No generated theme file is written. Retrofit turret summaries wrap to measured text width.
 
 ---
 

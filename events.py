@@ -1,6 +1,6 @@
 import typing
 
-from utils import HexCoord
+from domain.coordinates import HexCoord
 
 class Event:
     """Base class for all events in the game."""
@@ -18,7 +18,12 @@ class EventBus:
         self._listeners[event_type].append(callback)
 
     def publish(self, event: Event):
-        """Publish an event to all subscribers of its type."""
+        """Synchronously invoke exact-type subscribers in registration order.
+
+        Handlers may mutate the campaign or execute orders before this returns.
+        Exceptions propagate and stop dispatch; earlier handler effects are not
+        rolled back. UI/command boundaries own containment and recovery.
+        """
         event_type = type(event)
         # Call handlers for exact type matches
         if event_type in self._listeners:
@@ -182,7 +187,7 @@ class LayMinefieldEvent(Event):
     """Fired when the player orders selected units to lay a minefield."""
     def __init__(self, units: list, minefield_type: typing.Any = "anti_ship", shift_pressed: bool = False):
         self.units = units
-        from unit_components import MinefieldType
+        from unit_components.enums import MinefieldType
         if isinstance(minefield_type, str):
             try:
                 self.minefield_type = MinefieldType(minefield_type)

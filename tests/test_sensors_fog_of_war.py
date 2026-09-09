@@ -2,8 +2,9 @@ import pytest
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import DEFAULT_SENSOR_SHORT_RANGE, HullSize
-from entities import Player, Unit
-from unit_components import Sensors
+from domain.players import Player
+from domain.units import Unit
+from unit_components.sensors import Sensors
 from visibility import VisibilityService, is_unit_visible, hex_has_presence
 from galaxy import Galaxy, StarSystem
 
@@ -226,7 +227,7 @@ def test_detailed_overrides_presence(test_setup):
 
 def test_template_sensor_wiring(test_setup):
     p1, p2, galaxy, system = test_setup
-    from unit_components import Constructor
+    from unit_components.constructor import Constructor
 
     constructor_unit = Unit(
         owner=p1,

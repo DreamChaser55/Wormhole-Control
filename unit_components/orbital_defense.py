@@ -12,7 +12,8 @@ from constants import (
 )
 
 if TYPE_CHECKING:
-    from entities import Unit, CelestialBody, Planet, Moon, ColonizableAsteroid
+    from domain.units import Unit
+    from domain.celestials import CelestialBody, Planet, Moon, ColonizableAsteroid
     from galaxy import Galaxy
     from game import Game
 
@@ -75,7 +76,8 @@ class OrbitalDefenseComponent(UnitComponent):
         if not hex_obj:
             return False
 
-        from entities import Planet, Moon, ColonizableAsteroid, are_allies
+        from domain.celestials import Planet, Moon, ColonizableAsteroid
+        from domain.players import are_allies
         for body in hex_obj.celestial_bodies:
             if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
                 body_owner = getattr(body, 'owner', None)
@@ -146,7 +148,8 @@ class OrbitalDefenseComponent(UnitComponent):
 
         sector_capacity = 0
         has_colonized_body = False
-        from entities import Planet, Moon, ColonizableAsteroid, are_allies
+        from domain.celestials import Planet, Moon, ColonizableAsteroid
+        from domain.players import are_allies
         for body in hex_obj.celestial_bodies:
             if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
                 body_owner = getattr(body, 'owner', None)

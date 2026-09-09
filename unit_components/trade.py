@@ -7,10 +7,10 @@ from constants import (
     TRADE_INTERSYSTEM_HOP_DISTANCE
 )
 from geometry import hex_distance
-from utils import HexCoord
+from domain.coordinates import HexCoord
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from game import Game
 

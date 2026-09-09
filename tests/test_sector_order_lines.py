@@ -1,9 +1,11 @@
 from player_controller import PlayerController
 from unittest.mock import MagicMock, patch
-from entities import Unit, Player, OrderType
+from domain.units import Unit
+from domain.players import Player
+from unit_orders.base import OrderType
 from constants import HullSize, BLUE
 from geometry import Position
-from unit_components import Commander
+from unit_components.commander import Commander
 from rendering.sector_renderer import SectorViewRenderer
 from rendering.system_renderer import SystemViewRenderer
 from rendering.galaxy_renderer import GalaxyViewRenderer
@@ -35,7 +37,7 @@ def test_draw_sector_view_draws_lines_for_all_turn_player_units():
     # 3. Create units with distinct positions
     # Unit 1: Owned by current turn player (Player 1), has move target, NOT selected/hovered
     unit1 = Unit(player1, Position(10, 10), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
-    from unit_components import Engines
+    from unit_components.movement import Engines
     engines1 = Engines(unit1, speed=10)
     engines1.move_target = Position(50, 50)
     unit1.add_component(engines1)
@@ -62,7 +64,7 @@ def test_draw_sector_view_draws_lines_for_all_turn_player_units():
          patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
          patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
          patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
          patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
          patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
@@ -128,7 +130,7 @@ def test_system_view_order_lines_only_for_active_player():
     # Patch system_renderer drawing functions
     with patch("rendering.system_renderer.pygame.draw.line") as mock_draw_line, \
          patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle, \
-         patch("rendering.system_renderer.hex_to_pixel", side_effect=lambda q, r: Position(q * 10, r * 10)):
+         patch("rendering.system_renderer.hex_to_pixel", side_effect=lambda q, r, *args, **kwargs: Position(q * 10, r * 10)):
 
          renderer._draw_system_view_order_lines(system)
 
@@ -236,7 +238,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets():
          patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
          patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
          patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
          patch("rendering.sector_renderer.pygame.font.Font") as mock_font:
 
@@ -296,7 +298,7 @@ def test_draw_sector_view_draws_turn_notches():
     unit = Unit(player1, Position(0, 0), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
     unit.max_hit_points = 0  # avoid healthbar rendering
     
-    from unit_components import Engines
+    from unit_components.movement import Engines
     engines = Engines(unit, speed=10.0)
     # Give it a move target
     engines.move_target = Position(35.0, 0.0)
@@ -311,7 +313,7 @@ def test_draw_sector_view_draws_turn_notches():
          patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
          patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
          patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
          patch("rendering.sector_renderer.pygame.font.Font") as mock_font:
 
@@ -359,7 +361,7 @@ def test_system_view_wormhole_lines():
     system.radius = 3
     
     hex_obj = MagicMock()
-    from entities import Wormhole
+    from domain.celestials import Wormhole
     wh = Wormhole(in_hex=(3, 0), in_system="Sol", exit_system_name="Vega")
     hex_obj.celestial_bodies = [wh]
     hex_obj.units = []
@@ -480,7 +482,7 @@ def test_draw_sector_view_patrol_order_path():
          patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
          patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
          patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
          patch("rendering.sector_renderer.draw_dotted_line") as mock_draw_dotted_line, \
          patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
@@ -552,7 +554,8 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
     unit = Unit(player1, Position(0, 0), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
     unit.max_hit_points = 0
 
-    from unit_components import Commander, Engines
+    from unit_components.commander import Commander
+    from unit_components.movement import Engines
     commander = Commander(unit)
     engines = Engines(unit, speed=100.0)
     unit.add_component(commander)
@@ -605,7 +608,7 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
          patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
          patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
          patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
          patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
          patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
@@ -667,7 +670,8 @@ def test_sector_view_attack_with_move_sub_order_sequential():
     target_unit.id = 999
     game.galaxy.get_unit_by_id = MagicMock(return_value=target_unit)
 
-    from unit_components import Commander, Engines
+    from unit_components.commander import Commander
+    from unit_components.movement import Engines
     commander = Commander(unit)
     engines = Engines(unit, speed=100.0)
     unit.add_component(commander)
@@ -727,7 +731,8 @@ def test_sector_view_queued_orders_without_sub_orders_sequential():
     unit = Unit(player1, Position(0, 0), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
     unit.max_hit_points = 0
 
-    from unit_components import Commander, Engines
+    from unit_components.commander import Commander
+    from unit_components.movement import Engines
     commander = Commander(unit)
     engines = Engines(unit, speed=100.0)
     unit.add_component(commander)
@@ -767,7 +772,7 @@ def test_sector_view_queued_orders_without_sub_orders_sequential():
          patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
          patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
          patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p: p), \
+         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
          patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
          patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
          patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):

@@ -10,8 +10,11 @@ from game_ai.contracts import Command, CommandBatch, ContractError, TurnPlan
 from game_ai.observation import build_observation
 from game_ai.order_view import order_layers
 from geometry import Position
-from unit_components import CloakingDevice, UnitStance
-from unit_orders import MoveOrder, Order, OrderStatus, OrderType, PatrolOrder
+from unit_components.cloaking import CloakingDevice
+from unit_components.enums import UnitStance
+from unit_orders.movement import MoveOrder
+from unit_orders.base import Order, OrderStatus, OrderType
+from unit_orders.patrol import PatrolOrder
 from galaxy import StarSystem
 from game_control_protocol import ControlService
 from tests.support.combat import create_combat_ship
@@ -201,7 +204,8 @@ def test_history_identity_roundtrip_and_bounded_exactly_once_outcomes():
 @pytest.mark.parametrize("kind", ["construct", "refit"])
 def test_pending_job_cancellation_does_not_refund_or_stop_active_job(kind):
     from unit_components.constructor import Constructor
-    from unit_orders import ConstructOrder, RefitOrder
+    from unit_orders.construction import ConstructOrder
+    from unit_orders.refit import RefitOrder
     game, player, _, unit = world()
     unit.add_component(Constructor(unit))
     component = unit.constructor_component
@@ -265,7 +269,8 @@ def test_socket_partial_response_cached_and_observation_required():
 def test_restored_component_job_refunds_only_its_owner_once(legacy, kind):
     from save_manager import deserialize_order, serialize_order
     from unit_components.constructor import Constructor
-    from unit_orders import ConstructOrder, RefitOrder
+    from unit_orders.construction import ConstructOrder
+    from unit_orders.refit import RefitOrder
     game, player, _, unit = world()
     unit.add_component(Constructor(unit))
     constructor = unit.constructor_component
@@ -388,9 +393,9 @@ def test_append_while_returning_preserves_current_return_leg():
 
 
 def test_completed_colonist_load_is_not_refunded_by_stop():
-    from entities import Planet
+    from domain.celestials import Planet
     from constants import PlanetType
-    from unit_components import ColonyComponent
+    from unit_components.colony import ColonyComponent
     game, player, _, unit = world()
     other = create_combat_ship(game.galaxy, player, "Other", (0, 0))
     for ship in (unit, other):
@@ -412,10 +417,10 @@ def test_completed_colonist_load_is_not_refunded_by_stop():
 
 
 def test_cancelling_queued_colonist_prerequisite_rejects_later_colonization():
-    from entities import Moon, Planet
+    from domain.celestials import Moon, Planet
     from constants import PlanetType
-    from unit_components import ColonyComponent
-    from unit_orders import LoadColonistsOrder
+    from unit_components.colony import ColonyComponent
+    from unit_orders.colony import LoadColonistsOrder
     game, player, _, unit = world()
     unit.add_component(ColonyComponent(unit))
     source = Planet((0, 0), "Sol", next(iter(PlanetType)))
@@ -481,8 +486,8 @@ def test_luna_and_socket_patrols_have_identical_engine_effects():
 
 def test_queued_docking_cancellation_releases_only_its_slot_reservation():
     from constants import HullSize
-    from unit_components import HangarComponent
-    from unit_orders import DockOrder
+    from unit_components.hangar import HangarComponent
+    from unit_orders.hangar import DockOrder
     game, player, _, first = world()
     first.hull_size = HullSize.TINY
     second = create_combat_ship(game.galaxy, player, "Second", (0, 0))
@@ -501,7 +506,7 @@ def test_queued_docking_cancellation_releases_only_its_slot_reservation():
 
 def test_queued_construction_cancellation_releases_reservation_without_refund():
     from unit_components.constructor import Constructor
-    from unit_orders import ConstructOrder
+    from unit_orders.construction import ConstructOrder
     game, player, _, unit = world()
     other = create_combat_ship(game.galaxy, player, "Other", (0, 0))
     for ship in (unit, other):
@@ -518,9 +523,9 @@ def test_queued_construction_cancellation_releases_reservation_without_refund():
 
 
 def test_unobserved_body_cannot_be_targeted_by_guessed_id():
-    from entities import Moon
+    from domain.celestials import Moon
     from galaxy import Hex
-    from unit_components import ColonyComponent
+    from unit_components.colony import ColonyComponent
     game, player, _, unit = world()
     remote = StarSystem("Unseen", Position(9000, 9000), radius=3)
     remote.hexes[(0, 0)] = Hex(q=0, r=0, in_system="Unseen")
@@ -537,7 +542,7 @@ def test_unobserved_body_cannot_be_targeted_by_guessed_id():
 
 def test_loading_pending_order_does_not_start_or_record_until_update():
     from unit_components.constructor import Constructor
-    from unit_orders import ConstructOrder
+    from unit_orders.construction import ConstructOrder
     game, player, _, unit = world()
     unit.add_component(Constructor(unit))
     unit.constructor_component.can_build = lambda _: SimpleNamespace(cost_credits=100, time_to_build=5)

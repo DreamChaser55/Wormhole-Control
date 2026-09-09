@@ -1,9 +1,16 @@
 from unittest.mock import MagicMock, patch
 from geometry import Position
-from entities import Unit, OrderType
+from domain.units import Unit
+from unit_orders.base import OrderType
 from constants import HullSize
-from unit_components import AbilityComponent, AbilityType, Engines, Weapons, Defenses, MarinesComponent
-from unit_orders import UseAbilityOrder, OrderStatus
+from unit_components.abilities import AbilityComponent
+from unit_components.enums import AbilityType
+from unit_components.movement import Engines
+from unit_components.weapons import Weapons
+from unit_components.defenses import Defenses
+from unit_components.marines import MarinesComponent
+from unit_orders.abilities import UseAbilityOrder
+from unit_orders.base import OrderStatus
 from rendering.sector_renderer import SectorViewRenderer
 from rendering.system_renderer import SystemViewRenderer
 from tests.support.units import ComponentPlayer
@@ -25,7 +32,8 @@ class DummyGame:
 
 
 def test_missile_platform_auto_targeting_uses_current_attack_order():
-    from unit_components import Turret, TurretType
+    from unit_components.weapons import Turret
+    from unit_components.enums import TurretType
     from unit_components.abilities.missile_batteries import MissileBatteriesAbility
 
     platform = Unit(

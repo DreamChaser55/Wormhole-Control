@@ -7,7 +7,7 @@ from constants import (
 )
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from game import Game
 
 class Sensors(UnitComponent):

@@ -3,10 +3,11 @@ layout.py
 
 Layout orchestrator and column builder functions (Col 1 config, Col 2 components, Col 4 summary).
 """
+from display_config import display_config_for
 
 import pygame
 import pygame_gui
-from constants import TEXT_SCALE
+
 from .catalog import COMPONENT_ROWS, HULL_SIZE_NAMES
 from .layout_details import build_col3_details
 
@@ -165,11 +166,11 @@ def build_col2_components(
     )
     editor._elements.append(editor._comp_scroll_container)
 
-    scroll_bar_w = max(20, int(20 * TEXT_SCALE))
+    scroll_bar_w = max(20, int(20 * display_config_for(editor).text_scale))
     inner_w = c2w - scroll_bar_w
-    cost_w = max(40, int(40 * TEXT_SCALE))
-    select_w = max(38, int(38 * TEXT_SCALE))
-    gap = max(2, int(2 * TEXT_SCALE))
+    cost_w = max(40, int(40 * display_config_for(editor).text_scale))
+    select_w = max(38, int(38 * display_config_for(editor).text_scale))
+    gap = max(2, int(2 * display_config_for(editor).text_scale))
     btn_w = inner_w - cost_w - select_w - (gap * 2)
 
     row_spacing = small_h + 3
@@ -284,7 +285,7 @@ def build_ui(editor) -> None:
 
     # Heights & spacing
     row_h = int(26 * scale_y)
-    small_h = max(24, int(24 * TEXT_SCALE))
+    small_h = max(24, int(24 * display_config_for(editor).text_scale))
     dd_h = int(28 * scale_y)
     entry_h = int(32 * scale_y)
     btn_h = int(32 * scale_y)

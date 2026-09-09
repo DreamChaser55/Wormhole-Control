@@ -5,7 +5,7 @@ from custom_unit_templates import (
     CustomUnitTemplate,
     CustomTemplateManager,
 )
-from unit_components import Constructor
+from unit_components.constructor import Constructor
 from geometry import Position
 from unit_templates import UNIT_TEMPLATES
 

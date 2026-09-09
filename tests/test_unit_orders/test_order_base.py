@@ -1,10 +1,11 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_orders import (
-    OrderStatus, ReachWaypointOrder, MoveOrder,
-    ConstructOrder, RepairOrder, DockOrder, DeployUnitOrder,
-    DeployAllWingsOrder, UseAbilityOrder
-)
+from unit_orders.base import OrderStatus
+from unit_orders.movement import ReachWaypointOrder, MoveOrder
+from unit_orders.construction import ConstructOrder
+from unit_orders.repair import RepairOrder
+from unit_orders.hangar import DockOrder, DeployUnitOrder, DeployAllWingsOrder
+from unit_orders.abilities import UseAbilityOrder
 from game import Game
 from tests.support.units import ComponentUnit
 

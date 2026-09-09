@@ -4,7 +4,6 @@ from __future__ import annotations
 from order_history import public_reason
 
 CONTINUOUS = {"patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade"}
-TARGET_KEYS = ("target_unit_id", "target_carrier_id", "docked_unit_id", "target_celestial_id", "target_id")
 
 
 def enum_name(value):
@@ -35,8 +34,12 @@ def order_layers(unit, relation, visible_ids, body_ids):
             return data
         actionable = enum_name(order.status) in {"pending", "in_progress"}
         params = getattr(order, "parameters", {})
-        target_id = next((params[k] for k in TARGET_KEYS if params.get(k) is not None), None)
-        hidden = redacted or (target_id is not None and target_id not in visible_ids and target_id not in body_ids)
+        reference = order.primary_target_reference()
+        target_id = reference[1] if reference is not None else None
+        target_kind = reference[0] if reference is not None else None
+        known_targets = (body_ids if target_kind == "celestial" else visible_ids
+                         if target_kind == "unit" else visible_ids | body_ids)
+        hidden = redacted or (target_id is not None and target_id not in known_targets)
         data.update(order_id=getattr(order, "public_id", None), active=active and actionable,
                     cancellable=own and origin == "explicit" and root and actionable,
                     editable=own and origin == "explicit" and root and actionable and kind == "patrol",

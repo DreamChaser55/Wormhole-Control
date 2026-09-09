@@ -1,8 +1,9 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from geometry import Position, Circle
-from unit_orders import OrderStatus, ToggleInhibitorOrder
-from unit_components import HyperspaceInhibitionFieldEmitter
+from unit_orders.base import OrderStatus
+from unit_orders.inhibitor import ToggleInhibitorOrder
+from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
 from tests.support.units import ComponentUnit
 
 

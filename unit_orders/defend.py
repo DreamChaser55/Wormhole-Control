@@ -1,3 +1,4 @@
+from unit_orders.base import OrderTargetField
 """Positional Defend order instructing a unit to guard a target coordinate or entity."""
 
 import logging
@@ -11,7 +12,7 @@ from .combat import AttackOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,8 @@ DEFAULT_DEFEND_GUARD_RADIUS = 1000.0
 
 class DefendOrder(Order):
     """Order instructing a unit to move to and defend a specific position, hex, or celestial body."""
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True), OrderTargetField('target_id', 'unit', public=True),)
+
 
     def __init__(
         self,
@@ -136,7 +139,7 @@ class DefendOrder(Order):
                 turn_num = getattr(galaxy_ref.game, "turn_number", 1)
             visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, turn_number=turn_num)
 
-        from entities import are_enemies
+        from domain.players import are_enemies
         from visibility import is_unit_visible
         guard_radius = float(self.parameters.get("guard_radius", DEFAULT_DEFEND_GUARD_RADIUS))
         closest_enemy = None
@@ -185,7 +188,7 @@ class DefendOrder(Order):
                 enemy_unit = None
                 if galaxy_ref and hasattr(galaxy_ref, "get_unit_by_id"):
                     enemy_unit = galaxy_ref.get_unit_by_id(enemy_id) if enemy_id is not None else None
-                from entities import are_enemies
+                from domain.players import are_enemies
 
                 is_in_range = False
                 if (

@@ -8,7 +8,7 @@ from constants import INHIBITOR_RADIUS_PER_HULL_POINT, INHIBITOR_ANTIMATTER_COST
 from .base import UnitComponent
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from game import Game
 

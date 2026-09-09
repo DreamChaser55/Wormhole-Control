@@ -1,7 +1,10 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from unit_orders import OrderStatus, OrderType, PatrolOrder
-from unit_components import Engines, Weapons, Turret, TurretType, TurretVariant
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.patrol import PatrolOrder
+from unit_components.movement import Engines
+from unit_components.weapons import Weapons, Turret
+from unit_components.enums import TurretType, TurretVariant
 from constants import HullSize
 from tests.support.units import ComponentUnit
 

@@ -1,14 +1,10 @@
+from display_config import display_config_for
 import sys
 import math
-from constants import (
-    SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL,
-    HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR,
-    MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED,
-    FOG_OF_WAR_COLOR, XP_SPEED_BONUS,
-    TOP_BAR_HEIGHT, INFO_BOX_WIDTH, TEXT_SCALE
-)
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, FOG_OF_WAR_COLOR, XP_SPEED_BONUS
 from geometry import distance, Position
-from entities import Unit, OrderType
+from domain.units import Unit
+from unit_orders.base import OrderType
 
 MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
 
@@ -118,8 +114,8 @@ class SectorOverlayRenderer:
             self.parent._fog_cache_key = None
             self.parent._fog_blit_rect = None
 
-        sector_center_px = (int(SECTOR_CIRCLE_CENTER_IN_PX.x + self.game.sector_pan_offset.x),
-                            int(SECTOR_CIRCLE_CENTER_IN_PX.y + self.game.sector_pan_offset.y))
+        sector_center_px = (int(display_config_for(self.game).center.x + self.game.sector_pan_offset.x),
+                            int(display_config_for(self.game).center.y + self.game.sector_pan_offset.y))
         sector_radius_px = max(1, min(int(dynamic_radius), MAX_SAFE_CIRCLE_RADIUS_PX))
         cx, cy = sector_center_px
         r = sector_radius_px
@@ -138,7 +134,7 @@ class SectorOverlayRenderer:
                           else None)
 
         if current_player:
-            from entities import are_allies
+            from domain.players import are_allies
             for unit in hex_obj.units:
                 is_friendly = are_allies(unit.owner, current_player)
                 is_infiltrated = False
@@ -759,7 +755,8 @@ class SectorOverlayRenderer:
             guidance_text = f"TARGETING: {pending_name.upper()}  —  Right-Click to cast (ESC to cancel)"
 
         # 0. Draw Range Ring around casting unit(s)
-        from unit_components import ABILITY_DEFINITIONS, AbilityType
+        from unit_components.abilities import ABILITY_DEFINITIONS
+        from unit_components.enums import AbilityType
         try:
             atype_enum = AbilityType(ability_type_str)
             defn = ABILITY_DEFINITIONS.get(atype_enum)
@@ -782,7 +779,7 @@ class SectorOverlayRenderer:
                         self.parent._draw_range_ring(int(unit_px.x), int(unit_px.y), rng_px, (200, 100, 255))
 
         # 1. Draw top-center HUD targeting banner
-        font_size = max(13, int(15 * TEXT_SCALE))
+        font_size = max(13, int(15 * display_config_for(self.game).text_scale))
         if font_size not in self.parent._font_cache:
             self.parent._font_cache[font_size] = _sr().pygame.font.Font(None, font_size)
         banner_font = self.parent._font_cache[font_size]
@@ -799,8 +796,8 @@ class SectorOverlayRenderer:
 
         banner_w = text_rect.width + 30
         banner_h = text_rect.height + 12
-        banner_x = int((screen_w - INFO_BOX_WIDTH - banner_w) // 2)
-        banner_y = int(TOP_BAR_HEIGHT + 10)
+        banner_x = int((screen_w - display_config_for(self.game).info_box_width - banner_w) // 2)
+        banner_y = int(display_config_for(self.game).top_bar_height + 10)
 
         banner_rect = _sr().pygame.Rect(banner_x, banner_y, banner_w, banner_h)
         banner_surf = _sr().pygame.Surface((banner_w, banner_h), _sr().pygame.SRCALPHA)
@@ -817,7 +814,7 @@ class SectorOverlayRenderer:
         if not isinstance(mouse_pos, (tuple, list)) or len(mouse_pos) < 2 or not isinstance(mouse_pos[0], (int, float)):
             mouse_pos = (0, 0)
 
-        tip_font_size = max(11, int(13 * TEXT_SCALE))
+        tip_font_size = max(11, int(13 * display_config_for(self.game).text_scale))
         if tip_font_size not in self.parent._font_cache:
             self.parent._font_cache[tip_font_size] = _sr().pygame.font.Font(None, tip_font_size)
         tip_font = self.parent._font_cache[tip_font_size]
@@ -842,7 +839,7 @@ class SectorOverlayRenderer:
             tip_color = (120, 255, 120)
 
         # Draw tooltip near mouse pointer when inside sector viewport
-        if mouse_pos[0] < screen_w - INFO_BOX_WIDTH and mouse_pos[1] > TOP_BAR_HEIGHT:
+        if mouse_pos[0] < screen_w - display_config_for(self.game).info_box_width and mouse_pos[1] > display_config_for(self.game).top_bar_height:
             tip_surf = tip_font.render(tip_str, True, tip_color)
             tip_bg = _sr().pygame.Surface((tip_surf.get_width() + 10, tip_surf.get_height() + 6), _sr().pygame.SRCALPHA)
             tip_bg.fill((10, 15, 25, 200))
@@ -850,9 +847,9 @@ class SectorOverlayRenderer:
 
             tip_x = int(mouse_pos[0] + 15)
             tip_y = int(mouse_pos[1] + 15)
-            if tip_x + tip_bg.get_width() > screen_w - INFO_BOX_WIDTH:
+            if tip_x + tip_bg.get_width() > screen_w - display_config_for(self.game).info_box_width:
                 tip_x = int(mouse_pos[0] - tip_bg.get_width() - 10)
-            if tip_y + tip_bg.get_height() > screen_h - TOP_BAR_HEIGHT:
+            if tip_y + tip_bg.get_height() > screen_h - display_config_for(self.game).top_bar_height:
                 tip_y = int(mouse_pos[1] - tip_bg.get_height() - 10)
 
             self.overlay_surface.blit(tip_bg, (tip_x, tip_y))

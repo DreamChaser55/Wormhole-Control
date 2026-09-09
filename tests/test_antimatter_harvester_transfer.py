@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from entities import Unit, Star
-from unit_components import AntimatterHarvester
-from unit_orders import TransferAntimatterOrder, OrderStatus
+from domain.units import Unit
+from domain.celestials import Star
+from unit_components.antimatter import AntimatterHarvester
+from unit_orders.antimatter import TransferAntimatterOrder
+from unit_orders.base import OrderStatus
 from constants import (
     HullSize, StarType,
     DEFAULT_ANTIMATTER_HARVEST_RATE,

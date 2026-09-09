@@ -5,7 +5,7 @@ import dataclasses
 
 from .base import UnitComponent
 from .enums import HyperdriveType, JumpStatus, SabotageType
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import Position
 from constants import (
     DEFAULT_HYPERDRIVE_RECHARGE_DURATION, DEFAULT_JUMP_RANGE,
@@ -13,7 +13,8 @@ from constants import (
 )
 
 if TYPE_CHECKING:
-    from entities import Unit, Wormhole
+    from domain.units import Unit
+    from domain.celestials import Wormhole
     from game import Game
 
 logger = logging.getLogger(__name__)

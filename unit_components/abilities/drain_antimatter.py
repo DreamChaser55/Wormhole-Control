@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, TYPE_CHECKING
 from geometry import Position
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from ..enums import AbilityType
 from .base import AbilityDefinition, AbilityInstance
 
@@ -44,7 +44,7 @@ class DrainAntimatterAbility(AbilityInstance):
             logger.debug(f"[{component.unit.name}] Drain Antimatter: target unit {target_unit_id} not found.")
             return False
 
-        from entities import are_allies
+        from domain.players import are_allies
         if are_allies(target_unit.owner, component.unit.owner):
             logger.debug(f"[{component.unit.name}] Drain Antimatter: target unit {target_unit.name} is friendly/allied.")
             return False

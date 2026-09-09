@@ -13,7 +13,7 @@ from geometry import Position
 from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL, STRIKECRAFT_BAY_HULL_COST_PER_SLOT
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from game import Game
 
@@ -137,7 +137,7 @@ class StrikecraftBayComponent(UnitComponent):
         # Docked Wings
         data.append({'type': 'label', 'text': "Docked Strikecraft Wings:", 'object_id': '#sidebar_section_header_label', 'height': 24})
 
-        from entities import is_position_in_magnetic_storm
+        from domain.celestials import is_position_in_magnetic_storm
         galaxy_ref = getattr(self.unit.game, 'galaxy', None) if getattr(self.unit, 'game', None) else None
         in_magnetic_storm = is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position)
         if in_magnetic_storm:
@@ -252,7 +252,7 @@ class StrikecraftBayComponent(UnitComponent):
     def can_deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
         if unit not in self.docked_units:
             return False
-        from entities import is_position_in_magnetic_storm
+        from domain.celestials import is_position_in_magnetic_storm
         if is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position):
             return False
         return True
@@ -264,7 +264,7 @@ class StrikecraftBayComponent(UnitComponent):
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
         
-        from entities import is_position_in_magnetic_storm
+        from domain.celestials import is_position_in_magnetic_storm
         attempts = 0
         while attempts < 100:
             attempts += 1
@@ -296,7 +296,7 @@ class StrikecraftBayComponent(UnitComponent):
 
     def finish_auto_construction(self, galaxy: 'Galaxy'):
         """Creates the new Strikecraft Wing and docks it."""
-        from entities import Unit # Avoid circular import
+        from domain.units import Unit
         from unit_templates import UNIT_TEMPLATES
         
         template_name = "FIGHTER_WING" if self.build_wing_type == WingType.FIGHTER else "BOMBER_WING"

@@ -4,11 +4,22 @@ from unittest.mock import Mock
 import pygame
 import pytest
 from geometry import Position
-from entities import Planet, PlanetType, MetalAsteroid, Wormhole
-from unit_components import ColonyComponent, MiningComponent, AntimatterStorage, Hyperdrive, HyperdriveType
-from unit_orders import (AttackOrder, ProtectOrder, RepairOrder, RefitOrder, DockOrder,
-                         TransferAntimatterOrder, MineOrder, ContinuousMineOrder,
-                         ColonizeOrder, LoadColonistsOrder, OrderStatus, UseAbilityOrder)
+from domain.celestials import Planet, MetalAsteroid, Wormhole
+from constants import PlanetType
+from unit_components.colony import ColonyComponent
+from unit_components.mining import MiningComponent
+from unit_components.antimatter import AntimatterStorage
+from unit_components.movement import Hyperdrive
+from unit_components.enums import HyperdriveType
+from unit_orders.combat import AttackOrder, ProtectOrder
+from unit_orders.repair import RepairOrder
+from unit_orders.refit import RefitOrder
+from unit_orders.hangar import DockOrder
+from unit_orders.antimatter import TransferAntimatterOrder
+from unit_orders.mining import MineOrder, ContinuousMineOrder
+from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
+from unit_orders.base import OrderStatus
+from unit_orders.abilities import UseAbilityOrder
 from unit_orders.gas_giant import EnterGasGiantOrder
 from gui.sidebar.order_formatting import format_order_state_data
 from tests.support.campaigns import campaign, ship, legacy_document
@@ -98,7 +109,7 @@ def wormholes(game):
 
 
 def test_wormhole_exit_zero_executes_and_renders(monkeypatch):
-    from unit_orders import ReachWaypointOrder
+    from unit_orders.movement import ReachWaypointOrder
     from turn_processor import TurnProcessor
     from rendering.galaxy_renderer import draw_galaxy_preview
     game = campaign()

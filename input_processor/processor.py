@@ -3,7 +3,7 @@ import typing
 import logging
 import pygame
 from geometry import Position
-from entities import Unit
+from domain.units import Unit
 from input_processor.hover_tracker import update_hover_states
 from input_processor.keyboard_handler import handle_keyboard_panning, handle_key_down
 from input_processor.mouse_handler import (

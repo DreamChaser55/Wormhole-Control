@@ -1,1443 +1,181 @@
-import logging
-
-logger = logging.getLogger(__name__)
-
-import typing
-from typing import Dict, Optional, Any, Tuple, TYPE_CHECKING, List
-from utils import HexCoord, generate_short_id
-from geometry import Position, distance, Vector
-from constants import (
-    WHITE, YELLOW, GREEN, PURPLE, HULL_CAPACITIES, HullSize, HIT_POINTS,
-    StarType, PlanetType, NebulaType, StormType, NEBULA_COLORS, STORM_COLORS,
-    MAX_UNIT_XP, XP_WEAPON_DAMAGE_BONUS, XP_DEFENSE_BONUS, XP_SPEED_BONUS,
-    XP_JUMP_RANGE_BONUS, DEFAULT_SENSOR_SHORT_RANGE, STAR_HARVEST_MULTIPLIERS,
-    MINEFIELD_DEFAULT_DAMAGE, MINEFIELD_DEFAULT_MINES, MINEFIELD_DETONATION_RADIUS,
-    POPULATION_PER_HABITAT, BASE_HABITAT_CAPACITY,
-    STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, NEBULA_RADIUS,
-    CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
-    STORM_RADIUS, PLANET_TRAITS, HYDROGEN_NEBULA_HARVEST_MULTIPLIER,
-    BLACK_HOLE_INHIBITION_RADIUS, GIANT_STAR_RADIUS, GIANT_STAR_INHIBITION_RADIUS,
-    ASTEROID_FIELD_SPEED_MOD, ICE_FIELD_SPEED_MOD, ICE_FIELD_BEAM_DEFENSE_BONUS, ICE_FIELD_COOLDOWN_REDUCTION,
-    DEBRIS_FIELD_SPEED_MOD, DEBRIS_FIELD_DEFENSE_BONUS, DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE,
-    FieldDensity, FIELD_DENSITY_MAX_HULL, FIELD_DENSITY_PARTICLES,
-    ASTEROID_FIELD_DENSITY_SPEED_MOD, ICE_FIELD_DENSITY_SPEED_MOD, ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS,
-    DEBRIS_FIELD_DENSITY_SPEED_MOD, DEBRIS_FIELD_DENSITY_DEFENSE_BONUS, DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE
-)
-import uuid
-from datetime import datetime, timezone
-import dataclasses
-from enum import Enum, auto
-from collections import deque
-from game_ai.runtime import (
-    DEFAULT_REASONING_EFFORT,
-    DEFAULT_REPAIR_RETRIES,
-    normalize_reasoning_effort,
-    normalize_repair_retries,
-)
-from player_controller import PlayerController
-from unit_orders import (
-    Order, OrderStatus, OrderType,
-    MoveOrder, ReachWaypointOrder, AttackOrder, ColonizeOrder,
-    LoadColonistsOrder, ConstructOrder, ToggleInhibitorOrder, PatrolOrder,
-    RepairOrder, MineOrder, UnloadResourcesOrder, DockOrder, DeployUnitOrder,
-    UseAbilityOrder, ProtectOrder, ContinuousMineOrder, TransferAntimatterOrder,
-    ContinuousResupplyOrder
-)
-from unit_components import (
-    UnitComponent,
-    AntimatterStorage,
-    AntimatterHarvester,
-    Engines,
-    Hyperdrive, HyperdriveType,
-    Commander,
-    HyperspaceInhibitionFieldEmitter,
-    Weapons,
-    Defenses,
-    TurretType,
-    ColonyComponent,
-    CivilianHabitatComponent,
-    OrbitalDefenseComponent,
-    TradeComponent,
-    Constructor,
-    RepairComponent,
-    MiningComponent,
-    MetalRefineryComponent,
-    CrystalRefineryComponent,
-    HangarComponent,
-    AbilityComponent,
-    AbilityType,
-    StrikecraftBayComponent,
-    StrikecraftWingComponent,
-    Sensors,
-    MinefieldType,
-    MarinesComponent,
-    IntelligenceComponent,
-    Agent,
-    SabotageType,
-)
-from unit_components.cloaking import CloakingDevice
-
-
-if TYPE_CHECKING:
-    from galaxy import Galaxy
-    from game import Game
-
-# --- Message Class ---
-@dataclasses.dataclass
-class Message:
-    """Represents an inter-player communication transmission."""
-    sender_id: int
-    sender_name: str
-    recipient_id: int
-    turn_sent: int
-    text: str
-    timestamp: str = ""
-    read_by_recipient: bool = False
-    id: int = 0
-
-    def __post_init__(self):
-        if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
-
-    def to_markdown(self, sender_player: Optional['Player'] = None, recipient_player: Optional['Player'] = None) -> str:
-        s_name = sender_player.name if sender_player else self.sender_name or f"Player {self.sender_id}"
-        s_type = sender_player.controller.display_name if sender_player else ""
-        s_team = f", Team: {sender_player.team_id}" if (sender_player and getattr(sender_player, 'team_id', None) is not None) else ""
-        s_desc = f"{s_name} (ID: {self.sender_id}{s_team}{f', {s_type}' if s_type else ''})"
-
-        r_name = recipient_player.name if recipient_player else f"Player {self.recipient_id}"
-        r_type = recipient_player.controller.display_name if recipient_player else ""
-        r_team = f", Team: {recipient_player.team_id}" if (recipient_player and getattr(recipient_player, 'team_id', None) is not None) else ""
-        r_desc = f"{r_name} (ID: {self.recipient_id}{r_team}{f', {r_type}' if r_type else ''})"
-
-        lines = [
-            f"### Transmission #{self.id}: **{s_name}** ➔ **{r_name}**",
-            f"- **Turn**: {self.turn_sent}",
-            f"- **Timestamp**: `{self.timestamp}`",
-            f"- **Sender**: {s_desc}",
-            f"- **Recipient**: {r_desc}",
-            "",
-            f"> {self.text}",
-            "",
-            "---",
-        ]
-        return "\n".join(lines)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "sender_id": self.sender_id,
-            "sender_name": self.sender_name,
-            "recipient_id": self.recipient_id,
-            "turn_sent": self.turn_sent,
-            "text": self.text,
-            "timestamp": self.timestamp,
-            "read_by_recipient": self.read_by_recipient,
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Message':
-        return cls(
-            id=data.get("id", 0),
-            sender_id=data.get("sender_id", 0),
-            sender_name=data.get("sender_name", ""),
-            recipient_id=data.get("recipient_id", 0),
-            turn_sent=data.get("turn_sent", 1),
-            text=data.get("text", ""),
-            timestamp=data.get("timestamp", ""),
-            read_by_recipient=data.get("read_by_recipient", False),
-        )
-
-
-# --- Conversation Class ---
-@dataclasses.dataclass
-class Conversation:
-    """Represents a chronological dialogue/transmission thread between two players."""
-    participant_ids: Tuple[int, int]
-    messages: List[Message] = dataclasses.field(default_factory=list)
-
-    @classmethod
-    def make_key(cls, p1_id: int, p2_id: int) -> Tuple[int, int]:
-        return (min(p1_id, p2_id), max(p1_id, p2_id))
-
-    def add_message(self, message: Message) -> None:
-        self.messages.append(message)
-        self.messages.sort(key=lambda m: (m.turn_sent, m.id))
-
-    def get_partner_id(self, viewer_id: int) -> int:
-        if self.participant_ids[0] == viewer_id:
-            return self.participant_ids[1]
-        return self.participant_ids[0]
-
-    def get_messages_for_player(self, viewer_id: int, before_turn: Optional[int] = None) -> List[Message]:
-        if before_turn is None:
-            return list(self.messages)
-        return [m for m in self.messages if m.turn_sent < before_turn]
-
-    def get_unread_count(self, viewer_id: int, before_turn: Optional[int] = None) -> int:
-        msgs = self.messages
-        if before_turn is not None:
-            msgs = [m for m in msgs if m.turn_sent < before_turn]
-        return sum(1 for m in msgs if m.recipient_id == viewer_id and not m.read_by_recipient)
-
-    def mark_as_read(self, viewer_id: int) -> None:
-        for m in self.messages:
-            if m.recipient_id == viewer_id:
-                m.read_by_recipient = True
-
-    def to_markdown(self, players_by_id: Optional[Dict[int, 'Player']] = None) -> str:
-        p_dict = players_by_id or {}
-        p1 = p_dict.get(self.participant_ids[0])
-        p2 = p_dict.get(self.participant_ids[1])
-        p1_name = p1.name if p1 else f"Player {self.participant_ids[0]}"
-        p2_name = p2.name if p2 else f"Player {self.participant_ids[1]}"
-
-        sections = [
-            f"## Thread: {p1_name} & {p2_name}",
-            "",
-        ]
-        if not self.messages:
-            sections.append("*No transmissions recorded in this thread.*")
-        else:
-            for msg in self.messages:
-                sender_p = p_dict.get(msg.sender_id)
-                recip_p = p_dict.get(msg.recipient_id)
-                sections.append(msg.to_markdown(sender_p, recip_p))
-        return "\n".join(sections)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "participant_ids": list(self.participant_ids),
-            "messages": [m.to_dict() for m in self.messages],
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Conversation':
-        participants = tuple(data.get("participant_ids", [0, 0]))
-        messages = [
-            Message.from_dict(m) if isinstance(m, dict) else m
-            for m in data.get("messages", [])
-        ]
-        return cls(
-            participant_ids=(int(participants[0]), int(participants[1])),
-            messages=messages,
-        )
-
-
-# --- Player Class ---
-class Player:
-    """Represents a player and the controller responsible for its turns."""
-    player_counter = 0
-
-    def __init__(
-        self,
-        name: str,
-        color: tuple,
-        controller: PlayerController = PlayerController.HUMAN,
-        team_id: Optional[int] = None,
-        persistent_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        ai_reasoning_effort: str = DEFAULT_REASONING_EFFORT,
-        ai_repair_retries: int = DEFAULT_REPAIR_RETRIES,
-        ai_memory: Optional[Dict[str, Any]] = None,
-        homeworld_id: Optional[int] = None,
-    ):
-        from persistence_context import allocate_id
-        self.id = allocate_id(Player, "player_counter")
-        self.name = name if name else f"Player {self.id}"
-        self.color = color
-        self.controller = PlayerController(controller)
-        self.team_id: int = team_id if team_id is not None else (self.id + 1)
-        self.persistent_id: str = persistent_id or generate_short_id()
-        self.agent_id: str = agent_id or generate_short_id()
-        self.ai_reasoning_effort: str = normalize_reasoning_effort(
-            ai_reasoning_effort
-        )
-        self.ai_repair_retries: int = normalize_repair_retries(
-            ai_repair_retries
-        )
-        self.ai_memory: Dict[str, Any] = dict(ai_memory or {})
-        self.homeworld_id: Optional[int] = homeworld_id
-        self.order_history = []
-        self.order_event_sequence = 0
-        self.last_ai_report: Dict[str, Any] = {}
-        self.credits = 20000
-        self.metal = 10000
-        self.crystal = 10000
-        self.sector_intel: Dict[Tuple[str, HexCoord], int] = {}
-
-    def is_allied_with(self, other: Optional['Player']) -> bool:
-        """Returns True if other is not None and is allied with this player (same team or same instance)."""
-        if other is None:
-            return False
-        if self is other:
-            return True
-        other_id = getattr(other, 'id', None)
-        if isinstance(other_id, (int, str)) and self.id == other_id:
-            return True
-        other_team = getattr(other, 'team_id', None)
-        if isinstance(other_team, (int, str)) and self.team_id is not None:
-            return self.team_id == other_team
-        return False
-
-    def is_enemy_of(self, other: Optional['Player']) -> bool:
-        """Returns True if other is a valid opposing player on a different team."""
-        if other is None:
-            return False
-        if self is other:
-            return False
-        other_id = getattr(other, 'id', None)
-        if isinstance(other_id, (int, str)) and self.id == other_id:
-            return False
-        return not self.is_allied_with(other)
-
-    def relation_to(self, other: Optional['Player']) -> str:
-        """Returns 'self', 'ally', or 'enemy' relationship relative to other."""
-        if other is None:
-            return "neutral"
-        if self is other or (isinstance(getattr(other, 'id', None), (int, str)) and self.id == other.id):
-            return "self"
-        if self.is_allied_with(other):
-            return "ally"
-        return "enemy"
-
-    def record_sector_intel(self, system_name: str, hex_coord: HexCoord, turn: int) -> None:
-        """Records or updates the last turn a sector was in long-range sensor range."""
-        self.sector_intel[(system_name, hex_coord)] = turn
-
-    def get_sector_last_intel_turn(self, system_name: str, hex_coord: HexCoord) -> Optional[int]:
-        """Returns the turn number when intel was last updated for a sector, or None."""
-        return self.sector_intel.get((system_name, hex_coord))
-
-    def __repr__(self):
-        return f"Player({self.name}, ID:{self.id}, Team:{self.team_id}, Color:{self.color})"
-
-
-def are_allies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
-    """Returns True if p1 and p2 are valid allied players (or the same player)."""
-    if p1 is None or p2 is None:
-        return False
-    if p1 is p2:
-        return True
-    if isinstance(p1, Player):
-        return p1.is_allied_with(p2)
-    if isinstance(p2, Player):
-        return p2.is_allied_with(p1)
-    p1_id = getattr(p1, 'id', None)
-    p2_id = getattr(p2, 'id', None)
-    if isinstance(p1_id, (int, str)) and isinstance(p2_id, (int, str)) and p1_id == p2_id:
-        return True
-    team1 = getattr(p1, 'team_id', None)
-    team2 = getattr(p2, 'team_id', None)
-    if isinstance(team1, (int, str)) and isinstance(team2, (int, str)):
-        return team1 == team2
-    return p1 == p2
-
-
-def are_enemies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
-    """Returns True if p1 and p2 are valid enemy players."""
-    if p1 is None or p2 is None:
-        return False
-    if isinstance(p1, Player):
-        return p1.is_enemy_of(p2)
-    if isinstance(p2, Player):
-        return p2.is_enemy_of(p1)
-    return not are_allies(p1, p2)
-
-# --- Game Object Base Class ---
-class GameObject:
-    """Base class for all objects that can exist in a sector."""
-    object_counter = 1
-
-    def __init__(self, position: Position, in_hex: HexCoord, in_system: str):
-        from persistence_context import allocate_id
-        self.id = allocate_id(GameObject, "object_counter")
-        self.position = position
-        self.in_hex = in_hex
-        self.in_system = in_system
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(ID:{self.id}, Pos:{self.position}, Hex:{self.in_hex}, System:{self.in_system})"
-
-def _normalize_sabotage_type(sabotage_type: typing.Union[str, SabotageType]) -> SabotageType:
-    """Helper to convert a string or SabotageType enum to a SabotageType instance safely."""
-    if isinstance(sabotage_type, SabotageType):
-        return sabotage_type
-    s_val = str(sabotage_type).strip()
-    try:
-        return SabotageType(s_val.lower())
-    except ValueError:
-        pass
-    try:
-        return SabotageType[s_val.upper()]
-    except KeyError:
-        pass
-    return SabotageType(s_val)
-
-
-# --- CelestialBody-derived Class: CelestialBody ---
-
-class CelestialBody(GameObject):
-    """Base class for fixed celestial objects like planets, stars."""
-    collision_radius: float = 0.0
-    is_solid: bool = True
-
-    @property
-    def effect_radius(self) -> float:
-        """Returns the logical radius of effect for non-solid bodies or environmental zones."""
-        return getattr(self, 'radius', 0.0)
-
-    def __init__(self, position: Position, in_hex: HexCoord, in_system: str, inhibition_field_radius: float = 0.0):
-        super().__init__(position, in_hex, in_system)
-        self.inhibition_field_radius = inhibition_field_radius
-        self.infiltrating_agents: typing.List[Agent] = []
-
-    def has_infiltrating_agent_from(self, player: Optional['Player']) -> bool:
-        """Returns True if this celestial body has an active agent belonging to the player."""
-        if not player or not hasattr(self, 'infiltrating_agents'):
-            return False
-        return any(a.owner == player for a in self.infiltrating_agents)
-
-    def get_infiltrating_agents_for_viewer(self, viewer: Optional['Player']) -> typing.List[Agent]:
-        """Returns infiltrating agents visible to the viewer."""
-        if not viewer or not hasattr(self, 'infiltrating_agents'):
-            return []
-        return [a for a in self.infiltrating_agents if a.owner == viewer or (a.is_discovered and getattr(self, 'owner', None) == viewer)]
-
-    def is_sabotaged(self, sabotage_type: typing.Union[str, SabotageType]) -> bool:
-        """Returns True if this body currently suffers from the specified sabotage."""
-        if not hasattr(self, 'infiltrating_agents'):
-            return False
-        target_type = _normalize_sabotage_type(sabotage_type)
-        return any(a.active_sabotage == target_type for a in self.infiltrating_agents)
-
-    def apply_sabotage(self, agent: Agent, sabotage_type: typing.Union[str, SabotageType]) -> bool:
-        """Applies a sabotage operation to this celestial body through an attached agent."""
-        target_type = _normalize_sabotage_type(sabotage_type)
-        if agent in getattr(self, 'infiltrating_agents', []):
-            agent.active_sabotage = target_type
-            logger.debug(f"Applied sabotage {target_type.name} to {self.name} via Agent {agent.id}.")
-            return True
-        return False
-
-    def remove_agent(self, agent: Agent) -> bool:
-        """Removes an agent from this celestial body."""
-        if hasattr(self, 'infiltrating_agents') and agent in self.infiltrating_agents:
-            self.infiltrating_agents.remove(agent)
-            return True
-        return False
-
-    def get_supported_habitat_capacity(self) -> int:
-        """Returns the maximum number of civilian habitat modules this body can support based on population."""
-        if not getattr(self, 'owner', None) or getattr(self, 'population', 0.0) <= 0:
-            return 0
-        return max(BASE_HABITAT_CAPACITY, int(self.population // POPULATION_PER_HABITAT))
-
-    def get_supported_orbital_defense_capacity(self) -> int:
-        """Returns the maximum number of orbital defense modules this body can support based on population."""
-        if not getattr(self, 'owner', None) or getattr(self, 'population', 0.0) <= 0:
-            return 0
-        from constants import BASE_ORBITAL_DEFENSE_CAPACITY, POPULATION_PER_ORBITAL_DEFENSE
-        return max(BASE_ORBITAL_DEFENSE_CAPACITY, int(self.population // POPULATION_PER_ORBITAL_DEFENSE))
-
-# --- CelestialBody-derived Classes ---
-
-class Wormhole(CelestialBody):
-    """Represents a wormhole connecting two systems."""
-    def __init__(self, in_hex: HexCoord, in_system: str, exit_system_name: str, stability: int = 100, diameter: HullSize = HullSize.HUGE):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1875.0)
-        self.exit_system_name = exit_system_name
-        self.exit_wormhole_id: typing.Optional[int] = None
-        self.stability = stability
-        self.diameter = diameter
-        self.name = f"Wormhole {self.id}"
-
-class Star(CelestialBody):
-    """Represents the central star of a system."""
-    collision_radius: float = STAR_RADIUS
-    def __init__(self, in_system: str, star_type: StarType):
-        inhibition_radius = 3375.0
-        coll_radius = STAR_RADIUS
-        if star_type == StarType.BLACK_HOLE:
-            inhibition_radius = BLACK_HOLE_INHIBITION_RADIUS
-        elif star_type in (StarType.BLUE_GIANT, StarType.RED_GIANT):
-            inhibition_radius = GIANT_STAR_INHIBITION_RADIUS
-            coll_radius = GIANT_STAR_RADIUS
-        super().__init__(position=Position(0.0, 0.0), in_hex=(0, 0), in_system=in_system, inhibition_field_radius=inhibition_radius)
-        self.collision_radius = coll_radius
-        self.star_type = star_type
-        self.name = f"Star {self.id}"
-
-    @property
-    def harvest_multiplier(self) -> float:
-        """Returns the antimatter harvest rate multiplier based on star type."""
-        return STAR_HARVEST_MULTIPLIERS.get(self.star_type, 1.0)
-
-class Planet(CelestialBody):
-    """Represents a planet within a system."""
-    collision_radius: float = PLANET_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str, planet_type: Optional[PlanetType] = None):
-        if not isinstance(planet_type, PlanetType):
-            pos = planet_type if isinstance(planet_type, Position) else Position(0.0, 0.0)
-            actual_type = PlanetType.TERRAN
-        else:
-            pos = Position(0.0, 0.0)
-            actual_type = planet_type
-        traits = PLANET_TRAITS.get(actual_type, PLANET_TRAITS[PlanetType.TERRAN])
-        inhibition_radius = traits.get("inhibition_radius", 3000.0)
-        super().__init__(position=pos, in_hex=in_hex, in_system=in_system, inhibition_field_radius=inhibition_radius)
-        self.name = f"Planet {self.id}"
-        self.owner: Optional[Player] = None
-        self.planet_type = actual_type
-        self.is_colonizable: bool = traits.get("is_colonizable", True)
-        self.population: float = 0
-        self.max_population: float = traits.get("max_population", 100.0)
-        self.population_growth_rate: float = traits.get("growth_rate", 0.02)
-        self.growth_rate: float = self.population_growth_rate
-        self.passive_metal: float = traits.get("passive_metal", 0.0)
-        self.passive_crystal: float = traits.get("passive_crystal", 0.0)
-        self.harvest_multiplier: float = traits.get("am_harvest_multiplier", 0.0)
-        self.collision_radius: float = traits.get("collision_radius", PLANET_RADIUS)
-        self.hidden_units: typing.List['Unit'] = []
-
-    def can_hide_unit(self, unit: 'Unit') -> bool:
-        """Returns True if this planet is a gas giant and the unit can enter its atmosphere."""
-        if self.planet_type != PlanetType.GAS_GIANT:
-            return False
-        if getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING:
-            return False
-        eng = getattr(unit, 'engines_component', None)
-        if not eng or not getattr(eng, 'is_operational', False):
-            return False
-        return True
-
-    def hide_unit(self, unit: 'Unit', galaxy_ref: typing.Any = None) -> bool:
-        """Hides the unit in the gas giant's atmosphere, removing it from normal sector presence."""
-        if not self.can_hide_unit(unit):
-            return False
-        if unit in self.hidden_units:
-            return True
-
-        g = galaxy_ref or getattr(unit, 'in_galaxy', None) or (getattr(unit.game, 'galaxy', None) if getattr(unit, 'game', None) else None)
-        if g and unit.in_system:
-            sys_obj = g.systems.get(unit.in_system)
-            if sys_obj:
-                sys_obj.remove_unit(unit)
-
-        # Deactivate any active external fields or targets
-        if getattr(unit, 'inhibitor_component', None) and unit.inhibitor_component.is_active:
-            if hasattr(unit.inhibitor_component, 'turn_off'):
-                unit.inhibitor_component.turn_off()
-            else:
-                unit.inhibitor_component.is_active = False
-        if getattr(unit, 'cloaking_component', None) and unit.cloaking_component.is_active:
-            if hasattr(unit.cloaking_component, 'deactivate'):
-                unit.cloaking_component.deactivate()
-            else:
-                unit.cloaking_component.is_active = False
-        if getattr(unit, 'weapons_component', None):
-            unit.weapons_component.clear_target()
-
-        unit.in_system = self.in_system
-        unit.in_hex = self.in_hex
-        unit.position = Position(self.position.x, self.position.y)
-        unit.is_hidden_in_gas_giant = True
-        unit.hidden_in_gas_giant_id = self.id
-
-        if getattr(unit, 'commander_component', None):
-            unit.commander_component.suspend_stance_activity("hidden_in_gas_giant")
-        if unit.engines_component:
-            unit.engines_component.clear_move_target()
-        if unit.hyperdrive_component:
-            unit.hyperdrive_component.clear_jump_target()
-
-        self.hidden_units.append(unit)
-        logger.debug(f"Unit '{unit.name}' (id:{unit.id}) hidden in gas giant atmosphere '{self.name}' (id:{self.id}).")
-        return True
-
-    def release_unit(self, unit: 'Unit', galaxy_ref: typing.Any = None) -> typing.Optional[Position]:
-        """Commit a verified exit position, or leave the hidden ship unchanged."""
-        if unit not in self.hidden_units:
-            return None
-
-        import math
-        import random
-        from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
-        from geometry import NAVIGATION_CLEARANCE, GEOMETRY_TOLERANCE
-        from unit_orders.movement import get_hex_collision_obstacles
-
-        standoff_dist = float(self.collision_radius) + NAVIGATION_CLEARANCE
-        g = galaxy_ref or getattr(unit, 'in_galaxy', None) or getattr(getattr(unit, 'game', None), 'galaxy', None)
-        sys_obj = g.systems.get(self.in_system) if g else None
-        hex_obj = sys_obj.hexes.get(self.in_hex) if sys_obj else None
-        if hex_obj is None:
-            return None
-        obstacles = get_hex_collision_obstacles(g, self.in_system, self.in_hex, unit=unit)
-
-        def safe(candidate):
-            if candidate.magnitude() > SECTOR_CIRCLE_RADIUS_LOGICAL - 20.0:
-                return False
-            if any(distance(candidate, obs.center) < obs.radius + NAVIGATION_CLEARANCE - GEOMETRY_TOLERANCE for obs in obstacles):
-                return False
-            return all(distance(candidate, other.position) >= NAVIGATION_CLEARANCE
-                       for other in hex_obj.units if other is not unit and other.current_hit_points > 0)
-
-        emerge_pos = None
-        # Every candidate, including the deterministic fallback, uses the same checks.
-        import itertools
-        angles = itertools.chain((random.uniform(0.0, 2.0 * math.pi) for _ in range(64)),
-                                 (math.radians(degrees) for degrees in range(360)))
-        for angle in angles:
-            candidate = self.position + Position(math.cos(angle), math.sin(angle)) * standoff_dist
-            if safe(candidate):
-                emerge_pos = candidate
-                break
-        if emerge_pos is None:
-            return None
-
-        self.hidden_units.remove(unit)
-        unit.position = emerge_pos
-        unit.in_system = self.in_system
-        unit.in_hex = self.in_hex
-        unit.is_hidden_in_gas_giant = False
-        unit.hidden_in_gas_giant_id = None
-
-        if sys_obj:
-            sys_obj.add_unit(unit)
-
-        if unit.engines_component:
-            unit.engines_component.clear_move_target()
-        if unit.hyperdrive_component:
-            unit.hyperdrive_component.clear_jump_target()
-
-        logger.debug(f"Unit '{unit.name}' (id:{unit.id}) emerged from gas giant '{self.name}' at {emerge_pos}.")
-        return emerge_pos
-
-    def update_population(self):
-        if self.owner and self.is_colonizable:
-            self.population = max(0, min(self.population, self.max_population))
-        if not self.is_colonizable or self.is_sabotaged(SabotageType.GROWTH):
-            return
-        if self.owner and self.population < self.max_population:
-            self.population += self.population * self.population_growth_rate
-            if self.population > self.max_population:
-                self.population = self.max_population
-
-
-class Moon(CelestialBody):
-    """Represents a moon, which is colonisable."""
-    collision_radius: float = MOON_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=2250.0)
-        self.name = f"Moon {self.id}"
-        self.owner: Optional[Player] = None
-        self.is_colonizable: bool = True
-        self.population: float = 0
-        self.max_population: float = 50.0
-        self.population_growth_rate: float = 0.01
-
-    def update_population(self):
-        if self.is_sabotaged(SabotageType.GROWTH):
-            return
-        if self.owner and self.population < self.max_population:
-            self.population += self.population * self.population_growth_rate
-            if self.population > self.max_population:
-                self.population = self.max_population
-
-
-class ColonizableAsteroid(CelestialBody):
-    """Represents a colonisable asteroid with population growth."""
-    collision_radius: float = ASTEROID_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1500.0)
-        self.name = f"Colonizable Asteroid {self.id}"
-        self.owner: Optional[Player] = None
-        self.is_colonizable: bool = True
-        self.population: float = 0
-        self.max_population: float = 20.0
-        self.population_growth_rate: float = 0.005
-
-    def update_population(self):
-        if self.is_sabotaged(SabotageType.GROWTH):
-            return
-        if self.owner and self.population < self.max_population:
-            self.population += self.population * self.population_growth_rate
-            if self.population > self.max_population:
-                self.population = self.max_population
-
-class MetalAsteroid(CelestialBody):
-    """Represents a metal asteroid, which is a source of Metal."""
-    collision_radius: float = ASTEROID_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1500.0)
-        self.name = f"Metal Asteroid {self.id}"
-        self.metal_yield: float = 10.0
-
-
-class DebrisField(CelestialBody):
-    """Represents a field of debris providing physical cover and high-speed navigation hazard."""
-    radius: float = DEBRIS_FIELD_RADIUS
-    is_solid: bool = False
-    def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
-        self.name = f"Debris Field {self.id}"
-        self.radius = DEBRIS_FIELD_RADIUS
-        self.density = density
-        self.speed_multiplier = DEBRIS_FIELD_DENSITY_SPEED_MOD.get(density, DEBRIS_FIELD_SPEED_MOD)
-        self.defense_bonus = DEBRIS_FIELD_DENSITY_DEFENSE_BONUS.get(density, DEBRIS_FIELD_DEFENSE_BONUS)
-        self.hazard_speed_threshold = DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD
-        self.hazard_damage = DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE.get(density, DEBRIS_FIELD_HAZARD_DAMAGE)
-
-    @property
-    def max_hull_size(self) -> HullSize:
-        return FIELD_DENSITY_MAX_HULL.get(self.density, HullSize.MEDIUM)
-
-    def can_unit_enter(self, unit_or_hull: Any) -> bool:
-        hull = getattr(unit_or_hull, 'hull_size', unit_or_hull)
-        val = getattr(hull, 'value', 0)
-        return val <= self.max_hull_size.value
-
-class AsteroidField(CelestialBody):
-    """Represents a field of asteroids providing long-range radar scattering and sublight drag."""
-    radius: float = ASTEROID_FIELD_RADIUS
-    is_solid: bool = False
-    def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
-        self.name = f"Asteroid Field {self.id}"
-        self.density = density
-        self.asteroid_count = 200 if density == FieldDensity.LOW else (350 if density == FieldDensity.MEDIUM else 550)
-        self.radius = ASTEROID_FIELD_RADIUS
-        self.speed_multiplier = ASTEROID_FIELD_DENSITY_SPEED_MOD.get(density, ASTEROID_FIELD_SPEED_MOD)
-
-    @property
-    def max_hull_size(self) -> HullSize:
-        return FIELD_DENSITY_MAX_HULL.get(self.density, HullSize.MEDIUM)
-
-    def can_unit_enter(self, unit_or_hull: Any) -> bool:
-        hull = getattr(unit_or_hull, 'hull_size', unit_or_hull)
-        val = getattr(hull, 'value', 0)
-        return val <= self.max_hull_size.value
-
-class IceField(CelestialBody):
-    """Represents a field of ice particles providing beam defense cover, weapon cooling, and navigation drag."""
-    radius: float = ICE_FIELD_RADIUS
-    is_solid: bool = False
-    def __init__(self, in_hex: HexCoord, in_system: str, density: FieldDensity = FieldDensity.MEDIUM):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
-        self.name = f"Ice Field {self.id}"
-        self.density = density
-        self.radius = ICE_FIELD_RADIUS
-        self.speed_multiplier = ICE_FIELD_DENSITY_SPEED_MOD.get(density, ICE_FIELD_SPEED_MOD)
-        self.beam_defense_bonus = ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS.get(density, ICE_FIELD_BEAM_DEFENSE_BONUS)
-        self.cooldown_reduction = ICE_FIELD_COOLDOWN_REDUCTION
-
-    @property
-    def max_hull_size(self) -> HullSize:
-        return FIELD_DENSITY_MAX_HULL.get(self.density, HullSize.MEDIUM)
-
-    def can_unit_enter(self, unit_or_hull: Any) -> bool:
-        hull = getattr(unit_or_hull, 'hull_size', unit_or_hull)
-        val = getattr(hull, 'value', 0)
-        return val <= self.max_hull_size.value
-
-class Nebula(CelestialBody):
-    """Represents a nebula."""
-    radius: float = NEBULA_RADIUS
-    is_solid: bool = False
-    def __init__(self, in_hex: HexCoord, in_system: str, nebula_type: NebulaType):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
-        self.name = f"Nebula {self.id}"
-        self.nebula_type = nebula_type
-        self.radius = NEBULA_RADIUS
-
-    @property
-    def harvest_multiplier(self) -> float:
-        """Returns antimatter harvesting multiplier (0.4x for Hydrogen, 0.0 otherwise)."""
-        if getattr(self, 'nebula_type', None) == NebulaType.HYDROGEN:
-            return HYDROGEN_NEBULA_HARVEST_MULTIPLIER
-        return 0.0
-
-class Storm(CelestialBody):
-    """Represents an energetic space storm hazard."""
-    radius: float = STORM_RADIUS
-    is_solid: bool = False
-    def __init__(self, in_hex: HexCoord, in_system: str, storm_type: StormType):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=0.0)
-        self.name = f"Storm {self.id}"
-        self.storm_type = storm_type
-        self.radius = STORM_RADIUS
-
-class Comet(CelestialBody):
-    """Represents a comet, which is a source of Crystal."""
-    collision_radius: float = COMET_RADIUS
-    def __init__(self, in_hex: HexCoord, in_system: str):
-        super().__init__(position=Position(0.0, 0.0), in_hex=in_hex, in_system=in_system, inhibition_field_radius=1000.0)
-        self.name = f"Comet {self.id}"
-        self.crystal_yield: float = 10.0
-
-
-NON_SOLID_CELESTIAL_BODIES = (AsteroidField, IceField, DebrisField, Nebula, Storm)
-
-
-def is_position_in_magnetic_storm(
-    galaxy_ref: Any,
-    system_name: Optional[str],
-    hex_coord: Optional[HexCoord],
-    position: Optional[Position]
-) -> bool:
-    """Returns True if the given position in system_name and hex_coord is inside a Magnetic Storm."""
-    if not galaxy_ref or not system_name or hex_coord is None or position is None:
-        return False
-    systems = getattr(galaxy_ref, "systems", None)
-    if not isinstance(systems, dict):
-        return False
-    system = systems.get(system_name)
-    if not system:
-        return False
-    hexes = getattr(system, "hexes", None)
-    if not isinstance(hexes, dict):
-        return False
-    hex_obj = hexes.get(hex_coord)
-    if not hex_obj:
-        return False
-    for body in getattr(hex_obj, "celestial_bodies", []):
-        if isinstance(body, Storm) and getattr(body, "storm_type", None) == StormType.MAGNETIC:
-            radius = getattr(body, "radius", STORM_RADIUS)
-            if distance(position, body.position) <= radius:
-                return True
-    return False
-
-
-def is_position_blocked_by_celestial_field(
-    galaxy_ref: Any,
-    system_name: Optional[str],
-    hex_coord: Optional[HexCoord],
-    position: Optional[Position],
-    unit_or_hull: Any
-) -> bool:
-    """Returns True if position in system_name and hex_coord is within a celestial field that forbids unit_or_hull."""
-    if not galaxy_ref or not system_name or hex_coord is None or position is None or unit_or_hull is None:
-        return False
-    hull = getattr(unit_or_hull, 'hull_size', unit_or_hull)
-    if not hasattr(hull, 'value'):
-        return False
-    systems = getattr(galaxy_ref, "systems", None)
-    if not isinstance(systems, dict):
-        return False
-    system = systems.get(system_name)
-    if not system:
-        return False
-    hexes = getattr(system, "hexes", None)
-    if not isinstance(hexes, dict):
-        return False
-    hex_obj = hexes.get(hex_coord)
-    if not hex_obj:
-        return False
-    for body in getattr(hex_obj, "celestial_bodies", []):
-        if isinstance(body, (AsteroidField, DebrisField, IceField)):
-            if hasattr(body, 'can_unit_enter') and not body.can_unit_enter(hull):
-                radius = getattr(body, "radius", CELESTIAL_FIELD_RADIUS)
-                if distance(position, body.position) <= radius:
-                    return True
-    return False
-
-
-# --- GameObject-derived Class: Minefield ---
-
-class Minefield(GameObject):
-    """Represents a deployed minefield hazard in a hex."""
-    def __init__(self, owner: Player, position: Position, in_hex: HexCoord, in_system: str,
-                 mines_remaining: int = int(MINEFIELD_DEFAULT_MINES),
-                 mine_damage: float = MINEFIELD_DEFAULT_DAMAGE,
-                 detonation_radius: float = MINEFIELD_DETONATION_RADIUS,
-                 minefield_type: typing.Union[MinefieldType, str] = MinefieldType.ANTI_SHIP):
-        super().__init__(position, in_hex, in_system)
-        self.owner = owner
-        if isinstance(minefield_type, str):
-            try:
-                self.minefield_type = MinefieldType(minefield_type)
-            except ValueError:
-                self.minefield_type = MinefieldType.ANTI_SHIP
-        else:
-            self.minefield_type = minefield_type
-        self.name = f"{self.minefield_type.display_name} Minefield {self.id}"
-        self.mines_remaining = mines_remaining
-        self.mine_damage = mine_damage
-        self.detonation_radius = detonation_radius
-        self.revealed_to_player_ids: typing.Set[int] = set()
-
-    def reveal_to(self, player: typing.Optional[Player]) -> None:
-        """Permanently marks this minefield as revealed to the given player."""
-        if player is not None:
-            self.revealed_to_player_ids.add(player.id)
-
-    def is_revealed_to(self, player: typing.Optional[Player]) -> bool:
-        """Return True if this minefield has been revealed to the given player."""
-        if player is None:
-            return False
-        return player.id in self.revealed_to_player_ids
-
-    def can_target(self, unit: 'Unit') -> bool:
-        """Return True if unit is a valid target for this minefield type."""
-        if self.owner and (unit.owner == self.owner or self.owner.is_allied_with(unit.owner)):
-            return False
-        if unit.current_hit_points <= 0:
-            return False
-        if self.minefield_type == MinefieldType.ANTI_SHIP:
-            return unit.hull_size != HullSize.STRIKECRAFT_WING
-        elif self.minefield_type == MinefieldType.ANTI_STRIKECRAFT:
-            return unit.hull_size == HullSize.STRIKECRAFT_WING
-        return True
-
-    def detonate_against(self, unit: 'Unit') -> float:
-        """Detonates a mine against an enemy unit, applying net damage and reducing mine count."""
-        if self.mines_remaining <= 0:
-            return 0.0
-
-        defenses = unit.get_component(Defenses)
-        armor = defenses.armor if defenses else 0
-        shields = defenses.shields if defenses else 0
-
-        mitigation = (armor * 0.5) + (shields * 0.25)
-        effective_damage = max(10.0, self.mine_damage - mitigation)
-
-        if getattr(unit, 'damage_reduction', 0) > 0:
-            effective_damage *= (1.0 - min(0.9, unit.damage_reduction))
-        if getattr(unit, 'damage_amplification', 0) > 0:
-            effective_damage *= (1.0 + unit.damage_amplification)
-
-        damage_int = int(round(effective_damage))
-        unit.current_hit_points = max(0, unit.current_hit_points - damage_int)
-        self.mines_remaining -= 1
-
-        logger.debug(f"{self.name} (Owner: {self.owner.name}) detonated against {unit.name}! Dealt {damage_int} damage. Mines remaining: {self.mines_remaining}")
-        if unit.current_hit_points <= 0:
-            unit.destroy()
-        return damage_int
-
-
-# --- GameObject-derived Class: Unit ---
-
-
-class Unit(GameObject):
-    """Represents a generic unit in the game, composed of various components."""
-    def __init__(self, owner: Player, position: Position, in_hex: HexCoord, in_system: str, name: str,
-                 hull_size: HullSize,
-                 game: "Game",
-                 template_name: typing.Optional[str] = None):
-        super().__init__(position, in_hex, in_system)
-        self.owner = owner
-        self.name: str = name
-        self.game = game
-        self.in_galaxy: Optional['Galaxy'] = game.galaxy if game else None
-
-        self.hull_size: HullSize = hull_size
-        self.hull_capacity: float = HULL_CAPACITIES[self.hull_size] # consumed by components with hull_cost
-        self.current_hull_usage: float = 0.0
-
-        self.max_hit_points: int = HIT_POINTS[self.hull_size]
-        self.current_hit_points: int = self.max_hit_points
-
-        self.components: typing.Dict[type, UnitComponent] = {}
-
-        # --- Status effects applied by abilities ---
-        # Damage reduction (0.0 = none, 0.75 = 75% reduction). Stacks additively.
-        self.damage_reduction: float = 0.0
-        # Extra damage taken multiplier from Designate Target. Stacks additively.
-        self.damage_amplification: float = 0.0
-        # Ion Bolt disable: unit cannot move or attack while True.
-        self.is_disabled: bool = False
-        # Set of unit IDs that have applied a disable. Disable lifts when the set is empty.
-        self.disabled_by_unit_ids: typing.Set[int] = set()
-        # Lifetime in turns (None = permanent). Used by temporary units (Missile Platforms).
-        self.lifetime: typing.Optional[int] = None
-        # Flag to distinguish spawned temporary units from regular units.
-        self.is_temporary: bool = False
-
-        # Experience points earned through combat (0 – MAX_UNIT_XP).
-        self.experience_points: int = 0
-
-        self.template_name: typing.Optional[str] = template_name
-        self.infiltrating_agents: typing.List[Agent] = []
-
-        self.is_hidden_in_gas_giant: bool = False
-        self.hidden_in_gas_giant_id: typing.Optional[int] = None
-
-        # Every unit has a commander component by default
-        self.add_component(Commander(unit=self))
-        # Every unit has an antimatter storage component by default
-        self.add_component(AntimatterStorage(unit=self))
-        # Every unit has baseline sensors by default (0 hull cost)
-        self.add_component(Sensors(unit=self, short_range_radius=DEFAULT_SENSOR_SHORT_RANGE, long_range_hexes=0, hull_cost=0))
-
-    def add_component(self, component: UnitComponent) -> None:
-        existing = self.components.get(type(component))
-        if existing is not None and existing is not component:
-            existing.on_destroyed()
-        self.components[type(component)] = component
-        self._update_hull_usage()
-
-    def get_component(self, component_type: type) -> typing.Optional[UnitComponent]:
-        return self.components.get(component_type)
-        
-    def remove_component(self, component_type: type) -> None:
-        if component_type in self.components:
-            self.components[component_type].on_destroyed()
-            del self.components[component_type]
-            self._update_hull_usage()
-
-    @property
-    def sensors_component(self) -> typing.Optional[Sensors]:
-        return self.get_component(Sensors)
-
-    @property
-    def antimatter_component(self) -> typing.Optional[AntimatterStorage]:
-        return self.get_component(AntimatterStorage)
-
-
-    @property
-    def harvester_component(self) -> typing.Optional[AntimatterHarvester]:
-        return self.get_component(AntimatterHarvester)
-
-    @property
-    def engines_component(self) -> typing.Optional[Engines]:
-        return self.get_component(Engines)
-
-
-    @property
-    def hyperdrive_component(self) -> typing.Optional[Hyperdrive]:
-        return self.get_component(Hyperdrive)
-
-    @property
-    def inhibitor_component(self) -> typing.Optional[HyperspaceInhibitionFieldEmitter]:
-        return self.get_component(HyperspaceInhibitionFieldEmitter)
-
-    @property
-    def weapons_component(self) -> typing.Optional[Weapons]:
-        return self.get_component(Weapons)
-
-    @property
-    def colony_component(self) -> typing.Optional[ColonyComponent]:
-        return self.get_component(ColonyComponent)
-
-    @property
-    def civilian_habitat_component(self) -> typing.Optional[CivilianHabitatComponent]:
-        return self.get_component(CivilianHabitatComponent)
-
-    @property
-    def orbital_defense_component(self) -> typing.Optional[OrbitalDefenseComponent]:
-        return self.get_component(OrbitalDefenseComponent)
-
-    @property
-    def trade_component(self) -> typing.Optional[TradeComponent]:
-        return self.get_component(TradeComponent)
-
-    @property
-    def constructor_component(self) -> typing.Optional[Constructor]:
-        return self.get_component(Constructor)
-
-    @property
-    def repair_component(self) -> typing.Optional[RepairComponent]:
-        return self.get_component(RepairComponent)
-
-    @property
-    def mining_component(self) -> typing.Optional[MiningComponent]:
-        return self.get_component(MiningComponent)
-
-    @property
-    def metal_refinery_component(self) -> typing.Optional[MetalRefineryComponent]:
-        return self.get_component(MetalRefineryComponent)
-
-    @property
-    def crystal_refinery_component(self) -> typing.Optional[CrystalRefineryComponent]:
-        return self.get_component(CrystalRefineryComponent)
-
-    @property
-    def hangar_component(self) -> typing.Optional[HangarComponent]:
-        return self.get_component(HangarComponent)
-
-    @property
-    def strikecraft_bay_component(self) -> typing.Optional[StrikecraftBayComponent]:
-        return self.get_component(StrikecraftBayComponent)
-
-    @property
-    def strikecraft_wing_component(self) -> typing.Optional[StrikecraftWingComponent]:
-        return self.get_component(StrikecraftWingComponent)
-
-    @property
-    def ability_component(self) -> typing.Optional[AbilityComponent]:
-        return self.get_component(AbilityComponent)
-
-    @property
-    def marines_component(self) -> typing.Optional[MarinesComponent]:
-        return self.get_component(MarinesComponent)
-
-    @property
-    def cloaking_component(self) -> typing.Optional[CloakingDevice]:
-        return self.get_component(CloakingDevice)
-
-    @property
-    def intelligence_component(self) -> typing.Optional[IntelligenceComponent]:
-        return self.get_component(IntelligenceComponent)
-
-    @property
-    def commander_component(self) -> Commander:
-        return self.get_component(Commander)
-
-    def has_infiltrating_agent_from(self, player: Optional['Player']) -> bool:
-        """Returns True if this unit has an active agent belonging to the player."""
-        if not player or not hasattr(self, 'infiltrating_agents'):
-            return False
-        return any(a.owner == player for a in self.infiltrating_agents)
-
-    def get_infiltrating_agents_for_viewer(self, viewer: Optional['Player']) -> typing.List[Agent]:
-        """Returns infiltrating agents visible to the viewer."""
-        if not viewer or not hasattr(self, 'infiltrating_agents'):
-            return []
-        return [a for a in self.infiltrating_agents if a.owner == viewer or (a.is_discovered and self.owner == viewer)]
-
-    def is_sabotaged(self, sabotage_type: typing.Union[str, SabotageType]) -> bool:
-        """Returns True if this unit currently suffers from the specified sabotage."""
-        if not hasattr(self, 'infiltrating_agents'):
-            return False
-        target_type = _normalize_sabotage_type(sabotage_type)
-        return any(a.active_sabotage == target_type for a in self.infiltrating_agents)
-
-    def apply_sabotage(self, agent: Agent, sabotage_type: typing.Union[str, SabotageType]) -> bool:
-        """Applies a sabotage operation to this unit through an attached agent."""
-        target_type = _normalize_sabotage_type(sabotage_type)
-        if agent in getattr(self, 'infiltrating_agents', []):
-            agent.active_sabotage = target_type
-            logger.debug(f"Applied sabotage {target_type.name} to {self.name} via Agent {agent.id}.")
-            if target_type == SabotageType.ANTIMATTER:
-                am_comp = self.antimatter_component
-                if am_comp and am_comp.current_amount > 0:
-                    drained = am_comp.current_amount * 0.5
-                    am_comp.consume(drained)
-                    logger.debug(f"Antimatter sabotage drained {drained:.1f} AM from {self.name}.")
-            elif target_type == SabotageType.HYPERDRIVE:
-                hd = self.hyperdrive_component
-                if hd:
-                    from unit_components import JumpStatus
-                    hd.jump_status = JumpStatus.CHARGING
-                    hd.recharge_time_remaining = max(hd.recharge_time_remaining, 3)
-            return True
-        return False
-
-    def remove_agent(self, agent: Agent) -> bool:
-        """Removes an agent from this unit."""
-        if hasattr(self, 'infiltrating_agents') and agent in self.infiltrating_agents:
-            self.infiltrating_agents.remove(agent)
-            return True
-        return False
-
-    def gain_experience(self, amount: int) -> None:
-        """Awards experience points to the unit, capped at MAX_UNIT_XP."""
-        if self.experience_points >= MAX_UNIT_XP:
-            return
-        self.experience_points = min(MAX_UNIT_XP, self.experience_points + max(0, amount))
-
-    def xp_multiplier(self, max_bonus: float) -> float:
-        """Returns a linear scaling multiplier (1.0 at 0 XP, 1.0 + max_bonus at MAX_UNIT_XP)."""
-        return 1.0 + max_bonus * (self.experience_points / MAX_UNIT_XP)
-
-    def get_orbital_defense_buffs(self, galaxy: typing.Optional['Galaxy'] = None) -> typing.Tuple[float, float]:
-        """Calculates the total additive attack and defense percentage bonuses granted to this
-        unit by friendly active Orbital Defense units within effective radius in the current sector.
-
-        Returns:
-            (total_attack_bonus, total_defense_bonus): e.g. (0.40, 0.40) for two +20% auras.
-        """
-        if not self.owner or self.current_hit_points <= 0 or not self.in_system or self.in_hex is None or not self.position:
-            return (0.0, 0.0)
-
-        g = galaxy or self.in_galaxy
-        if not g and self.game:
-            g = getattr(self.game, 'galaxy', None)
-
-        if not g:
-            return (0.0, 0.0)
-
-        system = g.systems.get(self.in_system)
-        if not system:
-            return (0.0, 0.0)
-
-        hex_obj = system.hexes.get(self.in_hex)
-        if not hex_obj:
-            return (0.0, 0.0)
-
-        total_atk = 0.0
-        total_def = 0.0
-        from geometry import distance
-
-        for u in hex_obj.units:
-            if (u.owner == self.owner or (self.owner and self.owner.is_allied_with(u.owner))) and u.current_hit_points > 0 and u.position:
-                od_comp = getattr(u, 'orbital_defense_component', None)
-                if od_comp and not od_comp.is_destroyed and od_comp.is_active(g):
-                    if distance(self.position, u.position) <= od_comp.radius:
-                        total_atk += od_comp.attack_bonus
-                        total_def += od_comp.defense_bonus
-
-        return (total_atk, total_def)
-
-    def get_environmental_cover_bonus(self, damage_type: Optional[TurretType]) -> float:
-        """Returns extra percentage damage reduction from environmental cover (e.g. IceField, DebrisField)."""
-        if not damage_type or not self.in_system or self.in_hex is None or not self.position:
-            return 0.0
-
-        g = getattr(self, 'in_galaxy', None)
-        if not g and getattr(self, 'game', None):
-            g = getattr(self.game, 'galaxy', None)
-        if not g:
-            return 0.0
-
-        system = g.systems.get(self.in_system)
-        if not system:
-            return 0.0
-
-        hex_obj = system.hexes.get(self.in_hex)
-        if not hex_obj:
-            return 0.0
-
-        cover_bonus = 0.0
-        for body in hex_obj.celestial_bodies:
-            radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
-            if distance(self.position, body.position) <= radius:
-                is_beam = damage_type == TurretType.BEAM or (isinstance(damage_type, str) and damage_type.lower() == "beam")
-                is_kinetic_missile = damage_type in (TurretType.MASS_DRIVER, TurretType.MISSILE) or (isinstance(damage_type, str) and damage_type.lower() in ("mass_driver", "missile", "kinetic"))
-                if isinstance(body, IceField) and is_beam:
-                    cover_bonus = max(cover_bonus, getattr(body, 'beam_defense_bonus', ICE_FIELD_BEAM_DEFENSE_BONUS))
-                elif isinstance(body, DebrisField) and is_kinetic_missile:
-                    cover_bonus = max(cover_bonus, getattr(body, 'defense_bonus', DEBRIS_FIELD_DEFENSE_BONUS))
-
-        return cover_bonus
-
-    @property
-    def is_strikecraft_wing(self) -> bool:
-        """Returns True if this unit has STRIKECRAFT_WING hull size."""
-        return self.hull_size == HullSize.STRIKECRAFT_WING
-
-    def is_in_magnetic_storm(self, position: Optional[Position] = None, galaxy_ref: Any = None) -> bool:
-        """Returns True if this unit (or given position) is inside a magnetic storm."""
-        g = galaxy_ref or getattr(self, "in_galaxy", None) or (getattr(self.game, "galaxy", None) if getattr(self, "game", None) else None)
-        pos = position if position is not None else self.position
-        return is_position_in_magnetic_storm(g, self.in_system, self.in_hex, pos)
-
-    def is_in_dense_field(self, position: Optional[Position] = None, galaxy_ref: Any = None) -> bool:
-        """Returns True if this unit (or given position) is inside a celestial field too dense for its hull."""
-        g = galaxy_ref or getattr(self, "in_galaxy", None) or (getattr(self.game, "galaxy", None) if getattr(self, "game", None) else None)
-        pos = position if position is not None else self.position
-        return is_position_blocked_by_celestial_field(g, self.in_system, self.in_hex, pos, self)
-
-    def take_damage(self, amount: int, damage_type: Optional[TurretType] = None, *, is_splash: bool = False) -> None:
-        """Reduces the unit's current hit points by the given amount, applying any active damage reduction, environmental cover, and defenses mitigation."""
-        if amount <= 0:
-            return
-        if is_splash:
-            from environmental_effects import splash_damage
-            amount = splash_damage(amount, self)
-        if damage_type:
-            cover = self.get_environmental_cover_bonus(damage_type)
-            if cover > 0.0:
-                cover_mitigation = amount * cover
-                amount = max(0, int(round(amount - cover_mitigation)))
-            defenses = self.get_component(Defenses)
-            if defenses:
-                mitigation = defenses.calculate_mitigation(amount, damage_type)
-                if self.is_sabotaged(SabotageType.DEFENSES):
-                    mitigation *= 0.5
-                amount = max(0, int(round(amount - mitigation)))
-                logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} damage. Remaining damage: {amount}")
-
-        reduction = max(0.0, min(1.0, self.damage_reduction))
-        if reduction > 0.0:
-            amount = max(0, int(amount * (1.0 - reduction)))
-        if amount <= 0:
-            return
-        self.current_hit_points -= amount
-        if self.current_hit_points < 0:
-            self.current_hit_points = 0
-        logger.debug(f"Unit '{self.name}' takes {amount} damage. Current HP: {self.current_hit_points}/{self.max_hit_points}")
-
-        if self.current_hit_points <= 0:
-            self.current_hit_points = 0
-            self.destroy()
-
-    def take_component_damage(self, component_type: type, amount: int, damage_type: Optional[TurretType] = None) -> int:
-        """
-        Applies damage to a specific component. 
-        Returns any excess damage (spillover) if the component is destroyed.
-        """
-        if damage_type:
-            cover = self.get_environmental_cover_bonus(damage_type)
-            if cover > 0.0:
-                cover_mitigation = amount * cover
-                amount = max(0, int(round(amount - cover_mitigation)))
-            defenses = self.get_component(Defenses)
-            if defenses:
-                mitigation = defenses.calculate_mitigation(amount, damage_type)
-                if self.is_sabotaged(SabotageType.DEFENSES):
-                    mitigation *= 0.5
-                amount = max(0, int(round(amount - mitigation)))
-                logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} component damage. Remaining damage: {amount}")
-
-        component = self.get_component(component_type)
-        if not component or component.is_destroyed:
-            return amount  # All damage spills over if component is missing or already destroyed
-
-        logger.debug(f"Unit '{self.name}' component {component_type.__name__} takes {amount} damage.")
-        component.current_hit_points -= amount
-        spillover = 0
-        
-        if component.current_hit_points <= 0:
-            spillover = abs(component.current_hit_points)
-            component.current_hit_points = 0
-            component.on_destroyed()
-            logger.debug(f"Unit '{self.name}' component {component_type.__name__} has been destroyed!")
-
-        return spillover
-
-    def heal_hull(self, amount: int) -> int:
-        """Heals the unit's hull by the given amount. Returns actual amount healed."""
-        if self.current_hit_points >= self.max_hit_points:
-            return 0
-        healed = min(amount, self.max_hit_points - self.current_hit_points)
-        self.current_hit_points += healed
-        logger.debug(f"Unit '{self.name}' hull healed by {healed}. HP: {self.current_hit_points}/{self.max_hit_points}")
-        return healed
-
-    def heal_components(self, amount: int) -> int:
-        """Heals damaged components by the given amount. Returns actual amount healed."""
-        healed_total = 0
-        for component in self.components.values():
-            if amount <= 0:
-                break
-            if component.current_hit_points < component.max_hit_points:
-                needed = component.max_hit_points - component.current_hit_points
-                healed = min(amount, needed)
-                component.current_hit_points += healed
-                healed_total += healed
-                amount -= healed
-                logger.debug(f"Unit '{self.name}' component {type(component).__name__} healed by {healed}. HP: {component.current_hit_points}/{component.max_hit_points}")
-        return healed_total
-
-    def destroy(self) -> None:
-        """Handles the destruction of the unit."""
-        if getattr(self, "_destroyed", False):
-            return
-        self._destroyed = True
-        from campaign_graph import iter_units, detach_unit
-        galaxy = self.in_galaxy or getattr(self.game, "galaxy", None)
-        for component in list(self.components.values()):
-            component.on_destroyed()
-        if galaxy:
-            for source, _ in list(iter_units(galaxy)):
-                wing = source.strikecraft_wing_component
-                if wing and wing.mother_carrier is self:
-                    wing.mother_carrier = None
-                abilities = source.ability_component
-                if abilities:
-                    for atype, effect in abilities.abilities.items():
-                        if effect.target_unit_id == self.id:
-                            abilities._expire_ability(atype, galaxy)
-                        if self.id in effect.spawned_unit_ids:
-                            effect.spawned_unit_ids.remove(self.id)
-        from order_history import interrupt_unit_orders
-        interrupt_unit_orders(self, "unit_destroyed")
-        logger.debug(f"Unit '{self.name}' has been destroyed.")
-        if self.hangar_component:
-            for docked_unit in list(self.hangar_component.docked_units):
-                docked_unit.destroy()
-        if self.strikecraft_bay_component:
-            for docked_unit in list(self.strikecraft_bay_component.docked_units):
-                docked_unit.destroy()
-        if getattr(self, 'is_hidden_in_gas_giant', False) or getattr(self, 'hidden_in_gas_giant_id', None) is not None:
-            galaxy = self.in_galaxy or (self.game.galaxy if self.game else None)
-            if galaxy and self.hidden_in_gas_giant_id is not None:
-                gas_giant = galaxy.get_celestial_body_by_id(self.hidden_in_gas_giant_id)
-                if gas_giant and hasattr(gas_giant, 'hidden_units') and self in gas_giant.hidden_units:
-                    gas_giant.hidden_units.remove(self)
-        galaxy = self.in_galaxy or (self.game.galaxy if self.game else None)
-        if galaxy:
-            detach_unit(self, galaxy)
-            galaxy.remove_unit(self)
-        if self.game:
-            self.game.deselect_object(self)
-            if getattr(self.game, 'sector_view_mouse_hover_object', None) == self:
-                self.game.sector_view_mouse_hover_object = None
-            if getattr(self.game, 'hovered_object', None) == self:
-                self.game.hovered_object = None
-
-    def _update_hull_usage(self) -> None:
-        """Recalculates and updates the current hull usage based on installed components."""
-        usage = sum(c.hull_cost for c in self.components.values())
-        self.current_hull_usage = usage
-        
-        if hasattr(self, 'hull_capacity') and self.current_hull_usage > self.hull_capacity:
-            logger.debug(f"Warning: Unit '{self.name}' created exceeding hull capacity! "
-                  f"Usage: {self.current_hull_usage}, Capacity: {self.hull_capacity}")
-        
-    def update(self) -> None:
-        """Update the unit's state, including updating its components (processing orders etc.).
-        
-        This method should be called on each turn processing cycle.
-        """
-        if getattr(self, 'is_hidden_in_gas_giant', False):
-            # Units hidden in a gas giant cannot harvest from stars, tick external fields, or attack
-            if self.commander_component:
-                self.commander_component.update()
-            return
-        # Antimatter is no longer regenerated automatically for all units.
-        # Only units with an AntimatterHarvester component can replenish their
-        # own antimatter, and only while positioned near a star. All other
-        # units must receive antimatter via TransferAntimatterOrder from
-        # another unit's existing storage.
-        if self.harvester_component and self.in_galaxy:
-            self.harvester_component.update(self.in_galaxy)
-
-        # --- Lifetime check for temporary units (e.g. Missile Platforms) ---
-
-        if self.lifetime is not None:
-            self.lifetime -= 1
-            if self.lifetime <= 0:
-                self.destroy()
-                return
-
-        # Update hyperdrive recharge status if applicable
-        if self.hyperdrive_component:
-            self.hyperdrive_component.update_recharge()
-
-        # Tick the inhibitor field: consume antimatter, auto-deactivate if empty.
-        if self.inhibitor_component:
-            self.inhibitor_component.update()
-
-        # Tick the cloaking device: consume antimatter, auto-deactivate if empty.
-        if self.cloaking_component:
-            self.cloaking_component.update()
-
-        # Skip weapons updates for disabled units (Ion Bolt)
-        if not self.is_disabled:
-            if self.weapons_component and self.in_galaxy:
-                self.weapons_component.update(self.in_galaxy)
-
-        if self.constructor_component and self.in_galaxy:
-            self.constructor_component.update(self.in_galaxy)
-
-        if self.repair_component and self.in_galaxy:
-            self.repair_component.update(self.in_galaxy)
-
-        if self.mining_component and self.in_galaxy:
-            self.mining_component.update(self.in_galaxy)
-
-        # Tick ability cooldowns and apply ongoing ability effects
-        if self.ability_component and self.in_galaxy:
-            self.ability_component.update(self.in_galaxy)
-            
-        if self.strikecraft_bay_component and self.in_galaxy:
-            self.strikecraft_bay_component.update(self.in_galaxy)
-            
-        if self.intelligence_component:
-            self.intelligence_component.update()
-
-        if self.commander_component:
-            self.commander_component.update()
+"""Compatibility facade. Canonical entities live in the domain package; classes and counters retain identity."""
+from importlib import import_module
+
+_EXPORTS = {'logging': ('logging', None),
+ 'typing': ('typing', None),
+ 'Dict': ('typing', 'Dict'),
+ 'Optional': ('typing', 'Optional'),
+ 'Any': ('typing', 'Any'),
+ 'Tuple': ('typing', 'Tuple'),
+ 'TYPE_CHECKING': ('typing', 'TYPE_CHECKING'),
+ 'List': ('typing', 'List'),
+ 'HexCoord': ('domain.coordinates', 'HexCoord'),
+ 'generate_short_id': ('utils', 'generate_short_id'),
+ 'Position': ('geometry', 'Position'),
+ 'distance': ('geometry', 'distance'),
+ 'Vector': ('geometry', 'Vector'),
+ 'WHITE': ('constants', 'WHITE'),
+ 'YELLOW': ('constants', 'YELLOW'),
+ 'GREEN': ('constants', 'GREEN'),
+ 'PURPLE': ('constants', 'PURPLE'),
+ 'HULL_CAPACITIES': ('constants', 'HULL_CAPACITIES'),
+ 'HullSize': ('constants', 'HullSize'),
+ 'HIT_POINTS': ('constants', 'HIT_POINTS'),
+ 'StarType': ('constants', 'StarType'),
+ 'PlanetType': ('constants', 'PlanetType'),
+ 'NebulaType': ('constants', 'NebulaType'),
+ 'StormType': ('constants', 'StormType'),
+ 'NEBULA_COLORS': ('constants', 'NEBULA_COLORS'),
+ 'STORM_COLORS': ('constants', 'STORM_COLORS'),
+ 'MAX_UNIT_XP': ('constants', 'MAX_UNIT_XP'),
+ 'XP_WEAPON_DAMAGE_BONUS': ('constants', 'XP_WEAPON_DAMAGE_BONUS'),
+ 'XP_DEFENSE_BONUS': ('constants', 'XP_DEFENSE_BONUS'),
+ 'XP_SPEED_BONUS': ('constants', 'XP_SPEED_BONUS'),
+ 'XP_JUMP_RANGE_BONUS': ('constants', 'XP_JUMP_RANGE_BONUS'),
+ 'DEFAULT_SENSOR_SHORT_RANGE': ('constants', 'DEFAULT_SENSOR_SHORT_RANGE'),
+ 'STAR_HARVEST_MULTIPLIERS': ('constants', 'STAR_HARVEST_MULTIPLIERS'),
+ 'MINEFIELD_DEFAULT_DAMAGE': ('constants', 'MINEFIELD_DEFAULT_DAMAGE'),
+ 'MINEFIELD_DEFAULT_MINES': ('constants', 'MINEFIELD_DEFAULT_MINES'),
+ 'MINEFIELD_DETONATION_RADIUS': ('constants', 'MINEFIELD_DETONATION_RADIUS'),
+ 'POPULATION_PER_HABITAT': ('constants', 'POPULATION_PER_HABITAT'),
+ 'BASE_HABITAT_CAPACITY': ('constants', 'BASE_HABITAT_CAPACITY'),
+ 'STAR_RADIUS': ('constants', 'STAR_RADIUS'),
+ 'PLANET_RADIUS': ('constants', 'PLANET_RADIUS'),
+ 'MOON_RADIUS': ('constants', 'MOON_RADIUS'),
+ 'ASTEROID_RADIUS': ('constants', 'ASTEROID_RADIUS'),
+ 'COMET_RADIUS': ('constants', 'COMET_RADIUS'),
+ 'NEBULA_RADIUS': ('constants', 'NEBULA_RADIUS'),
+ 'CELESTIAL_FIELD_RADIUS': ('constants', 'CELESTIAL_FIELD_RADIUS'),
+ 'ASTEROID_FIELD_RADIUS': ('constants', 'ASTEROID_FIELD_RADIUS'),
+ 'ICE_FIELD_RADIUS': ('constants', 'ICE_FIELD_RADIUS'),
+ 'DEBRIS_FIELD_RADIUS': ('constants', 'DEBRIS_FIELD_RADIUS'),
+ 'STORM_RADIUS': ('constants', 'STORM_RADIUS'),
+ 'PLANET_TRAITS': ('constants', 'PLANET_TRAITS'),
+ 'HYDROGEN_NEBULA_HARVEST_MULTIPLIER': ('constants', 'HYDROGEN_NEBULA_HARVEST_MULTIPLIER'),
+ 'BLACK_HOLE_INHIBITION_RADIUS': ('constants', 'BLACK_HOLE_INHIBITION_RADIUS'),
+ 'GIANT_STAR_RADIUS': ('constants', 'GIANT_STAR_RADIUS'),
+ 'GIANT_STAR_INHIBITION_RADIUS': ('constants', 'GIANT_STAR_INHIBITION_RADIUS'),
+ 'ASTEROID_FIELD_SPEED_MOD': ('constants', 'ASTEROID_FIELD_SPEED_MOD'),
+ 'ICE_FIELD_SPEED_MOD': ('constants', 'ICE_FIELD_SPEED_MOD'),
+ 'ICE_FIELD_BEAM_DEFENSE_BONUS': ('constants', 'ICE_FIELD_BEAM_DEFENSE_BONUS'),
+ 'ICE_FIELD_COOLDOWN_REDUCTION': ('constants', 'ICE_FIELD_COOLDOWN_REDUCTION'),
+ 'DEBRIS_FIELD_SPEED_MOD': ('constants', 'DEBRIS_FIELD_SPEED_MOD'),
+ 'DEBRIS_FIELD_DEFENSE_BONUS': ('constants', 'DEBRIS_FIELD_DEFENSE_BONUS'),
+ 'DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD': ('constants', 'DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD'),
+ 'DEBRIS_FIELD_HAZARD_DAMAGE': ('constants', 'DEBRIS_FIELD_HAZARD_DAMAGE'),
+ 'FieldDensity': ('constants', 'FieldDensity'),
+ 'FIELD_DENSITY_MAX_HULL': ('constants', 'FIELD_DENSITY_MAX_HULL'),
+ 'FIELD_DENSITY_PARTICLES': ('constants', 'FIELD_DENSITY_PARTICLES'),
+ 'ASTEROID_FIELD_DENSITY_SPEED_MOD': ('constants', 'ASTEROID_FIELD_DENSITY_SPEED_MOD'),
+ 'ICE_FIELD_DENSITY_SPEED_MOD': ('constants', 'ICE_FIELD_DENSITY_SPEED_MOD'),
+ 'ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS': ('constants', 'ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS'),
+ 'DEBRIS_FIELD_DENSITY_SPEED_MOD': ('constants', 'DEBRIS_FIELD_DENSITY_SPEED_MOD'),
+ 'DEBRIS_FIELD_DENSITY_DEFENSE_BONUS': ('constants', 'DEBRIS_FIELD_DENSITY_DEFENSE_BONUS'),
+ 'DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE': ('constants', 'DEBRIS_FIELD_DENSITY_HAZARD_DAMAGE'),
+ 'uuid': ('uuid', None),
+ 'datetime': ('datetime', 'datetime'),
+ 'timezone': ('datetime', 'timezone'),
+ 'dataclasses': ('dataclasses', None),
+ 'Enum': ('enum', 'Enum'),
+ 'auto': ('enum', 'auto'),
+ 'deque': ('collections', 'deque'),
+ 'DEFAULT_REASONING_EFFORT': ('game_ai.runtime', 'DEFAULT_REASONING_EFFORT'),
+ 'DEFAULT_REPAIR_RETRIES': ('game_ai.runtime', 'DEFAULT_REPAIR_RETRIES'),
+ 'normalize_reasoning_effort': ('game_ai.runtime', 'normalize_reasoning_effort'),
+ 'normalize_repair_retries': ('game_ai.runtime', 'normalize_repair_retries'),
+ 'PlayerController': ('player_controller', 'PlayerController'),
+ 'Order': ('unit_orders', 'Order'),
+ 'OrderStatus': ('unit_orders', 'OrderStatus'),
+ 'OrderType': ('unit_orders', 'OrderType'),
+ 'MoveOrder': ('unit_orders', 'MoveOrder'),
+ 'ReachWaypointOrder': ('unit_orders', 'ReachWaypointOrder'),
+ 'AttackOrder': ('unit_orders', 'AttackOrder'),
+ 'ColonizeOrder': ('unit_orders', 'ColonizeOrder'),
+ 'LoadColonistsOrder': ('unit_orders', 'LoadColonistsOrder'),
+ 'ConstructOrder': ('unit_orders', 'ConstructOrder'),
+ 'ToggleInhibitorOrder': ('unit_orders', 'ToggleInhibitorOrder'),
+ 'PatrolOrder': ('unit_orders', 'PatrolOrder'),
+ 'RepairOrder': ('unit_orders', 'RepairOrder'),
+ 'MineOrder': ('unit_orders', 'MineOrder'),
+ 'UnloadResourcesOrder': ('unit_orders', 'UnloadResourcesOrder'),
+ 'DockOrder': ('unit_orders', 'DockOrder'),
+ 'DeployUnitOrder': ('unit_orders', 'DeployUnitOrder'),
+ 'UseAbilityOrder': ('unit_orders', 'UseAbilityOrder'),
+ 'ProtectOrder': ('unit_orders', 'ProtectOrder'),
+ 'ContinuousMineOrder': ('unit_orders', 'ContinuousMineOrder'),
+ 'TransferAntimatterOrder': ('unit_orders', 'TransferAntimatterOrder'),
+ 'ContinuousResupplyOrder': ('unit_orders', 'ContinuousResupplyOrder'),
+ 'UnitComponent': ('unit_components', 'UnitComponent'),
+ 'AntimatterStorage': ('unit_components', 'AntimatterStorage'),
+ 'AntimatterHarvester': ('unit_components', 'AntimatterHarvester'),
+ 'Engines': ('unit_components', 'Engines'),
+ 'Hyperdrive': ('unit_components', 'Hyperdrive'),
+ 'HyperdriveType': ('unit_components', 'HyperdriveType'),
+ 'Commander': ('unit_components', 'Commander'),
+ 'HyperspaceInhibitionFieldEmitter': ('unit_components', 'HyperspaceInhibitionFieldEmitter'),
+ 'Weapons': ('unit_components', 'Weapons'),
+ 'Defenses': ('unit_components', 'Defenses'),
+ 'TurretType': ('unit_components', 'TurretType'),
+ 'ColonyComponent': ('unit_components', 'ColonyComponent'),
+ 'CivilianHabitatComponent': ('unit_components', 'CivilianHabitatComponent'),
+ 'OrbitalDefenseComponent': ('unit_components', 'OrbitalDefenseComponent'),
+ 'TradeComponent': ('unit_components', 'TradeComponent'),
+ 'Constructor': ('unit_components', 'Constructor'),
+ 'RepairComponent': ('unit_components', 'RepairComponent'),
+ 'MiningComponent': ('unit_components', 'MiningComponent'),
+ 'MetalRefineryComponent': ('unit_components', 'MetalRefineryComponent'),
+ 'CrystalRefineryComponent': ('unit_components', 'CrystalRefineryComponent'),
+ 'HangarComponent': ('unit_components', 'HangarComponent'),
+ 'AbilityComponent': ('unit_components', 'AbilityComponent'),
+ 'AbilityType': ('unit_components', 'AbilityType'),
+ 'StrikecraftBayComponent': ('unit_components', 'StrikecraftBayComponent'),
+ 'StrikecraftWingComponent': ('unit_components', 'StrikecraftWingComponent'),
+ 'Sensors': ('unit_components', 'Sensors'),
+ 'MinefieldType': ('unit_components', 'MinefieldType'),
+ 'MarinesComponent': ('unit_components', 'MarinesComponent'),
+ 'IntelligenceComponent': ('unit_components', 'IntelligenceComponent'),
+ 'Agent': ('unit_components', 'Agent'),
+ 'SabotageType': ('unit_components', 'SabotageType'),
+ 'CloakingDevice': ('unit_components.cloaking', 'CloakingDevice'),
+ 'Message': ('domain.communications', 'Message'),
+ 'Conversation': ('domain.communications', 'Conversation'),
+ 'Player': ('domain.players', 'Player'),
+ 'are_allies': ('domain.players', 'are_allies'),
+ 'are_enemies': ('domain.players', 'are_enemies'),
+ 'GameObject': ('domain.identity', 'GameObject'),
+ '_normalize_sabotage_type': ('domain.celestials', '_normalize_sabotage_type'),
+ 'CelestialBody': ('domain.celestials', 'CelestialBody'),
+ 'Wormhole': ('domain.celestials', 'Wormhole'),
+ 'Star': ('domain.celestials', 'Star'),
+ 'Planet': ('domain.celestials', 'Planet'),
+ 'Moon': ('domain.celestials', 'Moon'),
+ 'ColonizableAsteroid': ('domain.celestials', 'ColonizableAsteroid'),
+ 'MetalAsteroid': ('domain.celestials', 'MetalAsteroid'),
+ 'DebrisField': ('domain.celestials', 'DebrisField'),
+ 'AsteroidField': ('domain.celestials', 'AsteroidField'),
+ 'IceField': ('domain.celestials', 'IceField'),
+ 'Nebula': ('domain.celestials', 'Nebula'),
+ 'Storm': ('domain.celestials', 'Storm'),
+ 'Comet': ('domain.celestials', 'Comet'),
+ 'is_position_in_magnetic_storm': ('domain.celestials', 'is_position_in_magnetic_storm'),
+ 'is_position_blocked_by_celestial_field': ('domain.celestials',
+                                            'is_position_blocked_by_celestial_field'),
+ 'Minefield': ('domain.minefields', 'Minefield'),
+ 'Unit': ('domain.units', 'Unit'),
+ 'NON_SOLID_CELESTIAL_BODIES': ('domain.celestials', 'NON_SOLID_CELESTIAL_BODIES')}
+__all__ = list(_EXPORTS)
+
+
+def __getattr__(name):
+    if name not in _EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module, attribute = _EXPORTS[name]
+    value = import_module(module)
+    if attribute is not None:
+        value = getattr(value, attribute)
+    globals()[name] = value
+    return value
+
+
+def __dir__():
+    return sorted(set(globals()) | set(__all__))

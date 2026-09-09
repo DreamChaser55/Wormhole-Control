@@ -45,6 +45,8 @@ class UnitEditorWindow:
         template_manager: CustomTemplateManager,
     ):
         self.manager = manager
+        from gui.theme_loader import preload_rich_text_fonts
+        preload_rich_text_fonts(manager)
         self.screen_res = screen_res
         self.template_manager = template_manager
         self.is_visible = False

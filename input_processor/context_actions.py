@@ -3,7 +3,8 @@ import typing
 import logging
 import pygame
 from geometry import Position
-from entities import Unit, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField
+from domain.units import Unit
+from domain.celestials import Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 def _get_shift_pressed() -> bool:
     try:
         return bool(pygame.key.get_mods() & pygame.KMOD_SHIFT)
-    except Exception:
+    except pygame.error:
         return False
 
 
@@ -239,7 +240,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                 ))
 
         elif extracted_action_id == "continuous_resupply":
-            from entities import Star as StarEntity
+            from domain.celestials import Star as StarEntity
             if isinstance(target, StarEntity):
                 game.event_bus.publish(ContinuousResupplyEvent(
                     selected_units,

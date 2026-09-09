@@ -1,11 +1,9 @@
 """System and sector view camera math and smooth zoom/pan controllers."""
+from display_config import display_config_for
 import math
 import pygame
 
-from constants import (
-    SECTOR_ZOOM_MIN, SECTOR_ZOOM_MAX, SECTOR_CIRCLE_CENTER_IN_PX,
-    SYSTEM_ZOOM_MIN, SYSTEM_ZOOM_MAX, SYSTEM_CENTER_IN_PX,
-)
+from constants import SECTOR_ZOOM_MIN, SECTOR_ZOOM_MAX, SYSTEM_ZOOM_MIN, SYSTEM_ZOOM_MAX
 from geometry import Position
 from hexgrid_utils import get_hex_vertices
 
@@ -72,7 +70,7 @@ def reset_system_camera(game, system_name=None) -> None:
     points = [
         point
         for q, r in system.hexes
-        for point in get_hex_vertices(q, r)
+        for point in get_hex_vertices(q, r, display_config=display_config_for(game))
     ]
     min_x = min(point.x for point in points)
     max_x = max(point.x for point in points)
@@ -94,10 +92,10 @@ def reset_system_camera(game, system_name=None) -> None:
     game.system_zoom = fit_zoom
     game.system_target_zoom = fit_zoom
     game.system_pan_offset = Position(
-        viewport.centerx - SYSTEM_CENTER_IN_PX.x
-        - (content_center_x - SYSTEM_CENTER_IN_PX.x) * fit_zoom,
-        viewport.centery - SYSTEM_CENTER_IN_PX.y
-        - (content_center_y - SYSTEM_CENTER_IN_PX.y) * fit_zoom,
+        viewport.centerx - display_config_for(game).center.x
+        - (content_center_x - display_config_for(game).center.x) * fit_zoom,
+        viewport.centery - display_config_for(game).center.y
+        - (content_center_y - display_config_for(game).center.y) * fit_zoom,
     )
 
 
@@ -161,7 +159,7 @@ def handle_mouse_wheel(game, scroll_y: int) -> None:
         pan_attr = 'system_pan_offset'
         anchor_pixel_attr = 'system_zoom_anchor_pixel'
         anchor_logical_attr = 'system_zoom_anchor_logical'
-        center = SYSTEM_CENTER_IN_PX
+        center = display_config_for(game).center
         min_zoom, max_zoom = SYSTEM_ZOOM_MIN, SYSTEM_ZOOM_MAX
     else:
         zoom_attr = 'sector_zoom'
@@ -169,7 +167,7 @@ def handle_mouse_wheel(game, scroll_y: int) -> None:
         pan_attr = 'sector_pan_offset'
         anchor_pixel_attr = 'zoom_anchor_pixel'
         anchor_logical_attr = 'zoom_anchor_logical'
-        center = SECTOR_CIRCLE_CENTER_IN_PX
+        center = display_config_for(game).center
         min_zoom, max_zoom = SECTOR_ZOOM_MIN, SECTOR_ZOOM_MAX
 
     zoom_factor = 1.1 if scroll_y > 0 else 0.9

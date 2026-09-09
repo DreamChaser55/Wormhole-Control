@@ -1,7 +1,7 @@
 """Every star type can supply a color to the renderer."""
 import pygame
 from constants import StarType, STAR_COLORS
-from entities import Star
+from domain.celestials import Star
 
 
 def test_every_star_type_resolves_a_renderable_color():

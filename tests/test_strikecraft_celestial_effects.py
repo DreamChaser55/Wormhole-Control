@@ -8,22 +8,20 @@
 """
 
 import math
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import Position, distance
 from constants import (
     HullSize, StormType, STORM_RADIUS,
     DEBRIS_FIELD_HAZARD_DAMAGE
 )
-from entities import (
-    Unit, AsteroidField, IceField, DebrisField, Storm
-)
-from unit_components import (
-    Engines, StrikecraftBayComponent,
-    StrikecraftWingComponent, WingType, TurretType
-)
-from unit_orders import (
-    OrderStatus, MoveOrder, ReachWaypointOrder, DeployUnitOrder, DeployAllWingsOrder
-)
+from domain.units import Unit
+from domain.celestials import AsteroidField, IceField, DebrisField, Storm
+from unit_components.movement import Engines
+from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
+from unit_components.enums import WingType, TurretType
+from unit_orders.base import OrderStatus
+from unit_orders.movement import MoveOrder, ReachWaypointOrder
+from unit_orders.hangar import DeployUnitOrder, DeployAllWingsOrder
 from unit_orders.movement import get_hex_collision_obstacles
 from turn_processor import TurnProcessor
 

@@ -7,9 +7,15 @@ import math
 import random
 from dataclasses import dataclass, field
 from constants import LOGICAL_GALAXY_SIZE, SECTOR_CIRCLE_RADIUS_LOGICAL, StarType, PlanetType, NebulaType, StormType, SQRT3, MAX_MINEFIELDS_PER_HEX, FieldDensity
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from geometry import distance_sq, Vector, Position, Circle, hex_distance
-from entities import Player, GameObject, Unit, Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, HullSize, Order, OrderType, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField, Minefield
+from domain.players import Player
+from domain.identity import GameObject
+from domain.units import Unit
+from domain.celestials import Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, CelestialBody, Nebula, Storm, Comet, DebrisField, AsteroidField, IceField
+from constants import HullSize
+from unit_orders.base import Order, OrderType
+from domain.minefields import Minefield
 import json
 import os
 import typing as _t

@@ -1,10 +1,11 @@
 import logging
 from typing import Dict, Any, TYPE_CHECKING
 from .base import Order, OrderStatus, OrderType
-from unit_components import MinelayerComponent, MinefieldType
+from unit_components.minelayer import MinelayerComponent
+from unit_components.enums import MinefieldType
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
 
 logger = logging.getLogger(__name__)

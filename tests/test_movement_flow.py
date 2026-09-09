@@ -1,8 +1,11 @@
 from unittest.mock import MagicMock
 from geometry import Position
 from turn_processor import TurnProcessor
-from unit_orders import MoveOrder, Order, OrderStatus, OrderType
-from unit_components import Engines, Hyperdrive, HyperdriveType, Commander, JumpStatus
+from unit_orders.movement import MoveOrder
+from unit_orders.base import Order, OrderStatus, OrderType
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType, JumpStatus
+from unit_components.commander import Commander
 from tests.support.units import ComponentPlayer, ComponentUnit
 
 

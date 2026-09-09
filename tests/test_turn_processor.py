@@ -1,9 +1,10 @@
+from game_actions.turn_presentation import ApplicationTurnPresentation
 from player_controller import PlayerController
 import pytest
 from unittest.mock import MagicMock, patch
 from turn_processor import TurnProcessor
 from geometry import Position
-from entities import Planet
+from domain.celestials import Planet
 from constants import UPKEEP_COST_PER_HULL_POINT, HullSize
 from tests.support.units import ComponentUnit, ComponentPlayer
 
@@ -16,7 +17,7 @@ def test_end_turn_advances_player():
     game.players = [player1, player2]
     game.current_player_index = 0
     
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     with patch.object(tp, 'process_player_turn') as mock_process:
         tp.end_turn()
         mock_process.assert_called_once_with(player1)
@@ -55,7 +56,7 @@ def test_process_resource_generation():
     
     game.galaxy.systems = {"Sol": system1}
     
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_resource_generation(player)
     
     # Expected generated credits: (50 + 100) * TAX_RATE = 150 * 0.1 = 15.0
@@ -68,7 +69,7 @@ def test_process_movement_sublight():
     unit.owner = player
     
     # Setup engine component
-    from unit_components import Engines
+    from unit_components.movement import Engines
     engines = MagicMock()
     engines.speed = 10.0
     engines.move_target = Position(100.0, 0.0)
@@ -79,7 +80,7 @@ def test_process_movement_sublight():
     system.get_all_units.return_value = [(unit, (0, 0))]
     game.galaxy.systems = {"Sol": system}
     
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_movement(player)
     
     # Unit should move towards target position by speed (10.0 units)
@@ -88,7 +89,7 @@ def test_process_movement_sublight():
 
 
 def test_process_movement_clears_stale_target_for_destroyed_engines():
-    from unit_components import Engines
+    from unit_components.movement import Engines
 
     game = MagicMock()
     player = ComponentPlayer("Player 1")
@@ -106,7 +107,7 @@ def test_process_movement_clears_stale_target_for_destroyed_engines():
     system.get_all_units.return_value = [(unit, (0, 0))]
     game.galaxy.systems = {"Sol": system}
 
-    TurnProcessor(game)._process_movement(player)
+    TurnProcessor(game, presentation=ApplicationTurnPresentation(game))._process_movement(player)
 
     assert unit.position == Position(0.0, 0.0)
     assert unit.antimatter_component.current_amount == starting_antimatter
@@ -120,14 +121,17 @@ def test_process_population_growth():
     system.get_all_celestial_bodies.return_value = [((0, 0), planet)]
     game.galaxy.systems = {"Sol": system}
     
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_population_growth()
     planet.update_population.assert_called_once()
 
 
 def test_process_combat():
-    from unit_components import Commander, Weapons, Turret, TurretType
-    from unit_orders import AttackOrder, OrderStatus
+    from unit_components.commander import Commander
+    from unit_components.weapons import Weapons, Turret
+    from unit_components.enums import TurretType
+    from unit_orders.combat import AttackOrder
+    from unit_orders.base import OrderStatus
     game = MagicMock()
     player1 = ComponentPlayer("Player 1")
     player2 = ComponentPlayer("Player 2")
@@ -178,7 +182,7 @@ def test_process_combat():
     unit1.in_galaxy = game.galaxy
     unit2.in_galaxy = game.galaxy
     
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_unit_updates(player1)
     
     # Target unit should have taken damage from unit1's turret
@@ -201,15 +205,15 @@ def test_process_unit_updates():
     # Spy on unit.update
     unit.update = MagicMock()
     
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_unit_updates(player)
     
     unit.update.assert_called_once()
 
 
 def test_process_orders():
-    from unit_components import Commander
-    from unit_orders import Order, OrderStatus
+    from unit_components.commander import Commander
+    from unit_orders.base import Order, OrderStatus
     
     game = MagicMock()
     player = ComponentPlayer("Player 1")
@@ -233,7 +237,7 @@ def test_process_orders():
     system.get_all_units.return_value = [(unit, (0, 0))]
     game.galaxy.systems = {"Sol": system}
     
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp.process_turn()
     
     # Order execution should be triggered via commander.update() -> order.execute()
@@ -269,7 +273,7 @@ def test_process_unit_upkeep_basic():
     unit = _make_upkeep_unit(player, hull_usage=10)
     game = _make_upkeep_game([unit])
 
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_unit_upkeep(player)
 
     expected = 10 * UPKEEP_COST_PER_HULL_POINT
@@ -284,7 +288,7 @@ def test_process_unit_upkeep_clamps_to_zero():
     unit = _make_upkeep_unit(player, hull_usage=200)  # 200 * 0.01 = 2.0 upkeep
     game = _make_upkeep_game([unit])
 
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_unit_upkeep(player)
 
     assert player.credits == 0.0
@@ -298,7 +302,7 @@ def test_process_unit_upkeep_skips_temporary_units():
     temp_unit = _make_upkeep_unit(player, hull_usage=50, is_temporary=True)
     game = _make_upkeep_game([temp_unit])
 
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_unit_upkeep(player)
 
     assert player.credits == 1000.0  # No credits deducted
@@ -312,7 +316,7 @@ def test_process_unit_upkeep_skips_strikecraft():
     wing = _make_upkeep_unit(player, hull_usage=5, hull_size=HullSize.STRIKECRAFT_WING)
     game = _make_upkeep_game([wing])
 
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_unit_upkeep(player)
 
     assert player.credits == 1000.0  # No credits deducted
@@ -330,7 +334,7 @@ def test_process_unit_upkeep_multiple_units():
 
     game = _make_upkeep_game([unit_a, unit_b, unit_enemy])
 
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     tp._process_unit_upkeep(player)
 
     expected = (10 + 25) * UPKEEP_COST_PER_HULL_POINT
@@ -339,7 +343,7 @@ def test_process_unit_upkeep_multiple_units():
 
 def test_game_get_player_income():
     from game import Game
-    from entities import Planet
+    from domain.celestials import Planet
     
     class DummyGame(Game):
         def __init__(self):
@@ -416,7 +420,7 @@ def test_turn_number_increment():
     game.players = [player1, player2]
     game.current_player_index = 0
 
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     with patch.object(tp, 'process_player_turn'), patch.object(tp, 'process_global_end_of_round'):
         # Player 1 ends turn -> Still Turn 1, player advances to Player 2
         tp.end_turn()
@@ -441,7 +445,7 @@ def test_global_round_execution_order_and_population_growth():
     game.players = [player1, player2, player3]
     game.current_player_index = 0
 
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     with patch.object(tp, 'process_player_turn') as mock_player_turn, \
          patch.object(tp, 'process_global_end_of_round') as mock_global_round:
         
@@ -478,7 +482,7 @@ def test_check_and_schedule_ai_turn():
     game.current_player_index = 0
     game.pending_ai_turn_end_time = 0
 
-    tp = TurnProcessor(game)
+    tp = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     with patch('pygame.time.get_ticks', return_value=1000):
         tp.check_and_schedule_ai_turn()
         assert game.pending_ai_turn_end_time == 1500
@@ -497,7 +501,7 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
     from tests.support.campaigns import campaign
 
     game = MagicMock()
-    game.turn_manager = TurnProcessor(game)
+    game.turn_manager = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     game.current_player_index = 0
     game.pending_ai_turn_end_time = 0
     game.galaxy = MagicMock()

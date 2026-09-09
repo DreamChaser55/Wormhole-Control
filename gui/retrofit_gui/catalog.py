@@ -11,15 +11,27 @@ from constants import (
     DEFAULT_JUMP_RANGE, ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
     ORBITAL_DEFENSE_HULL_COST
 )
-from unit_components import (
-    Engines, Hyperdrive, Weapons, Defenses, AntimatterHarvester, AntimatterStorage,
-    Sensors, RepairComponent, MiningComponent, MetalRefineryComponent,
-    CrystalRefineryComponent, HangarComponent, StrikecraftBayComponent,
-    ColonyComponent, CivilianHabitatComponent, OrbitalDefenseComponent,
-    TradeComponent, HyperspaceInhibitionFieldEmitter, MinelayerComponent,
-    MarinesComponent, CloakingDevice, AbilityComponent, Constructor,
-    IntelligenceComponent, TurretType, TurretVariant, AbilityType
-)
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.weapons import Weapons
+from unit_components.defenses import Defenses
+from unit_components.antimatter import AntimatterHarvester, AntimatterStorage
+from unit_components.sensors import Sensors
+from unit_components.repair import RepairComponent
+from unit_components.mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
+from unit_components.hangar import HangarComponent
+from unit_components.strikecraft import StrikecraftBayComponent
+from unit_components.colony import ColonyComponent
+from unit_components.civilian_habitat import CivilianHabitatComponent
+from unit_components.orbital_defense import OrbitalDefenseComponent
+from unit_components.trade import TradeComponent
+from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
+from unit_components.minelayer import MinelayerComponent
+from unit_components.marines import MarinesComponent
+from unit_components.cloaking import CloakingDevice
+from unit_components.abilities import AbilityComponent
+from unit_components.constructor import Constructor
+from unit_components.intelligence import IntelligenceComponent
+from unit_components.enums import TurretType, TurretVariant, AbilityType
 
 # List of mountable component definitions for Retrofit Wizard
 # comp_key: canonical internal key matching Constructor / refit mapping

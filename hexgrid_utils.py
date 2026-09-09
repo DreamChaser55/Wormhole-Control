@@ -1,13 +1,14 @@
+from display_config import DEFAULT_DISPLAY_CONFIG
 import math
 import typing
-from constants import SQRT3, SYSTEM_CENTER_IN_PX, HEX_SIZE
+from constants import SQRT3
 from geometry import Vector, Position
-from utils import HexCoord
+from domain.coordinates import HexCoord
 
 # --- Hex Grid Utility Functions ---
 
 def hex_to_pixel(q: int, r: int, zoom: float = 1.0,
-                 pan_offset: typing.Optional[Position] = None) -> Position:
+                 pan_offset: typing.Optional[Position] = None, *, display_config=DEFAULT_DISPLAY_CONFIG) -> Position:
     """Convert axial coordinates to system-view screen coordinates.
 
     ``zoom`` and ``pan_offset`` are optional so gameplay callers that only need
@@ -15,24 +16,24 @@ def hex_to_pixel(q: int, r: int, zoom: float = 1.0,
     """
     if pan_offset is None:
         pan_offset = Position(0, 0)
-    x = HEX_SIZE * (SQRT3 * q + SQRT3 / 2. * r)
-    y = HEX_SIZE * (3. / 2. * r)
+    x = display_config.hex_size * (SQRT3 * q + SQRT3 / 2. * r)
+    y = display_config.hex_size * (3. / 2. * r)
     return Position(
-        int(SYSTEM_CENTER_IN_PX.x + pan_offset.x + x * zoom),
-        int(SYSTEM_CENTER_IN_PX.y + pan_offset.y + y * zoom),
+        int(display_config.center.x + pan_offset.x + x * zoom),
+        int(display_config.center.y + pan_offset.y + y * zoom),
     )
 
 def pixel_to_hex(x: int, y: int, zoom: float = 1.0,
-                 pan_offset: typing.Optional[Position] = None) -> HexCoord:
+                 pan_offset: typing.Optional[Position] = None, *, display_config=DEFAULT_DISPLAY_CONFIG) -> HexCoord:
     """Convert system-view screen coordinates to the nearest axial hex."""
     if pan_offset is None:
         pan_offset = Position(0, 0)
     if not isinstance(zoom, (int, float)) or zoom <= 0:
         zoom = 1.0
-    x_adj = (float(x) - SYSTEM_CENTER_IN_PX.x - pan_offset.x) / zoom
-    y_adj = (float(y) - SYSTEM_CENTER_IN_PX.y - pan_offset.y) / zoom
-    q_approx = (SQRT3 / 3. * x_adj - 1. / 3. * y_adj) / HEX_SIZE
-    r_approx = (2. / 3. * y_adj) / HEX_SIZE
+    x_adj = (float(x) - display_config.center.x - pan_offset.x) / zoom
+    y_adj = (float(y) - display_config.center.y - pan_offset.y) / zoom
+    q_approx = (SQRT3 / 3. * x_adj - 1. / 3. * y_adj) / display_config.hex_size
+    r_approx = (2. / 3. * y_adj) / display_config.hex_size
     return hex_round(q_approx, r_approx)
 
 def hex_round(q_frac: float, r_frac: float) -> HexCoord:
@@ -57,10 +58,10 @@ def hex_round(q_frac: float, r_frac: float) -> HexCoord:
     return HexCoord(q, r)
 
 def get_hex_vertices(q: int, r: int, zoom: float = 1.0,
-                     pan_offset: typing.Optional[Position] = None) -> typing.List[Position]:
+                     pan_offset: typing.Optional[Position] = None, *, display_config=DEFAULT_DISPLAY_CONFIG) -> typing.List[Position]:
     """Calculate the six transformed vertices of a system-view hex."""
-    center_point = hex_to_pixel(q, r, zoom, pan_offset)
-    radius = HEX_SIZE * zoom
+    center_point = hex_to_pixel(q, r, zoom, pan_offset, display_config=display_config)
+    radius = display_config.hex_size * zoom
     vertices = []
     for i in range(6):
         angle_deg = 60 * i + 30

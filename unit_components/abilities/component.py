@@ -2,14 +2,14 @@ import dataclasses
 import logging
 from typing import Dict, List, Optional, TYPE_CHECKING
 from geometry import Position
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from ..base import UnitComponent
 from ..enums import AbilityType
 from .base import AbilityInstance, AbilityDefinition
 from .registry import ABILITY_CLASSES, ABILITY_DEFINITIONS
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from game import Game
 

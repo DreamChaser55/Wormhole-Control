@@ -2,9 +2,10 @@ from player_controller import PlayerController
 from unittest.mock import MagicMock, patch
 import pygame
 from geometry import Position
-from entities import Unit
+from domain.units import Unit
 from constants import HullSize
-from unit_components import AbilityComponent, AbilityType
+from unit_components.abilities import AbilityComponent
+from unit_components.enums import AbilityType
 from gui.sidebar.panels_unit import build_unit_panel
 from input_processor import InputProcessor
 from events import UseAbilityEvent

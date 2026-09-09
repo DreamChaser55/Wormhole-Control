@@ -1,15 +1,14 @@
 from __future__ import annotations
+from display_config import display_config_for
 
 import pygame
 import math
 import typing
 from typing import TYPE_CHECKING
 from galaxy import StarSystem
-from constants import (
-    HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR, WORMHOLE_JUMP_ORDER_COLOR,
-    WORMHOLE_LINE_COLOR, GRAY, TEXT_SCALE
-)
-from entities import Unit, OrderType
+from constants import HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR, WORMHOLE_JUMP_ORDER_COLOR, WORMHOLE_LINE_COLOR, GRAY
+from domain.units import Unit
+from unit_orders.base import OrderType
 from galaxy_utils import logical_to_screen_galaxy, get_home_systems_mapping
 
 class GalaxyViewRenderer:
@@ -89,7 +88,7 @@ class GalaxyViewRenderer:
             # Draw system name
             if not pygame.font.get_init():
                 pygame.font.init()
-            font_size = max(1, int(12 * TEXT_SCALE))
+            font_size = max(1, int(12 * display_config_for(self.game).text_scale))
             font = pygame.font.Font(None, font_size)
             text_surface = font.render(system.name, True, label_color)
             text_rect = text_surface.get_rect()

@@ -1,10 +1,16 @@
 """Automated tests for Gas Giant atmospheric hiding mechanics, orders, visibility, upkeep, UI, and AI."""
 import pytest
 from constants import PlanetType, HullSize
-from entities import Unit, Planet, Player
+from domain.units import Unit
+from domain.celestials import Planet
+from domain.players import Player
 from geometry import Position, distance
-from utils import HexCoord
-from unit_components import Engines, Weapons, HyperspaceInhibitionFieldEmitter, CloakingDevice, UnitStance
+from domain.coordinates import HexCoord
+from unit_components.movement import Engines
+from unit_components.weapons import Weapons
+from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
+from unit_components.cloaking import CloakingDevice
+from unit_components.enums import UnitStance
 from unit_components.weapons import Turret
 from unit_components.enums import TurretType
 from unit_orders.gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
@@ -22,7 +28,7 @@ from save_manager import serialize_game_state, deserialize_game_state
 import random
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
 from turn_processor import TurnProcessor
-from unit_orders import MoveOrder
+from unit_orders.movement import MoveOrder
 from tests.support.campaigns import ship
 
 
@@ -627,7 +633,7 @@ def test_ai_preflight_gas_queue_dependencies(atmosphere):
 
 def test_blocked_gas_exit_preserves_queue_and_respects_hull_fields(atmosphere):
     from constants import FieldDensity
-    from entities import IceField
+    from domain.celestials import IceField
     game, giant, unit = atmosphere
     commander = unit.commander_component
     commander.add_order(EnterGasGiantOrder(unit, {'target_id': giant.id}))

@@ -2,14 +2,13 @@
 import typing
 import logging
 from geometry import Position
-from utils import HexCoord
-from entities import (
-    GameObject, Unit, Star, Planet, Moon, ColonizableAsteroid,
-    MetalAsteroid, Comet, Wormhole, AsteroidField, DebrisField, IceField, Nebula, Storm
-)
+from domain.coordinates import HexCoord
+from domain.identity import GameObject
+from domain.units import Unit
+from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField, DebrisField, IceField, Nebula, Storm
 from constants import NebulaType, PlanetType
-from unit_components import HyperdriveType
-from unit_orders import OrderType
+from unit_components.enums import HyperdriveType
+from unit_orders.base import OrderType
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ def _are_allies(p1: typing.Optional[typing.Any], p2: typing.Optional[typing.Any]
         return False
     if p1 is p2:
         return True
-    from entities import Player
+    from domain.players import Player
     if isinstance(p1, Player):
         return p1.is_allied_with(p2)
     if isinstance(p2, Player):
@@ -38,7 +37,7 @@ def _are_allies(p1: typing.Optional[typing.Any], p2: typing.Optional[typing.Any]
 def _are_enemies(p1: typing.Optional[typing.Any], p2: typing.Optional[typing.Any]) -> bool:
     if p1 is None or p2 is None:
         return False
-    from entities import Player
+    from domain.players import Player
     if isinstance(p1, Player):
         return p1.is_enemy_of(p2)
     if isinstance(p2, Player):
@@ -102,7 +101,9 @@ def get_refit_context_options(game, actors: typing.List[Unit], target_unit: Unit
 
     from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
     from unit_orders.refit import get_hull_restriction_flag
-    from unit_components import Commander, HangarComponent, StrikecraftBayComponent
+    from unit_components.commander import Commander
+    from unit_components.hangar import HangarComponent
+    from unit_components.strikecraft import StrikecraftBayComponent
     from gui.retrofit_gui.catalog import RETROFIT_COMPONENTS
 
     refit_options = []

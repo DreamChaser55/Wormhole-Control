@@ -1,10 +1,10 @@
 """Unit tests for the toggle_inhibitor GUI action handler."""
 from unittest.mock import MagicMock
 from game_actions import ACTION_HANDLERS, handle_gui_action
-from entities import Unit
+from domain.units import Unit
 from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
-from unit_components import Commander
-from unit_orders import ToggleInhibitorOrder
+from unit_components.commander import Commander
+from unit_orders.inhibitor import ToggleInhibitorOrder
 
 
 def test_toggle_inhibitor_action_registered():

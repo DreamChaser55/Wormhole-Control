@@ -3,7 +3,8 @@ from unittest.mock import MagicMock
 from constants import HullSize
 from custom_unit_templates import get_sublight_antimatter_cost_per_turn
 from geometry import Position
-from unit_components import Engines, AntimatterStorage
+from unit_components.movement import Engines
+from unit_components.antimatter import AntimatterStorage
 from turn_processor import TurnProcessor
 from tests.support.units import ComponentUnit, ComponentPlayer
 

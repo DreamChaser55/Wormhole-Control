@@ -1,9 +1,11 @@
 from player_controller import PlayerController
 import pytest
-from entities import Star, StarType, Unit
+from domain.celestials import Star
+from constants import StarType
+from domain.units import Unit
 from geometry import Position
 from constants import STAR_HARVEST_MULTIPLIERS, DEFAULT_ANTIMATTER_HARVEST_RATE
-from unit_components import AntimatterStorage, AntimatterHarvester
+from unit_components.antimatter import AntimatterStorage, AntimatterHarvester
 from unittest.mock import MagicMock
 from constants import HullSize
 

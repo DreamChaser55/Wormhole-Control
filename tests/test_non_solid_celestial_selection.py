@@ -7,11 +7,8 @@ from constants import (
     PlanetType, StarType, NebulaType, StormType
 )
 from geometry import Position
-from entities import (
-    Star, Planet, Moon, Wormhole, ColonizableAsteroid, MetalAsteroid, Comet,
-    AsteroidField, IceField, DebrisField, Nebula, Storm,
-    NON_SOLID_CELESTIAL_BODIES, Player
-)
+from domain.celestials import Star, Planet, Moon, Wormhole, ColonizableAsteroid, MetalAsteroid, Comet, AsteroidField, IceField, DebrisField, Nebula, Storm, NON_SOLID_CELESTIAL_BODIES
+from domain.players import Player
 from galaxy import Galaxy, StarSystem, Hex
 from input_processor import InputProcessor
 from game import Game

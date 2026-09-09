@@ -1,10 +1,9 @@
 """Comprehensive tests for celestial body traits, environmental hazards, and tactical cover."""
 
 import pytest
-from entities import (
-    Unit, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet,
-    AsteroidField, IceField, DebrisField, Nebula, Storm, Player, Wormhole
-)
+from domain.units import Unit
+from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, AsteroidField, IceField, DebrisField, Nebula, Storm, Wormhole
+from domain.players import Player
 from constants import (
     PlanetType, StarType, NebulaType, StormType, HullSize,
     ICE_FIELD_BEAM_DEFENSE_BONUS, DEBRIS_FIELD_DEFENSE_BONUS,
@@ -13,10 +12,12 @@ from constants import (
     STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN
 )
 from geometry import Position
-from unit_components import (
-    ColonyComponent, MiningComponent, AntimatterHarvester, Engines, Sensors
-)
-from unit_orders import ColonizeOrder, LoadColonistsOrder
+from unit_components.colony import ColonyComponent
+from unit_components.mining import MiningComponent
+from unit_components.antimatter import AntimatterHarvester
+from unit_components.movement import Engines
+from unit_components.sensors import Sensors
+from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
 from visibility import VisibilityService, is_unit_in_asteroid_field
 
 

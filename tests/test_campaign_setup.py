@@ -4,10 +4,12 @@ import random
 from unittest.mock import Mock
 import pytest
 from constants import PlanetType
-from entities import Planet, Player, GameObject
+from domain.celestials import Planet
+from domain.players import Player
+from domain.identity import GameObject
 from game_settings import GameSettings, PlayerConfig, SpawnProfile
 from game_setup import prepare_new_campaign, start_new_game
-from unit_orders import Order
+from unit_orders.base import Order
 from tests.support.campaigns import campaign
 from tests.support.scenarios import settings_for
 

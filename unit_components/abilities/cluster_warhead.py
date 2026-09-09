@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, TYPE_CHECKING
 from geometry import Position, distance
-from utils import HexCoord
+from domain.coordinates import HexCoord
 from ..enums import AbilityType
 from .base import AbilityDefinition, AbilityInstance
 
@@ -69,7 +69,7 @@ class ClusterWarheadAbility(AbilityInstance):
         hex_obj = system.hexes.get(hex_coord)
         if not hex_obj:
             return
-        from entities import are_allies
+        from domain.players import are_allies
         for target_unit in list(hex_obj.units):
             if target_unit is component.unit:
                 continue

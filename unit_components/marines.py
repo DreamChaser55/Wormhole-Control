@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from .base import UnitComponent
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
 
 logger = logging.getLogger(__name__)
 

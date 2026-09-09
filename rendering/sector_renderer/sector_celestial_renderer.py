@@ -1,19 +1,9 @@
+from display_config import display_config_for
 import sys
 import math
 import random
-from constants import (
-    SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL,
-    STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS,
-    STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER, NEBULA_COLORS, STORM_COLORS,
-    WHITE, YELLOW, CYAN, PURPLE, RED, STAR_COLORS, MOON_RADIUS, ASTEROID_RADIUS,
-    COMET_RADIUS, CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
-    PlanetType, FIELD_DENSITY_PARTICLES, ASTEROID_FIELD_PARTICLES, ICE_FIELD_PARTICLES, DEBRIS_FIELD_PARTICLES,
-    TURQUOISE
-)
-from entities import (
-    Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, 
-    AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
-)
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS, STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER, NEBULA_COLORS, STORM_COLORS, WHITE, YELLOW, CYAN, PURPLE, RED, STAR_COLORS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS, PlanetType, FIELD_DENSITY_PARTICLES, ASTEROID_FIELD_PARTICLES, ICE_FIELD_PARTICLES, DEBRIS_FIELD_PARTICLES, TURQUOISE
+from domain.celestials import Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
 
 
 def _sr():
@@ -45,7 +35,7 @@ class SectorCelestialRenderer:
             return self.parent._nebula_master_surfaces[nebula.id]
 
         ref_zoom = 1.0
-        ref_dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * ref_zoom
+        ref_dynamic_radius = display_config_for(self.game).sector_radius * ref_zoom
         base_radius_logical = getattr(nebula, 'radius', NEBULA_RADIUS)
 
         random.seed(nebula.id)
@@ -182,7 +172,7 @@ class SectorCelestialRenderer:
         zoom = self.game.sector_zoom
         if not isinstance(zoom, (int, float)):
             zoom = 1.0
-        dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
+        dynamic_radius = display_config_for(self.game).sector_radius * zoom
 
         random.seed(field.id)
 
@@ -264,7 +254,7 @@ class SectorCelestialRenderer:
         zoom = self.game.sector_zoom
         if not isinstance(zoom, (int, float)):
             zoom = 1.0
-        dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * zoom
+        dynamic_radius = display_config_for(self.game).sector_radius * zoom
         time_ms = _sr().pygame.time.get_ticks()
 
         storm_data = self.get_pre_rendered_storm_circles(storm)
@@ -403,8 +393,8 @@ class SectorCelestialRenderer:
 
             # Draw Celestial Body Name
             if hasattr(obj, 'name') and obj.name:
-                from constants import TEXT_SCALE
-                name_font_size = max(1, int(10 * TEXT_SCALE))
+
+                name_font_size = max(1, int(10 * display_config_for(self.game).text_scale))
                 if name_font_size not in self.parent._font_cache:
                     self.parent._font_cache[name_font_size] = _sr().pygame.font.Font(None, name_font_size)
                 name_font = self.parent._font_cache[name_font_size]
@@ -419,8 +409,8 @@ class SectorCelestialRenderer:
                 agent = next((ag for ag in getattr(obj, 'infiltrating_agents', []) if ag.owner == current_viewer), None)
                 badge_text = f"[SABOTAGED: {agent.active_sabotage.name}]" if (agent and agent.active_sabotage) else "[INFILTRATED]"
                 badge_color = (255, 140, 40) if (agent and agent.active_sabotage) else (50, 220, 255)
-                from constants import TEXT_SCALE
-                badge_font_size = max(1, int(9 * TEXT_SCALE))
+
+                badge_font_size = max(1, int(9 * display_config_for(self.game).text_scale))
                 if badge_font_size not in self.parent._font_cache:
                     self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
                 badge_font = self.parent._font_cache[badge_font_size]
@@ -434,8 +424,8 @@ class SectorCelestialRenderer:
                 if has_discovered:
                     badge_text = "[DISCOVERED SPY]"
                     badge_color = (255, 100, 100)
-                    from constants import TEXT_SCALE
-                    badge_font_size = max(1, int(9 * TEXT_SCALE))
+
+                    badge_font_size = max(1, int(9 * display_config_for(self.game).text_scale))
                     if badge_font_size not in self.parent._font_cache:
                         self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
                     badge_font = self.parent._font_cache[badge_font_size]

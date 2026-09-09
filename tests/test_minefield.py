@@ -1,18 +1,24 @@
 from player_controller import PlayerController
 import pytest
-from entities import Player, Unit, Minefield, HullSize
+from domain.players import Player
+from domain.units import Unit
+from domain.minefields import Minefield
+from constants import HullSize
 from geometry import Position
 from constants import (
     MINEFIELD_CREDIT_COST, MINEFIELD_ANTIMATTER_COST
 )
-from unit_components import MinelayerComponent, AntimatterStorage, Sensors
-from unit_orders import LayMinefieldOrder, OrderStatus
+from unit_components.minelayer import MinelayerComponent
+from unit_components.antimatter import AntimatterStorage
+from unit_components.sensors import Sensors
+from unit_orders.minelayer import LayMinefieldOrder
+from unit_orders.base import OrderStatus
 from visibility import VisibilityService, is_minefield_visible
 from galaxy import StarSystem, Galaxy
 from turn_processor import TurnProcessor
 import save_manager
-from unit_components import Engines
-from unit_orders import MoveOrder
+from unit_components.movement import Engines
+from unit_orders.movement import MoveOrder
 from tests.support.campaigns import campaign, ship
 
 
@@ -208,7 +214,7 @@ def test_gui_lay_minefield_action():
 
 
 def test_minefield_subtypes_targeting():
-    from unit_components import MinefieldType
+    from unit_components.enums import MinefieldType
     game = MockGame()
     p1, p2 = game.players[0], game.players[1]
     tp = TurnProcessor(game)
@@ -284,7 +290,7 @@ def test_minefield_subtypes_targeting():
 
 
 def test_minefield_subtypes_serialization():
-    from unit_components import MinefieldType
+    from unit_components.enums import MinefieldType
     game = MockGame()
     p1 = game.players[0]
 
@@ -310,7 +316,7 @@ def test_minefield_single_circle_rendering():
     from unittest.mock import MagicMock, patch
     from rendering.system_renderer import SystemViewRenderer
     from rendering.sector_renderer.sector_entity_renderer import SectorEntityRenderer
-    from unit_components import MinefieldType
+    from unit_components.enums import MinefieldType
 
     game = MockGame()
     p1 = game.players[0]
@@ -411,7 +417,7 @@ def test_mine_damage_once_per_owner_turn(players, moving):
 
 
 def test_mines_overlap_alliances_and_stored_units(atmosphere):
-    from unit_components import HangarComponent
+    from unit_components.hangar import HangarComponent
     game, giant, hidden = atmosphere
     victim = ship(game, hull=HullSize.HUGE)
     carrier = ship(game, name='carrier')

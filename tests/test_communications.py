@@ -5,7 +5,8 @@ import tempfile
 from pathlib import Path
 import unittest
 from unittest.mock import patch
-from entities import Player, Message, Conversation
+from domain.players import Player
+from domain.communications import Message, Conversation
 from game_actions.app_actions import handle_toggle_comms
 
 

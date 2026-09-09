@@ -7,7 +7,7 @@ for the Unit Designer GUI.
 
 import typing
 from constants import HullSize
-from unit_components import AbilityType, TurretType, TurretVariant
+from unit_components.enums import AbilityType, TurretType, TurretVariant
 
 # ---------------------------------------------------------------------------
 # Component catalogue — defines order and labels.

@@ -1,7 +1,7 @@
 from constants import HullSize
-from unit_components import (
-    StrikecraftWingComponent, WingType, Weapons, Turret, TurretType, TurretVariant
-)
+from unit_components.strikecraft import StrikecraftWingComponent
+from unit_components.enums import WingType, TurretType, TurretVariant
+from unit_components.weapons import Weapons, Turret
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig, TurretConfig
 from tests.support.units import ComponentUnit as BaseMockUnit
 

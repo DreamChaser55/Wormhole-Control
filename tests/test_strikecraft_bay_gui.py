@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock
-from entities import Unit
+from domain.units import Unit
 from geometry import Position
 from constants import HullSize
-from unit_components import StrikecraftBayComponent, StrikecraftWingComponent
-from unit_orders import DockOrder, DeployAllWingsOrder
+from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
+from unit_orders.hangar import DockOrder, DeployAllWingsOrder
 from game import Game
 from tests.support.units import ComponentPlayer
 

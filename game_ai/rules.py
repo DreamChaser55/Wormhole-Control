@@ -8,7 +8,7 @@ from component_visibility import public_target_components
 
 
 def is_colonizable_body(body: Any) -> bool:
-    from entities import ColonizableAsteroid, Moon, Planet
+    from domain.celestials import ColonizableAsteroid, Moon, Planet
     from constants import PlanetType
 
     if isinstance(body, Planet):
@@ -20,19 +20,19 @@ def is_colonizable_body(body: Any) -> bool:
 
 
 def is_mining_target(body: Any) -> bool:
-    from entities import Comet, MetalAsteroid
+    from domain.celestials import Comet, MetalAsteroid
 
     return isinstance(body, (MetalAsteroid, Comet))
 
 
 def is_star(body: Any) -> bool:
-    from entities import Star
+    from domain.celestials import Star
 
     return isinstance(body, Star)
 
 
 def is_antimatter_source(body: Any) -> bool:
-    from entities import Star, Nebula
+    from domain.celestials import Star, Nebula
     from constants import NebulaType
 
     if is_star(body):
@@ -436,7 +436,8 @@ def command_guidance(
             legal.add("construct")
 
     if "deploy_unit" in supported:
-        from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field, HullSize
+        from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+        from constants import HullSize
         galaxy_ref = getattr(getattr(unit, "game", None), "galaxy", None)
         in_mag_storm = is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, unit.position)
         docked = []
@@ -453,7 +454,7 @@ def command_guidance(
         if target_ids:
             legal.add("deploy_unit")
     if "deploy_all_wings" in supported:
-        from entities import is_position_in_magnetic_storm
+        from domain.celestials import is_position_in_magnetic_storm
         galaxy_ref = getattr(getattr(unit, "game", None), "galaxy", None)
         in_mag_storm = is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, unit.position)
         bay = getattr(unit, "strikecraft_bay_component", None)

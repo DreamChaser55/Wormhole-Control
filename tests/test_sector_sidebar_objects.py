@@ -1,5 +1,8 @@
 from unittest.mock import MagicMock
-from entities import Unit, Planet, Star, Minefield, Player
+from domain.units import Unit
+from domain.celestials import Planet, Star
+from domain.minefields import Minefield
+from domain.players import Player
 from game import Game
 from constants import HullSize, PlanetType, StarType
 from geometry import Position
@@ -204,7 +207,7 @@ def test_handle_gui_action_remove_minefield():
 
 def test_build_celestial_body_panel_owner_style():
     from gui.sidebar.panels_world import build_celestial_body_panel
-    from entities import Moon, ColonizableAsteroid
+    from domain.celestials import Moon, ColonizableAsteroid
 
     p1 = Player(name="Player 1", color=(0, 0, 255))
     custom_player = Player(name="Red Empire", color=(255, 0, 0))

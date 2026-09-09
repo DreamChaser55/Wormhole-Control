@@ -3,12 +3,14 @@ import logging
 import pygame
 import typing
 
-from entities import Unit
+from domain.units import Unit
 from events import CancelOrdersEvent, LayMinefieldEvent, UseAbilityEvent, EnterGasGiantEvent, LeaveGasGiantEvent
 from geometry import distance, hex_distance
 from pathfinding import find_intersystem_path
-from unit_components import UnitStance, WingType
-from unit_orders import DeployAllWingsOrder, DeployUnitOrder, DockOrder, UnloadResourcesOrder, ToggleInhibitorOrder
+from unit_components.enums import UnitStance, WingType
+from unit_orders.hangar import DeployAllWingsOrder, DeployUnitOrder, DockOrder
+from unit_orders.mining import UnloadResourcesOrder
+from unit_orders.inhibitor import ToggleInhibitorOrder
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ def handle_deploy_ship(game, action: dict) -> None:
     if carrier and (carrier.hangar_component or carrier.strikecraft_bay_component):
         current_player = game.players[game.current_player_index] if game.players else None
         if carrier.owner == current_player:
-            from entities import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
+            from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             from constants import HullSize
             is_strikecraft = any(u.id == docked_unit_id for u in getattr(carrier.strikecraft_bay_component, 'docked_units', []) if getattr(u, 'hull_size', None) == HullSize.STRIKECRAFT_WING)
             if is_strikecraft and is_position_in_magnetic_storm(game.galaxy, carrier.in_system, carrier.in_hex, carrier.position):
@@ -61,7 +63,7 @@ def handle_launch_all_wings(game, action: dict) -> None:
     if carrier and carrier.strikecraft_bay_component:
         current_player = game.players[game.current_player_index] if game.players else None
         if carrier.owner == current_player:
-            from entities import is_position_in_magnetic_storm
+            from domain.celestials import is_position_in_magnetic_storm
             if is_position_in_magnetic_storm(game.galaxy, carrier.in_system, carrier.in_hex, carrier.position):
                 if getattr(game, 'gui', None):
                     game.gui.show_warning_dialog(

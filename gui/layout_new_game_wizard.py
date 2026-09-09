@@ -253,7 +253,7 @@ class NewGameWizard:
                 player_configs=[], preview_only=True,  # A preview validates map parameters independently of starts.
             )
             from persistence_context import isolated_allocations
-            from entities import GameObject
+            from domain.identity import GameObject
             with isolated_allocations() as allocations:
                 allocations[(GameObject, 'object_counter')] = 1
                 preview = Galaxy(num_systems=self._num_systems, settings=temp_settings)

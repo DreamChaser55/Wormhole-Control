@@ -2,10 +2,13 @@ import pytest
 import unittest
 import pygame_gui
 from geometry import Position, Circle
-from utils import HexCoord
-from entities import Unit, HullSize
-from unit_components import Engines, Hyperdrive, HyperdriveType, AntimatterStorage
-from unit_orders import calculate_required_antimatter
+from domain.coordinates import HexCoord
+from domain.units import Unit
+from constants import HullSize
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType
+from unit_components.antimatter import AntimatterStorage
+from unit_orders.movement import calculate_required_antimatter
 from events import IssueMoveOrderEvent
 from custom_unit_templates import get_hyperdrive_system_jump_cost, get_hyperdrive_hex_jump_cost
 

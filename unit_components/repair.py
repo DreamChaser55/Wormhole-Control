@@ -7,7 +7,7 @@ from geometry import distance
 from constants import REPAIR_CREDIT_COST_PER_HP, REPAIR_RATE_PER_HULL_POINT
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from game import Game
 

@@ -1,8 +1,9 @@
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
-from unit_components import HangarComponent
-from unit_orders import OrderStatus, OrderType, DockOrder, DeployUnitOrder
+from unit_components.hangar import HangarComponent
+from unit_orders.base import OrderStatus, OrderType
+from unit_orders.hangar import DockOrder, DeployUnitOrder
 from tests.support.units import ComponentUnit as BaseMockUnit, ComponentPlayer
 
 
@@ -149,7 +150,7 @@ def test_deploy_order():
     assert ship not in hangar.docked_units
 
 def test_cascading_destruction():
-    from entities import Unit
+    from domain.units import Unit
     
     # We will use real Unit instance to test cascade destruction
     game_mock = MagicMock()

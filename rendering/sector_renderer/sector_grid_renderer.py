@@ -1,9 +1,7 @@
+from display_config import display_config_for
 import sys
 import math
-from constants import (
-    SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL,
-    SECTOR_BORDER_COLOR, SECTOR_GRID_COLOR, SECTOR_GRID_SPACING
-)
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR, SECTOR_GRID_COLOR, SECTOR_GRID_SPACING
 from geometry import Position
 
 MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
@@ -40,15 +38,12 @@ class SectorGridRenderer:
         pan_offset = self.game.sector_pan_offset
         if not isinstance(pan_offset, Position):
             pan_offset = Position(0, 0)
-        try:
-            return _sr().sector_coords_to_pixels(sector_pos, zoom, pan_offset)
-        except TypeError:
-            return _sr().sector_coords_to_pixels(sector_pos)
+        return _sr().sector_coords_to_pixels(sector_pos, zoom, pan_offset, display_config=display_config_for(self.game))
 
     def draw_boundary(self, dynamic_radius):
         boundary_center = (
-            int(SECTOR_CIRCLE_CENTER_IN_PX.x + self.game.sector_pan_offset.x),
-            int(SECTOR_CIRCLE_CENTER_IN_PX.y + self.game.sector_pan_offset.y)
+            int(display_config_for(self.game).center.x + self.game.sector_pan_offset.x),
+            int(display_config_for(self.game).center.y + self.game.sector_pan_offset.y)
         )
         _sr().pygame.draw.circle(self.screen, SECTOR_BORDER_COLOR, boundary_center, int(dynamic_radius), 1)
 

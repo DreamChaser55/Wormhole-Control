@@ -3,10 +3,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pygame
 from constants import BLUE, HullSize, SENSOR_RANGE_HEX_FILL_COLOR, DARK_RED
-from entities import Player, Unit
+from domain.players import Player
+from domain.units import Unit
 from geometry import Position
 from rendering.system_renderer import SystemViewRenderer
-from unit_components import Sensors
+from unit_components.sensors import Sensors
 """Tests for sensors inter-sector range hexgrid highlight in System View."""
 
 

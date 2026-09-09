@@ -11,7 +11,7 @@ from constants import (
 )
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from game import Game
 
@@ -351,7 +351,7 @@ class Weapons(UnitComponent):
 
         for turret in self.turrets:
             if turret.target:
-                from entities import are_enemies
+                from domain.players import are_enemies
                 if not are_enemies(self.unit.owner, turret.target.owner):
                     turret.target = None
                     turret.target_component_type = None
@@ -382,7 +382,7 @@ class Weapons(UnitComponent):
 
     def set_target(self, target_unit: 'Unit', target_component_type: Optional[type] = None) -> None:
         """Sets the target of the turrets to the specified unit and optionally a specific component."""
-        from entities import are_enemies
+        from domain.players import are_enemies
         eligible_ids = {id(turret) for turret in self.eligible_turrets_for(target_unit)} if (
             target_unit and are_enemies(self.unit.owner, target_unit.owner)
         ) else set()

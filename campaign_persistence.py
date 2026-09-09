@@ -55,7 +55,7 @@ def coordinates(value, path, integer=False):
 def validate_document(data):
     """Validate shape before constructors/defaults can mask missing state."""
     from save_manager import ORDER_CLASSES, CELESTIAL_CLASSES
-    from unit_orders import OrderStatus
+    from unit_orders.base import OrderStatus
     from unit_components.persistence import component_registry
     from unit_components.enums import MinefieldType, SabotageType
     require(data, ("version", "game_state", "players", "galaxy", "conversations"), "save")
@@ -239,9 +239,11 @@ def validate_document(data):
 
 def reconcile(candidate):
     """Rebuild derived state only; no turn advancement, commands, or UI callbacks."""
-    from entities import Unit, Wormhole, Planet
+    from domain.units import Unit
+    from domain.celestials import Wormhole, Planet
     from galaxy import Hex
-    from unit_components import HangarComponent, StrikecraftBayComponent
+    from unit_components.hangar import HangarComponent
+    from unit_components.strikecraft import StrikecraftBayComponent
     from geometry import Circle, is_circle_contained, do_circles_intersect
     from constants import PlanetType
     from visibility import VisibilityService
@@ -379,8 +381,8 @@ def reconcile(candidate):
 def prepare_campaign(data):
     import save_manager as sm
     from save_migrations import migrate_save
-    from entities import Conversation
-    from unit_orders import Order
+    from domain.communications import Conversation
+    from unit_orders.base import Order
     validate_json(data)
     with isolated_allocations() as allocations:
         data, warnings = migrate_save(data)
@@ -419,9 +421,10 @@ def prepare_campaign(data):
 
 def commit_campaign(game, prepared):
     """One callback-free commit. GUI/AI integration belongs to Game.load_game."""
-    from entities import GameObject, Player
-    from unit_components import Agent
-    from unit_orders import Order
+    from domain.identity import GameObject
+    from domain.players import Player
+    from unit_components.intelligence import Agent
+    from unit_orders.base import Order
     candidate = prepared.state
     for unit, _ in iter_units(candidate.galaxy):
         unit.game = game

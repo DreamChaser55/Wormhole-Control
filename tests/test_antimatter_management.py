@@ -1,6 +1,9 @@
 from unittest.mock import MagicMock
-from entities import Unit
-from unit_components import AntimatterStorage, Engines, Hyperdrive, HyperdriveType, AbilityComponent, AbilityType
+from domain.units import Unit
+from unit_components.antimatter import AntimatterStorage
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.enums import HyperdriveType, AbilityType
+from unit_components.abilities import AbilityComponent
 from turn_processor import TurnProcessor
 from geometry import Position
 from constants import (

@@ -106,7 +106,8 @@ ADVANCED_CLOAKING_MIN_HULL = HullSize.SMALL
 # Helper to fetch component requirements for abilities dynamically from single-source ABILITY_DEFINITIONS
 def get_ability_required_components(ability_key: str) -> List[str]:
     """Return required component flags for an ability key, sourced from ABILITY_DEFINITIONS."""
-    from unit_components import ABILITY_DEFINITIONS, AbilityType
+    from unit_components.abilities import ABILITY_DEFINITIONS
+    from unit_components.enums import AbilityType
     try:
         atype = AbilityType(ability_key)
         defn = ABILITY_DEFINITIONS.get(atype)

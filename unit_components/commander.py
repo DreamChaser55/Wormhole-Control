@@ -6,11 +6,11 @@ import dataclasses
 
 from .base import UnitComponent
 from .enums import UnitStance, TurretVariant, WingType
-from unit_orders import Order, OrderStatus, OrderType
-from unit_orders import StanceOrder
+from unit_orders.base import Order, OrderStatus, OrderType
+from unit_orders.stance import StanceOrder
 
 if TYPE_CHECKING:
-    from entities import Unit
+    from domain.units import Unit
     from galaxy import Galaxy
     from game import Game
 
@@ -253,7 +253,12 @@ class Commander(UnitComponent):
         return data
 
     def add_order(self, order: Order) -> None:
-        """Add an explicit order, suspending any transient stance engagement."""
+        """Own an explicit root, suspend stance engagement, and append it FIFO.
+
+        An idle commander starts it synchronously; execution may complete or mutate
+        the world before return. Existing foreground work is preserved. Callers
+        validate issuance first and use clear_explicit_orders for replacement.
+        """
         self.suspend_stance_activity("explicit order started")
         order.register_explicit_root()
         self.orders_queue.append(order)
@@ -312,7 +317,7 @@ class Commander(UnitComponent):
         return self.current_order or self.standing_order
 
     def get_observable_active_order(self) -> Optional[Order]:
-        """Keep observation schema v3 by exposing the stance's Attack child."""
+        """Return the explicit root or transient stance Attack for legacy callers."""
         return self.current_order or self.standing_order.active_attack
 
     def suspend_stance_activity(self, reason: str = "suspended") -> None:
@@ -326,11 +331,25 @@ class Commander(UnitComponent):
             )
             self.standing_order.cancel_engagement(reason)
 
+    def _release_current_order(self) -> None:
+        """Release foreground authority after its owner has settled/cancelled it.
+
+        Queue promotion is deliberately separate: hidden ships and bulk cancellation
+        must not execute the next root while releasing the previous one.
+        """
+        self.current_order = None
+        self._clear_weapon_target()
+
     def clear_explicit_orders(self) -> None:
-        """Cancel foreground work while preserving the selected stance."""
+        """Cancel owned explicit roots without promoting any queued work.
+
+        Concrete cancellation hooks release their own actuators/jobs and refund
+        their own charges once. The standing policy remains selected and resumes
+        through normal updates; this method returns no new execution result.
+        """
         if self.current_order:
             self.current_order.cancel()
-            self.current_order = None
+            self._release_current_order()
         for order in self.orders_queue:
             order.cancel()
         self.orders_queue.clear()
@@ -442,24 +461,24 @@ class Commander(UnitComponent):
         if weapons:
             weapons.clear_target()
 
-    def cancel_order(self, order_id: str) -> bool:
-        """Cancel and remove a specific order by its ID.
+    def cancel_order(self, order_id: int | str) -> bool:
+        """Cancel an explicit root by its process-local ID (legacy keyword order_id).
 
         Args:
-            order_id: The ID of the order to cancel
+            order_id: Process-local Order.local_order_id, never a public UUID.
 
         Returns:
             True if the order was found and cancelled, False otherwise
         """
-        if self.current_order and self.current_order.order_id == order_id:
+        local_order_id = order_id
+        if self.current_order and self.current_order.order_id == local_order_id:
             self.current_order.cancel()
-            self.current_order = None
-            self._clear_weapon_target()
+            self._release_current_order()
             self.start_next_order()
             return True
 
         for order_in_queue in list(self.orders_queue):
-            if order_in_queue.order_id == order_id:
+            if order_in_queue.order_id == local_order_id:
                 order_in_queue.cancel()
                 self.orders_queue.remove(order_in_queue)
                 if self.current_order is None:
@@ -495,7 +514,7 @@ class Commander(UnitComponent):
         elif galaxy_ref and getattr(self.current_order, "order_type", None) == OrderType.ATTACK:
             target_id = self.current_order.parameters.get("target_unit_id")
             target = galaxy_ref.get_unit_by_id(target_id) if target_id is not None else None
-            from entities import are_enemies
+            from domain.players import are_enemies
             weapons = self.unit.weapons_component
             if (
                 target is None
@@ -581,8 +600,7 @@ class Commander(UnitComponent):
             order_is_finished = True
 
         if order_is_finished:
-            self.current_order = None
-            self._clear_weapon_target()
+            self._release_current_order()
             self.start_next_order()
             if not self.current_order:
                 logger.debug("[%s (id:%s)] Commander: resuming standing stance.", self.unit.name, self.unit.id)
@@ -600,8 +618,7 @@ class Commander(UnitComponent):
             # Entry can have completed in an approach descendant during movement.
             order.update(galaxy_ref=galaxy)
         if self.current_order and self.current_order.status in {OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED}:
-            self.current_order = None
-            self._clear_weapon_target()
+            self._release_current_order()
         if self.current_order is not None:
             if self.current_order.order_type != OrderType.LEAVE_GAS_GIANT:
                 return
@@ -615,7 +632,12 @@ class Commander(UnitComponent):
             self.update()
 
     def start_next_order(self) -> None:
-        """Starts the next order from the queue if available."""
+        """Promote only the FIFO head when idle, respecting atmospheric blocking.
+
+        Pending roots execute immediately; restored active roots resume bindings
+        without replaying startup effects. Promotion may finish work synchronously.
+        Outside-space work ahead of Leave stays queued while hidden.
+        """
         if not self.current_order and self.orders_queue:
             if (getattr(self.unit, 'is_hidden_in_gas_giant', False)
                     and self.orders_queue[0].order_type != OrderType.LEAVE_GAS_GIANT):
