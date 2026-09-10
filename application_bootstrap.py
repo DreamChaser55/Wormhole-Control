@@ -2,6 +2,7 @@
 import ctypes
 import logging
 import os
+import sys
 
 from display_config import DEFAULT_DISPLAY_CONFIG, DisplayConfig
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def configure_dpi_awareness() -> None:
     """Request physical-pixel coordinates on Windows before creating a window."""
-    if os.name != "nt":
+    if sys.platform != "win32":
         return
     try:
         ctypes.windll.shcore.SetProcessDpiAwareness(2)

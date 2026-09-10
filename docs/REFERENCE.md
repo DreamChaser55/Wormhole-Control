@@ -1108,7 +1108,8 @@ CI checks undefined names with Ruff, adds broader lint and type checks at domain
 ```bash
 python -m ruff check .
 python scripts/check_import_boundaries.py
-python -m mypy
+python -m mypy --platform linux
+python -m mypy --platform win32
 python scripts/generate_reference.py --check
 ```
 
