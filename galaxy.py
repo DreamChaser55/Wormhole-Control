@@ -181,12 +181,18 @@ class StarSystem:
         # Calculate outskirts threshold based on system radius
         outskirts_threshold = max(2, math.ceil(self.radius * 0.65))
 
+        pending_moons = 0
         for _ in range(min(num_bodies_to_spawn, len(available_hexes))):
             if not available_hexes:
                 break
 
             # Choose a body type based on weights loaded from configuration
             chosen_body_class = random.choices(BODY_TYPES_TO_SPAWN, weights=SPAWN_WEIGHTS, k=1)[0]
+
+            # Defer moons so planets selected later can also provide neighbors.
+            if chosen_body_class == Moon:
+                pending_moons += 1
+                continue
 
             # Select hex for spawning (Comets prefer outer hexes)
             hex_to_spawn_in = None
@@ -219,11 +225,22 @@ class StarSystem:
                     k=1
                 )[0]
                 body = chosen_body_class(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name, density=density)
-            else:  # For Moon, Asteroids, Comet
+            else:  # For Asteroids, Comet
                 body = chosen_body_class(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name)
 
             if body:
                 self.add_celestial_body(body)
+
+        planet_hexes = [
+            body.in_hex for body in self.celestial_bodies_by_id.values()
+            if isinstance(body, Planet)
+        ]
+        moon_candidates = [
+            h for h in available_hexes
+            if any(hex_distance(h.coordinates(), coord) == 1 for coord in planet_hexes)
+        ]
+        for hex_obj in random.sample(moon_candidates, min(pending_moons, len(moon_candidates))):
+            self.add_celestial_body(Moon(in_hex=hex_obj.coordinates(), in_system=self.name))
 
         # After all bodies are placed, calculate the inhibition zones
         for hex_obj in self.hexes.values():

@@ -519,7 +519,7 @@ Every star system contains a central star with a unique antimatter harvesting ra
 
 ### 6.2 Planets & Colonizable Bodies
 - **Planets (`PlanetType`)**: Nine planetary classes have distinct population caps, growth rates and yields; see the canonical [planetary traits table](#121-planetary-classification--traits). Gas giants are non-colonizable and support [atmospheric hiding](#125-gas-giant-atmospheric-hiding). Inhibition radius: 3000.0 logical units (Ferrous: 3250.0, Gas Giant: 3500.0). Collision radius: `PLANET_RADIUS` (562.50), or 675.0 for gas giants.
-- **Moons (`Moon`)**: Colonizable satellites. Inhibition radius: 2250.0 logical units. Collision radius: `MOON_RADIUS` (125.01).
+- **Moons (`Moon`)**: Colonizable satellites. Newly generated moons occupy empty hexes exactly one hex from a planet in the same system, including gas giants. Moon spawns are skipped when no eligible hex remains or the system has no planets. Existing saves retain their moon positions. Inhibition radius: 2250.0 logical units. Collision radius: `MOON_RADIUS` (125.01).
 - **Colonizable Asteroids (`ColonizableAsteroid`)**: Habitable asteroid outposts. Inhibition radius: 1500.0 logical units. Collision radius: `ASTEROID_RADIUS` (75.015). Population limits for both satellites and outposts appear with the planetary traits below.
 
 ### 6.3 Resource & Spatial Phenomena

@@ -1,9 +1,120 @@
+import random
+
 import pytest
+from constants import PlanetType
+from domain.celestials import MetalAsteroid, Moon, Planet, Star
 from galaxy import Galaxy
 from types import SimpleNamespace
 from galaxy import StarSystem
-from geometry import Vector
+from geometry import Vector, hex_distance
 from tests.support.commands import world
+
+
+@pytest.fixture
+def controlled_system(monkeypatch):
+    """Control body draws and initial hex order while using real generation."""
+    def generate(body_types, first_hexes=(), planet_type=PlanetType.TERRAN):
+        draws = iter(body_types)
+
+        def body_count(low, high):
+            assert low <= len(body_types) <= high
+            return len(body_types)
+
+        def order_hexes(hexes):
+            priorities = {coord: i for i, coord in enumerate(first_hexes)}
+            hexes.sort(key=lambda h: priorities.get(h.coordinates(), len(priorities)))
+
+        monkeypatch.setattr('galaxy.random.randint', body_count)
+        monkeypatch.setattr('galaxy.random.shuffle', order_hexes)
+        monkeypatch.setattr('galaxy.random.choices', lambda population, weights, k: [next(draws)])
+        monkeypatch.setattr(
+            'galaxy.random.choice',
+            lambda values: planet_type if isinstance(values[0], PlanetType) else values[0],
+        )
+        return StarSystem('Moon test', Vector(0, 0), radius=3)
+
+    return generate
+
+
+@pytest.mark.parametrize('planet_type', list(PlanetType))
+def test_deferred_moon_spawns_beside_every_planet_type(controlled_system, planet_type):
+    system = controlled_system(
+        [Moon, Planet, MetalAsteroid, MetalAsteroid],
+        [(1, 0), (-3, 0), (-3, 1)], planet_type,
+    )
+    bodies = list(system.celestial_bodies_by_id.values())
+    planet, = [body for body in bodies if isinstance(body, Planet)]
+    moon, = [body for body in bodies if isinstance(body, Moon)]
+    assert planet.planet_type == planet_type
+    assert planet.in_hex == (1, 0)
+    assert hex_distance(moon.in_hex, planet.in_hex) == 1
+    assert moon.in_system == system.name
+    assert system.hexes[moon.in_hex].celestial_bodies == [moon]
+    zone, = system.hexes[moon.in_hex].static_inhibition_zones
+    assert zone.center == moon.position
+    assert zone.radius == moon.inhibition_field_radius
+    assert len(bodies) == 5  # Central star plus all four requested bodies.
+
+
+@pytest.mark.parametrize('body_types', [
+    [Moon, Moon, Moon, Moon],
+    [Moon, MetalAsteroid, MetalAsteroid, MetalAsteroid],
+])
+def test_moons_without_planets_are_skipped(controlled_system, body_types):
+    system = controlled_system(body_types)
+    bodies = list(system.celestial_bodies_by_id.values())
+    assert not any(isinstance(body, (Moon, Planet)) for body in bodies)
+    assert len(bodies) == 1 + body_types.count(MetalAsteroid)
+
+
+def test_moons_with_all_planet_neighbors_occupied_are_skipped(controlled_system):
+    system = controlled_system(
+        [Moon, Planet, MetalAsteroid, MetalAsteroid, MetalAsteroid],
+        [(3, 0), (2, 0), (2, 1), (3, -1)],
+    )
+    assert not any(isinstance(body, Moon) for body in system.celestial_bodies_by_id.values())
+    assert len(system.celestial_bodies_by_id) == 5
+
+
+@pytest.mark.parametrize('planet_hexes', [
+    [(1, 0)],  # The central star occupies one neighbor.
+    [(3, 0)],  # Some neighbors fall outside the system.
+    [(1, 0), (0, 1)],  # Two planets share eligible neighbors.
+])
+def test_excess_moons_fill_unique_available_neighbors(controlled_system, planet_hexes):
+    occupied_hex = (2, 0)
+    system = controlled_system(
+        [Planet] * len(planet_hexes) + [MetalAsteroid] + [Moon] * 14,
+        planet_hexes + [occupied_hex],
+    )
+    expected = {
+        coord for coord in system.hexes
+        if coord not in [(0, 0), occupied_hex, *planet_hexes]
+        and any(hex_distance(coord, planet) == 1 for planet in planet_hexes)
+    }
+    moons = [body for body in system.celestial_bodies_by_id.values() if isinstance(body, Moon)]
+    assert 1 < len(moons) == len(expected) < 14
+    assert {moon.in_hex for moon in moons} == expected
+    assert len(system.celestial_bodies_by_id) == 2 + len(planet_hexes) + len(moons)
+    assert isinstance(system.hexes[(0, 0)].celestial_bodies[0], Star)
+    assert all(len(sector.celestial_bodies) <= 1 for sector in system.hexes.values())
+
+
+@pytest.mark.parametrize('radius', [3, 12])
+def test_seeded_generation_moon_adjacency(radius):
+    moon_count = 0
+    for seed in range(10):
+        random.seed(seed)
+        system = StarSystem(f'Seed {seed}', Vector(0, 0), radius=radius)
+        planets = [body for body in system.celestial_bodies_by_id.values() if isinstance(body, Planet)]
+        for coord, body in system.get_all_celestial_bodies():
+            if isinstance(body, Moon):
+                moon_count += 1
+                assert any(hex_distance(coord, planet.in_hex) == 1 for planet in planets)
+                assert coord != (0, 0)
+                assert system.hexes[coord].celestial_bodies == [body]
+                assert system.celestial_bodies_by_id[body.id] is body
+    assert moon_count > 0
 
 def test_wormhole_stability_generation():
     # Test stability values over 5 galaxy generations to ensure we get a mix
