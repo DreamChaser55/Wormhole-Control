@@ -341,9 +341,7 @@ response name is `wormhole_control_turn_v4`; unused OpenAI command fields stay n
 
 These are separate command examples, not an executable batch; substitute IDs from
 a fresh observation. Position casts require local range, while unit-targeted
-casts and recovery approach automatically. Catalyst's `target_id` is a known nebula,
-not a ship. Nebula Catalyst requires operational Sensors and Antimatter Storage
-and enough stored antimatter for the cast; an Antimatter Harvester is optional.
+casts and recovery approach automatically. Nebula Catalyst's `target_id` is a known nebula, not a ship.
 Only active Tractor/Guardian links are cancellable. Recovery needs
 functional storage/free capacity, but no ability module. Enemy visible caches can
 be recovered. Ghost emitters and caches persist indefinitely with caps of one and
