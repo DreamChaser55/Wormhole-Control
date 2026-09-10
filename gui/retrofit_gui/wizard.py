@@ -291,7 +291,9 @@ class RetrofitWizardWindow:
         if ability_name in self._ability_buttons:
             btn = self._ability_buttons[ability_name]
             is_active = ability_name in self._selected_abilities
-            btn.set_text(f"[{'X' if is_active else ' '}] {ability_name}")
+            from tactical_balance import SPECS
+            display_name = SPECS[ability_name].name if ability_name in SPECS else ability_name
+            btn.set_text(f"[{'X' if is_active else ' '}] {display_name}")
 
         self._comp_config["ability_types"] = list(self._selected_abilities)
         self._sync_cost_and_summary()

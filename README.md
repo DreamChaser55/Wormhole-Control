@@ -80,3 +80,9 @@ Tests use temporary storage and fake AI providers, so no API key is needed. See 
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+The Unit Designer and retrofit editor also support six [tactical abilities](docs/TACTICAL_ABILITIES.md):
+Ghost Fleet, Tractor Tether, Mine-Clearing Sweep, Guardian Link, Fuel Cache and
+Nebula Catalyst. Human controls, built-in AI and the Codex bridge share their
+validation and orders. Ghost emitters and fuel caches persist with per-ship caps;
+saves use version 4.1 and migrate version 4.0 automatically.

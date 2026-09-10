@@ -25,7 +25,7 @@ from player_controller import PlayerController
 
 logger = logging.getLogger(__name__)
 
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 SERVICE_NAME = "wormhole-control"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 47653
@@ -145,6 +145,7 @@ class ControlService:
         self._token_identity: tuple[Any, ...] | None = None
         self._token_value: str | None = None
         self._requires_observation = False
+        self._unobserved_created_ids = set()
         self._server: _ThreadingControlServer | None = None
         self._thread: threading.Thread | None = None
 
@@ -304,15 +305,24 @@ class ControlService:
         commands, errors = [], []
         for index, raw in enumerate(raw_commands):
             try:
-                commands.append(Command.from_dict(raw))
+                command = Command.from_dict(raw)
+                if command.target_id in self._unobserved_created_ids or any(uid in self._unobserved_created_ids for uid in command.unit_ids):
+                    errors.append({'command_index': index, 'code': 'target_unavailable', 'message': 'The target is unavailable.'})
+                commands.append(command)
             except ContractError as exc:
                 errors.append({"command_index": index, "code": "invalid_command_contract", "message": str(exc)})
         if errors:
-            return self.envelope_error(action, request_id, "invalid_command_contract", "Invalid command objects.", errors,
+            error_code = "commands_rejected" if any(e["code"] == "target_unavailable" for e in errors) else "invalid_command_contract"
+            return self.envelope_error(action, request_id, error_code, "The command batch was rejected.", errors,
                 data={"accepted": False, "applied_count": 0, "failure_stage": "preflight", "retryable": True,
                       "receipts": [], "operation_results": [], "may_have_partial_effects": False,
                       "requires_observation": False, "turn_token": self._turn_token(player)})
+        from campaign_graph import iter_objects
+        galaxy = getattr(self.game, 'galaxy', None)
+        before_ids = {obj.id for obj, _ in iter_objects(galaxy)} if galaxy else set()
         result = CommandGateway(self.game).apply_batch(player, CommandBatch(tuple(commands), end_turn=False))
+        if galaxy:
+            self._unobserved_created_ids.update({obj.id for obj, _ in iter_objects(galaxy)} - before_ids)
         if result.requires_observation:
             self._requires_observation = True
             self._token_value = secrets.token_urlsafe(24)
@@ -429,6 +439,7 @@ class ControlService:
 
     def _observation_data(self, player: Any) -> dict[str, Any]:
         observation = build_observation(self.game, player)
+        self._unobserved_created_ids.clear()
         self._requires_observation = False
         return {"turn_token": self._turn_token(player), "observation": observation}
 

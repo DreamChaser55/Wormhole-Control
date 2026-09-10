@@ -52,6 +52,8 @@ class TurnProcessor:
         next_player = self.game.players[self.game.current_player_index]
         logger.debug(f"\n--- Turn {new_turn_num} - Start of {next_player.name}'s Turn ---")
 
+        from tactical_abilities import start_owner_turn
+        start_owner_turn(self.game.galaxy, next_player, new_turn_num)
         self.presentation.refresh_player_turn(next_player)
 
         self.check_and_schedule_ai_turn()
@@ -82,8 +84,13 @@ class TurnProcessor:
             # 3. Generate resource credits for the active player based on population and habitats.
             # 4. Deduct upkeep for the active player's units.
             # 5. Run unit state updates (engines, weapons, order resolution) with updated context.
+            from tactical_abilities import reconcile_links
+            reconcile_links(self.game.galaxy)
             with ProfileTimer("Movement processing"):
                 self._process_movement(current_player)
+
+            from tactical_abilities import process_pulls
+            process_pulls(self.game.galaxy, current_player, turn_num)
 
             with ProfileTimer("Minefield detonations"):
                 self._process_minefield_detonations(current_player)
@@ -209,7 +216,8 @@ class TurnProcessor:
                     effective_speed *= speed_mod
                     sublight_cost = get_sublight_antimatter_cost_per_turn(unit.hull_size, effective_speed)
                     if in_hydrogen_nebula:
-                        sublight_cost *= HYDROGEN_NEBULA_AM_BURN_MOD
+                        from environmental_effects import modifiers_for_unit
+                        sublight_cost *= modifiers_for_unit(unit).fuel_multiplier
 
                     # Engines consume antimatter per turn while moving
                     am_comp = unit.antimatter_component
@@ -602,6 +610,18 @@ class TurnProcessor:
                                 drain = am_comp.current_amount * PULSAR_ANTIMATTER_DRAIN_PERCENT
                                 am_comp.consume(drain)
                                 logger.debug(f"{unit.name} drained {drain:.1f} AM by Pulsar radiation in {system.name}")
+
+        for sector in (s for system in self.game.galaxy.systems.values() for s in system.hexes.values()):
+            for obj in list(getattr(sector, 'deployables', ())):
+                if obj.owner != current_player:
+                    continue
+                for body in sector.celestial_bodies:
+                    if isinstance(body, Storm) and body.storm_type == StormType.PLASMA and distance(obj.position, body.position) <= body.radius:
+                        obj.take_damage(int(STORM_PLASMA_DAMAGE_PER_TURN))
+                    elif isinstance(body, Star) and body.star_type == StarType.BLACK_HOLE and distance(obj.position, body.position) <= BLACK_HOLE_EVENT_HORIZON_RADIUS:
+                        obj.take_damage(int(BLACK_HOLE_EVENT_HORIZON_DAMAGE))
+                    if obj.current_hit_points <= 0:
+                        break
 
         if hazards_encountered and getattr(current_player, 'is_human', False):
             summary_msg = "<br>".join(hazards_encountered[:5])

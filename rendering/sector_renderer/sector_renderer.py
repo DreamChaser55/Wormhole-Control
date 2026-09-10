@@ -327,20 +327,25 @@ class SectorViewRenderer:
         minefields_to_draw = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
         has_hidden = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
         
-        if has_hidden and self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
+        if self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
             font_size = max(12, int(14 * display_config_for(self.game).text_scale))
             hud_font = pygame.font.Font(None, font_size)
             text_surface = hud_font.render("WARNING: Enemy presence detected in sector", True, FOG_PRESENCE_COLOR)
             text_rect = text_surface.get_rect(center=(self.screen.get_width() // 2, 60))
             self.screen.blit(text_surface, text_rect)
 
-        all_objects_in_sector = bodies_to_draw + units_to_draw + minefields_to_draw
+        from domain.deployables import Deployable
+        from tactical_ui import draw, draw_deployable
+        draw(self, hex_obj)
+        all_objects_in_sector = bodies_to_draw + units_to_draw + minefields_to_draw + [d for d in getattr(hex_obj, 'deployables', ()) if self.game.is_unit_visible(d)]
 
         for obj in all_objects_in_sector:
             obj_pixel_pos = self._coords_to_pixels(obj.position)
 
             if isinstance(obj, Unit):
                 obj_radius_logical = self.entity_renderer.draw_unit(obj, obj_pixel_pos, dynamic_radius)
+            elif isinstance(obj, Deployable):
+                obj_radius_logical = draw_deployable(self, obj, obj_pixel_pos)
             elif isinstance(obj, Minefield):
                 obj_radius_logical = self.entity_renderer.draw_minefield(obj, obj_pixel_pos, dynamic_radius)
             else:

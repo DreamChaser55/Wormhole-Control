@@ -259,7 +259,7 @@ def test_socket_partial_response_cached_and_observation_required():
     assert first["data"]["requires_observation"] and first["data"]["turn_token"] is None
     blocked = service._dispatch_or_wait({**request, "action": "end_turn", "request_id": "end"}, Future())
     assert blocked["error"]["code"] == "observation_required"
-    observed = service._dispatch_or_wait({"protocol_version": 2, "action": "observe"}, Future())
+    observed = service._dispatch_or_wait({"protocol_version": 3, "action": "observe"}, Future())
     assert observed["ok"] and observed["data"]["turn_token"] != request["turn_token"]
     assert service._dispatch_or_wait({**request, "request_id": "fresh", "turn_token": observed["data"]["turn_token"]}, Future())["ok"]
 
@@ -473,7 +473,7 @@ def test_luna_and_socket_patrols_have_identical_engine_effects():
     game.game_started, game.current_player, game.campaign_id, game.view_mode = True, player, "campaign", "galaxy"
     player.controller = PlayerController.CODEX
     service = ControlService(game, port=0)
-    reply = service._dispatch_or_wait({"protocol_version": 2, "action": "command", "request_id": "socket",
+    reply = service._dispatch_or_wait({"protocol_version": 3, "action": "command", "request_id": "socket",
         "turn_token": service._turn_token(player), "commands": [raw]}, Future())
     assert reply["ok"] and unit.commander_component.current_order.parameters == expected
     # A sparse object is valid over the socket but is not strict model output.

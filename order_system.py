@@ -494,6 +494,22 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_use_ability(self, event: UseAbilityEvent):
+        from tactical_abilities import SPECS
+        if event.ability_type_str in SPECS:
+            from tactical_ui import issue
+            spec = SPECS[event.ability_type_str]
+            if getattr(event, 'target_system_name', None) not in (None, self.game.current_system_name) or getattr(event, 'target_hex_coord', None) not in (None, self.game.current_sector_coord):
+                return
+            for unit in event.units:
+                command = {'type': 'use_ability', 'unit_ids': [unit.id], 'ability': event.ability_type_str, 'queue': event.shift_pressed}
+                if event.target_unit is not None:
+                    command['target_id'] = event.target_unit.id
+                if spec.target_kind == 'celestial_position':
+                    command['target_id'] = getattr(self.game, 'pending_catalyst_body_id', None)
+                if event.target_position is not None:
+                    command['position'] = [event.target_position.x, event.target_position.y]
+                issue(self.game, command)
+            return
         for unit in event.units:
             if not unit.ability_component:
                 continue

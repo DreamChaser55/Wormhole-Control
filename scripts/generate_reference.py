@@ -70,7 +70,7 @@ def generated_blocks():
             ['Ability', 'Cooldown (Turns)', 'Duration (Turns)', 'Range (logical units)', 'AM Cost', 'Required Component', 'Target Type'],
             [(f'**{a.name}**', a.cooldown, a.duration, a.range, a.antimatter_cost,
               ', '.join(labels[k] for k in a.required_components),
-              'Unit' if a.requires_target_unit else 'Position' if a.requires_target_position else 'Self') for a in abilities]),
+              'Nebula + Position' if a.ability_type.value == 'nebula_catalyst' else 'Unit' if a.requires_target_unit else 'Position' if a.requires_target_position else 'Self') for a in abilities]),
         'order-count': f'The `OrderType` enum defines **{len(OrderType)} order types**, including the persistent `STANCE` root.',
         'planets': table(['Planet Type', 'Colonizable', 'Max Population', 'Growth Rate', 'Passive Metal', 'Passive Crystal', 'Antimatter Multiplier'],
             [(f"**{kind.name.replace('_', ' ').title()}**", 'Yes' if t['is_colonizable'] else 'No',

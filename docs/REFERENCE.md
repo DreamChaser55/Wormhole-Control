@@ -18,7 +18,7 @@ This document contains player guidance, in-depth reference data, data structures
 - [9. Intelligence, Counter-Intelligence & Sabotage Systems](#9-intelligence-counter-intelligence--sabotage-systems)
 - [10. Diplomacy & Team Systems](#10-diplomacy--team-systems)
 - [11. Celestial Collision Avoidance](#11-celestial-collision-avoidance)
-- [AI order control (observation 5, command contract 3)](#ai-order-control-observation-5-command-contract-3)
+- [AI order control (observation 6, command contract 4)](#ai-order-control-observation-6-command-contract-4)
 - [12. Celestial Bodies & Environmental Mechanics](#12-celestial-bodies--environmental-mechanics)
 - [13. Damage & Minefield Resolution](#13-damage--minefield-resolution)
 - [Runtime storage and API failure contracts](#runtime-storage-and-api-failure-contracts)
@@ -418,7 +418,7 @@ hex or wormhole jumps performed by an otherwise operational Hyperdrive.
 Tactical positions and ranges use logical sector units (sector radius 5000); renderers convert them to pixels.
 
 <!-- BEGIN GENERATED: abilities -->
-There are **10 special abilities** registered in the game.
+There are **16 special abilities** registered in the game.
 
 | Ability | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Required Component | Target Type |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -432,6 +432,12 @@ There are **10 special abilities** registered in the game.
 | **Drain Antimatter** | 6 | 0 | 300.0 | 0 | Antimatter Storage | Unit |
 | **Microjump** | 5 | 0 | 0.0 | 25 | Hyperdrive | Position |
 | **Scan for Minefields** | 6 | 0 | 1500.0 | 35 | Sensors | Self |
+| **Ghost Fleet** | 8 | 0 | 750 | 25 | Sensors | Position |
+| **Tractor Tether** | 6 | 3 | 400 | 20 | Engines | Unit |
+| **Mine-Clearing Sweep** | 4 | 0 | 1000 | 25 | Sensors, Minelayer | Position |
+| **Guardian Link** | 7 | 3 | 450 | 25 | Defenses | Unit |
+| **Fuel Cache** | 4 | 0 | 250 | 55 | Antimatter Storage | Position |
+| **Nebula Catalyst** | 7 | 3 | 750 | 30 | Sensors, Antimatter Harvester | Nebula + Position |
 <!-- END GENERATED: abilities -->
 
 - **Adaptive Forcefield**: Temporarily raises defensive mitigation against incoming attacks.
@@ -450,7 +456,7 @@ There are **10 special abilities** registered in the game.
 ## 5. Order Types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **34 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **35 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order Type | Description |
@@ -779,7 +785,7 @@ Wormhole Control supports multi-player and multi-team diplomatic alignment. Dipl
 - **Real-Time Markdown Logging**: Every transmission sent via the Comms menu or AI agents (`send_message`) is appended in real-time to `saves/comms.md` with turn number, ISO 8601 UTC timestamp, sender/recipient names, IDs, team affiliations, and message text.
 - **Campaign Save Sidecars**: When saving campaigns (`save_game_to_file`), complete campaign transmission logs are atomically exported to `saves/comms/<campaign_id>/comms.md`.
 
-### 10.7 Save Format 4.0 Integrity
+### 10.7 Save Format 4.1 Integrity
 
 Components own versioned state codecs, including common hull cost and subsystem
 HP, complete turret layouts/cooldowns, ability definitions and runtime timers,
@@ -871,10 +877,10 @@ where $r_{\text{body}}$ is the body's physical collision radius (e.g. `PLANET_RA
 - **Collision Safety**: Because the plotted arrival point lies strictly outside the solid body's collision circle, vessels fly directly to the standoff perimeter without penetrating the planet surface or triggering collisions.
 
 
-## AI order control (observation 5, command contract 3)
+## AI order control (observation 6, command contract 4)
 
 Both GPT-5.6 Luna and the Codex socket controller use the same command registry,
-observation builder, visibility policy and preflight/commit gateway. Socket protocol 2
+observation builder, visibility policy and preflight/commit gateway. Socket protocol 3
 rejects older clients; [CODEX_CONTROL.md](CODEX_CONTROL.md) contains examples and recovery rules.
 
 Friendly observations separate standing policy/engagement from explicit current and queued
@@ -895,7 +901,7 @@ blocking as guidance rather than forbidding intentional queued work.
 Tactical observations include actual turret range/cooldown/target classes, base/effective
 sensor and hyperdrive ranges, jump status/functionality, support ranges, defend radius and
 cloak status/upkeep. Supported hardware is distinguished from current issuance legality.
-Friendly/allied turret observations retain `cooldown` (base) and `cooldown_remaining`, and add `effective_cooldown` (reset if fired here). Already-exposed celestial bodies include numeric `environmental_effects` where applicable. These additive fields retain observation schema 5, command contract 3 and socket protocol 2. Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
+Friendly/allied turret observations retain `cooldown` (base) and `cooldown_remaining`, and add `effective_cooldown` (reset if fired here). Already-exposed celestial bodies include numeric `environmental_effects` where applicable. These additive fields retain observation schema 6, command contract 4 and socket protocol 3. Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
 nonexistent target guesses receive indistinguishable public errors. Hidden target-derived
 movement geometry is redacted; explicit player coordinates remain order intent. No raw
 persistence or sidebar state is serialized into AI observations.
@@ -914,7 +920,7 @@ failed (uncertain), and unattempted operations, with accurate command indices. T
 rollback or automatic retry. Codex must obtain a fresh observation; Luna offers manual recovery
 and never applies a rejected memory patch. Command issuance is distinct from completion.
 
-Save 4.0 retains the public UUID persistence introduced in 3.2 (including serialized descendants and docked units) plus each
+Save 4.1 retains the public UUID persistence introduced in 3.2 (including serialized descendants and docked units) plus each
 player's last 128 lifecycle events, further limited to 32,000 serialized characters. Events
 record completed/failed/cancelled roots exactly once with bounded reason codes and monotonic
 IDs. Legacy saves receive new UUIDs and empty journals. Stance engagements remain transient.
@@ -1016,7 +1022,7 @@ Stars anchor the gravitational and hyperspace topology of star systems:
   - **Radiation Storm**: Energetic cosmic radiation inflicts 4 damage per turn to a random functional unit component, degrading subsystem integrity.
 
 
-Environmental queries use the current sector and include points exactly on the body radius. Hidden and docked units receive no external modifiers. Base turret cooldowns and remaining cooldowns retain their existing save 4.0 fields; location-derived modifiers are recomputed.
+Environmental queries use the current sector and include points exactly on the body radius. Hidden and docked units receive no external modifiers. Base turret cooldowns and remaining cooldowns retain their existing save 4.1 fields; location-derived modifiers are recomputed.
 
 ### 12.5 Gas-Giant Atmospheric Hiding
 
@@ -1123,3 +1129,11 @@ user storage and process state, and owns Pygame/full-game lifecycle fixtures.
 Use real entities when testing game rules, and doubles only for collaborators.
 Prefer observable outcomes and distinct boundaries over literal tuning values or
 implementation call counts. See [Architecture & Subsystems](#8-architecture--subsystems) for the domain and presentation responsibilities those boundaries protect.
+
+## Tactical ability rules
+
+Ghost Fleet, Tractor Tether, Mine-Clearing Sweep, Guardian Link, Fuel Cache and
+Nebula Catalyst are available through the Designer, retrofit editor, human orders
+and both automated controllers. See [complete tactical ability rules](TACTICAL_ABILITIES.md)
+for costs, persistent per-ship caps, damage routing, selective nebula effects,
+controls and owner-turn timing. Numeric defaults live in `tactical_balance.py`.

@@ -3,7 +3,7 @@ from copy import deepcopy
 from types import SimpleNamespace
 import uuid
 
-CURRENT_VERSION = "4.0"
+CURRENT_VERSION = "4.1"
 
 
 def raw_units(data):
@@ -146,7 +146,15 @@ def migrate_3_2_to_4_0(data, warnings):
     warnings.append("Legacy save upgraded: omitted component state uses template/default values; orphaned timed effects were cleared because their timers were not saved.")
 
 
-MIGRATIONS = {"3.0": migrate_3_0_to_3_1, "3.1": migrate_3_1_to_3_2, "3.2": migrate_3_2_to_4_0}
+def migrate_4_0_to_4_1(data, warnings):
+    for system in data['galaxy']['systems']:
+        for sector in system['hexes']:
+            sector.setdefault('deployables', [])
+            sector.setdefault('catalyst_patches', [])
+    data['version'] = '4.1'
+
+
+MIGRATIONS = {'4.0': migrate_4_0_to_4_1, "3.0": migrate_3_0_to_3_1, "3.1": migrate_3_1_to_3_2, "3.2": migrate_3_2_to_4_0}
 
 
 def migrate_save(data):

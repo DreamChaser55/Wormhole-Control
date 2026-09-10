@@ -355,7 +355,7 @@ def test_declared_legacy_migrations_are_stable_and_preserve_recoverable_state(ve
     original = deepcopy(data)
     migrated, warnings = migrate_save(data)
     assert data == original
-    assert migrated["version"] == "4.0" and warnings
+    assert migrated["version"] == "4.1" and warnings
     assert migrate_save(migrated) == (migrated, [])
     game = campaign()
     assert deserialize_game_state(game, data)

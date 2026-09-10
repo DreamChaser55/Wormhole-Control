@@ -227,6 +227,13 @@ def validate_document(data):
                     unit(u, f"body[{body['id']}].hidden_units")
             for raw in sector["units"]:
                 unit(raw, f"unit[{raw.get('id')}]")
+            from tactical_persistence import validate as validate_tactical
+            for collection, patch in (('deployables', False), ('catalyst_patches', True)):
+                if not isinstance(sector.get(collection), list):
+                    raise ValueError('Missing tactical collection')
+                for obj in sector[collection]:
+                    located(obj, collection)
+                    validate_tactical(obj, player_ids, patch=patch)
             for mf in sector["minefields"]:
                 located(mf, "minefield")
                 require(mf, ("owner_id", "mines_remaining", "mine_damage", "detonation_radius", "minefield_type", "revealed_to_player_ids"), "minefield")
@@ -261,6 +268,9 @@ def reconcile(candidate):
         expected_hex = (location.q, location.r) if isinstance(location, Hex) else location.in_hex
         if obj.in_system != location.in_system or obj.in_hex != expected_hex:
             raise ValueError(f"Object {obj.id}: inconsistent container location")
+        from domain.deployables import Deployable
+        if isinstance(obj, Deployable):
+            obj.in_galaxy = galaxy
         if isinstance(obj, Unit):
             obj.game = candidate
             obj.in_galaxy = galaxy
@@ -356,6 +366,26 @@ def reconcile(candidate):
                 bay = obj.strikecraft_bay_component
                 if bay.replenishing_unit is not None and bay.replenishing_unit not in bay.docked_units:
                     raise ValueError("Replenishment target is not docked in its bay")
+    from domain.deployables import CatalystPatch, Deployable
+    from domain.celestials import Nebula
+    from tactical_abilities import SPECS, deployments, reconcile_links
+    for obj, _ in owned:
+        if isinstance(obj, CatalystPatch):
+            body = objects.get(obj.nebula_id)
+            if not isinstance(body, Nebula) or (body.in_system, body.in_hex) != (obj.in_system, obj.in_hex):
+                raise ValueError('Invalid catalyst nebula')
+        if isinstance(obj, (Deployable, CatalystPatch)):
+            source = objects.get(obj.deploying_ship_id)
+            if source is not None and not isinstance(source, Unit):
+                raise ValueError('Historical deploying ID resolves to a non-unit')
+            kind = obj.kind if isinstance(obj, Deployable) else 'nebula_catalyst'
+            if len(deployments(galaxy, obj.deploying_ship_id, kind)) > SPECS[kind].cap:
+                raise ValueError('Deployment cap exceeded')
+    galaxy.game = candidate
+    reconcile_links(galaxy)
+    from tactical_abilities import start_owner_turn
+    for index, player in enumerate(candidate.players):
+        start_owner_turn(galaxy, player, candidate.turn_number - int(index > candidate.current_player_index))
     # Restore explicit order bindings only once, after the entire graph exists.
     for obj, _ in list(iter_units(galaxy)):
         sm._restore_saved_commander(obj, candidate)
@@ -413,7 +443,7 @@ def prepare_campaign(data):
         candidate.galaxy = sm.deserialize_galaxy(data["galaxy"], {p.id: p for p in candidate.players}, candidate)
         objects, agents = reconcile(candidate)
         return PreparedCampaign(candidate,
-            max(info["object_counter"], max(objects, default=0) + 1),
+            max(info["object_counter"], max(objects, default=0) + 1, max((getattr(obj, "deploying_ship_id", 0) for obj in objects.values()), default=0) + 1),
             max(info["player_counter"], max(player_ids, default=-1) + 1),
             max(info["agent_counter"], max(agents, default=-1) + 1),
             allocations.get((Order, "order_counter"), 0), warnings)
@@ -435,6 +465,7 @@ def commit_campaign(game, prepared):
                   is_dragging_selection_box=False, selection_box_start_pos=None,
                   pending_ability=None, load_warnings=prepared.warnings)
     game.__dict__.update(fields)
+    game.galaxy.game = game
     GameObject.object_counter = prepared.object_counter
     Player.player_counter = prepared.player_counter
     Agent.agent_counter = prepared.agent_counter

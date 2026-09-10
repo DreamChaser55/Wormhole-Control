@@ -20,7 +20,7 @@ def iter_objects(galaxy):
     if galaxy:
         for system in galaxy.systems.values():
             for sector in system.hexes.values():
-                for obj in (*sector.celestial_bodies, *sector.units, *getattr(sector, "minefields", ())):
+                for obj in (*sector.celestial_bodies, *sector.units, *getattr(sector, "minefields", ()), *getattr(sector, "deployables", ()), *getattr(sector, "catalyst_patches", ())):
                     yield from visit(obj, sector)
 
 

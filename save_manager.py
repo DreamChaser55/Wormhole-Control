@@ -348,7 +348,10 @@ def serialize_minefield(minefield: Minefield) -> dict:
 
 
 def serialize_hex(hex_obj: Hex) -> dict:
+    from tactical_persistence import serialize as serialize_tactical
     return {
+        "deployables": [serialize_tactical(d) for d in hex_obj.deployables],
+        "catalyst_patches": [serialize_tactical(p) for p in hex_obj.catalyst_patches],
         "q": hex_obj.q,
         "r": hex_obj.r,
         "in_system": hex_obj.in_system,
@@ -395,7 +398,7 @@ def serialize_game_state(game: Any) -> dict:
     ]
 
     return {
-        "version": "4.0",
+        "version": "4.1",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -1042,6 +1045,9 @@ def deserialize_hex(data: dict, players_by_id: Dict[int, Player], game: Any) -> 
         if not hex_obj.add_minefield(mf):
             raise ValueError("Too many minefields in sector")
 
+    from tactical_persistence import deserialize as deserialize_tactical
+    hex_obj.deployables = [deserialize_tactical(d, players_by_id) for d in data.get("deployables", [])]
+    hex_obj.catalyst_patches = [deserialize_tactical(p, players_by_id, patch=True) for p in data.get("catalyst_patches", [])]
     return hex_obj
 
 

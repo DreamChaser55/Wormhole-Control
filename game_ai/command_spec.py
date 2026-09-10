@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 3
+CONTRACT_VERSION = 4
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -68,6 +68,8 @@ COMMAND_SPECS = {
     "eliminate_agent": _spec("Approach and eliminate a discovered enemy agent on a friendly asset.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
     "sabotage": _spec("Immediately set an owned embedded agent's sabotage operation.", ("agent_id", "sabotage_type"), queued=False, player_level=True),
     "relocate_agent": _spec("Immediately relocate an owned embedded agent to a visible in-range enemy host.", ("agent_id", "target_id"), queued=False, player_level=True),
+    "recover_fuel_cache": _spec("Approach and recover fuel from a visible cache, including enemy caches.", ("target_id",), capability=("antimatter_component",), single_unit=True),
+    "cancel_ability": _spec("Release an active Tractor Tether or Guardian Link without refunding its cost.", ("ability",), queued=False, single_unit=True),
     "use_ability": _spec("Use an ability; target requirements are provided in ability options.", ("ability", "target_id", "position"), ("ability",), capability=("ability_component",)),
     "enter_gas_giant": _spec("Hide eligible ships in a gas giant atmosphere.", ("target_id",), capability=("engines_component",)),
     "leave_gas_giant": _spec("Emerge safely from a gas giant; queue behind entry using strict FIFO."),

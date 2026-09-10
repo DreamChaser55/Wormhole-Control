@@ -62,6 +62,11 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
         logger.debug(f"  Action: View Wormhole {getattr(target, 'name', target)} Info (Not Implemented)")
     elif extracted_action_id == "view_unit":
         logger.debug(f"  Action: View Unit {getattr(target, 'name', target)} Info (Not Implemented)")
+    elif extracted_action_id in ('tactical_attack', 'tactical_recover'):
+        from tactical_ui import issue
+        for unit in selected_units:
+            issue(game, {'type': 'attack' if extracted_action_id == 'tactical_attack' else 'recover_fuel_cache',
+                         'unit_ids': [unit.id], 'target_id': target.id, 'queue': shift_pressed})
     elif extracted_action_id == "scan_hex":
         logger.debug("  Action: Scan Hex Contents (Not Implemented)")
     elif extracted_action_id == "leave_gas_giant_all":

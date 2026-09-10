@@ -76,6 +76,8 @@ class Hex:
     celestial_bodies: typing.List['CelestialBody'] = field(default_factory=list)
     units: typing.List['Unit'] = field(default_factory=list)
     minefields: typing.List['Minefield'] = field(default_factory=list)
+    deployables: list = field(default_factory=list)
+    catalyst_patches: list = field(default_factory=list)
     
     # Inhibition field attributes
     boundary_circle: Circle = field(init=False)

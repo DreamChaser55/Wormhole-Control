@@ -119,9 +119,8 @@ class SectorOverlayRenderer:
                 if sensors is None or getattr(sensors, 'is_destroyed', False) or not getattr(sensors, 'has_short_range', False):
                     continue
 
-                short_range = getattr(sensors, 'effective_short_range_radius', None)
-                if not isinstance(short_range, (int, float)):
-                    short_range = getattr(sensors, 'short_range_radius', 0.0)
+                from environmental_effects import sensor_radius
+                short_range = sensor_radius(unit)
                 if not isinstance(short_range, (int, float)) or short_range <= 0:
                     continue
 
@@ -207,7 +206,8 @@ class SectorOverlayRenderer:
 
         sensors = unit.sensors_component
         if sensors and sensors.has_short_range:
-            sr_px = int(sensors.short_range_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            from environmental_effects import sensor_radius
+            sr_px = int(sensor_radius(unit) * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             self.parent._draw_range_ring(cx, cy, sr_px, (0, 200, 255))
 
         weapons = unit.weapons_component

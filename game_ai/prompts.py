@@ -16,7 +16,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 5 and the command_catalog describes contract 3. The top-level intelligence
+Observations use schema 6 and the command_catalog describes contract 4. The top-level intelligence
 section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
 player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered
 agents, enemy Intelligence hardware, or whether one of your own agents has been discovered. Owned/allied units
@@ -44,6 +44,18 @@ commands like send_message (with target_id) and message_developer (without targe
 Player-level sabotage uses agent_id and sabotage_type; relocate_agent uses agent_id and target_id.
 Infiltration, extraction, CI sweep, and elimination remain unit commands and must use only the
 agent and target options listed for the selected owned unit.
+The ability_catalog describes tactical abilities and their targeting/cost rules. Ghost emitters and
+fuel caches are persistent, capped per deploying ship (1 and 3); identification does not free an emitter
+slot, and partial recovery does not free a cache slot. Radar presence may be a decoy: scout visually.
+Use recover_fuel_cache to approach a visible cache, including enemy caches; uncertain future recovery
+cannot fund a current cast. cancel_ability releases Tractor Tether or Guardian Link without refund.
+Tractor pulls after caster movement and consumes 5 AM per positive pull; preserve fuel and break range.
+Mine-Clearing Sweep reduces revealed whole-field counts; a remaining field is dangerous everywhere.
+Guardian redirects 30% of weapon damage, capped at 20 raw damage/hit, then reduces the redirected share
+by 25% before the guardian's defenses. Mines and environmental hazards bypass the link.
+Nebula Catalyst requires target_id of a known local nebula AND position inside it. Its patch selectively
+improves hydrogen/nitrogen for allies and strengthens oxygen/dust penalties for enemies; ordinary nebula
+effects still apply. Position-targeted tactical casts must be in the current sector and in range.
 Always set end_turn=true.
 
 You can communicate with any player regardless of team or alliance using send_message (setting target_id to the

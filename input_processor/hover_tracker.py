@@ -95,7 +95,10 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
             if hex_obj:
                 bodies = hex_obj.celestial_bodies
                 units = hex_obj.units
-                for obj in units + bodies:
+                from domain.deployables import Deployable
+                for obj in units + bodies + list(getattr(hex_obj, 'deployables', ())):
+                    if isinstance(obj, Deployable) and not game.is_unit_visible(obj):
+                        continue
                     if isinstance(obj, Unit) and not game.is_unit_visible(obj):
                         continue
                     if not getattr(obj, 'is_solid', True):

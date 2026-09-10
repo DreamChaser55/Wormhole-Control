@@ -94,6 +94,10 @@ class Engines(UnitComponent):
                 spd *= 0.5
         if hasattr(self.unit, 'experience_points') and self.unit.experience_points > 0:
             spd *= self.unit.xp_multiplier(XP_SPEED_BONUS)
+        from tactical_abilities import get_instance, link_valid, TRACTOR_SPEED
+        link = get_instance(self.unit, 'tractor_tether')
+        if link and link.is_active and self.unit.in_galaxy and link_valid(self.unit, link, self.unit.in_galaxy):
+            spd *= TRACTOR_SPEED
         return spd
 
     @property
@@ -102,8 +106,10 @@ class Engines(UnitComponent):
         return not self.is_destroyed and self.effective_speed > 0.0
 
     def on_destroyed(self) -> None:
-        """Immediately stop any active sub-light movement target."""
+        """Immediately stop sub-light movement and release any outgoing tether."""
         self.clear_move_target()
+        from tactical_abilities import cancel
+        cancel(self.unit, "tractor_tether")
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

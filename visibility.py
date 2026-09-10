@@ -20,6 +20,8 @@ class VisibilitySnapshot:
     viewer: 'Player'
     visible_enemy_unit_ids: Set[int] = dataclasses.field(default_factory=set)
     presence_hexes: Set[Tuple[str, HexCoord]] = dataclasses.field(default_factory=set)
+    visible_deployable_ids: Set[int] = dataclasses.field(default_factory=set)
+    visible_patch_ids: Set[int] = dataclasses.field(default_factory=set)
 
 
 def _are_allies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
@@ -92,16 +94,14 @@ class VisibilityService:
                     if is_friendly or is_infiltrated:
                         sensors = getattr(unit, 'sensors_component', None)
                         if sensors and not sensors.is_destroyed:
-                            sr_radius = getattr(sensors, 'effective_short_range_radius', sensors.short_range_radius)
+                            from environmental_effects import sensor_radius
+                            sr_radius = sensor_radius(unit)
                             lr_hexes = getattr(sensors, 'effective_long_range_hexes', sensors.long_range_hexes)
 
                             # Environmental sensor effects on observer unit
                             for b in hex_obj.celestial_bodies:
-                                from domain.celestials import Nebula, Storm
-                                if isinstance(b, Nebula) and getattr(b, 'nebula_type', None) == NebulaType.DUST:
-                                    if distance(unit.position, b.position) <= getattr(b, 'radius', NEBULA_RADIUS):
-                                        sr_radius *= DUST_NEBULA_SENSOR_MOD
-                                elif isinstance(b, Storm) and getattr(b, 'storm_type', None) == StormType.MAGNETIC:
+                                from domain.celestials import Storm
+                                if isinstance(b, Storm) and getattr(b, 'storm_type', None) == StormType.MAGNETIC:
                                     if distance(unit.position, b.position) <= getattr(b, 'radius', STORM_RADIUS):
                                         lr_hexes = 0
 
@@ -199,6 +199,31 @@ class VisibilityService:
                 elif unit_key in long_range_covered and not is_cloaked and not is_in_nebula:
                     snapshot.presence_hexes.add(unit_key)
 
+        from domain.players import are_allies
+        for system in galaxy.systems.values():
+            for sector in system.hexes.values():
+                for patch in getattr(sector, 'catalyst_patches', ()):
+                    key = (patch.in_system, patch.in_hex)
+                    if are_allies(patch.owner, viewer) or any(distance(patch.position, p) <= r + patch.radius for p, r in short_range_by_hex.get(key, ())):
+                        snapshot.visible_patch_ids.add(patch.id)
+                for obj in getattr(sector, 'deployables', ()):
+                    key = (obj.in_system, obj.in_hex)
+                    if are_allies(obj.owner, viewer):
+                        snapshot.visible_deployable_ids.add(obj.id)
+                        continue
+                    detailed = any(distance(obj.position, p) <= r for p, r in short_range_by_hex.get(key, ()))
+                    identified = viewer.id in obj.identified_player_ids
+                    if detailed:
+                        snapshot.visible_deployable_ids.add(obj.id)
+                        if obj.kind == 'ghost_fleet' and record_intel:
+                            players = getattr(getattr(galaxy, 'game', None), 'players', [viewer])
+                            obj.identified_player_ids.update(p.id for p in players if are_allies(p, viewer))
+                        identified = True
+                    concealed = any(distance(obj.position, p) <= r for p, r in nebulae_by_hex.get(key, ()))
+                    concealed = concealed or any(are_allies(owner, obj.owner) and distance(obj.position, p) <= r
+                        for owner, p, r in active_area_cloaks.get(key, ()))
+                    if obj.kind == 'ghost_fleet' and not identified and not concealed and key in long_range_covered:
+                        snapshot.presence_hexes.add(key)
         return snapshot
 
     @staticmethod
@@ -218,6 +243,9 @@ def is_unit_visible(snapshot: Optional[VisibilitySnapshot], unit: 'Unit') -> boo
         return True
     if getattr(unit, 'is_hidden_in_gas_giant', False):
         return False
+    from domain.deployables import Deployable
+    if isinstance(unit, Deployable):
+        return unit.id in snapshot.visible_deployable_ids
     return unit.id in snapshot.visible_enemy_unit_ids
 
 

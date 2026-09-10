@@ -28,7 +28,7 @@ For requests that are inconvenient to quote, pipe one JSON object through stdin:
 '@ | python .\game_control.py -
 ```
 
-The CLI adds `protocol_version: 2` and a random `request_id` when omitted. Supplying request IDs yourself is recommended for mutating actions so an identical request can be retried safely.
+The CLI adds `protocol_version: 3` and a random `request_id` when omitted. Supplying request IDs yourself is recommended for mutating actions so an identical request can be retried safely.
 
 ## Transport and process behavior
 
@@ -36,7 +36,7 @@ The CLI adds `protocol_version: 2` and a random `request_id` when omitted. Suppl
 - Port: pass `--port PORT` to either script or set `WORMHOLE_CONTROL_PORT`. An explicit CLI flag wins.
 - Framing: one UTF-8 JSON object followed by a newline, with one response per connection.
 - Request limit: 1 MiB. Protocol responses may be larger because observations contain visible game state.
-- Version: every direct socket request must contain `"protocol_version": 2`.
+- Version: every direct socket request must contain `"protocol_version": 3`.
 - Shutdown: exiting the GUI closes the listener and resolves pending requests with `server_stopping`.
 
 `game_control.py` writes exactly one compact JSON response to stdout. Launch and error diagnostics go to stderr. Its exit statuses are:
@@ -55,7 +55,7 @@ Request:
 
 ```json
 {
-  "protocol_version": 2,
+  "protocol_version": 3,
   "request_id": "stable-client-generated-id",
   "action": "status"
 }
@@ -66,7 +66,7 @@ Every response contains the echoed protocol version, request ID, action, success
 ```json
 {
   "service": "wormhole-control",
-  "protocol_version": 2,
+  "protocol_version": 3,
   "request_id": "stable-client-generated-id",
   "action": "status",
   "ok": true,
@@ -148,7 +148,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":5}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":6}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -229,7 +229,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 3, shared field
+Read `observation.command_catalog`: it contains command contract version 4, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -320,3 +320,36 @@ owned unit; observe current roots rather than guessing identities.
   or eviction, observe/reconcile before attempting an uncertain action again.
 
 New campaign bounds and validation are shared with the wizard and direct setup; see [new-campaign validation](REFERENCE.md#new-campaign-validation). Both radius bounds accept 3–12. Existing protocol errors and the exactly-one-Codex-player requirement remain unchanged.
+
+## Tactical ability commands
+
+Observation schema 6 and command contract 4 expose a deduplicated `ability_catalog`,
+visible deployables/patches, public links and authorized per-unit readiness, costs,
+targets and persistent deployment counts. Protocol version is 3. The strict
+response name is `wormhole_control_turn_v4`; unused OpenAI command fields stay null.
+
+```json
+{"type":"use_ability","unit_ids":[101],"ability":"ghost_fleet","position":[200,0]}
+{"type":"use_ability","unit_ids":[101],"ability":"tractor_tether","target_id":102}
+{"type":"use_ability","unit_ids":[101],"ability":"mine_clearing_sweep","position":[900,0]}
+{"type":"use_ability","unit_ids":[101],"ability":"guardian_link","target_id":102}
+{"type":"use_ability","unit_ids":[101],"ability":"fuel_cache","position":[200,0]}
+{"type":"use_ability","unit_ids":[101],"ability":"nebula_catalyst","target_id":201,"position":[200,0]}
+{"type":"recover_fuel_cache","unit_ids":[101],"target_id":301,"queue":true}
+{"type":"cancel_ability","unit_ids":[101],"ability":"guardian_link","queue":false}
+```
+
+These are separate command examples, not an executable batch; substitute IDs from
+a fresh observation. Position casts require local range, while unit-targeted
+casts and recovery approach automatically. Catalyst's `target_id` is a known nebula,
+not a ship. Only active Tractor/Guardian links are cancellable. Recovery needs
+functional storage/free capacity, but no ability module. Enemy visible caches can
+be recovered. Ghost emitters and caches persist indefinitely with caps of one and
+three respectively per deploying ship across all sectors. Partial recovery and
+decoy identification do not free slots.
+
+Preflight reserves queued cast costs/slots and projects guaranteed immediate
+recovery, never speculative fuel from future travel. Observe newly deployed IDs
+before targeting them. See [full rules](TACTICAL_ABILITIES.md) for exact timing,
+Guardian mitigation, incomplete mine clearance, deception and selective Catalyst
+effects. Existing campaign starts and automated-player settings are preserved.

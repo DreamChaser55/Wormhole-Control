@@ -237,6 +237,16 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
         else getattr(game, 'current_player', None)
     )
 
+    from domain.deployables import Deployable
+    if isinstance(target_object, Deployable):
+        if game.is_unit_visible(target_object):
+            from domain.players import are_enemies
+            from unit_orders.recover_fuel import recovery_blocker
+            if any(a.owner == current_player and a.weapons_component and are_enemies(a.owner, target_object.owner) for a in actors):
+                options.append(('Attack deployable', 'tactical_attack'))
+            if any(a.owner == current_player and recovery_blocker(a, target_object, game.galaxy) is None for a in actors):
+                options.append(('Recover fuel cache', 'tactical_recover'))
+        return options, target
     if any(actors):
         if target_coords is not None:
             if any(a.engines_component and a.engines_component.is_operational for a in actors):

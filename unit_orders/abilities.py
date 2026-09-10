@@ -22,7 +22,7 @@ class UseAbilityOrder(Order):
     target position, no auto-movement is performed — the position is used directly.
     For self-targeted abilities neither target is required.
     """
-    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+    target_fields = (OrderTargetField('target_unit_id', 'unit', public=True), OrderTargetField('target_body_id', 'celestial', public=True))
 
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.USE_ABILITY, parameters, parent_order)
@@ -50,7 +50,7 @@ class UseAbilityOrder(Order):
             self.status = OrderStatus.FAILED
             return
 
-        if not self.unit.ability_component.can_use(ability_type):
+        if not self.unit.ability_component.can_use(ability_type, ignore_reservations=True):
             logger.debug(f"[{self.unit.name}] USE_ABILITY order failed: ability {ability_type.name} not ready (on cooldown or already active).")
             gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
             if gui:
@@ -69,6 +69,24 @@ class UseAbilityOrder(Order):
 
         target_unit_id = self.parameters.get("target_unit_id")
         target_position = self.parameters.get("target_position")
+
+        from tactical_abilities import SPECS, validate
+        if ability_type.value in SPECS:
+            spec = SPECS[ability_type.value]
+            target_id = self.parameters.get('target_body_id') if spec.target_kind == 'celestial_position' else target_unit_id
+            error = validate(self.unit, ability_type.value, galaxy_ref, target_id, target_position, approach=spec.target_kind == 'unit', ignore_reservations=True)
+            if error:
+                self.fail(error)
+                return
+            if spec.target_kind != 'unit':
+                success = self.unit.ability_component.activate(ability_type, galaxy_ref,
+                    target_position=target_position, target_body_id=target_id,
+                    target_system_name=self.parameters.get('target_system_name'), target_hex_coord=self.parameters.get('target_hex_coord'))
+                if success:
+                    self.status = OrderStatus.COMPLETED
+                else:
+                    self.fail('execution_failed')
+                return
 
         # --- Pre-validation for CAPTURE_UNIT ability ---
         if ability_type == AbilityType.CAPTURE_UNIT and target_unit_id is not None:

@@ -68,6 +68,13 @@ class AbilityType(Enum):
     DRAIN_ANTIMATTER = "drain_antimatter"
     MICROJUMP = "microjump"
     SCAN_FOR_MINEFIELDS = "scan_for_minefields"
+    GHOST_FLEET = "ghost_fleet"
+    TRACTOR_TETHER = "tractor_tether"
+    MINE_CLEARING_SWEEP = "mine_clearing_sweep"
+    GUARDIAN_LINK = "guardian_link"
+    FUEL_CACHE = "fuel_cache"
+    NEBULA_CATALYST = "nebula_catalyst"
+
 
 
 

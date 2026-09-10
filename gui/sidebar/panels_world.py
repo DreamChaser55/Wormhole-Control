@@ -57,6 +57,10 @@ def build_hex_panel(game, hex_obj: Hex) -> list[dict]:
                 intel_str = f"{diff} turns ago"
         data.append({'type': 'label', 'text': f"Last Intel: {intel_str}", 'object_id': '#sidebar_info_label', 'height': 25})
 
+    from tactical_ui import button
+    for obj in getattr(hex_obj, 'deployables', ()):
+        if game.is_unit_visible(obj):
+            data.append(button(obj.name + ' (Persistent)', 'select_deployable', obj.id))
     visible_units = [u for u in hex_obj.units if game.is_unit_visible(u)]
     has_presence = game.hex_has_presence(system_name, coords)
     visible_minefields = [
@@ -138,6 +142,9 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
             'target_data': body.in_hex,
             'height': 25
         })
+
+    from tactical_ui import patch_panel
+    data.extend(patch_panel(game, body))
 
     # Type-specific info
     from constants import StarType, PlanetType, NebulaType, StormType

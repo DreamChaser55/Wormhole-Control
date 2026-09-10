@@ -1,3 +1,4 @@
+from tactical_abilities import combat_target
 from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
@@ -96,7 +97,7 @@ class AttackOrder(Order):
         lookup_success = False
         if target_unit_id is not None and self.unit and self.unit.game:
             lookup_attempted = True
-            target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
+            target_unit = combat_target(self.unit.game.galaxy, target_unit_id)
             if target_unit:
                 target_name = target_unit.name
                 lookup_success = True
@@ -112,7 +113,7 @@ class AttackOrder(Order):
 
         target_unit_id = self.parameters["target_unit_id"]
         galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
-        target_unit = galaxy.get_unit_by_id(target_unit_id) if galaxy else None
+        target_unit = combat_target(galaxy, target_unit_id) if galaxy else None
 
         target_component_type = resolve_component_type(self.parameters.get("target_component_type"))
 
@@ -167,7 +168,7 @@ class AttackOrder(Order):
 
         target_unit_id = self.parameters.get("target_unit_id")
         galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
-        target_unit = galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None and galaxy else None
+        target_unit = combat_target(galaxy, target_unit_id) if target_unit_id is not None and galaxy else None
 
         from domain.players import are_enemies
         if (
@@ -262,7 +263,7 @@ class AttackOrder(Order):
             getattr(getattr(self.unit, "game", None), "galaxy", None)
             or getattr(self.unit, "in_galaxy", None)
         )
-        target_unit = galaxy_ref.get_unit_by_id(target_unit_id) if galaxy_ref else None
+        target_unit = combat_target(galaxy_ref, target_unit_id) if galaxy_ref else None
         target_component_type_str = self.parameters.get("target_component_type")
 
         from domain.players import are_enemies
@@ -305,7 +306,8 @@ class AttackOrder(Order):
         if self.status != OrderStatus.IN_PROGRESS:
             return
         target_id = self.parameters.get("target_unit_id")
-        target = galaxy_ref.get_unit_by_id(target_id) if target_id is not None else None
+        from tactical_abilities import combat_target
+        target = combat_target(galaxy_ref, target_id) if target_id is not None else None
         weapons = self.unit.weapons_component
         from domain.players import are_enemies
         if target and weapons and are_enemies(self.unit.owner, target.owner) and weapons.eligible_turrets_for(target):

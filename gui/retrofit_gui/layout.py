@@ -344,7 +344,12 @@ def _build_component_detail_groups(
     ab_widgets = [abil_hdr]
     y_ab = y + small_h + 4
     for aname in ABILITY_NAMES:
-        abtn = make_button(pygame.Rect(pad, y_ab, w, small_h), f"[ ] {aname}", mgr, pan, "#ability_toggle_button")
+        from tactical_balance import SPECS
+        spec = SPECS.get(aname)
+        display_name = spec.name if spec else aname
+        abtn = make_button(pygame.Rect(pad, y_ab, w, small_h), f"[ ] {display_name}", mgr, pan, "#ability_toggle_button")
+        if spec:
+            abtn.set_tooltip(f'{spec.description} Cost: {spec.cost} AM; range {spec.range:g}; cooldown {spec.cooldown}.', wrap_width=340)
         wizard._ability_buttons[aname] = abtn
         ab_widgets.append(abtn)
         y_ab += small_h + 3

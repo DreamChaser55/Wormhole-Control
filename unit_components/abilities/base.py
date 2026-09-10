@@ -27,6 +27,29 @@ class AbilityDefinition:
     antimatter_cost: int = 0         # Cost in antimatter to activate this ability
     required_components: List[str] = dataclasses.field(default_factory=list)  # Component flags required on the unit design to equip this ability
 
+    @property
+    def target_kind(self):
+        from tactical_balance import SPECS
+        spec = SPECS.get(self.ability_type.value)
+        return spec.target_kind if spec else 'unit' if self.requires_target_unit else 'position' if self.requires_target_position else 'self'
+
+    @property
+    def allowed_relations(self):
+        if self.ability_type.value == 'guardian_link':
+            return ['self', 'ally']
+        if self.ability_type.value == 'tractor_tether':
+            return ['self', 'ally', 'enemy']
+        return []
+
+    @property
+    def automatic_approach(self):
+        return self.requires_target_unit or (self.ability_type.value == 'cluster_warhead')
+
+    @property
+    def local_sector(self):
+        from tactical_balance import SPECS
+        return self.ability_type.value in SPECS
+
 
 
 class AbilityInstance:
@@ -82,6 +105,8 @@ class AbilityInstance:
             number(uid, "ability.spawned_unit_ids", 0, integer=True)
         if len(set(instance.spawned_unit_ids)) != len(instance.spawned_unit_ids):
             raise ValueError("ability.spawned_unit_ids: duplicate ID")
+        if hasattr(instance, "validate_state"):
+            instance.validate_state()
         return instance
 
     def restore_effect(self, component, galaxy):

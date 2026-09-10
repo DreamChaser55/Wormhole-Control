@@ -110,6 +110,10 @@ def build_sidebar_data(game) -> list[dict]:
         return _build_multi_selection_panel(game)
 
     selected_obj = game.selected_objects[0]
+    from domain.deployables import Deployable
+    if isinstance(selected_obj, Deployable):
+        from tactical_ui import deployable_panel
+        return deployable_panel(game, selected_obj)
     if isinstance(selected_obj, StarSystem):
         return build_system_panel(game, selected_obj)
     elif isinstance(selected_obj, Hex):
@@ -119,7 +123,8 @@ def build_sidebar_data(game) -> list[dict]:
     elif isinstance(selected_obj, Minefield):
         return build_minefield_panel(game, selected_obj)
     elif isinstance(selected_obj, Unit):
-        return build_unit_panel(game, selected_obj)
+        from tactical_ui import ability_panel
+        return build_unit_panel(game, selected_obj) + ability_panel(selected_obj, game)
     else:
         # Default / Unknown fallback
         return [

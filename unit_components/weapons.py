@@ -106,14 +106,8 @@ class Turret:
             # Record target HP before damage to compute actual damage dealt for XP
             hp_before = self.target.current_hit_points
 
-            if self.target_component_type:
-                logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}'s {self.target_component_type.__name__}! (effective dmg: {effective_damage:.1f})")
-                spillover = self.target.take_component_damage(self.target_component_type, int(effective_damage), damage_type=self.turret_type)
-                if spillover > 0:
-                    self.target.take_damage(spillover)
-            else:
-                logger.debug(f"Turret {self.turret_type.name} from {self.parent_unit.name} firing at {self.target.name}! (effective dmg: {effective_damage:.1f})")
-                self.target.take_damage(int(effective_damage), damage_type=self.turret_type)
+            from tactical_abilities import combat_hit
+            combat_hit(self.target, int(effective_damage), self.turret_type, component_type=self.target_component_type)
 
             # Award XP based on actual HP lost (overkill damage does not grant bonus XP)
             xp_earned = max(0, hp_before - self.target.current_hit_points)
@@ -200,7 +194,7 @@ class Weapons(UnitComponent):
             variant_str = turret.variant.name.replace('_', ' ').title()
             type_str = turret.turret_type.name.replace('_', ' ').title()
             
-            header_text = f"• Turret {i + 1}: {variant_str} {type_str}"
+            header_text = f"â€¢ Turret {i + 1}: {variant_str} {type_str}"
             data.append({
                 'type': 'label',
                 'text': header_text,
@@ -219,7 +213,7 @@ class Weapons(UnitComponent):
             if od_atk_bonus > 0:
                 bonus_parts.append(f"+{int(od_atk_bonus * 100)}% OD")
             if bonus_parts:
-                stats_text = f"Damage: {turret.damage} ({', '.join(bonus_parts)} → {effective_dmg:.1f}) | Range: {turret.range} | Cooldown: {turret.cooldown}t"
+                stats_text = f"Damage: {turret.damage} ({', '.join(bonus_parts)} â†’ {effective_dmg:.1f}) | Range: {turret.range} | Cooldown: {turret.cooldown}t"
             else:
                 stats_text = f"Damage: {turret.damage} | Range: {turret.range} | Cooldown: {turret.cooldown}t"
             data.append({
@@ -258,7 +252,7 @@ class Weapons(UnitComponent):
         if not self.turrets:
             data.append({
                 'type': 'label',
-                'text': "• Turrets: None",
+                'text': "â€¢ Turrets: None",
                 'object_id': '#sidebar_status_idle_label',
                 'height': 18,
                 'indent_level': 1
@@ -268,7 +262,7 @@ class Weapons(UnitComponent):
         xp_dmg_mult = self.unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
         data.append({
             'type': 'label',
-            'text': f"• Turrets ({len(self.turrets)}):",
+            'text': f"â€¢ Turrets ({len(self.turrets)}):",
             'object_id': '#sidebar_component_header_label',
             'height': 18,
             'indent_level': 1

@@ -180,8 +180,11 @@ def supported_commands(unit: Any) -> list[str]:
         commands.append("toggle_inhibitor")
     if getattr(unit, "cloaking_component", None):
         commands.append("toggle_cloaking")
+    if getattr(unit, "antimatter_component", None):
+        commands.append("recover_fuel_cache")
     if getattr(unit, "ability_component", None):
         commands.append("use_ability")
+        commands.append("cancel_ability")
     intelligence = getattr(unit, "intelligence_component", None)
     if intelligence is not None:
         commands.extend(["infiltrate_unit", "infiltrate_planet", "extract_agent"])
@@ -508,6 +511,8 @@ def command_guidance(
         if storage is None or float(getattr(storage, "current_amount", 0)) <= 0:
             legal.discard("transfer_antimatter")
 
+    from .tactical import guidance
+    guidance(game, player, unit, legal, options, visible_units, exact_bodies)
     legal = {kind for kind in legal if not capability_blocker(unit, kind)}
     conditional = [entry for entry in conditional if not capability_blocker(unit, entry["type"])]
     cloak = getattr(unit, "cloaking_component", None)
@@ -534,7 +539,8 @@ def ability_states(unit: Any) -> list[dict[str, Any]]:
                 ),
             }
         )
-    return result
+    from .tactical import enrich_states
+    return enrich_states(unit, result)
 
 
 def _hull_name(unit: Any) -> str:

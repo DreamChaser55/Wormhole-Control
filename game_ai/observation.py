@@ -19,6 +19,7 @@ from .rules import (
 
 
 from .command_spec import COMMAND_SPECS, command_catalog
+from .tactical import visible_deployables
 from .order_view import order_layers, enum_name
 from component_visibility import public_components
 from order_history import history_view
@@ -60,6 +61,9 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                     minefields.append(_minefield_view(minefield, player))
         bodies_by_system[system_name] = system_bodies
 
+    from .tactical import visible_deployables, deployable_view, patch_views, public_links
+    from tactical_abilities import ability_catalog
+    tactical_objects = visible_deployables(game, player)
     presences = [
         {"system_name": system_name, "hex_coord": list(hex_coord)}
         for system_name, hex_coord in sorted(visibility.presence_hexes)
@@ -146,7 +150,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 5,
+        "schema_version": 6,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -200,6 +204,10 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "systems": systems,
         "units": units,
         "visible_minefields": minefields,
+        "ability_catalog": ability_catalog(),
+        "visible_deployables": [deployable_view(d, player) for d in tactical_objects],
+        "catalyst_patches": patch_views(game, player),
+        "ability_links": public_links(game, player),
         "undetailed_enemy_presence": presences,
         "visibility_note": memory_note,
         "command_catalog": command_catalog(),
@@ -271,13 +279,15 @@ def _unit_view(
         "disabled": bool(getattr(unit, "is_disabled", False)),
         "components": components,
         "antimatter": _component_amount(getattr(unit, "antimatter_component", None)),
-        **order_layers(unit, relation, {u.id for u in visible_units}, {b.id for b in exact_bodies}),
+        **order_layers(unit, relation, {u.id for u in visible_units} | {d.id for d in visible_deployables(game, player)}, {b.id for b in exact_bodies}),
     }
     if getattr(unit, "is_hidden_in_gas_giant", False):
         data["is_hidden_in_gas_giant"] = True
         data["hidden_in_gas_giant_id"] = getattr(unit, "hidden_in_gas_giant_id", None)
     if relation in {"self", "ally"}:
         data["capability_details"] = _capability_details(unit, game)
+        from .tactical import environmental_view
+        data["environmental_modifiers"] = environmental_view(unit)
     if include_capabilities:
         legal, options, conditional = command_guidance(
             game,
@@ -363,6 +373,7 @@ def _minefield_view(minefield: Any, viewer: Any) -> dict[str, Any]:
         "position": _position(minefield.position),
         "type": _enum_value(minefield.minefield_type),
         "mines_remaining": int(minefield.mines_remaining),
+        "detonation_radius": float(minefield.detonation_radius),
     }
 
 
@@ -403,6 +414,9 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     if sensors is not None:
         details["sensors"] = {name: getattr(sensors, name) for name in (
             "short_range_radius", "effective_short_range_radius", "long_range_hexes", "effective_long_range_hexes", "is_destroyed")}
+    if sensors is not None:
+        from environmental_effects import sensor_radius
+        details["sensors"]["effective_short_range_radius"] = sensor_radius(unit)
     weapons = getattr(unit, "weapons_component", None)
     if weapons is not None:
         details["weapons"] = {"operational": not bool(weapons.is_destroyed), "turrets": [

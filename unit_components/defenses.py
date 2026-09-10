@@ -37,6 +37,10 @@ class Defenses(UnitComponent):
         self.shields = shields
         self.point_defense = point_defense
 
+    def on_destroyed(self) -> None:
+        from tactical_abilities import cancel
+        cancel(self.unit, "guardian_link")
+
     @staticmethod
     def calc_hull_cost(armor: int, shields: int, point_defense: int) -> float:
         """Compute the hull cost of a Defenses component from its stats."""

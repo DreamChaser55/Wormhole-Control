@@ -1,6 +1,6 @@
 # Campaign persistence
 
-The current save version is **4.0**. New saves preserve the installed component
+The current save version is **4.1**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
@@ -97,7 +97,7 @@ external ability actions.
 
 ## Legacy migration
 
-Supported paths are `3.0 → 3.1 → 3.2 → 4.0`; recognized unversioned historical
+Supported paths are `3.0 → 3.1 → 3.2 → 4.0 → 4.1`; recognized unversioned historical
 documents enter at 3.0. Unknown and future versions are rejected. Migration works
 on a copy and leaves the input unchanged. Legacy orders receive deterministic
 public UUIDs where missing; later migration passes preserve them.
@@ -114,7 +114,7 @@ and plasma storm defaults.
 ## Verification
 
 `tests/test_persistence_integrity.py` covers all 26 registered components and all
-10 abilities, including non-default definitions and dynamically installed
+legacy abilities, including non-default definitions and dynamically installed
 components. Its canonical snapshot inspects runtime objects independently of the
 serialization field declarations. It exercises a deliberately mutated mid-game
 campaign through the actual file writer/reader, repeated loads, and idempotent
@@ -127,3 +127,24 @@ Run the regression suite from the repository root:
 ```powershell
 ./.venv/Scripts/python.exe -m pytest -q -o cache_dir=.codex_test_cache
 ```
+
+## Tactical state in 4.1
+
+The 4.0 to 4.1 migration adds empty `deployables` and `catalyst_patches` arrays to
+each sector while retaining all existing abilities and timers. Deployables store
+owner, immutable historical deploying-ship ID, kind, position, HP, cache contents
+and emitter identification. Emitters/caches have no lifetime or expiry field.
+Patches store original owner, source ID, nebula ID, radius and finite deadline.
+
+New ability runtime persists owner-round readiness/expiry deadlines, active
+targets, source allegiance, processed pull phase and Guardian split/cap/mitigation
+tuning. Recovery and celestial-targeted orders retain typed references and UUIDs.
+Loading restores these without activation, fuel charges, spawns or repeated pulls,
+and reconciles expired effects according to each owner's last started turn.
+
+Counts are rebuilt galaxy-wide from surviving objects. Source destruction, capture
+and equipment changes do not erase provenance or reset caps. Duplicate object IDs
+and invalid patch references are rejected. Historical deploying-ship references
+may point to destroyed units; they still raise the object allocator's high-water
+mark so their IDs cannot be reused. See `tests/test_tactical_abilities.py` for
+independent gameplay, migration, round-trip and fake-provider acceptance coverage.

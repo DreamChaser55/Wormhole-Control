@@ -25,6 +25,9 @@ ABILITY_CLASSES: Dict[AbilityType, Type[AbilityInstance]] = {
     AbilityType.SCAN_FOR_MINEFIELDS: ScanForMinefieldsAbility,
 }
 
+from .tactical import TACTICAL_CLASSES
+ABILITY_CLASSES.update(TACTICAL_CLASSES)
+
 ABILITY_DEFINITIONS: Dict[AbilityType, AbilityDefinition] = {
     atype: cls.DEFINITION for atype, cls in ABILITY_CLASSES.items()
 }

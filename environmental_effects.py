@@ -16,6 +16,8 @@ from geometry import distance
 class EnvironmentalModifiers:
     cooldown_reduction: int = 0
     splash_damage_multiplier: float = 1.0
+    fuel_multiplier: float = 1.0
+    sensor_multiplier: float = 1.0
 
 
 def effects_for_body(body):
@@ -27,6 +29,10 @@ def effects_for_body(body):
     if isinstance(body, DebrisField):
         return {'kinetic_missile_cover': body.defense_bonus}
     if isinstance(body, Nebula):
+        if body.nebula_type == NebulaType.HYDROGEN:
+            return {'fuel_multiplier': 0.5}
+        if body.nebula_type == NebulaType.DUST:
+            return {'sensor_multiplier': 0.7}
         if body.nebula_type == NebulaType.NITROGEN:
             return {'cooldown_reduction': NITROGEN_NEBULA_COOLDOWN_REDUCTION}
         if body.nebula_type == NebulaType.OXYGEN:
@@ -44,16 +50,22 @@ def modifiers_for_unit(unit):
         return neutral
     system = galaxy.systems.get(getattr(unit, 'in_system', None))
     sector = system.hexes.get(getattr(unit, 'in_hex', None)) if system else None
-    if sector is None or unit not in sector.units:
+    if sector is None or unit not in sector.units and unit not in getattr(sector, 'deployables', ()):
         return neutral
-    cooling, splash = 0, 1.0
+    cooling, splash, fuel, sensor = 0, 1.0, 1.0, 1.0
     for body in sector.celestial_bodies:
         effects = effects_for_body(body)
         radius = getattr(body, 'effect_radius', getattr(body, 'radius', 0))
         if effects and distance(unit.position, body.position) <= radius:
             cooling = max(cooling, effects.get('cooldown_reduction', 0))
             splash = max(splash, effects.get('splash_damage_multiplier', 1.0))
-    return EnvironmentalModifiers(cooling, splash)
+            fuel = min(fuel, effects.get('fuel_multiplier', 1.0))
+            sensor = min(sensor, effects.get('sensor_multiplier', 1.0))
+    from tactical_abilities import catalyst_effects
+    enhanced = catalyst_effects(unit, galaxy)
+    return EnvironmentalModifiers(max(cooling, enhanced.get('cooldown_reduction', 0)),
+        max(splash, enhanced.get('splash_damage_multiplier', 1.0)),
+        min(fuel, enhanced.get('fuel_multiplier', 1.0)), min(sensor, enhanced.get('sensor_multiplier', 1.0)))
 
 
 def splash_damage(amount, unit):
@@ -62,3 +74,14 @@ def splash_damage(amount, unit):
         return amount
     multiplier = modifiers_for_unit(unit).splash_damage_multiplier
     return int(Decimal(amount) * Decimal(str(multiplier)))
+
+
+def sensor_radius(unit):
+    """Actual short-range radius, shared by visibility, overlays, UI and agents."""
+    sensors = getattr(unit, 'sensors_component', None)
+    if sensors is None or sensors.is_destroyed:
+        return 0.0
+    base = getattr(sensors, 'effective_short_range_radius', None)
+    if not isinstance(base, (int, float)):
+        base = sensors.short_range_radius
+    return base * modifiers_for_unit(unit).sensor_multiplier

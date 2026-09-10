@@ -138,7 +138,7 @@ class AbilityComponent(UnitComponent):
                     'requires_target_position': defn.requires_target_position,
                 },
                 'height': 28,
-                'enabled': instance.is_ready and not self.is_destroyed and has_enough_am,
+                'enabled': self.can_use(ability_type) and has_enough_am,
             })
             data.append({
                 'type': 'label',
@@ -148,8 +148,12 @@ class AbilityComponent(UnitComponent):
             })
         return data
 
-    def can_use(self, ability_type: AbilityType) -> bool:
+    def can_use(self, ability_type: AbilityType, *, ignore_reservations=False) -> bool:
         """Returns True if the ability exists, the component is intact, it is off cooldown, and has enough antimatter."""
+        from tactical_abilities import SPECS, availability
+        if ability_type.value in SPECS:
+            galaxy = self.unit.in_galaxy or getattr(self.unit.game, "galaxy", None)
+            return availability(self.unit, ability_type.value, galaxy, ignore_reservations=ignore_reservations) is None
         if self.is_destroyed:
             return False
         instance = self.abilities.get(ability_type)
@@ -170,6 +174,7 @@ class AbilityComponent(UnitComponent):
         target_position: Optional[Position] = None,
         target_system_name: Optional[str] = None,
         target_hex_coord: Optional[HexCoord] = None,
+        target_body_id: Optional[int] = None,
     ) -> bool:
         """
         Activates the specified ability.
@@ -177,6 +182,11 @@ class AbilityComponent(UnitComponent):
         Performs validation, applies immediate effects, and sets the active
         state. Returns True on success, False on failure.
         """
+        from tactical_abilities import SPECS, activate
+        if ability_type.value in SPECS:
+            if target_system_name not in (None, self.unit.in_system) or target_hex_coord not in (None, self.unit.in_hex):
+                return False
+            return activate(self.unit, ability_type.value, galaxy, target_body_id if target_body_id is not None else target_unit_id, target_position)
         if not self.can_use(ability_type):
             logger.debug(f"[{self.unit.name}] Cannot use {ability_type.name}: not ready, component destroyed, or low antimatter.")
             return False
@@ -249,6 +259,9 @@ class AbilityComponent(UnitComponent):
             return
 
         for ability_type, instance in self.abilities.items():
+            from tactical_abilities import SPECS
+            if ability_type.value in SPECS:
+                continue
             # --- Tick cooldown ---
             if instance.cooldown_remaining > 0:
                 instance.cooldown_remaining -= 1

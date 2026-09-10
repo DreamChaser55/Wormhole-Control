@@ -424,7 +424,7 @@ class Unit(GameObject):
             self.current_hit_points = 0
             self.destroy()
 
-    def take_component_damage(self, component_type: type, amount: int, damage_type: Optional[TurretType] = None) -> int:
+    def take_component_damage(self, component_type: type, amount: int, damage_type: Optional[TurretType] = None, *, apply_reduction: bool = False) -> int:
         """
         Applies damage to a specific component. 
         Returns any excess damage (spillover) if the component is destroyed.
@@ -441,6 +441,9 @@ class Unit(GameObject):
                     mitigation *= 0.5
                 amount = max(0, int(round(amount - mitigation)))
                 logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} component damage. Remaining damage: {amount}")
+
+        if apply_reduction:
+            amount = int(amount * (1 - max(0.0, min(1.0, self.damage_reduction))))
 
         component = self.get_component(component_type)
         if not component or component.is_destroyed:

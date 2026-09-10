@@ -372,7 +372,8 @@ class MoveOrder(Order):
         if self.parameters.get("approach_position_resolved"):
             return True
 
-        target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
+        from tactical_abilities import combat_target
+        target_unit = combat_target(galaxy_ref, target_unit_id)
         if not target_unit:
             self.fail("execution_failed")
             logger.debug(

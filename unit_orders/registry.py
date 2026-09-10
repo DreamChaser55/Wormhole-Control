@@ -1,5 +1,6 @@
 """Authoritative persistence order-class registry."""
 from .abilities import UseAbilityOrder
+from .recover_fuel import RecoverFuelCacheOrder
 from .antimatter import ContinuousResupplyOrder, TransferAntimatterOrder
 from .base import Order, OrderStatus, OrderType
 from .colony import ColonizeOrder, LoadColonistsOrder
@@ -63,6 +64,7 @@ ORDER_CLASS_REGISTRY = {
     OrderType.ENTER_GAS_GIANT: EnterGasGiantOrder,
     OrderType.LEAVE_GAS_GIANT: LeaveGasGiantOrder,
     OrderType.STANCE: StanceOrder,
+    OrderType.RECOVER_FUEL_CACHE: RecoverFuelCacheOrder,
 }
 
 __all__ = [
@@ -92,6 +94,7 @@ __all__ = [
     "DeployUnitOrder",
     "DeployAllWingsOrder",
     "UseAbilityOrder",
+    "RecoverFuelCacheOrder",
     "LayMinefieldOrder",
     "TradeOrder",
     "ContinuousTradeOrder",

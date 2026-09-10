@@ -20,6 +20,8 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
     Returns:
         typing.Optional[dict]: Constructed action payload dict or None if unhandled.
     """
+    if action_id in ('select_deployable', 'choose_catalyst_nebula', 'cancel_tactical_ability', 'recover_tactical_cache', 'attack_deployable'):
+        return {'action': action_id, 'target_data': target_data, 'shift_pressed': _shift_pressed()}
     if action_id == 'unload_resources_nearest':
         return {
             'action': 'unload_resources_nearest',

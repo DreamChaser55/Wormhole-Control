@@ -129,6 +129,13 @@ class _BatchProjection:
         self._ci_credit_spend = 0.0
         self._ci_antimatter: dict[int, float] = {}
         self._ci_cooldowns: dict[int, int] = {}
+        self._tactical_spent = {}
+        self._tactical_used = set()
+        self._tactical_links = {}
+        self._tactical_deployments = {}
+        self._tactical_cache_fuel = {}
+        self._tactical_recovered = {}
+        self._tactical_cancelled = set()
         self._inhibitor_static_zones: dict[tuple[str, tuple[int, int]], list[Any]] = {}
         self._inhibitor_dynamic_zones: dict[
             tuple[str, tuple[int, int]], dict[int, Any]
@@ -155,6 +162,7 @@ class _BatchProjection:
         raise _Rejected("order_unavailable", "The order is unavailable.")
 
     def before(self, command, units):
+        self._group_links = {}
         for unit in units:
             if unit.id in self._unavailable_units:
                 raise _Rejected("unit_unavailable", "A selected unit is unavailable after preceding operations.")
@@ -452,7 +460,7 @@ class _BatchProjection:
                 raise _Rejected("capability_unavailable", f"Unit {unit.id} Counter-Intelligence is on cooldown.")
             if self._credits < CI_SWEEP_CREDIT_COST:
                 raise _Rejected("insufficient_resources", "Counter-Intelligence sweep requires more credits than remain in this batch.")
-            if storage is None or getattr(storage, "is_destroyed", False) or amount < CI_SWEEP_ANTIMATTER_COST:
+            if storage is None or getattr(storage, "is_destroyed", False) or self.tactical_budget(unit) < CI_SWEEP_ANTIMATTER_COST:
                 raise _Rejected("insufficient_resources", f"Unit {unit.id} lacks antimatter for a Counter-Intelligence sweep.")
             self._ci_credit_spend += CI_SWEEP_CREDIT_COST
             self._credits -= CI_SWEEP_CREDIT_COST
@@ -461,6 +469,69 @@ class _BatchProjection:
             planned.append(unit)
         return planned
 
+    def tactical_budget(self, unit):
+        from unit_components.abilities.registry import ABILITY_DEFINITIONS
+        costs = {kind.value: definition.antimatter_cost for kind, definition in ABILITY_DEFINITIONS.items()}
+        storage = unit.antimatter_component
+        available = self._ci_antimatter.get(unit.id, float(storage.current_amount) if storage else 0)
+        available += self._tactical_recovered.get(unit.id, 0) - self._tactical_spent.get(unit.id, 0)
+        for entry in self._order_ledger.get(unit.id, ()):
+            kind = entry['parameters'].get('ability_type')
+            if entry['type'] == 'use_ability' and not entry.get('settled') and kind in costs:
+                available -= costs[kind]
+        return available
+
+    def tactical_links(self):
+        from tactical_abilities import get_instance, link_valid
+        links = {}
+        for unit in self._ledger_units.values():
+            for kind in ('guardian_link', 'tractor_tether'):
+                inst = get_instance(unit, kind)
+                if inst and inst.is_active and link_valid(unit, inst, self.game.galaxy):
+                    links[(kind, inst.target_unit_id)] = unit.id
+        links.update(self._tactical_links)
+        return {key: source for key, source in links.items() if (source, key[0]) not in self._tactical_cancelled}
+
+    def validate_tactical(self, command, unit):
+        from tactical_abilities import SPECS, deployments
+        spec = SPECS[command.ability]
+        used = set(self._tactical_used)
+        reserved_links = {**self.tactical_links(), **getattr(self, "_group_links", {})}
+        count = self._tactical_deployments.get((unit.id, command.ability), 0)
+        for uid, entries in self._order_ledger.items():
+            for entry in entries:
+                kind = entry['parameters'].get('ability_type')
+                if entry['type'] != 'use_ability' or entry.get('settled') or kind not in SPECS:
+                    continue
+                used.add((uid, kind))
+                if uid == unit.id and kind == command.ability:
+                    count += 1
+                if SPECS[kind].target_kind == 'unit':
+                    reserved_links[(kind, entry['parameters'].get('target_unit_id', entry['parameters'].get('target_id')))] = uid
+        if (unit.id, command.ability) in used:
+            raise _Rejected('capability_unavailable', 'Ability already used or reserved.')
+        if spec.cost > self.tactical_budget(unit):
+            raise _Rejected('insufficient_resources', 'Ability fuel is already spent or reserved.')
+        surviving = [obj for obj in deployments(self.game.galaxy, unit.id, command.ability)
+                     if self._tactical_cache_fuel.get(obj.id, 1) > 0]
+        if spec.cap and len(surviving) + count >= spec.cap:
+            raise _Rejected('deployment_cap_reached', 'Deployment limit reached or reserved.')
+        if spec.target_kind == 'unit' and (command.ability, command.target_id) in reserved_links:
+            raise _Rejected('target_unavailable', 'The target already has a link or reserved link.')
+        if command.ability == 'guardian_link':
+            outgoing = {source: target for (kind, target), source in reserved_links.items() if kind == 'guardian_link'}
+            cursor, seen = command.target_id, {unit.id}
+            while cursor in outgoing:
+                if cursor in seen:
+                    raise _Rejected('target_unavailable', 'Guardian cycles are unavailable.')
+                seen.add(cursor)
+                cursor = outgoing[cursor]
+            if cursor == unit.id:
+                raise _Rejected('target_unavailable', 'Guardian cycles are unavailable.')
+
+        if spec.target_kind == 'unit':
+            self._group_links[(command.ability, command.target_id)] = unit.id
+
     def record(self, command, units):
         if command.type == "append_patrol_waypoints":
             entry = self.target_order(command, units[0])
@@ -468,7 +539,7 @@ class _BatchProjection:
         elif COMMAND_SPECS[command.type].queued:
             params = {"target_id": command.target_id, "agent_id": command.agent_id, "amount": command.amount,
                       "unit_template_name": command.template_name, "target_carrier_id": command.target_id,
-                      "waypoints": list(command.waypoints or [])}
+                      "waypoints": list(command.waypoints or []), "ability_type": command.ability, "target_unit_id": command.target_id, "target_position": command.position}
             for unit in units:
                 self._order_ledger[unit.id].append({"id": uuid.uuid4().hex, "type": command.type, "parameters": params, "order": None, "started": False, "settled": False})
                 self._settle_front(unit)
@@ -486,7 +557,51 @@ class _BatchProjection:
         entry = entries[0]
         entry["started"] = True
         params, kind = entry["parameters"], entry["type"]
-        if kind == 'enter_gas_giant':
+        if kind == 'use_ability':
+            from tactical_abilities import SPECS, validate
+            from geometry import Position
+            ability = params.get('ability_type')
+            if ability in SPECS:
+                raw_point = params.get('target_position')
+                point = raw_point if isinstance(raw_point, Position) else Position(*raw_point) if raw_point is not None else None
+                if validate(unit, ability, self.game.galaxy, params.get('target_id', params.get('target_unit_id')), point, check_ready=False, links=False) is None:
+                    self._tactical_spent[unit.id] = self._tactical_spent.get(unit.id, 0) + SPECS[ability].cost
+                    self._tactical_used.add((unit.id, ability))
+                    self._tactical_cancelled.discard((unit.id, ability))
+                    if SPECS[ability].cap:
+                        key = (unit.id, ability)
+                        self._tactical_deployments[key] = self._tactical_deployments.get(key, 0) + 1
+                    if SPECS[ability].target_kind == 'unit':
+                        self._tactical_links[(ability, params.get('target_id'))] = unit.id
+                    entry['settled'] = True
+            else:
+                from unit_components.abilities.registry import ABILITY_DEFINITIONS
+                from unit_components.enums import AbilityType
+                from geometry import distance
+                definition = ABILITY_DEFINITIONS.get(AbilityType(ability)) if ability else None
+                target = self.game.galaxy.get_unit_by_id(params.get('target_id', params.get('target_unit_id')))
+                raw_point = params.get('target_position')
+                point = raw_point if isinstance(raw_point, Position) else Position(*raw_point) if raw_point is not None else None
+                in_range = definition is not None
+                if definition and definition.requires_target_unit:
+                    in_range = target is not None and target.in_system == unit.in_system and target.in_hex == unit.in_hex and distance(unit.position, target.position) <= definition.range
+                elif definition and definition.requires_target_position:
+                    in_range = point is not None and distance(unit.position, point) <= definition.range
+                if in_range:
+                    self._tactical_spent[unit.id] = self._tactical_spent.get(unit.id, 0) + definition.antimatter_cost
+                    self._tactical_used.add((unit.id, ability))
+                    entry['settled'] = True
+        elif kind == 'recover_fuel_cache':
+            from tactical_abilities import find_deployable, RECOVERY_RANGE, sector_for
+            from geometry import distance
+            cache = find_deployable(self.game.galaxy, params.get('target_id'))
+            if cache and sector_for(unit, self.game.galaxy) is sector_for(cache, self.game.galaxy) and distance(unit.position, cache.position) <= RECOVERY_RANGE:
+                left = self._tactical_cache_fuel.get(cache.id, cache.fuel)
+                amount = min(left, max(0, unit.antimatter_component.max_capacity-unit.antimatter_component.current_amount-self._tactical_recovered.get(unit.id, 0)+self._tactical_spent.get(unit.id, 0)))
+                self._tactical_cache_fuel[cache.id] = left-amount
+                self._tactical_recovered[unit.id] = self._tactical_recovered.get(unit.id, 0)+amount
+                entry['settled'] = True
+        elif kind == 'enter_gas_giant':
             from unit_orders.gas_giant import within_gas_giant_range
             body = self.game.galaxy.get_celestial_body_by_id(params.get('target_id'))
             if body is not None and within_gas_giant_range(unit, body) and body.can_hide_unit(unit):
@@ -575,7 +690,7 @@ class CommandGateway:
         for system in getattr(self.game.galaxy, "systems", {}).values():
             for sector in getattr(system, "hexes", {}).values():
                 for unit in getattr(sector, "units", []):
-                    if getattr(unit, "owner", None) is player and getattr(unit, "commander_component", None):
+                    if getattr(unit, "commander_component", None):
                         projection._ensure_orders(unit)
         for index, command in enumerate(batch.commands):
             try:
@@ -680,6 +795,13 @@ class CommandGateway:
                     order.add_waypoint(waypoint["system_name"], waypoint["hex_coord"], waypoint["position"])
             return [_Prepared(append, f"Extended patrol {order.public_id}.", public_order_id=order.public_id)]
 
+        if command.type == "cancel_ability":
+            from tactical_abilities import cancel
+            for unit in units:
+                if not any(kind == command.ability and source == unit.id for (kind, _), source in projection.tactical_links().items()):
+                    raise _Rejected('capability_unavailable', 'This link is not active.')
+                projection._tactical_cancelled.add((unit.id, command.ability))
+            return [_Prepared(apply=lambda unit=unit: cancel(unit, command.ability), receipt='Cancelled ability link.') for unit in units]
         if command.type == "set_stance":
             return self._prepare_stance(units, command.stance)
         if command.type == "toggle_inhibitor":
@@ -744,6 +866,34 @@ class CommandGateway:
         from unit_orders.gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
         from unit_orders.combat import resolve_component_type
 
+        from tactical_abilities import SPECS
+        if command.type == 'recover_fuel_cache':
+            from unit_orders.recover_fuel import RecoverFuelCacheOrder
+            self._visible_combat_target(player, command.target_id)
+            return (lambda unit: RecoverFuelCacheOrder(unit, {'target_unit_id': command.target_id}), 'Recover fuel cache')
+        if command.type == 'use_ability' and command.ability in SPECS:
+            spec = SPECS[command.ability]
+            if spec.target_kind in ('unit', 'celestial_position') and command.target_id is None:
+                raise _Rejected('missing_field', 'This ability requires target_id.')
+            if spec.target_kind == 'position' and command.target_id is not None:
+                raise _Rejected('invalid_command_contract', 'This ability does not use target_id.')
+            if (spec.target_kind != 'unit') != (command.position is not None):
+                raise _Rejected('invalid_command_contract', 'Incorrect position for this ability.')
+            if spec.target_kind == 'unit':
+                self._visible_unit(player, command.target_id)
+            elif spec.target_kind == 'celestial_position':
+                self._body(command.target_id)
+            params = {'ability_type': command.ability}
+            if command.target_id is not None:
+                params['target_body_id' if spec.target_kind == 'celestial_position' else 'target_unit_id'] = command.target_id
+            if command.position is not None:
+                params['target_position'] = Position(*command.position)
+            def tactical_order(unit):
+                bound = dict(params)
+                if spec.target_kind != 'unit':
+                    bound.update(target_system_name=unit.in_system, target_hex_coord=unit.in_hex)
+                return UseAbilityOrder(unit, bound)
+            return (tactical_order, 'Use ' + command.ability)
         target_unit = None
         target_body = None
         if command.type in {
@@ -757,7 +907,7 @@ class CommandGateway:
             "transfer_antimatter",
             "trade",
         } or (command.type == "use_ability" and command.target_id is not None):
-            target_unit = self._visible_unit(player, command.target_id)
+            target_unit = self._visible_combat_target(player, command.target_id) if command.type == "attack" else self._visible_unit(player, command.target_id)
         if command.type in {
             "colonize",
             "load_colonists",
@@ -1346,6 +1496,18 @@ class CommandGateway:
             raise _Rejected("target_unavailable", "The target is unavailable.")
         return target
 
+    def _visible_combat_target(self, player, target_id):
+        from tactical_abilities import combat_target
+        from visibility import VisibilityService, is_unit_visible
+        target = combat_target(self.game.galaxy, target_id)
+        from domain.deployables import Deployable
+        if not isinstance(target, Deployable):
+            return self._visible_unit(player, target_id)
+        snapshot = VisibilityService.compute(self.game.galaxy, player, record_intel=False)
+        if target is None or not is_unit_visible(snapshot, target):
+            raise _Rejected('target_unavailable', 'The target is unavailable.')
+        return target
+
     def _visible_unit(self, player: Any, target_id: int | None):
         if target_id is None:
             raise _Rejected("missing_field", "This command requires target_id.")
@@ -1463,7 +1625,7 @@ class CommandGateway:
                 if is_position_blocked_by_celestial_field(self.game.galaxy, command.system_name, tuple(command.hex_coord), defend_pos, unit):
                     raise _Rejected("hazard_blocked", f"Unit '{unit.name}' ({unit.hull_size.name}) is too large to enter this dense celestial field.")
         elif command.type == "attack":
-            target = self._visible_unit(unit.owner, command.target_id)
+            target = self._visible_combat_target(unit.owner, command.target_id)
             check = getattr(unit.weapons_component, "eligible_turrets_for", None)
             if callable(check) and not check(target):
                 raise _Rejected("capability_unavailable", "No eligible weapons for this target.")
@@ -1557,13 +1719,38 @@ class CommandGateway:
                     "capability_unavailable",
                     f"Unit {unit.id} has no antimatter storage for resupply.",
                 )
+        elif command.type == 'recover_fuel_cache':
+            from tactical_abilities import find_deployable
+            from unit_orders.recover_fuel import recovery_blocker
+            error = recovery_blocker(unit, find_deployable(self.game.galaxy, command.target_id), self.game.galaxy, fuel_amount=projection.tactical_budget(unit))
+            if projection._tactical_cache_fuel.get(command.target_id, 1) <= 0:
+                error = 'target_unavailable'
+            if error:
+                raise _Rejected(error, 'Fuel cache cannot be recovered.')
         elif command.type == "use_ability":
+            from tactical_abilities import SPECS, validate
+            if command.ability in SPECS:
+                if command.system_name not in (None, unit.in_system) or (command.hex_coord is not None and tuple(command.hex_coord) != tuple(unit.in_hex)):
+                    raise _Rejected('out_of_range', 'Tactical positions must be in the current sector.')
+                from geometry import Position
+                error = validate(unit, command.ability, self.game.galaxy, command.target_id,
+                    Position(*command.position) if command.position is not None else None, approach=True, ignore_reservations=True, resources=False, links=False)
+                if error:
+                    raise _Rejected(error, 'Ability cannot be issued for this target or current resources.')
+                projection.validate_tactical(command, unit)
+                return
             from unit_components.enums import AbilityType
 
             try:
                 ability_type = AbilityType(command.ability)
             except (TypeError, ValueError) as exc:
                 raise _Rejected("invalid_value", "Unknown ability.") from exc
+            pending_duplicate = any(e['type'] == 'use_ability' and not e.get('settled') and e['parameters'].get('ability_type') == command.ability for e in projection._order_ledger.get(unit.id, ()))
+            if (unit.id, command.ability) in projection._tactical_used or pending_duplicate:
+                raise _Rejected('capability_unavailable', 'Ability already used or reserved.')
+            instance = unit.ability_component.abilities.get(ability_type)
+            if instance and unit.antimatter_component and projection.tactical_budget(unit) < instance.definition.antimatter_cost:
+                raise _Rejected('insufficient_resources', 'Ability fuel is already spent or reserved.')
             if not unit.ability_component.can_use(ability_type):
                 raise _Rejected(
                     "capability_unavailable",

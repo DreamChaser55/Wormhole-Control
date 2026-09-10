@@ -70,7 +70,7 @@ class ClusterWarheadAbility(AbilityInstance):
         if not hex_obj:
             return
         from domain.players import are_allies
-        for target_unit in list(hex_obj.units):
+        for target_unit in list(hex_obj.units) + list(getattr(hex_obj, 'deployables', ())):
             if target_unit is component.unit:
                 continue
             if are_allies(component.unit.owner, target_unit.owner):
@@ -80,5 +80,6 @@ class ClusterWarheadAbility(AbilityInstance):
                 # Damage falls off linearly with distance
                 falloff = max(0.0, 1.0 - (dist / self.SPLASH_RADIUS))
                 damage = max(1, int(self.BASE_DAMAGE * falloff))
-                target_unit.take_damage(damage, is_splash=True)
+                from tactical_abilities import combat_hit
+                combat_hit(target_unit, damage, is_splash=True)
                 logger.debug(f"[Cluster Warhead] Hit {target_unit.name} for {damage} damage (dist={dist:.1f}).")

@@ -1,4 +1,5 @@
 """GUI action handlers for unit commands, stances, abilities, and carrier wing deployment."""
+from tactical_ui import handle_action as handle_tactical_action
 import logging
 import pygame
 import typing
@@ -272,6 +273,8 @@ def handle_rename_unit(game, action: dict) -> None:
 
 def handle_use_ability(game, action: dict) -> None:
     ability_type_str = action.get('ability_type_str')
+    if ability_type_str == 'nebula_catalyst':
+        game.pending_catalyst_body_id = None
     requires_unit = action.get('requires_target_unit', False)
     requires_pos = action.get('requires_target_position', False)
     selected_units = [u for u in game.selected_objects if isinstance(u, Unit)]
@@ -476,6 +479,7 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'cycle_stance': handle_cycle_stance,
     'rename_unit': handle_rename_unit,
     'use_ability': handle_use_ability,
+    **{name: handle_tactical_action for name in ('select_deployable', 'choose_catalyst_nebula', 'cancel_tactical_ability', 'recover_tactical_cache', 'attack_deployable')},
     'stop_unit': handle_stop_unit,
     'stop_selected_units': handle_stop_selected_units,
     'toggle_inhibitor': handle_toggle_inhibitor,

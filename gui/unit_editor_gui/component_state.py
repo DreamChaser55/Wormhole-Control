@@ -85,17 +85,23 @@ def update_ability_toggle_labels(editor) -> None:
     for aname, btn in editor._ability_buttons.items():
         req_keys = ABILITY_REQUIRED_COMPONENTS.get(aname, [])
         missing = [k for k in req_keys if not getattr(c, k, False)]
+        from tactical_balance import SPECS
+        spec = SPECS.get(aname)
+        display_name = spec.name if spec else aname
+        if spec:
+            requirements = ', '.join(comp_labels.get(k, k) for k in req_keys)
+            btn.set_tooltip(f'{spec.description}\nRequires: {requirements}. Cost: {spec.cost} AM; range {spec.range:g}; cooldown {spec.cooldown}.', wrap_width=340)
         if missing:
             if aname in editor._selected_abilities:
                 editor._selected_abilities.remove(aname)
                 editor._comp.abilities = list(editor._selected_abilities)
             req_names = ", ".join(comp_labels.get(k, k) for k in missing)
-            btn.set_text(f"[ ] {aname} (Req: {req_names})")
+            btn.set_text(f"[ ] {display_name} *" if spec else f"[ ] {aname} (Req: {req_names})")
             btn.disable()
         else:
             btn.enable()
             selected = aname in editor._selected_abilities
-            btn.set_text(f"[x] {aname}" if selected else f"[ ] {aname}")
+            btn.set_text(f"[x] {display_name}" if selected else f"[ ] {display_name}")
 
 
 def on_hull_changed(editor, hull_name: str) -> None:
