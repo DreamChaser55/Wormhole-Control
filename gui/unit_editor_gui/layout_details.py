@@ -14,6 +14,7 @@ from .catalog import (
     TURRET_TYPES,
     TURRET_VARIANTS,
     ABILITY_NAMES,
+    ability_button_text,
     COMPONENT_DESCRIPTIONS,
 )
 from .widget_factory import make_label, make_entry, make_dropdown, make_button
@@ -171,12 +172,25 @@ def build_col3_details(
     ab_widgets = [abil_hdr]
     y_ab += small_h + 4
 
+    editor._ability_scroll_container = pygame_gui.elements.UIScrollingContainer(
+        relative_rect=pygame.Rect(c3x, y_ab, c3w, editor._panel_rect.h - y_ab - pad),
+        manager=mgr,
+        container=pan,
+        object_id="#ability_scrolling_container",
+        allow_scroll_x=False,
+    )
+    ab_widgets.append(editor._ability_scroll_container)
+    # UIScrollingContainer reserves 20 pixels for its vertical scrollbar.
+    button_width = c3w - 20
+
     for aname in ABILITY_NAMES:
-        abtn = make_button(pygame.Rect(c3x, y_ab, c3w, small_h), f"[ ] {aname}", mgr, pan, "#ability_toggle_button")
+        abtn = make_button(
+            pygame.Rect(0, 0, button_width, -1), ability_button_text(aname),
+            mgr, editor._ability_scroll_container, "#ability_toggle_button",
+        )
         editor._ability_buttons[aname] = abtn
-        ab_widgets.append(abtn)
-        y_ab += small_h + 3
     editor._details_groups["has_ability_component"].extend(ab_widgets)
+    editor._update_ability_toggle_labels()
 
     # --- 13. Cloaking Device ---
     y_clk = c3y_base

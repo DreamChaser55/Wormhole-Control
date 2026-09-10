@@ -135,6 +135,7 @@ class UnitEditorWindow:
 
         # Ability checkboxes (UIButton toggles)
         self._ability_buttons: typing.Dict[str, pygame_gui.elements.UIButton] = {}
+        self._ability_scroll_container: typing.Optional[pygame_gui.elements.UIScrollingContainer] = None
 
         # Right column
         self._display_entry: typing.Optional[pygame_gui.elements.UITextEntryLine] = None
@@ -212,6 +213,7 @@ class UnitEditorWindow:
         self._comp_select_btns.clear()
         self._details_groups.clear()
         self._ability_buttons.clear()
+        self._ability_scroll_container = None
         self._elements.clear()
         self._save_as_button = None
 

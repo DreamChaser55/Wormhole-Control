@@ -51,6 +51,22 @@ HYPERDRIVE_TYPES = ["BASIC", "ADVANCED"]
 CLOAKING_TYPES = ["BASIC", "ADVANCED"]
 WING_TYPES = ["FIGHTER", "BOMBER"]
 
+
+def ability_button_text(
+    aname: str, selected: bool = False, missing_components: typing.Sequence[str] = ()
+) -> str:
+    """Use the canonical ability name and editor labels for missing equipment."""
+    from unit_components.abilities import ABILITY_DEFINITIONS
+
+    name = ABILITY_DEFINITIONS[AbilityType(aname)].name
+    text = f"[{'x' if selected else ' '}] {name}"
+    if missing_components:
+        labels = {row["key"]: row["label"] for row in COMPONENT_ROWS}
+        requirements = ", ".join(labels.get(key, key) for key in missing_components)
+        text += f" (Req: {requirements})"
+    return text
+
+
 COMPONENT_DESCRIPTIONS = {
     "has_antimatter_harvester": "Antimatter Harvester<br><br>Generates antimatter resource automatically over time for hyperdrive jumps and abilities.",
     "has_constructor_component": "Constructor Component<br><br>Enables construction of orbital structures, starbases, and warp gates.",
@@ -64,4 +80,3 @@ COMPONENT_DESCRIPTIONS = {
     "has_inhibitor": "Inhibitor Field<br><br>Generates a hyperspace inhibition zone around the unit, preventing hyperdrive jumps into or out of the field. Consumes antimatter per turn while active scaled by field radius. Auto-deactivates if antimatter runs dry.",
     "has_intelligence_component": "Intelligence & Sabotage<br><br>Enables deploying invisible agents onto enemy units and colonized worlds in range (500 units).<br><br>• <b>Sensor Intel:</b> Reveals sensor vision of infiltrated units/colonies.<br>• <b>Sabotage:</b> Sabotages unit systems (Engines, Weapons, Defenses, Hyperdrive, Sensors, Antimatter) or planetary economic output/growth.<br>• <b>Counter-Intelligence:</b> Discovers and eliminates enemy agents lurking on friendly units and colonies within range.",
 }
-
