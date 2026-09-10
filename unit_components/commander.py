@@ -461,11 +461,12 @@ class Commander(UnitComponent):
         if weapons:
             weapons.clear_target()
 
-    def cancel_order(self, order_id: int | str) -> bool:
+    def cancel_order(self, order_id: int | str, *, promote_next: bool = True) -> bool:
         """Cancel an explicit root by its process-local ID (legacy keyword order_id).
 
         Args:
             order_id: Process-local Order.local_order_id, never a public UUID.
+            promote_next: False settles cancellation without starting queued work.
 
         Returns:
             True if the order was found and cancelled, False otherwise
@@ -474,14 +475,15 @@ class Commander(UnitComponent):
         if self.current_order and self.current_order.order_id == local_order_id:
             self.current_order.cancel()
             self._release_current_order()
-            self.start_next_order()
+            if promote_next:
+                self.start_next_order()
             return True
 
         for order_in_queue in list(self.orders_queue):
             if order_in_queue.order_id == local_order_id:
                 order_in_queue.cancel()
                 self.orders_queue.remove(order_in_queue)
-                if self.current_order is None:
+                if promote_next and self.current_order is None:
                     self.start_next_order()
                 return True
         return False

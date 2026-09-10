@@ -202,6 +202,8 @@ def test_start_new_game_testing_spawn_profile():
 
 def test_new_game_wizard_spawn_profile_ui():
     """Test NewGameWizard UI spawn profile button, cycling, snapshot, and settings generation."""
+    from unit_templates import UNIT_TEMPLATES
+    before = dict(UNIT_TEMPLATES)
 
     screen = pygame.display.set_mode((1280, 720))
     manager = pygame_gui.UIManager((1280, 720))
@@ -245,6 +247,7 @@ def test_new_game_wizard_spawn_profile_ui():
     assert action["settings"].spawn_profile == SpawnProfile.TESTING
 
     wizard.kill()
+    assert UNIT_TEMPLATES == before
 
 
 pytestmark = pytest.mark.usefixtures("pygame_context")

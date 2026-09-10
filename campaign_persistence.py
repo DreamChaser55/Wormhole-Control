@@ -1,5 +1,5 @@
 """Prepare, reconcile, validate, and commit a campaign without live-game callbacks."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import SimpleNamespace
 import math
 import uuid
@@ -17,6 +17,7 @@ class PreparedCampaign:
     agent_counter: int
     order_counter: int
     warnings: list
+    testing_templates: dict = field(default_factory=dict)
 
 
 def validate_json(value, path="save", depth=0):
@@ -408,6 +409,32 @@ def reconcile(candidate):
     return objects, agents
 
 
+def _cancel_testing_construction(candidate, warnings):
+    """Settle unavailable jobs on the candidate without promoting queued orders."""
+    from unit_templates import TESTING_TEMPLATE_KEYS
+
+    for unit, _ in iter_units(candidate.galaxy):
+        constructor = unit.constructor_component
+        if not constructor or not constructor.current_construction_target:
+            continue
+        template_name = constructor.current_construction_target[0]
+        if template_name not in TESTING_TEMPLATE_KEYS:
+            continue
+        commander = unit.commander_component
+        if commander and commander.current_order:
+            active = next((node for node in commander._active_front_chain()
+                           if node.public_id == constructor.construction_order_id), None)
+            if active is not None:
+                # Historical charge reconstruction is not evidence of a recorded payment.
+                if active._legacy_charge:
+                    active._charged_credits = 0
+                commander.cancel_order(commander.current_order.order_id, promote_next=False)
+        # Orphaned component jobs have no recorded order charge to refund.
+        constructor.cancel_construction()
+        warnings.append(f"Cancelled unavailable Testing construction {template_name} on {unit.name}; "
+                        "any recorded payment was refunded.")
+
+
 def prepare_campaign(data):
     import save_manager as sm
     from save_migrations import migrate_save
@@ -442,6 +469,7 @@ def prepare_campaign(data):
         candidate.message_counter = max(info["message_counter"], max(message_ids, default=0))
         candidate.galaxy = sm.deserialize_galaxy(data["galaxy"], {p.id: p for p in candidate.players}, candidate)
         objects, agents = reconcile(candidate)
+        _cancel_testing_construction(candidate, warnings)
         return PreparedCampaign(candidate,
             max(info["object_counter"], max(objects, default=0) + 1, max((getattr(obj, "deploying_ship_id", 0) for obj in objects.values()), default=0) + 1),
             max(info["player_counter"], max(player_ids, default=-1) + 1),
@@ -455,6 +483,7 @@ def commit_campaign(game, prepared):
     from domain.players import Player
     from unit_components.intelligence import Agent
     from unit_orders.base import Order
+    from unit_templates import publish_testing_templates
     candidate = prepared.state
     for unit, _ in iter_units(candidate.galaxy):
         unit.game = game
@@ -465,6 +494,7 @@ def commit_campaign(game, prepared):
                   is_dragging_selection_box=False, selection_box_start_pos=None,
                   pending_ability=None, load_warnings=prepared.warnings)
     game.__dict__.update(fields)
+    publish_testing_templates(prepared.testing_templates)
     game.galaxy.game = game
     GameObject.object_counter = prepared.object_counter
     Player.player_counter = prepared.player_counter

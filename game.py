@@ -534,6 +534,8 @@ class Game:
 
     def quit_to_main_menu(self):
         """Resets active game state and returns the UI to the main menu."""
+        from unit_templates import publish_testing_templates
+        publish_testing_templates({})
         logger.debug("Quitting to main menu...")
         self.ai_coordinator.reset()
         self.game_started = False

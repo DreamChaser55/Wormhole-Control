@@ -92,7 +92,7 @@ Colony ships settle habitable planets, moons, and colonizable asteroids. Consult
 
 Click **Unit Editor** beside **Comms** in the bottom panel to open the **Unit Designer** and create starship templates. The button is available in Galaxy, System, and Sector views without opening the in-game menu. Choose a [hull size](#2-hull-sizes), tune engines, hyperdrives, turrets, and defenses with dynamic hull costs, and install fixed utility modules such as refineries, colony pods, and hangars. The [component catalogue](#3-component-catalogue) and [special abilities table](#4-special-abilities) describe available equipment and restrictions.
 
-Saved designs immediately become available for construction in active shipyards. Designs live in a separate user-data library; see [custom-design storage and migration](#custom-design-storage-and-migration) for paths, recovery, and upgrades.
+Saved designs immediately become available for construction in active shipyards. Designs live in a separate user-data library; see [custom-design storage](#custom-design-storage) for paths, recovery, and upgrades.
 
 ### Saving and Loading
 
@@ -155,6 +155,7 @@ Wormhole-Control/
 ├── data/
 │   ├── spawn_rates.json
 │   ├── star_names.json
+│   ├── test_unit_templates.json
 │   └── unit_templates.json
 ├── docs/
 │   ├── AGENTIC_AI.md
@@ -625,6 +626,10 @@ restricted by the selected stance boundary.
   4. Antimatter Harvester Ship (`ANTIMATTER_HARVESTER`)
 - `TESTING`: Sandbox setup. Unassigned players share `Sol` (or the first available system); specified homes may also share systems. Each player receives testing ships and stations across all sizes (`TINY`..`HUGE`) and a carrier.
 
+The 11 Testing starter templates live in `data/test_unit_templates.json`; ordinary templates, including fighter and bomber wings, remain in `data/unit_templates.json`. Testing templates are added to the shared construction catalogue only after a new Testing campaign starts successfully. Selecting or cancelling a wizard option does not change the active catalogue. Starting Normal, loading any save, or quitting to the main menu removes Testing templates while preserving custom designs.
+
+Loading a saved Testing campaign preserves its existing ships but does not restore the Testing construction catalogue. In-progress Testing-only builds are cancelled and recorded payments are refunded once to their original payer; missing charge records do not produce refunds. A load warning reports cancellations. Queued Testing-only builds remain queued and fail when attempted. See [campaign persistence](SAVE_FORMAT.md).
+
 Both profiles select only unowned, colonizable planets and retain their planetary type. If none is available, setup creates a Terran fallback in an empty noncentral sector; without a valid sector, setup fails. Starting population must be non-negative and is capped to the selected world's capacity.
 
 Normal requires at least as many requested and actual systems as players, unique specified home systems, and enough unclaimed systems for all random assignments. Unknown assignments and generation shortfalls produce actionable errors. Map-only previews validate generation independently of player starts. Immediately before starting, the same rules are rechecked by the wizard, control interface and direct setup. Preparation copies previews, isolates ID allocation, and validates homeworld references and starter fleets before replacing the live campaign, resetting AI or closing the wizard. A preparation failure preserves the campaign, preview, counters and AI state. These new-game restrictions do not prevent loading older shared-start saves.
@@ -679,7 +684,7 @@ Testing](#development-and-testing) for import-boundary checks and quality gates.
 
 ### Configuration and Data Files
 
-- `data/` contains bundled unit templates, spawn rates, and star names. Custom designs use the [user-data library](#custom-design-storage-and-migration).
+- `data/` contains normal and Testing unit-template catalogues, spawn rates, and star names. Custom designs use the [user-data library](#custom-design-storage).
 - `constants.py` provides game tuning constants, colors, and fixed compatibility display defaults; importing it does not discover or initialize a display.
 - `display_config.py` defines immutable per-application resolution and UI metrics. `Game(display_config=DisplayConfig(1920, 1080, False))` accepts explicit dimensions; otherwise bootstrap discovers the display.
 - `WORMHOLE_FULLSCREEN=true` forces full-screen display mode.
@@ -1047,7 +1052,7 @@ This is a position check: crossing a field without ending inside it does not tri
 
 ## Runtime storage and API failure contracts
 
-### Custom-design storage and migration
+### Custom-design storage
 
 Custom designs are stored as `custom_unit_templates.json` in:
 
@@ -1057,13 +1062,13 @@ Custom designs are stored as `custom_unit_templates.json` in:
 
 Set `WORMHOLE_USER_DATA_DIR` to an **absolute directory path** to use another location. Tests automatically use temporary user storage, including child processes.
 
-Fresh installations start with an empty custom-design library. On first use, when no user library exists and a legacy `data/custom_unit_templates.json` file is present, the game validates the complete library before copying it. It leaves the original bytes intact. An existing user library, including an empty one, always takes precedence. Migration preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation.
+A missing user library starts an empty custom-design collection without creating a file. Only the configured user library is loaded; repository-local `data/custom_unit_templates.json` files are ignored. To retain a design library from an older checkout, manually copy it into the user-data directory while the game is closed, taking care to preserve any existing user library.
 
-Malformed libraries and storage failures are reported in the log. Repair a malformed library and restart the game to reload it; the persistence failure contract below describes how failed operations preserve existing state.
+Loading preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation. Built-in template keys and display names from both catalogues are reserved, including Testing designs while they are inactive.
 
-**Upgrade sequence:** The legacy library has been removed from version control. An existing user-data library is retained. Users upgrading from a version that stored designs in the checkout should back up that file before updating, then copy it into their user-data directory while the game is closed. Migration support remains available if a legacy file is supplied; it never overwrites an existing user library.
+Malformed libraries and storage failures are reported in the log. Repair a malformed library and restart the game to reload it; failed operations preserve existing state as described below.
 
-`CustomTemplateManager(data_file=..., legacy_file=...)` supports isolated libraries; an explicit data path disables automatic legacy discovery.
+`CustomTemplateManager(data_file=...)` supports isolated libraries.
 
 ### Persistence and API failure behavior
 

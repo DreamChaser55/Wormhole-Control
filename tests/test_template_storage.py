@@ -1,4 +1,4 @@
-"""Migration and write-failure tests use isolated libraries and registry snapshots."""
+"""Library loading and write-failure tests use isolated libraries and registry snapshots."""
 import json
 from types import SimpleNamespace
 import pytest
@@ -15,104 +15,69 @@ def design(name='Storage Test'):
     return template
 
 
-def legacy_library(tmp_path):
-    path = tmp_path / 'legacy.json'
-    manager = CustomTemplateManager(data_file=path)
-    assert manager.save_design(design()) == []
-    return path
-
-
-def test_migration_copies_bytes_once_and_preserves_legacy(tmp_path):
-    legacy = legacy_library(tmp_path)
-    payload = legacy.read_bytes()
-    target = tmp_path / 'user' / 'designs.json'
-    manager = CustomTemplateManager(data_file=target, legacy_file=legacy)
-    manager.load_from_file()
-    assert manager.last_load_error is None
-    assert target.read_bytes() == legacy.read_bytes() == payload
-    assert manager.get_design('Storage Test') is not None
-    assert manager.delete_design('Storage Test')
-    manager.load_from_file()
-    assert manager.designs == {}  # Empty user library must not resurrect legacy designs.
-    assert legacy.read_bytes() == payload
-
-
-def test_explicit_storage_disables_legacy_discovery(tmp_path):
-    manager = CustomTemplateManager(data_file=tmp_path / 'library.json')
-    manager.load_from_file()
-    assert manager.designs == {} and manager.legacy_file is None
-
-
-def test_default_manager_migrates_to_environment_override(tmp_path, monkeypatch):
-    legacy = legacy_library(tmp_path)
+def test_missing_library_ignores_repository_legacy_file(tmp_path, monkeypatch):
+    import utils
+    root = tmp_path / 'checkout'
+    legacy = root / 'data' / 'custom_unit_templates.json'
+    legacy.parent.mkdir(parents=True)
+    legacy.write_bytes(b'broken legacy input')
+    monkeypatch.chdir(root)
+    monkeypatch.setattr(utils, 'resource_path', lambda _: str(legacy))
     monkeypatch.setenv('WORMHOLE_USER_DATA_DIR', str(tmp_path / 'user'))
-    monkeypatch.setattr('custom_unit_templates._DATA_FILE', None)
-    monkeypatch.setattr('custom_unit_templates.resource_path', lambda _: str(legacy))
     manager = CustomTemplateManager()
     manager.load_from_file()
-    assert manager.data_file == tmp_path / 'user' / 'custom_unit_templates.json'
-    assert manager.data_file.read_bytes() == legacy.read_bytes()
+    assert manager.last_load_error is None and manager.designs == {}
+    assert not manager.data_file.exists()
+    assert legacy.read_bytes() == b'broken legacy input'
 
 
-def test_concurrent_user_library_wins_migration(tmp_path, monkeypatch):
-    legacy = legacy_library(tmp_path)
-    target = tmp_path / 'user.json'
-    manager = CustomTemplateManager(data_file=target, legacy_file=legacy)
-    import os
-    link = os.link
-    def competing_library(source, destination):
-        target.write_text('{}')
-        return link(source, destination)
-    monkeypatch.setattr('custom_unit_templates.os.link', competing_library)
+def test_explicit_missing_library_is_empty(tmp_path):
+    target = tmp_path / 'missing.json'
+    manager = CustomTemplateManager(data_file=target)
     manager.load_from_file()
     assert manager.last_load_error is None and manager.designs == {}
-    assert target.read_text() == '{}'
-    assert not list(tmp_path.glob('*.tmp'))
+    assert not target.exists()
 
 
-def test_corrupt_existing_library_never_falls_back_or_overwrites(tmp_path):
-    legacy = legacy_library(tmp_path)
-    target = tmp_path / 'user.json'
-    manager = CustomTemplateManager(data_file=target, legacy_file=legacy)
-    manager.load_from_file()
-    before = dict(manager.designs), dict(UNIT_TEMPLATES)
-    target.write_bytes(b'broken')
-    manager.load_from_file()
-    assert manager.last_load_error is not None
-    assert (manager.designs, UNIT_TEMPLATES) == before
-    with pytest.raises(TemplatePersistenceError):
-        manager.save_to_file()
-    assert target.read_bytes() == b'broken'
+def test_default_manager_reads_environment_override(tmp_path, monkeypatch):
+    monkeypatch.setenv('WORMHOLE_USER_DATA_DIR', str(tmp_path))
+    manager = CustomTemplateManager()
+    assert manager.save_design(design()) == []
+    restored = CustomTemplateManager()
+    restored.load_from_file()
+    assert restored.data_file == tmp_path / 'custom_unit_templates.json'
+    assert restored.get_design('Storage Test') is not None
 
 
 @pytest.mark.parametrize('payload', [b'{', b'[]', b'{"broken": 42}', b'{"broken": {"hull_size": "NO_SUCH_HULL"}}'])
-def test_malformed_migration_never_creates_destination(tmp_path, payload):
-    legacy = tmp_path / 'legacy.json'
-    legacy.write_bytes(payload)
+def test_malformed_library_preserves_state_and_blocks_writes(tmp_path, payload):
     target = tmp_path / 'user.json'
-    manager = CustomTemplateManager(data_file=target, legacy_file=legacy)
-    before = dict(UNIT_TEMPLATES)
+    manager = CustomTemplateManager(data_file=target)
+    manager.save_design(design())
+    before = dict(manager.designs), dict(UNIT_TEMPLATES)
+    target.write_bytes(payload)
     manager.load_from_file()
     assert manager.last_load_error is not None
-    assert not target.exists() and legacy.read_bytes() == payload
-    assert UNIT_TEMPLATES == before
+    assert target.read_bytes() == payload
+    assert (manager.designs, UNIT_TEMPLATES) == before
     with pytest.raises(TemplatePersistenceError):
-        manager.save_design(design())
+        manager.save_design(design('Another'))
+    with pytest.raises(TemplatePersistenceError):
+        manager.save_to_file()
 
 
-def test_failed_migration_can_be_retried(tmp_path, monkeypatch):
-    legacy = legacy_library(tmp_path)
+def test_failed_load_can_be_retried(tmp_path):
     target = tmp_path / 'user.json'
-    manager = CustomTemplateManager(data_file=target, legacy_file=legacy)
-    write = manager._atomic_write
-    def fail(*args, **kwargs):
-        raise TemplatePersistenceError('no storage')
-    monkeypatch.setattr(manager, '_atomic_write', fail)
+    manager = CustomTemplateManager(data_file=target)
+    manager.save_design(design())
+    payload = target.read_bytes()
+    target.write_bytes(b'broken')
     manager.load_from_file()
-    assert manager.last_load_error is not None and not target.exists()
-    monkeypatch.setattr(manager, '_atomic_write', write)
+    assert manager.last_load_error is not None
+    target.write_bytes(payload)
     manager.load_from_file()
-    assert manager.last_load_error is None and target.read_bytes() == legacy.read_bytes()
+    assert manager.last_load_error is None
+    assert manager.save_design(design('Another')) == []
 
 
 @pytest.mark.parametrize('operation', ['save', 'rename', 'delete'])
@@ -147,12 +112,13 @@ def test_rename_delete_round_trip(tmp_path):
     assert json.loads(target.read_text()) == {}
 
 
-def test_historical_over_capacity_design_can_migrate(tmp_path):
-    legacy = legacy_library(tmp_path)
-    raw = json.loads(legacy.read_text())
+def test_historical_over_capacity_design_can_load(tmp_path):
+    target = tmp_path / 'user.json'
+    manager = CustomTemplateManager(data_file=target)
+    manager.save_design(design())
+    raw = json.loads(target.read_text())
     raw['Storage Test']['engine_speed'] = 10000
-    legacy.write_text(json.dumps(raw))
-    manager = CustomTemplateManager(data_file=tmp_path / 'user.json', legacy_file=legacy)
+    target.write_text(json.dumps(raw))
     manager.load_from_file()
     assert manager.last_load_error is None
     assert manager.get_design('Storage Test').components.engine_speed == 10000

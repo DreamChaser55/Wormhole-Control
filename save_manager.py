@@ -637,9 +637,9 @@ def _restore_saved_commander(unit: Unit, game: Any) -> None:
 
 
 def _build_unit_from_template(template_name: str, owner: Player, position: Position, in_hex: Tuple[int, int], in_system: str, game: Any, custom_name: str) -> Unit:
-    from unit_templates import UNIT_TEMPLATES
+    from unit_templates import lookup_legacy_template
     from unit_components.enums import TurretVariant, TurretType
-    template = UNIT_TEMPLATES.get(template_name)
+    template = lookup_legacy_template(template_name)
     if not template:
         return Unit(owner=owner, position=position, in_hex=in_hex, in_system=in_system, name=custom_name, hull_size=HullSize.MEDIUM, game=game, template_name=template_name)
 

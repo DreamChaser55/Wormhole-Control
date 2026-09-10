@@ -56,6 +56,8 @@ def instantiate_unit_from_template(
     position: 'Position',
     galaxy: 'Galaxy',
     game: 'Game',
+    *,
+    templates: Optional[dict] = None,
 ) -> None:
     """Module-level helper that builds a :class:`~entities.Unit` from a
     template entry in :data:`~unit_templates.UNIT_TEMPLATES` and adds it to
@@ -68,7 +70,7 @@ def instantiate_unit_from_template(
     """
     from domain.units import Unit
 
-    template = UNIT_TEMPLATES.get(template_name)
+    template = (UNIT_TEMPLATES if templates is None else templates).get(template_name)
     if not template:
         logger.debug(f"Error: Unit template '{template_name}' not found.")
         return
@@ -1051,5 +1053,4 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         return Constructor(unit, hull_cost=cost)
 
     return None
-
 

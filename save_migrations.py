@@ -59,7 +59,7 @@ def migrate_3_2_to_4_0(data, warnings):
     from campaign_graph import iter_units
     from persistence_context import isolated_allocations
     from enum import Enum
-    from unit_templates import UNIT_TEMPLATES
+    from unit_templates import lookup_legacy_template
     # Normalize transitional 3.x Commander encodings as part of this declared migration.
     migrate_3_0_to_3_1(data, warnings)
     migrate_3_1_to_3_2(data, warnings)
@@ -74,7 +74,7 @@ def migrate_3_2_to_4_0(data, warnings):
             if sm.get_component_class_by_name(name) is None and name not in ("Commander", "StrikecraftWingComponent"):
                 raise ValueError(f"Unknown legacy component {name}")
             if name in ("Weapons", "AbilityComponent") and not fields:
-                template = UNIT_TEMPLATES.get(raw.get("template_name"), {})
+                template = lookup_legacy_template(raw.get("template_name"))
                 flag = "has_weapon_bays" if name == "Weapons" else "has_ability_component"
                 if not template.get(flag):
                     raise ValueError(f"Legacy unit {raw.get('id')}: {name} configuration was not saved and has no matching template component")

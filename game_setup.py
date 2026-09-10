@@ -78,6 +78,7 @@ def prepare_new_campaign(settings):
     from domain.identity import GameObject
     from unit_components.intelligence import Agent
     from unit_orders.base import Order
+    from unit_templates import UNIT_TEMPLATES, TESTING_TEMPLATE_KEYS, load_testing_templates
 
     errors = settings.validate()
     if errors:
@@ -87,6 +88,9 @@ def prepare_new_campaign(settings):
     for config in settings.player_configs:
         config.__post_init__()
     settings.spawn_profile = normalize_spawn_profile(settings.spawn_profile)
+    testing_templates = load_testing_templates() if settings.spawn_profile == SpawnProfile.TESTING else {}
+    templates = {key: value for key, value in UNIT_TEMPLATES.items() if key not in TESTING_TEMPLATE_KEYS}
+    templates.update(testing_templates)
     with isolated_allocations() as allocations:
         allocations[(GameObject, 'object_counter')] = 1
         galaxy = (copy.deepcopy(settings.pregenerated_galaxy) if settings.pregenerated_galaxy is not None
@@ -125,7 +129,7 @@ def prepare_new_campaign(settings):
             homes[player] = (system.name, world.in_hex, world.position)
             player.credits, player.metal, player.crystal = settings.starting_credits, settings.starting_metal, settings.starting_crystal
         candidate.player_homeworlds = homes
-        spawn_units(candidate, player_homeworlds=homes, spawn_profile=settings.spawn_profile)
+        spawn_units(candidate, player_homeworlds=homes, spawn_profile=settings.spawn_profile, templates=templates)
         expected_units = 4 if settings.spawn_profile == SpawnProfile.NORMAL else 11
         for player in candidate.players:
             world = galaxy.get_celestial_body_by_id(player.homeworld_id)
@@ -138,7 +142,7 @@ def prepare_new_campaign(settings):
             max(objects, default=0) + 1,
             allocations.get((Player, 'player_counter'), 0),
             max(allocations.get((Agent, 'agent_counter'), 0), max(agents, default=-1) + 1),
-            allocations.get((Order, 'order_counter'), 0), [])
+            allocations.get((Order, 'order_counter'), 0), [], testing_templates)
 
 
 def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bool:
@@ -177,6 +181,8 @@ def spawn_units(
     game,
     player_homeworlds: typing.Optional[typing.Any] = None,
     spawn_profile: typing.Optional[SpawnProfile] = None,
+    *,
+    templates: typing.Optional[dict] = None,
 ) -> None:
     """Sets up the starting units of all players.
 
@@ -267,6 +273,7 @@ def spawn_units(
                     position=Position(x_pos, y_pos),
                     galaxy=game.galaxy,
                     game=game,
+                    templates=templates,
                 )
                 hex_obj = target_system.hexes.get(spawn_hex)
                 if hex_obj and hex_obj.units:
@@ -293,10 +300,10 @@ def spawn_units(
                     position=Position(x_off, y_off),
                     galaxy=game.galaxy,
                     game=game,
+                    templates=templates,
                 )
                 hex_obj = target_system.hexes.get(spawn_hex)
                 if hex_obj and hex_obj.units:
                     spawned = hex_obj.units[-1]
                     spawned.name = f"{player.name} {spawned.name}"
                     logger.debug(f"Added {spawned.name} to {target_system.name} at {spawn_hex} for {player.name}")
-

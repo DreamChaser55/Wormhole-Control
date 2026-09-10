@@ -5,6 +5,14 @@ inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
+## Testing campaign catalogue
+
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version remains 4.1.
+
+After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; historical inferred prices and orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
+
+Older campaign-save migrations can read Testing definitions privately to recover historical component configuration; this does not make those templates buildable. Custom-design library migration from the repository is no longer supported and is separate from campaign-save migration.
+
 ## Component and ability schemas
 
 Every registered component owns its persistence through `UnitComponent.to_state()`
