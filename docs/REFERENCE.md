@@ -437,7 +437,7 @@ There are **16 special abilities** registered in the game.
 | **Mine-Clearing Sweep** | 4 | 0 | 1000 | 25 | Sensors, Minelayer | Position |
 | **Guardian Link** | 7 | 3 | 450 | 25 | Defenses | Unit |
 | **Fuel Cache** | 4 | 0 | 250 | 55 | Antimatter Storage | Position |
-| **Nebula Catalyst** | 7 | 3 | 750 | 30 | Sensors, Antimatter Harvester | Nebula + Position |
+| **Nebula Catalyst** | 7 | 3 | 750 | 30 | Sensors, Antimatter Storage | Nebula + Position |
 <!-- END GENERATED: abilities -->
 
 - **Adaptive Forcefield**: Temporarily raises defensive mitigation against incoming attacks.
@@ -1134,6 +1134,16 @@ implementation call counts. See [Architecture & Subsystems](#8-architecture--sub
 
 Ghost Fleet, Tractor Tether, Mine-Clearing Sweep, Guardian Link, Fuel Cache and
 Nebula Catalyst are available through the Designer, retrofit editor, human orders
-and both automated controllers. See [complete tactical ability rules](TACTICAL_ABILITIES.md)
-for costs, persistent per-ship caps, damage routing, selective nebula effects,
-controls and owner-turn timing. Numeric defaults live in `tactical_balance.py`.
+and both automated controllers. See the [special abilities table](#4-special-abilities)
+for component requirements, costs, ranges, cooldowns and durations. Numeric defaults
+live in `tactical_balance.py`.
+
+**Nebula Catalyst** requires **Sensors and Antimatter Storage** to equip. Both
+components must be operational to activate it, and the storage must contain enough
+antimatter for the cast. An Antimatter Harvester is optional. Select a known nebula
+in the ship's current sector and a position inside that nebula within ability range;
+automated commands supply both the nebula's `target_id` and `position`.
+The resulting patch enhances hydrogen fuel savings and nitrogen turret cooling for
+allies, and increases oxygen splash damage and dust sensor penalties for enemies.
+Baseline nebula effects remain. Each ship can have one patch at a time; its duration
+and cooldown advance on the owner's turn start.

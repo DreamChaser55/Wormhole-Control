@@ -26,7 +26,7 @@ SPECS = {
         description='Redirect 30% of weapon damage (cap 20/hit), reducing the redirected share by 25% before guardian defenses.'),
     'fuel_cache': TacticalSpec('Fuel Cache', ('has_antimatter_storage',), 'position', 55, 250, 4, cap=3,
         description='Store 50 AM in a persistent pod for 5 AM overhead. Explicit recovery; enemies can steal it. Limit: 3 per ship.'),
-    'nebula_catalyst': TacticalSpec('Nebula Catalyst', ('has_sensors', 'has_antimatter_harvester'), 'celestial_position', 30, 750, 7, 3, cap=1,
+    'nebula_catalyst': TacticalSpec('Nebula Catalyst', ('has_sensors', 'has_antimatter_storage'), 'celestial_position', 30, 750, 7, 3, cap=1,
         description='Catalyze a 600-radius nebula patch: hydrogen/nitrogen benefit allies; oxygen/dust hinder enemies. Baseline effects remain.'),
 }
 EQUIPMENT = {'has_sensors': 'sensors_component', 'has_engine': 'engines_component',

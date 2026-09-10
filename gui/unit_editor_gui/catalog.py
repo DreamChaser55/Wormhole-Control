@@ -55,14 +55,16 @@ WING_TYPES = ["FIGHTER", "BOMBER"]
 def ability_button_text(
     aname: str, selected: bool = False, missing_components: typing.Sequence[str] = ()
 ) -> str:
-    """Use the canonical ability name and editor labels for missing equipment."""
+    """Label missing equipment and always show Nebula Catalyst's prerequisites."""
     from unit_components.abilities import ABILITY_DEFINITIONS
 
-    name = ABILITY_DEFINITIONS[AbilityType(aname)].name
-    text = f"[{'x' if selected else ' '}] {name}"
-    if missing_components:
+    definition = ABILITY_DEFINITIONS[AbilityType(aname)]
+    text = f"[{'x' if selected else ' '}] {definition.name}"
+    displayed_components = (definition.required_components
+        if definition.ability_type == AbilityType.NEBULA_CATALYST else missing_components)
+    if displayed_components:
         labels = {row["key"]: row["label"] for row in COMPONENT_ROWS}
-        requirements = ", ".join(labels.get(key, key) for key in missing_components)
+        requirements = ", ".join(labels.get(key, key) for key in displayed_components)
         text += f" (Req: {requirements})"
     return text
 

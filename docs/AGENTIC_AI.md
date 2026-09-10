@@ -285,9 +285,12 @@ Environmental observation additions retain schema 6: friendly/allied turrets exp
 
 ## Tactical ability integration
 
-The six [tactical abilities](TACTICAL_ABILITIES.md) share side-effect-free validation
+The six [tactical abilities](REFERENCE.md#tactical-ability-rules) share side-effect-free validation
 in `tactical_abilities.py` across human controls, observations, preflight and orders.
-`tactical_balance.py` centralizes defaults. No bundled designs or AI designer were
+`tactical_balance.py` centralizes defaults. Nebula Catalyst's catalogue equipment
+is Sensors and Antimatter Storage; activation requires both to be operational and
+enough stored antimatter. An Antimatter Harvester is optional.
+No bundled designs or AI designer were
 added: automated players construct available human-created designs or use equipped
 ships. Existing campaign starts and model/reasoning settings are unchanged.
 

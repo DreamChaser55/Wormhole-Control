@@ -200,6 +200,25 @@ def test_retrofit_wizard_abilities_customization(wizard_setup):
     wizard.kill()
 
 
+def test_retrofit_catalyst_selection_without_harvester(wizard_setup):
+    from unit_components.sensors import Sensors
+    game, galaxy, player, constructor_unit, target_unit, manager, screen_res = wizard_setup
+    target_unit.add_component(Sensors(target_unit))
+    assert target_unit.antimatter_component is not None
+    assert target_unit.harvester_component is None
+    wizard = RetrofitWizardWindow(manager, screen_res, target_unit, [constructor_unit],
+        initial_comp_key="AbilityComponent")
+    try:
+        wizard._toggle_ability(AbilityType.NEBULA_CATALYST.value)
+        assert wizard.is_valid
+        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=wizard._confirm_button)
+        action = wizard.process_event(event)
+        assert action["component_type"] == "AbilityComponent"
+        assert action["component_config"]["ability_types"] == ['nebula_catalyst']
+    finally:
+        wizard.kill()
+
+
 def test_retrofit_wizard_validation_insufficient_credits(wizard_setup):
     game, galaxy, player, constructor_unit, target_unit, manager, screen_res = wizard_setup
     player.credits = 10  # Very low credits

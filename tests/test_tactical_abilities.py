@@ -37,6 +37,140 @@ def issue(game, unit, kind, **kwargs):
     return CommandGateway(game).apply_batch(unit.owner, CommandBatch((Command(type='use_ability', unit_ids=(unit.id,), ability=kind, **kwargs),)))
 
 
+@pytest.fixture
+def catalyst_scenario():
+    game = campaign()
+    caster = equipped(game)
+    body = Nebula((0, 0), 'Sol', NebulaType.HYDROGEN)
+    body.position, body.radius = Position(200, 0), 1000
+    game.galaxy.systems['Sol'].add_celestial_body(body)
+    return game, caster, body
+
+
+@pytest.mark.parametrize('missing', [None, 'has_sensors', 'has_antimatter_storage'])
+def test_catalyst_design_requires_sensors_and_storage(missing):
+    from custom_unit_templates import CustomUnitTemplate
+    design = CustomUnitTemplate('Storage Catalyst', HullSize.HUGE)
+    design.components.has_ability_component = True
+    design.components.abilities = ['nebula_catalyst']
+    design.components.has_sensors = True
+    design.components.has_antimatter_storage = True
+    design.components.antimatter_capacity = 300
+    design.components.has_antimatter_harvester = False
+    if missing:
+        setattr(design.components, missing, False)
+        assert design.validate() == [f"Ability 'Nebula Catalyst' requires component '{missing}'."]
+    else:
+        assert design.validate() == []
+
+
+@pytest.mark.parametrize('harvester_state', ['absent', 'destroyed'])
+def test_catalyst_gateway_works_without_operational_harvester(catalyst_scenario, harvester_state):
+    game, caster, body = catalyst_scenario
+    if harvester_state == 'absent':
+        caster.remove_component(AntimatterHarvester)
+    else:
+        caster.harvester_component.current_hit_points = 0
+    observation = build_observation(game, caster.owner)
+    assert list(observation['ability_catalog']['nebula_catalyst']['equipment']) == [
+        'has_sensors', 'has_antimatter_storage']
+    fuel = caster.antimatter_component.current_amount
+    result = issue(game, caster, 'nebula_catalyst', target_id=body.id, position=(200, 0))
+    assert result.accepted, result.errors
+    assert caster.antimatter_component.current_amount == fuel - SPECS['nebula_catalyst'].cost
+    assert len(deployments(game.galaxy, caster.id, 'nebula_catalyst')) == 1
+    assert caster.ability_component.abilities[AbilityType.NEBULA_CATALYST].cooldown_remaining == SPECS['nebula_catalyst'].cooldown
+
+
+@pytest.mark.parametrize('component_type', [Sensors, AntimatterStorage])
+@pytest.mark.parametrize('state', ['absent', 'destroyed'])
+def test_catalyst_unavailable_without_operational_prerequisite(catalyst_scenario, component_type, state):
+    game, caster, body = catalyst_scenario
+    storage = caster.antimatter_component
+    if state == 'absent':
+        caster.remove_component(component_type)
+    else:
+        caster.get_component(component_type).current_hit_points = 0
+    fuel = storage.current_amount
+    assert availability(caster, 'nebula_catalyst', game.galaxy) == 'capability_unavailable'
+    assert not activate(caster, 'nebula_catalyst', game.galaxy, body.id, Position(200, 0))
+    assert storage.current_amount == fuel
+    assert not deployments(game.galaxy, caster.id, 'nebula_catalyst')
+    assert caster.ability_component.abilities[AbilityType.NEBULA_CATALYST].is_ready
+
+
+def test_catalyst_gateway_rejects_insufficient_fuel(catalyst_scenario):
+    game, caster, body = catalyst_scenario
+    caster.remove_component(AntimatterHarvester)
+    fuel = SPECS['nebula_catalyst'].cost - 1
+    caster.antimatter_component.current_amount = fuel
+    result = issue(game, caster, 'nebula_catalyst', target_id=body.id, position=(200, 0))
+    assert not result.accepted
+    assert result.errors[0].code == 'insufficient_resources'
+    assert caster.antimatter_component.current_amount == fuel
+    assert not deployments(game.galaxy, caster.id, 'nebula_catalyst')
+
+
+def test_catalyst_historical_definition_preserved_but_current_requirements_apply(catalyst_scenario):
+    from dataclasses import replace
+    game, caster, body = catalyst_scenario
+    instance = caster.ability_component.abilities[AbilityType.NEBULA_CATALYST]
+    instance.definition = replace(instance.definition,
+        required_components=['has_sensors', 'has_antimatter_harvester'])
+    saved_ability = instance.to_state()
+    fuel = caster.antimatter_component.current_amount
+    state = json.loads(json.dumps(serialize_game_state(game)))
+    assert deserialize_game_state(game, state)
+    restored = game.galaxy.get_unit_by_id(caster.id)
+    assert restored.ability_component.abilities[AbilityType.NEBULA_CATALYST].to_state() == saved_ability
+    assert restored.harvester_component is not None
+    assert restored.antimatter_component.current_amount == fuel
+    restored.remove_component(AntimatterHarvester)
+    result = issue(game, restored, 'nebula_catalyst', target_id=body.id, position=(200, 0))
+    assert result.accepted, result.errors
+    assert restored.antimatter_component.current_amount == fuel - SPECS['nebula_catalyst'].cost
+    assert len(deployments(game.galaxy, restored.id, 'nebula_catalyst')) == 1
+
+
+@pytest.mark.parametrize('flag,label', [('has_sensors', 'Sensors'), ('has_antimatter_storage', 'Antimatter Storage')])
+def test_catalyst_designer_prerequisite_controls(pygame_context, tmp_path, flag, label):
+    import pygame
+    import pygame_gui
+    from custom_unit_templates import CustomTemplateManager
+    from gui.unit_editor_gui.window import UnitEditorWindow
+    from gui.unit_editor_gui.component_state import toggle_ability, update_ability_toggle_labels
+    manager = pygame_gui.UIManager((1280, 720))
+    editor = UnitEditorWindow(manager, pygame.Vector2(1280, 720),
+        CustomTemplateManager(data_file=str(tmp_path / 'designs.json')))
+    try:
+        editor.show()
+        editor._comp.has_ability_component = True
+        editor._comp.has_sensors = True
+        editor._comp.has_antimatter_storage = True
+        editor._comp.has_antimatter_harvester = False
+        editor._select_component('has_ability_component')
+        button = editor._ability_buttons['nebula_catalyst']
+        assert button.is_enabled
+        assert button.text == '[ ] Nebula Catalyst (Req: Sensors, Antimatter Storage)'
+        toggle_ability(editor, 'nebula_catalyst')
+        assert 'nebula_catalyst' in editor._comp.abilities
+        assert button.text == '[x] Nebula Catalyst (Req: Sensors, Antimatter Storage)'
+        setattr(editor._comp, flag, False)
+        update_ability_toggle_labels(editor)
+        assert not button.is_enabled
+        assert label in button.text
+        assert 'Harvester' not in button.text
+        assert 'nebula_catalyst' not in editor._comp.abilities
+        toggle_ability(editor, 'nebula_catalyst')
+        assert 'nebula_catalyst' not in editor._comp.abilities
+        setattr(editor._comp, flag, True)
+        update_ability_toggle_labels(editor)
+        assert button.is_enabled
+        assert button.text == '[ ] Nebula Catalyst (Req: Sensors, Antimatter Storage)'
+    finally:
+        editor.hide()
+
+
 @pytest.mark.parametrize('kind,cap', [('ghost_fleet', 1), ('fuel_cache', 3)])
 def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     game = campaign()

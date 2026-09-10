@@ -35,6 +35,12 @@ Each ability has its own type and schema version, a saved definition, and separa
 runtime state: active flag, cooldown, remaining duration, target ID/position, and
 spawned-unit IDs. Restoration never calls ability activation.
 
+Tactical activation checks the current shared equipment requirements in
+`tactical_balance.py`. Nebula Catalyst therefore requires operational Sensors and
+Antimatter Storage even when a saved definition retains the historical Harvester
+prerequisite. Loading preserves installed components, saved definitions and runtime
+state; this balance change needs no save migration or component replacement.
+
 Commander stores its stance in `configuration` and explicit `current_order` and
 `orders_queue` in `runtime`. Public order UUIDs, descendants, charges/refunds, and
 bounded outcome history remain persistent. Loading preserves the current/queued
