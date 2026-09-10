@@ -6,9 +6,11 @@ from constants import SELECTION_HIGHLIGHT_COLOR
 
 
 def selection_color_for(obj):
-    """Use the selected object's current owner color, or white when unowned."""
+    """Blend the current owner's color 20% toward white; keep unowned objects white."""
     owner = getattr(obj, 'owner', None)
-    return owner.color if owner is not None else SELECTION_HIGHLIGHT_COLOR
+    if owner is None:
+        return SELECTION_HIGHLIGHT_COLOR
+    return tuple(round(c + (255 - c) * 0.20) for c in owner.color)
 
 
 def draw_selection_brackets(surface, color, rect):

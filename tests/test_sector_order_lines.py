@@ -281,7 +281,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_rad
         for call in mock_draw_lines.call_args_list:
             surface, color, closed, points, width = call.args
             assert surface is renderer.overlay_surface
-            assert color == player1.color
+            assert color == (51, 51, 255)
             assert closed is False
             assert width == 2
             horizontal_end, corner, vertical_end = points

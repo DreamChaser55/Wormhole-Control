@@ -107,15 +107,15 @@ def test_selection_visibility_owner_changes_and_overlay_order():
     with patch('rendering.system_renderer.draw_selection_brackets',
                wraps=draw_selection_brackets) as brackets:
         renderer.draw_system_view()
-        assert [c.args[1] for c in brackets.call_args_list] == [RED, BLUE, RED]
+        assert [c.args[1] for c in brackets.call_args_list] == [(255, 51, 51), (51, 51, 255), (255, 51, 51)]
         left, top, width, height = brackets.call_args_list[0].args[2]
         assert width == height == 18  # planet + ownership ring + padding
-        assert game.overlay_surface.get_at((int(left), int(top)))[:3] == RED
+        assert game.overlay_surface.get_at((int(left), int(top)))[:3] == (255, 51, 51)
         planet.owner = game.current_player
         game.selected_objects = [planet]
         brackets.reset_mock()
         renderer.draw_system_view()
-        assert [c.args[1] for c in brackets.call_args_list] == [BLUE]
+        assert [c.args[1] for c in brackets.call_args_list] == [(51, 51, 255)]
         game.selected_objects = []
         brackets.reset_mock()
         renderer.draw_system_view()
