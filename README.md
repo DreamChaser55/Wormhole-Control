@@ -83,6 +83,8 @@ python -m pytest -m smoke
 
 Tests use temporary storage and fake AI providers, so no API key is needed. See [Development and Testing](docs/REFERENCE.md#development-and-testing) for quality checks, CI coverage, test conventions, and reference-table generation.
 
+The game is officially unreleased and in active Alpha version development, thus backward compatibility is a non-issue. Always prefer contributing simpler code over implementing any backward compatibility features.
+
 ## Documentation
 
 - [Reference Manual](docs/REFERENCE.md): Player guidance, gameplay rules, ship catalogues, architecture, storage, and development.
