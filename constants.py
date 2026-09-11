@@ -493,7 +493,7 @@ OXYGEN_NEBULA_SPLASH_DAMAGE_MOD = 1.15
 
 
 HULL_CAPACITIES: Dict[HullSize, float] = {
-    HullSize.STRIKECRAFT_WING: 5.0,
+    HullSize.STRIKECRAFT_WING: 7.0,
     HullSize.TINY: 10.0,
     HullSize.SMALL: 25.0,
     HullSize.MEDIUM: 50.0,
@@ -520,7 +520,7 @@ ENGINE_ANTIMATTER_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
 }
 
 HIT_POINTS = {
-    HullSize.STRIKECRAFT_WING: 40,
+    HullSize.STRIKECRAFT_WING: 30,
     HullSize.TINY: 20,
     HullSize.SMALL: 50,
     HullSize.MEDIUM: 100,

@@ -10,6 +10,7 @@ import pygame
 import pygame_gui
 
 from constants import (
+    HullSize,
     DEFAULT_ANTIMATTER_CAPACITY,
     DEFAULT_SENSOR_SHORT_RANGE,
     DEFAULT_JUMP_RANGE,
@@ -287,6 +288,10 @@ def _build_component_detail_groups(
     y_s = y + small_h + 2 + entry_h + pad
     lbl_lr = make_label(pygame.Rect(pad, y_s, w, small_h), "Long-Range (hexes):", mgr, pan)
     wizard._sensor_long_range_entry = make_entry(pygame.Rect(pad, y_s + small_h + 2, w, entry_h), "1", mgr, pan)
+    if wizard.target_unit.hull_size == HullSize.STRIKECRAFT_WING:
+        lbl_lr.set_text("Intra-sector only")
+        wizard._sensor_long_range_entry.set_text("0")
+        wizard._sensor_long_range_entry.disable()
     wizard._details_groups["Sensors"].extend([lbl_sr, wizard._sensor_short_range_entry, lbl_lr, wizard._sensor_long_range_entry])
 
     # 7. Strikecraft Bay

@@ -364,3 +364,19 @@ def test_deploy_all_wings_order():
     assert len(strikecraft_bay.launched_units) == 2
     assert wing1 in strikecraft_bay.launched_units
     assert wing2 in strikecraft_bay.launched_units
+
+
+def test_new_wing_stats_for_both_carrier_roles():
+    from domain.units import Unit
+    from domain.players import Player
+    from unit_components.enums import WingType
+    carrier = Unit(owner=Player('Carrier owner', (1, 2, 3)), position=Position(0, 0),
+                   hull_size=HullSize.MEDIUM, in_hex=(0, 0), in_system='Sol', name='Carrier', game=None)
+    bay = StrikecraftBayComponent(carrier, max_slots=2)
+    carrier.add_component(bay)
+    for role in WingType:
+        bay.build_wing_type = role
+        bay.finish_auto_construction(MagicMock())
+        wing = bay.docked_units[-1]
+        assert wing.max_hit_points == wing.current_hit_points == 30
+        assert wing.hull_capacity == 7

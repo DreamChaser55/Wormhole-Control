@@ -336,7 +336,7 @@ Wormhole Control features 6 hull classes (`HullSize`). Each hull size sets the c
 
 | Hull Size | Enum Value | Hull Capacity | Base HP | Min Antimatter Capacity | Base Build Cost (Credits) | Base Build Time (Turns) | Upkeep Cost / Turn |
 |---|---|---|---|---|---|---|---|
-| `STRIKECRAFT_WING` | 1 | 5.0 | 40 | 40.0 | 50 | 1 | 0 (Exempt) |
+| `STRIKECRAFT_WING` | 1 | 7.0 | 30 | 40.0 | 50 | 1 | 0 (Exempt) |
 | `TINY` | 2 | 10.0 | 20 | 60.0 | 100 | 3 | 0.01 × Used Hull Points |
 | `SMALL` | 3 | 25.0 | 50 | 80.0 | 250 | 6 | 0.01 × Used Hull Points |
 | `MEDIUM` | 4 | 50.0 | 100 | 100.0 | 500 | 10 | 0.01 × Used Hull Points |
@@ -394,14 +394,14 @@ Hull restrictions and component behavior:
 - **Civilian Habitat**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Generates +50 credits/turn in colonized sectors up to the colony's supported habitat limit (base 1, +1 per 25 population).
 - **Orbital Defense**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Projects an area-of-effect aura (500 radius) providing +20% weapon damage and +20% defense mitigation to friendly and allied ships in range in friendly/allied colonized sectors up to the colony's supported orbital defense limit (base 1, +1 per 25 population). Overlapping auras stack additively.
 - **Trade Module**: Forbidden on `STRIKECRAFT_WING` and `TINY`. **Requires Engines (`has_engine`)**. Enables trade ships to earn credits by traveling between active Civilian Habitat modules in different sectors, with payout scaling with distance between sectors.
-- **Mining**: Available on all hull sizes. Dynamic cost scales with mining rate and cargo capacity.
+- **Mining**: Forbidden on `STRIKECRAFT_WING`; available on `TINY` and larger hulls. Dynamic cost scales with mining rate and cargo capacity.
 - **Metal Refinery**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined ore into metal.
 - **Crystal Refinery**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined crystals into usable crystal stock.
 - **Hangar**: Restricted to `LARGE` and `HUGE` hulls only. Dynamic cost scales with hangar slot capacity.
 - **Strikecraft Bay**: Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. Solely responsible for the construction and replenishment of strikecraft wings.
 - **Inhibitor Field**: Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with inhibition field radius.
 - **Abilities**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with number of equipped abilities.
-- **Sensors**: Available on all hull sizes. Dynamic cost scales with short-range radius and long-range hex coverage. Coverage is shared across all allied players.
+- **Sensors**: Available on all hull sizes. Strikecraft wings are intra-sector only: short-range radius remains configurable, but `sensor_long_range_hexes` must be zero. Dynamic cost scales with short-range radius and long-range hex coverage. Coverage is shared across all allied players.
 - **Minelayer**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields that ignore friendly and allied vessels.
 - **Marines**: Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count.
 - **Cloaking Device**: Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly and allied units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius).
@@ -1064,6 +1064,8 @@ Set `WORMHOLE_USER_DATA_DIR` to an **absolute directory path** to use another lo
 
 A missing user library starts an empty custom-design collection without creating a file. Only the configured user library is loaded; repository-local `data/custom_unit_templates.json` files are ignored. To retain a design library from an older checkout, manually copy it into the user-data directory while the game is closed, taking care to preserve any existing user library.
 
+Existing campaign saves retain saved wing HP and installed equipment; hull capacity is reconstructed from current rules (7 for wings). Newly created wings start with 30 HP. No save migration is required. Opening historical wing designs in the Editor disables Mining and resets long-range Sensors to zero; external validation reports violations without modifying files.
+
 Loading preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation. Built-in template keys and display names from both catalogues are reserved, including Testing designs while they are inactive.
 
 Malformed libraries and storage failures are reported in the log. Repair a malformed library and restart the game to reload it; failed operations preserve existing state as described below.
@@ -1108,7 +1110,7 @@ must be at least one. These minimums are shared with the Designer's input clamps
 the script reports values outside them without correcting them. Enabled antimatter
 storage must meet its hull-specific minimum. Hull budgets (including Intelligence
 and Counter-Intelligence), hull/component restrictions, advanced drive/cloak
-restrictions, wing turret roles, ability prerequisites, the Trade/Engine
+restrictions (including no wing Mining and zero long-range coverage for equipped wing Sensors), wing turret roles, ability prerequisites, the Trade/Engine
 dependency, and the requirement for at least one enabled component are checked
 through the same validation used when saving a design.
 

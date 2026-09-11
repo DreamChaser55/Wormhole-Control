@@ -762,3 +762,41 @@ class TestDesignBusinessRules(unittest.TestCase):
         t_wing = CustomUnitTemplate("Fighter Test", HullSize.STRIKECRAFT_WING)
         t_wing.components.has_engine = True
         self.assertEqual(t_wing.predicted_upkeep, 0.0)
+
+
+def test_wing_editor_load_switch_and_sensor_guard(pygame_context, tmp_path):
+    import pygame
+    import pygame_gui
+    from gui.unit_editor_gui.window import UnitEditorWindow
+    from gui.unit_editor_gui.component_state import on_hull_changed
+    from gui.unit_editor_gui.param_readers import read_sensor_params
+    from gui.unit_editor_gui.template_io import sync_widgets_from_template
+    editor = UnitEditorWindow(pygame_gui.UIManager((1280, 720)), pygame.Vector2(1280, 720),
+                              CustomTemplateManager(data_file=str(tmp_path / 'designs.json')))
+    try:
+        editor.show()
+        legacy = CustomUnitTemplate('Old wing', HullSize.STRIKECRAFT_WING,
+            ComponentConfig(has_mining_component=True, has_sensors=True,
+                            sensor_long_range_hexes=2, has_antimatter_storage=False))
+        sync_widgets_from_template(editor, legacy)
+        assert not editor._comp.has_mining_component
+        assert not editor._comp_toggles['has_mining_component'].is_enabled
+        assert editor._comp.sensor_long_range_hexes == 0
+        assert not editor._sensor_long_range_entry.is_enabled
+        assert editor._sensor_long_range_label.text == 'Intra-sector only'
+        assert legacy.components.has_mining_component  # Loading only edits the copy.
+        editor._sensor_long_range_entry.set_text('3')
+        read_sensor_params(editor)
+        assert editor._comp.sensor_long_range_hexes == 0
+        assert CustomUnitTemplate('Wing', editor._hull_size, editor._comp).validate() == []
+        on_hull_changed(editor, 'SMALL')
+        assert editor._sensor_long_range_entry.is_enabled
+        assert editor._sensor_long_range_entry.get_text() == '0'
+        assert editor._comp_toggles['has_mining_component'].is_enabled
+        editor._sensor_long_range_entry.set_text('2')
+        read_sensor_params(editor)
+        assert editor._comp.sensor_long_range_hexes == 2
+        on_hull_changed(editor, 'STRIKECRAFT_WING')
+        assert editor._comp.sensor_long_range_hexes == 0
+    finally:
+        editor.kill()

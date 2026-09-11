@@ -4,7 +4,7 @@ param_readers.py
 Parameter input parsing methods for dynamic component fields.
 """
 
-from constants import DEFAULT_SENSOR_SHORT_RANGE
+from constants import DEFAULT_SENSOR_SHORT_RANGE, HullSize
 from unit_template_validation import parameter_minimum
 
 
@@ -59,6 +59,11 @@ def read_sensor_params(editor) -> None:
         editor._comp.sensor_short_range = max(parameter_minimum("sensor_short_range", editor._hull_size), sr)
     except ValueError:
         pass
+    if editor._hull_size == HullSize.STRIKECRAFT_WING:
+        editor._comp.sensor_long_range_hexes = 0
+        if getattr(editor, '_sensor_long_range_entry', None):
+            editor._sensor_long_range_entry.set_text("0")
+        return
     try:
         lr = int(editor._sensor_long_range_entry.get_text()) if getattr(editor, '_sensor_long_range_entry', None) else 0
         editor._comp.sensor_long_range_hexes = max(parameter_minimum("sensor_long_range_hexes", editor._hull_size), lr)

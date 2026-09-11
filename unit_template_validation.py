@@ -26,6 +26,13 @@ PARAMETER_MINIMUMS = {
 }
 
 
+def sensor_hull_errors(hull_size, long_range_hexes, field="sensor_long_range_hexes"):
+    """Equipment eligibility shared by design saves and field refits."""
+    if hull_size == HullSize.STRIKECRAFT_WING and long_range_hexes != 0:
+        return [f"{field}: strikecraft wing Sensors are intra-sector only; must be 0."]
+    return []
+
+
 def parameter_minimum(field, hull_size):
     if field == 'antimatter_capacity':
         return get_min_antimatter_capacity(hull_size)
@@ -144,6 +151,8 @@ def parameter_errors(components, hull_size):
         if values[field] < minimum:
             label = f'{labels[field]} ' if field in labels else ''
             errors.append(f'{field}: {label}must be at least {minimum:g}.')
+    if components.has_sensors:
+        errors.extend(sensor_hull_errors(hull_size, components.sensor_long_range_hexes))
     return errors
 
 

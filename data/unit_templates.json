@@ -281,7 +281,7 @@
   "FIGHTER_WING": {
     "name": "Fighter Wing",
     "hull_size": "STRIKECRAFT_WING",
-    "hull_points": 40,
+    "hull_points": 30,
     "has_engine": true,
     "engine_speed": 50.0,
     "engine_hull_cost": 1.0,
@@ -312,7 +312,7 @@
   "BOMBER_WING": {
     "name": "Bomber Wing",
     "hull_size": "STRIKECRAFT_WING",
-    "hull_points": 40,
+    "hull_points": 30,
     "has_engine": true,
     "engine_speed": 40.0,
     "engine_hull_cost": 0.8,

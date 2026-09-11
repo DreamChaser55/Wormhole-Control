@@ -356,3 +356,21 @@ def test_input_processor_refit_context_menu_options(wizard_setup):
     assert "Remove Component" in option_labels
 
 pytestmark = pytest.mark.usefixtures("pygame_context")
+
+
+def test_wing_retrofit_equipment_controls(wizard_setup):
+    from unit_components.sensors import Sensors
+    game, galaxy, player, constructor, wing, manager, screen_res = wizard_setup
+    wing.hull_size = HullSize.STRIKECRAFT_WING
+    wing.remove_component(Sensors)
+    wizard = RetrofitWizardWindow(manager=manager, screen_res=screen_res,
+        target_unit=wing, constructor_units=[constructor], initial_comp_key='Sensors')
+    try:
+        assert 'MiningComponent' not in {c['comp_key'] for c in wizard._get_eligible_components()}
+        assert not wizard._sensor_long_range_entry.is_enabled
+        assert wizard._comp_config['long_range_hexes'] == 0
+        wizard._sensor_long_range_entry.set_text('2')
+        wizard._sync_cost_and_summary()
+        assert wizard._comp_config['long_range_hexes'] == 0
+    finally:
+        wizard.kill()

@@ -96,6 +96,7 @@ def build_col3_details(
     editor._sensor_short_range_entry = make_entry(pygame.Rect(c3x, y_sen + small_h + 2, c3w, entry_h), str(int(editor._comp.sensor_short_range)), mgr, pan)
     y_sen += small_h + 2 + entry_h + pad
     lbl_lr = make_label(pygame.Rect(c3x, y_sen, c3w, small_h), "Long-Range (hexes):", mgr, pan)
+    editor._sensor_long_range_label = lbl_lr
     editor._sensor_long_range_entry = make_entry(pygame.Rect(c3x, y_sen + small_h + 2, c3w, entry_h), str(int(editor._comp.sensor_long_range_hexes)), mgr, pan)
     editor._details_groups["has_sensors"].extend([lbl_sr, editor._sensor_short_range_entry, lbl_lr, editor._sensor_long_range_entry])
 

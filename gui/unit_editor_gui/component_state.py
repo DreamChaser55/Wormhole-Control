@@ -170,6 +170,18 @@ def apply_hull_restrictions(editor) -> None:
                 btn.enable()
             if sbtn:
                 sbtn.enable()
+    wing = editor._hull_size == HullSize.STRIKECRAFT_WING
+    entry = getattr(editor, "_sensor_long_range_entry", None)
+    if wing:
+        c.sensor_long_range_hexes = 0
+        if entry:
+            entry.set_text("0")
+            entry.disable()
+    elif entry:
+        entry.enable()
+    label = getattr(editor, "_sensor_long_range_label", None)
+    if label:
+        label.set_text("Intra-sector only" if wing else "Long-Range (hexes):")
     # Advanced hyperdrive restriction
     hull_sizes = list(HullSize)
     min_idx = hull_sizes.index(ADVANCED_HYPERDRIVE_MIN_HULL)

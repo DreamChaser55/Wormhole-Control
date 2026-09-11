@@ -294,3 +294,22 @@ def test_new_game_visibility_turn1(game_factory):
     finally:
         g.control_service.shutdown()
         g.ai_coordinator.shutdown()
+
+
+def test_wing_sensors_are_local(test_setup):
+    p1, p2, galaxy, system = test_setup
+    game = MagicMock()
+    game.galaxy = galaxy
+    wing = Unit(owner=p1, position=Position(0, 0), in_hex=(0, 0),
+                in_system='Alpha', name='Wing', hull_size=HullSize.STRIKECRAFT_WING, game=game)
+    local = Unit(owner=p2, position=Position(100, 0), in_hex=(0, 0),
+                 in_system='Alpha', name='Local', hull_size=HullSize.SMALL, game=game)
+    adjacent = Unit(owner=p2, position=Position(100, 0), in_hex=(1, 0),
+                    in_system='Alpha', name='Adjacent', hull_size=HullSize.SMALL, game=game)
+    system.add_unit(wing)
+    system.add_unit(local)
+    system.add_unit(adjacent)
+    snapshot = VisibilityService.compute(galaxy, p1)
+    assert is_unit_visible(snapshot, local)
+    assert not is_unit_visible(snapshot, adjacent)
+    assert not hex_has_presence(snapshot, 'Alpha', (1, 0))

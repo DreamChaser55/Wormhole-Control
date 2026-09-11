@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 # Keys are HullSize enum values; values are sets of component key strings.
 HULL_RESTRICTIONS: Dict[HullSize, set] = {
     HullSize.STRIKECRAFT_WING: {
+        "has_mining_component",
         "has_inhibitor",
         "has_hangar",
         "has_constructor_component",

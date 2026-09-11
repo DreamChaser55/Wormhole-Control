@@ -282,3 +282,42 @@ def test_cli_catalogue_builtin_and_options(tmp_path):
     res_explicit = run_cli(tmp_path, '-c', 'builtin', custom_target)
     assert res_explicit.returncode == 0
 
+
+
+@pytest.mark.parametrize('changes,invalid', [
+    ({'has_mining_component': True}, True),
+    ({'has_sensors': True, 'sensor_long_range_hexes': 1}, True),
+    ({'has_scanner': True, 'sensor_long_range_hexes': 1}, True),
+    ({'has_sensors': True}, False),
+    ({'has_sensors': True, 'sensor_long_range_hexes': 0}, False),
+    ({'has_sensors': False, 'sensor_long_range_hexes': 1}, False),
+])
+def test_wing_equipment_validation_and_cli(tmp_path, changes, invalid):
+    data = record(hull_size='STRIKECRAFT_WING', engine_speed=10, **changes)
+    direct = template_from_dict('Wing', data).validate()
+    assert bool(direct) is invalid
+    assert bool(messages(data)) is invalid
+    path = tmp_path / 'wings.json'
+    payload = json.dumps({'Wing': data})
+    path.write_text(payload)
+    result = run_cli(tmp_path, path)
+    assert result.returncode == (1 if invalid else 0), result.stdout + result.stderr
+    assert path.read_text() == payload
+    if invalid:
+        assert ('has_mining_component' if 'has_mining_component' in changes else 'sensor_long_range_hexes') in result.stdout
+
+
+@pytest.mark.parametrize('capacity,valid', [(6, True), (7, True), (7.01, False)])
+def test_wing_capacity_boundary(capacity, valid):
+    from constants import SENSOR_RANGE_PER_HULL_POINT
+    comp = ComponentConfig(has_sensors=True, has_antimatter_storage=False,
+                           sensor_short_range=capacity * SENSOR_RANGE_PER_HULL_POINT)
+    design = CustomUnitTemplate('Wing', HullSize.STRIKECRAFT_WING, comp)
+    assert design.hull_capacity == 7
+    assert (design.validate() == []) is valid
+
+
+def test_larger_hull_retains_mining_and_long_range_sensors():
+    assert messages(record(hull_size='TINY', engine_speed=0, has_mining_component=True,
+                           mining_rate=0, max_mining_cargo=0, has_sensors=True,
+                           sensor_short_range=0, sensor_long_range_hexes=1)) == ''

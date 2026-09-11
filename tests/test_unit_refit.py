@@ -560,3 +560,58 @@ def test_finish_refit_safeguard_prevents_over_capacity(setup_universe):
     # The safeguard should prevent Defenses from being added
     assert target_unit.get_component(Defenses) is None
     assert constructor_unit.constructor_component.current_refit_target is None
+
+
+@pytest.mark.parametrize('component,config', [
+    ('MiningComponent', {}), ('Sensors', {'long_range_hexes': 1}),
+])
+def test_wing_refit_rejects_forbidden_equipment_without_charge(setup_universe, component, config):
+    from unit_components.sensors import Sensors
+    _, galaxy, player, _, constructor, wing = setup_universe
+    wing.hull_size = HullSize.STRIKECRAFT_WING
+    wing.hull_capacity = 7
+    wing.remove_component(Sensors)
+    credits = player.credits
+    order = RefitOrder(constructor, dict(target_unit_id=wing.id, action='ADD',
+                       component_type=component, component_config=config))
+    order.execute(galaxy)
+    assert order.status == OrderStatus.FAILED
+    assert player.credits == credits
+    assert constructor.constructor_component.current_refit_target is None
+    assert wing.sensors_component is None
+    assert wing.mining_component is None
+
+
+def test_wing_local_sensor_refit_and_historical_mining_removal(setup_universe):
+    from unit_components.sensors import Sensors
+    _, galaxy, _, _, constructor, wing = setup_universe
+    wing.hull_size = HullSize.STRIKECRAFT_WING
+    wing.hull_capacity = 7
+    wing.remove_component(Sensors)
+    order = RefitOrder(constructor, dict(target_unit_id=wing.id, action='ADD',
+        component_type='Sensors', component_config={'short_range_radius': 100}))
+    order.execute(galaxy)
+    for _ in range(5):
+        constructor.constructor_component.update(galaxy)
+    assert wing.sensors_component.long_range_hexes == 0
+    wing.add_component(MiningComponent(wing, hull_cost=1))
+    removal = RefitOrder(constructor, dict(target_unit_id=wing.id, action='REMOVE',
+                                         component_type='MiningComponent'))
+    removal.execute(galaxy)
+    constructor.constructor_component.update(galaxy)
+    assert wing.mining_component is None
+
+
+def test_historical_wing_save_preserves_hp_and_equipment(setup_universe):
+    game, _, player, _, _, wing = setup_universe
+    wing.hull_size = HullSize.STRIKECRAFT_WING
+    wing.max_hit_points = 40
+    wing.current_hit_points = 35
+    wing.sensors_component.long_range_hexes = 2
+    wing.add_component(MiningComponent(wing, hull_cost=1))
+    restored = deserialize_unit(serialize_unit(wing), {player.id: player}, game)
+    assert restored.max_hit_points == 40
+    assert restored.current_hit_points == 35
+    assert restored.hull_capacity == 7
+    assert restored.sensors_component.long_range_hexes == 2
+    assert restored.mining_component is not None

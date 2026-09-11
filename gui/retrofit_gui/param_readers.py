@@ -4,7 +4,7 @@ param_readers.py
 Parameter input reading and parsing methods for the Retrofit Customization Options Wizard.
 """
 
-from constants import get_min_antimatter_capacity, DEFAULT_SENSOR_SHORT_RANGE
+from constants import get_min_antimatter_capacity, DEFAULT_SENSOR_SHORT_RANGE, HullSize
 
 
 def read_engine_params(wizard) -> None:
@@ -58,6 +58,11 @@ def read_sensor_params(wizard) -> None:
         wizard._comp_config["short_range_radius"] = max(0.0, sr)
     except ValueError:
         pass
+    if wizard.target_unit.hull_size == HullSize.STRIKECRAFT_WING:
+        wizard._comp_config["long_range_hexes"] = 0
+        if getattr(wizard, '_sensor_long_range_entry', None):
+            wizard._sensor_long_range_entry.set_text("0")
+        return
     try:
         lr = int(wizard._sensor_long_range_entry.get_text()) if getattr(wizard, '_sensor_long_range_entry', None) else 1
         wizard._comp_config["long_range_hexes"] = max(0, lr)

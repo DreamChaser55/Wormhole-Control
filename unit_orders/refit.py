@@ -1,3 +1,6 @@
+from constants import HullSize
+from unit_template_validation import sensor_hull_errors
+from unit_components.sensors import Sensors
 from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
@@ -31,6 +34,7 @@ def get_hull_restriction_flag(component_name: str) -> str:
         "OrbitalDefense": "has_orbital_defense_component",
         "TradeComponent": "has_trade_component",
         "Trade": "has_trade_component",
+        "MiningComponent": "has_mining_component",
         "MetalRefineryComponent": "has_metal_refinery_component",
         "CrystalRefineryComponent": "has_crystal_refinery_component",
         "AbilityComponent": "has_ability_component",
@@ -166,6 +170,21 @@ class RefitOrder(Order):
                         title="Engine Required"
                     )
                 return
+
+            if comp_cls is Sensors:
+                default_range = 0 if target_unit.hull_size == HullSize.STRIKECRAFT_WING else 1
+                sensor_errors = sensor_hull_errors(
+                    target_unit.hull_size,
+                    component_config.get("long_range_hexes", default_range),
+                    "long_range_hexes",
+                )
+                if sensor_errors:
+                    self.status = OrderStatus.FAILED
+                    logger.debug("REFIT order failed: %s", sensor_errors[0])
+                    if getattr(self.unit.game, 'gui', None):
+                        self.unit.game.gui.show_warning_dialog(sensor_errors[0], title="Hull Restriction Violation")
+                    return
+                component_config.setdefault("long_range_hexes", default_range)
 
             # Calculate hull cost
             hull_cost = get_component_hull_cost(component_type, target_unit, component_config)
