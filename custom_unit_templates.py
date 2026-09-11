@@ -642,6 +642,7 @@ class CustomUnitTemplate:
         if c.has_minelayer_component:           total += c.minelayer_hull_cost
         if c.has_marines_component:             total += c.marines_hull_cost
         if c.has_cloaking_device:              total += c.cloaking_device_hull_cost
+        if c.has_intelligence_component:       total += c.intelligence_hull_cost
         return total
 
 
@@ -673,46 +674,36 @@ class CustomUnitTemplate:
         Returns a list of validation error strings.
         An empty list means the design is valid.
         """
+        from unit_template_validation import parameter_errors
+
         errors: List[str] = []
-        if not self.display_name or not self.display_name.strip():
+        if not isinstance(self.hull_size, HullSize):
+            errors.append("hull_size: must be a HullSize.")
+        if not isinstance(self.display_name, str) or not self.display_name.strip():
             errors.append("Display name cannot be empty.")
-        if self.is_over_capacity:
+        if errors:
+            return errors
+        errors.extend(parameter_errors(self.components, self.hull_size))
+        if errors:
+            return errors
+        try:
+            total = self.total_hull_cost
+            if not math.isfinite(total):
+                return ["total_hull_cost: must be finite."]
+        except (OverflowError, ValueError):
+            return ["total_hull_cost: cannot be computed from these parameters."]
+        if total > self.hull_capacity:
             errors.append(
-                f"Hull over capacity: {self.total_hull_cost:g} / {self.hull_capacity:g} used."
+                f"Hull over capacity: {total:g} / {self.hull_capacity:g} used."
             )
         # Check hull-size restrictions
         restricted = HULL_RESTRICTIONS.get(self.hull_size, set())
         c = self.components
-        comp_flags = {
-            "has_hyperdrive": c.has_hyperdrive,
-            "has_hangar": c.has_hangar,
-            "has_strikecraft_bay": c.has_strikecraft_bay,
-            "has_inhibitor": c.has_inhibitor,
-            "has_constructor_component": c.has_constructor_component,
-            "has_repair_component": c.has_repair_component,
-            "has_colony_component": c.has_colony_component,
-            "has_civilian_habitat_component": c.has_civilian_habitat_component,
-            "has_orbital_defense_component": c.has_orbital_defense_component,
-            "has_trade_component": c.has_trade_component,
-            "has_metal_refinery_component": c.has_metal_refinery_component,
-            "has_crystal_refinery_component": c.has_crystal_refinery_component,
-            "has_ability_component": c.has_ability_component,
-            "has_antimatter_harvester": c.has_antimatter_harvester,
-            "has_minelayer_component": c.has_minelayer_component,
-            "has_marines_component": c.has_marines_component,
-            "has_intelligence_component": c.has_intelligence_component,
-        }
-        for flag, enabled in comp_flags.items():
-            if enabled and flag in restricted:
+        for flag in sorted(restricted):
+            if getattr(c, flag, False):
                 errors.append(
                     f"Component '{flag}' is not allowed on {self.hull_size.name} hull."
                 )
-
-        if c.has_marines_component and c.marines_count < 1:
-            errors.append("Marines count must be at least 1.")
-
-        if c.has_intelligence_component and c.intelligence_agents_count < 1:
-            errors.append("Intelligence agents count must be at least 1.")
 
         # Validate Strikecraft Wing wing_type and turret variants
         if self.hull_size == HullSize.STRIKECRAFT_WING:
@@ -743,9 +734,6 @@ class CustomUnitTemplate:
                 errors.append(
                     f"ADVANCED cloaking device requires at least {ADVANCED_CLOAKING_MIN_HULL.name} hull."
                 )
-        # Jump range must be positive
-        if c.has_hyperdrive and c.hyperdrive_jump_range < 1:
-            errors.append("Hyperdrive jump range must be at least 1.")
         # Antimatter capacity must be at least min cap for hull size
         min_am_cap = get_min_antimatter_capacity(self.hull_size)
         if c.has_antimatter_storage and c.antimatter_capacity < min_am_cap:
@@ -1137,127 +1125,132 @@ class CustomTemplateManager:
 
 
     def _dict_to_template(self, key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
-        """Reconstruct a CustomUnitTemplate from its persisted dict form.
+        """Compatibility wrapper around the side-effect-free storage decoder."""
+        return template_from_dict(key, d)
 
-        Performance parameters are loaded from the dict.  Hull costs for
-        dynamic components are NOT read from the dict — they are recomputed
-        from the performance parameters to ensure correctness.
-        """
-        # hull_size stored as string in JSON
-        hull_size_raw = d.get("hull_size", "MEDIUM")
-        if isinstance(hull_size_raw, str):
-            hull_size = HullSize[hull_size_raw.upper()]
-        else:
-            hull_size = hull_size_raw
 
-        turrets = [
-            TurretConfig(
-                turret_type=t["type"],
-                damage=t["damage"],
-                range=t["range"],
-                cooldown=t["cooldown"],
-                variant=t.get("variant", "STANDARD"),
-            )
-            for t in d.get("turrets", [])
-        ]
+def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
+    """Reconstruct a CustomUnitTemplate from its persisted dict form.
 
-        comp = ComponentConfig(
-            # --- Dynamic components: load performance params only ---
-            has_engine=d.get("has_engine", False),
-            engine_speed=d.get("engine_speed", 100.0),
+    Performance parameters are loaded from the dict.  Hull costs for
+    dynamic components are NOT read from the dict — they are recomputed
+    from the performance parameters to ensure correctness.
+    """
+    # hull_size stored as string in JSON
+    hull_size_raw = d.get("hull_size", "MEDIUM")
+    if isinstance(hull_size_raw, str):
+        hull_size = HullSize[hull_size_raw.upper()]
+    else:
+        hull_size = hull_size_raw
 
-            has_antimatter_storage=d.get("has_antimatter_storage", True),
-            antimatter_capacity=float(d.get("antimatter_capacity", 100.0)),
-
-            has_antimatter_harvester=d.get("has_antimatter_harvester", False),
-            antimatter_harvester_hull_cost=d.get("antimatter_harvester_hull_cost", ANTIMATTER_HARVESTER_HULL_COST),
-
-            has_hyperdrive=d.get("has_hyperdrive", False),
-            hyperdrive_type=d.get("hyperdrive_type", "BASIC"),
-            hyperdrive_jump_range=d.get("hyperdrive_jump_range", 5),
-
-            has_weapon_bays=d.get("has_weapon_bays", False),
-            turrets=turrets,
-
-            has_defenses=d.get("has_defenses", False),
-            armor=d.get("armor", 0),
-            shields=d.get("shields", 0),
-            point_defense=d.get("point_defense", 0),
-
-            # --- Fixed-cost components ---
-            has_constructor_component=d.get("has_constructor_component", False),
-            constructor_hull_cost=d.get("constructor_hull_cost", 15),
-
-            has_repair_component=d.get("has_repair_component", False),
-            repair_rate=d.get("repair_rate", 10.0),
-            repair_range=d.get("repair_range", 200.0),
-            credit_cost_per_hp=d.get("credit_cost_per_hp", REPAIR_CREDIT_COST_PER_HP),
-
-            has_colony_component=d.get("has_colony_component", False),
-            colony_hull_cost=d.get("colony_hull_cost", 10),
-
-            has_civilian_habitat_component=d.get("has_civilian_habitat_component", False),
-            civilian_habitat_bonus=float(d.get("civilian_habitat_bonus", 50.0)),
-            civilian_habitat_hull_cost=float(d.get("civilian_habitat_hull_cost", 15.0)),
-
-            has_orbital_defense_component=d.get("has_orbital_defense_component", False),
-            orbital_defense_radius=float(d.get("orbital_defense_radius", DEFAULT_ORBITAL_DEFENSE_RADIUS)),
-            orbital_defense_attack_bonus=float(d.get("orbital_defense_attack_bonus", DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS)),
-            orbital_defense_defense_bonus=float(d.get("orbital_defense_defense_bonus", DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS)),
-            orbital_defense_hull_cost=float(d.get("orbital_defense_hull_cost", ORBITAL_DEFENSE_HULL_COST)),
-
-            has_trade_component=d.get("has_trade_component", False),
-            trade_hull_cost=float(d.get("trade_hull_cost", 10.0)),
-            trade_revenue_multiplier=float(d.get("trade_revenue_multiplier", 1.0)),
-
-            has_mining_component=d.get("has_mining_component", False),
-            mining_rate=d.get("mining_rate", 10.0),
-            mining_range=d.get("mining_range", 200.0),
-            max_mining_cargo=d.get("max_mining_cargo", 100.0),
-
-            has_metal_refinery_component=d.get("has_metal_refinery_component", False),
-            metal_refinery_hull_cost=d.get("metal_refinery_hull_cost", 20),
-
-            has_crystal_refinery_component=d.get("has_crystal_refinery_component", False),
-            crystal_refinery_hull_cost=d.get("crystal_refinery_hull_cost", 20),
-
-            has_hangar=d.get("has_hangar", False),
-            hangar_slots=d.get("hangar_slots", 2),
-
-            has_strikecraft_bay=d.get("has_strikecraft_bay", False) or d.get("has_fighter_bay", False),
-            strikecraft_bay_slots=d.get("strikecraft_bay_slots", d.get("fighter_bay_slots", 2)),
-            wing_type=d.get("wing_type", "FIGHTER"),
-
-            has_inhibitor=d.get("has_inhibitor", False),
-            inhibitor_radius=d.get("inhibitor_radius", 100.0),
-
-            has_ability_component=d.get("has_ability_component", False),
-            abilities=d.get("abilities", []),
-
-            has_sensors=d.get("has_sensors", d.get("has_scanner", False)),
-            sensor_short_range=float(d.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)),
-            sensor_long_range_hexes=int(d.get("sensor_long_range_hexes", 0)),
-
-            has_minelayer_component=d.get("has_minelayer_component", False),
-            minelayer_hull_cost=float(d.get("minelayer_hull_cost", MINELAYER_HULL_COST)),
-
-            has_marines_component=d.get("has_marines_component", False),
-            marines_count=int(d.get("marines_count", 10)),
-
-            has_cloaking_device=d.get("has_cloaking_device", False),
-            cloaking_type=d.get("cloaking_type", "BASIC"),
-            cloaking_radius=float(d.get("cloaking_radius", DEFAULT_ADVANCED_CLOAKING_RADIUS)),
-            cloaking_hull_cost=float(d.get("cloaking_hull_cost", CLOAKING_BASIC_HULL_COST)),
-
-            has_intelligence_component=d.get("has_intelligence_component", False),
-            intelligence_agents_count=int(d.get("intelligence_agents_count", 1)),
-            counter_intelligence=bool(d.get("has_counter_intelligence", d.get("counter_intelligence", False))),
+    turrets = [
+        TurretConfig(
+            turret_type=t["type"],
+            damage=t["damage"],
+            range=t["range"],
+            cooldown=t["cooldown"],
+            variant=t.get("variant", "STANDARD"),
         )
+        for t in d.get("turrets", [])
+    ]
+
+    comp = ComponentConfig(
+        # --- Dynamic components: load performance params only ---
+        has_engine=d.get("has_engine", False),
+        engine_speed=d.get("engine_speed", 100.0),
+
+        has_antimatter_storage=d.get("has_antimatter_storage", True),
+        antimatter_capacity=float(d.get("antimatter_capacity", 100.0)),
+
+        has_antimatter_harvester=d.get("has_antimatter_harvester", False),
+        antimatter_harvester_hull_cost=d.get("antimatter_harvester_hull_cost", ANTIMATTER_HARVESTER_HULL_COST),
+
+        has_hyperdrive=d.get("has_hyperdrive", False),
+        hyperdrive_type=d.get("hyperdrive_type", "BASIC"),
+        hyperdrive_jump_range=d.get("hyperdrive_jump_range", 5),
+
+        has_weapon_bays=d.get("has_weapon_bays", False),
+        turrets=turrets,
+
+        has_defenses=d.get("has_defenses", False),
+        armor=d.get("armor", 0),
+        shields=d.get("shields", 0),
+        point_defense=d.get("point_defense", 0),
+
+        # --- Fixed-cost components ---
+        has_constructor_component=d.get("has_constructor_component", False),
+        constructor_hull_cost=d.get("constructor_hull_cost", 15),
+
+        has_repair_component=d.get("has_repair_component", False),
+        repair_rate=d.get("repair_rate", 10.0),
+        repair_range=d.get("repair_range", 200.0),
+        credit_cost_per_hp=d.get("credit_cost_per_hp", REPAIR_CREDIT_COST_PER_HP),
+
+        has_colony_component=d.get("has_colony_component", False),
+        colony_hull_cost=d.get("colony_hull_cost", 10),
+
+        has_civilian_habitat_component=d.get("has_civilian_habitat_component", False),
+        civilian_habitat_bonus=float(d.get("civilian_habitat_bonus", 50.0)),
+        civilian_habitat_hull_cost=float(d.get("civilian_habitat_hull_cost", 15.0)),
+
+        has_orbital_defense_component=d.get("has_orbital_defense_component", False),
+        orbital_defense_radius=float(d.get("orbital_defense_radius", DEFAULT_ORBITAL_DEFENSE_RADIUS)),
+        orbital_defense_attack_bonus=float(d.get("orbital_defense_attack_bonus", DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS)),
+        orbital_defense_defense_bonus=float(d.get("orbital_defense_defense_bonus", DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS)),
+        orbital_defense_hull_cost=float(d.get("orbital_defense_hull_cost", ORBITAL_DEFENSE_HULL_COST)),
+
+        has_trade_component=d.get("has_trade_component", False),
+        trade_hull_cost=float(d.get("trade_hull_cost", 10.0)),
+        trade_revenue_multiplier=float(d.get("trade_revenue_multiplier", 1.0)),
+
+        has_mining_component=d.get("has_mining_component", False),
+        mining_rate=d.get("mining_rate", 10.0),
+        mining_range=d.get("mining_range", 200.0),
+        max_mining_cargo=d.get("max_mining_cargo", 100.0),
+
+        has_metal_refinery_component=d.get("has_metal_refinery_component", False),
+        metal_refinery_hull_cost=d.get("metal_refinery_hull_cost", 20),
+
+        has_crystal_refinery_component=d.get("has_crystal_refinery_component", False),
+        crystal_refinery_hull_cost=d.get("crystal_refinery_hull_cost", 20),
+
+        has_hangar=d.get("has_hangar", False),
+        hangar_slots=d.get("hangar_slots", 2),
+
+        has_strikecraft_bay=d.get("has_strikecraft_bay", False) or d.get("has_fighter_bay", False),
+        strikecraft_bay_slots=d.get("strikecraft_bay_slots", d.get("fighter_bay_slots", 2)),
+        wing_type=d.get("wing_type", "FIGHTER"),
+
+        has_inhibitor=d.get("has_inhibitor", False),
+        inhibitor_radius=d.get("inhibitor_radius", 100.0),
+
+        has_ability_component=d.get("has_ability_component", False),
+        abilities=d.get("abilities", []),
+
+        has_sensors=d.get("has_sensors", d.get("has_scanner", False)),
+        sensor_short_range=float(d.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)),
+        sensor_long_range_hexes=int(d.get("sensor_long_range_hexes", 0)),
+
+        has_minelayer_component=d.get("has_minelayer_component", False),
+        minelayer_hull_cost=float(d.get("minelayer_hull_cost", MINELAYER_HULL_COST)),
+
+        has_marines_component=d.get("has_marines_component", False),
+        marines_count=int(d.get("marines_count", 10)),
+
+        has_cloaking_device=d.get("has_cloaking_device", False),
+        cloaking_type=d.get("cloaking_type", "BASIC"),
+        cloaking_radius=float(d.get("cloaking_radius", DEFAULT_ADVANCED_CLOAKING_RADIUS)),
+        cloaking_hull_cost=float(d.get("cloaking_hull_cost", CLOAKING_BASIC_HULL_COST)),
+
+        has_intelligence_component=d.get("has_intelligence_component", False),
+        intelligence_agents_count=int(d.get("intelligence_agents_count", 1)),
+        counter_intelligence=bool(d.get("has_counter_intelligence", d.get("counter_intelligence", False))),
+    )
 
 
-        return CustomUnitTemplate(
-            display_name=d.get("name", key),
-            hull_size=hull_size,
-            components=comp,
-        )
+    return CustomUnitTemplate(
+        display_name=d.get("name", key),
+        hull_size=hull_size,
+        components=comp,
+    )
 

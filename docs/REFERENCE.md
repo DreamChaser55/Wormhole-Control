@@ -1070,6 +1070,64 @@ Malformed libraries and storage failures are reported in the log. Repair a malfo
 
 `CustomTemplateManager(data_file=...)` supports isolated libraries.
 
+### External design validation
+
+Run the read-only validator after editing a custom library outside the game:
+
+```bash
+python scripts/validate_unit_templates.py
+python scripts/validate_unit_templates.py "path/to/custom_unit_templates.json"
+```
+
+Without a path, the script uses the platform user-data directory described above,
+including `WORMHOLE_USER_DATA_DIR`. An explicit path selects only that file. The
+script prints the resolved path, errors grouped by template (with field paths
+where applicable), and counts. Exit codes are **0** for a valid library, **1** for
+invalid definitions or library structure, and **2** for file, JSON parsing, or
+command-line errors. A missing file is an error; an empty object `{}` is valid.
+Duplicate JSON keys are reported instead of silently discarding earlier values.
+
+The library must be an object mapping keys to template objects. The effective
+display name is `name`, falling back to the object key; names must be nonempty,
+unique ignoring case and surrounding whitespace, and must not match built-in
+keys or display names from either catalogue. Omitted parameters and legacy
+aliases (`has_scanner`, `has_fighter_bay`, `fighter_bay_slots`, and
+`counter_intelligence`) use the existing loader's behavior. Hull names accept
+case-insensitive enum names; component enum values use their canonical uppercase
+names, and abilities use the exact `AbilityType.value` strings. Duplicate ability
+selections are invalid.
+
+Numeric inputs must be finite JSON numbers, and integer parameters must be JSON
+integers. Booleans and numeric strings do not count as numbers; component toggles
+must be actual booleans. Engine speed, defenses, sensor ranges, repair/mining
+rates and ranges, mining cargo, inhibitor radius, and cloaking radius must be
+non-negative. Jump range, hangar/bay slots, marines, and intelligence agent counts
+must be at least one. These minimums are shared with the Designer's input clamps;
+the script reports values outside them without correcting them. Enabled antimatter
+storage must meet its hull-specific minimum. Hull budgets (including Intelligence
+and Counter-Intelligence), hull/component restrictions, advanced drive/cloak
+restrictions, wing turret roles, ability prerequisites, the Trade/Engine
+dependency, and the requirement for at least one enabled component are checked
+through the same validation used when saving a design.
+
+Turret damage/range must be finite numbers, and cooldown must be an integer;
+the validator adds no numeric balance bounds for turrets or fixed component costs
+beyond what the Designer currently enforces. Type and enum checks apply even to
+stored settings of disabled components. Unknown extra fields are ignored, as in
+the loader. Stored derived values such as dynamic hull costs, hull HP, build cost,
+and build time do not determine validity: the game regenerates them. Fixed costs
+retained by the loader still contribute to the budget when their components are
+enabled. Edit performance parameters to change dynamic costs.
+
+The validator never saves, repairs, or publishes templates and does not initialize
+the GUI. Historical libraries retain their permissive loading behavior: a design
+may still load while failing validation against today's design rules. Use
+`unit_template_validation.validate_library(raw)` for an in-process mapping of
+invalid library keys to error lists; `parse_library(payload)` also detects duplicate
+JSON keys. `custom_unit_templates.template_from_dict(key, data)` is the shared,
+side-effect-free decoder, and `CustomUnitTemplate.validate()` retains its list of
+error strings interface.
+
 ### Persistence and API failure behavior
 
 Design saves, renames, and deletions persist through atomic replacement before updating the manager or `UNIT_TEMPLATES`. Successful return values and validation-error lists are unchanged. Storage failures raise `TemplatePersistenceError`, which the editor displays without reporting success. Loading reports failures through `last_load_error` and logging, retaining existing state and blocking subsequent writes until a successful reload. Failed saves, renames, and deletions preserve the previous disk library and registered designs.

@@ -7,7 +7,9 @@ for the Unit Designer GUI.
 
 import typing
 from constants import HullSize
-from unit_components.enums import AbilityType, TurretType, TurretVariant
+from unit_components.enums import (
+    AbilityType, CloakingType, HyperdriveType, TurretType, TurretVariant, WingType,
+)
 
 # ---------------------------------------------------------------------------
 # Component catalogue — defines order and labels.
@@ -47,9 +49,9 @@ HULL_SIZE_NAMES = [hs.name for hs in HullSize]
 TURRET_TYPES = [t.name for t in TurretType]
 TURRET_VARIANTS = [v.name for v in TurretVariant]
 ABILITY_NAMES = [a.value for a in AbilityType]
-HYPERDRIVE_TYPES = ["BASIC", "ADVANCED"]
-CLOAKING_TYPES = ["BASIC", "ADVANCED"]
-WING_TYPES = ["FIGHTER", "BOMBER"]
+HYPERDRIVE_TYPES = [t.name for t in HyperdriveType]
+CLOAKING_TYPES = [t.name for t in CloakingType]
+WING_TYPES = [t.name for t in WingType]
 
 
 def ability_button_text(

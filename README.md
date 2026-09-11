@@ -47,6 +47,18 @@ Inspect non-solid bodies, such as nebulae and storms, through their hex sidebar.
 
 Click **Unit Editor** beside **Comms** in the bottom panel to open the **Unit Designer** and create ship templates for construction. The button is available in Galaxy, System, and Sector views. Open **Save Game** from the in-game menu to save a campaign; **Load Game** is available from the main menu and during a match. Custom designs use a separate [user-data library](docs/REFERENCE.md#custom-design-storage).
 
+After editing `custom_unit_templates.json` externally, check it against current
+Unit Designer rules without launching the game:
+
+```bash
+python scripts/validate_unit_templates.py
+python scripts/validate_unit_templates.py "path/to/custom_unit_templates.json"
+```
+
+The first command checks the configured user-data library. Validation reports
+errors without changing the file; see [external design validation](docs/REFERENCE.md#external-design-validation)
+for field rules and exit codes.
+
 ## Automated Players
 
 **Built-in OpenAI players:** Choose an AI controller in the New Game Wizard. Set `OPENAI_API_KEY`, or place the raw key in the ignored `API_keys/OpenAI.key` file; the environment variable takes precedence. Choose **Low** reasoning for faster turns, **Medium** for the default, or **High** for more strategic reasoning. The in-game **AI Settings** menu controls repair retries. See [Agentic AI Architecture](docs/AGENTIC_AI.md) for model configuration, memory, limits, and failure recovery.
