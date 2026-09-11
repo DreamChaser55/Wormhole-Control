@@ -1,4 +1,4 @@
-"""Validate a custom design library without launching the game or modifying it."""
+"""Validate a unit template library without launching the game or modifying it."""
 import argparse
 from pathlib import Path
 import sys
@@ -14,17 +14,28 @@ from utils import user_data_path
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('path', nargs='?', type=Path,
-                        help='JSON library (default: configured user-data library)')
+                        help='JSON library file path (overrides default catalogue path)')
+    parser.add_argument('-c', '--catalogue', choices=['custom', 'builtin'], default='custom',
+                        help="Template catalogue to validate: 'custom' (default: user-data library) "
+                             "or 'builtin' (data/unit_templates.json)")
     args = parser.parse_args(argv)
+    builtin_path = (ROOT / 'data' / 'unit_templates.json').resolve()
+    is_builtin = args.catalogue == 'builtin'
     try:
-        path = (args.path if args.path is not None else
-                user_data_path() / 'custom_unit_templates.json').resolve()
+        if args.path is not None:
+            path = args.path.resolve()
+            if not is_builtin and path == builtin_path:
+                is_builtin = True
+        elif is_builtin:
+            path = builtin_path
+        else:
+            path = (user_data_path() / 'custom_unit_templates.json').resolve()
         print(f'Validating: {path}')
         raw = parse_library(path.read_bytes())
     except (OSError, ValueError) as exc:
         print(f'Error: {exc}', file=sys.stderr)
         return 2
-    issues = validate_library(raw)
+    issues = validate_library(raw, is_builtin=is_builtin)
     for name, errors in issues.items():
         print(f'{name!r}:')
         for error in errors:

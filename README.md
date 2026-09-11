@@ -47,16 +47,17 @@ Inspect non-solid bodies, such as nebulae and storms, through their hex sidebar.
 
 Click **Unit Editor** beside **Comms** in the bottom panel to open the **Unit Designer** and create ship templates for construction. The button is available in Galaxy, System, and Sector views. Open **Save Game** from the in-game menu to save a campaign; **Load Game** is available from the main menu and during a match. Custom designs use a separate [user-data library](docs/REFERENCE.md#custom-design-storage).
 
-After editing `custom_unit_templates.json` externally, check it against current
-Unit Designer rules without launching the game:
+Check templates against current Unit Designer rules without launching the game:
 
 ```bash
 python scripts/validate_unit_templates.py
 python scripts/validate_unit_templates.py "path/to/custom_unit_templates.json"
+python scripts/validate_unit_templates.py -c builtin
 ```
 
-The first command checks the configured user-data library. Validation reports
-errors without changing the file; see [external design validation](docs/REFERENCE.md#external-design-validation)
+The first command checks the configured user-data library, while `-c builtin`
+(or `--catalogue builtin`) checks `data/unit_templates.json`. Validation reports
+errors without changing files; see [external design validation](docs/REFERENCE.md#external-design-validation)
 for field rules and exit codes.
 
 ## Automated Players

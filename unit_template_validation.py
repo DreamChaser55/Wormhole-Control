@@ -162,7 +162,7 @@ def parse_library(payload):
     return json.loads(payload, object_pairs_hook=object_pairs)
 
 
-def validate_library(raw):
+def validate_library(raw, is_builtin: bool = False):
     """Return {library key: [errors]} for every invalid record, without mutation."""
     from custom_unit_templates import template_from_dict
     from unit_templates import builtin_template_names
@@ -181,8 +181,9 @@ def validate_library(raw):
         else:
             canonical = name.strip().lower()
             if canonical in seen:
-                errors.append('name: duplicates another custom template (ignoring case and surrounding whitespace).')
-            if canonical in reserved:
+                dup_label = 'another template' if is_builtin else 'another custom template'
+                errors.append(f'name: duplicates {dup_label} (ignoring case and surrounding whitespace).')
+            if not is_builtin and canonical in reserved:
                 errors.append('name: reserved by a built-in template.')
             seen.add(canonical)
         hull = data.get('hull_size', 'MEDIUM')

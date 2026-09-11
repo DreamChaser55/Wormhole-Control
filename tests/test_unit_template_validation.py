@@ -190,7 +190,8 @@ def test_duplicate_json_keys_are_not_silently_lost(payload):
 
 def run_cli(tmp_path, *args, **env):
     return subprocess.run([sys.executable, str(CLI), *map(str, args)], cwd=tmp_path,
-                          env=dict(os.environ, **env), text=True, capture_output=True)
+                          env=dict(os.environ, **env), text=True, capture_output=True,
+                          stdin=subprocess.DEVNULL)
 
 
 @pytest.mark.parametrize('payload,code', [
@@ -238,5 +239,45 @@ assert validate_library({'Design': {'has_engine': True}}) == {}
 assert not any(name.split('.')[0] in {'pygame', 'pygame_gui', 'gui', 'game'} for name in sys.modules)
 '''
     result = subprocess.run([sys.executable, '-c', code, str(ROOT)], cwd=tmp_path,
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, stdin=subprocess.DEVNULL)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_builtin_validation_mode_allows_builtin_names_and_catches_intra_library_duplicates():
+    reserved = next(iter(builtin_template_names()))
+    # In custom mode (default), reserved names are rejected.
+    custom_issues = validate_library({'t1': record(name=reserved)}, is_builtin=False)
+    assert 'reserved' in ' '.join(custom_issues.get('t1', []))
+
+    # In builtin mode, reserved names are accepted.
+    builtin_issues = validate_library({'t1': record(name=reserved)}, is_builtin=True)
+    assert 'reserved' not in ' '.join(builtin_issues.get('t1', []))
+
+    # In builtin mode, duplicate names within the library are still rejected.
+    dup_issues = validate_library({'t1': record(name=reserved), 't2': record(name=reserved)}, is_builtin=True)
+    assert 'duplicates' in ' '.join(dup_issues.get('t2', []))
+
+
+def test_cli_catalogue_builtin_and_options(tmp_path):
+    # Running with --catalogue builtin targets data/unit_templates.json
+    res_builtin = run_cli(tmp_path, '--catalogue', 'builtin')
+    assert 'data' in res_builtin.stdout and 'unit_templates.json' in res_builtin.stdout
+    assert res_builtin.returncode == 1
+    assert 'template(s) checked' in res_builtin.stdout
+
+    # Short flag -c builtin
+    res_short = run_cli(tmp_path, '-c', 'builtin')
+    assert res_short.returncode == 1
+    assert 'data' in res_short.stdout
+
+    # Invalid catalogue choice
+    res_invalid = run_cli(tmp_path, '-c', 'unknown')
+    assert res_invalid.returncode == 2
+
+    # Providing explicit path with -c builtin
+    custom_target = tmp_path / 'custom_unit_templates.json'
+    reserved = next(iter(builtin_template_names()))
+    custom_target.write_text(json.dumps({'t1': record(name=reserved)}))
+    res_explicit = run_cli(tmp_path, '-c', 'builtin', custom_target)
+    assert res_explicit.returncode == 0
+

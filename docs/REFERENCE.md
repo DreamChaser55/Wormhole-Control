@@ -1072,20 +1072,22 @@ Malformed libraries and storage failures are reported in the log. Repair a malfo
 
 ### External design validation
 
-Run the read-only validator after editing a custom library outside the game:
+Run the read-only validator to check a design library outside the game:
 
 ```bash
 python scripts/validate_unit_templates.py
 python scripts/validate_unit_templates.py "path/to/custom_unit_templates.json"
+python scripts/validate_unit_templates.py -c builtin
 ```
 
-Without a path, the script uses the platform user-data directory described above,
-including `WORMHOLE_USER_DATA_DIR`. An explicit path selects only that file. The
-script prints the resolved path, errors grouped by template (with field paths
-where applicable), and counts. Exit codes are **0** for a valid library, **1** for
-invalid definitions or library structure, and **2** for file, JSON parsing, or
-command-line errors. A missing file is an error; an empty object `{}` is valid.
-Duplicate JSON keys are reported instead of silently discarding earlier values.
+Without a path or flag, the script defaults to `-c custom` and uses the platform user-data
+directory described above, including `WORMHOLE_USER_DATA_DIR`. Setting `-c builtin` or
+`--catalogue builtin` selects the built-in catalogue `data/unit_templates.json`. An explicit
+path overrides the default catalogue file. The script prints the resolved path, errors grouped
+by template (with field paths where applicable), and counts. Exit codes are **0** for a valid
+library, **1** for invalid definitions or library structure, and **2** for file, JSON parsing,
+or command-line errors. A missing file is an error; an empty object `{}` is valid. Duplicate
+JSON keys are reported instead of silently discarding earlier values.
 
 The library must be an object mapping keys to template objects. The effective
 display name is `name`, falling back to the object key; names must be nonempty,
@@ -1122,7 +1124,7 @@ enabled. Edit performance parameters to change dynamic costs.
 The validator never saves, repairs, or publishes templates and does not initialize
 the GUI. Historical libraries retain their permissive loading behavior: a design
 may still load while failing validation against today's design rules. Use
-`unit_template_validation.validate_library(raw)` for an in-process mapping of
+`unit_template_validation.validate_library(raw, is_builtin=False)` for an in-process mapping of
 invalid library keys to error lists; `parse_library(payload)` also detects duplicate
 JSON keys. `custom_unit_templates.template_from_dict(key, data)` is the shared,
 side-effect-free decoder, and `CustomUnitTemplate.validate()` retains its list of
