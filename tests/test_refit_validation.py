@@ -114,6 +114,10 @@ def test_all_ability_dependencies_and_removals(world, ability):
         result = evaluate_refit(target, 'ADD', name)
         assert not result.errors
         target.add_component(instantiate_component_for_unit(name, target, result.configuration))
+    if ability.value in ('tracking_lock', 'flak_barrage'):
+        from unit_components.weapons import Turret
+        from unit_components.enums import TurretType, TurretVariant
+        target.weapons_component.turrets = [Turret(TurretType.MASS_DRIVER, 1, 100, 2, target, TurretVariant.ANTI_STRIKECRAFT)]
     result = evaluate_refit(target, 'ADD', 'AbilityComponent', config)
     assert not result.errors
     target.add_component(instantiate_component_for_unit('AbilityComponent', target, result.configuration))
@@ -356,7 +360,7 @@ def test_saved_removal_settles_exactly_once(legacy, outcome):
     actor.commander_component.add_order(order)
     salvage = actor.constructor_component.current_refit_target['salvage_due']
     state = serialize_game_state(game)
-    assert state['version'] == '4.2'
+    assert state['version'] == '4.3'
     if legacy:
         state['version'] = '4.1'
         def strip(value):

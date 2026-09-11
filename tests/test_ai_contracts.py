@@ -349,4 +349,4 @@ class TestMemory(unittest.TestCase):
             current_sector_coord=None,
             campaign_id="campaign",
         )
-        self.assertEqual(serialize_game_state(game)["version"], "4.2")
+        self.assertEqual(serialize_game_state(game)["version"], "4.3")

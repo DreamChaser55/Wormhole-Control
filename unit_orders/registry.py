@@ -1,5 +1,6 @@
 """Authoritative persistence order-class registry."""
 from .abilities import UseAbilityOrder
+from .strikecraft import AttackRunOrder, EmergencyRecoveryOrder
 from .recover_fuel import RecoverFuelCacheOrder
 from .antimatter import ContinuousResupplyOrder, TransferAntimatterOrder
 from .base import Order, OrderStatus, OrderType
@@ -30,6 +31,8 @@ from .trade import ContinuousTradeOrder, TradeOrder
 
 # The single authoritative mapping used by persistence and coverage tests.
 ORDER_CLASS_REGISTRY = {
+    OrderType.ATTACK_RUN: AttackRunOrder,
+    OrderType.EMERGENCY_RECOVERY: EmergencyRecoveryOrder,
     OrderType.REACH_WAYPOINT: ReachWaypointOrder,
     OrderType.MOVE: MoveOrder,
     OrderType.PATROL: PatrolOrder,
@@ -76,6 +79,8 @@ __all__ = [
     "calculate_required_antimatter",
     "PatrolOrder",
     "AttackOrder",
+    "AttackRunOrder",
+    "EmergencyRecoveryOrder",
     "ProtectOrder",
     "StanceOrder",
     "DefendOrder",

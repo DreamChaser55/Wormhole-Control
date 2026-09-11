@@ -16,6 +16,16 @@ class TacticalSpec:
 
 
 SPECS = {
+    'attack_run': TacticalSpec('Attack Run', ('has_strikecraft_bay', 'has_sensors'), 'unit', 40, 750, 8, 6,
+        description='Commit all nearby deployed bombers to one enemy. Speed +50%, one double-damage salvo next owner turn or later. Replaces wing orders; aborts are not refunded.'),
+    'evasive_formation': TacticalSpec('Evasive Formation', ('has_strikecraft_bay', 'has_sensors'), 'unit', 20, 750, 6, 3,
+        description='Your deployed wing takes 50% less weapon damage and deals 25% less weapon damage for 3 turns.'),
+    'emergency_recovery': TacticalSpec('Emergency Recovery', ('has_strikecraft_bay',), 'unit', 30, 750, 8, 6,
+        description='Recall your deployed wing at double speed, suppressing weapons. Replaces orders. Recovered wings cannot relaunch until next owner turn.'),
+    'tracking_lock': TacticalSpec('Tracking Lock', ('has_sensors', 'has_weapon_bays'), 'unit', 20, 600, 6, 3,
+        description='Your anti-strikecraft turrets deal double damage to one visible enemy wing. Lock breaks outside range or sensor contact.'),
+    'flak_barrage': TacticalSpec('Flak Barrage', ('has_weapon_bays',), 'self', 35, 0, 8, 3,
+        description='Moving 500-radius aura hits hostile wings for 4 kinetic damage after their movement. Overlapping barrages do not stack.'),
     'ghost_fleet': TacticalSpec('Ghost Fleet', ('has_sensors',), 'position', 25, 750, 8, cap=1,
         description='Deploy a persistent radar decoy. Visual inspection identifies it. Limit: 1 per deploying ship.'),
     'tractor_tether': TacticalSpec('Tractor Tether', ('has_engine',), 'unit', 20, 400, 6, 3,
@@ -30,6 +40,7 @@ SPECS = {
         description='Catalyze a 600-radius nebula patch: hydrogen/nitrogen benefit allies; oxygen/dust hinder enemies. Baseline effects remain.'),
 }
 EQUIPMENT = {'has_sensors': 'sensors_component', 'has_engine': 'engines_component',
+             'has_strikecraft_bay': 'strikecraft_bay_component', 'has_weapon_bays': 'weapons_component',
              'has_defenses': 'defenses_component', 'has_antimatter_storage': 'antimatter_component',
              'has_antimatter_harvester': 'harvester_component', 'has_minelayer_component': 'minelayer_component'}
 TRACTOR_PULL = 200.0
@@ -52,3 +63,13 @@ CATALYST_HYDROGEN_FUEL = 0.25
 CATALYST_NITROGEN_COOLING = 2
 CATALYST_OXYGEN_SPLASH = 1.35
 CATALYST_DUST_SENSORS = 0.5
+
+STRIKECRAFT_ABILITIES = frozenset(('attack_run', 'evasive_formation', 'emergency_recovery', 'tracking_lock', 'flak_barrage'))
+ATTACK_RUN_SPEED = 1.5
+ATTACK_RUN_DAMAGE = 2.0
+EVASIVE_INCOMING = 0.5
+EVASIVE_OUTGOING = 0.75
+RECOVERY_SPEED = 2.0
+FLAK_RADIUS = 500.0
+FLAK_DAMAGE = 4
+TRACKING_DAMAGE = 2.0

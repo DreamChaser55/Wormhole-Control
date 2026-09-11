@@ -419,7 +419,7 @@ hex or wormhole jumps performed by an otherwise operational Hyperdrive.
 Tactical positions and ranges use logical sector units (sector radius 5000); renderers convert them to pixels.
 
 <!-- BEGIN GENERATED: abilities -->
-There are **16 special abilities** registered in the game.
+There are **21 special abilities** registered in the game.
 
 | Ability | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Required Component | Target Type |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -433,6 +433,11 @@ There are **16 special abilities** registered in the game.
 | **Drain Antimatter** | 6 | 0 | 300.0 | 0 | Antimatter Storage | Unit |
 | **Microjump** | 5 | 0 | 0.0 | 25 | Hyperdrive | Position |
 | **Scan for Minefields** | 6 | 0 | 1500.0 | 35 | Sensors | Self |
+| **Attack Run** | 8 | 6 | 750 | 40 | Strikecraft Bay, Sensors | Unit |
+| **Evasive Formation** | 6 | 3 | 750 | 20 | Strikecraft Bay, Sensors | Unit |
+| **Emergency Recovery** | 8 | 6 | 750 | 30 | Strikecraft Bay | Unit |
+| **Tracking Lock** | 6 | 3 | 600 | 20 | Sensors, Weapons | Unit |
+| **Flak Barrage** | 8 | 3 | 0 | 35 | Weapons | Self |
 | **Ghost Fleet** | 8 | 0 | 750 | 25 | Sensors | Position |
 | **Tractor Tether** | 6 | 3 | 400 | 20 | Engines | Unit |
 | **Mine-Clearing Sweep** | 4 | 0 | 1000 | 25 | Sensors, Minelayer | Position |
@@ -457,7 +462,7 @@ There are **16 special abilities** registered in the game.
 ## 5. Order Types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **35 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **37 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order Type | Description |
@@ -1214,3 +1219,48 @@ The resulting patch enhances hydrogen fuel savings and nitrogen turret cooling f
 allies, and increases oxygen splash damage and dust sensor penalties for enemies.
 Baseline nebula effects remain. Each ship can have one patch at a time; its duration
 and cooldown advance on the owner's turn start.
+
+### Carrier and anti-strikecraft abilities
+
+All five abilities are equipped on larger ships through the Ability component;
+strikecraft wings and Tiny hulls cannot equip it. Carrier support affects only
+the caster's own deployed wings, identified by their mother carrier. All casts
+are local to the current sector, with no automatic caster approach. The caster
+pays antimatter, and cooldowns and durations advance at its owner-turn start.
+
+- **Attack Run** (Strikecraft Bay + Sensors): select a visible non-strikecraft
+  enemy within 750. Every eligible deployed bomber belonging to the carrier
+  within 750 receives a separate Attack Run, replacing explicit orders while
+  preserving stance. Bombers follow the same moving target with +50% speed and
+  release one double-damage salvo from ready turrets. No release occurs before
+  the caster owner's next turn. Runs last at most 6 owner turns, require continued
+  target visibility, and respect normal weapon range, cooldowns and obstacles.
+  Stop, replacement orders or Emergency Recovery abort without refunds. Queued
+  follow-ups resume after completion. Disabled bombers and bombers recovering
+  are ineligible. The targeting panel lists affected wings and replaced work.
+- **Evasive Formation** (Strikecraft Bay + Sensors): one owned deployed wing
+  within 750 takes **50% less weapon damage** and deals **25% less weapon damage**
+  for 3 turns. This includes Attack Run salvos and incoming Flak; mines and
+  environmental hazards bypass evasion.
+- **Emergency Recovery** (Strikecraft Bay): one owned deployed wing within 750
+  returns at double speed with weapons suppressed for up to 6 owner turns.
+  Replaces explicit work and follows the carrier using normal docking, routing,
+  obstacles and capacity rules. Docking removes the boost and prevents relaunch
+  until the next owner-turn start. Stop/replacement orders abort recovery.
+- **Tracking Lock** (Sensors + Weapons with an anti-strikecraft turret): the
+  caster's anti-strikecraft turrets deal double damage to one visible enemy wing
+  within 600 for up to 3 turns. The lock breaks on lost visibility, sector/range
+  separation, or a change in allegiance. Other units receive no damage bonus.
+- **Flak Barrage** (Weapons with an anti-strikecraft turret): a moving **500-radius**
+  aura lasts 3 turns. After each hostile player's movement phase, each deployed
+  wing belonging to that player inside the aura takes a 4-damage kinetic hit.
+  Friendly, allied and docked wings are excluded. Stationary wings are affected.
+  Overlapping auras do not stack; source ID breaks equal-strength ties. Flak
+  uses normal weapon mitigation, Evasive Formation, Guardian Link and damage XP.
+
+Identical effects do not stack and base equipment statistics are never rewritten.
+Effects and unfinished carrier orders end when the source is destroyed, captured,
+disabled, hidden, docked, or loses required operational equipment. Carrier command
+range is checked at activation; Tracking range and Flak coverage update continuously.
+The Testing carrier carries the three carrier abilities; the Testing Huge ship
+carries both defense abilities. Normal starting fleets are unchanged.

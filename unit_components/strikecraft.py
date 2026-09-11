@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class StrikecraftWingComponent(UnitComponent):
     """A component specifically for STRIKECRAFT_WING (strikecraft wings) to track individual fighter counts."""
     STATE_CONFIG = ('wing_type',)
-    STATE_RUNTIME = ()
+    STATE_RUNTIME = ('recovery_ready_round', 'last_flak_round', 'last_flak_owner_id')
     STATE_REFS = ('mother_carrier',)
     DISPLAY_NAME: str = "Strikecraft Wing"
     SIDEBAR_ORDER: int = 13
@@ -32,6 +32,9 @@ class StrikecraftWingComponent(UnitComponent):
         super().__init__(unit, hull_cost=hull_cost)
         self.mother_carrier = None
         self.wing_type: WingType = wing_type
+        self.recovery_ready_round = 0
+        self.last_flak_round = 0
+        self.last_flak_owner_id = None
 
     @property
     def active_fighters(self) -> int:
@@ -46,7 +49,20 @@ class StrikecraftWingComponent(UnitComponent):
         data.append({'type': 'label', 'text': f"Active Craft: {self.active_fighters} / 4", 'object_id': '#sidebar_info_label', 'height': 20})
         mother_name = self.mother_carrier.name if self.mother_carrier else "None"
         data.append({'type': 'label', 'text': f"Mother Carrier: {mother_name}", 'object_id': '#sidebar_info_label', 'height': 20})
+        from strikecraft_abilities import wing_order, evasion, round_now
+        root = wing_order(self.unit)
+        if root:
+            data.append({'type': 'label', 'text': f"{root.order_type.name.replace('_', ' ').title()}: {root.phase}", 'object_id': '#sidebar_info_label', 'height': 20})
+        if evasion(self.unit):
+            data.append({'type': 'label', 'text': 'Evasive: incoming damage 50%; outgoing 75%', 'object_id': '#sidebar_info_label', 'height': 20})
+        if self.recovery_ready_round > round_now(game_state.galaxy):
+            data.append({'type': 'label', 'text': 'Recovering: launch available next owner turn', 'object_id': '#sidebar_info_label', 'height': 20})
         return data
+
+    def validate_state(self):
+        from state_codec import number
+        if self.last_flak_owner_id is not None:
+            number(self.last_flak_owner_id, 'last_flak_owner_id', 0, integer=True)
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_basic_sidebar_data(game_state)
@@ -161,7 +177,7 @@ class StrikecraftBayComponent(UnitComponent):
                 role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
                 wing_label = f"  - {docked_ship.name} ({role_str}, {f_count}/4 craft, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
                 data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
-                if is_owner and not in_magnetic_storm:
+                if is_owner and not in_magnetic_storm and self.can_deploy(docked_ship, galaxy_ref):
                     data.append({
                         'type': 'button',
                         'text': f"Deploy {docked_ship.name}",
@@ -251,6 +267,10 @@ class StrikecraftBayComponent(UnitComponent):
 
     def can_deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
         if unit not in self.docked_units:
+            return False
+        from strikecraft_abilities import round_now
+        wing = unit.strikecraft_wing_component
+        if wing and wing.recovery_ready_round > round_now(galaxy_ref):
             return False
         from domain.celestials import is_position_in_magnetic_storm
         if is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position):

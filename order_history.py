@@ -6,7 +6,7 @@ MAX_CHARACTERS = 32_000
 PUBLIC_REASONS = frozenset({"completed", "failed", "cancelled", "execution_failed", "suborder_failed",
     "unit_destroyed", "ownership_lost", "target_unavailable", "capability_unavailable",
     "insufficient_resources", "insufficient_population", "insufficient_capacity", "invalid_parameters",
-    "path_unavailable", "construction_unavailable", "refit_unavailable", "ability_unavailable"})
+    "path_unavailable", "construction_unavailable", "refit_unavailable", "ability_unavailable", "ability_expired"})
 
 
 def public_reason(reason, fallback="execution_failed"):

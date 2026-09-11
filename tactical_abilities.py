@@ -45,7 +45,8 @@ def deployments(galaxy, source_id, kind):
 def get_instance(unit, kind):
     from unit_components.enums import AbilityType
     comp = getattr(unit, 'ability_component', None)
-    return comp.abilities.get(AbilityType(kind)) if comp else None
+    abilities = getattr(comp, 'abilities', None)
+    return abilities.get(AbilityType(kind)) if isinstance(abilities, dict) else None
 
 
 def equipment_ready(unit, spec):
@@ -61,6 +62,9 @@ def equipment_ready(unit, spec):
             return False
         if flag == 'has_engine' and comp.speed <= 0:
             return False
+    if spec.name in ('Tracking Lock', 'Flak Barrage'):
+        from unit_components.enums import TurretVariant
+        return any(t.variant == TurretVariant.ANTI_STRIKECRAFT for t in unit.weapons_component.turrets)
     return True
 
 
@@ -82,7 +86,10 @@ def pending_casts(unit):
 def availability(unit, kind, galaxy, *, ignore_reservations=False, resources=True):
     spec = SPECS[kind]
     inst = get_instance(unit, kind)
-    if not deployed(unit, galaxy) or not inst or unit.ability_component.is_destroyed or unit.is_disabled:
+    from tactical_balance import STRIKECRAFT_ABILITIES
+    if kind in STRIKECRAFT_ABILITIES and unit.hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY):
+        return 'capability_unavailable'
+    if not deployed(unit, galaxy) or not inst or unit.ability_component.is_destroyed or unit.is_disabled or getattr(unit, 'is_hidden_in_gas_giant', False):
         return 'capability_unavailable'
     if not inst.is_ready or not equipment_ready(unit, spec):
         return 'capability_unavailable'
@@ -171,12 +178,16 @@ def link_valid(source, inst, galaxy):
     return distance(source.position, target.position) <= limit and (kind != 'guardian_link' or are_allies(source.owner, target.owner))
 
 
-def validate(unit, kind, galaxy, target_id=None, position=None, *, approach=False, check_ready=True, ignore_reservations=False, resources=True, links=True):
+def validate(unit, kind, galaxy, target_id=None, position=None, *, approach=False, check_ready=True, ignore_reservations=False, resources=True, links=True, participants=True):
     spec = SPECS[kind]
     if check_ready:
         blocker = availability(unit, kind, galaxy, ignore_reservations=ignore_reservations, resources=resources)
         if blocker:
             return blocker
+    from tactical_balance import STRIKECRAFT_ABILITIES
+    if kind in STRIKECRAFT_ABILITIES:
+        from strikecraft_abilities import validate_target
+        return validate_target(unit, kind, galaxy, target_id, position, check_participants=participants)
     if spec.target_kind == 'unit':
         from visibility import VisibilityService, is_unit_visible
         target = galaxy.get_unit_by_id(target_id)
@@ -260,6 +271,9 @@ def activate(unit, kind, galaxy, target_id=None, position=None):
     inst.expires_round = now + spec.duration if spec.duration else None
     inst.cooldown_remaining = spec.cooldown
     inst.duration_remaining = spec.duration
+    if kind in ('attack_run', 'emergency_recovery'):
+        from strikecraft_abilities import issue_wing_orders
+        issue_wing_orders(unit, kind, galaxy, target_id)
     if game:
         game.visibility_dirty = True
         game.sidebar_needs_update = True
@@ -287,10 +301,16 @@ def start_owner_turn(galaxy, player, round_number):
                 continue
             inst.cooldown_remaining = max(0, (inst.ready_round or round_number) - round_number)
             inst.duration_remaining = max(0, (inst.expires_round or round_number) - round_number)
-            if inst.is_active and (inst.duration_remaining == 0 or not link_valid(unit, inst, galaxy)):
+            from tactical_balance import STRIKECRAFT_ABILITIES
+            if kind in STRIKECRAFT_ABILITIES:
+                if inst.duration_remaining == 0:
+                    inst.is_active = False
+            elif inst.is_active and (inst.duration_remaining == 0 or not link_valid(unit, inst, galaxy)):
                 cancel(unit, kind)
     for sector in sectors(galaxy):
         sector.catalyst_patches[:] = [p for p in sector.catalyst_patches if p.owner != player or p.expires_round > round_number]
+    from strikecraft_abilities import reconcile
+    reconcile(galaxy)
 
 
 def reconcile_links(galaxy):
@@ -300,6 +320,8 @@ def reconcile_links(galaxy):
             inst = get_instance(unit, kind)
             if inst and inst.is_active and not link_valid(unit, inst, galaxy):
                 cancel(unit, kind)
+    from strikecraft_abilities import reconcile
+    reconcile(galaxy)
 
 
 def process_pulls(galaxy, player, round_number):
@@ -353,14 +375,15 @@ def process_pulls(galaxy, player, round_number):
 
 def combat_hit(target, amount, damage_type=None, *, component_type=None, is_splash=False):
     """Route once, then retain each recipient's existing mitigation and spillover rules."""
-    amount = max(0, int(amount))
+    from strikecraft_abilities import incoming_multiplier
+    amount = max(0, int(amount * incoming_multiplier(target)))
     galaxy = getattr(target, 'in_galaxy', None)
     link = incoming_link(target, 'guardian_link', galaxy) if galaxy and amount else None
     if link:
         guardian, inst = link
         redirected = min(math.floor(amount * inst.redirect_fraction), inst.redirect_cap)
         amount -= redirected
-        guardian.take_damage(math.floor(redirected * inst.redirect_retained), damage_type, is_splash=is_splash)
+        guardian.take_damage(math.floor(redirected * inst.redirect_retained * incoming_multiplier(guardian)), damage_type, is_splash=is_splash)
     if component_type:
         if link:
             # Linked subsystem hits apply reduction once, including any hull spillover.
@@ -424,4 +447,7 @@ def ability_catalog():
     catalog['nebula_catalyst'].update(radius=CATALYST_RADIUS,
         friendly_effects={'hydrogen_fuel_multiplier': CATALYST_HYDROGEN_FUEL, 'nitrogen_cooldown_reduction': CATALYST_NITROGEN_COOLING},
         enemy_effects={'oxygen_splash_multiplier': CATALYST_OXYGEN_SPLASH, 'dust_sensor_multiplier': CATALYST_DUST_SENSORS})
+    from strikecraft_abilities import catalogue_details
+    for kind, details in catalogue_details().items():
+        catalog[kind].update(details, approach=False)
     return catalog

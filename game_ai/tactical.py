@@ -70,6 +70,14 @@ def enrich_states(unit, states):
             state['target_id'] = target.id if target and is_unit_visible(snapshot, target) else None
         if kind == 'guardian_link':
             state.update(redirect_fraction=inst.redirect_fraction, redirect_cap=inst.redirect_cap, redirected_damage_reduction=1-inst.redirect_retained)
+        from tactical_balance import STRIKECRAFT_ABILITIES
+        if kind in STRIKECRAFT_ABILITIES:
+            from strikecraft_abilities import catalogue_details, eligible_bombers, wing_order
+            state.update(catalogue_details()[kind], automatic_approach=False)
+            state['participating_wing_ids'] = [uid for uid in inst.participant_ids
+                if (wing := galaxy.get_unit_by_id(uid)) is not None and wing.owner == unit.owner and wing_order(wing, kind)]
+            if kind == 'attack_run':
+                state['eligible_wing_ids'] = [wing.id for wing in eligible_bombers(unit, galaxy)]
     return states
 
 
@@ -85,6 +93,12 @@ def guidance(game, player, unit, legal, options, visible_units, exact_bodies):
             targets[kind] = [t.id for t in visible_units if validate(unit, kind, game.galaxy, t.id, approach=True) is None]
     if 'use_ability' in options:
         options['use_ability']['targets_by_ability'] = targets
+        from strikecraft_abilities import eligible_bombers
+        if get_instance(unit, 'attack_run'):
+            wings = eligible_bombers(unit, game.galaxy)
+            options['use_ability']['attack_run_wings'] = [{'id': wing.id,
+                'replaces_order_ids': [o.public_id for o in [wing.commander_component.current_order,
+                    *wing.commander_component.orders_queue] if o is not None]} for wing in wings]
         options['use_ability']['nebula_ids'] = [b.id for b in exact_bodies
             if b.__class__.__name__ == 'Nebula' and b.in_system == unit.in_system and b.in_hex == unit.in_hex]
     if 'use_ability' in options:
@@ -125,13 +139,15 @@ def public_links(game, viewer):
     result = []
     for sector in sectors(game.galaxy):
         for unit in getattr(sector, 'units', ()):
-            for kind in ('tractor_tether', 'guardian_link'):
+            for kind in ('tractor_tether', 'guardian_link', 'tracking_lock', 'evasive_formation', 'flak_barrage'):
                 inst = get_instance(unit, kind)
-                if not inst or not inst.is_active or not link_valid(unit, inst, game.galaxy):
+                from strikecraft_abilities import effect_valid
+                valid = effect_valid(unit, kind, game.galaxy) if kind in ('tracking_lock', 'evasive_formation', 'flak_barrage') else inst and inst.is_active and link_valid(unit, inst, game.galaxy)
+                if not valid:
                     continue
                 if snapshot is None:
                     snapshot = VisibilityService.compute(game.galaxy, viewer, record_intel=False)
-                target = game.galaxy.get_unit_by_id(inst.target_unit_id)
+                target = unit if kind == 'flak_barrage' else game.galaxy.get_unit_by_id(inst.target_unit_id)
                 if is_unit_visible(snapshot, unit) and is_unit_visible(snapshot, target):
                     result.append({'ability': kind, 'source_id': unit.id, 'target_id': target.id,
                                    'duration_remaining': inst.duration_remaining})

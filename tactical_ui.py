@@ -63,6 +63,17 @@ def ability_panel(unit, game):
                 data.append(label('At cap: ' + reason))
         if kind in ('tractor_tether', 'guardian_link') and inst.is_active:
             data.append(button('Cancel ' + spec.name, 'cancel_tactical_ability', {'unit_id': unit.id, 'ability': kind}))
+        if kind == 'attack_run':
+            from strikecraft_abilities import eligible_bombers
+            wings = eligible_bombers(unit, galaxy)
+            data.append(label(f'Attack Run: {len(wings)} eligible bombers; replaces their explicit orders.'))
+            for wing in wings:
+                root = wing.commander_component.current_order
+                work = root.order_type.name.replace('_', ' ').title() if root else 'Idle'
+                data.append(label(f'{wing.name}: {work}; {len(wing.commander_component.orders_queue)} queued'))
+        if kind == 'flak_barrage':
+            from tactical_balance import FLAK_RADIUS
+            data.append(label(f'Moving hostile-wing defense radius: {FLAK_RADIUS:g}'))
         if kind == 'nebula_catalyst' and (getattr(game, 'pending_ability', None) or (None,))[0] == kind:
             from domain.celestials import Nebula
             selected = getattr(game, 'pending_catalyst_body_id', None)
@@ -148,6 +159,21 @@ def draw(renderer, sector):
     for source in sector.units:
         if not game.is_unit_visible(source):
             continue
+        from strikecraft_abilities import effect_valid, wing_order
+        from tactical_balance import FLAK_RADIUS
+        if effect_valid(source, 'flak_barrage', game.galaxy):
+            pygame.draw.circle(renderer.screen, source.owner.color, pixel(source.position), radius(FLAK_RADIUS), 2)
+        root = wing_order(source)
+        if root:
+            font = pygame.font.Font(None, 18)
+            renderer.screen.blit(font.render(root.order_type.name.replace('_', ' ').title() + ': ' + root.phase,
+                                            True, source.owner.color), pixel(source.position))
+        for kind in ('tracking_lock', 'evasive_formation'):
+            inst = get_instance(source, kind)
+            if inst and effect_valid(source, kind, game.galaxy):
+                target = game.galaxy.get_unit_by_id(inst.target_unit_id)
+                if target and game.is_unit_visible(target):
+                    pygame.draw.circle(renderer.screen, source.owner.color, pixel(target.position), 16, 2)
         for kind in ('tractor_tether', 'guardian_link'):
             inst = get_instance(source, kind)
             target = game.galaxy.get_unit_by_id(inst.target_unit_id) if inst and inst.is_active else None

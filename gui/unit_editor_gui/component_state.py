@@ -85,6 +85,9 @@ def update_ability_toggle_labels(editor) -> None:
     for aname, btn in editor._ability_buttons.items():
         req_keys = ABILITY_REQUIRED_COMPONENTS.get(aname, [])
         missing = [k for k in req_keys if not getattr(c, k, False)]
+        if aname in ('tracking_lock', 'flak_barrage') and not any(
+                getattr(t.variant, 'name', str(t.variant)).upper() == 'ANTI_STRIKECRAFT' for t in c.turrets):
+            missing.append('anti-strikecraft turret')
         if missing:
             if aname in editor._selected_abilities:
                 editor._selected_abilities.remove(aname)

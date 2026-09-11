@@ -101,7 +101,15 @@ Ghost Fleet, Tractor Tether, Mine-Clearing Sweep, Guardian Link, Fuel Cache and
 Nebula Catalyst. Nebula Catalyst requires Sensors and Antimatter Storage.
 Human controls, built-in AI and the Codex bridge share their
 validation and orders. Ghost emitters and fuel caches persist with per-ship caps;
-saves use version 4.2 and migrate older supported saves automatically.
+saves use version 4.3 and migrate older supported saves automatically.
 
 Retrofits use the same equipment validation as the Unit Designer, including full
 configuration checks after component removal. Salvage is paid on successful removal.
+
+Carriers can equip **Attack Run**, **Evasive Formation**, and **Emergency Recovery**
+to command their own deployed wings. Defense ships can equip **Tracking Lock** and
+**Flak Barrage** with anti-strikecraft turrets. Evasive Formation halves incoming
+weapon damage while retaining 75% outgoing damage; Flak protects a moving
+500-unit radius. The Testing carrier and Huge ship demonstrate these abilities.
+See [carrier ability rules](docs/REFERENCE.md#carrier-and-anti-strikecraft-abilities).
+Campaign saves use version 4.3 and preserve active wing orders and recovery state.

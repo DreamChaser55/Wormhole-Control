@@ -31,11 +31,29 @@ class TacticalAbility(AbilityInstance):
         number(self.redirect_cap, 'tactical.redirect_cap', 0, integer=True)
 
 
+class StrikecraftAbility(TacticalAbility):
+    STATE_FIELDS = TacticalAbility.STATE_FIELDS + ('participant_ids',)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.participant_ids = []
+
+    def validate_state(self):
+        super().validate_state()
+        from state_codec import number
+        if not isinstance(self.participant_ids, list) or len(set(self.participant_ids)) != len(self.participant_ids):
+            raise ValueError('Invalid strikecraft participants')
+        for uid in self.participant_ids:
+            number(uid, 'strikecraft.participant_id', 0, integer=True)
+
+
 def _ability_class(kind, spec):
     definition = AbilityDefinition(AbilityType(kind), spec.name, spec.description,
         spec.cooldown, spec.duration, spec.range, spec.target_kind == 'unit',
         spec.target_kind in ('position', 'celestial_position'), spec.cost, list(spec.equipment))
-    return type(''.join(part.title() for part in kind.split('_')) + 'Ability', (TacticalAbility,), {'DEFINITION': definition})
+    from tactical_balance import STRIKECRAFT_ABILITIES
+    base = StrikecraftAbility if kind in STRIKECRAFT_ABILITIES else TacticalAbility
+    return type(''.join(part.title() for part in kind.split('_')) + 'Ability', (base,), {'DEFINITION': definition})
 
 
 TACTICAL_CLASSES = {AbilityType(kind): _ability_class(kind, spec) for kind, spec in SPECS.items()}

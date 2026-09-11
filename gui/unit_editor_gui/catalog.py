@@ -68,6 +68,8 @@ def ability_button_text(
         labels = {row["key"]: row["label"] for row in COMPONENT_ROWS}
         requirements = ", ".join(labels.get(key, key) for key in displayed_components)
         text += f" (Req: {requirements})"
+    if aname in ('tracking_lock', 'flak_barrage') and 'anti-strikecraft turret' not in missing_components:
+        text += ' (Requires an anti-strikecraft turret)'
     return text
 
 

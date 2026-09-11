@@ -58,6 +58,11 @@ class WingType(Enum):
     BOMBER = "bomber"
 
 class AbilityType(Enum):
+    ATTACK_RUN = "attack_run"
+    EVASIVE_FORMATION = "evasive_formation"
+    EMERGENCY_RECOVERY = "emergency_recovery"
+    TRACKING_LOCK = "tracking_lock"
+    FLAK_BARRAGE = "flak_barrage"
     ADAPTIVE_FORCEFIELD = "adaptive_forcefield"
     CLUSTER_WARHEAD = "cluster_warhead"
     DESIGNATE_TARGET = "designate_target"

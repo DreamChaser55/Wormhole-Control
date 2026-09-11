@@ -450,6 +450,9 @@ class Commander(UnitComponent):
         sub-orders.  Patrol, Protect, and Defend may also authorize their active
         front Attack sub-order.  Queued and finished orders never authorize fire.
         """
+        root = self.current_order
+        if root and root.order_type == OrderType.ATTACK_RUN and getattr(root, 'phase', None) != 'release':
+            return None
         for order in self._active_front_chain():
             if order.order_type == OrderType.ATTACK and order.status == OrderStatus.IN_PROGRESS:
                 return order

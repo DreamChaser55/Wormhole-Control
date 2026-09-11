@@ -492,9 +492,23 @@ class _BatchProjection:
         links.update(self._tactical_links)
         return {key: source for key, source in links.items() if (source, key[0]) not in self._tactical_cancelled}
 
+    def attack_run_wings(self, unit):
+        from strikecraft_abilities import eligible_bombers
+        wings = []
+        for wing in eligible_bombers(unit, self.game.galaxy, include_recovering=True):
+            self._ensure_orders(wing)
+            entries = [e for e in self._order_ledger[wing.id] if not e.get('settled')]
+            if wing.id not in self._unavailable_units and (not entries or entries[0]['type'] != 'emergency_recovery'):
+                wings.append(wing)
+        return wings
+
     def validate_tactical(self, command, unit):
         from tactical_abilities import SPECS, deployments
         spec = SPECS[command.ability]
+        if command.ability == 'attack_run' and not self.attack_run_wings(unit):
+            raise _Rejected('capability_unavailable', 'No bombers remain eligible after preceding commands.')
+        if command.ability in ('evasive_formation', 'emergency_recovery') and command.target_id in self._unavailable_units:
+            raise _Rejected('target_unavailable', 'Wing is unavailable after preceding commands.')
         used = set(self._tactical_used)
         reserved_links = {**self.tactical_links(), **getattr(self, "_group_links", {})}
         count = self._tactical_deployments.get((unit.id, command.ability), 0)
@@ -506,7 +520,7 @@ class _BatchProjection:
                 used.add((uid, kind))
                 if uid == unit.id and kind == command.ability:
                     count += 1
-                if SPECS[kind].target_kind == 'unit':
+                if kind in ('tractor_tether', 'guardian_link'):
                     reserved_links[(kind, entry['parameters'].get('target_unit_id', entry['parameters'].get('target_id')))] = uid
         if (unit.id, command.ability) in used:
             raise _Rejected('capability_unavailable', 'Ability already used or reserved.')
@@ -516,7 +530,7 @@ class _BatchProjection:
                      if self._tactical_cache_fuel.get(obj.id, 1) > 0]
         if spec.cap and len(surviving) + count >= spec.cap:
             raise _Rejected('deployment_cap_reached', 'Deployment limit reached or reserved.')
-        if spec.target_kind == 'unit' and (command.ability, command.target_id) in reserved_links:
+        if command.ability in ('tractor_tether', 'guardian_link') and (command.ability, command.target_id) in reserved_links:
             raise _Rejected('target_unavailable', 'The target already has a link or reserved link.')
         if command.ability == 'guardian_link':
             outgoing = {source: target for (kind, target), source in reserved_links.items() if kind == 'guardian_link'}
@@ -529,7 +543,7 @@ class _BatchProjection:
             if cursor == unit.id:
                 raise _Rejected('target_unavailable', 'Guardian cycles are unavailable.')
 
-        if spec.target_kind == 'unit':
+        if command.ability in ('tractor_tether', 'guardian_link'):
             self._group_links[(command.ability, command.target_id)] = unit.id
 
     def record(self, command, units):
@@ -564,15 +578,30 @@ class _BatchProjection:
             if ability in SPECS:
                 raw_point = params.get('target_position')
                 point = raw_point if isinstance(raw_point, Position) else Position(*raw_point) if raw_point is not None else None
-                if validate(unit, ability, self.game.galaxy, params.get('target_id', params.get('target_unit_id')), point, check_ready=False, links=False) is None:
+                if validate(unit, ability, self.game.galaxy, params.get('target_id', params.get('target_unit_id')), point, check_ready=False, links=False, participants=False) is None:
                     self._tactical_spent[unit.id] = self._tactical_spent.get(unit.id, 0) + SPECS[ability].cost
                     self._tactical_used.add((unit.id, ability))
                     self._tactical_cancelled.discard((unit.id, ability))
                     if SPECS[ability].cap:
                         key = (unit.id, ability)
                         self._tactical_deployments[key] = self._tactical_deployments.get(key, 0) + 1
-                    if SPECS[ability].target_kind == 'unit':
+                    if ability in ('tractor_tether', 'guardian_link'):
                         self._tactical_links[(ability, params.get('target_id'))] = unit.id
+                    if ability in ('attack_run', 'emergency_recovery'):
+                        wings = self.attack_run_wings(unit) if ability == 'attack_run' else [self.game.galaxy.get_unit_by_id(params['target_id'])]
+                        for wing in wings:
+                            self._ensure_orders(wing)
+                            for prior in self._order_ledger[wing.id]:
+                                if prior['order'] is not None:
+                                    self._refunds += prior['order'].refundable_credits(self.player.id)
+                            self._order_ledger[wing.id] = [{'id': uuid.uuid4().hex, 'type': ability,
+                                'parameters': {'target_carrier_id': unit.id}, 'order': None,
+                                'started': True, 'settled': False}]
+                            if ability == 'emergency_recovery':
+                                from geometry import distance
+                                from unit_orders.hangar import DOCKING_RANGE
+                                if distance(unit.position, wing.position) <= DOCKING_RANGE:
+                                    self._unavailable_units.add(wing.id)
                     entry['settled'] = True
             else:
                 from unit_components.abilities.registry import ABILITY_DEFINITIONS
@@ -875,9 +904,9 @@ class CommandGateway:
             spec = SPECS[command.ability]
             if spec.target_kind in ('unit', 'celestial_position') and command.target_id is None:
                 raise _Rejected('missing_field', 'This ability requires target_id.')
-            if spec.target_kind == 'position' and command.target_id is not None:
+            if spec.target_kind in ('position', 'self') and command.target_id is not None:
                 raise _Rejected('invalid_command_contract', 'This ability does not use target_id.')
-            if (spec.target_kind != 'unit') != (command.position is not None):
+            if (spec.target_kind in ('position', 'celestial_position')) != (command.position is not None):
                 raise _Rejected('invalid_command_contract', 'Incorrect position for this ability.')
             if spec.target_kind == 'unit':
                 self._visible_unit(player, command.target_id)
@@ -1680,6 +1709,9 @@ class CommandGateway:
             from domain.celestials import is_position_in_magnetic_storm
             from constants import HullSize
             if getattr(docked_unit, "hull_size", None) == HullSize.STRIKECRAFT_WING:
+                from strikecraft_abilities import round_now
+                if docked_unit.strikecraft_wing_component and docked_unit.strikecraft_wing_component.recovery_ready_round > round_now(self.game.galaxy):
+                    raise _Rejected('capability_unavailable', 'Recovered wing cannot relaunch until next owner turn.')
                 if is_position_in_magnetic_storm(self.game.galaxy, unit.in_system, unit.in_hex, unit.position):
                     raise _Rejected(
                         "hazard_blocked", "Cannot launch strikecraft wings in a magnetic storm."
@@ -1691,6 +1723,9 @@ class CommandGateway:
                     "capability_unavailable",
                     f"Unit {unit.id} has no strikecraft bay.",
                 )
+            from strikecraft_abilities import round_now
+            if bay.docked_units and all(w.strikecraft_wing_component and w.strikecraft_wing_component.recovery_ready_round > round_now(self.game.galaxy) for w in bay.docked_units):
+                raise _Rejected('capability_unavailable', 'Recovered wings cannot relaunch until next owner turn.')
             from domain.celestials import is_position_in_magnetic_storm
             if is_position_in_magnetic_storm(self.game.galaxy, unit.in_system, unit.in_hex, unit.position):
                 raise _Rejected(
@@ -1734,7 +1769,7 @@ class CommandGateway:
                     raise _Rejected('out_of_range', 'Tactical positions must be in the current sector.')
                 from geometry import Position
                 error = validate(unit, command.ability, self.game.galaxy, command.target_id,
-                    Position(*command.position) if command.position is not None else None, approach=True, ignore_reservations=True, resources=False, links=False)
+                    Position(*command.position) if command.position is not None else None, approach=True, ignore_reservations=True, resources=False, links=False, participants=False)
                 if error:
                     raise _Rejected(error, 'Ability cannot be issued for this target or current resources.')
                 projection.validate_tactical(command, unit)

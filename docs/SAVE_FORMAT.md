@@ -1,19 +1,25 @@
 # Campaign persistence
 
-The current save version is **4.2**. New saves preserve the installed component
+The current save version is **4.3**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.2.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.3.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; historical inferred prices and orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
 Older campaign-save migrations can read Testing definitions privately to recover historical component configuration; this does not make those templates buildable. Custom-design library migration from the repository is no longer supported and is separate from campaign-save migration.
 
 ## Component and ability schemas
+
+Version 4.3 adds carrier ability participant IDs and deadlines, explicit Attack Run
+and Emergency Recovery phases, and per-wing recovery launch locks and Flak phase
+markers. Commander roots restore before carrier effects reconcile. Reloading never
+replays activation costs, salvos, docking or Flak damage. The existing migration
+chain initializes the new wing fields to inactive values for 4.2 saves.
 
 Every registered component owns its persistence through `UnitComponent.to_state()`
 and `restore_state()`. Each component declares its configuration, runtime fields,
@@ -111,7 +117,7 @@ external ability actions.
 
 ## Legacy migration
 
-Supported paths are `3.0 → 3.1 → 3.2 → 4.0 → 4.1 → 4.2`; recognized unversioned historical
+Supported paths are `3.0 → 3.1 → 3.2 → 4.0 → 4.1 → 4.2 → 4.3`; recognized unversioned historical
 documents enter at 3.0. Unknown and future versions are rejected. Migration works
 on a copy and leaves the input unchanged. Legacy orders receive deterministic
 public UUIDs where missing; later migration passes preserve them.

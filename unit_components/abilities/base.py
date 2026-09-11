@@ -35,6 +35,10 @@ class AbilityDefinition:
 
     @property
     def allowed_relations(self):
+        if self.ability_type.value in ('attack_run', 'tracking_lock'):
+            return ['enemy']
+        if self.ability_type.value in ('evasive_formation', 'emergency_recovery'):
+            return ['self']
         if self.ability_type.value == 'guardian_link':
             return ['self', 'ally']
         if self.ability_type.value == 'tractor_tether':
@@ -43,6 +47,9 @@ class AbilityDefinition:
 
     @property
     def automatic_approach(self):
+        from tactical_balance import STRIKECRAFT_ABILITIES
+        if self.ability_type.value in STRIKECRAFT_ABILITIES:
+            return False
         return self.requires_target_unit or (self.ability_type.value == 'cluster_warhead')
 
     @property

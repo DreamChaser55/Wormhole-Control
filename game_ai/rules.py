@@ -447,6 +447,10 @@ def command_guidance(
         for component_name in ("hangar_component", "strikecraft_bay_component"):
             component = getattr(unit, component_name, None)
             for du in (getattr(component, "docked_units", []) or []):
+                from strikecraft_abilities import round_now
+                wing_comp = getattr(du, 'strikecraft_wing_component', None)
+                if wing_comp and wing_comp.recovery_ready_round > round_now(galaxy_ref):
+                    continue
                 if in_mag_storm and getattr(du, "hull_size", None) == HullSize.STRIKECRAFT_WING:
                     continue
                 if is_position_blocked_by_celestial_field(galaxy_ref, unit.in_system, unit.in_hex, unit.position, du):
@@ -461,7 +465,9 @@ def command_guidance(
         galaxy_ref = getattr(getattr(unit, "game", None), "galaxy", None)
         in_mag_storm = is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, unit.position)
         bay = getattr(unit, "strikecraft_bay_component", None)
-        if getattr(bay, "docked_units", None) and not in_mag_storm:
+        from strikecraft_abilities import round_now
+        if getattr(bay, "docked_units", None) and not in_mag_storm and any(
+                not w.strikecraft_wing_component or w.strikecraft_wing_component.recovery_ready_round <= round_now(galaxy_ref) for w in bay.docked_units):
             legal.add("deploy_all_wings")
 
     if "use_ability" in supported:

@@ -277,6 +277,9 @@ def equipment_errors(hull_size, components):
     # Ability component requirements
     if c.has_ability_component and c.abilities:
         for ab_key in c.abilities:
+            if ab_key in ('tracking_lock', 'flak_barrage') and not any(
+                    getattr(t.variant, 'name', str(t.variant)).upper() == 'ANTI_STRIKECRAFT' for t in c.turrets):
+                errors.append(f"Ability '{ab_key.replace('_', ' ').title()}' requires an anti-strikecraft turret.")
             reqs = ABILITY_REQUIRED_COMPONENTS.get(ab_key, [])
             for req_comp in reqs:
                 if not getattr(c, req_comp, False):

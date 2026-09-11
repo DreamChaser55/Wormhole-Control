@@ -70,6 +70,10 @@ def order_layers(unit, relation, visible_ids, body_ids):
                 public["omitted_waypoints"] = max(0, len(route) - 16)
             data["parameters"] = public
         progress = {}
+        if kind in {'attack_run', 'emergency_recovery'}:
+            progress = {'phase': order.phase, 'expires_on_owner_round': params['expires_round']}
+            if kind == 'attack_run':
+                progress['earliest_release_round'] = params['release_round']
         if kind == "patrol":
             progress = {"leg": getattr(order, "current_waypoint_index", 0), "phase": enum_name(getattr(order, "patrol_phase", None)), "returns_to_start": True}
             if not hidden:

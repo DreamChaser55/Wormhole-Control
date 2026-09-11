@@ -39,6 +39,8 @@ class OrderStatus(Enum):
 
 
 class OrderType(Enum):
+    ATTACK_RUN = auto()
+    EMERGENCY_RECOVERY = auto()
     """Enum representing the different types of orders."""
     REACH_WAYPOINT = auto() # Move to a waypoint (system, hex, position). No dynamic planning or sub-order spawning. Simple movement to a single location. Spawned as sub-order(s) of MOVE.
     MOVE = auto()           # High-level move to a location (system, hex, position). Will plan a potentially multi-leg route to the destination and spawn one or more sub-orders of REACH_WAYPOINT.

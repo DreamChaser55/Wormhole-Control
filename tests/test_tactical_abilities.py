@@ -21,6 +21,7 @@ from game_ai.observation import build_observation
 from save_manager import serialize_game_state, deserialize_game_state
 from tactical_abilities import (SPECS, activate, availability, deployments, start_owner_turn,
                                 process_pulls, combat_hit, cancel, validate)
+from tactical_balance import STRIKECRAFT_ABILITIES
 
 
 def equipped(game, name='caster', owner=0, hull=HullSize.HUGE):
@@ -185,7 +186,7 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert not activate(caster, kind, game.galaxy, position=Position(200, 0))
     assert caster.antimatter_component.current_amount == fuel
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.2'
+    assert state['version'] == '4.3'
     assert all('lifetime' not in d for s in state['galaxy']['systems'] for h in s['hexes'] for d in h['deployables'])
     restored = campaign()
     assert deserialize_game_state(restored, state)
@@ -543,7 +544,7 @@ def test_hidden_cache_and_missing_id_have_same_error_and_no_provenance_leak():
     assert 'deploying_ship_id' not in view and 'lifetime' not in view
 
 
-@pytest.mark.parametrize('kind', list(SPECS))
+@pytest.mark.parametrize('kind', [k for k in SPECS if k not in STRIKECRAFT_ABILITIES])
 def test_fake_provider_can_issue_each_tactical_ability(kind):
     from game_ai.adapters.fake import FakePlanningProvider
     from game_ai.adapters.base import PlanningRequest
@@ -581,6 +582,8 @@ def test_custom_design_roundtrip_construction_and_use(tmp_path):
         setattr(design.components, flag, True)
     design.components.has_ability_component = True
     design.components.abilities = list(SPECS)
+    from custom_unit_templates import TurretConfig
+    design.components.turrets = [TurretConfig(turret_type='MASS_DRIVER', damage=1, range=100, cooldown=2, variant='ANTI_STRIKECRAFT')]
     design.components.antimatter_capacity = 300
     manager = CustomTemplateManager(data_file=str(tmp_path / 'designs.json'))
     assert manager.save_design(design) == []
@@ -737,7 +740,8 @@ def test_designer_exposes_all_six_and_sidebar_persistent_caps(pygame_context, tm
     for kind in SPECS:
         control = editor._ability_buttons[kind]
         assert control.visible
-        assert editor._panel.get_abs_rect().contains(control.get_abs_rect())
+        assert editor._ability_scroll_container.get_container().get_abs_rect().contains(control.get_abs_rect())
+    assert editor._panel.get_abs_rect().contains(editor._ability_scroll_container.get_abs_rect())
     screen = pygame.Surface((1280, 720))
     manager.update(0.1)
     manager.draw_ui(screen)

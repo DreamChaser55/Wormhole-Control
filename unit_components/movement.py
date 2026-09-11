@@ -98,7 +98,8 @@ class Engines(UnitComponent):
         link = get_instance(self.unit, 'tractor_tether')
         if link and link.is_active and self.unit.in_galaxy and link_valid(self.unit, link, self.unit.in_galaxy):
             spd *= TRACTOR_SPEED
-        return spd
+        from strikecraft_abilities import speed_multiplier
+        return spd * speed_multiplier(self.unit)
 
     @property
     def is_operational(self) -> bool:

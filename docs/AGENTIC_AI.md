@@ -289,11 +289,30 @@ Environmental observation additions retain schema 6: friendly/allied turrets exp
 
 ## Tactical ability integration
 
+Carrier and anti-strikecraft abilities also use the shared `use_ability` contract.
+`attack_run` targets a visible enemy ship and replaces explicit work on every
+eligible owned bomber belonging to the caster; `evasive_formation` and
+`emergency_recovery` target one of its deployed wings. `tracking_lock` targets an
+enemy wing; `flak_barrage` has no target or position. None automatically approaches.
+Command fields and contract/socket versions remain unchanged.
+
+Ability state includes eligible/participating owned wing IDs and balance modifiers;
+Attack Run guidance lists the explicit orders it will replace. Wing observations
+include evasion multipliers, weapon suppression and recovery launch locks. Explicit
+wing orders expose approach/release/completion progress and remain cancellable.
+Public links require visible endpoints; hidden targets and their approach geometry
+remain redacted. Pending casts reserve caster AM/cooldown, choosing wings only at
+execution. Immediate casts project wing-order replacements in batch order.
+Execution rechecks legality. Saves preserve phases and deadlines without replaying
+casts or salvos; recovered wings cannot launch before the next owner-turn start.
+
 The six [tactical abilities](REFERENCE.md#tactical-ability-rules) share side-effect-free validation
 in `tactical_abilities.py` across human controls, observations, preflight and orders.
 `tactical_balance.py` centralizes defaults.
-No bundled designs or AI designer were added: automated players construct available human-created designs or use equipped
-ships. Existing campaign starts and model/reasoning settings are unchanged.
+The six deployment/link abilities have no bundled designs. The Testing carrier
+and Huge ship demonstrate the five carrier and anti-strikecraft abilities.
+Automated players construct available designs or use equipped ships; no AI designer
+was added. Normal campaign starts and model/reasoning settings are unchanged.
 
 Observation 6 adds `ability_catalog`, `visible_deployables`, `catalyst_patches` and
 `ability_links`. Authorized ability state includes actual blockers/readiness,

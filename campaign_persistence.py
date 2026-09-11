@@ -387,13 +387,13 @@ def reconcile(candidate):
             if len(deployments(galaxy, obj.deploying_ship_id, kind)) > SPECS[kind].cap:
                 raise ValueError('Deployment cap exceeded')
     galaxy.game = candidate
+    # Carrier effects depend on restored explicit wing roots as well as the object graph.
+    for obj, _ in list(iter_units(galaxy)):
+        sm._restore_saved_commander(obj, candidate)
     reconcile_links(galaxy)
     from tactical_abilities import start_owner_turn
     for index, player in enumerate(candidate.players):
         start_owner_turn(galaxy, player, candidate.turn_number - int(index > candidate.current_player_index))
-    # Restore explicit order bindings only once, after the entire graph exists.
-    for obj, _ in list(iter_units(galaxy)):
-        sm._restore_saved_commander(obj, candidate)
     candidate.player_homeworlds = {}
     for player in candidate.players:
         if player.homeworld_id is not None:

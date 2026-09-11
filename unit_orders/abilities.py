@@ -50,6 +50,20 @@ class UseAbilityOrder(Order):
             self.status = OrderStatus.FAILED
             return
 
+        from tactical_balance import STRIKECRAFT_ABILITIES
+        if ability_type_str in STRIKECRAFT_ABILITIES:
+            from tactical_abilities import validate, activate
+            target = self.parameters.get('target_unit_id')
+            blocker = validate(self.unit, ability_type_str, galaxy_ref, target,
+                               self.parameters.get('target_position'), ignore_reservations=True)
+            if blocker:
+                self.fail(blocker)
+            elif activate(self.unit, ability_type_str, galaxy_ref, target):
+                self.status = OrderStatus.COMPLETED
+            else:
+                self.fail('execution_failed')
+            return
+
         if not self.unit.ability_component.can_use(ability_type, ignore_reservations=True):
             logger.debug(f"[{self.unit.name}] USE_ABILITY order failed: ability {ability_type.name} not ready (on cooldown or already active).")
             gui = getattr(getattr(self.unit, 'game', None), 'gui', None)

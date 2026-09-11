@@ -3,7 +3,7 @@ from copy import deepcopy
 from types import SimpleNamespace
 import uuid
 
-CURRENT_VERSION = "4.2"
+CURRENT_VERSION = "4.3"
 
 
 def raw_units(data):
@@ -188,7 +188,15 @@ def migrate_4_1_to_4_2(data, warnings):
     data['version'] = '4.2'
 
 
-MIGRATIONS = {'4.1': migrate_4_1_to_4_2, '4.0': migrate_4_0_to_4_1, "3.0": migrate_3_0_to_3_1, "3.1": migrate_3_1_to_3_2, "3.2": migrate_3_2_to_4_0}
+def migrate_4_2_to_4_3(data, warnings):
+    for unit in raw_units(data):
+        for component in unit.get('components', {}).values():
+            if component.get('type') == 'StrikecraftWingComponent':
+                component['runtime'].update(recovery_ready_round=0, last_flak_round=0, last_flak_owner_id=None)
+    data['version'] = '4.3'
+
+
+MIGRATIONS = {'4.2': migrate_4_2_to_4_3, '4.1': migrate_4_1_to_4_2, '4.0': migrate_4_0_to_4_1, "3.0": migrate_3_0_to_3_1, "3.1": migrate_3_1_to_3_2, "3.2": migrate_3_2_to_4_0}
 
 
 def migrate_save(data):

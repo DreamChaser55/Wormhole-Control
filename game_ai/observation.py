@@ -288,6 +288,17 @@ def _unit_view(
         data["capability_details"] = _capability_details(unit, game)
         from .tactical import environmental_view
         data["environmental_modifiers"] = environmental_view(unit)
+        wing = getattr(unit, 'strikecraft_wing_component', None)
+        if wing:
+            from strikecraft_abilities import incoming_multiplier, evasion, round_now, wing_order
+            from tactical_balance import EVASIVE_OUTGOING
+            root = wing_order(unit)
+            data['wing_tactical_state'] = {
+                'incoming_weapon_multiplier': incoming_multiplier(unit),
+                'evasive_outgoing_multiplier': EVASIVE_OUTGOING if evasion(unit) else 1.0,
+                'weapons_suppressed': bool(root and root.order_type.name == 'EMERGENCY_RECOVERY'),
+                'recovery_launch_locked': wing.recovery_ready_round > round_now(game.galaxy),
+            }
     if include_capabilities:
         legal, options, conditional = command_guidance(
             game,

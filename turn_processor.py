@@ -92,6 +92,10 @@ class TurnProcessor:
             from tactical_abilities import process_pulls
             process_pulls(self.game.galaxy, current_player, turn_num)
 
+            from strikecraft_abilities import process_flak
+            process_flak(self.game.galaxy, current_player, turn_num)
+            self._cleanup_dead_units()
+
             with ProfileTimer("Minefield detonations"):
                 self._process_minefield_detonations(current_player)
                 self._cleanup_dead_units()
@@ -141,6 +145,13 @@ class TurnProcessor:
 
                 commander = unit.commander_component
                 if commander:
+                    from strikecraft_abilities import wing_order
+                    root = wing_order(unit)
+                    if root:
+                        root.update(self.game.galaxy)
+                        from tactical_abilities import deployed
+                        if not deployed(unit, self.game.galaxy):
+                            continue
                     commander.prepare_for_movement()
 
                 # Units disabled by Ion Bolt cannot move

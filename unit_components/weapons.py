@@ -103,6 +103,9 @@ class Turret:
             if self.variant == TurretVariant.ANTI_STRIKECRAFT and self.target.hull_size != HullSize.STRIKECRAFT_WING:
                 effective_damage *= 0.25
 
+            from strikecraft_abilities import outgoing_multiplier
+            effective_damage *= outgoing_multiplier(self.parent_unit, self.target, self)
+
             # Record target HP before damage to compute actual damage dealt for XP
             hp_before = self.target.current_hit_points
 
@@ -317,6 +320,11 @@ class Weapons(UnitComponent):
             self.clear_target()
             return
 
+        from strikecraft_abilities import wing_order
+        run = wing_order(self.unit, 'attack_run')
+        if run:
+            run.update(galaxy)
+
         for turret in self.turrets:
             turret.update()
 
@@ -373,6 +381,9 @@ class Weapons(UnitComponent):
                 if target_in_same_system and target_in_same_hex and target_in_range:
                     if turret.current_cooldown <= 0:
                         turret.fire()
+
+        if run and run.status.name == 'IN_PROGRESS' and run.phase == 'release':
+            run.finish_salvo()
 
     def set_target(self, target_unit: 'Unit', target_component_type: Optional[type] = None) -> None:
         """Sets the target of the turrets to the specified unit and optionally a specific component."""

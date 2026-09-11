@@ -131,7 +131,8 @@
         "type": "MASS_DRIVER",
         "damage": 10,
         "range": 300,
-        "cooldown": 2
+        "cooldown": 2,
+        "variant": "ANTI_STRIKECRAFT"
       }
     ],
     "has_constructor_component": true,
@@ -146,7 +147,15 @@
     "has_antimatter_harvester": true,
     "antimatter_harvester_hull_cost": 15.0,
     "build_time": 20,
-    "build_cost": 2500
+    "build_cost": 2500,
+    "has_sensors": true,
+    "sensor_short_range": 1000,
+    "sensor_long_range_hexes": 1,
+    "has_ability_component": true,
+    "abilities": [
+      "tracking_lock",
+      "flak_barrage"
+    ]
   },
   "SPAWN_STATION_TINY": {
     "name": "Tiny Station",
@@ -291,7 +300,7 @@
     "hull_size": "LARGE",
     "hull_points": 200,
     "has_engine": true,
-    "engine_speed": 100.0,
+    "engine_speed": 60.0,
     "engine_hull_cost": 5.0,
     "has_hyperdrive": true,
     "hyperdrive_type": "ADVANCED",
@@ -315,6 +324,15 @@
     "has_constructor_component": false,
     "constructor_hull_cost": 0.0,
     "build_time": 15,
-    "build_cost": 1800
+    "build_cost": 1800,
+    "has_sensors": true,
+    "sensor_short_range": 1000,
+    "sensor_long_range_hexes": 1,
+    "has_ability_component": true,
+    "abilities": [
+      "attack_run",
+      "evasive_formation",
+      "emergency_recovery"
+    ]
   }
 }
