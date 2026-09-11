@@ -223,7 +223,8 @@ def test_pending_job_cancellation_does_not_refund_or_stop_active_job(kind):
         order.register_explicit_root()
         order.status = OrderStatus.IN_PROGRESS
         unit.commander_component.current_order = order
-        assert component.start_refit(unit, "ADD", "Sensors", cost_credits=100, time_to_build=5)
+        unit.remove_component(type(unit.sensors_component))
+        assert component.start_refit(unit, "ADD", "Sensors", {"short_range_radius": 10000 / 3, "long_range_hexes": 0}, order=order)
         component.refit_order_id = order.public_id
         order._charged_credits = 100
         order._charged_player_id = player.id
@@ -284,7 +285,8 @@ def test_restored_component_job_refunds_only_its_owner_once(legacy, kind):
         root.register_explicit_root()
         root.status = OrderStatus.IN_PROGRESS
         unit.commander_component.current_order = root
-        constructor.start_refit(unit, "ADD", "Sensors", cost_credits=100, time_to_build=5)
+        unit.remove_component(type(unit.sensors_component))
+        assert constructor.start_refit(unit, "ADD", "Sensors", {"short_range_radius": 10000 / 3, "long_range_hexes": 0}, order=root)
         constructor.refit_order_id = root.public_id
         root._charged_credits = 100
         root._charged_player_id = player.id

@@ -185,7 +185,7 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert not activate(caster, kind, game.galaxy, position=Position(200, 0))
     assert caster.antimatter_component.current_amount == fuel
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.1'
+    assert state['version'] == '4.2'
     assert all('lifetime' not in d for s in state['galaxy']['systems'] for h in s['hexes'] for d in h['deployables'])
     restored = campaign()
     assert deserialize_game_state(restored, state)

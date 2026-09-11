@@ -1,6 +1,3 @@
-from constants import HullSize
-from unit_template_validation import sensor_hull_errors
-from unit_components.sensors import Sensors
 from unit_orders.base import OrderTargetField
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
@@ -8,8 +5,6 @@ from typing import Dict, Optional, Any, TYPE_CHECKING
 from geometry import distance
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
-from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
-from unit_components.constructor import get_component_class_by_name, get_component_hull_cost
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -19,34 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 def get_hull_restriction_flag(component_name: str) -> str:
-    flag_map = {
-        "HangarComponent": "has_hangar",
-        "Hangar": "has_hangar",
-        "StrikecraftBayComponent": "has_strikecraft_bay",
-        "StrikecraftBay": "has_strikecraft_bay",
-        "HyperspaceInhibitionFieldEmitter": "has_inhibitor",
-        "Inhibitor": "has_inhibitor",
-        "Constructor": "has_constructor_component",
-        "RepairComponent": "has_repair_component",
-        "ColonyComponent": "has_colony_component",
-        "CivilianHabitatComponent": "has_civilian_habitat_component",
-        "OrbitalDefenseComponent": "has_orbital_defense_component",
-        "OrbitalDefense": "has_orbital_defense_component",
-        "TradeComponent": "has_trade_component",
-        "Trade": "has_trade_component",
-        "MiningComponent": "has_mining_component",
-        "MetalRefineryComponent": "has_metal_refinery_component",
-        "CrystalRefineryComponent": "has_crystal_refinery_component",
-        "AbilityComponent": "has_ability_component",
-        "AntimatterHarvester": "has_antimatter_harvester",
-        "MinelayerComponent": "has_minelayer_component",
-        "MarinesComponent": "has_marines_component",
-        "CloakingDevice": "has_cloaking_device",
-        "Hyperdrive": "has_hyperdrive",
-        "IntelligenceComponent": "has_intelligence_component",
-        "Intelligence": "has_intelligence_component",
-    }
-    return flag_map.get(component_name, f"has_{component_name.lower()}")
+    from refit_validation import COMPONENT_SPECS, canonical_component_name
+    spec = COMPONENT_SPECS.get(canonical_component_name(component_name))
+    return spec.flag if spec else f"has_{component_name.lower()}"
+
 
 
 class RefitOrder(Order):
@@ -88,216 +59,53 @@ class RefitOrder(Order):
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
-
-        if not self.unit.constructor_component or self.unit.constructor_component.is_destroyed:
-            self.status = OrderStatus.FAILED
-            logger.debug(f"REFIT order failed: Unit {self.unit.name} has no active Constructor component.")
-            return
-
-        target_unit_id = self.parameters.get("target_unit_id")
-        target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
-
-        if not target_unit or target_unit.current_hit_points <= 0:
-            self.status = OrderStatus.FAILED
-            logger.debug(f"REFIT order failed: Target unit {target_unit_id} not found or destroyed.")
-            return
-
+        from refit_validation import evaluate_refit
         from domain.players import are_allies
-        if not are_allies(self.unit.owner, target_unit.owner):
-            self.status = OrderStatus.FAILED
-            logger.debug(f"REFIT order failed: Target unit {target_unit.name} is not friendly/allied.")
+        constructor = self.unit.constructor_component
+        target = galaxy_ref.get_unit_by_id(self.parameters.get("target_unit_id"))
+        if not constructor or constructor.is_destroyed:
+            self.fail("refit_unavailable")
             return
-
-        action = str(self.parameters.get("action", "ADD")).upper()
-        component_type = self.parameters.get("component_type", "")
-        component_config = self.parameters.get("component_config", {})
-        comp_cls = get_component_class_by_name(component_type)
-
-        if not comp_cls:
-            self.status = OrderStatus.FAILED
-            logger.debug(f"REFIT order failed: Unknown component type '{component_type}'.")
+        if not target or target.current_hit_points <= 0 or not are_allies(self.unit.owner, target.owner):
+            self.fail("target_unavailable")
             return
-
-        # Check proximity and approach if necessary
-        in_same_system_and_hex = (self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex)
-        in_range = in_same_system_and_hex and (distance(self.unit.position, target_unit.position) <= self.unit.constructor_component.build_range)
-
+        action = self.parameters.get("action", "ADD")
+        evaluation = evaluate_refit(target, action, self.parameters.get("component_type"),
+                                    self.parameters.get("component_config"))
+        if evaluation.errors:
+            self.fail("invalid_refit")
+            gui = getattr(self.unit.game, 'gui', None)
+            if gui:
+                from html import escape
+                gui.show_warning_dialog('<br>'.join(escape(e) for e in evaluation.errors), title="Invalid Retrofit")
+            return
+        in_range = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex
+                    and distance(self.unit.position, target.position) <= constructor.build_range)
         if not in_range:
-            move_order = MoveOrder.for_unit_approach(
-                self.unit,
-                target_unit,
-                self.unit.constructor_component.build_range - 5.0,
-                parent_order=self,
-            )
-            self.add_sub_order(move_order)
-
-            refit_sub_order = RefitOrder(self.unit, self.parameters, parent_order=self)
-            self.add_sub_order(refit_sub_order)
+            self.add_sub_order(MoveOrder.for_unit_approach(self.unit, target,
+                                constructor.build_range - 5.0, parent_order=self))
+            self.add_sub_order(RefitOrder(self.unit, self.parameters.copy(), parent_order=self))
             return
-
-        player = next((p for p in self.unit.game.players if p.id == self.unit.owner.id), self.unit.owner)
-
-        if action == "ADD":
-            if comp_cls in target_unit.components:
-                self.status = OrderStatus.FAILED
-                logger.debug(f"REFIT order failed: Unit {target_unit.name} already has {component_type}.")
-                if getattr(self.unit.game, 'gui', None):
-                    self.unit.game.gui.show_warning_dialog(
-                        f"Unit <b>{target_unit.name}</b> already has a <b>{component_type}</b> installed.",
-                        title="Component Already Installed"
-                    )
-                return
-
-            # Check hull size restrictions
-            forbidden_comps = HULL_RESTRICTIONS.get(target_unit.hull_size, set())
-            comp_flag_key = get_hull_restriction_flag(component_type)
-            if comp_flag_key in forbidden_comps:
-                self.status = OrderStatus.FAILED
-                logger.debug(f"REFIT order failed: Hull size {target_unit.hull_size.name} cannot mount {component_type}.")
-                if getattr(self.unit.game, 'gui', None):
-                    self.unit.game.gui.show_warning_dialog(
-                        f"Hull size <b>{target_unit.hull_size.name}</b> cannot mount <b>{component_type}</b>.",
-                        title="Hull Restriction Violation"
-                    )
-                return
-
-            if component_type in ("TradeComponent", "Trade") and not getattr(target_unit, 'engines_component', None):
-                self.status = OrderStatus.FAILED
-                logger.debug(f"REFIT order failed: Trade component requires an Engine component.")
-                if getattr(self.unit.game, 'gui', None):
-                    self.unit.game.gui.show_warning_dialog(
-                        f"Cannot install <b>Trade Module</b> on <b>{target_unit.name}</b> because it lacks an Engine component.",
-                        title="Engine Required"
-                    )
-                return
-
-            if comp_cls is Sensors:
-                default_range = 0 if target_unit.hull_size == HullSize.STRIKECRAFT_WING else 1
-                sensor_errors = sensor_hull_errors(
-                    target_unit.hull_size,
-                    component_config.get("long_range_hexes", default_range),
-                    "long_range_hexes",
-                )
-                if sensor_errors:
-                    self.status = OrderStatus.FAILED
-                    logger.debug("REFIT order failed: %s", sensor_errors[0])
-                    if getattr(self.unit.game, 'gui', None):
-                        self.unit.game.gui.show_warning_dialog(sensor_errors[0], title="Hull Restriction Violation")
-                    return
-                component_config.setdefault("long_range_hexes", default_range)
-
-            # Calculate hull cost
-            hull_cost = get_component_hull_cost(component_type, target_unit, component_config)
-            component_config["hull_cost"] = hull_cost
-
-            if target_unit.current_hull_usage + hull_cost > target_unit.hull_capacity:
-                self.status = OrderStatus.FAILED
-                logger.debug(f"REFIT order failed: Exceeds hull capacity of {target_unit.name} ({target_unit.current_hull_usage + hull_cost:.1f}/{target_unit.hull_capacity:.1f}).")
-                if getattr(self.unit.game, 'gui', None):
-                    self.unit.game.gui.show_warning_dialog(
-                        f"Insufficient hull capacity on <b>{target_unit.name}</b>.<br>"
-                        f"Requires: {hull_cost:.1f} hull points (Available: {target_unit.hull_capacity - target_unit.current_hull_usage:.1f}).",
-                        title="Insufficient Hull Capacity"
-                    )
-                return
-
-            # Calculate credit cost and time to build
-            cost_credits = self.parameters.get("cost_credits")
-            if cost_credits is None:
-                cost_credits = int(round(hull_cost * COMPONENT_COST_PER_HULL_POINT))
-                self.parameters["cost_credits"] = cost_credits
-
-            time_to_build = self.parameters.get("time_to_build")
-            if time_to_build is None:
-                time_to_build = max(1, int(round(hull_cost / 5.0)))
-                self.parameters["time_to_build"] = time_to_build
-
-            if player.credits < cost_credits:
-                self.status = OrderStatus.FAILED
-                logger.debug(f"REFIT order failed: Not enough credits ({player.credits}/{cost_credits}).")
-                if getattr(self.unit.game, 'gui', None):
-                    self.unit.game.gui.show_warning_dialog(
-                        f"Insufficient credits to install <b>{component_type}</b>.<br>Required: {cost_credits:.0f} credits (Available: {player.credits:.0f}).",
-                        title="Insufficient Resources"
-                    )
-                return
-
-            success = self.unit.constructor_component.start_refit(
-                target_unit=target_unit,
-                action="ADD",
-                component_type=component_type,
-                component_config=component_config,
-                cost_credits=cost_credits,
-                time_to_build=time_to_build
-            )
-            if success:
-                self.unit.constructor_component.refit_order_id = self.public_id
-                self._charged_credits = max(0, int(cost_credits or 0))
-                self._charged_player_id = self.unit.owner.id
-            else:
-                self.fail("refit_unavailable")
-
-        elif action == "REMOVE":
-            if comp_cls not in target_unit.components:
-                self.status = OrderStatus.FAILED
-                logger.debug(f"REFIT order failed: Unit {target_unit.name} does not have {component_type}.")
-                return
-
-            if comp_cls.__name__ == "Commander":
-                self.status = OrderStatus.FAILED
-                logger.debug(f"REFIT order failed: Commander component cannot be removed.")
-                if getattr(self.unit.game, 'gui', None):
-                    self.unit.game.gui.show_warning_dialog(
-                        f"The <b>Commander</b> component is essential and cannot be removed.",
-                        title="Cannot Remove Component"
-                    )
-                return
-
-            # Safety check: do not remove carrier bays if craft are docked
-            comp_instance = target_unit.components[comp_cls]
-            if comp_cls.__name__ in ("HangarComponent", "StrikecraftBayComponent"):
-                if getattr(comp_instance, 'docked_units', None):
-                    self.status = OrderStatus.FAILED
-                    logger.debug(f"REFIT order failed: Cannot remove {component_type} while units are docked.")
-                    if getattr(self.unit.game, 'gui', None):
-                        self.unit.game.gui.show_warning_dialog(
-                            f"Cannot remove <b>{component_type}</b> while strikecraft or units are docked.<br>Please deploy or undock all craft first.",
-                            title="Docked Craft Present"
-                        )
-                    return
-
-            time_to_build = self.parameters.get("time_to_build") or 1
-            # Salvage refund (50% of component value credited upon removal)
-            salvage_refund = int(round(comp_instance.hull_cost * COMPONENT_COST_PER_HULL_POINT * 0.5))
-            if salvage_refund > 0:
-                player.credits += salvage_refund
-                logger.debug(f"Refunded {salvage_refund} salvage credits to player {player.name} for removal of {component_type} on {target_unit.name}.")
-
-            success = self.unit.constructor_component.start_refit(
-                target_unit=target_unit,
-                action="REMOVE",
-                component_type=component_type,
-                component_config=component_config,
-                cost_credits=0,
-                time_to_build=time_to_build
-            )
-            if success:
-                self.unit.constructor_component.refit_order_id = self.public_id
-                self._charged_credits = 0
-                self._charged_player_id = self.unit.owner.id
-            else:
-                self.fail("refit_unavailable")
+        # Hints supplied by UI/events never determine charges or installed hull usage.
+        self.parameters.update(component_type=evaluation.component_name,
+                               component_config=evaluation.configuration,
+                               cost_credits=evaluation.cost_credits,
+                               time_to_build=evaluation.duration)
+        if not constructor.start_refit(target, action, evaluation.component_name,
+                                       evaluation.configuration, order=self):
+            self.fail("refit_unavailable")
 
     def check_completion_conditions(self) -> None:
-        if self.status != OrderStatus.IN_PROGRESS:
-            return
-        constructor = self.unit.constructor_component
-        if not constructor or constructor.current_refit_target is None:
+        # A parent approach order owns no charge and completes after its children.
+        # The actual refit child is settled explicitly by its Constructor.
+        if (self.status == OrderStatus.IN_PROGRESS and not self.sub_orders
+                and self._charged_player_id is None):
             self.status = OrderStatus.COMPLETED
 
     def cancel(self) -> None:
+        if self.status in {OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED}:
+            return
         constructor = self.unit.constructor_component
-        if constructor and constructor.current_refit_target and getattr(constructor, "refit_order_id", None) == self.public_id:
-            self.refund_charge()
+        if constructor and constructor.current_refit_target and constructor.refit_order_id == self.public_id:
             constructor.cancel_refit()
         super().cancel()

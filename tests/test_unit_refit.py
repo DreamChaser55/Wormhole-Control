@@ -98,7 +98,7 @@ def test_refit_add_component_success(setup_universe):
     order.execute(galaxy)
 
     assert constructor_unit.constructor_component.current_refit_target is not None
-    assert player.credits == initial_credits - 300
+    assert player.credits == initial_credits - 1000
     assert order.status == OrderStatus.IN_PROGRESS
 
     # Tick 1: Progress = 1 / 2
@@ -106,8 +106,9 @@ def test_refit_add_component_success(setup_universe):
     assert constructor_unit.constructor_component.refit_progress == 1
     assert target_unit.get_component(Defenses) is None
 
-    # Tick 2: Progress = 2 / 2 -> Finishes
-    constructor_unit.constructor_component.update(galaxy)
+    # The canonical 100/3 hull cost takes seven turns, ignoring the two-turn hint.
+    for _ in range(6):
+        constructor_unit.constructor_component.update(galaxy)
     order.check_completion_conditions()
 
     assert target_unit.get_component(Defenses) is not None
@@ -136,8 +137,8 @@ def test_refit_remove_component_with_refund(setup_universe):
     order.execute(galaxy)
 
     assert order.status == OrderStatus.IN_PROGRESS
-    # Salvage refund granted on removal start/order
-    assert player.credits > credits_before
+    # Salvage is paid only on successful completion.
+    assert player.credits == credits_before
 
     # Complete 1 turn
     constructor_unit.constructor_component.update(galaxy)
@@ -145,6 +146,7 @@ def test_refit_remove_component_with_refund(setup_universe):
 
     assert target_unit.get_component(RepairComponent) is None
     assert target_unit.current_hull_usage < hull_usage_before
+    assert player.credits == credits_before + 150
     assert order.status == OrderStatus.COMPLETED
 
 
@@ -313,7 +315,7 @@ def test_refit_cancel_refunds_credits(setup_universe):
     })
     order.execute(galaxy)
 
-    assert player.credits == initial_credits - 400
+    assert player.credits == initial_credits - 300
     assert constructor_unit.constructor_component.current_refit_target is not None
 
     # Cancel order
@@ -335,7 +337,7 @@ def test_refit_save_load_persistence(setup_universe):
         target_unit=target_unit,
         action="ADD",
         component_type="Defenses",
-        component_config={"armor": 40, "shields": 60, "point_defense": 10, "hull_cost": 15.0},
+        component_config={"armor": 20, "shields": 20, "point_defense": 10, "hull_cost": 15.0},
         cost_credits=450,
         time_to_build=3
     )
@@ -424,7 +426,8 @@ def test_refit_add_trade_component(setup_universe):
     assert refit_order.status == OrderStatus.IN_PROGRESS
     assert player.credits == initial_credits - (10.0 * 30.0)
 
-    # Tick 1 -> Finishes
+    # Canonical ten hull points require two turns.
+    constructor_unit.constructor_component.update(galaxy)
     constructor_unit.constructor_component.update(galaxy)
     refit_order.check_completion_conditions()
 
@@ -465,7 +468,8 @@ def test_refit_low_cost_component_succeeds_under_15_cap(setup_universe):
         {
             "target_unit_id": target_unit.id,
             "action": "ADD",
-            "component_type": "Weapons"
+            "component_type": "Weapons",
+            "component_config": {"turrets": [{"type": "BEAM", "damage": 5, "range": 100, "cooldown": 1}]}
         }
     )
     refit_order.execute(galaxy)
@@ -517,7 +521,7 @@ def test_get_component_hull_cost_accuracy(setup_universe):
     from unit_components.constructor import get_component_hull_cost
     _, _, _, _, _, target_unit = setup_universe
 
-    assert get_component_hull_cost("Weapons", target_unit) == 5.0
+    assert get_component_hull_cost("Weapons", target_unit) == 0.0
     assert abs(get_component_hull_cost("Defenses", target_unit) - (100.0 / 3.0)) < 1e-6
     assert get_component_hull_cost("Defenses", target_unit, {"armor": 15, "shields": 15, "point_defense": 0}) == 10.0
     assert get_component_hull_cost("HangarComponent", target_unit) == 20.0

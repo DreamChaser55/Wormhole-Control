@@ -424,12 +424,14 @@ class Constructor(UnitComponent):
             raise ValueError("Invalid construction target")
         if self.current_refit_target is not None:
             from state_codec import number, fields
-            fields(self.current_refit_target, ("target_unit_id", "action", "component_type", "component_config", "cost_credits", "time_to_build"), "refit")
+            fields(self.current_refit_target, ("target_unit_id", "action", "component_type", "component_config", "cost_credits", "time_to_build", "payer_id", "salvage_due"), "refit")
             number(self.current_refit_target.get("target_unit_id"), "refit.target_unit_id", 0, integer=True)
             if self.current_refit_target.get("action") not in ("ADD", "REMOVE"):
                 raise ValueError("Invalid refit action")
             if not isinstance(self.current_refit_target["component_config"], dict) or get_component_class_by_name(self.current_refit_target["component_type"]) is None:
                 raise ValueError("Invalid refit component/configuration")
+            number(self.current_refit_target["payer_id"], "refit.payer_id", 0, integer=True)
+            number(self.current_refit_target["salvage_due"], "refit.salvage_due", 0, integer=True)
             number(self.current_refit_target["cost_credits"], "refit.cost_credits", 0)
             number(self.current_refit_target["time_to_build"], "refit.time_to_build", 0, integer=True)
 
@@ -581,42 +583,83 @@ class Constructor(UnitComponent):
             self.construction_progress = 0
             self.time_to_build = 0
 
-    def start_refit(self, target_unit: 'Unit', action: str, component_type: str, component_config: Optional[dict] = None, cost_credits: Optional[int] = 0, time_to_build: Optional[int] = 1) -> bool:
-        """Starts a refit operation on a target unit."""
-        if self.is_destroyed:
+    def start_refit(self, target_unit: 'Unit', action: str, component_type: str,
+                    component_config: Optional[dict] = None, cost_credits: Optional[int] = 0,
+                    time_to_build: Optional[int] = 1, *, order=None) -> bool:
+        """Validate and charge a refit; supplied cost/time values are preview hints."""
+        from refit_validation import evaluate_refit
+        from domain.players import are_allies
+        from geometry import distance
+        if (self.is_destroyed or self.current_refit_target or self.current_construction_target
+                or target_unit.current_hit_points <= 0
+                or not are_allies(self.unit.owner, target_unit.owner)
+                or self.unit.in_system != target_unit.in_system or self.unit.in_hex != target_unit.in_hex
+                or distance(self.unit.position, target_unit.position) > self.build_range):
             return False
-
-        cost_credits = int(cost_credits or 0)
-        time_to_build = int(time_to_build or 1)
-
+        result = evaluate_refit(target_unit, action, component_type, component_config)
+        if result.errors or self.unit.owner.credits < result.cost_credits:
+            return False
         owner = self.unit.owner
-        if cost_credits > 0:
-            if owner.credits < cost_credits:
-                logger.debug(f"Error: Not enough credits to refit {target_unit.name}.")
-                return False
-            owner.credits -= cost_credits
-
+        owner.credits -= result.cost_credits
         self.current_refit_target = {
-            "target_unit_id": target_unit.id,
-            "action": action,
-            "component_type": component_type,
-            "component_config": component_config or {},
-            "cost_credits": cost_credits,
-            "time_to_build": time_to_build,
+            "target_unit_id": target_unit.id, "action": action,
+            "component_type": result.component_name, "component_config": result.configuration,
+            "cost_credits": result.cost_credits, "time_to_build": result.duration,
+            "payer_id": owner.id, "salvage_due": result.salvage,
         }
-        self.refit_time = max(1, time_to_build)
+        self.refit_order_id = order.public_id if order else None
+        self._refit_order_ref = order
+        if order:
+            order._charged_credits = result.cost_credits
+            order._charged_player_id = owner.id
+        self.refit_time = result.duration
         self.refit_progress = 0
-        logger.debug(f"{self.unit.name} started refit ({action} {component_type}) on {target_unit.name}. Cost: {cost_credits}, Time: {self.refit_time}")
         return True
 
+    def _owning_refit_order(self):
+        cached = getattr(self, '_refit_order_ref', None)
+        commander = self.unit.commander_component
+        if commander:
+            def find(node):
+                if node is None:
+                    return None
+                if node.public_id == self.refit_order_id:
+                    return node
+                return next((found for child in node.sub_orders if (found := find(child))), None)
+            found = find(commander.current_order)
+            if found:
+                return found
+        return cached if cached is not None and cached.public_id == self.refit_order_id else None
+
+    def _settle_refit(self, *, success=False, cancelled=False):
+        """Settle only this job, to its original payer, exactly once."""
+        job = self.current_refit_target
+        if not job:
+            return
+        order = self._owning_refit_order()
+        payer = next((p for p in getattr(self.unit.game, 'players', []) if p.id == job['payer_id']), None)
+        if payer is None and self.unit.owner.id == job['payer_id']:
+            payer = self.unit.owner
+        if payer is not None:
+            payer.credits += job['salvage_due'] if success else job['cost_credits']
+        if order:
+            order._charged_credits = 0
+        self.current_refit_target = None
+        self.refit_order_id = None
+        self._refit_order_ref = None
+        self.refit_progress = self.refit_time = 0
+        if order:
+            from unit_orders.base import OrderStatus
+            if cancelled:
+                order.status = OrderStatus.CANCELLED
+            elif success:
+                order.status = OrderStatus.COMPLETED
+            else:
+                order.fail("invalid_refit")
+
     def cancel_refit(self):
-        """Cancels the current refit operation."""
-        if self.current_refit_target:
-            logger.debug(f"Refit on unit {self.current_refit_target.get('target_unit_id')} cancelled.")
-            self.refit_order_id = None
-            self.current_refit_target = None
-            self.refit_progress = 0
-            self.refit_time = 0
+        """Cancel the active job without granting removal salvage."""
+        self._settle_refit(cancelled=True)
 
     def update(self, galaxy: 'Galaxy'):
         """Updates the construction or refit progress. Called each turn."""
@@ -670,40 +713,31 @@ class Constructor(UnitComponent):
         self.time_to_build = 0
 
     def finish_refit(self, galaxy: 'Galaxy'):
-        """Finalizes the refit operation on the target unit."""
-        if not self.current_refit_target:
+        """Revalidate the live target before committing or paying salvage."""
+        from refit_validation import evaluate_refit
+        from domain.players import are_allies
+        job = self.current_refit_target
+        if not job:
             return
-
-        target_unit_id = self.current_refit_target["target_unit_id"]
-        action = self.current_refit_target["action"]
-        component_type_name = self.current_refit_target["component_type"]
-        config = self.current_refit_target.get("component_config", {})
-
-        target_unit = galaxy.get_unit_by_id(target_unit_id)
-        if target_unit and target_unit.current_hit_points > 0:
-            if action.upper() == "ADD":
-                comp = instantiate_component_for_unit(component_type_name, target_unit, config)
-                if comp:
-                    if target_unit.current_hull_usage + comp.hull_cost > target_unit.hull_capacity:
-                        logger.warning(
-                            f"Refit failed on completion: Exceeds hull capacity of {target_unit.name} "
-                            f"({target_unit.current_hull_usage + comp.hull_cost:.1f}/{target_unit.hull_capacity:.1f})."
-                        )
-                    else:
-                        target_unit.add_component(comp)
-                        logger.debug(f"Successfully added {component_type_name} to {target_unit.name}.")
-            elif action.upper() == "REMOVE":
-                comp_cls = get_component_class_by_name(component_type_name)
-                if comp_cls and comp_cls in target_unit.components:
-                    comp = target_unit.components[comp_cls]
-                    if hasattr(comp, 'is_active') and comp.is_active:
-                        comp.is_active = False
-                    target_unit.remove_component(comp_cls)
-                    logger.debug(f"Successfully removed {component_type_name} from {target_unit.name}.")
-
-        self.current_refit_target = None
-        self.refit_progress = 0
-        self.refit_time = 0
+        target = galaxy.get_unit_by_id(job['target_unit_id'])
+        if (self.is_destroyed or self.unit.owner.id != job['payer_id'] or not target
+                or target.current_hit_points <= 0 or not are_allies(self.unit.owner, target.owner)):
+            self._settle_refit()
+            return
+        result = evaluate_refit(target, job['action'], job['component_type'], job['component_config'])
+        if result.errors:
+            logger.warning("Refit completion rejected: %s", '; '.join(result.errors))
+            self._settle_refit()
+            return
+        if job['action'] == 'ADD':
+            component = instantiate_component_for_unit(result.component_name, target, result.configuration)
+            if component is None:
+                self._settle_refit()
+                return
+            target.add_component(component)
+        else:
+            target.remove_component(get_component_class_by_name(result.component_name))
+        self._settle_refit(success=True)
 
 
 COMPONENT_NAME_MAP = {
@@ -771,30 +805,11 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
         return float(Hyperdrive.calc_hull_cost(htype, jump_range, unit.hull_size))
 
     elif comp_cls == Weapons:
-        turret_defs = config.get("turrets")
-        if turret_defs:
-            turrets = []
-            for t_def in turret_defs:
-                t_type_str = t_def.get("type", "MASS_DRIVER")
-                t_var_str = t_def.get("variant", "STANDARD")
-                try:
-                    t_type = TurretType[t_type_str.upper()]
-                except KeyError:
-                    t_type = TurretType.MASS_DRIVER
-                try:
-                    t_var = TurretVariant[t_var_str.upper()]
-                except KeyError:
-                    t_var = TurretVariant.STANDARD
-                turrets.append(Turret(
-                    turret_type=t_type,
-                    damage=float(t_def.get("damage", 10)),
-                    range=float(t_def.get("range", 300)),
-                    cooldown=int(t_def.get("cooldown", 1)),
-                    parent_unit=unit,
-                    variant=t_var
-                ))
-            return float(Weapons.calc_hull_cost(turrets))
-        return 5.0
+        from custom_unit_templates import TurretConfig
+        turrets = [TurretConfig(t.get('type', 'MASS_DRIVER'), t.get('damage', 10),
+                               t.get('range', 300), t.get('cooldown', 1), t.get('variant', 'STANDARD'))
+                   for t in config.get('turrets', [])]
+        return float(Weapons.calc_hull_cost(turrets))
 
     elif comp_cls == Defenses:
         armor = int(config.get("armor", 50))
@@ -939,15 +954,6 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
                     variant=t_var
                 )
                 weapons_comp.add_turret(turret)
-        else:
-            weapons_comp.add_turret(Turret(
-                turret_type=TurretType.MASS_DRIVER,
-                damage=10,
-                range=300,
-                cooldown=1,
-                parent_unit=unit,
-                variant=TurretVariant.STANDARD
-            ))
         return weapons_comp
 
     elif comp_cls == Defenses:
@@ -1042,7 +1048,10 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         else:
             c_type = c_type_raw
         radius = float(config.get("area_radius", 0.0)) if c_type == CloakingType.ADVANCED else 0.0
-        return CloakingDevice(unit, device_type=c_type, area_radius=radius, hull_cost=cost)
+        component = CloakingDevice(unit, device_type=c_type, area_radius=radius, hull_cost=cost)
+        # Explicit Designer zero radius must not become the runtime default radius.
+        component.area_radius = radius
+        return component
 
     elif comp_cls == IntelligenceComponent:
         count = int(config.get("agents_count", config.get("agents_capacity", 1)))

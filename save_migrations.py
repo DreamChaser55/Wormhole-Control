@@ -3,7 +3,7 @@ from copy import deepcopy
 from types import SimpleNamespace
 import uuid
 
-CURRENT_VERSION = "4.1"
+CURRENT_VERSION = "4.2"
 
 
 def raw_units(data):
@@ -154,7 +154,41 @@ def migrate_4_0_to_4_1(data, warnings):
     data['version'] = '4.1'
 
 
-MIGRATIONS = {'4.0': migrate_4_0_to_4_1, "3.0": migrate_3_0_to_3_1, "3.1": migrate_3_1_to_3_2, "3.2": migrate_3_2_to_4_0}
+def migrate_4_1_to_4_2(data, warnings):
+    """Legacy removal salvage was already paid; never pay it a second time."""
+    orders = {}
+    def collect(value):
+        if isinstance(value, dict):
+            if 'public_id' in value:
+                orders[value['public_id']] = value
+            for item in value.values():
+                collect(item)
+        elif isinstance(value, list):
+            for item in value:
+                collect(item)
+    collect(data)
+    def visit(value, owner_id=None):
+        if isinstance(value, dict):
+            if 'components' in value and 'owner_id' in value:
+                owner_id = value['owner_id']
+            if value.get('type') == 'Constructor' and 'runtime' in value:
+                runtime = value['runtime']
+                job = runtime.get('current_refit_target')
+                if job is not None:
+                    order = orders.get(runtime.get('refit_order_id'), {})
+                    payer = order.get('runtime_state', {}).get('charged_player_id')
+                    job['payer_id'] = owner_id if payer is None else payer
+                    job['salvage_due'] = 0
+            for item in value.values():
+                visit(item, owner_id)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item, owner_id)
+    visit(data)
+    data['version'] = '4.2'
+
+
+MIGRATIONS = {'4.1': migrate_4_1_to_4_2, '4.0': migrate_4_0_to_4_1, "3.0": migrate_3_0_to_3_1, "3.1": migrate_3_1_to_3_2, "3.2": migrate_3_2_to_4_0}
 
 
 def migrate_save(data):

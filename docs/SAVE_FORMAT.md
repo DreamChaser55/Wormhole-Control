@@ -1,13 +1,13 @@
 # Campaign persistence
 
-The current save version is **4.1**. New saves preserve the installed component
+The current save version is **4.2**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version remains 4.1.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.2.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; historical inferred prices and orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
@@ -111,7 +111,7 @@ external ability actions.
 
 ## Legacy migration
 
-Supported paths are `3.0 → 3.1 → 3.2 → 4.0 → 4.1`; recognized unversioned historical
+Supported paths are `3.0 → 3.1 → 3.2 → 4.0 → 4.1 → 4.2`; recognized unversioned historical
 documents enter at 3.0. Unknown and future versions are rejected. Migration works
 on a copy and leaves the input unchanged. Legacy orders receive deterministic
 public UUIDs where missing; later migration passes preserve them.
@@ -162,3 +162,21 @@ and invalid patch references are rejected. Historical deploying-ship references
 may point to destroyed units; they still raise the object allocator's high-water
 mark so their IDs cannot be reused. See `tests/test_tactical_abilities.py` for
 independent gameplay, migration, round-trip and fake-provider acceptance coverage.
+
+
+## Retrofit settlement in 4.2
+
+Active Constructor refit jobs persist `payer_id` and `salvage_due` alongside the
+existing target, action, configuration, paid installation cost and duration. The
+original order retains its charge ownership. A valid completed removal grants
+salvage once; failed or cancelled new removals grant none. Installation validation
+failures and cancellation refund the paid charge once to its original payer.
+
+The 4.1 → 4.2 migration traverses deployed, docked and hidden units. It takes the
+payer from the initiating order's saved charge owner (falling back to the ship
+owner for legacy jobs), sets legacy `salvage_due` to zero because old removals
+already paid upfront, and preserves paid costs and progress. Loading does not
+recharge a job, apply equipment changes, or reject historical equipment merely
+because it fails current Designer rules. Active jobs are revalidated against the
+complete resulting equipment when they complete. Pending jobs use current rules
+and prices when they start. No new retrofit AI or socket command is introduced.

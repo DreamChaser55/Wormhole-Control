@@ -377,6 +377,15 @@ def handle_confirm_retrofit(game, action: dict) -> None:
     shift_pressed = action.get("shift_pressed", False)
 
     if target_unit and constructor_units:
+        from refit_validation import evaluate_refit
+        result = evaluate_refit(target_unit, 'ADD', component_type, component_config)
+        if result.errors:
+            if getattr(game, 'gui', None):
+                from html import escape
+                game.gui.show_warning_dialog('<br>'.join(escape(e) for e in result.errors), title='Invalid Retrofit')
+            return
+        component_config = result.configuration
+        cost_credits, time_to_build = result.cost_credits, result.duration
         game.event_bus.publish(RefitUnitEvent(
             units=constructor_units,
             target_unit=target_unit,

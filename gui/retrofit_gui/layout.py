@@ -232,9 +232,12 @@ def _build_component_detail_groups(
     wizard._am_capacity_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), str(int(DEFAULT_ANTIMATTER_CAPACITY)), mgr, pan)
     wizard._details_groups["AntimatterStorage"].extend([lbl_am, wizard._am_capacity_entry])
 
+    from refit_validation import allowed_turret_variants, installed_configuration
+    variants = allowed_turret_variants(wizard.target_unit.hull_size, installed_configuration(wizard.target_unit).wing_type)
+    advanced_allowed = wizard.target_unit.hull_size not in (HullSize.STRIKECRAFT_WING, HullSize.TINY)
     # 3. Hyperdrive
     lbl_hd1 = make_label(pygame.Rect(pad, y, w, small_h), "Hyperdrive Type:", mgr, pan)
-    wizard._hd_type_dropdown = make_dropdown(pygame.Rect(pad, y + small_h + 2, w, dd_h), HYPERDRIVE_TYPES, "BASIC", mgr, pan)
+    wizard._hd_type_dropdown = make_dropdown(pygame.Rect(pad, y + small_h + 2, w, dd_h), (HYPERDRIVE_TYPES if advanced_allowed else ["BASIC"]), "BASIC", mgr, pan)
     lbl_hd2 = make_label(pygame.Rect(pad, y + small_h + 2 + dd_h + pad, w, small_h), "Jump Range (hexes):", mgr, pan)
     wizard._hd_jump_range_entry = make_entry(pygame.Rect(pad, y + (small_h + 2) * 2 + dd_h + pad, w, entry_h), str(DEFAULT_JUMP_RANGE), mgr, pan)
     wizard._details_groups["Hyperdrive"].extend([lbl_hd1, wizard._hd_type_dropdown, lbl_hd2, wizard._hd_jump_range_entry])
@@ -247,7 +250,7 @@ def _build_component_detail_groups(
     wizard._turret_type_dd = make_dropdown(pygame.Rect(pad, y_wep + small_h + 2, w, dd_h), TURRET_TYPES, TURRET_TYPES[0], mgr, pan, "#turret_type_dropdown")
     y_wep += small_h + 2 + dd_h + pad
     lbl_variant = make_label(pygame.Rect(pad, y_wep, w, small_h), "Variant:", mgr, pan)
-    wizard._turret_variant_dd = make_dropdown(pygame.Rect(pad, y_wep + small_h + 2, w, dd_h), TURRET_VARIANTS, "STANDARD", mgr, pan, "#turret_variant_dropdown")
+    wizard._turret_variant_dd = make_dropdown(pygame.Rect(pad, y_wep + small_h + 2, w, dd_h), variants, variants[0], mgr, pan, "#turret_variant_dropdown")
     y_wep += small_h + 2 + dd_h + pad
 
     half_w = (w - pad) // 2
@@ -338,7 +341,7 @@ def _build_component_detail_groups(
 
     # 13. Cloaking Device
     lbl_clk_t = make_label(pygame.Rect(pad, y, w, small_h), "Cloaking Type:", mgr, pan)
-    wizard._cloaking_type_dropdown = make_dropdown(pygame.Rect(pad, y + small_h + 2, w, dd_h), CLOAKING_TYPES, "BASIC", mgr, pan)
+    wizard._cloaking_type_dropdown = make_dropdown(pygame.Rect(pad, y + small_h + 2, w, dd_h), (CLOAKING_TYPES if advanced_allowed else ["BASIC"]), "BASIC", mgr, pan)
     y_clk = y + small_h + dd_h + pad
     wizard._lbl_clk_r = make_label(pygame.Rect(pad, y_clk, w, small_h), "Area Radius (Advanced):", mgr, pan)
     wizard._cloaking_radius_entry = make_entry(pygame.Rect(pad, y_clk + small_h + 2, w, entry_h), "500", mgr, pan)

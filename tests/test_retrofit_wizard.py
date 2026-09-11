@@ -233,7 +233,7 @@ def test_retrofit_wizard_validation_insufficient_credits(wizard_setup):
 
     wizard._sync_cost_and_summary()
     assert wizard.is_valid is False
-    assert "Insufficient Credits" in wizard._status_box.html_text
+    assert "Insufficient credits" in wizard._status_box.html_text
     wizard.kill()
 
 
@@ -254,7 +254,7 @@ def test_retrofit_wizard_validation_exceeds_hull_capacity(wizard_setup):
     wizard._sync_cost_and_summary()
 
     assert wizard.is_valid is False
-    assert "Insufficient Hull Capacity" in wizard._status_box.html_text
+    assert "Hull over capacity" in wizard._status_box.html_text
     wizard.kill()
 
 
@@ -331,9 +331,9 @@ def test_game_action_confirm_retrofit_execution(wizard_setup):
     assert constructor_unit.constructor_component.current_refit_target is not None
     assert player.credits == initial_credits - 900
 
-    # Advance 2 turns to finish refit
-    constructor_unit.constructor_component.update(galaxy)
-    constructor_unit.constructor_component.update(galaxy)
+    # Thirty hull points take six turns; supplied timing is not authoritative.
+    for _ in range(6):
+        constructor_unit.constructor_component.update(galaxy)
     refit_order.check_completion_conditions()
 
     # Target unit should have Defenses installed with customized stats
@@ -372,5 +372,78 @@ def test_wing_retrofit_equipment_controls(wizard_setup):
         wizard._sensor_long_range_entry.set_text('2')
         wizard._sync_cost_and_summary()
         assert wizard._comp_config['long_range_hexes'] == 0
+    finally:
+        wizard.kill()
+
+
+@pytest.mark.parametrize('value', ['nan', 'inf', 'abc', ''])
+def test_invalid_numeric_input_blocks_preview_and_confirmation(wizard_setup, value):
+    _, _, _, constructor, target, manager, resolution = wizard_setup
+    wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='Engines')
+    try:
+        wizard._engine_speed_entry.set_text(value)
+        wizard._sync_cost_and_summary()
+        assert not wizard.is_valid and not wizard._confirm_button.is_enabled
+        action = wizard.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=wizard._confirm_button))
+        assert action['action'] != 'confirm_retrofit'
+        wizard._engine_speed_entry.set_text('10')
+        wizard._sync_cost_and_summary()
+        assert wizard.is_valid
+    finally:
+        wizard.kill()
+
+
+def test_ally_target_preview_uses_constructor_credits(wizard_setup):
+    game, _, player, constructor, target, manager, resolution = wizard_setup
+    ally = Player('Ally', (1, 2, 3), team_id=player.team_id)
+    ally.credits = 0
+    game.players.append(ally)
+    target.owner = ally
+    wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='Engines')
+    try:
+        assert wizard.is_valid
+        assert str(player.credits) in wizard._player_credits_label.text
+    finally:
+        wizard.kill()
+
+
+def test_ability_prerequisites_are_visible_and_block_installation(wizard_setup):
+    _, _, _, constructor, target, manager, resolution = wizard_setup
+    wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='AbilityComponent')
+    try:
+        assert not wizard._ability_buttons['microjump'].is_enabled
+        wizard._selected_abilities.add('microjump')
+        wizard._sync_cost_and_summary()
+        assert not wizard.is_valid
+        assert 'requires component' in wizard._status_box.html_text
+    finally:
+        wizard.kill()
+
+
+def test_invalid_turret_draft_is_not_silently_replaced_with_defaults(wizard_setup):
+    _, _, _, constructor, target, manager, resolution = wizard_setup
+    wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='Weapons')
+    try:
+        count = len(wizard._turrets)
+        wizard._turret_dmg_entry.set_text('nan')
+        wizard._add_turret()
+        assert len(wizard._turrets) == count
+        assert not wizard.is_valid
+    finally:
+        wizard.kill()
+
+
+@pytest.mark.parametrize('hull', [HullSize.TINY, HullSize.STRIKECRAFT_WING])
+def test_retrofit_type_choices_respect_hull_and_wing_role(wizard_setup, hull):
+    _, _, _, constructor, target, manager, resolution = wizard_setup
+    target.hull_size = hull
+    wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='Weapons')
+    def choices(dropdown):
+        return [value[0] if isinstance(value, tuple) else value for value in dropdown.options_list]
+    try:
+        assert choices(wizard._hd_type_dropdown) == ['BASIC']
+        assert choices(wizard._cloaking_type_dropdown) == ['BASIC']
+        if hull == HullSize.STRIKECRAFT_WING:
+            assert choices(wizard._turret_variant_dd) == ['ANTI_STRIKECRAFT']
     finally:
         wizard.kill()

@@ -99,4 +99,7 @@ Ghost Fleet, Tractor Tether, Mine-Clearing Sweep, Guardian Link, Fuel Cache and
 Nebula Catalyst. Nebula Catalyst requires Sensors and Antimatter Storage.
 Human controls, built-in AI and the Codex bridge share their
 validation and orders. Ghost emitters and fuel caches persist with per-ship caps;
-saves use version 4.1 and migrate version 4.0 automatically.
+saves use version 4.2 and migrate older supported saves automatically.
+
+Retrofits use the same equipment validation as the Unit Designer, including full
+configuration checks after component removal. Salvage is paid on successful removal.

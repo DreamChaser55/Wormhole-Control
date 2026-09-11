@@ -68,7 +68,7 @@ def value_snapshot(value):
 
 def component_snapshot(component):
     # These are pointers/caches reconstructed from explicit orders and ownership.
-    excluded = {"unit", "_saved_refs", "standing_order", "_restored_pending", "_deployed_agents",
+    excluded = {"unit", "_saved_refs", "_refit_order_ref", "standing_order", "_restored_pending", "_deployed_agents",
                 "move_target", "move_target_order_id", "hex_jump_target", "wormhole_jump_target", "jump_target_order_id"}
     data = {k: value_snapshot(v) for k, v in vars(component).items() if k not in excluded}
     if isinstance(component, Constructor):
@@ -122,7 +122,7 @@ def mutate(component, target):
         component.build_range = 777.5
         component.current_construction_target = ("FIGHTER_WING", Position(5, 6))
         component.current_refit_target = {"target_unit_id": target.id, "action": "ADD", "component_type": "Engines",
-            "component_config": {"speed": 73.5}, "cost_credits": 100, "time_to_build": 3}
+            "component_config": {"speed": 73.5}, "cost_credits": 100, "time_to_build": 3, "payer_id": target.owner.id, "salvage_due": 0}
         component.construction_order_id = "a" * 32
         component.refit_order_id = "b" * 32
 
@@ -355,7 +355,7 @@ def test_declared_legacy_migrations_are_stable_and_preserve_recoverable_state(ve
     original = deepcopy(data)
     migrated, warnings = migrate_save(data)
     assert data == original
-    assert migrated["version"] == "4.1" and warnings
+    assert migrated["version"] == "4.2" and warnings
     assert migrate_save(migrated) == (migrated, [])
     game = campaign()
     assert deserialize_game_state(game, data)
@@ -536,13 +536,14 @@ def test_paid_job_survives_load_completes_or_refunds_once(job):
     from unit_orders.refit import RefitOrder
     game = campaign()
     builder, target = ship(game, "builder"), ship(game, "target")
+    target.antimatter_component.max_capacity = target.antimatter_component.current_amount = 200
     builder.add_component(Constructor(builder))
     game.players[0].credits = 100000
     if job == "construction":
         order = ConstructOrder(builder, {"unit_template_name": "CONSTRUCTOR_MK1", "target_position": Position(400, 0)})
     else:
         order = RefitOrder(builder, {"target_unit_id": target.id, "action": "ADD", "component_type": "Defenses",
-            "component_config": {"armor": 50, "shields": 50, "point_defense_strength": 0, "hull_cost": 10},
+            "component_config": {"armor": 50, "shields": 50, "point_defense": 0, "hull_cost": 10},
             "cost_credits": 300, "time_to_build": 3})
     builder.commander_component.add_order(order)
     assert order.status is OrderStatus.IN_PROGRESS

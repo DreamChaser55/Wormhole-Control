@@ -398,7 +398,7 @@ def serialize_game_state(game: Any) -> dict:
     ]
 
     return {
-        "version": "4.1",
+        "version": "4.2",
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,

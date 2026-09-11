@@ -20,11 +20,9 @@ from constants import (
     DEFAULT_SENSOR_SHORT_RANGE,
     DEFAULT_JUMP_RANGE,
 )
-from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
-from unit_orders.refit import get_hull_restriction_flag
-from unit_components.constructor import get_component_hull_cost
 
 from .catalog import RETROFIT_COMPONENTS, ABILITY_NAMES
+from refit_validation import evaluate_refit, eligible_component, allowed_turret_variants, installed_configuration
 from . import layout
 from . import param_readers
 
@@ -80,6 +78,9 @@ class RetrofitWizardWindow:
             {"type": "MASS_DRIVER", "variant": "STANDARD", "damage": 10.0, "range": 300.0, "cooldown": 2}
         ]
         self._selected_abilities: Set[str] = set()
+
+        variants = allowed_turret_variants(target_unit.hull_size, installed_configuration(target_unit).wing_type)
+        self._turrets[0]['variant'] = variants[0]
 
         # Calculated costs
         self.calculated_hull_cost: float = 0.0
@@ -180,20 +181,7 @@ class RetrofitWizardWindow:
         if not self.target_unit:
             return RETROFIT_COMPONENTS
 
-        forbidden = HULL_RESTRICTIONS.get(self.target_unit.hull_size, set())
-        eligible = []
-        for comp in RETROFIT_COMPONENTS:
-            k = comp["comp_key"]
-            cls = comp["comp_cls"]
-            if cls in self.target_unit.components:
-                continue
-            flag = get_hull_restriction_flag(k)
-            if flag in forbidden:
-                continue
-            if k == "TradeComponent" and not getattr(self.target_unit, 'engines_component', None):
-                continue
-            eligible.append(comp)
-        return eligible
+        return [comp for comp in RETROFIT_COMPONENTS if eligible_component(self.target_unit, comp['comp_key'])]
 
     def _build_ui(self) -> None:
         """Constructs layout inside the window."""
@@ -254,19 +242,12 @@ class RetrofitWizardWindow:
             tvar = "STANDARD"
 
         try:
-            dmg = float(self._turret_dmg_entry.get_text()) if self._turret_dmg_entry else 10.0
+            dmg = param_readers.read_number(self, '_turret_dmg_entry', 'turret damage', 10)
+            rng = param_readers.read_number(self, '_turret_range_entry', 'turret range', 300)
+            cd = param_readers.read_number(self, '_turret_cd_entry', 'turret cooldown', 2, True)
         except ValueError:
-            dmg = 10.0
-
-        try:
-            rng = float(self._turret_range_entry.get_text()) if self._turret_range_entry else 300.0
-        except ValueError:
-            rng = 300.0
-
-        try:
-            cd = int(self._turret_cd_entry.get_text()) if self._turret_cd_entry else 2
-        except ValueError:
-            cd = 2
+            self._sync_cost_and_summary()
+            return
 
         self._turrets.append({"type": ttype, "variant": tvar, "damage": dmg, "range": rng, "cooldown": cd})
         self._comp_config["turrets"] = self._turrets
@@ -300,6 +281,7 @@ class RetrofitWizardWindow:
 
     def _read_current_params(self) -> None:
         """Reads input parameters for the currently active component."""
+        self._comp_config = {}
         k = self._current_comp_key
         if k == "Engines":
             param_readers.read_engine_params(self)
@@ -311,6 +293,12 @@ class RetrofitWizardWindow:
                 raw_hd = self._hd_type_dropdown.selected_option
                 self._comp_config["drive_type"] = raw_hd[0] if isinstance(raw_hd, tuple) else str(raw_hd)
         elif k == "Weapons":
+            for widget, label, default, integer in (
+                ('_turret_dmg_entry', 'turret damage', 10, False),
+                ('_turret_range_entry', 'turret range', 300, False),
+                ('_turret_cd_entry', 'turret cooldown', 2, True),
+            ):
+                param_readers.read_number(self, widget, label, default, integer)
             self._comp_config["turrets"] = self._turrets
         elif k == "Defenses":
             param_readers.read_defense_params(self)
@@ -342,68 +330,50 @@ class RetrofitWizardWindow:
             param_readers.read_intelligence_params(self)
 
     def _sync_cost_and_summary(self) -> None:
-        """Recalculates hull cost, credits, build time, and updates summary UI elements."""
-        self._read_current_params()
-        self._comp_config.pop("hull_cost", None)
-
-        hull_cost = get_component_hull_cost(self._current_comp_key, self.target_unit, self._comp_config)
-        self.calculated_hull_cost = hull_cost
-        self._comp_config["hull_cost"] = hull_cost
-
-        cost_credits = int(round(hull_cost * COMPONENT_COST_PER_HULL_POINT))
-        self.cost_credits = cost_credits
-
-        time_to_build = max(1, int(round(hull_cost / 5.0)))
-        self.time_to_build = time_to_build
-
-        upkeep = hull_cost * UPKEEP_COST_PER_HULL_POINT
-
-        curr_usage = self.target_unit.current_hull_usage if self.target_unit else 0.0
-        cap = self.target_unit.hull_capacity if self.target_unit else 100.0
-        projected = curr_usage + hull_cost
-        pct = int((projected / cap) * 100) if cap > 0 else 0
-
-        player = self.target_unit.owner if self.target_unit else None
-        player_credits = player.credits if player else 0
-
-        # Update Labels
-        if self._hull_impact_label:
-            self._hull_impact_label.set_text(f"Hull Usage: {projected:.1f} / {cap:.1f} HP ({pct}%)")
-        if self._added_cost_label:
-            self._added_cost_label.set_text(f"Component Hull: +{hull_cost:.1f} HP")
-        if self._credit_cost_label:
-            self._credit_cost_label.set_text(f"Credit Cost: {cost_credits} c")
-        if self._player_credits_label:
-            self._player_credits_label.set_text(f"Available Credits: {player_credits} c")
-        if self._build_time_label:
-            self._build_time_label.set_text(f"Est. Time to Build: {time_to_build} Turn{'s' if time_to_build > 1 else ''}")
-        if self._upkeep_label:
-            self._upkeep_label.set_text(f"Upkeep Impact: +{upkeep:.2f} cr/turn")
-
-        # Check Validations
-        is_over_cap = (projected > cap)
-        is_over_budget = (player_credits < cost_credits)
-
-        if is_over_cap:
-            over_hp = projected - cap
-            status_html = f"<font color='#FF5555'><b>⚠ Insufficient Hull Capacity</b><br>Exceeds available capacity by {over_hp:.1f} HP.</font>"
-            self.is_valid = False
-        elif is_over_budget:
-            needed = cost_credits - player_credits
-            status_html = f"<font color='#FF5555'><b>⚠ Insufficient Credits</b><br>Short by {needed} credits ({cost_credits} required).</font>"
-            self.is_valid = False
-        else:
-            status_html = f"<font color='#55FF55'><b>✔ Ready to Install</b><br>Click 'Order Retrofit' to dispatch constructor.</font>"
-            self.is_valid = True
-
+        """Preview exactly the configuration and charges execution will validate."""
+        from html import escape
+        from custom_unit_templates import ABILITY_REQUIRED_COMPONENTS
+        from refit_validation import RefitEvaluation
+        try:
+            self._read_current_params()
+            result = evaluate_refit(self.target_unit, 'ADD', self._current_comp_key, self._comp_config)
+        except (ValueError, OverflowError) as exc:
+            result = RefitEvaluation(errors=[str(exc)])
+        self.calculated_hull_cost = result.hull_cost
+        self.cost_credits = result.cost_credits
+        self.time_to_build = result.duration
+        # The constructor's owner pays even when the target belongs to an ally.
+        player = self.constructor_units[0].owner if self.constructor_units else self.target_unit.owner
+        errors = list(result.errors)
+        if not errors and player.credits < result.cost_credits:
+            errors.append(f'Insufficient credits: {result.cost_credits} required, {player.credits} available.')
+        proposed = self.target_unit.current_hull_usage + result.hull_cost
+        labels = (
+            (self._hull_impact_label, f'Hull Usage: {proposed:.1f} / {self.target_unit.hull_capacity:.1f} HP'),
+            (self._added_cost_label, f'Component Hull: +{result.hull_cost:.1f} HP'),
+            (self._credit_cost_label, f'Credit Cost: {result.cost_credits} c'),
+            (self._player_credits_label, f'Available Credits: {player.credits} c'),
+            (self._build_time_label, f'Est. Time to Build: {result.duration} Turns'),
+            (self._upkeep_label, f'Upkeep Impact: +{0 if self.target_unit.hull_size == HullSize.STRIKECRAFT_WING else result.hull_cost * UPKEEP_COST_PER_HULL_POINT:.2f} cr/turn'),
+        )
+        for label, text in labels:
+            if label:
+                label.set_text(text)
+        self.is_valid = not errors
         if self._status_box:
-            self._status_box.set_text(status_html)
-
+            self._status_box.set_text('<br>'.join(escape(e) for e in errors) if errors else 'Ready to Install')
         if self._confirm_button:
-            if not self.is_valid:
-                self._confirm_button.disable()
+            self._confirm_button.enable() if self.is_valid else self._confirm_button.disable()
+        if not errors:
+            self._comp_config = result.configuration
+        installed = installed_configuration(self.target_unit)
+        for ability, button in self._ability_buttons.items():
+            missing = [key for key in ABILITY_REQUIRED_COMPONENTS.get(ability, []) if not getattr(installed, key)]
+            # Permit deselecting an ability whose prerequisite has since disappeared.
+            if missing and ability not in self._selected_abilities:
+                button.disable()
             else:
-                self._confirm_button.enable()
+                button.enable()
 
     def process_event(self, event: pygame.event.Event) -> Optional[Dict[str, Any]]:
         """Processes pygame events and returns an action payload if an action occurred."""
@@ -420,6 +390,7 @@ class RetrofitWizardWindow:
                 return {"action": "cancel_retrofit"}
 
             elif elem is self._confirm_button:
+                self._sync_cost_and_summary()
                 if self.is_valid:
                     return {
                         "action": "confirm_retrofit",

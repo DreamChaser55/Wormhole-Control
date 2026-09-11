@@ -99,8 +99,6 @@ def get_refit_context_options(game, actors: typing.List[Unit], target_unit: Unit
     if not _are_allies(target_unit.owner, actors[0].owner):
         return []
 
-    from custom_unit_templates import HULL_RESTRICTIONS, COMPONENT_COST_PER_HULL_POINT
-    from unit_orders.refit import get_hull_restriction_flag
     from unit_components.commander import Commander
     from unit_components.hangar import HangarComponent
     from unit_components.strikecraft import StrikecraftBayComponent
@@ -109,23 +107,8 @@ def get_refit_context_options(game, actors: typing.List[Unit], target_unit: Unit
     refit_options = []
     remove_options = []
 
-    forbidden_flags = HULL_RESTRICTIONS.get(target_unit.hull_size, set())
-    remaining_cap = target_unit.hull_capacity - target_unit.current_hull_usage
-
-    can_add = False
-    if remaining_cap > 0:
-        for comp_meta in RETROFIT_COMPONENTS:
-            comp_key = comp_meta["comp_key"]
-            comp_cls = comp_meta["comp_cls"]
-            if comp_cls in target_unit.components:
-                continue
-            flag_key = get_hull_restriction_flag(comp_key)
-            if flag_key in forbidden_flags:
-                continue
-            if comp_key == "TradeComponent" and not getattr(target_unit, 'engines_component', None):
-                continue
-            can_add = True
-            break
+    from refit_validation import eligible_component, evaluate_refit
+    can_add = any(eligible_component(target_unit, meta['comp_key']) for meta in RETROFIT_COMPONENTS)
 
     if can_add:
         refit_options.append(("Add Component", "open_retrofit_wizard"))
@@ -135,7 +118,10 @@ def get_refit_context_options(game, actors: typing.List[Unit], target_unit: Unit
             continue
         if isinstance(comp_inst, (HangarComponent, StrikecraftBayComponent)) and comp_inst.docked_units:
             continue
-        salvage_refund = int(round(comp_inst.hull_cost * COMPONENT_COST_PER_HULL_POINT * 0.5))
+        evaluation = evaluate_refit(target_unit, 'REMOVE', comp_cls.__name__)
+        if evaluation.errors:
+            continue
+        salvage_refund = evaluation.salvage
         remove_options.append((f"{comp_inst.DISPLAY_NAME} (+{salvage_refund}c / -{comp_inst.hull_cost:.0f}h)", f"refit_remove_{comp_cls.__name__}"))
 
     if remove_options:

@@ -127,7 +127,11 @@ at preflight.
 
 Retrofit remains a human editor transaction because it requires a versioned
 component-configuration schema and dynamic cost preview. It is not advertised to
-the model.
+the model. Its human editor and Constructor execution now share the Unit Designer's
+complete equipment validation, including removals. Version 4.2 saves record the
+original refit payer and unpaid salvage; settlement occurs only once. Removal
+salvage is granted on successful completion, and failed installation validation
+refunds the original payer. No retrofit command is added to the AI contract.
 
 ## Failure behavior
 

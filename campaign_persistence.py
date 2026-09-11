@@ -191,6 +191,10 @@ def validate_document(data):
             runtime = component["runtime"]
             if not isinstance(runtime, dict):
                 raise ValueError(f"{path}.{name}.runtime: expected object")
+            if name == "Constructor" and runtime.get("current_refit_target") is not None:
+                job = runtime["current_refit_target"]
+                if not isinstance(job, dict) or type(job.get("payer_id")) is not int or job["payer_id"] not in player_ids:
+                    raise ValueError(f"{path}.Constructor.refit: unknown payer")
             for i, child in enumerate(runtime.get("docked_units", [])):
                 unit(child, f"{path}.{name}.docked_units[{i}]")
             if name == "Commander":

@@ -671,104 +671,14 @@ class CustomUnitTemplate:
         return calculate_unit_upkeep(self.hull_size, self.total_hull_cost)
 
     def validate(self) -> List[str]:
-        """
-        Returns a list of validation error strings.
-        An empty list means the design is valid.
-        """
-        from unit_template_validation import parameter_errors
-
-        errors: List[str] = []
+        """Validate template metadata and shared equipment rules."""
+        from unit_template_validation import equipment_errors
+        errors = []
         if not isinstance(self.hull_size, HullSize):
             errors.append("hull_size: must be a HullSize.")
         if not isinstance(self.display_name, str) or not self.display_name.strip():
             errors.append("Display name cannot be empty.")
-        if errors:
-            return errors
-        errors.extend(parameter_errors(self.components, self.hull_size))
-        if errors:
-            return errors
-        try:
-            total = self.total_hull_cost
-            if not math.isfinite(total):
-                return ["total_hull_cost: must be finite."]
-        except (OverflowError, ValueError):
-            return ["total_hull_cost: cannot be computed from these parameters."]
-        if total > self.hull_capacity:
-            errors.append(
-                f"Hull over capacity: {total:g} / {self.hull_capacity:g} used."
-            )
-        # Check hull-size restrictions
-        restricted = HULL_RESTRICTIONS.get(self.hull_size, set())
-        c = self.components
-        for flag in sorted(restricted):
-            if getattr(c, flag, False):
-                errors.append(
-                    f"Component '{flag}' is not allowed on {self.hull_size.name} hull."
-                )
-
-        # Validate Strikecraft Wing wing_type and turret variants
-        if self.hull_size == HullSize.STRIKECRAFT_WING:
-            wing_type_upper = c.wing_type.upper() if hasattr(c, "wing_type") else "FIGHTER"
-            if wing_type_upper not in ("FIGHTER", "BOMBER"):
-                errors.append(f"Invalid strikecraft wing role: {c.wing_type}. Must be FIGHTER or BOMBER.")
-            else:
-                for idx, turret in enumerate(c.turrets):
-                    variant_upper = turret.variant.upper()
-                    if wing_type_upper == "FIGHTER":
-                        if variant_upper != "ANTI_STRIKECRAFT":
-                            errors.append(f"Fighter Wing turret {idx + 1} must be ANTI_STRIKECRAFT (got {variant_upper}).")
-                    elif wing_type_upper == "BOMBER":
-                        if variant_upper == "ANTI_STRIKECRAFT":
-                            errors.append(f"Bomber Wing turret {idx + 1} cannot be ANTI_STRIKECRAFT.")
-        # Advanced hyperdrive restriction
-        hull_sizes = list(HullSize)
-        min_idx = hull_sizes.index(ADVANCED_HYPERDRIVE_MIN_HULL)
-        if c.has_hyperdrive and c.hyperdrive_type == "ADVANCED":
-            if hull_sizes.index(self.hull_size) < min_idx:
-                errors.append(
-                    f"ADVANCED hyperdrive requires at least {ADVANCED_HYPERDRIVE_MIN_HULL.name} hull."
-                )
-        # Advanced cloaking restriction
-        min_cloak_idx = hull_sizes.index(ADVANCED_CLOAKING_MIN_HULL)
-        if c.has_cloaking_device and str(c.cloaking_type).upper() == "ADVANCED":
-            if hull_sizes.index(self.hull_size) < min_cloak_idx:
-                errors.append(
-                    f"ADVANCED cloaking device requires at least {ADVANCED_CLOAKING_MIN_HULL.name} hull."
-                )
-        # Antimatter capacity must be at least min cap for hull size
-        min_am_cap = get_min_antimatter_capacity(self.hull_size)
-        if c.has_antimatter_storage and c.antimatter_capacity < min_am_cap:
-            errors.append(f"Antimatter storage capacity must be at least {min_am_cap} for {self.hull_size.name} hull.")
-
-        # Ability component requirements
-        if c.has_ability_component and c.abilities:
-            for ab_key in c.abilities:
-                reqs = ABILITY_REQUIRED_COMPONENTS.get(ab_key, [])
-                for req_comp in reqs:
-                    if not getattr(c, req_comp, False):
-                        ab_name = ab_key.replace('_', ' ').title()
-                        errors.append(f"Ability '{ab_name}' requires component '{req_comp}'.")
-
-        # Trade component engine requirement
-        if c.has_trade_component and not c.has_engine:
-            errors.append("Trade component requires an Engine component.")
-
-        # At least one meaningful component
-        any_component = any([
-            c.has_engine, c.has_antimatter_storage, c.has_antimatter_harvester, c.has_hyperdrive, c.has_weapon_bays,
-            c.has_defenses,
-            c.has_constructor_component, c.has_repair_component,
-            c.has_colony_component, c.has_civilian_habitat_component, c.has_orbital_defense_component, c.has_trade_component, c.has_mining_component,
-            c.has_metal_refinery_component, c.has_crystal_refinery_component,
-            c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
-            c.has_sensors, c.has_minelayer_component, c.has_marines_component,
-            c.has_cloaking_device, c.has_intelligence_component,
-        ])
-
-
-        if not any_component:
-            errors.append("At least one component must be enabled.")
-        return errors
+        return errors or equipment_errors(self.hull_size, self.components)
 
 
 # --------------------------------------------------------------------------
