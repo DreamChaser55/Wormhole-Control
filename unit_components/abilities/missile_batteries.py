@@ -88,8 +88,8 @@ class MissileBatteriesAbility(AbilityInstance):
             weapons_comp = Weapons(platform, hull_cost=0)
             turret = Turret(
                 turret_type=TurretType.MISSILE,
-                damage=15.0,
-                range=350.0,
+                damage=10.0,
+                range=300.0,
                 cooldown=2,
                 parent_unit=platform,
             )

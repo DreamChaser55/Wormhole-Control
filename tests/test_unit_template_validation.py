@@ -262,12 +262,13 @@ def test_cli_catalogue_builtin_and_options(tmp_path):
     # Running with --catalogue builtin targets data/unit_templates.json
     res_builtin = run_cli(tmp_path, '--catalogue', 'builtin')
     assert 'data' in res_builtin.stdout and 'unit_templates.json' in res_builtin.stdout
-    assert res_builtin.returncode == 1
+    assert res_builtin.returncode == 0
     assert 'template(s) checked' in res_builtin.stdout
+    assert '0 invalid; 0 error(s)' in res_builtin.stdout
 
     # Short flag -c builtin
     res_short = run_cli(tmp_path, '-c', 'builtin')
-    assert res_short.returncode == 1
+    assert res_short.returncode == 0
     assert 'data' in res_short.stdout
 
     # Invalid catalogue choice
