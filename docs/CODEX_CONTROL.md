@@ -229,7 +229,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 4, shared field
+Read `observation.command_catalog`: it contains command contract version 5, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -323,7 +323,7 @@ New campaign bounds and validation are shared with the wizard and direct setup; 
 
 ## Tactical ability commands
 
-Observation schema 6 and command contract 4 expose a deduplicated `ability_catalog`,
+Observation schema 6 and command contract 5 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
 response name is `wormhole_control_turn_v4`; unused OpenAI command fields stay null.
@@ -354,3 +354,5 @@ before targeting them. See the [tactical ability overview](REFERENCE.md#tactical
 for Catalyst requirements, targeting and selective effects, and the linked ability
 table for costs and timing. Existing campaign starts and automated-player settings
 are preserved.
+
+Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.

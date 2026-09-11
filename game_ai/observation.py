@@ -245,6 +245,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                 int(body.id) for body in exact_bodies if is_antimatter_source(body)
             ],
             "construction_templates": construction_templates,
+            "wing_templates": _wing_catalog(visible_unit_objects, player),
         },
     }
 
@@ -535,6 +536,15 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
                 ],
                 "maximum_slots": int(getattr(component, "max_slots", 0)),
             }
+    bay = getattr(unit, "strikecraft_bay_component", None)
+    if bay is not None:
+        from unit_catalog import WING_TEMPLATES
+        details["strikecraft_bay"].update(
+            production_template=bay.production_template_name,
+            constructing=bay.constructing, construction_progress=bay.construction_progress,
+            production_turns=bay.production_template["build_time"],
+            production_credit_cost=bay.production_template["build_cost"],
+            production_choices=[name for name in WING_TEMPLATES if bay.can_set_production(name)])
     return details
 
 
@@ -619,12 +629,19 @@ def _construction_catalog(units: list[Any], player: Any) -> list[dict[str, Any]]
             hull_size = tpl.get("hull_size")
             if hull_size == "STRIKECRAFT_WING" or getattr(hull_size, "name", None) == "STRIKECRAFT_WING":
                 continue
-            catalog[buildable.unit_template_name] = {
-                "template_name": buildable.unit_template_name,
-                "credit_cost": int(buildable.cost_credits),
-                "turns": int(buildable.time_to_build),
-            }
+            from unit_catalog import describe_template
+            if buildable.unit_template_name not in catalog:
+                catalog[buildable.unit_template_name] = describe_template(buildable.unit_template_name, tpl)
+
     return [catalog[name] for name in sorted(catalog)]
+
+
+def _wing_catalog(units, player):
+    from unit_templates import UNIT_TEMPLATES
+    from unit_catalog import describe_template, WING_TEMPLATES
+    if not any(is_self_owned(player, getattr(unit, "owner", None)) and getattr(unit, "strikecraft_bay_component", None) for unit in units):
+        return []
+    return [describe_template(key, UNIT_TEMPLATES[key]) for key in WING_TEMPLATES]
 
 
 def _component_amount(component: Any) -> dict[str, float] | None:

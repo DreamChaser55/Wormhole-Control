@@ -45,6 +45,8 @@ class InputProcessor:
                 self.game.is_running = False
                 return
 
+            catalog = getattr(self.gui, 'unit_catalog_window', None)
+            catalog_was_open = bool(catalog and catalog.window.alive() is True)
             gui_action = self.gui.process_event(event)
 
             if gui_action:
@@ -60,6 +62,9 @@ class InputProcessor:
                     )
                 if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION, pygame.MOUSEWHEEL]:
                     continue
+
+            if catalog_was_open and event.type == pygame.KEYDOWN:
+                continue
 
             if hasattr(self.game, "is_ai_input_locked") and self.game.is_ai_input_locked():
                 continue

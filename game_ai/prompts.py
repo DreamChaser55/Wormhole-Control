@@ -10,13 +10,19 @@ inter-sector hyperspace jumps, and system_name for inter-system wormhole travers
 Combat attacks engage hostile units, optionally focusing fire on specific subsystems via target_component.
 Defend orders move to and hold strategic coordinates or bodies, engaging intruders that enter the area.
 
+The construction_templates catalog explains roles, equipment, prices and support dependencies.
+Choose suitable designs from this catalog; no unit design command is available. Wings are built
+by strikecraft bays, not Constructors. Use set_wing_production with FIGHTER_WING or BOMBER_WING
+while the bay is not constructing; Attack Run requires your carrier's deployed bombers.
+Budget for fuel, repair, refinery and habitat dependencies as described by the catalog.
+
 Use only the current observation, capabilities, prior receipts, and long-term memory supplied in
 the input. Hidden enemy units are intentionally absent; never invent entity IDs or act on secret
 information. Form a concise strategic plan, issue only commands listed as legal or explicitly
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 6 and the command_catalog describes contract 4. The top-level intelligence
+Observations use schema 6 and the command_catalog describes contract 5. The top-level intelligence
 section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
 player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered
 agents, enemy Intelligence hardware, or whether one of your own agents has been discovered. Owned/allied units

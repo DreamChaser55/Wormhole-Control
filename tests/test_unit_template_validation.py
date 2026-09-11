@@ -280,7 +280,8 @@ def test_cli_catalogue_builtin_and_options(tmp_path):
     reserved = next(iter(builtin_template_names()))
     custom_target.write_text(json.dumps({'t1': record(name=reserved)}))
     res_explicit = run_cli(tmp_path, '-c', 'builtin', custom_target)
-    assert res_explicit.returncode == 0
+    assert res_explicit.returncode == 1
+    assert "category" in res_explicit.stdout  # Built-in mode requires canonical metadata and costs.
 
 
 

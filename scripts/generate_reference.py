@@ -84,6 +84,14 @@ def generated_blocks():
              ('Nitrogen nebula', f'-{NITROGEN_NEBULA_COOLDOWN_REDUCTION} turn to cooldown reset when firing'),
              ('Oxygen nebula', f'{OXYGEN_NEBULA_SPLASH_DAMAGE_MOD:g}x splash damage taken')]),
     }
+    from unit_templates import _load_templates
+    from unit_catalog import describe_template
+    entries = [describe_template(key, raw) for key, raw in _load_templates().items()]
+    entries.sort(key=lambda e: (e['category'], e['credit_cost'], e['name']))
+    blocks['unit-catalog'] = table(
+        ['Design', 'Category', 'Hull / kind', 'Hull used', 'Credits', 'Turns', 'Upkeep', 'Role and operation'],
+        [(e['name'], e['category'], e['hull_size'] + ' ' + e['kind'], f"{e['hull_used']:.2f}/{e['hull_capacity']:g}",
+          e['credit_cost'], e['turns'], f"{e['upkeep']:.2f}", e['description']) for e in entries])
     return blocks
 
 
@@ -98,7 +106,7 @@ def replace_block(text, key, generated):
 def update_documents(blocks, *, check=False, root=ROOT):
     """Return stale relative paths. Check mode never writes any document."""
     stale = []
-    for relative, keys in {'docs/REFERENCE.md': ('components', 'abilities', 'order-count', 'planets', 'environment')}.items():
+    for relative, keys in {'docs/REFERENCE.md': ('components', 'abilities', 'order-count', 'planets', 'environment', 'unit-catalog')}.items():
         path = root / relative
         original = path.read_text(encoding='utf-8')
         result = original

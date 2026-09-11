@@ -902,137 +902,7 @@ class CustomTemplateManager:
         correctly.  Performance parameters are also stored so the design can
         be reconstructed faithfully on load.
         """
-        c = template.components
-        d: Dict[str, Any] = {
-            "name": template.display_name,
-            "hull_size": template.hull_size,   # kept as HullSize enum (matches how JSON loader converts)
-            "hull_points": HIT_POINTS[template.hull_size],
-            "build_time": template.build_time,
-            "build_cost": template.build_cost,
-
-            # --- Engines ---
-            "has_engine": c.has_engine,
-            "engine_speed": c.engine_speed,
-            "engine_hull_cost": template.engine_hull_cost,  # computed with hull_size
-
-            # --- Antimatter Storage ---
-            "has_antimatter_storage": c.has_antimatter_storage,
-            "antimatter_capacity": c.antimatter_capacity,
-            "antimatter_hull_cost": c.antimatter_hull_cost,  # computed
-
-            # --- Antimatter Harvester ---
-            "has_antimatter_harvester": c.has_antimatter_harvester,
-            "antimatter_harvester_hull_cost": c.antimatter_harvester_hull_cost,
-
-            # --- Hyperdrive ---
-            "has_hyperdrive": c.has_hyperdrive,
-            "hyperdrive_type": c.hyperdrive_type,
-            "hyperdrive_jump_range": c.hyperdrive_jump_range,
-            "hyperdrive_hull_cost": template.hyperdrive_hull_cost,  # computed with hull_size
-
-            # --- Weapons ---
-            "has_weapon_bays": c.has_weapon_bays,
-            "weapon_bays_hull_cost": c.weapon_bays_hull_cost,  # computed
-            "turrets": [
-                {
-                    "type": t.turret_type,
-                    "damage": t.damage,
-                    "range": t.range,
-                    "cooldown": t.cooldown,
-                    "variant": t.variant,
-                }
-                for t in c.turrets
-            ],
-
-            # --- Defenses ---
-            "has_defenses": c.has_defenses,
-            "defenses_hull_cost": c.defenses_hull_cost,  # computed
-            "armor": c.armor,
-            "shields": c.shields,
-            "point_defense": c.point_defense,
-
-            # --- Fixed-cost components ---
-            "has_constructor_component": c.has_constructor_component,
-            "constructor_hull_cost": c.constructor_hull_cost,
-
-            "has_repair_component": c.has_repair_component,
-            "repair_rate": c.repair_rate,
-            "repair_range": c.repair_range,
-            "credit_cost_per_hp": c.credit_cost_per_hp,
-            "repair_hull_cost": c.repair_hull_cost,
-
-            "has_colony_component": c.has_colony_component,
-            "colony_hull_cost": c.colony_hull_cost,
-
-            "has_civilian_habitat_component": c.has_civilian_habitat_component,
-            "civilian_habitat_bonus": c.civilian_habitat_bonus,
-            "civilian_habitat_hull_cost": c.civilian_habitat_hull_cost,
-
-            "has_orbital_defense_component": c.has_orbital_defense_component,
-            "orbital_defense_radius": c.orbital_defense_radius,
-            "orbital_defense_attack_bonus": c.orbital_defense_attack_bonus,
-            "orbital_defense_defense_bonus": c.orbital_defense_defense_bonus,
-            "orbital_defense_hull_cost": c.orbital_defense_hull_cost,
-
-            "has_trade_component": c.has_trade_component,
-            "trade_hull_cost": c.trade_hull_cost,
-            "trade_revenue_multiplier": c.trade_revenue_multiplier,
-
-            "has_mining_component": c.has_mining_component,
-            "mining_rate": c.mining_rate,
-            "mining_range": c.mining_range,
-            "max_mining_cargo": c.max_mining_cargo,
-            "mining_hull_cost": c.mining_hull_cost,
-
-            "has_metal_refinery_component": c.has_metal_refinery_component,
-            "metal_refinery_hull_cost": c.metal_refinery_hull_cost,
-            "unload_range": 300.0,
-
-            "has_crystal_refinery_component": c.has_crystal_refinery_component,
-            "crystal_refinery_hull_cost": c.crystal_refinery_hull_cost,
-
-            "has_hangar": c.has_hangar,
-            "hangar_slots": c.hangar_slots,
-            "hangar_hull_cost": c.hangar_hull_cost,
-
-            "has_strikecraft_bay": c.has_strikecraft_bay,
-            "strikecraft_bay_slots": c.strikecraft_bay_slots,
-            "strikecraft_bay_hull_cost": c.strikecraft_bay_hull_cost,
-            "wing_type": c.wing_type,
-
-            "has_inhibitor": c.has_inhibitor,
-            "inhibitor_radius": c.inhibitor_radius,
-            "inhibitor_hull_cost": c.inhibitor_hull_cost,
-
-            "has_ability_component": c.has_ability_component,
-            "ability_hull_cost": c.ability_hull_cost,
-            "abilities": c.abilities,
-
-            "has_sensors": c.has_sensors,
-            "sensor_short_range": c.sensor_short_range,
-            "sensor_long_range_hexes": c.sensor_long_range_hexes,
-            "sensors_hull_cost": c.sensors_hull_cost,
-
-            "has_minelayer_component": c.has_minelayer_component,
-            "minelayer_hull_cost": c.minelayer_hull_cost,
-
-            "has_marines_component": c.has_marines_component,
-            "marines_count": c.marines_count,
-            "marines_hull_cost": c.marines_hull_cost,
-
-            "has_cloaking_device": c.has_cloaking_device,
-            "cloaking_type": c.cloaking_type,
-            "cloaking_radius": c.cloaking_radius,
-            "cloaking_hull_cost": c.cloaking_device_hull_cost,
-
-            "has_intelligence_component": c.has_intelligence_component,
-            "intelligence_agents_count": c.intelligence_agents_count,
-            "has_counter_intelligence": c.has_counter_intelligence,
-            "intelligence_hull_cost": c.intelligence_hull_cost,
-
-            "is_custom": True,  # marker so we know it's player-designed
-        }
-        return d
+        return template_to_dict(template)
 
 
     def _dict_to_template(self, key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
@@ -1165,3 +1035,138 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
         components=comp,
     )
 
+
+
+def template_to_dict(template: CustomUnitTemplate, *, is_custom: bool = True) -> Dict[str, Any]:
+    """Serialize a design with canonical costs without storage or registry changes."""
+    c = template.components
+    d: Dict[str, Any] = {
+        "name": template.display_name,
+        "hull_size": template.hull_size,   # kept as HullSize enum (matches how JSON loader converts)
+        "hull_points": HIT_POINTS[template.hull_size],
+        "build_time": template.build_time,
+        "build_cost": template.build_cost,
+
+        # --- Engines ---
+        "has_engine": c.has_engine,
+        "engine_speed": c.engine_speed,
+        "engine_hull_cost": template.engine_hull_cost,  # computed with hull_size
+
+        # --- Antimatter Storage ---
+        "has_antimatter_storage": c.has_antimatter_storage,
+        "antimatter_capacity": c.antimatter_capacity,
+        "antimatter_hull_cost": c.antimatter_hull_cost,  # computed
+
+        # --- Antimatter Harvester ---
+        "has_antimatter_harvester": c.has_antimatter_harvester,
+        "antimatter_harvester_hull_cost": c.antimatter_harvester_hull_cost,
+
+        # --- Hyperdrive ---
+        "has_hyperdrive": c.has_hyperdrive,
+        "hyperdrive_type": c.hyperdrive_type,
+        "hyperdrive_jump_range": c.hyperdrive_jump_range,
+        "hyperdrive_hull_cost": template.hyperdrive_hull_cost,  # computed with hull_size
+
+        # --- Weapons ---
+        "has_weapon_bays": c.has_weapon_bays,
+        "weapon_bays_hull_cost": c.weapon_bays_hull_cost,  # computed
+        "turrets": [
+            {
+                "type": t.turret_type,
+                "damage": t.damage,
+                "range": t.range,
+                "cooldown": t.cooldown,
+                "variant": t.variant,
+            }
+            for t in c.turrets
+        ],
+
+        # --- Defenses ---
+        "has_defenses": c.has_defenses,
+        "defenses_hull_cost": c.defenses_hull_cost,  # computed
+        "armor": c.armor,
+        "shields": c.shields,
+        "point_defense": c.point_defense,
+
+        # --- Fixed-cost components ---
+        "has_constructor_component": c.has_constructor_component,
+        "constructor_hull_cost": c.constructor_hull_cost,
+
+        "has_repair_component": c.has_repair_component,
+        "repair_rate": c.repair_rate,
+        "repair_range": c.repair_range,
+        "credit_cost_per_hp": c.credit_cost_per_hp,
+        "repair_hull_cost": c.repair_hull_cost,
+
+        "has_colony_component": c.has_colony_component,
+        "colony_hull_cost": c.colony_hull_cost,
+
+        "has_civilian_habitat_component": c.has_civilian_habitat_component,
+        "civilian_habitat_bonus": c.civilian_habitat_bonus,
+        "civilian_habitat_hull_cost": c.civilian_habitat_hull_cost,
+
+        "has_orbital_defense_component": c.has_orbital_defense_component,
+        "orbital_defense_radius": c.orbital_defense_radius,
+        "orbital_defense_attack_bonus": c.orbital_defense_attack_bonus,
+        "orbital_defense_defense_bonus": c.orbital_defense_defense_bonus,
+        "orbital_defense_hull_cost": c.orbital_defense_hull_cost,
+
+        "has_trade_component": c.has_trade_component,
+        "trade_hull_cost": c.trade_hull_cost,
+        "trade_revenue_multiplier": c.trade_revenue_multiplier,
+
+        "has_mining_component": c.has_mining_component,
+        "mining_rate": c.mining_rate,
+        "mining_range": c.mining_range,
+        "max_mining_cargo": c.max_mining_cargo,
+        "mining_hull_cost": c.mining_hull_cost,
+
+        "has_metal_refinery_component": c.has_metal_refinery_component,
+        "metal_refinery_hull_cost": c.metal_refinery_hull_cost,
+        "unload_range": 300.0,
+
+        "has_crystal_refinery_component": c.has_crystal_refinery_component,
+        "crystal_refinery_hull_cost": c.crystal_refinery_hull_cost,
+
+        "has_hangar": c.has_hangar,
+        "hangar_slots": c.hangar_slots,
+        "hangar_hull_cost": c.hangar_hull_cost,
+
+        "has_strikecraft_bay": c.has_strikecraft_bay,
+        "strikecraft_bay_slots": c.strikecraft_bay_slots,
+        "strikecraft_bay_hull_cost": c.strikecraft_bay_hull_cost,
+        "wing_type": c.wing_type,
+
+        "has_inhibitor": c.has_inhibitor,
+        "inhibitor_radius": c.inhibitor_radius,
+        "inhibitor_hull_cost": c.inhibitor_hull_cost,
+
+        "has_ability_component": c.has_ability_component,
+        "ability_hull_cost": c.ability_hull_cost,
+        "abilities": c.abilities,
+
+        "has_sensors": c.has_sensors,
+        "sensor_short_range": c.sensor_short_range,
+        "sensor_long_range_hexes": c.sensor_long_range_hexes,
+        "sensors_hull_cost": c.sensors_hull_cost,
+
+        "has_minelayer_component": c.has_minelayer_component,
+        "minelayer_hull_cost": c.minelayer_hull_cost,
+
+        "has_marines_component": c.has_marines_component,
+        "marines_count": c.marines_count,
+        "marines_hull_cost": c.marines_hull_cost,
+
+        "has_cloaking_device": c.has_cloaking_device,
+        "cloaking_type": c.cloaking_type,
+        "cloaking_radius": c.cloaking_radius,
+        "cloaking_hull_cost": c.cloaking_device_hull_cost,
+
+        "has_intelligence_component": c.has_intelligence_component,
+        "intelligence_agents_count": c.intelligence_agents_count,
+        "has_counter_intelligence": c.has_counter_intelligence,
+        "intelligence_hull_cost": c.intelligence_hull_cost,
+
+        "is_custom": is_custom,  # marker so we know it's player-designed
+    }
+    return d

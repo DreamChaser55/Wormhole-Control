@@ -11,7 +11,7 @@ def test_check_mode_reports_stale_blocks_without_writing(tmp_path):
     shutil.copyfile(ROOT / 'docs/REFERENCE.md', tmp_path / 'docs/REFERENCE.md')
     shutil.copyfile(ROOT / 'README.md', tmp_path / 'README.md')
     blocks = {key: 'generated fixture' for key in
-              ('components', 'abilities', 'order-count', 'planets', 'environment')}
+              ('components', 'abilities', 'order-count', 'planets', 'environment', 'unit-catalog')}
     before = {p: p.read_bytes() for p in tmp_path.rglob('*.md')}
     assert update_documents(blocks, check=True, root=tmp_path) == ['docs/REFERENCE.md']
     assert all(p.read_bytes() == content for p, content in before.items())

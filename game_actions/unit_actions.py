@@ -102,10 +102,8 @@ def handle_toggle_build_wing_type(game, action: dict) -> None:
         current_player = game.players[game.current_player_index] if game.players else None
         if carrier.owner == current_player:
             bay = carrier.strikecraft_bay_component
-            if bay.build_wing_type == WingType.FIGHTER:
-                bay.build_wing_type = WingType.BOMBER
-            else:
-                bay.build_wing_type = WingType.FIGHTER
+            template = "BOMBER_WING" if bay.build_wing_type == WingType.FIGHTER else "FIGHTER_WING"
+            bay.set_production(template)
             logger.debug(f"Carrier {carrier.name} build wing type toggled to {bay.build_wing_type.name}.")
     game.sidebar_needs_update = True
 

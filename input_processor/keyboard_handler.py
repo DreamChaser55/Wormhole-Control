@@ -15,6 +15,9 @@ def handle_keyboard_panning(game, gui, time_delta: float) -> None:
         gui: Target GUI_Handler instance.
         time_delta (float): Elapsed frame time in seconds.
     """
+    catalog = getattr(gui, 'unit_catalog_window', None)
+    if catalog and catalog.window.alive() is True:
+        return
     keys = pygame.key.get_pressed()
     is_typing = False
     if hasattr(gui, 'is_any_text_entry_focused'):

@@ -181,7 +181,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 6 / commands 4 / socket 3)
+## Shared order contract (observation 6 / commands 5 / socket 3)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -343,3 +343,5 @@ phases. Save 4.0 migrates with empty tactical collections and unchanged legacy
 ability state. Counts are rebuilt from surviving objects and historical source
 IDs participate in allocator reconciliation. Offline fake-provider tests exercise
 all six command paths without live API calls.
+
+Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.

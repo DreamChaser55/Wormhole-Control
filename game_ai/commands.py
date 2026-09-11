@@ -831,6 +831,14 @@ class CommandGateway:
                     raise _Rejected('capability_unavailable', 'This link is not active.')
                 projection._tactical_cancelled.add((unit.id, command.ability))
             return [_Prepared(apply=lambda unit=unit: cancel(unit, command.ability), receipt='Cancelled ability link.') for unit in units]
+        if command.type == "set_wing_production":
+            unit = units[0]
+            self._require_capability(unit, command.type)
+            bay = unit.strikecraft_bay_component
+            if not bay.can_set_production(command.template_name):
+                raise _Rejected("capability_unavailable", "Choose a fighter or bomber template while the bay is not constructing.")
+            return [_Prepared(lambda: bay.set_production(command.template_name),
+                              f"Selected {command.template_name} production for unit {unit.id}.")]
         if command.type == "set_stance":
             return self._prepare_stance(units, command.stance)
         if command.type == "toggle_inhibitor":

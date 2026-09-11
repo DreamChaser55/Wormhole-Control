@@ -285,6 +285,14 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                     shift_pressed
                 ))
 
+        elif extracted_action_id == "open_unit_catalog":
+            if isinstance(target, Position) and getattr(game, 'gui', None):
+                from gui.unit_catalog_window import UnitCatalogWindow
+                existing = getattr(game.gui, 'unit_catalog_window', None)
+                if existing:
+                    existing.kill()
+                game.gui.unit_catalog_window = UnitCatalogWindow(game.gui, selected_units, target, shift_pressed)
+
         elif extracted_action_id.startswith("construct_"):
             unit_template_name = extracted_action_id.split("construct_")[1]
             if isinstance(target, Position):

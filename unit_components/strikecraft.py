@@ -120,6 +120,24 @@ class StrikecraftBayComponent(UnitComponent):
         self.replenish_progress = 0
         self.build_wing_type = WingType.FIGHTER
 
+    @property
+    def production_template_name(self):
+        return "FIGHTER_WING" if self.build_wing_type == WingType.FIGHTER else "BOMBER_WING"
+
+    @property
+    def production_template(self):
+        from unit_templates import UNIT_TEMPLATES
+        return UNIT_TEMPLATES[self.production_template_name]
+
+    def can_set_production(self, template_name):
+        return not self.is_destroyed and not self.constructing and template_name in ("FIGHTER_WING", "BOMBER_WING")
+
+    def set_production(self, template_name):
+        if not self.can_set_production(template_name):
+            return False
+        self.build_wing_type = WingType.FIGHTER if template_name == "FIGHTER_WING" else WingType.BOMBER
+        return True
+
     @staticmethod
     def calc_hull_cost(slots: int) -> float:
         """Compute the hull cost of a Strikecraft Bay component from strikecraft_bay_slots."""
@@ -133,13 +151,13 @@ class StrikecraftBayComponent(UnitComponent):
         data.append({'type': 'label', 'text': f"Capacity: {used_slots} / {self.max_slots} wings", 'object_id': '#sidebar_info_label', 'height': 20})
         if self.constructing:
             role_text = "Fighter" if self.build_wing_type == WingType.FIGHTER else "Bomber"
-            data.append({'type': 'label', 'text': f"Constructing {role_text} Wing ({self.construction_progress + 1}/2 turns)", 'object_id': '#sidebar_info_label', 'height': 20})
+            data.append({'type': 'label', 'text': f"Constructing {role_text} Wing ({self.construction_progress + 1}/{self.production_template['build_time']} turns)", 'object_id': '#sidebar_info_label', 'height': 20})
         elif self.replenishing_unit:
             data.append({'type': 'label', 'text': f"Replenishing Wing: {self.replenishing_unit.name}", 'object_id': '#sidebar_info_label', 'height': 20})
         
         is_owner = self.unit.owner == game_state.players[game_state.current_player_index]
 
-        if is_owner:
+        if is_owner and not self.constructing and not self.is_destroyed:
             role_text = "Fighter" if self.build_wing_type == WingType.FIGHTER else "Bomber"
             data.append({
                 'type': 'button',
@@ -316,7 +334,6 @@ class StrikecraftBayComponent(UnitComponent):
 
     def finish_auto_construction(self, galaxy: 'Galaxy'):
         """Creates the new Strikecraft Wing and docks it."""
-        from domain.units import Unit
         from unit_templates import UNIT_TEMPLATES
         
         template_name = "FIGHTER_WING" if self.build_wing_type == WingType.FIGHTER else "BOMBER_WING"
@@ -325,43 +342,12 @@ class StrikecraftBayComponent(UnitComponent):
             logger.debug(f"Error: Unit template '{template_name}' not found for auto-construction.")
             return
  
-        new_unit = Unit(
-            owner=self.unit.owner,
-            name=template["name"],
-            hull_size=template["hull_size"],
-            game=self.unit.game,
-            in_system=self.unit.in_system,
-            in_hex=self.unit.in_hex,
-            position=Position(self.unit.position.x, self.unit.position.y),
-            template_name=template.get("name", template_name)
-        )
+        from .constructor import assemble_unit_from_template
+        new_unit = assemble_unit_from_template(
+            template_name, template, self.unit.owner, self.unit.in_system,
+            self.unit.in_hex, Position(self.unit.position.x, self.unit.position.y), self.unit.game)
 
-        if template.get("has_engine"):
-            new_unit.add_component(Engines(new_unit, speed=template.get("engine_speed", 0), hull_cost=template.get("engine_hull_cost", 0)))
-        
-        if template.get("has_weapon_bays"):
-            weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
-            for turret_def in template.get("turrets", []):
-                variant_str = turret_def.get("variant", "STANDARD")
-                try:
-                    variant = TurretVariant[variant_str.upper()]
-                except (KeyError, ValueError, AttributeError):
-                    variant = TurretVariant.STANDARD
-
-                turret = Turret(
-                    turret_type=TurretType[turret_def["type"]],
-                    damage=turret_def["damage"],
-                    range=turret_def["range"],
-                    cooldown=turret_def["cooldown"],
-                    parent_unit=new_unit,
-                    variant=variant
-                )
-                weapons_comp.add_turret(turret)
-            new_unit.add_component(weapons_comp)
-
-        wing_comp = StrikecraftWingComponent(new_unit, wing_type=self.build_wing_type)
-        wing_comp.mother_carrier = self.unit
-        new_unit.add_component(wing_comp)
+        new_unit.strikecraft_wing_component.mother_carrier = self.unit
 
         # Direct dock
         self.docked_units.append(new_unit)
@@ -408,7 +394,7 @@ class StrikecraftBayComponent(UnitComponent):
         # 2. Update ongoing construction
         if self.constructing:
             self.construction_progress += 1
-            if self.construction_progress >= 2: # 2 turns to construct a new wing
+            if self.construction_progress >= self.production_template['build_time']:
                 self.finish_auto_construction(galaxy)
                 self.constructing = False
                 self.construction_progress = 0
@@ -432,7 +418,7 @@ class StrikecraftBayComponent(UnitComponent):
 
         # 4. If not busy and we have free slots, start constructing a new wing
         if self.get_used_slots() < self.max_slots:
-            cost = 150
+            cost = self.production_template["build_cost"]
             if owner.credits >= cost:
                 owner.credits -= cost
                 self.constructing = True

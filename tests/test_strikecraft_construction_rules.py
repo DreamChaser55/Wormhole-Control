@@ -107,17 +107,8 @@ def test_context_menu_construct_options_exclude_strikecraft_wings():
     game.selected_objects = [unit]
 
     options, _ = build_sector_context_menu_options(game, clicked_object=None, clicked_sector_coord=Position(50, 50))
-    construct_entry = next((opt for opt in options if isinstance(opt, tuple) and opt[0] == "Construct"), None)
-
-    assert construct_entry is not None
-    sub_options = construct_entry[1]
-    action_ids = [action for label, action in sub_options]
-
-    assert "construct_FIGHTER_WING" not in action_ids
-    assert "construct_BOMBER_WING" not in action_ids
-    for label, action in sub_options:
-        assert "fighter wing" not in label.lower()
-        assert "bomber wing" not in label.lower()
+    assert ("Construct...", "open_unit_catalog") in options
+    assert not any(isinstance(action, str) and action.startswith('construct_') for _, action in options)
 
 
 def test_ai_observation_construction_catalog_excludes_strikecraft_wings():
@@ -171,7 +162,8 @@ def test_strikecraft_bay_sole_construction_intact():
     # First tick starts construction
     bay.update(galaxy)
     assert bay.constructing
-    assert carrier.owner.credits == 350  # 500 - 150
+    from unit_templates import UNIT_TEMPLATES
+    assert carrier.owner.credits == 500 - UNIT_TEMPLATES["FIGHTER_WING"]["build_cost"]
 
     # Progress turn 1
     bay.update(galaxy)

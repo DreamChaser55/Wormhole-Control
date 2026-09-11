@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 4
+CONTRACT_VERSION = 5
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -45,6 +45,7 @@ COMMAND_SPECS = {
     "colonize": _spec("Colonize an unowned body; queue behind a required colonist load.", ("target_id",), capability=("colony_component",)),
     "load_colonists": _spec("Load a positive amount of colonists from a self-owned colony.", ("target_id", "amount"), capability=("colony_component",)),
     "construct": _spec("Construct a template at a position.", ("template_name", "position"), capability=("constructor_component",)),
+    "set_wing_production": _spec("Select fighter or bomber production when the bay is not constructing.", ("template_name",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
     "repair": _spec("Repair a friendly unit.", ("target_id",), capability=("repair_component",)),
     "mine": _spec("Mine a body once.", ("target_id",), capability=("mining_component",)),
     "continuous_mine": _spec("Repeat mining and unloading indefinitely.", ("target_id",), capability=("mining_component",)),

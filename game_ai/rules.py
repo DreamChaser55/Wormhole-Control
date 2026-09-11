@@ -173,7 +173,7 @@ def supported_commands(unit: Any) -> list[str]:
     if getattr(unit, "hangar_component", None):
         commands.append("deploy_unit")
     if getattr(unit, "strikecraft_bay_component", None):
-        commands.extend(["deploy_unit", "deploy_all_wings"])
+        commands.extend(["deploy_unit", "deploy_all_wings", "set_wing_production"])
     if getattr(unit, "trade_component", None):
         commands.extend(["trade", "continuous_trade"])
     if getattr(unit, "inhibitor_component", None):
@@ -426,6 +426,14 @@ def command_guidance(
         options["enter_gas_giant"] = {"target_ids": gas_giants}
         if gas_giants and has_operational_engines(unit):
             legal.add("enter_gas_giant")
+
+    bay = getattr(unit, "strikecraft_bay_component", None)
+    if bay is not None:
+        from unit_catalog import WING_TEMPLATES
+        choices = [name for name in WING_TEMPLATES if bay.can_set_production(name)]
+        options["set_wing_production"] = {"template_names": choices}
+        if choices:
+            legal.add("set_wing_production")
 
     constructor = getattr(unit, "constructor_component", None)
     if constructor is not None:

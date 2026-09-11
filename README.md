@@ -113,3 +113,9 @@ weapon damage while retaining 75% outgoing damage; Flak protects a moving
 500-unit radius. The Testing carrier and Huge ship demonstrate these abilities.
 See [carrier ability rules](docs/REFERENCE.md#carrier-and-anti-strikecraft-abilities).
 Campaign saves use version 4.3 and preserve active wing orders and recovery state.
+
+The built-in catalog contains 49 ships, stations and wings covering every equipment family
+and tactical ability. Select a Constructor and right-click a location, then choose
+**Construct...** to search and compare designs. Carriers select Fighter or Bomber production
+through their strikecraft bay; AI players use `set_wing_production` under command contract 5.
+See the [unit catalog](docs/REFERENCE.md#built-in-unit-catalog) for roles and calculated costs.

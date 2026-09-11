@@ -120,7 +120,9 @@ def test_strikecraft_bay_auto_construction():
         "hull_size": HullSize.STRIKECRAFT_WING,
         "has_engine": True,
         "engine_speed": 150.0,
-        "engine_hull_cost": 2
+        "engine_hull_cost": 2,
+        "build_cost": 150,
+        "build_time": 2
     }
 
     # First turn: start construction

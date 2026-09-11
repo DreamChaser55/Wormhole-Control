@@ -18,7 +18,7 @@ This document contains player guidance, in-depth reference data, data structures
 - [9. Intelligence, Counter-Intelligence & Sabotage Systems](#9-intelligence-counter-intelligence--sabotage-systems)
 - [10. Diplomacy & Team Systems](#10-diplomacy--team-systems)
 - [11. Celestial Collision Avoidance](#11-celestial-collision-avoidance)
-- [AI order control (observation 6, command contract 4)](#ai-order-control-observation-6-command-contract-4)
+- [AI order control (observation 6, command contract 5)](#ai-order-control-observation-6-command-contract-5)
 - [12. Celestial Bodies & Environmental Mechanics](#12-celestial-bodies--environmental-mechanics)
 - [13. Damage & Minefield Resolution](#13-damage--minefield-resolution)
 - [Runtime storage and API failure contracts](#runtime-storage-and-api-failure-contracts)
@@ -343,7 +343,7 @@ Wormhole Control features 6 hull classes (`HullSize`). Each hull size sets the c
 | `LARGE` | 5 | 100.0 | 200 | 150.0 | 1000 | 15 | 0.01 × Used Hull Points |
 | `HUGE` | 6 | 200.0 | 400 | 200.0 | 2000 | 20 | 0.01 × Used Hull Points |
 
-*Note: Total unit build cost is `Base Build Cost + (Used Hull Capacity × 30 Credits)`. Total build time is `Base Build Time + (Used Hull Capacity / 10 Turns)`. Ongoing unit upkeep cost is `0.01 Credits × Used Hull Points` per turn (Strikecraft Wings are exempt). Strikecraft Wings are immune to negative field effects (sublight speed drag in Asteroid, Ice, and Debris Fields, and debris abrasion damage), but are strictly banned from entering or launching within Magnetic Storms.*
+*Note: Total unit build cost is `Base Build Cost + (Used Hull Capacity × 30 Credits)`. Total build time is `Base Build Time + round((Used Hull Capacity / Hull Capacity) × Base Build Time)`. Ongoing unit upkeep cost is `0.01 Credits × Used Hull Points` per turn (Strikecraft Wings are exempt). Strikecraft Wings are immune to negative field effects (sublight speed drag in Asteroid, Ice, and Debris Fields, and debris abrasion damage), but are strictly banned from entering or launching within Magnetic Storms.*
 
 ---
 
@@ -887,7 +887,7 @@ where $r_{\text{body}}$ is the body's physical collision radius (e.g. `PLANET_RA
 - **Collision Safety**: Because the plotted arrival point lies strictly outside the solid body's collision circle, vessels fly directly to the standoff perimeter without penetrating the planet surface or triggering collisions.
 
 
-## AI order control (observation 6, command contract 4)
+## AI order control (observation 6, command contract 5)
 
 Both GPT-5.6 Luna and the Codex socket controller use the same command registry,
 observation builder, visibility policy and preflight/commit gateway. Socket protocol 3
@@ -911,7 +911,7 @@ blocking as guidance rather than forbidding intentional queued work.
 Tactical observations include actual turret range/cooldown/target classes, base/effective
 sensor and hyperdrive ranges, jump status/functionality, support ranges, defend radius and
 cloak status/upkeep. Supported hardware is distinguished from current issuance legality.
-Friendly/allied turret observations retain `cooldown` (base) and `cooldown_remaining`, and add `effective_cooldown` (reset if fired here). Already-exposed celestial bodies include numeric `environmental_effects` where applicable. These additive fields retain observation schema 6, command contract 4 and socket protocol 3. Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
+Friendly/allied turret observations retain `cooldown` (base) and `cooldown_remaining`, and add `effective_cooldown` (reset if fired here). Already-exposed celestial bodies include numeric `environmental_effects` where applicable. These additive fields retain observation schema 6, command contract 5 and socket protocol 3. Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
 nonexistent target guesses receive indistinguishable public errors. Hidden target-derived
 movement geometry is redacted; explicit player coordinates remain order intent. No raw
 persistence or sidebar state is serialized into AI observations.
@@ -1264,3 +1264,88 @@ disabled, hidden, docked, or loses required operational equipment. Carrier comma
 range is checked at activation; Tracking range and Flak coverage update continuously.
 The Testing carrier carries the three carrier abilities; the Testing Huge ship
 carries both defense abilities. Normal starting fleets are unchanged.
+
+
+## Built-in unit catalog
+
+Normal campaigns offer 49 designs covering all component families and all 21 abilities.
+Every Constructor can build ordinary ships and stations. Strikecraft bays automatically
+build the selected Fighter or Bomber Wing using its catalog price and duration.
+Normal starts retain the original four starter roles and starting resources.
+
+Select a Constructor, right-click a construction location, and choose **Construct...**.
+The Unit Catalog supports name/role/ability search and category, hull, unit-kind and price
+filters. Details show equipment, effective weapon ranges, abilities, fuel, price, duration
+and upkeep. **Queue after orders** preserves existing work and starts with the Shift state
+used when opening the window. Multiple builders show their combined price. Wings can be
+inspected here but are produced in strikecraft bays. Utility Transports carry Tiny vessels.
+
+The Large Interdictor has radius 235 and uses 100/100 hull; the Huge Interdiction Fortress
+has radius 521 and uses 200/200. Both require valid non-overlapping field placement and fuel.
+The Large Intelligence Ship combines two agents, Basic cloaking and Counter-Intelligence,
+using 75/100 hull. It supports infiltration, sabotage, extraction, sweeps and elimination.
+
+AI observations provide `action_catalogs.construction_templates` with roles and equipment,
+and `action_catalogs.wing_templates` when the player owns a strikecraft bay.
+The immediate `set_wing_production` command takes one owned carrier in `unit_ids`,
+`template_name` equal to `FIGHTER_WING` or `BOMBER_WING`, and `queue=false`.
+The bay must be operational and not constructing; selection is allowed while idle or
+replenishing. The human toggle follows the same rule. New carriers produce Fighters;
+select Bombers for Attack Run. This uses command contract 5, observation 6, socket protocol 3.
+
+Built-in validation additionally checks category, roles, description and canonical stored
+component costs, HP, price and duration. Custom-library loading remains permissive.
+
+<!-- BEGIN GENERATED: unit-catalog -->
+| Design | Category | Hull / kind | Hull used | Credits | Turns | Upkeep | Role and operation |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Bomber Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | Designed for bomber strike. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
+| Fighter Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Designed for fighter screen. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
+| Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Build fighter or bomber wings using the production selector. |
+| Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Build fighter or bomber wings using the production selector. |
+| Missile Platform | Combat | TINY station | 10.00/10 | 400 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
+| Patrol Cutter | Combat | TINY ship | 10.00/10 | 400 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
+| Interceptor | Combat | SMALL ship | 24.20/25 | 976 | 12 | 0.24 | Designed for strikecraft interception. Inter-system travel. |
+| Beam Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for beam combat. Inter-system travel. |
+| Kinetic Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for kinetic combat. Inter-system travel. |
+| Missile Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for missile combat. Inter-system travel. |
+| Flak Battery | Combat | MEDIUM station | 49.10/50 | 1973 | 20 | 0.49 | Designed for stationary air defense. Stationary installation. |
+| Flak Escort | Combat | MEDIUM ship | 49.80/50 | 1994 | 20 | 0.50 | Designed for fleet air defense. Inter-system travel. |
+| Artillery Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 29 | 0.90 | Designed for ranged fire support. Inter-system travel. |
+| Assault Cruiser | Combat | LARGE ship | 90.67/100 | 3720 | 29 | 0.91 | Designed for direct assault. Inter-system travel. |
+| Orbital Bastion | Combat | LARGE station | 92.80/100 | 3784 | 29 | 0.93 | Designed for colony defense. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
+| Battleship | Combat | HUGE ship | 183.93/200 | 7518 | 38 | 1.84 | Designed for fleet anchor. Inter-system travel. |
+| Siege Dreadnought | Combat | HUGE ship | 199.93/200 | 7998 | 40 | 2.00 | Designed for siege bombardment. Inter-system travel. |
+| Interdiction Fortress | Combat | HUGE station | 200.00/200 | 8000 | 40 | 2.00 | Designed for fortified jump denial. Stationary installation. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
+| Mining Drone | Economy | TINY ship | 9.00/10 | 370 | 6 | 0.09 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
+| Small Mining Ship | Economy | SMALL ship | 23.20/25 | 946 | 12 | 0.23 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
+| Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 12 | 0.24 | Designed for income and trade destination. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
+| Crystal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 16 | 0.32 | Designed for crystal refining. Stationary installation. |
+| Metal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 16 | 0.32 | Designed for metal refining. Stationary installation. |
+| Trade Freighter Mk.I | Economy | MEDIUM ship | 37.00/50 | 1610 | 17 | 0.37 | Designed for local trade. Intra-system travel only. Needs active habitats in different sectors. |
+| Colonizer Mk.I | Economy | MEDIUM ship | 38.00/50 | 1640 | 18 | 0.38 | Designed for colonization. Inter-system travel. |
+| Expedition Miner | Economy | MEDIUM ship | 46.50/50 | 1895 | 19 | 0.47 | Designed for expedition mining. Inter-system travel. Mine metal asteroids or comets and unload at the matching refinery. |
+| Blockade Runner | Economy | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Designed for covert inter-system trade. Inter-system travel. Needs active habitats in different sectors. |
+| Industrial Hub | Economy | LARGE station | 92.99/100 | 3790 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
+| Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
+| Shipyard Mk.I | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Designed for stationary construction. Stationary installation. |
+| Constructor Mk.I | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Designed for mobile construction and refitting. Inter-system travel. |
+| Fuel Depot | Logistics | MEDIUM station | 43.00/50 | 1790 | 19 | 0.43 | Designed for stationary fuel collection. Stationary installation. Harvest near stars or inside hydrogen nebulae. |
+| Antimatter Harvester | Logistics | MEDIUM ship | 45.00/50 | 1850 | 19 | 0.45 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
+| Small Repair Station | Logistics | MEDIUM station | 47.99/50 | 1940 | 20 | 0.48 | Designed for stationary repair. Stationary installation. |
+| Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |
+| Nebula Tender | Logistics | LARGE ship | 80.50/100 | 3415 | 27 | 0.81 | Designed for nebula and fuel support. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
+| Fleet Tanker | Logistics | LARGE ship | 87.50/100 | 3625 | 28 | 0.88 | Designed for fleet resupply. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
+| Fleet Repair Ship | Logistics | LARGE ship | 87.99/100 | 3640 | 28 | 0.88 | Designed for fleet repair. Inter-system travel. |
+| Heavy Shipyard | Logistics | LARGE station | 88.79/100 | 3664 | 28 | 0.89 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
+| Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
+| Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
+| Minelayer | Special Operations | MEDIUM ship | 49.50/50 | 1985 | 20 | 0.49 | Designed for mine deployment. Inter-system travel. |
+| Intelligence Ship | Special Operations | LARGE ship | 75.00/100 | 3250 | 26 | 0.75 | Designed for espionage and counter-intelligence. Inter-system travel. |
+| Boarding Cruiser | Special Operations | LARGE ship | 82.00/100 | 3460 | 27 | 0.82 | Designed for boarding and capture. Inter-system travel. |
+| Minesweeper | Special Operations | LARGE ship | 87.80/100 | 3634 | 28 | 0.88 | Designed for mine detection and clearance. Inter-system travel. |
+| Command Cruiser | Special Operations | LARGE ship | 88.00/100 | 3640 | 28 | 0.88 | Designed for target designation and protection. Inter-system travel. |
+| Raider | Special Operations | LARGE ship | 93.50/100 | 3805 | 29 | 0.94 | Designed for covert raiding. Inter-system travel. |
+| Stealth Tender | Special Operations | LARGE ship | 97.50/100 | 3925 | 30 | 0.97 | Designed for fleet concealment and decoys. Inter-system travel. |
+| Interdictor | Special Operations | LARGE ship | 100.00/100 | 4000 | 30 | 1.00 | Designed for mobile jump denial. Inter-system travel. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
+<!-- END GENERATED: unit-catalog -->

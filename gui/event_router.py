@@ -39,6 +39,9 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         typing.Optional[dict]: Action payload dict, {'action': 'ui_handled'}, or None.
     """
     handled_by_manager = gui.manager.process_events(event)
+    catalog = getattr(gui, 'unit_catalog_window', None)
+    if catalog and catalog.process_event(event):
+        return {'action': 'ui_handled'}
     action_result = None
 
     # Modal Communications window

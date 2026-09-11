@@ -58,7 +58,7 @@ def instantiate_unit_from_template(
     game: 'Game',
     *,
     templates: Optional[dict] = None,
-) -> None:
+) -> Optional['Unit']:
     """Module-level helper that builds a :class:`~entities.Unit` from a
     template entry in :data:`~unit_templates.UNIT_TEMPLATES` and adds it to
     *galaxy*.
@@ -68,8 +68,6 @@ def instantiate_unit_from_template(
     both the constructor component **and** :func:`~game.Game.spawn_units` can
     share the same logic without code duplication.
     """
-    from domain.units import Unit
-
     template = (UNIT_TEMPLATES if templates is None else templates).get(template_name)
     if not template:
         logger.debug(f"Error: Unit template '{template_name}' not found.")
@@ -79,6 +77,15 @@ def instantiate_unit_from_template(
     if not system:
         logger.debug(f"Error: System '{system_name}' not found for unit creation.")
         return
+
+    new_unit = assemble_unit_from_template(template_name, template, owner, system_name, hex_coord, position, game)
+    system.add_unit(new_unit)
+    return new_unit
+
+
+def assemble_unit_from_template(template_name, template, owner, system_name, hex_coord, position, game):
+    """Assemble a detached unit; callers decide whether to deploy or dock it."""
+    from domain.units import Unit
 
     hull_size_val = template["hull_size"]
     if isinstance(hull_size_val, str):
@@ -384,9 +391,7 @@ def instantiate_unit_from_template(
             hull_cost=i_cost
         ))
 
-    system.add_unit(new_unit)
-
-    logger.debug(f"Created unit {new_unit.name} ({new_unit.id}) for player {owner.id} in {system_name} at {hex_coord}")
+    return new_unit
 
 
 def _is_strikecraft_wing_template(template: dict) -> bool:

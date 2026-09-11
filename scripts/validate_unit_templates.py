@@ -35,7 +35,8 @@ def main(argv=None):
     except (OSError, ValueError) as exc:
         print(f'Error: {exc}', file=sys.stderr)
         return 2
-    issues = validate_library(raw, is_builtin=is_builtin)
+    from unit_catalog import validate_builtin_catalog
+    issues = validate_builtin_catalog(raw) if is_builtin else validate_library(raw)
     for name, errors in issues.items():
         print(f'{name!r}:')
         for error in errors:
