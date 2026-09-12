@@ -184,7 +184,7 @@ def colony_opening_case() -> EvaluationCase:
     """Minimal regression fixture for the observed zero-cargo colony opening."""
 
     observation = {
-        "schema_version": 6,
+        "schema_version": 7,
         "command_catalog": command_catalog(),
         "turn_number": 1,
         "active_player": {
@@ -355,7 +355,7 @@ def inhibitor_overlap_case() -> EvaluationCase:
     """Regression fixture for an inhibitor blocked by an existing field."""
 
     observation = {
-        "schema_version": 6,
+        "schema_version": 7,
         "command_catalog": command_catalog(),
         "turn_number": 3,
         "active_player": {
@@ -410,7 +410,7 @@ def order_control_cases() -> tuple[EvaluationCase, ...]:
     from copy import deepcopy
 
     base = {
-        "schema_version": 6, "command_catalog": command_catalog(), "turn_number": 1,
+        "schema_version": 7, "command_catalog": command_catalog(), "turn_number": 1,
         "active_player": {"id": 1, "name": "AI", "team_id": 1},
         "systems": [{"name": "Sol", "navigation_anchor": {"hex_coord": [0, 0], "position": [0, 0]}}],
         "units": [{"id": 101, "relation": "self", "system_name": "Sol", "hex_coord": [0, 0],

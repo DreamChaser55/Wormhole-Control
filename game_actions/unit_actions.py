@@ -256,16 +256,15 @@ def handle_cycle_stance(game, action: dict) -> None:
 
 
 def handle_rename_unit(game, action: dict) -> None:
-    new_name = action.get('new_name', '').strip()
+    from unit_naming import rename_unit
     selected_units = [obj for obj in game.selected_objects if isinstance(obj, Unit)]
     current_player = game.players[game.current_player_index] if game.players else None
     if selected_units and isinstance(selected_units[0], Unit) and selected_units[0].owner == current_player:
         unit_to_rename = selected_units[0]
-        if new_name and len(new_name) <= 30:
-            logger.debug(f"Renaming unit '{unit_to_rename.name}' -> '{new_name}'")
-            unit_to_rename.name = new_name
-        else:
-            logger.debug(f"Rename rejected (empty or too long: '{new_name}'). Keeping '{unit_to_rename.name}'.")
+        try:
+            rename_unit(unit_to_rename, action.get('new_name', ''))
+        except ValueError:
+            logger.debug("Rename rejected: invalid unit name.")
     game.sidebar_needs_update = True
 
 

@@ -200,6 +200,8 @@ def test_component_overview_colored_labels():
     mock_game = MagicMock()
     mock_game.galaxy = MagicMock()
     player = MagicMock()
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
 
     unit = Unit(
         owner=player,

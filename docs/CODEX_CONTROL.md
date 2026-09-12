@@ -148,7 +148,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":6}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":7}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -229,7 +229,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 5, shared field
+Read `observation.command_catalog`: it contains command contract version 6, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -321,12 +321,35 @@ owned unit; observe current roots rather than guessing identities.
 
 New campaign bounds and validation are shared with the wizard and direct setup; see [new-campaign validation](REFERENCE.md#new-campaign-validation). Both radius bounds accept 3–12. Existing protocol errors and the exactly-one-Codex-player requirement remain unchanged.
 
+## Unit names and covert ships
+
+Use `rename_unit` to change the displayed name of one owned unit without interrupting
+orders or spending resources:
+
+```json
+{"type":"rename_unit","unit_ids":[42],"new_name":"Patrol Escort 7","queue":false}
+```
+
+Replace 42 with an observed owned ID. Names are trimmed, must contain 1–30 characters,
+and cannot contain control characters. Duplicate names are allowed. Renaming remains
+legal while submerged or equipment is damaged and persists through save/load.
+
+The Covert Intelligence Ship is constructed under the safe name **Patrol Escort**,
+matching an ordinary warship with identical visible equipment. Catalog entries expose
+`default_unit_name` as the effective initial name. Optional later names should remain
+generic; an already safe name requires no change. Enemy observations omit all three
+order-layer fields and never expose design identity, actual hull usage, upkeep or
+construction/refit details. These rules apply to all enemy units, preserving owners'
+and allies' existing access. Observation schema is 7, command contract is 6, and the
+socket envelope remains protocol 3.
+
 ## Tactical ability commands
 
-Observation schema 6 and command contract 5 expose a deduplicated `ability_catalog`,
+Observation schema 7 and command contract 6 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v4`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v5`; unused OpenAI command fields stay null.
+
 
 ```json
 {"type":"use_ability","unit_ids":[101],"ability":"ghost_fleet","position":[200,0]}

@@ -21,6 +21,8 @@ def test_unload_resources_nearest_no_cargo():
     
     # Get sidebar data: should not contain the unload button
     game = DummyGame()
+    game.players = [unit.owner]
+    game.current_player_index = 0
     sidebar_data = mining_comp.get_sidebar_data(game)
     buttons = [item for item in sidebar_data if item.get('type') == 'button']
     unload_btn = next((b for b in buttons if b.get('action_id') == 'unload_resources_nearest'), None)
@@ -35,6 +37,8 @@ def test_unload_resources_nearest_with_cargo():
     
     # Get sidebar data: should contain the unload button
     game = DummyGame()
+    game.players = [unit.owner]
+    game.current_player_index = 0
     sidebar_data = mining_comp.get_sidebar_data(game)
     buttons = [item for item in sidebar_data if item.get('type') == 'button']
     unload_btn = next((b for b in buttons if b.get('action_id') == 'unload_resources_nearest'), None)

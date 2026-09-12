@@ -18,7 +18,7 @@ This document contains player guidance, in-depth reference data, data structures
 - [9. Intelligence, Counter-Intelligence & Sabotage Systems](#9-intelligence-counter-intelligence--sabotage-systems)
 - [10. Diplomacy & Team Systems](#10-diplomacy--team-systems)
 - [11. Celestial Collision Avoidance](#11-celestial-collision-avoidance)
-- [AI order control (observation 6, command contract 5)](#ai-order-control-observation-6-command-contract-5)
+- [AI order control (observation 7, command contract 6)](#ai-order-control-observation-7-command-contract-6)
 - [12. Celestial Bodies & Environmental Mechanics](#12-celestial-bodies--environmental-mechanics)
 - [13. Damage & Minefield Resolution](#13-damage--minefield-resolution)
 - [Runtime storage and API failure contracts](#runtime-storage-and-api-failure-contracts)
@@ -407,7 +407,7 @@ Hull restrictions and component behavior:
 - **Minelayer**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields that ignore friendly and allied vessels.
 - **Marines**: Forbidden on `STRIKECRAFT_WING`. Dynamic cost scales with embarked marine count.
 - **Cloaking Device**: Forbidden on `STRIKECRAFT_WING`; `ADVANCED` requires at least `SMALL` hull. **Basic** (10 Hull, 5 AM/turn, 300 credits) hides single unit from long-range sensors; **Advanced** projects an area-of-effect stealth field hiding friendly and allied units within its radius, with hull cost ($R/16.6667$), credit build cost contribution ($\text{Hull} \times 30$), and antimatter drain ($R \times 0.04\text{ AM/turn}$) scaling dynamically with area radius $R$ (baseline 30 Hull, 900 credits, 20 AM/turn at 500 radius).
-- **Intelligence**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with agent capacity (5.0 hull per agent, default 2 agents). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps (activated via the component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to protect friendly and allied assets and eliminate discovered enemy agents.
+- **Intelligence**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Costs 10.0 hull for the first agent, +5.0 hull per additional agent (default capacity: 1). Optional Counter-Intelligence suite (+10.0 hull, +300 credits) enables active sector counter-espionage sweeps (activated via the component sidebar panel; cost: 100 credits, 25 AM, 3-turn cooldown) to protect friendly and allied assets and eliminate discovered enemy agents.
 
 An Engines component is operational only while it has hit points remaining and
 provides a positive effective speed. Destroyed Engines immediately halt and
@@ -705,7 +705,7 @@ The Intelligence system introduces covert operations, espionage, sensor reconnai
 
 - **`IntelligenceComponent` (`unit_components/intelligence.py`)**:
   - Available on `SMALL`, `MEDIUM`, `LARGE`, and `HUGE` hulls (Forbidden on `STRIKECRAFT_WING` and `TINY`).
-  - **Agent Capacity**: Configurable in the Unit Designer / Retrofit Wizard ($5.0\text{ Hull/agent}$, default 2 agents).
+  - **Agent Capacity**: Configurable in the Unit Designer / Retrofit Wizard: 10.0 hull for the first agent, +5.0 hull for each additional agent; default capacity 1. Two agents cost 15.0 hull before counter-intelligence.
   - **Counter-Intelligence Suite**: Optional toggle ($+10.0\text{ Hull}$, $+300\text{ credits}$) that enables active sector sweeps to uncover enemy agents and eliminate them.
 - **`Agent` Dataclass (`unit_components/intelligence.py`)**:
   - Embedded field operative with fields: `id`, `owner`, `source_unit_id`, `target_type` (`"UNIT"` or `"CELESTIAL_BODY"`), `target_id`, `is_discovered`, `active_sabotage`, and `turns_active`.
@@ -889,7 +889,7 @@ where $r_{\text{body}}$ is the body's physical collision radius (e.g. `PLANET_RA
 - **Collision Safety**: Because the plotted arrival point lies strictly outside the solid body's collision circle, vessels fly directly to the standoff perimeter without penetrating the planet surface or triggering collisions.
 
 
-## AI order control (observation 6, command contract 5)
+## AI order control (observation 7, command contract 6)
 
 Both GPT-5.6 Luna and the Codex socket controller use the same command registry,
 observation builder, visibility policy and preflight/commit gateway. Socket protocol 3
@@ -913,7 +913,7 @@ blocking as guidance rather than forbidding intentional queued work.
 Tactical observations include actual turret range/cooldown/target classes, base/effective
 sensor and hyperdrive ranges, jump status/functionality, support ranges, defend radius and
 cloak status/upkeep. Supported hardware is distinguished from current issuance legality.
-Friendly/allied turret observations retain `cooldown` (base) and `cooldown_remaining`, and add `effective_cooldown` (reset if fired here). Already-exposed celestial bodies include numeric `environmental_effects` where applicable. These additive fields retain observation schema 6, command contract 5 and socket protocol 3. Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
+Friendly/allied turret observations retain `cooldown` (base) and `cooldown_remaining`, and add `effective_cooldown` (reset if fired here). Already-exposed celestial bodies include numeric `environmental_effects` where applicable. These additive fields retain observation schema 7, command contract 6 and socket protocol 3. Enemy Intelligence components are hidden in observations and subsystem menus; hidden and
 nonexistent target guesses receive indistinguishable public errors. Hidden target-derived
 movement geometry is redacted; explicit player coordinates remain order intent. No raw
 persistence or sidebar state is serialized into AI observations.
@@ -1272,7 +1272,7 @@ carries both defense abilities. Normal starting fleets are unchanged.
 
 ## Built-in unit catalog
 
-Normal campaigns offer 49 designs covering all component families and all 21 abilities.
+Normal campaigns offer 51 designs covering all component families and all 21 abilities.
 Every Constructor can build ordinary ships and stations. Strikecraft bays automatically
 build the selected Fighter or Bomber Wing using its catalog price and duration.
 Normal starts retain the original four starter roles and starting resources.
@@ -1297,10 +1297,40 @@ The immediate `set_wing_production` command takes one owned carrier in `unit_ids
 `template_name` equal to `FIGHTER_WING` or `BOMBER_WING`, and `queue=false`.
 The bay must be operational and not constructing; selection is allowed while idle or
 replenishing. The human toggle follows the same rule. New carriers produce Fighters;
-select Bombers for Attack Run. This uses command contract 5, observation 6, socket protocol 3.
+select Bombers for Attack Run. This uses command contract 6, observation 7, socket protocol 3.
 
 Built-in validation additionally checks category, roles, description and canonical stored
 component costs, HP, price and duration. Custom-library loading remains permissive.
+
+### Covert ships and unit names
+
+The Medium **Patrol Escort** carries one standard mass driver (10 damage, 300 range,
+2-turn cooldown), defenses of 6/6/6, speed 100, an Advanced Hyperdrive with jump range 5,
+100 AM storage and short-range sensors of 2000 (no long-range coverage). It uses 33/50
+hull, costs 1490 credits, takes 17 turns and costs 0.33 credits/turn in upkeep.
+The **Covert Intelligence Ship** has exactly the same visible equipment plus two hidden
+agents, using 48/50 hull, costing 1940 credits, taking 20 turns and costing 0.48 credits/turn.
+Neither design has cloaking or counter-intelligence. Both are available to all controllers.
+
+The covert design enters play as **Patrol Escort**, before the next enemy turn can observe
+it. Its catalog title remains Covert Intelligence Ship. Built-in templates may specify
+`default_unit_name`; otherwise the initial unit name is the template's `name`. Catalog
+details expose the effective initial name. The original template identity is preserved
+separately, including after renaming and saving/loading.
+
+After construction, optionally choose another generic warship name; never use a name
+that reveals the intelligence role. Select an owned unit and edit its name in the sidebar.
+AI/Codex issue immediate `rename_unit` with one owned ID and `new_name`, `queue=false`.
+Names are trimmed, must contain 1–30 characters, and cannot contain control characters.
+Duplicate names are allowed. Renaming preserves all orders, stance, equipment and resources,
+and works while submerged or equipment is damaged.
+
+For every enemy unit, both interfaces hide template identity, actual hull usage, upkeep,
+all standing/current/queued order details and constructor construction/refit activity.
+Hull size, capacity, HP and public equipment remain inspectable. Owners and allies keep
+their existing access. Enemy AI unit records omit `standing_order`, `current_order` and
+`queued_orders` entirely. An enemy cannot distinguish the twins by inspecting equivalent
+public state; observed behavior or discovered espionage can still raise suspicion.
 
 <!-- BEGIN GENERATED: unit-catalog -->
 | Design | Category | Hull / kind | Hull used | Credits | Turns | Upkeep | Role and operation |
@@ -1312,6 +1342,7 @@ component costs, HP, price and duration. Custom-library loading remains permissi
 | Missile Platform | Combat | TINY station | 10.00/10 | 400 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
 | Patrol Cutter | Combat | TINY ship | 10.00/10 | 400 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
 | Interceptor | Combat | SMALL ship | 24.20/25 | 976 | 12 | 0.24 | Designed for strikecraft interception. Inter-system travel. |
+| Patrol Escort | Combat | MEDIUM ship | 33.00/50 | 1490 | 17 | 0.33 | Economical armed escort for patrol and convoy protection. Inter-system travel. |
 | Beam Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for beam combat. Inter-system travel. |
 | Kinetic Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for kinetic combat. Inter-system travel. |
 | Missile Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for missile combat. Inter-system travel. |
@@ -1346,6 +1377,7 @@ component costs, HP, price and duration. Custom-library loading remains permissi
 | Heavy Shipyard | Logistics | LARGE station | 88.79/100 | 3664 | 28 | 0.89 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
 | Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
 | Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
+| Covert Intelligence Ship | Special Operations | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Externally identical to the Patrol Escort, with two hidden intelligence agents. Constructed under the cover name ‘Patrol Escort’. After construction, you may rename it to another generic warship name; avoid names that reveal its intelligence role. Inter-system travel. |
 | Minelayer | Special Operations | MEDIUM ship | 49.50/50 | 1985 | 20 | 0.49 | Designed for mine deployment. Inter-system travel. |
 | Intelligence Ship | Special Operations | LARGE ship | 75.00/100 | 3250 | 26 | 0.75 | Designed for espionage and counter-intelligence. Inter-system travel. |
 | Boarding Cruiser | Special Operations | LARGE ship | 82.00/100 | 3460 | 27 | 0.82 | Designed for boarding and capture. Inter-system travel. |

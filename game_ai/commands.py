@@ -797,6 +797,12 @@ class CommandGateway:
         units: list[Any],
         projection: _BatchProjection,
     ) -> list[_Prepared]:
+        if command.type == "rename_unit":
+            from unit_naming import normalize_unit_name, rename_unit
+            unit = units[0]
+            name = normalize_unit_name(command.new_name)
+            return [_Prepared(lambda: rename_unit(unit, name),
+                              f"Renamed unit {unit.id} to {name}.")]
         if command.type == "cancel_orders":
             return [
                 _Prepared(

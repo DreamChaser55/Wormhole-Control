@@ -88,6 +88,7 @@ def instantiate_unit_from_template(
 def assemble_unit_from_template(template_name, template, owner, system_name, hex_coord, position, game):
     """Assemble a detached unit; callers decide whether to deploy or dock it."""
     from domain.units import Unit
+    from unit_naming import initial_unit_name
 
     hull_size_val = template["hull_size"]
     if isinstance(hull_size_val, str):
@@ -95,7 +96,7 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
 
     new_unit = Unit(
         owner=owner,
-        name=template["name"],
+        name=initial_unit_name(template),
         hull_size=hull_size_val,
         game=game,
         in_system=system_name,
@@ -469,6 +470,9 @@ class Constructor(UnitComponent):
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
+        from component_visibility import unit_details_are_public_in_game
+        if not unit_details_are_public_in_game(self.unit, game_state):
+            return data
         if self.current_construction_target:
             target_name = self.current_construction_target[0]
             progress = self.construction_progress
@@ -500,6 +504,9 @@ class Constructor(UnitComponent):
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_basic_sidebar_data(game_state)
+        from component_visibility import unit_details_are_public_in_game
+        if not unit_details_are_public_in_game(self.unit, game_state):
+            return data
         if self.is_destroyed:
             return data
         if self.current_construction_target:

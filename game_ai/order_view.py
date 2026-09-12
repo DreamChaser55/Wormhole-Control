@@ -17,6 +17,8 @@ def point(value):
 
 
 def order_layers(unit, relation, visible_ids, body_ids):
+    if relation == "enemy":
+        return {}
     commander = getattr(unit, "commander_component", None)
     if commander is None:
         return {"standing_order": None, "current_order": None, "queued_orders": []}

@@ -318,7 +318,7 @@ def test_gateway_duplicate_spending_is_atomic_and_catalog_has_all_six():
     assert not deployments(game.galaxy, caster.id, 'fuel_cache')
     assert issue(game, caster, 'fuel_cache', position=(200, 0)).accepted
     observation = build_observation(game, caster.owner)
-    assert observation['schema_version'] == 6
+    assert observation['schema_version'] == 7
     assert set(SPECS) <= set(observation['ability_catalog'])
     assert observation['visible_deployables'][0]['persistent'] is True
 

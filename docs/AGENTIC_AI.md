@@ -49,7 +49,7 @@ player. It includes:
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 6 gives full body detail in systems containing friendly
+Observation schema 7 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -103,6 +103,25 @@ total limit is exceeded. Text and list counts are bounded before serialization.
 Save JSON and memory sidecars use atomic replacement.
 
 ## Commands
+
+`rename_unit` is immediate and requires exactly one owned unit in `unit_ids`, a `new_name`
+string and `queue=false`. Names are trimmed to remove surrounding whitespace, must contain
+1–30 characters, and cannot contain control characters; duplicate names are allowed.
+Renaming changes only the displayed name, preserving orders, stance, resources and agents.
+It is legal while submerged or equipment is damaged. Validation is shared with human
+controls; preflight rejection leaves all names unchanged. Successful commits return a
+receipt, and the existing save format preserves the name.
+
+The Covert Intelligence Ship and ordinary Patrol Escort have identical public equipment.
+The covert template's `default_unit_name` is Patrol Escort; construction applies it before
+publishing the ship. The catalog exposes each template's effective initial name, falling
+back to its display name when no override exists. Keep safe generic names; an existing
+Patrol Escort name needs no further renaming.
+
+Every enemy unit omits `standing_order`, `current_order` and `queued_orders`. Template
+identity, actual hull usage, upkeep and construction/refit details are private in both
+interfaces. Owners and allies retain their existing detail. This prevents inspection from
+identifying covert equipment; observed actions or discovered espionage can still be clues.
 
 The strict contract currently supports movement, patrol, combat (with optional
 subsystem targeting via `target_component`), positional defense (`defend`), protection,
@@ -181,7 +200,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 6 / commands 5 / socket 3)
+## Shared order contract (observation 7 / commands 6 / socket 3)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -276,8 +295,8 @@ Save 3.2 preserves order UUIDs recursively, history/counter, terminal-recording 
 job charges. Legacy orders get new UUIDs and empty histories. Restored active orders rebind
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
-The strict response schema is `wormhole_control_turn_v4`, and prompt cache key is
-`wormhole-control-turn-v5`. No live API call is required for regression testing.
+The strict response schema is `wormhole_control_turn_v5`, and prompt cache key is
+`wormhole-control-turn-v6`. No live API call is required for regression testing.
 
 ### Gameplay invariant guidance
 
@@ -285,7 +304,7 @@ Gas-giant transitions preserve stance and explicit work. `Enter → Leave → Mo
 
 Mines check final positions after movement on the ship owner's turn, including stationary ships. Positive hits may be fully absorbed by mitigation. Consult [damage and minefield resolution](REFERENCE.md#13-damage--minefield-resolution) and [spawn profiles](REFERENCE.md#spawn-profiles-spawnprofile--2-total) for the canonical gameplay rules. Numeric object ID `0` remains valid; only `None`/JSON `null` means a missing numeric ID.
 
-Environmental observation additions retain schema 6: friendly/allied turrets expose `effective_cooldown` for a shot at their current position alongside base `cooldown` and `cooldown_remaining`. Already-exposed celestial bodies carry numeric `environmental_effects`; no extra bodies or enemy equipment are revealed. Ice/nitrogen coolant reduces the on-fire reset by one (non-stacking, positive minimum one), and oxygen multiplies Cluster Warhead splash damage to victims inside by 1.15. See the [canonical environmental rules](REFERENCE.md#123-environmental-fields--tactical-cover).
+Environmental observation additions retain schema 7: friendly/allied turrets expose `effective_cooldown` for a shot at their current position alongside base `cooldown` and `cooldown_remaining`. Already-exposed celestial bodies carry numeric `environmental_effects`; no extra bodies or enemy equipment are revealed. Ice/nitrogen coolant reduces the on-fire reset by one (non-stacking, positive minimum one), and oxygen multiplies Cluster Warhead splash damage to victims inside by 1.15. See the [canonical environmental rules](REFERENCE.md#123-environmental-fields--tactical-cover).
 
 ## Tactical ability integration
 
@@ -314,7 +333,7 @@ and Huge ship demonstrate the five carrier and anti-strikecraft abilities.
 Automated players construct available designs or use equipped ships; no AI designer
 was added. Normal campaign starts and model/reasoning settings are unchanged.
 
-Observation 6 adds `ability_catalog`, `visible_deployables`, `catalyst_patches` and
+Observation 7 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
 `ability_links`. Authorized ability state includes actual blockers/readiness,
 cooldown/duration, active targets, ongoing AM, reserved casts, persistent deployment
 counts/caps and Guardian tuning. Speed includes Tractor; environmental values

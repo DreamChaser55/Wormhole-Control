@@ -141,7 +141,7 @@ def capability_blocker(unit, command_type):
 
 
 def supported_commands(unit: Any) -> list[str]:
-    commands = ["cancel_orders", "clear_explicit_orders", "cancel_order", "append_patrol_waypoints", "set_stance"]
+    commands = ["rename_unit", "cancel_orders", "clear_explicit_orders", "cancel_order", "append_patrol_waypoints", "set_stance"]
     if getattr(unit, "engines_component", None) is not None:
         commands.extend(["move", "patrol", "protect"])
         if _hull_name(unit) != "strikecraft_wing":
@@ -208,7 +208,7 @@ def command_guidance(
     supported = supported_commands(unit)
     exact_bodies = list(exact_bodies)
     visible_units = list(visible_units)
-    legal: set[str] = set()
+    legal: set[str] = {"rename_unit"}
     options: dict[str, Any] = {}
     conditional: list[dict[str, Any]] = []
 

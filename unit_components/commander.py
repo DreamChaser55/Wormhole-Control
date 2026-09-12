@@ -96,6 +96,9 @@ class Commander(UnitComponent):
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_basic_sidebar_data(game_state)
+        from component_visibility import unit_details_are_public_in_game
+        if not unit_details_are_public_in_game(self.unit, game_state):
+            return data
         if self.is_destroyed:
             return data
         orders_count = self.get_active_orders_count()
@@ -127,7 +130,9 @@ class Commander(UnitComponent):
         return data
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
-
+        from component_visibility import unit_details_are_public_in_game
+        if not unit_details_are_public_in_game(self.unit, game_state):
+            return super().get_sidebar_data(game_state)
         data = []
 
         

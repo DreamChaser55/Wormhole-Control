@@ -4,7 +4,8 @@ from constants import MAX_UNIT_XP, UPKEEP_COST_PER_HULL_POINT
 from economy import calculate_unit_upkeep
 from domain.units import Unit
 from domain.players import are_enemies
-from component_visibility import component_is_public
+from component_visibility import component_is_public, unit_details_are_public
+from unit_naming import MAX_UNIT_NAME_LENGTH
 from unit_components.intelligence import IntelligenceComponent
 
 
@@ -29,13 +30,14 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
     current_player = game.players[game.current_player_index] if game.players else None
     is_owned = (unit.owner == current_player)
     is_enemy = are_enemies(current_player, unit.owner)
+    show_private_details = unit_details_are_public(unit, current_player)
 
     if is_owned:
         data.append({
             'type': 'text_entry_line',
             'initial_text': unit.name,
             'object_id': '#unit_name_entry',
-            'max_length': 30,
+            'max_length': MAX_UNIT_NAME_LENGTH,
             'height': 30
         })
     else:
@@ -43,7 +45,7 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
 
     data.append({'type': 'label', 'text': f"Type: {unit.__class__.__name__}", 'object_id': '#sidebar_info_label', 'height': 20})
     data.append({'type': 'label', 'text': f"Hull Size: {unit.hull_size.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
-    if getattr(unit, 'template_name', None):
+    if show_private_details and getattr(unit, 'template_name', None):
         data.append({'type': 'label', 'text': f"Template: {unit.template_name}", 'object_id': '#sidebar_info_label', 'height': 20})
 
     owner_name = unit.owner.name if unit.owner else "Neutral"
@@ -138,9 +140,12 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         else:
             data.append({'type': 'label', 'text': f"Sector Pos: ({unit.position.x:.2f}, {unit.position.y:.2f})", 'object_id': '#sidebar_info_label', 'height': 20})
 
-        data.append({'type': 'label', 'text': f"Hull Capacity: {unit.current_hull_usage:g}/{unit.hull_capacity:g}", 'object_id': '#sidebar_info_label', 'height': 25})
-        upkeep_per_turn = calculate_unit_upkeep(getattr(unit, 'hull_size', None), unit.current_hull_usage)
-        data.append({'type': 'label', 'text': f"Upkeep: {upkeep_per_turn:.2f} cr/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+        hull_text = (f"{unit.current_hull_usage:g}/{unit.hull_capacity:g}" if show_private_details
+                     else f"{unit.hull_capacity:g}")
+        data.append({'type': 'label', 'text': f"Hull Capacity: {hull_text}", 'object_id': '#sidebar_info_label', 'height': 25})
+        if show_private_details:
+            upkeep_per_turn = calculate_unit_upkeep(getattr(unit, 'hull_size', None), unit.current_hull_usage)
+            data.append({'type': 'label', 'text': f"Upkeep: {upkeep_per_turn:.2f} cr/turn", 'object_id': '#sidebar_info_label', 'height': 20})
 
         data.append({'type': 'label', 'text': f"Hit Points: {unit.current_hit_points}/{unit.max_hit_points}", 'object_id': hit_point_style_id(unit), 'height': 25})
 

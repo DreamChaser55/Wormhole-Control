@@ -43,8 +43,10 @@ class RepairComponent(UnitComponent):
         data = super().get_sidebar_data(game_state)
         data.append({'type': 'label', 'text': f"Repair Rate: {self.repair_rate} HP/turn", 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': f"Repair Range: {self.repair_range}", 'object_id': '#sidebar_info_label', 'height': 20})
-        target_name = self.target.name if self.target else "None"
-        data.append({'type': 'label', 'text': f"Repair Target: {target_name}", 'object_id': '#sidebar_info_label', 'height': 20})
+        from component_visibility import unit_details_are_public_in_game
+        if unit_details_are_public_in_game(self.unit, game_state):
+            target_name = self.target.name if self.target else "None"
+            data.append({'type': 'label', 'text': f"Repair Target: {target_name}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
@@ -53,10 +55,13 @@ class RepairComponent(UnitComponent):
             return data
         tgt_str = f" Target: {self.target.name}" if self.target else " Idle"
         obj_id = '#sidebar_status_active_label' if self.target else '#sidebar_status_idle_label'
+        from component_visibility import unit_details_are_public_in_game
+        show_target = unit_details_are_public_in_game(self.unit, game_state)
+        suffix = f" ({tgt_str})" if show_target else ""
         data.append({
             'type': 'label',
-            'text': f"• Repair Rate: {self.repair_rate:.0f} HP/t ({tgt_str})",
-            'object_id': obj_id,
+            'text': f"• Repair Rate: {self.repair_rate:.0f} HP/t{suffix}",
+            'object_id': obj_id if show_target else '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
         })

@@ -1,5 +1,6 @@
 """Pure catalog descriptions shared by players, controllers and reference tables."""
 from custom_unit_templates import template_from_dict, template_to_dict
+from unit_naming import initial_unit_name, normalize_unit_name
 from constants import (
     DEFAULT_ANTIMATTER_HARVEST_RATE, DEFAULT_SENSOR_SHORT_RANGE,
     INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS, CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN,
@@ -56,6 +57,7 @@ def describe_template(key, raw):
         support['antimatter_harvester'] = {'harvest_rate': raw.get('antimatter_harvest_rate', DEFAULT_ANTIMATTER_HARVEST_RATE)}
     return {
         'template_name': key, 'name': data['name'], 'category': raw.get('category', 'Custom'),
+        'default_unit_name': initial_unit_name(dict(source, name=data['name'])),
         'roles': raw.get('roles', list(support) or [kind]),
         'description': raw.get('description', 'Player design.' if raw.get('is_custom') else 'Testing design.'),
         'kind': kind, 'hull_size': design.hull_size.name,
@@ -84,6 +86,11 @@ def validate_builtin_catalog(raw):
         if key in issues:
             continue
         errors = []
+        if 'default_unit_name' in data:
+            try:
+                normalize_unit_name(data['default_unit_name'])
+            except ValueError as exc:
+                errors.append(f'default_unit_name: {exc}')
         if data.get('category') not in CATEGORIES:
             errors.append('category: choose a catalog category.')
         if not isinstance(data.get('description'), str) or not data['description'].strip():

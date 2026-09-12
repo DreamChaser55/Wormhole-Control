@@ -59,7 +59,8 @@ class MiningComponent(UnitComponent):
                 'target_data': self.unit.id,
                 'height': 25
             })
-        if self.mining_target:
+        from component_visibility import unit_details_are_public_in_game
+        if unit_details_are_public_in_game(self.unit, game_state) and self.mining_target:
             data.append({'type': 'label', 'text': f"Mining Target: {self.mining_target.name}", 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 

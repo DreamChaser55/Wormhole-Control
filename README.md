@@ -114,8 +114,15 @@ weapon damage while retaining 75% outgoing damage; Flak protects a moving
 See [carrier ability rules](docs/REFERENCE.md#carrier-and-anti-strikecraft-abilities).
 Campaign saves use version 4.3 and preserve active wing orders and recovery state.
 
-The built-in catalog contains 49 ships, stations and wings covering every equipment family
+The built-in catalog contains 51 ships, stations and wings covering every equipment family
 and tactical ability. Select a Constructor and right-click a location, then choose
 **Construct...** to search and compare designs. Carriers select Fighter or Bomber production
-through their strikecraft bay; AI players use `set_wing_production` under command contract 5.
+through their strikecraft bay; AI players use `set_wing_production` under command contract 6.
 See the [unit catalog](docs/REFERENCE.md#built-in-unit-catalog) for roles and calculated costs.
+
+The Patrol Escort and Covert Intelligence Ship share all visible equipment; the
+covert variant adds two hidden agents and enters play under the name **Patrol Escort**.
+Enemy inspections conceal template identity, hull usage, upkeep, orders and construction/refit
+details. Human players and both automated controllers can rename their own units;
+AI/Codex use `rename_unit` with `new_name` and one owned unit ID. See
+[covert naming](docs/REFERENCE.md#covert-ships-and-unit-names) for the rules.

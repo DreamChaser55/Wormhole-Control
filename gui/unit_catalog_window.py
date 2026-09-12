@@ -42,6 +42,7 @@ def details_html(entry):
         return ', '.join(f'{label(k)}: {display(v)}' for k, v in data.items()
                          if not (k == 'cloaking_radius' and not v))
     lines = [f"<b>{escape(entry['name'])}</b>", escape(entry['description']),
+             f"Initial unit name: {escape(entry['default_unit_name'])}",
              f"{label(entry['hull_size'])} {entry['kind']} · {entry['credit_cost']} credits · {entry['turns']} turns",
              f"Hull: {entry['hull_used']:.2f}/{entry['hull_capacity']:g} · HP: {entry['hit_points']} · Upkeep: {entry['upkeep']:.2f}",
              '<b>Movement</b><br>' + values(entry['movement']),

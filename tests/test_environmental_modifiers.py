@@ -177,4 +177,4 @@ def test_observations_add_effects_without_exposing_enemy_turrets():
     bodies = {b['id']: b for s in observation['systems'] for b in s.get('celestial_bodies', [])}
     assert bodies[ice.id]['environmental_effects']['cooldown_reduction'] == 1
     assert bodies[oxygen.id]['environmental_effects']['splash_damage_multiplier'] == 1.15
-    assert observation['schema_version'] == 6
+    assert observation['schema_version'] == 7

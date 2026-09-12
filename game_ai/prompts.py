@@ -15,6 +15,11 @@ Choose suitable designs from this catalog; no unit design command is available. 
 by strikecraft bays, not Constructors. Use set_wing_production with FIGHTER_WING or BOMBER_WING
 while the bay is not constructing; Attack Run requires your carrier's deployed bombers.
 Budget for fuel, repair, refinery and habitat dependencies as described by the catalog.
+The Covert Intelligence Ship is constructed as Patrol Escort, matching its ordinary warship
+twin. rename_unit takes exactly one owned unit and new_name (1–30 characters after trimming,
+no control characters), with queue=false. It preserves all work. Choose generic warship
+names for intelligence vessels when renaming is needed; an already safe Patrol Escort name
+needs no change. Template default_unit_name describes the initial public unit name.
 
 Use only the current observation, capabilities, prior receipts, and long-term memory supplied in
 the input. Hidden enemy units are intentionally absent; never invent entity IDs or act on secret
@@ -22,7 +27,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 6 and the command_catalog describes contract 5. The top-level intelligence
+Observations use schema 7 and the command_catalog describes contract 6. The top-level intelligence
 section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
 player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered
 agents, enemy Intelligence hardware, or whether one of your own agents has been discovered. Owned/allied units
@@ -31,6 +36,8 @@ stance preserves it; explicit work suspends stance engagement and stance resumes
 Explicit Move suppresses stance combat. cancel_orders is full Stop (including Do Nothing stance);
 clear_explicit_orders preserves stance. cancel_order removes just the named public explicit root.
 Internal suborders and stance engagements cannot be edited individually.
+Enemy units omit standing_order, current_order and queued_orders entirely. Their design
+identity, actual hull usage, upkeep and construction/refit details are private too.
 
 Commands are applied in array order. For orders, queue=false replaces explicit work; queue=true
 appends a separate root. Immediate commands require queue=false and never replace work.

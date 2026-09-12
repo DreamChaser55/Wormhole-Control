@@ -896,6 +896,8 @@ def test_weapons_sidebar_data():
 
     # Call get_sidebar_data
     mock_game = MagicMock()
+    mock_game.players = [unit.owner]
+    mock_game.current_player_index = 0
     sidebar_data = weapons.get_sidebar_data(mock_game)
     
     # Assert elements exist
@@ -1094,16 +1096,15 @@ def test_commander_get_sidebar_data_stance_dropdown():
     # Get sidebar data for enemy unit (unowned)
     enemy_data = commander_enemy.get_sidebar_data(mock_game)
 
-    # Assert stance static label exists instead of a dropdown
+    # Enemy standing orders are private, including the stance and its controls.
     stance_label_enemy = next((d for d in enemy_data if d.get('type') == 'label' and d.get('text') == 'Stance:'), None)
-    assert stance_label_enemy is not None
+    assert stance_label_enemy is None
 
     dropdown_enemy = next((d for d in enemy_data if d.get('type') == 'drop_down_menu'), None)
     assert dropdown_enemy is None
 
     static_stance_enemy = next((d for d in enemy_data if d.get('type') == 'label' and d.get('text') == UnitStance.ATTACK_WEAPON_RANGE.display_name), None)
-    assert static_stance_enemy is not None
-    assert static_stance_enemy['indent_level'] == 1
+    assert static_stance_enemy is None
 
 
 def test_allowed_stances_restriction():

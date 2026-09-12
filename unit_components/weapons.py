@@ -181,6 +181,8 @@ class Weapons(UnitComponent):
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
+        from component_visibility import unit_details_are_public_in_game
+        show_targets = unit_details_are_public_in_game(self.unit, game_state)
         xp = self.unit.experience_points
         xp_dmg_mult = self.unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
         for i, turret in enumerate(self.turrets):
@@ -230,14 +232,16 @@ class Weapons(UnitComponent):
             cooldown_status = f"On Cooldown ({turret.current_cooldown}t)" if turret.current_cooldown > 0 else "Ready"
             
             target_str = "None"
-            if turret.target:
+            if show_targets and turret.target:
                 if turret.target_component_type:
                     comp_name = getattr(turret.target_component_type, 'DISPLAY_NAME', turret.target_component_type.__name__)
                     target_str = f"{turret.target.name} ({comp_name})"
                 else:
                     target_str = f"{turret.target.name} (Hull)"
                     
-            status_text = f"Status: {cooldown_status} | Target: {target_str}"
+            status_text = f"Status: {cooldown_status}"
+            if show_targets:
+                status_text += f" | Target: {target_str}"
             data.append({
                 'type': 'label',
                 'text': status_text,

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 5
+CONTRACT_VERSION = 6
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -33,6 +33,7 @@ def _spec(description, fields=(), required=None, **kwargs):
 
 
 COMMAND_SPECS = {
+    "rename_unit": _spec("Rename one owned unit with a generic name (1–30 characters after trimming; no control characters). Preserves all orders.", ("new_name",), queued=False, single_unit=True),
     "cancel_orders": _spec("Stop all work, clear navigation/fire targets, and select Do Nothing.", queued=False),
     "clear_explicit_orders": _spec("Cancel explicit work, preserving the stance; it resumes when idle.", queued=False),
     "cancel_order": _spec("Cancel one current or queued explicit root, promoting the next order.", ("order_id",), queued=False, single_unit=True),
@@ -92,7 +93,7 @@ COMMAND_PROPERTIES = {
     "unit_ids": {"type": "array", "items": {"type": "integer"}, "maxItems": MAX_UNITS},
     "target_id": {"type": ["integer", "null"]}, "system_name": NULLABLE_STRING,
     "hex_coord": _pair_schema("integer"), "position": _pair_schema("number"),
-    "template_name": NULLABLE_STRING, "amount": {"type": ["number", "null"]},
+    "template_name": NULLABLE_STRING, "new_name": NULLABLE_STRING, "amount": {"type": ["number", "null"]},
     "stance": {"type": ["string", "null"], "enum": [None, *STANCE_VALUES]},
     "queue": {"type": "boolean"}, "ability": NULLABLE_STRING,
     "minefield_type": {"type": ["string", "null"], "enum": [None, "anti_ship", "anti_strikecraft"]},
@@ -146,6 +147,12 @@ def validate_command(raw):
         else:
             require(isinstance(value, str) and bool(value.strip()), f"{field} must be a nonempty string.")
     require(spec.text_limit is None or len(raw.get("message") or "") <= spec.text_limit, "Message exceeds its length limit.")
+    if kind == "rename_unit":
+        from unit_naming import normalize_unit_name
+        try:
+            normalize_unit_name(raw["new_name"])
+        except ValueError as exc:
+            raise ContractError(str(exc)) from exc
     require(raw.get("stance") is None or raw["stance"] in STANCE_VALUES, "Unknown stance.")
     require(raw.get("minefield_type") in (None, "anti_ship", "anti_strikecraft"), "Unknown minefield_type.")
     require(raw.get("sabotage_type") in (None, "engines", "weapons", "defenses", "hyperdrive", "sensors", "antimatter", "economy", "growth"), "Unknown sabotage_type.")
