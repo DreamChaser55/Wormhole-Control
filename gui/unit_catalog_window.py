@@ -5,6 +5,7 @@ import pygame_gui
 from pygame_gui import elements
 
 from constants import HullSize
+from display_config import display_config_for
 from events import ConstructEvent
 from geometry import Position
 from unit_catalog import CATEGORIES, describe_template
@@ -64,39 +65,51 @@ def details_html(entry):
 
 
 class UnitCatalogWindow:
-    def __init__(self, gui, units, position, queue=False):
+    def __init__(self, gui, units, position):
         self.gui, self.game = gui, gui.game_instance
         self.galaxy = self.game.galaxy
         self.player = self.game.players[self.game.current_player_index]
         self.units = [u for u in units if u.owner == self.player and u.constructor_component]
         self.anchors = [(u.in_system, u.in_hex) for u in self.units]
         self.position = Position(position.x, position.y)
-        self.queue = queue
         self.selected_key = None
+        self._details_html = None
         self.entries = {}
         self._stamp = None
-        width, height = min(1000, int(gui.screen_res.x)-40), min(690, int(gui.screen_res.y)-40)
-        self.window = elements.UIWindow(pygame.Rect((int(gui.screen_res.x)-width)//2,
-            (int(gui.screen_res.y)-height)//2, width, height), gui.manager, window_display_title='Unit Catalog', resizable=False)
+        width = max(100, int(gui.screen_res.x) - 40)
+        height = int(gui.screen_res.y * .88)
+        self.window = elements.UIWindow(pygame.Rect(20,
+            int(gui.screen_res.y * .06), width, height), gui.manager, window_display_title='Unit Catalog', resizable=False)
         self.window.set_blocking(True)
         panel = self.window.get_container()
         w, h = panel.get_size()
-        self.search = elements.UITextEntryLine(pygame.Rect(10, 10, w-20, 30), gui.manager, container=panel,
+        scale = display_config_for(gui).text_scale
+        pad, gap = max(1, int(10 * scale)), max(1, int(8 * scale))
+        control_h, action_h = max(1, int(30 * scale)), max(1, int(34 * scale))
+        content_w = w - 2 * pad
+        filter_y = pad + control_h + gap
+        content_y = filter_y + control_h + gap
+        action_y = h - pad - action_h
+        content_h = action_y - gap - content_y
+        left_w = int((content_w - gap) * .40)
+        right_x = pad + left_w + gap
+        right_w = w - pad - right_x
+        self.search = elements.UITextEntryLine(pygame.Rect(pad, pad, content_w, control_h), gui.manager, container=panel,
                                              placeholder_text='Search designs, roles or abilities')
-        col = (w-20)//4
-        self.category = elements.UIDropDownMenu(['All roles', *CATEGORIES, 'Custom'], 'All roles', pygame.Rect(10, 48, col-5, 30), gui.manager, container=panel)
-        self.hull = elements.UIDropDownMenu(['All hulls', *HullSize.__members__], 'All hulls', pygame.Rect(10+col, 48, col-5, 30), gui.manager, container=panel)
-        self.kind = elements.UIDropDownMenu(['All units', 'ship', 'station', 'wing'], 'All units', pygame.Rect(10+col*2, 48, col-5, 30), gui.manager, container=panel)
-        self.affordability = elements.UIDropDownMenu(['All prices', 'Affordable'], 'All prices', pygame.Rect(10+col*3, 48, col, 30), gui.manager, container=panel)
-        left = int(w*.40)
-        self.list = elements.UISelectionList(pygame.Rect(10, 90, left-15, h-150), [], gui.manager, container=panel)
-        self.details = elements.UITextBox('Select a design to inspect its equipment.', pygame.Rect(left, 90, w-left-10, h-150), gui.manager, container=panel)
-        self.queue_button = elements.UIButton(pygame.Rect(10, h-48, left-15, 34), self.queue_text(), gui.manager, container=panel)
-        self.build_button = elements.UIButton(pygame.Rect(left, h-48, w-left-10, 34), 'Select a design', gui.manager, container=panel)
+        col = (content_w - 3 * gap) // 4
+        self.category = elements.UIDropDownMenu(['All roles', *CATEGORIES, 'Custom'], 'All roles', pygame.Rect(pad, filter_y, col, control_h), gui.manager, container=panel)
+        self.hull = elements.UIDropDownMenu(['All hulls', *HullSize.__members__], 'All hulls', pygame.Rect(pad+col+gap, filter_y, col, control_h), gui.manager, container=panel)
+        self.kind = elements.UIDropDownMenu(['All units', 'ship', 'station', 'wing'], 'All units', pygame.Rect(pad+(col+gap)*2, filter_y, col, control_h), gui.manager, container=panel)
+        price_x = pad + (col + gap) * 3
+        self.affordability = elements.UIDropDownMenu(['All prices', 'Affordable'], 'All prices', pygame.Rect(price_x, filter_y, w-pad-price_x, control_h), gui.manager, container=panel)
+        self.list = elements.UISelectionList(pygame.Rect(pad, content_y, left_w, content_h), [], gui.manager, container=panel,
+                                             object_id='#unit_catalog_list')
+        self.details = elements.UITextBox('Select a design to inspect its equipment.', pygame.Rect(right_x, content_y, right_w, content_h), gui.manager, container=panel)
+        build_w = int((left_w - gap) * .30)
+        self.build_button = elements.UIButton(pygame.Rect(pad, action_y, build_w, action_h), 'Build', gui.manager, container=panel)
+        self.queue_button = elements.UIButton(pygame.Rect(pad+build_w+gap, action_y, left_w-build_w-gap, action_h), 'Queue after existing orders', gui.manager, container=panel)
+        self.price_label = elements.UILabel(pygame.Rect(right_x, action_y, right_w, action_h), 'Select a design', gui.manager, container=panel)
         self.refresh()
-
-    def queue_text(self):
-        return 'Queue after orders: ' + ('Yes' if self.queue else 'No')
 
     def valid_context(self):
         return (self.game.galaxy is self.galaxy and self.game.players[self.game.current_player_index] is self.player
@@ -127,23 +140,46 @@ class UnitCatalogWindow:
         rows = catalog_entries(UNIT_TEMPLATES, search=self.search.get_text(), category=self.choice(self.category),
             hull=self.choice(self.hull), kind=self.choice(self.kind),
             affordable=self.choice(self.affordability) == 'Affordable', credits=self.player.credits)
-        self.entries = {f"{entry['name']} ({entry['credit_cost']}c)": entry for entry in rows}
-        self.list.set_item_list(list(self.entries))
+        entries = {f"{entry['name']} ({entry['credit_cost']}c)": entry for entry in rows}
+        if list(entries) != list(self.entries):
+            scroll = self.list.scroll_bar.start_percentage if self.list.scroll_bar else 0
+            self.list.set_item_list(list(entries))
+            if self.list.scroll_bar:
+                self.list.scroll_bar.set_scroll_from_start_percentage(scroll)
+        self.entries = entries
         entry = next((e for e in rows if e['template_name'] == self.selected_key), None)
         self.show_entry(entry)
 
     def show_entry(self, entry):
+        previous_key = self.selected_key
         self.selected_key = entry['template_name'] if entry else None
         self.build_button.disable()
-        self.build_button.set_text('Select a design')
-        self.details.set_text(details_html(entry) if entry else 'Select a design to inspect its equipment.')
+        self.queue_button.disable()
+        self.price_label.set_text('Select a design')
+        html = details_html(entry) if entry else 'Select a design to inspect its equipment.'
+        if html != self._details_html:
+            scroll = self.details.scroll_bar.start_percentage if self.details.scroll_bar else 0
+            self.details.set_text(html)
+            if previous_key == self.selected_key and self.details.scroll_bar:
+                self.details.scroll_bar.set_scroll_from_start_percentage(scroll)
+            self._details_html = html
+        # SelectionList has no public selection setter; restore its item state after a rebuild.
+        for item in self.list.item_list:
+            selected = self.entries[item['text']]['template_name'] == self.selected_key
+            item['selected'] = selected
+            button = item['button_element']
+            if button is not None:
+                button.select() if selected else button.unselect()
         if entry:
             buildable = entry['kind'] != 'wing' and self.valid_context() and all(u.constructor_component.can_build(self.selected_key) for u in self.units)
             affordable = self.player.credits >= entry['credit_cost'] * len(self.units)
-            self.build_button.set_text('Build in strikecraft bay' if entry['kind'] == 'wing' else
-                ('Queue construction' if self.queue else 'Build') + f" ({entry['credit_cost'] * len(self.units)}c)")
-            if buildable and (self.queue or affordable):
-                self.build_button.enable()
+            self.price_label.set_text('Produced in a strikecraft bay' if entry['kind'] == 'wing' else
+                f"Total: {entry['credit_cost'] * len(self.units)} credits "
+                f"({len(self.units)} {'builder' if len(self.units) == 1 else 'builders'})")
+            if buildable:
+                self.queue_button.enable()
+                if affordable:
+                    self.build_button.enable()
 
     def process_event(self, event):
         self.update()
@@ -158,13 +194,13 @@ class UnitCatalogWindow:
         elif event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION and event.ui_element == self.list:
             self.show_entry(self.entries.get(event.text))
         elif event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if event.ui_element == self.queue_button:
-                self.queue = not self.queue
-                self.queue_button.set_text(self.queue_text())
+            if event.ui_element in (self.build_button, self.queue_button):
                 self.refresh()
-            elif event.ui_element == self.build_button and self.build_button.is_enabled:
-                self.refresh()
-                if self.valid_context() and self.selected_key and self.build_button.is_enabled:
-                    self.game.event_bus.publish(ConstructEvent(self.units, self.selected_key, self.position, self.queue))
-                    self.kill()
+                if self.valid_context() and self.selected_key and event.ui_element.is_enabled:
+                    queue = event.ui_element == self.queue_button
+                    self.game.event_bus.publish(ConstructEvent(self.units, self.selected_key, self.position, queue))
+                    if queue:
+                        self.update()
+                    else:
+                        self.kill()
         return True

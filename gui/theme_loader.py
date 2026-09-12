@@ -76,6 +76,9 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
             # Match the base height of 30 used for the dropdown button in game.py
             scaled_item_height = max(20, int(30 * display_config_for(screen_res).text_scale))
             theme_data[dropdown_list_theme_id]["misc"]["list_item_height"] = str(scaled_item_height)
+            theme_data['#unit_catalog_list'] = {
+                'misc': {'list_item_height': str(scaled_item_height)}
+            }
 
             # Scale window title bar height for windows
             for window_theme_id in ["window", "#message_window", "message_window", "#new_game_wizard_window", "#load_game_window", "#retrofit_wizard_window"]:

@@ -1276,8 +1276,10 @@ Normal starts retain the original four starter roles and starting resources.
 Select a Constructor, right-click a construction location, and choose **Construct...**.
 The Unit Catalog supports name/role/ability search and category, hull, unit-kind and price
 filters. Details show equipment, effective weapon ranges, abilities, fuel, price, duration
-and upkeep. **Queue after orders** preserves existing work and starts with the Shift state
-used when opening the window. Multiple builders show their combined price. Wings can be
+and upkeep. **Build** replaces existing orders and closes the catalog. **Queue after existing
+orders** appends one construction order per selected builder and keeps the catalog open for
+additional orders. These buttons work independently of Shift. Queued orders pay when they
+start; an idle builder starts immediately. Multiple builders show their combined price. Wings can be
 inspected here but are produced in strikecraft bays. Utility Transports carry Tiny vessels.
 
 The Large Interdictor has radius 235 and uses 100/100 hull; the Huge Interdiction Fortress

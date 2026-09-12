@@ -207,7 +207,7 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
     game.event_bus = SimpleNamespace(publish=events.append)
     manager = build_ui_manager(Vector(1280, 720))
     gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720), manager=manager)
-    window = UnitCatalogWindow(gui, [builder], Position(200, 200), queue=True)
+    window = UnitCatalogWindow(gui, [builder], Position(200, 200))
     try:
         assert [e['template_name'] for e in catalog_entries(UNIT_TEMPLATES, search='counter-intelligence')] == ['INTELLIGENCE_SHIP']
         assert all(e['credit_cost'] <= 1000 for e in catalog_entries(UNIT_TEMPLATES, affordable=True, credits=1000))
@@ -216,6 +216,7 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
         window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
         window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.build_button))
         assert len(events) == 1
+        assert events[0].shift_pressed is False
         assert not window.window.alive()
         window = UnitCatalogWindow(gui, [builder], Position(200, 200))
         game.current_player_index = 1
@@ -258,3 +259,140 @@ def test_catalog_consumes_game_hotkeys_and_camera_panning(pygame_context, monkey
     finally:
         window.kill()
         manager.clear_and_reset()
+
+
+@pytest.fixture
+def construction_catalog(pygame_context):
+    from events import EventBus, ConstructEvent
+    from order_system import OrderSystem
+    from gui.unit_catalog_window import UnitCatalogWindow
+    from gui.theme_loader import build_ui_manager
+    game = campaign()
+    game.event_bus = EventBus()
+    OrderSystem(game, game.event_bus)
+    builders = [create(game, 'CONSTRUCTOR_MK1') for _ in range(2)]
+    game.players[0].credits = 100000
+    manager = build_ui_manager(Vector(1280, 720))
+    game.gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720),
+                               manager=manager)
+    window = UnitCatalogWindow(game.gui, builders, Position(200, 200))
+    events = []
+    game.event_bus.subscribe(ConstructEvent, events.append)
+    yield game, builders, window, events
+    window.kill()
+    manager.clear_and_reset()
+
+
+def press_catalog(window, button):
+    import pygame
+    import pygame_gui
+    window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=button))
+
+
+def test_catalog_repeated_queue_and_build_replacement(construction_catalog):
+    game, builders, window, events = construction_catalog
+    keys = ['SCOUT', 'FLEET_CARRIER', 'FLEET_CARRIER', 'MINELAYER']
+    for key in keys:
+        window.show_entry(describe_template(key, UNIT_TEMPLATES[key]))
+        press_catalog(window, window.queue_button)
+        assert window.window.alive()
+        assert window.selected_key == key
+    for builder in builders:
+        commander = builder.commander_component
+        orders = [commander.current_order, *commander.orders_queue]
+        assert [o.parameters['unit_template_name'] for o in orders] == keys
+        assert all(o.parameters['target_position'] == Position(200, 200) for o in orders)
+    assert all(event.shift_pressed for event in events)
+    assert game.players[0].credits == 100000 - 2 * UNIT_TEMPLATES['SCOUT']['build_cost']
+    assert '2 builders' in window.price_label.text
+    window.show_entry(describe_template('MINELAYER', UNIT_TEMPLATES['MINELAYER']))
+    press_catalog(window, window.build_button)
+    assert not window.window.alive()
+    assert events[-1].shift_pressed is False
+    for builder in builders:
+        assert builder.commander_component.current_order.parameters['unit_template_name'] == 'MINELAYER'
+        assert not builder.commander_component.orders_queue
+
+
+def test_catalog_queue_preserves_browsing_and_updates_affordability(construction_catalog):
+    game, builders, window, events = construction_catalog
+    key = 'FLEET_CARRIER'
+    window.search.set_text('carrier')
+    window.refresh()
+    window.show_entry(describe_template(key, UNIT_TEMPLATES[key]))
+    window.gui.manager.update(.1)
+    window.details.scroll_bar.set_scroll_from_start_percentage(.2)
+    detail_scroll = window.details.scroll_bar.start_percentage
+    selection = window.list.get_single_selection()
+    game.players[0].credits = UNIT_TEMPLATES[key]['build_cost'] * len(builders)
+    press_catalog(window, window.queue_button)
+    window.gui.manager.update(.1)
+    assert game.players[0].credits == 0
+    assert not window.build_button.is_enabled
+    assert window.queue_button.is_enabled
+    assert window.search.get_text() == 'carrier'
+    assert window.list.get_single_selection() == selection
+    assert window.details.scroll_bar.start_percentage == pytest.approx(detail_scroll)
+    press_catalog(window, window.build_button)
+    assert len(events) == 1
+    press_catalog(window, window.queue_button)
+    assert len(events) == 2
+    assert window.window.alive()
+    assert all(len(b.commander_component.orders_queue) == 1 for b in builders)
+
+
+def test_catalog_refresh_preserves_list_scroll_and_clears_filtered_selection(construction_catalog):
+    game, builders, window, events = construction_catalog
+    window.show_entry(describe_template('FLEET_CARRIER', UNIT_TEMPLATES['FLEET_CARRIER']))
+    window.list.scroll_bar.set_scroll_from_start_percentage(.4)
+    window.gui.manager.update(.1)
+    scroll = window.list.scroll_bar.start_percentage
+    game.players[0].credits -= 1
+    window.update()
+    assert window.list.scroll_bar.start_percentage == pytest.approx(scroll)
+    assert window.list.get_single_selection() == 'Fleet Carrier (6998c)'
+    # A changed list must also retain the highlight and viewport where possible.
+    window.affordability.selected_option = 'Affordable'
+    game.players[0].credits = 7500
+    window.update()
+    assert window.list.scroll_bar.start_percentage == pytest.approx(scroll)
+    assert window.list.get_single_selection() == 'Fleet Carrier (6998c)'
+    game.players[0].credits = 2 * UNIT_TEMPLATES['SCOUT']['build_cost']
+    window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
+    press_catalog(window, window.queue_button)
+    assert window.window.alive()
+    assert window.selected_key is None
+    assert window.list.get_single_selection() is None
+    assert not window.build_button.is_enabled and not window.queue_button.is_enabled
+
+
+def test_catalog_disabled_and_stale_actions(construction_catalog):
+    game, builders, window, events = construction_catalog
+    for key in (None, 'BOMBER_WING'):
+        window.show_entry(describe_template(key, UNIT_TEMPLATES[key]) if key else None)
+        for button in (window.build_button, window.queue_button):
+            assert not button.is_enabled
+            press_catalog(window, button)
+    assert not events
+    window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
+    builders[0].owner = game.players[1]
+    press_catalog(window, window.queue_button)
+    assert not events and not window.window.alive()
+
+
+@pytest.mark.parametrize('shift', [False, True])
+def test_catalog_opening_shift_does_not_change_build(construction_catalog, monkeypatch, shift):
+    from input_processor.context_actions import handle_context_menu_action
+    game, builders, window, events = construction_catalog
+    window.kill()
+    game.selected_objects = builders
+    monkeypatch.setattr('input_processor.context_actions._get_shift_pressed', lambda: shift)
+    handle_context_menu_action(game, 'open_unit_catalog', Position(200, 200))
+    opened = game.gui.unit_catalog_window
+    try:
+        opened.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
+        press_catalog(opened, opened.build_button)
+        assert not opened.window.alive()
+        assert len(events) == 1 and events[0].shift_pressed is False
+    finally:
+        opened.kill()
