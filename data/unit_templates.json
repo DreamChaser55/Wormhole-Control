@@ -1,6 +1,6 @@
 {
   "CONSTRUCTOR_MK1": {
-    "name": "Constructor Mk.I",
+    "name": "Constructor",
     "hull_size": "MEDIUM",
     "hull_points": 100,
     "build_time": 19,
@@ -92,7 +92,7 @@
     "description": "Designed for mobile construction and refitting. Inter-system travel."
   },
   "COLONIZER_MK1": {
-    "name": "Colonizer Mk.I",
+    "name": "Colonizer",
     "hull_size": "MEDIUM",
     "hull_points": 100,
     "build_time": 18,
@@ -184,7 +184,7 @@
     "description": "Designed for colonization. Inter-system travel."
   },
   "SHIPYARD_MK1": {
-    "name": "Shipyard Mk.I",
+    "name": "Shipyard",
     "hull_size": "SMALL",
     "hull_points": 50,
     "build_time": 12,
@@ -646,7 +646,7 @@
     "description": "Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae."
   },
   "TRADE_FREIGHTER_MK1": {
-    "name": "Trade Freighter Mk.I",
+    "name": "Trade Freighter",
     "hull_size": "MEDIUM",
     "hull_points": 100,
     "build_time": 17,

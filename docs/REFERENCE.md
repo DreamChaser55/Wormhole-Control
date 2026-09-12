@@ -1326,14 +1326,14 @@ component costs, HP, price and duration. Custom-library loading remains permissi
 | Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 12 | 0.24 | Designed for income and trade destination. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
 | Crystal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 16 | 0.32 | Designed for crystal refining. Stationary installation. |
 | Metal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 16 | 0.32 | Designed for metal refining. Stationary installation. |
-| Trade Freighter Mk.I | Economy | MEDIUM ship | 37.00/50 | 1610 | 17 | 0.37 | Designed for local trade. Intra-system travel only. Needs active habitats in different sectors. |
-| Colonizer Mk.I | Economy | MEDIUM ship | 38.00/50 | 1640 | 18 | 0.38 | Designed for colonization. Inter-system travel. |
+| Trade Freighter | Economy | MEDIUM ship | 37.00/50 | 1610 | 17 | 0.37 | Designed for local trade. Intra-system travel only. Needs active habitats in different sectors. |
+| Colonizer | Economy | MEDIUM ship | 38.00/50 | 1640 | 18 | 0.38 | Designed for colonization. Inter-system travel. |
 | Expedition Miner | Economy | MEDIUM ship | 46.50/50 | 1895 | 19 | 0.47 | Designed for expedition mining. Inter-system travel. Mine metal asteroids or comets and unload at the matching refinery. |
 | Blockade Runner | Economy | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Designed for covert inter-system trade. Inter-system travel. Needs active habitats in different sectors. |
 | Industrial Hub | Economy | LARGE station | 92.99/100 | 3790 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
 | Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
-| Shipyard Mk.I | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Designed for stationary construction. Stationary installation. |
-| Constructor Mk.I | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Designed for mobile construction and refitting. Inter-system travel. |
+| Shipyard | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Designed for stationary construction. Stationary installation. |
+| Constructor | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Designed for mobile construction and refitting. Inter-system travel. |
 | Fuel Depot | Logistics | MEDIUM station | 43.00/50 | 1790 | 19 | 0.43 | Designed for stationary fuel collection. Stationary installation. Harvest near stars or inside hydrogen nebulae. |
 | Antimatter Harvester | Logistics | MEDIUM ship | 45.00/50 | 1850 | 19 | 0.45 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Small Repair Station | Logistics | MEDIUM station | 47.99/50 | 1940 | 20 | 0.48 | Designed for stationary repair. Stationary installation. |

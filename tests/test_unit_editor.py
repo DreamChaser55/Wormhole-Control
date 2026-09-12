@@ -299,7 +299,7 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
 
     def test_duplicate_builtin_template_name_rejected(self):
         mgr = self._fresh_manager()
-        t = self._make_template("Shipyard Mk.I")
+        t = self._make_template("Shipyard")
         err = mgr.save_design(t)
         self.assertTrue(any("already exists" in e for e in err))
         self.assertEqual(len(mgr.list_design_names()), 0)

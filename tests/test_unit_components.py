@@ -1023,7 +1023,7 @@ def test_unit_template_name_in_sidebar():
         name="My Constructor",
         hull_size=HullSize.MEDIUM,
         game=mock_game,
-        template_name="Constructor Mk.I"
+        template_name="Constructor"
     )
     
     mock_game.selected_objects = [unit]
@@ -1039,7 +1039,7 @@ def test_unit_template_name_in_sidebar():
     mock_game.gui.update_side_bar_content.assert_called_once()
     data_list = mock_game.gui.update_side_bar_content.call_args[0][0]
     
-    template_labels = [d for d in data_list if d.get("type") == "label" and "Template: Constructor Mk.I" in d.get("text", "")]
+    template_labels = [d for d in data_list if d.get("type") == "label" and "Template: Constructor" in d.get("text", "")]
     assert len(template_labels) == 1
 
 

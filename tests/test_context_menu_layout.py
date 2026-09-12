@@ -225,7 +225,7 @@ def test_calculate_context_menu_min_col_width_long_construct_options():
     screen_res = Vector(1280, 720)
     options = [
         ("Back", "__submenu_back__"),
-        ("Constructor Mk.I (800c)", "construct_CONSTRUCTOR_MK1"),
+        ("Constructor (800c)", "construct_CONSTRUCTOR_MK1"),
         ("Medium Orbital Defense Station (2500c)", "construct_MEDIUM_DEFENSE_STATION"),
         ("Crystal Refinery Station (1200c)", "construct_CRYSTAL_REFINERY"),
     ]
@@ -267,7 +267,7 @@ def test_open_context_menu_construct_submenu_expands_and_fits_text():
 
     # Construct submenu with real unit templates
     construct_options = [
-        ("Constructor Mk.I (800c)", "construct_CONSTRUCTOR_MK1"),
+        ("Constructor (800c)", "construct_CONSTRUCTOR_MK1"),
         ("Medium Orbital Defense Station (2500c)", "construct_MEDIUM_DEFENSE_STATION"),
         ("Crystal Refinery Station (1200c)", "construct_CRYSTAL_REFINERY"),
         ("Metal Refinery Station (1000c)", "construct_METAL_REFINERY"),
