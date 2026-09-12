@@ -20,8 +20,9 @@ from tests.support.scenarios import settings_for
 from unit_components.constructor import Constructor, instantiate_unit_from_template
 from unit_orders.base import OrderStatus
 from unit_orders.construction import ConstructOrder
+from player_controller import PlayerController
 from unit_templates import (
-    TESTING_TEMPLATE_KEYS, UNIT_TEMPLATES, load_testing_templates,
+    PRIVATE_TEMPLATES, TESTING_TEMPLATE_KEYS, UNIT_TEMPLATES, load_testing_templates,
     publish_testing_templates,
 )
 
@@ -46,7 +47,8 @@ def test_prepare_and_commit_profile_transitions_preserve_custom_designs():
     design = CustomUnitTemplate('Persistent Custom', HullSize.MEDIUM)
     design.components.has_engine = True
     assert manager.save_design(design) == []
-    custom = UNIT_TEMPLATES['Persistent Custom']
+    assert 'Persistent Custom' not in UNIT_TEMPLATES
+    custom = PRIVATE_TEMPLATES['Persistent Custom']
     registry = UNIT_TEMPLATES
     for profile, count in [(SpawnProfile.NORMAL, 4), (SpawnProfile.TESTING, 11),
                            (SpawnProfile.TESTING, 11), (SpawnProfile.NORMAL, 4)]:
@@ -56,7 +58,8 @@ def test_prepare_and_commit_profile_transitions_preserve_custom_designs():
         assert registry == before
         commit_campaign(game, prepared)
         assert registry is UNIT_TEMPLATES
-        assert registry['Persistent Custom'] is custom
+        assert 'Persistent Custom' not in registry
+        assert PRIVATE_TEMPLATES['Persistent Custom'] is custom
         expected = TESTING_TEMPLATE_KEYS if profile == SpawnProfile.TESTING else set()
         assert registry.keys() & TESTING_TEMPLATE_KEYS == expected
         for player in game.players:
@@ -65,6 +68,52 @@ def test_prepare_and_commit_profile_transitions_preserve_custom_designs():
         buildables = {entry.unit_template_name for entry in builder.constructor_component.buildable_units}
         assert buildables & TESTING_TEMPLATE_KEYS == expected
         assert 'Persistent Custom' in buildables
+
+
+@pytest.mark.parametrize('ai_controller', [PlayerController.OPENAI, PlayerController.CODEX])
+def test_ai_players_cannot_access_or_build_private_templates(ai_controller):
+    game = campaign()
+    manager = CustomTemplateManager()
+    design = CustomUnitTemplate('Private Frigate', HullSize.MEDIUM)
+    design.components.has_engine = True
+    assert manager.save_design(design) == []
+    assert 'Private Frigate' in PRIVATE_TEMPLATES
+    assert 'Private Frigate' not in UNIT_TEMPLATES
+
+    human_player = game.players[0]
+    human_player.controller = PlayerController.HUMAN
+    ai_player = game.players[1]
+    ai_player.controller = ai_controller
+
+    human_builder = ship(game, 'human_builder', owner=0)
+    human_builder.add_component(Constructor(human_builder))
+    ai_builder = ship(game, 'ai_builder', owner=1)
+    ai_builder.add_component(Constructor(ai_builder))
+
+    # Human constructor sees both built-in and private templates
+    human_buildables = {e.unit_template_name for e in human_builder.constructor_component.buildable_units}
+    assert 'Private Frigate' in human_buildables
+    assert 'CONSTRUCTOR_MK1' in human_buildables
+    assert human_builder.constructor_component.can_build('Private Frigate') is not None
+
+    # AI constructor sees ONLY built-in templates
+    ai_buildables = {e.unit_template_name for e in ai_builder.constructor_component.buildable_units}
+    assert 'Private Frigate' not in ai_buildables
+    assert 'CONSTRUCTOR_MK1' in ai_buildables
+    assert ai_builder.constructor_component.can_build('Private Frigate') is None
+    assert ai_builder.constructor_component.can_build('CONSTRUCTOR_MK1') is not None
+
+    # instantiate_unit_from_template allows human to instantiate private template
+    human_unit = instantiate_unit_from_template(
+        'Private Frigate', human_player, 'Sol', (0, 0), Position(0, 0), game.galaxy, game
+    )
+    assert human_unit is not None
+
+    # instantiate_unit_from_template forbids AI from instantiating private template
+    ai_unit = instantiate_unit_from_template(
+        'Private Frigate', ai_player, 'Sol', (0, 0), Position(0, 0), game.galaxy, game
+    )
+    assert ai_unit is None
 
 
 @pytest.mark.parametrize('active_testing', [False, True])

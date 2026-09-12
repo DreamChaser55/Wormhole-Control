@@ -352,34 +352,7 @@ Wormhole Control features 6 hull classes (`HullSize`). Each hull size sets the c
 ## 3. Component Catalogue
 
 <!-- BEGIN GENERATED: components -->
-The Unit Designer provides **24 selectable component rows**. Commander is always present.
-
-| # | Component Key | Label | Cost Type | Default Cost |
-| --- | --- | --- | --- | --- |
-| 1 | `has_engine` | Engines | Dynamic | 5.0 |
-| 2 | `has_antimatter_storage` | Antimatter Storage | Dynamic | 5.0 |
-| 3 | `has_antimatter_harvester` | Antimatter Harvester | Fixed | 15.0 |
-| 4 | `has_hyperdrive` | Hyperdrive | Dynamic | 5.0 |
-| 5 | `has_weapon_bays` | Weapons | Dynamic | 10.0 |
-| 6 | `has_defenses` | Defenses | Dynamic | 10.0 |
-| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 |
-| 8 | `has_repair_component` | Repair | Dynamic | 15.0 |
-| 9 | `has_colony_component` | Colony | Fixed | 10.0 |
-| 10 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 |
-| 11 | `has_orbital_defense_component` | Orbital Defense | Fixed | 20.0 |
-| 12 | `has_trade_component` | Trade Module | Fixed | 10.0 |
-| 13 | `has_mining_component` | Mining | Dynamic | 10.0 |
-| 14 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 |
-| 15 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 |
-| 16 | `has_hangar` | Hangar | Dynamic | 20.0 |
-| 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 |
-| 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 20.0 |
-| 19 | `has_ability_component` | Abilities | Dynamic | 10.0 |
-| 20 | `has_sensors` | Sensors | Dynamic | 2.0 |
-| 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 |
-| 22 | `has_marines_component` | Marines | Dynamic | 10.0 |
-| 23 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 |
-| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 |
+generated fixture
 <!-- END GENERATED: components -->
 
 Hull restrictions and component behavior:
@@ -421,31 +394,7 @@ hex or wormhole jumps performed by an otherwise operational Hyperdrive.
 Tactical positions and ranges use logical sector units (sector radius 5000); renderers convert them to pixels.
 
 <!-- BEGIN GENERATED: abilities -->
-There are **21 special abilities** registered in the game.
-
-| Ability | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Required Component | Target Type |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Adaptive Forcefield** | 8 | 3 | 0.0 | 20 | Defenses | Self |
-| **Cluster Warhead** | 5 | 0 | 500.0 | 30 | Weapons | Position |
-| **Designate Target** | 6 | 4 | 450.0 | 15 | Sensors | Unit |
-| **Ion Bolt** | 7 | 3 | 400.0 | 25 | Weapons | Unit |
-| **Missile Batteries** | 10 | 4 | 0.0 | 40 | Weapons | Self |
-| **Repair Cloud** | 8 | 4 | 350.0 | 35 | Repair | Self |
-| **Capture Unit** | 10 | 0 | 100.0 | 40 | Marines | Unit |
-| **Drain Antimatter** | 6 | 0 | 300.0 | 0 | Antimatter Storage | Unit |
-| **Microjump** | 5 | 0 | 0.0 | 25 | Hyperdrive | Position |
-| **Scan for Minefields** | 6 | 0 | 1500.0 | 35 | Sensors | Self |
-| **Attack Run** | 8 | 6 | 750 | 40 | Strikecraft Bay, Sensors | Unit |
-| **Evasive Formation** | 6 | 3 | 750 | 20 | Strikecraft Bay, Sensors | Unit |
-| **Emergency Recovery** | 8 | 6 | 750 | 30 | Strikecraft Bay | Unit |
-| **Tracking Lock** | 6 | 3 | 600 | 20 | Sensors, Weapons | Unit |
-| **Flak Barrage** | 8 | 3 | 0 | 35 | Weapons | Self |
-| **Ghost Fleet** | 8 | 0 | 750 | 25 | Sensors | Position |
-| **Tractor Tether** | 6 | 3 | 400 | 20 | Engines | Unit |
-| **Mine-Clearing Sweep** | 4 | 0 | 1000 | 25 | Sensors, Minelayer | Position |
-| **Guardian Link** | 7 | 3 | 450 | 25 | Defenses | Unit |
-| **Fuel Cache** | 4 | 0 | 250 | 55 | Antimatter Storage | Position |
-| **Nebula Catalyst** | 7 | 3 | 750 | 30 | Sensors, Antimatter Storage | Nebula + Position |
+generated fixture
 <!-- END GENERATED: abilities -->
 
 - **Adaptive Forcefield**: Temporarily raises defensive mitigation against incoming attacks.
@@ -464,7 +413,7 @@ There are **21 special abilities** registered in the game.
 ## 5. Order Types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **37 order types**, including the persistent `STANCE` root.
+generated fixture
 <!-- END GENERATED: order-count -->
 
 | Order Type | Description |
@@ -948,17 +897,7 @@ remain available. Waypoint previews are limited to 16; omitted counts are explic
 Every planet generated in the galaxy possesses distinctive biological and geological traits defined in `PLANET_TRAITS`:
 
 <!-- BEGIN GENERATED: planets -->
-| Planet Type | Colonizable | Max Population | Growth Rate | Passive Metal | Passive Crystal | Antimatter Multiplier |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Terran** | Yes | 100.0 | 2% / turn | 0.0 | 0.0 | 0.0x |
-| **Oceanic** | Yes | 120.0 | 2.5% / turn | 0.0 | 0.0 | 0.0x |
-| **Desert** | Yes | 75.0 | 1.5% / turn | 0.0 | 0.0 | 0.0x |
-| **Ice** | Yes | 60.0 | 1% / turn | 0.0 | 2.0 | 0.0x |
-| **Barren** | Yes | 40.0 | 0.8% / turn | 0.0 | 0.0 | 0.0x |
-| **Volcanic** | Yes | 50.0 | 0.8% / turn | 5.0 | 0.0 | 0.0x |
-| **Ferrous** | Yes | 70.0 | 1.2% / turn | 8.0 | 0.0 | 0.0x |
-| **Greenhouse** | Yes | 35.0 | 0.5% / turn | 0.0 | 3.0 | 0.0x |
-| **Gas Giant** | No | 0.0 | 0% / turn | 0.0 | 0.0 | 0.0x |
+generated fixture
 <!-- END GENERATED: planets -->
 
 - **Terran**: Balanced biosphere with standard habitability.
@@ -985,17 +924,7 @@ Stars anchor the gravitational and hyperspace topology of star systems:
 ### 12.3 Environmental Fields & Tactical Cover
 
 <!-- BEGIN GENERATED: environment -->
-| Density | Ice beam cover | Debris kinetic/missile cover |
-| --- | --- | --- |
-| Low | 5% | 5% |
-| Medium | 10% | 10% |
-| High | 15% | 15% |
-
-| Environment | Combat modifier |
-| --- | --- |
-| Ice field | -1 turn to cooldown reset when firing |
-| Nitrogen nebula | -1 turn to cooldown reset when firing |
-| Oxygen nebula | 1.15x splash damage taken |
+generated fixture
 <!-- END GENERATED: environment -->
  
 - **Selection & Interaction**: Non-solid celestial bodies (Asteroid Fields, Ice Fields, Debris Fields, Nebulae, and Storms) are atmospheric and environmental regions with `is_solid = False`. They cannot be selected by clicking inside their area in the sector view canvas, preventing accidental click interception and preserving open tactical movement/patrol clicks. They are inspected and selected exclusively via the sidebar panel of their containing hex. In Sector View, all non-solid bodies are visually rendered with an exact-radius turquoise circle (`TURQUOISE = (64, 224, 208)`) marking their physical boundary and area of effect for the player. AI agents observe `is_solid = False` and the exact `effect_radius` for these bodies in system observations.
@@ -1303,55 +1232,5 @@ Built-in validation additionally checks category, roles, description and canonic
 component costs, HP, price and duration. Custom-library loading remains permissive.
 
 <!-- BEGIN GENERATED: unit-catalog -->
-| Design | Category | Hull / kind | Hull used | Credits | Turns | Upkeep | Role and operation |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Bomber Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | Designed for bomber strike. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
-| Fighter Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Designed for fighter screen. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
-| Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Build fighter or bomber wings using the production selector. |
-| Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Build fighter or bomber wings using the production selector. |
-| Missile Platform | Combat | TINY station | 10.00/10 | 400 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
-| Patrol Cutter | Combat | TINY ship | 10.00/10 | 400 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
-| Interceptor | Combat | SMALL ship | 24.20/25 | 976 | 12 | 0.24 | Designed for strikecraft interception. Inter-system travel. |
-| Beam Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for beam combat. Inter-system travel. |
-| Kinetic Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for kinetic combat. Inter-system travel. |
-| Missile Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for missile combat. Inter-system travel. |
-| Flak Battery | Combat | MEDIUM station | 49.10/50 | 1973 | 20 | 0.49 | Designed for stationary air defense. Stationary installation. |
-| Flak Escort | Combat | MEDIUM ship | 49.80/50 | 1994 | 20 | 0.50 | Designed for fleet air defense. Inter-system travel. |
-| Artillery Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 29 | 0.90 | Designed for ranged fire support. Inter-system travel. |
-| Assault Cruiser | Combat | LARGE ship | 90.67/100 | 3720 | 29 | 0.91 | Designed for direct assault. Inter-system travel. |
-| Orbital Bastion | Combat | LARGE station | 92.80/100 | 3784 | 29 | 0.93 | Designed for colony defense. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
-| Battleship | Combat | HUGE ship | 183.93/200 | 7518 | 38 | 1.84 | Designed for fleet anchor. Inter-system travel. |
-| Siege Dreadnought | Combat | HUGE ship | 199.93/200 | 7998 | 40 | 2.00 | Designed for siege bombardment. Inter-system travel. |
-| Interdiction Fortress | Combat | HUGE station | 200.00/200 | 8000 | 40 | 2.00 | Designed for fortified jump denial. Stationary installation. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
-| Mining Drone | Economy | TINY ship | 9.00/10 | 370 | 6 | 0.09 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
-| Small Mining Ship | Economy | SMALL ship | 23.20/25 | 946 | 12 | 0.23 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
-| Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 12 | 0.24 | Designed for income and trade destination. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
-| Crystal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 16 | 0.32 | Designed for crystal refining. Stationary installation. |
-| Metal Refinery Station | Economy | MEDIUM station | 32.00/50 | 1460 | 16 | 0.32 | Designed for metal refining. Stationary installation. |
-| Trade Freighter | Economy | MEDIUM ship | 37.00/50 | 1610 | 17 | 0.37 | Designed for local trade. Intra-system travel only. Needs active habitats in different sectors. |
-| Colonizer | Economy | MEDIUM ship | 38.00/50 | 1640 | 18 | 0.38 | Designed for colonization. Inter-system travel. |
-| Expedition Miner | Economy | MEDIUM ship | 46.50/50 | 1895 | 19 | 0.47 | Designed for expedition mining. Inter-system travel. Mine metal asteroids or comets and unload at the matching refinery. |
-| Blockade Runner | Economy | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Designed for covert inter-system trade. Inter-system travel. Needs active habitats in different sectors. |
-| Industrial Hub | Economy | LARGE station | 92.99/100 | 3790 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
-| Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
-| Shipyard | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Designed for stationary construction. Stationary installation. |
-| Constructor | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Designed for mobile construction and refitting. Inter-system travel. |
-| Fuel Depot | Logistics | MEDIUM station | 43.00/50 | 1790 | 19 | 0.43 | Designed for stationary fuel collection. Stationary installation. Harvest near stars or inside hydrogen nebulae. |
-| Antimatter Harvester | Logistics | MEDIUM ship | 45.00/50 | 1850 | 19 | 0.45 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
-| Small Repair Station | Logistics | MEDIUM station | 47.99/50 | 1940 | 20 | 0.48 | Designed for stationary repair. Stationary installation. |
-| Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |
-| Nebula Tender | Logistics | LARGE ship | 80.50/100 | 3415 | 27 | 0.81 | Designed for nebula and fuel support. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
-| Fleet Tanker | Logistics | LARGE ship | 87.50/100 | 3625 | 28 | 0.88 | Designed for fleet resupply. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
-| Fleet Repair Ship | Logistics | LARGE ship | 87.99/100 | 3640 | 28 | 0.88 | Designed for fleet repair. Inter-system travel. |
-| Heavy Shipyard | Logistics | LARGE station | 88.79/100 | 3664 | 28 | 0.89 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
-| Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
-| Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
-| Minelayer | Special Operations | MEDIUM ship | 49.50/50 | 1985 | 20 | 0.49 | Designed for mine deployment. Inter-system travel. |
-| Intelligence Ship | Special Operations | LARGE ship | 75.00/100 | 3250 | 26 | 0.75 | Designed for espionage and counter-intelligence. Inter-system travel. |
-| Boarding Cruiser | Special Operations | LARGE ship | 82.00/100 | 3460 | 27 | 0.82 | Designed for boarding and capture. Inter-system travel. |
-| Minesweeper | Special Operations | LARGE ship | 87.80/100 | 3634 | 28 | 0.88 | Designed for mine detection and clearance. Inter-system travel. |
-| Command Cruiser | Special Operations | LARGE ship | 88.00/100 | 3640 | 28 | 0.88 | Designed for target designation and protection. Inter-system travel. |
-| Raider | Special Operations | LARGE ship | 93.50/100 | 3805 | 29 | 0.94 | Designed for covert raiding. Inter-system travel. |
-| Stealth Tender | Special Operations | LARGE ship | 97.50/100 | 3925 | 30 | 0.97 | Designed for fleet concealment and decoys. Inter-system travel. |
-| Interdictor | Special Operations | LARGE ship | 100.00/100 | 4000 | 30 | 1.00 | Designed for mobile jump denial. Inter-system travel. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
+generated fixture
 <!-- END GENERATED: unit-catalog -->

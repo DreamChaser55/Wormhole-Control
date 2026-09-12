@@ -29,13 +29,14 @@ def isolated_process_state(monkeypatch):
     from domain.players import Player
     from unit_components.intelligence import Agent
     from unit_orders.base import Order
-    from unit_templates import UNIT_TEMPLATES
+    from unit_templates import UNIT_TEMPLATES, PRIVATE_TEMPLATES
     import save_manager
 
     owners = ((GameObject, "object_counter"), (Player, "player_counter"),
               (Agent, "agent_counter"), (Order, "order_counter"))
     counters = [(owner, field, getattr(owner, field)) for owner, field in owners]
     registry = dict(UNIT_TEMPLATES)
+    private_registry = dict(PRIVATE_TEMPLATES)
     rng = random.getstate()
     random.seed(12)
     # Keep fixture-owned files outside each test's tmp_path, so filesystem tests
@@ -50,7 +51,10 @@ def isolated_process_state(monkeypatch):
         setattr(owner, field, value)
     UNIT_TEMPLATES.clear()
     UNIT_TEMPLATES.update(registry)
+    PRIVATE_TEMPLATES.clear()
+    PRIVATE_TEMPLATES.update(private_registry)
     random.setstate(rng)
+
 
 
 @pytest.fixture(scope="session")

@@ -7,7 +7,7 @@ from custom_unit_templates import (
 )
 from unit_components.constructor import Constructor
 from geometry import Position
-from unit_templates import UNIT_TEMPLATES
+from unit_templates import UNIT_TEMPLATES, PRIVATE_TEMPLATES
 
 
 def test_calc_antimatter_hull_cost():
@@ -104,7 +104,8 @@ def test_custom_template_manager_serialization(tmp_path):
     assert loaded.components.antimatter_hull_cost == 15
 
     # Check registered dict format
-    tdict = UNIT_TEMPLATES["AM Ser Test"]
+    assert "AM Ser Test" not in UNIT_TEMPLATES
+    tdict = PRIVATE_TEMPLATES["AM Ser Test"]
     assert tdict["has_antimatter_storage"] is True
     assert tdict["antimatter_capacity"] == 300.0
     assert tdict["antimatter_hull_cost"] == 15

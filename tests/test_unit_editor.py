@@ -9,14 +9,14 @@ from custom_unit_templates import (
     CustomUnitTemplate,
     ComponentConfig,
 )
-from unit_templates import UNIT_TEMPLATES
+from unit_templates import UNIT_TEMPLATES, PRIVATE_TEMPLATES
 """
 tests/test_unit_editor.py
 
 Unit tests for the custom unit template system:
   - CustomUnitTemplate validation (capacity, hull-size restrictions)
   - Save / delete / load-from-file persistence round-trip
-  - UNIT_TEMPLATES registration
+  - PRIVATE_TEMPLATES registration
   - Constructor.refresh_buildable_units integration
 """
 
@@ -162,7 +162,7 @@ class TestCustomUnitTemplateValidation(unittest.TestCase):
 
 
 class TestCustomTemplateManagerPersistence(unittest.TestCase):
-    """Tests for save / load round-trip and UNIT_TEMPLATES registration."""
+    """Tests for save / load round-trip and PRIVATE_TEMPLATES registration."""
 
     def setUp(self):
         # Use a temporary file so tests don't pollute the real data file
@@ -185,26 +185,27 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         t.components.has_weapon_bays = True
         return t
 
-    def test_save_registers_in_unit_templates(self):
+    def test_save_registers_in_private_templates(self):
         mgr = self._fresh_manager()
         t = self._make_template()
         errs = mgr.save_design(t)
         self.assertEqual(errs, [])
-        self.assertIn("Test Cruiser", UNIT_TEMPLATES)
+        self.assertIn("Test Cruiser", PRIVATE_TEMPLATES)
+        self.assertNotIn("Test Cruiser", UNIT_TEMPLATES)
 
     def test_saved_template_hull_size_is_enum(self):
         mgr = self._fresh_manager()
         mgr.save_design(self._make_template())
-        td = UNIT_TEMPLATES["Test Cruiser"]
+        td = PRIVATE_TEMPLATES["Test Cruiser"]
         self.assertIsInstance(td["hull_size"], HullSize)
 
-    def test_delete_removes_from_unit_templates(self):
+    def test_delete_removes_from_private_templates(self):
         mgr = self._fresh_manager()
         mgr.save_design(self._make_template())
-        self.assertIn("Test Cruiser", UNIT_TEMPLATES)
+        self.assertIn("Test Cruiser", PRIVATE_TEMPLATES)
         deleted = mgr.delete_design("Test Cruiser")
         self.assertTrue(deleted)
-        self.assertNotIn("Test Cruiser", UNIT_TEMPLATES)
+        self.assertNotIn("Test Cruiser", PRIVATE_TEMPLATES)
 
     def test_persistence_round_trip(self):
         mgr1 = self._fresh_manager()
@@ -219,7 +220,8 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         self.assertEqual(design.hull_size, HullSize.MEDIUM)
         self.assertTrue(design.components.has_engine)
         self.assertTrue(design.components.has_weapon_bays)
-        self.assertIn("Test Cruiser", UNIT_TEMPLATES)
+        self.assertIn("Test Cruiser", PRIVATE_TEMPLATES)
+        self.assertNotIn("Test Cruiser", UNIT_TEMPLATES)
 
     def test_persistence_hull_size_survives_round_trip(self):
         mgr1 = self._fresh_manager()
@@ -276,15 +278,18 @@ class TestCustomTemplateManagerPersistence(unittest.TestCase):
         t1 = self._make_template("Old Name")
         mgr.save_design(t1)
         self.assertIn("Old Name", mgr.designs)
-        self.assertIn("Old Name", UNIT_TEMPLATES)
+        self.assertIn("Old Name", PRIVATE_TEMPLATES)
+        self.assertNotIn("Old Name", UNIT_TEMPLATES)
 
         t1.display_name = "New Name"
         err = mgr.save_design(t1, original_name="Old Name")
         self.assertEqual(err, [])
         self.assertNotIn("Old Name", mgr.designs)
+        self.assertNotIn("Old Name", PRIVATE_TEMPLATES)
         self.assertNotIn("Old Name", UNIT_TEMPLATES)
         self.assertIn("New Name", mgr.designs)
-        self.assertIn("New Name", UNIT_TEMPLATES)
+        self.assertIn("New Name", PRIVATE_TEMPLATES)
+        self.assertNotIn("New Name", UNIT_TEMPLATES)
 
     def test_duplicate_name_case_insensitive_rejected(self):
         mgr = self._fresh_manager()
@@ -344,7 +349,7 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
     def test_antimatter_harvester_custom_template(self):
         from constants import HullSize, ANTIMATTER_HARVESTER_HULL_COST
         from custom_unit_templates import CustomUnitTemplate
-        from unit_templates import UNIT_TEMPLATES
+        from unit_templates import UNIT_TEMPLATES, PRIVATE_TEMPLATES
 
         # Hull cost calculation includes harvester cost (15)
         comp = ComponentConfig(has_antimatter_storage=True, antimatter_capacity=150.0, has_antimatter_harvester=True)
@@ -378,9 +383,10 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
             self.assertIsNotNone(retrieved)
             self.assertTrue(retrieved.components.has_antimatter_harvester)
 
-            # UNIT_TEMPLATES dict entry
-            unit_dict = UNIT_TEMPLATES.get("Harvester Ship")
+            # PRIVATE_TEMPLATES dict entry
+            unit_dict = PRIVATE_TEMPLATES.get("Harvester Ship")
             self.assertIsNotNone(unit_dict)
+            self.assertNotIn("Harvester Ship", UNIT_TEMPLATES)
             self.assertTrue(unit_dict.get("has_antimatter_harvester"))
             self.assertEqual(unit_dict.get("antimatter_harvester_hull_cost"), ANTIMATTER_HARVESTER_HULL_COST)
             mgr.delete_design("Harvester Ship")

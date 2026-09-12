@@ -9,7 +9,7 @@ from display_config import display_config_for
 from events import ConstructEvent
 from geometry import Position
 from unit_catalog import CATEGORIES, describe_template
-from unit_templates import UNIT_TEMPLATES
+from unit_templates import UNIT_TEMPLATES, get_all_templates_for_player
 
 
 def catalog_entries(templates, *, search='', category='All roles', hull='All hulls',
@@ -126,7 +126,8 @@ class UnitCatalogWindow:
         if not self.valid_context():
             self.kill()
             return
-        stamp = (self.player.credits, tuple((key, id(raw)) for key, raw in UNIT_TEMPLATES.items()))
+        templates = get_all_templates_for_player(self.player)
+        stamp = (self.player.credits, tuple((key, id(raw)) for key, raw in templates.items()))
         if stamp != self._stamp:
             self._stamp = stamp
             self.refresh()
@@ -137,7 +138,8 @@ class UnitCatalogWindow:
         return value[0] if isinstance(value, tuple) else value
 
     def refresh(self):
-        rows = catalog_entries(UNIT_TEMPLATES, search=self.search.get_text(), category=self.choice(self.category),
+        templates = get_all_templates_for_player(self.player)
+        rows = catalog_entries(templates, search=self.search.get_text(), category=self.choice(self.category),
             hull=self.choice(self.hull), kind=self.choice(self.kind),
             affordable=self.choice(self.affordability) == 'Affordable', credits=self.player.credits)
         entries = {f"{entry['name']} ({entry['credit_cost']}c)": entry for entry in rows}

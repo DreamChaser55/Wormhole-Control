@@ -66,3 +66,41 @@ def unregister_template(name: str) -> bool:
         del UNIT_TEMPLATES[name]
         return True
     return False
+
+
+# Private player-designed templates loaded from custom_unit_templates.json.
+# Kept strictly separate from UNIT_TEMPLATES so built-in and private categories are disjoint.
+PRIVATE_TEMPLATES: dict = {}
+
+
+def get_template(name: str, player=None, base_templates: dict = None) -> dict:
+    """Retrieve a template by name, respecting player privacy restrictions.
+
+    Built-in templates are accessible to all players.
+    Private templates are available to human players (and default callers without AI controller).
+    Automated AI and Codex players receive strictly built-in templates.
+    """
+    builtins = base_templates if base_templates is not None else UNIT_TEMPLATES
+    if name in builtins:
+        return builtins[name]
+    from player_controller import PlayerController
+    if name in PRIVATE_TEMPLATES:
+        controller = getattr(player, "controller", None) if player is not None else None
+        if controller not in (PlayerController.OPENAI, PlayerController.CODEX):
+            return PRIVATE_TEMPLATES[name]
+    return None
+
+
+def get_all_templates_for_player(player=None, base_templates: dict = None) -> dict:
+    """Return all templates accessible to a given player.
+
+    All players receive the built-in templates.
+    Human players (and default callers) additionally receive private player-designed templates.
+    Automated AI and Codex players receive strictly the built-in catalogue.
+    """
+    templates = dict(base_templates if base_templates is not None else UNIT_TEMPLATES)
+    from player_controller import PlayerController
+    controller = getattr(player, "controller", None) if player is not None else None
+    if controller not in (PlayerController.OPENAI, PlayerController.CODEX):
+        templates.update(PRIVATE_TEMPLATES)
+    return templates

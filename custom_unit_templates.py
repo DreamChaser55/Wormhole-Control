@@ -759,12 +759,12 @@ class CustomTemplateManager:
                     logger.warning("Could not remove custom template temporary file.")
 
     def _publish(self, designs):
-        from unit_templates import UNIT_TEMPLATES
+        from unit_templates import PRIVATE_TEMPLATES
         registered = {name: self._template_to_dict(template) for name, template in designs.items()}
         for name in self.designs:
-            UNIT_TEMPLATES.pop(name, None)
+            PRIVATE_TEMPLATES.pop(name, None)
         self.designs = designs
-        UNIT_TEMPLATES.update(registered)
+        PRIVATE_TEMPLATES.update(registered)
 
     def load_from_file(self) -> None:
         """Load the configured library without publishing partially decoded input.
@@ -887,12 +887,12 @@ class CustomTemplateManager:
     # ------------------------------------------------------------------
 
     def _register_in_global(self, template: CustomUnitTemplate) -> None:
-        from unit_templates import UNIT_TEMPLATES
-        UNIT_TEMPLATES[template.display_name] = self._template_to_dict(template)
+        from unit_templates import PRIVATE_TEMPLATES
+        PRIVATE_TEMPLATES[template.display_name] = self._template_to_dict(template)
 
     def _unregister_from_global(self, display_name: str) -> None:
-        from unit_templates import UNIT_TEMPLATES
-        UNIT_TEMPLATES.pop(display_name, None)
+        from unit_templates import PRIVATE_TEMPLATES
+        PRIVATE_TEMPLATES.pop(display_name, None)
 
     def _template_to_dict(self, template: CustomUnitTemplate) -> Dict[str, Any]:
         """Convert a CustomUnitTemplate to the unit_templates.json dict format.

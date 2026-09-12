@@ -37,7 +37,7 @@ from constants import (
 )
 
 
-from unit_templates import UNIT_TEMPLATES
+from unit_templates import UNIT_TEMPLATES, get_all_templates_for_player
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -60,18 +60,20 @@ def instantiate_unit_from_template(
     templates: Optional[dict] = None,
 ) -> Optional['Unit']:
     """Module-level helper that builds a :class:`~entities.Unit` from a
-    template entry in :data:`~unit_templates.UNIT_TEMPLATES` and adds it to
-    *galaxy*.
+    template entry in :data:`~unit_templates.UNIT_TEMPLATES` (or private templates
+    for human players) and adds it to *galaxy*.
 
     This is the canonical instantiation routine.  :meth:`Constructor.
     create_unit_from_template` is a thin wrapper around this function so that
     both the constructor component **and** :func:`~game.Game.spawn_units` can
     share the same logic without code duplication.
     """
-    template = (UNIT_TEMPLATES if templates is None else templates).get(template_name)
+    template_source = templates if templates is not None else get_all_templates_for_player(owner, base_templates=UNIT_TEMPLATES)
+    template = template_source.get(template_name)
     if not template:
         logger.debug(f"Error: Unit template '{template_name}' not found.")
         return
+
 
     system = galaxy.systems.get(system_name)
     if not system:
@@ -527,9 +529,11 @@ class Constructor(UnitComponent):
 
     @property
     def buildable_units(self) -> list[BuildableUnit]:
-        """Dynamically retrieve all buildable units based on UNIT_TEMPLATES, excluding strikecraft wings."""
+        """Dynamically retrieve all buildable units based on accessible templates, excluding strikecraft wings."""
         buildables = []
-        for name, template in UNIT_TEMPLATES.items():
+        owner = getattr(self.unit, "owner", None)
+        templates = get_all_templates_for_player(owner, base_templates=UNIT_TEMPLATES)
+        for name, template in templates.items():
             if _is_strikecraft_wing_template(template):
                 continue
             buildables.append(BuildableUnit(
@@ -541,7 +545,9 @@ class Constructor(UnitComponent):
 
     def can_build(self, unit_template_name: str) -> Optional[BuildableUnit]:
         """Check if this constructor can build a specific unit type."""
-        template = UNIT_TEMPLATES.get(unit_template_name)
+        owner = getattr(self.unit, "owner", None)
+        templates = get_all_templates_for_player(owner, base_templates=UNIT_TEMPLATES)
+        template = templates.get(unit_template_name)
         if template:
             if _is_strikecraft_wing_template(template):
                 return None
@@ -551,6 +557,7 @@ class Constructor(UnitComponent):
                 cost_credits=template.get("build_cost", 500)
             )
         return None
+
 
     def refresh_buildable_units(self, additional_names: typing.List[str]) -> None:
         """Append template names to buildable_units if not already present. (Deprecated/No-op)"""
