@@ -170,6 +170,10 @@ refunds the original payer. No retrofit command is added to the AI contract.
 - On final failure, the error is shown and End Turn is re-enabled.
 - Third-party SDK request-body logging is suppressed; API keys, observations,
   memory, prompts, analysis, and raw model output are never logged.
+- Unexpected command preparation/commit diagnostics include stage, command index
+  and type, exception class, and traceback frame locations only. They omit
+  exception messages, payloads, source lines and locals. Public results follow
+  the [commit guarantees](#commit-guarantees-and-lifecycle-feedback).
 - Every attempt appends bounded telemetry to ignored
   `saves/ai_telemetry.jsonl`, including attempt index, model, reasoning, token
   use, latency, command summaries, errors, and whether another retry followed.
@@ -300,11 +304,19 @@ The strict response schema is `wormhole_control_turn_v5`, and prompt cache key i
 
 ### Gameplay invariant guidance
 
-Gas-giant transitions preserve stance and explicit work. `Enter → Leave → Move` works with queued follow-ups; `Enter → Move → Leave` pauses behind Move while hidden. Inspect `blocked_by_order_id` and use `cancel_order`, `clear_explicit_orders`, or a replacement Leave to unblock it. Queue preflight projects entry/departure dependencies; acceptance does not guarantee safe exit placement. A failed Leave reports `path_unavailable` and retains the hidden ship and remaining queue. See the [canonical gas-giant rules](REFERENCE.md#125-gas-giant-atmospheric-hiding).
+For [gas-giant queue blocking](REFERENCE.md#gas-giant-atmospheric-hiding), inspect
+`blocked_by_order_id` and use `cancel_order`, `clear_explicit_orders`, or a
+replacement Leave to unblock departure. Preflight projects entry/departure
+requirements; acceptance does not guarantee safe exit placement.
 
-Mines check final positions after movement on the ship owner's turn, including stationary ships. Positive hits may be fully absorbed by mitigation. Consult [damage and minefield resolution](REFERENCE.md#13-damage--minefield-resolution) and [spawn profiles](REFERENCE.md#spawn-profiles-spawnprofile--2-total) for the canonical gameplay rules. Numeric object ID `0` remains valid; only `None`/JSON `null` means a missing numeric ID.
+Use the canonical [damage](REFERENCE.md#weapons-and-damage),
+[minefield](REFERENCE.md#minefields) and [spawn-profile](REFERENCE.md#spawn-profiles)
+rules. Numeric object ID `0` is valid; only `None`/JSON `null` means a missing ID.
 
-Environmental observation additions retain schema 7: friendly/allied turrets expose `effective_cooldown` for a shot at their current position alongside base `cooldown` and `cooldown_remaining`. Already-exposed celestial bodies carry numeric `environmental_effects`; no extra bodies or enemy equipment are revealed. Ice/nitrogen coolant reduces the on-fire reset by one (non-stacking, positive minimum one), and oxygen multiplies Cluster Warhead splash damage to victims inside by 1.15. See the [canonical environmental rules](REFERENCE.md#123-environmental-fields--tactical-cover).
+Friendly/allied turrets expose `effective_cooldown` for a shot at their current
+position alongside base `cooldown` and `cooldown_remaining`. Already-exposed
+celestial bodies carry numeric `environmental_effects`; no extra bodies or enemy
+equipment are revealed. These fields follow the [environmental rules](REFERENCE.md#environmental-fields).
 
 ## Tactical ability integration
 
@@ -325,13 +337,12 @@ execution. Immediate casts project wing-order replacements in batch order.
 Execution rechecks legality. Saves preserve phases and deadlines without replaying
 casts or salvos; recovered wings cannot launch before the next owner-turn start.
 
-The six [tactical abilities](REFERENCE.md#tactical-ability-rules) share side-effect-free validation
+The six [tactical abilities](REFERENCE.md#deployment-and-link-abilities) share side-effect-free validation
 in `tactical_abilities.py` across human controls, observations, preflight and orders.
 `tactical_balance.py` centralizes defaults.
-The six deployment/link abilities have no bundled designs. The Testing carrier
-and Huge ship demonstrate the five carrier and anti-strikecraft abilities.
-Automated players construct available designs or use equipped ships; no AI designer
-was added. Normal campaign starts and model/reasoning settings are unchanged.
+The [built-in catalogue](REFERENCE.md#built-in-unit-catalog) includes designs for
+every ability. Automated players construct public designs or use equipped ships;
+custom design editing is a human workflow.
 
 Observation 7 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
 `ability_links`. Authorized ability state includes actual blockers/readiness,

@@ -43,9 +43,16 @@ Select a unit and use its contextual actions to issue orders. Hold **Shift** whe
 | E | End Turn |
 | Esc | Open the in-game menu, cancel targeting, or deselect |
 
-Inspect non-solid bodies, such as nebulae and storms, through their hex sidebar. For rules and detailed interaction guidance, see [Playing the Game](docs/REFERENCE.md#playing-the-game).
+Inspect non-solid bodies, such as nebulae and storms, through their hex sidebar. For rules and detailed interaction guidance, see [controls and views](docs/REFERENCE.md#controls-and-views).
 
 Click **Unit Editor** beside **Comms** in the bottom panel to open the **Unit Designer** and create ship templates for construction. The button is available in Galaxy, System, and Sector views. Open **Save Game** from the in-game menu to save a campaign; **Load Game** is available from the main menu and during a match. Custom designs use a separate [user-data library](docs/REFERENCE.md#custom-design-storage).
+
+Select a Constructor and choose **Construct...** from its location context menu to
+search the [built-in unit catalogue](docs/REFERENCE.md#built-in-unit-catalog).
+Carriers produce Fighter or Bomber Wings through their strikecraft bays. Equipment
+supports [combat, deployment and carrier abilities](docs/REFERENCE.md#abilities),
+while intelligence ships can infiltrate enemies and operate under
+[covert names](docs/REFERENCE.md#covert-ships-and-unit-names).
 
 Check templates against current Unit Designer rules without launching the game:
 
@@ -81,13 +88,14 @@ For fast import and launch smoke checks:
 python -m pytest -m smoke
 ```
 
-Tests use temporary storage and fake AI providers, so no API key is needed. See [Development and Testing](docs/REFERENCE.md#development-and-testing) for quality checks, CI coverage, test conventions, and reference-table generation.
+Tests use temporary storage and fake AI providers, so no API key is needed. See [Development](docs/DEVELOPMENT.md) for quality checks, CI coverage, test conventions, and reference-table generation.
 
 The game is officially unreleased and in active Alpha version development, thus backward compatibility is a non-issue. Always prefer contributing simpler code over implementing any backward compatibility features.
 
 ## Documentation
 
-- [Reference Manual](docs/REFERENCE.md): Player guidance, gameplay rules, ship catalogues, architecture, storage, and development.
+- [Reference Manual](docs/REFERENCE.md): Gameplay rules, equipment, ship catalogue, and storage guidance.
+- [Development guide](docs/DEVELOPMENT.md): Architecture, validation APIs, testing, and documentation maintenance.
 - [Agentic AI Architecture](docs/AGENTIC_AI.md): Built-in AI configuration, information boundaries, and evaluation.
 - [Codex Control guide](docs/CODEX_CONTROL.md): Local control setup, commands, and recovery.
 - [Campaign persistence](docs/SAVE_FORMAT.md): Save schemas, compatibility, and migrations.
@@ -95,34 +103,3 @@ The game is officially unreleased and in active Alpha version development, thus 
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-The Unit Designer and retrofit editor also support six [tactical abilities](docs/REFERENCE.md#tactical-ability-rules):
-Ghost Fleet, Tractor Tether, Mine-Clearing Sweep, Guardian Link, Fuel Cache and
-Nebula Catalyst. Nebula Catalyst requires Sensors and Antimatter Storage.
-Human controls, built-in AI and the Codex bridge share their
-validation and orders. Ghost emitters and fuel caches persist with per-ship caps;
-saves use version 4.3 and migrate older supported saves automatically.
-
-Retrofits use the same equipment validation as the Unit Designer, including full
-configuration checks after component removal. Salvage is paid on successful removal.
-
-Carriers can equip **Attack Run**, **Evasive Formation**, and **Emergency Recovery**
-to command their own deployed wings. Defense ships can equip **Tracking Lock** and
-**Flak Barrage** with anti-strikecraft turrets. Evasive Formation halves incoming
-weapon damage while retaining 75% outgoing damage; Flak protects a moving
-500-unit radius. The Testing carrier and Huge ship demonstrate these abilities.
-See [carrier ability rules](docs/REFERENCE.md#carrier-and-anti-strikecraft-abilities).
-Campaign saves use version 4.3 and preserve active wing orders and recovery state.
-
-The built-in catalog contains 51 ships, stations and wings covering every equipment family
-and tactical ability. Select a Constructor and right-click a location, then choose
-**Construct...** to search and compare designs. Carriers select Fighter or Bomber production
-through their strikecraft bay; AI players use `set_wing_production` under command contract 6.
-See the [unit catalog](docs/REFERENCE.md#built-in-unit-catalog) for roles and calculated costs.
-
-The Patrol Escort and Covert Intelligence Ship share all visible equipment; the
-covert variant adds two hidden agents and enters play under the name **Patrol Escort**.
-Enemy inspections conceal template identity, hull usage, upkeep, orders and construction/refit
-details. Human players and both automated controllers can rename their own units;
-AI/Codex use `rename_unit` with `new_name` and one owned unit ID. See
-[covert naming](docs/REFERENCE.md#covert-ships-and-unit-names) for the rules.

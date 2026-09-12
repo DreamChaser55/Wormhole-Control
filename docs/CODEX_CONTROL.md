@@ -1,4 +1,4 @@
-# Codex Control Protocol v2
+# Codex Control Protocol
 
 Wormhole Control exposes a loopback-only JSON service so Codex can play one visible GUI campaign without calling the OpenAI API. The game remains authoritative: socket workers parse and queue requests, while `Game.update()` performs every read and mutation on the Pygame thread.
 
@@ -33,6 +33,8 @@ The CLI adds `protocol_version: 3` and a random `request_id` when omitted. Suppl
 ## Transport and process behavior
 
 - Address: `127.0.0.1:47653` by default. The listener never binds to a non-loopback address.
+- `ControlService(host=...)` rejects any host other than `127.0.0.1` with
+  `ValueError` before creating a socket.
 - Port: pass `--port PORT` to either script or set `WORMHOLE_CONTROL_PORT`. An explicit CLI flag wins.
 - Framing: one UTF-8 JSON object followed by a newline, with one response per connection.
 - Request limit: 1 MiB. Protocol responses may be larger because observations contain visible game state.
@@ -319,7 +321,9 @@ owned unit; observe current roots rather than guessing identities.
   Cache retention is the last 256 mutation responses in this running service; after restart
   or eviction, observe/reconcile before attempting an uncertain action again.
 
-New campaign bounds and validation are shared with the wizard and direct setup; see [new-campaign validation](REFERENCE.md#new-campaign-validation). Both radius bounds accept 3–12. Existing protocol errors and the exactly-one-Codex-player requirement remain unchanged.
+New campaigns share the wizard's [setup limits](REFERENCE.md#setup-limits) and
+[validation contracts](DEVELOPMENT.md#campaign-setup-contracts). The control
+interface additionally requires exactly one Codex player.
 
 ## Unit names and covert ships
 
@@ -373,7 +377,7 @@ decoy identification do not free slots.
 
 Preflight reserves queued cast costs/slots and projects guaranteed immediate
 recovery, never speculative fuel from future travel. Observe newly deployed IDs
-before targeting them. See the [tactical ability overview](REFERENCE.md#tactical-ability-rules)
+before targeting them. See the [tactical ability overview](REFERENCE.md#deployment-and-link-abilities)
 for Catalyst requirements, targeting and selective effects, and the linked ability
 table for costs and timing. Existing campaign starts and automated-player settings
 are preserved.

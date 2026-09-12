@@ -13,6 +13,20 @@ After order restoration on the isolated load candidate, active Testing-only cons
 
 Older campaign-save migrations can read Testing definitions privately to recover historical component configuration; this does not make those templates buildable. Custom-design library migration from the repository is no longer supported and is separate from campaign-save migration.
 
+## Design compatibility
+
+Campaign saves preserve installed equipment, HP, speed, field radii, component
+hull costs and subsystem HP. Unit hull capacity follows current hull rules.
+Changing catalogue balance does not rebuild saved ships from templates.
+
+Custom design libraries load permissively even when a design exceeds the current
+hull budget or violates current equipment rules. Editing and saving use current
+validation; a retrofit must leave a valid complete configuration. Recalculating
+a design uses current dynamic costs. Opening a wing design in the Editor removes
+Mining and resets long-range Sensors to zero; external validation reports these
+violations without modifying the library. See [design validation](REFERENCE.md#external-design-validation)
+and [field refitting](REFERENCE.md#field-refitting).
+
 ## Component and ability schemas
 
 Version 4.3 adds carrier ability participant IDs and deadlines, explicit Attack Run
