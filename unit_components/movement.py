@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 SPEED_PER_HULL_POINT: float = 20.0
 ENGINE_HULL_SIZE_MULTIPLIERS: typing.Dict[HullSize, float] = {
-    HullSize.STRIKECRAFT_WING: 0.4,
+    HullSize.STRIKECRAFT_WING: 0.2,
     HullSize.TINY: 0.6,
     HullSize.SMALL: 0.8,
     HullSize.MEDIUM: 1.0,

@@ -35,17 +35,19 @@ class TestCalcEngineHullCost:
     def test_speed_1_gives_fractional(self):
         assert calc_engine_hull_cost(1.0, HullSize.MEDIUM) == 0.05
 
-    def test_speed_0_gives_0(self):
+    @pytest.mark.parametrize('hull', list(HullSize))
+    def test_speed_0_gives_0(self, hull):
         """Zero speed = no thrust = no hull cost."""
-        assert calc_engine_hull_cost(0.0, HullSize.MEDIUM) == 0.0
+        assert calc_engine_hull_cost(0.0, hull) == 0.0
 
-    def test_speed_negative_gives_0(self):
-        assert calc_engine_hull_cost(-10.0, HullSize.MEDIUM) == 0.0
+    @pytest.mark.parametrize('hull', list(HullSize))
+    def test_speed_negative_gives_0(self, hull):
+        assert calc_engine_hull_cost(-10.0, hull) == 0.0
 
 
     def test_hull_size_multipliers_for_speed_100(self):
         """Verify speed 100 scales according to hull size multipliers."""
-        assert calc_engine_hull_cost(100.0, HullSize.STRIKECRAFT_WING) == 2.0  # 5 * 0.4 = 2.0
+        assert calc_engine_hull_cost(100.0, HullSize.STRIKECRAFT_WING) == 1.0  # 5 * 0.2 = 1.0
         assert calc_engine_hull_cost(100.0, HullSize.TINY) == 3.0             # 5 * 0.6 = 3.0
         assert calc_engine_hull_cost(100.0, HullSize.SMALL) == 4.0            # 5 * 0.8 = 4.0
         assert calc_engine_hull_cost(100.0, HullSize.MEDIUM) == 5.0           # 5 * 1.0 = 5.0

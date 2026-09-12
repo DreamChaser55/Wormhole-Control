@@ -79,6 +79,34 @@ def test_every_component_and_hull_matches_designer(world, hull, name):
         assert target.current_hull_usage == pytest.approx(expected.total_hull_cost)
 
 
+@pytest.mark.parametrize('role,speed,hull_cost', [('FIGHTER', 240, 2.4), ('BOMBER', 200, 2.0)])
+def test_wing_engine_budget_matches_designer_serialization_and_refit(world, role, speed, hull_cost):
+    from custom_unit_templates import ComponentConfig, template_from_dict, template_to_dict
+    from gui.unit_editor_gui.cost_model import current_hull_used
+
+    target = world[-1]
+    empty_equipment(target, HullSize.STRIKECRAFT_WING)
+    target.add_component(StrikecraftWingComponent(target, wing_type=WingType[role]))
+    components = ComponentConfig(has_engine=True, engine_speed=speed, wing_type=role)
+    design = CustomUnitTemplate('Fast wing', target.hull_size, components)
+    editor = SimpleNamespace(_comp=components, _hull_size=target.hull_size)
+    assert current_hull_used(editor) == pytest.approx(hull_cost)
+    data = template_to_dict(design)
+    assert data['engine_speed'] == speed
+    assert data['engine_hull_cost'] == pytest.approx(hull_cost)
+    assert template_from_dict('Fast wing', data).engine_hull_cost == pytest.approx(hull_cost)
+    historical = template_from_dict('Older wing', dict(data, engine_speed=speed / 2))
+    assert historical.components.engine_speed == speed / 2
+    assert historical.engine_hull_cost == pytest.approx(hull_cost / 2)
+    quote = evaluate_refit(target, 'ADD', 'Engines', {'speed': speed})
+    assert not quote.errors
+    assert quote.hull_cost == pytest.approx(hull_cost)
+    assert quote.cost_credits == round(hull_cost * 30)
+    installed = instantiate_component_for_unit('Engines', target, quote.configuration)
+    assert installed.speed == speed
+    assert installed.hull_cost == pytest.approx(hull_cost)
+
+
 @pytest.mark.parametrize('role,variant,valid', [
     ('FIGHTER', 'ANTI_STRIKECRAFT', True), ('FIGHTER', 'STANDARD', False),
     ('FIGHTER', 'LONG_RANGE', False), ('BOMBER', 'ANTI_STRIKECRAFT', False),

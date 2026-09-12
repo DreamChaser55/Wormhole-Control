@@ -384,7 +384,7 @@ The Unit Designer provides **24 selectable component rows**. Commander is always
 
 Hull restrictions and component behavior:
 
-- **Engines**: Available on all hull sizes. Dynamic cost scales with sublight speed and hull size.
+- **Engines**: Available on all hull sizes. Dynamic cost is `speed / 20 × hull-size multiplier`. Strikecraft wings use a multiplier of **0.2**, providing **100 base speed per engine hull point** in the Designer and retrofit editor. Other hull multipliers are Tiny 0.6, Small 0.8, Medium 1.0, Large 1.5 and Huge 2.0. The built-in Fighter Wing has speed **240** for **2.4 hull**, and the Bomber Wing has speed **200** for **2.0 hull**. XP, sabotage and carrier ability bonuses apply to this configured base speed through the normal movement rules.
 - **Antimatter Storage**: Available on all hull sizes. Dynamic cost scales with additional storage capacity.
 - **Antimatter Harvester**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Harvests antimatter near stars.
 - **Hyperdrive**: Forbidden on `STRIKECRAFT_WING`. Basic hyperdrive available on `TINY`+; Advanced hyperdrive requires `SMALL`+.
@@ -1074,6 +1074,8 @@ A missing user library starts an empty custom-design collection without creating
 Custom designs in `custom_unit_templates.json` are registered as private templates (`PRIVATE_TEMPLATES`), keeping them strictly separated from built-in templates (`unit_templates.json`). Built-in templates are public and available to all players. Private custom designs are restricted to human players and are completely excluded from automated AI players (`PlayerController.OPENAI` and `PlayerController.CODEX`). In-game constructors and unit creation routines query buildable templates via `get_all_templates_for_player(owner)`, preventing AI opponents from viewing or constructing player-created custom designs.
 
 Existing campaign saves retain saved wing HP and installed equipment; hull capacity is reconstructed from current rules (7 for wings). Newly created wings start with 30 HP. No save migration is required. Opening historical wing designs in the Editor disables Mining and resets long-range Sensors to zero; external validation reports violations without modifying files.
+
+The wing engine efficiency increase preserves saved units' installed speed and engine hull cost. Newly built catalog wings use the faster speeds above, with the same total hull usage, prices (260 credits for Fighters, 259 for Bombers) and two-turn production times. Existing custom wing designs retain their entered speed and receive the cheaper engine cost when recalculated; doubling that speed preserves their previous engine hull allocation. Built-in wings continue operating without antimatter storage, and existing fuel and carrier ability rules are unchanged.
 
 Loading preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation. Built-in template keys and display names from both catalogues are reserved, including Testing designs while they are inactive.
 
