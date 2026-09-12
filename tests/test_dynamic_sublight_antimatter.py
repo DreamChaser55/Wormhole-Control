@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from unittest.mock import MagicMock
 from constants import HullSize
@@ -56,6 +57,7 @@ def test_get_sublight_antimatter_cost_per_turn_zero_speed():
 
 def test_turn_processor_sublight_antimatter_consumption():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer()
     system = MagicMock()
     

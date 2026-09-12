@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from unittest.mock import MagicMock, patch
 from sector_utils import sector_coords_to_pixels, pixels_to_sector_coords
@@ -24,7 +25,10 @@ def test_camera_coordinate_conversion(zoom):
     
     # Scale the offset from center by zoom, then add the pan offset.
     # pixel = center + pan + (logical * radius_px / radius_logical) * zoom
-    from constants import SECTOR_CIRCLE_CENTER_IN_PX, SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_CIRCLE_RADIUS_LOGICAL
+    from display_config import DEFAULT_DISPLAY_CONFIG
+    from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
+    SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
+    SECTOR_CIRCLE_RADIUS_IN_PX = DEFAULT_DISPLAY_CONFIG.sector_radius
     
     expected_x = int(SECTOR_CIRCLE_CENTER_IN_PX.x + pan_offset.x + (logical_pos.x * SECTOR_CIRCLE_RADIUS_IN_PX * zoom) / SECTOR_CIRCLE_RADIUS_LOGICAL)
     expected_y = int(SECTOR_CIRCLE_CENTER_IN_PX.y + pan_offset.y + (logical_pos.y * SECTOR_CIRCLE_RADIUS_IN_PX * zoom) / SECTOR_CIRCLE_RADIUS_LOGICAL)
@@ -67,7 +71,8 @@ def test_zoom_to_mouse_pointer():
     game.zoom_anchor_logical = None
     
     # Mock pygame.mouse.get_pos to return a point 100 pixels away from sector center
-    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    from display_config import DEFAULT_DISPLAY_CONFIG
+    SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
     mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x + 100
     mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y - 100
     
@@ -90,6 +95,7 @@ def test_zoom_to_mouse_pointer():
         assert game.sector_pan_offset.y == 0
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.view_mode = 'sector'
         self.game_started = True
@@ -101,6 +107,7 @@ class DummyGame:
         self.is_dragging_camera = False
         self.camera_drag_last_pos = Position(0, 0)
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
         self.gui.is_mouse_over_gui_panels.return_value = False
 
     def handle_gui_action(self, gui_action):
@@ -157,7 +164,8 @@ def test_input_processor_drag_pan():
 def test_camera_smooth_interpolation():
     """Verifies that update_sector_camera() correctly lerps follower zoom and pan lock."""
     import math
-    from game import Game, CAMERA_SMOOTH_SPEED
+    from game import Game
+    from game_camera import CAMERA_SMOOTH_SPEED
 
     game = DummyGame()
     game.sector_zoom = 1.0         # follower starts at 1.0
@@ -201,7 +209,8 @@ def test_zoom_to_mouse_pointer_successive():
     game.zoom_anchor_pixel = None
     game.zoom_anchor_logical = None
 
-    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    from display_config import DEFAULT_DISPLAY_CONFIG
+    SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
     mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x + 100
     mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y - 100
 
@@ -238,7 +247,8 @@ def test_zoom_to_mouse_pointer_moving_mouse():
     game.zoom_anchor_pixel = None
     game.zoom_anchor_logical = None
 
-    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    from display_config import DEFAULT_DISPLAY_CONFIG
+    SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
     rx1, ry1 = 100.0, -100.0
     rx2, ry2 = 105.0, -105.0  # Mouse moved slightly (5px)
 
@@ -274,7 +284,8 @@ def test_zoom_out_clamped_to_min():
     game.zoom_anchor_pixel = None
     game.zoom_anchor_logical = None
 
-    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    from display_config import DEFAULT_DISPLAY_CONFIG
+    SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
     mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x
     mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y
 
@@ -298,7 +309,8 @@ def test_zoom_in_clamped_to_max():
     game.zoom_anchor_pixel = None
     game.zoom_anchor_logical = None
 
-    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    from display_config import DEFAULT_DISPLAY_CONFIG
+    SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
     mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x
     mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y
 
@@ -319,7 +331,8 @@ def test_mouse_wheel_suppressed_when_hovering_gui_panels():
     game.sector_target_zoom = 1.0
     game.gui.is_mouse_over_gui_panels.return_value = True
 
-    from constants import SECTOR_CIRCLE_CENTER_IN_PX
+    from display_config import DEFAULT_DISPLAY_CONFIG
+    SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
     mouse_x = SECTOR_CIRCLE_CENTER_IN_PX.x + 50
     mouse_y = SECTOR_CIRCLE_CENTER_IN_PX.y + 50
 

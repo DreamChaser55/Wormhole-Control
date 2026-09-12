@@ -58,18 +58,8 @@ DEFAULT_DISPLAY_CONFIG = DisplayConfig()
 
 
 def display_config_for(owner: Any) -> DisplayConfig:
-    """Read an adapter's configuration, accepting legacy resolution-only adapters.
-
-    Lightweight collaborators without a configuration keep the fixed historical
-    default. No display discovery or global mutation occurs here.
-    """
-    if isinstance(owner, DisplayConfig):
-        return owner
-    config = getattr(owner, "display_config", None)
-    if isinstance(config, DisplayConfig):
-        return config
-    resolution = getattr(owner, "screen_res", owner)
-    width, height = getattr(resolution, "x", None), getattr(resolution, "y", None)
-    if isinstance(width, (int, float)) and isinstance(height, (int, float)):
-        return DisplayConfig(int(width), int(height))
-    return DEFAULT_DISPLAY_CONFIG
+    """Read an explicit display configuration from a UI collaborator."""
+    config = owner if isinstance(owner, DisplayConfig) else owner.display_config
+    if not isinstance(config, DisplayConfig):
+        raise TypeError("display_config must be a DisplayConfig")
+    return config

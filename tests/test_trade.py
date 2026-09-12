@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
@@ -412,6 +413,7 @@ class TestTradeSerializationAndCatalog(unittest.TestCase):
         UNIT_TEMPLATES["Custom Merchant"] = template
         try:
             mock_game = MagicMock(galaxy=self.galaxy)
+            mock_game.display_config = DisplayConfig()
             instantiate_unit_from_template(
                 template_name="Custom Merchant",
                 owner=self.player,

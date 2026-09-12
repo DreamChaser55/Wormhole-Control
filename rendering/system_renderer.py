@@ -23,12 +23,10 @@ class SystemViewRenderer:
         self._circle_surface_cache = {}
 
     def _system_zoom(self):
-        zoom = getattr(self.game, 'system_zoom', 1.0)
-        return zoom if isinstance(zoom, (int, float)) else 1.0
+        return self.game.system_zoom
 
     def _system_pan_offset(self):
-        pan_offset = getattr(self.game, 'system_pan_offset', None)
-        return pan_offset if isinstance(pan_offset, Position) else Position(0, 0)
+        return self.game.system_pan_offset
 
     def _hex_to_pixel(self, q, r):
         return hex_to_pixel(q, r, self._system_zoom(), self._system_pan_offset(), display_config=display_config_for(self.game))

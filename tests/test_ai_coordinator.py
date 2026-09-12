@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 
 
 from player_controller import PlayerController
@@ -104,6 +105,7 @@ class TestCoordinator(unittest.TestCase):
             gui=None,
             end_turn=lambda: ended.append(True),
         )
+        game.display_config = DisplayConfig()
         provider = FakePlanningProvider(plans)
         return player, game, ended, provider, AgentTurnCoordinator(
             game, provider=provider
@@ -131,6 +133,7 @@ class TestCoordinator(unittest.TestCase):
             gui=None,
             end_turn=lambda: ended.append(True),
         )
+        game.display_config = DisplayConfig()
         plan = TurnPlan(("Consolidate.",), CommandBatch((), True), EMPTY_PATCH)
         provider = FakePlanningProvider([plan])
         coordinator = AgentTurnCoordinator(game, provider=provider)
@@ -431,6 +434,7 @@ class TestCoordinator(unittest.TestCase):
             current_player=player,
             turn_number=4,
         )
+        game.display_config = DisplayConfig()
         plan = TurnPlan(("Wait.",), CommandBatch((), True), EMPTY_PATCH)
         result = PlanningResult(
             plan=plan,

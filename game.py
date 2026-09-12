@@ -8,9 +8,7 @@ from pathlib import Path
 import pygame
 from pygame import Color
 
-# Re-exported for backwards-compatibility with tests and entry points
-from game_logging import GameLogFormatter, setup_logging
-from game_camera import CAMERA_SMOOTH_SPEED
+from game_logging import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +45,7 @@ import game_setup
 # --- Game Class ---
 class Game:
     """Main game class, handles initialization, game loop, drawing, and input."""
-    @property
-    def turn_manager(self):
-        """Compatibility alias; the TurnProcessor instance has one canonical owner."""
-        return self.turn_processor
 
-    @turn_manager.setter
-    def turn_manager(self, value):
-        self.turn_processor = value
 
     def __init__(self, *, control_port: typing.Optional[int] = None,
                  display_config: typing.Optional[DisplayConfig] = None):
@@ -74,7 +65,7 @@ class Game:
         self.clock = pygame.time.Clock()
         
         # Instantiate the GUI Handler
-        self.gui = GUI_Handler(self.display_config.resolution, self, display_config=self.display_config)
+        self.gui = GUI_Handler(self.display_config, self)
 
         # Game State - Controls the current game status and view context
         self.is_running = True  # Controls the main game loop
@@ -410,7 +401,6 @@ class Game:
         self.gui.update_resource_display(current_player)
         if hasattr(self.gui, 'update_comms_button'):
             self.gui.update_comms_button()
-
 
 
     def draw(self):

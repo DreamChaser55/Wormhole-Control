@@ -15,6 +15,7 @@ screen size regardless of the ring's true radius, still produces the
 expected visual result (outline only, no translucent fill), still culls
 fully off-screen rings, and still de-duplicates identical turret ranges.
 """
+from display_config import DisplayConfig
 from unittest.mock import MagicMock, patch
 import pygame
 from rendering.sector_renderer import SectorViewRenderer
@@ -23,6 +24,7 @@ from geometry import Position
 
 def _make_test_renderer(screen_size=(320, 200)):
     game = MagicMock()
+    game.display_config = DisplayConfig()
     renderer = SectorViewRenderer(game)
     renderer.screen = pygame.Surface(screen_size)
     renderer.overlay_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
@@ -70,10 +72,10 @@ def test_fill_circle_clipped_never_allocates_a_surface_larger_than_the_screen():
         allocated_sizes.append(size)
         return original_surface_ctor(size, *args, **kwargs)
 
-    with patch("rendering.sector_renderer.pygame.Surface", side_effect=spy_surface):
+    with patch("pygame.Surface", side_effect=spy_surface):
         # Huge radius, comparable to what a 15x max-zoom sensor/weapon range
         # ring would produce on a 1440p screen (thousands of pixels).
-        renderer._fill_circle_clipped((160, 100), 4320, (0, 200, 255, 18))
+        renderer.grid_renderer.fill_circle_clipped((160, 100), 4320, (0, 200, 255, 18))
 
     # The only allocation should be the persistent range-circle surface,
     # sized to the screen -- never anything close to (2*4320)^2.
@@ -85,10 +87,10 @@ def test_fill_circle_clipped_reuses_persistent_surface_across_frames():
     """Repeated calls (simulating repeated frames) must not allocate a new
     surface each time."""
     game, renderer = _make_test_renderer()
-    renderer._fill_circle_clipped((160, 100), 4320, (0, 200, 255, 18))
+    renderer.grid_renderer.fill_circle_clipped((160, 100), 4320, (0, 200, 255, 18))
     surface_after_first = renderer._range_circle_surface
 
-    renderer._fill_circle_clipped((160, 100), 4320, (0, 200, 255, 18))
+    renderer.grid_renderer.fill_circle_clipped((160, 100), 4320, (0, 200, 255, 18))
     surface_after_second = renderer._range_circle_surface
 
     assert surface_after_first is surface_after_second
@@ -101,8 +103,8 @@ def test_fill_circle_clipped_covering_viewport_uses_rect_fill_not_scanline_loop(
     pygame.draw.line per row."""
     game, renderer = _make_test_renderer()
 
-    with patch("rendering.sector_renderer.pygame.draw.line") as draw_line:
-        renderer._fill_circle_clipped((160, 100), 4320, (0, 200, 255, 18))
+    with patch("pygame.draw.line") as draw_line:
+        renderer.grid_renderer.fill_circle_clipped((160, 100), 4320, (0, 200, 255, 18))
 
     # No manual scanline drawing should have happened.
     draw_line.assert_not_called()
@@ -117,8 +119,8 @@ def test_fill_circle_clipped_partial_coverage_uses_clipped_circle():
     still be correctly filled via the clipped draw.circle path."""
     game, renderer = _make_test_renderer()
 
-    with patch("rendering.sector_renderer.pygame.draw.circle", wraps=pygame.draw.circle) as draw_circle:
-        renderer._fill_circle_clipped((160, 100), 30, (0, 200, 255, 18))
+    with patch("pygame.draw.circle", wraps=pygame.draw.circle) as draw_circle:
+        renderer.grid_renderer.fill_circle_clipped((160, 100), 30, (0, 200, 255, 18))
 
     assert draw_circle.call_count > 0
     # The center pixel should have been filled with the expected alpha.
@@ -131,7 +133,7 @@ def test_fill_circle_clipped_culls_when_offscreen():
     yet, and no visible change)."""
     game, renderer = _make_test_renderer()
 
-    renderer._fill_circle_clipped((100000, 100000), 50, (0, 200, 255, 18))
+    renderer.grid_renderer.fill_circle_clipped((100000, 100000), 50, (0, 200, 255, 18))
 
     # Nothing should have been blended onto the overlay.
     assert renderer.overlay_surface.get_at((0, 0)).a == 0
@@ -144,10 +146,10 @@ def test_fill_circle_clipped_blends_instead_of_replacing():
     game, renderer = _make_test_renderer()
     color = (255, 80, 40, 25)
 
-    renderer._fill_circle_clipped((160, 100), 20, color)
+    renderer.grid_renderer.fill_circle_clipped((160, 100), 20, color)
     alpha_after_one = renderer.overlay_surface.get_at((160, 100)).a
 
-    renderer._fill_circle_clipped((160, 100), 20, color)
+    renderer.grid_renderer.fill_circle_clipped((160, 100), 20, color)
     alpha_after_two = renderer.overlay_surface.get_at((160, 100)).a
 
     assert alpha_after_one == 25
@@ -157,7 +159,7 @@ def test_fill_circle_clipped_blends_instead_of_replacing():
 def test_draw_range_ring_draws_outline_only():
     game, renderer = _make_test_renderer()
 
-    renderer._draw_range_ring(160, 100, 30, (0, 200, 255))
+    renderer.grid_renderer.draw_range_ring(160, 100, 30, (0, 200, 255))
 
     # The center pixel should have no fill (alpha == 0).
     assert renderer.overlay_surface.get_at((160, 100)).a == 0
@@ -176,8 +178,8 @@ def test_draw_range_ring_skips_outline_when_disc_covers_viewport():
     should be skipped."""
     game, renderer = _make_test_renderer()
 
-    with patch("rendering.sector_renderer.pygame.draw.circle", wraps=pygame.draw.circle) as draw_circle:
-        renderer._draw_range_ring(160, 100, 4320, (0, 200, 255))
+    with patch("pygame.draw.circle", wraps=pygame.draw.circle) as draw_circle:
+        renderer.grid_renderer.draw_range_ring(160, 100, 4320, (0, 200, 255))
 
     # No outline circle call (the only pygame.draw.circle calls would come
     # from the outline branch, since the fill uses the scanline/rect path).
@@ -187,8 +189,8 @@ def test_draw_range_ring_skips_outline_when_disc_covers_viewport():
 def test_draw_range_ring_culls_fully_offscreen_ring():
     game, renderer = _make_test_renderer()
 
-    with patch("rendering.sector_renderer.pygame.draw.circle") as circle_mock:
-        renderer._draw_range_ring(100000, 100000, 50, (0, 200, 255))
+    with patch("pygame.draw.circle") as circle_mock:
+        renderer.grid_renderer.draw_range_ring(100000, 100000, 50, (0, 200, 255))
 
     circle_mock.assert_not_called()
 
@@ -197,8 +199,8 @@ def test_draw_unit_range_circles_draws_sensor_and_weapon_rings():
     game, renderer = _make_test_renderer()
     unit = _make_unit(sensor_range=2000.0, turret_ranges=[300.0])
 
-    with patch.object(renderer, "_draw_range_ring") as ring_mock:
-        renderer._draw_unit_range_circles(unit, Position(160, 100), 720.0)
+    with patch.object(renderer.grid_renderer, "draw_range_ring") as ring_mock:
+        renderer.overlay_renderer.draw_unit_range_circles(unit, Position(160, 100), 720.0)
 
     # One sensor ring + one weapon ring.
     assert ring_mock.call_count == 2
@@ -208,8 +210,8 @@ def test_draw_unit_range_circles_deduplicates_identical_turret_ranges():
     game, renderer = _make_test_renderer()
     unit = _make_unit(sensor_range=None, turret_ranges=[300.0, 300.0, 450.0])
 
-    with patch.object(renderer, "_draw_range_ring") as ring_mock:
-        renderer._draw_unit_range_circles(unit, Position(160, 100), 720.0)
+    with patch.object(renderer.grid_renderer, "draw_range_ring") as ring_mock:
+        renderer.overlay_renderer.draw_unit_range_circles(unit, Position(160, 100), 720.0)
 
     # Two distinct ranges (300 deduplicated, plus 450) -> two calls.
     assert ring_mock.call_count == 2
@@ -219,7 +221,9 @@ def test_draw_unit_range_circles_at_extreme_zoom_allocates_only_screen_sized_sur
     """End-to-end regression test at a zoom level equivalent to the reported
     bug (near SECTOR_ZOOM_MAX): drawing a unit's range circles must never
     allocate a surface bigger than the screen."""
-    from constants import SECTOR_CIRCLE_RADIUS_IN_PX, SECTOR_ZOOM_MAX
+    from display_config import DEFAULT_DISPLAY_CONFIG
+    from constants import SECTOR_ZOOM_MAX
+    SECTOR_CIRCLE_RADIUS_IN_PX = DEFAULT_DISPLAY_CONFIG.sector_radius
 
     game, renderer = _make_test_renderer()
     unit = _make_unit(sensor_range=2000.0, turret_ranges=[300.0, 400.0])
@@ -233,30 +237,29 @@ def test_draw_unit_range_circles_at_extreme_zoom_allocates_only_screen_sized_sur
         allocated_sizes.append(size)
         return original_surface_ctor(size, *args, **kwargs)
 
-    with patch("rendering.sector_renderer.pygame.Surface", side_effect=spy_surface):
-        renderer._draw_unit_range_circles(unit, Position(160, 100), dynamic_radius)
+    with patch("pygame.Surface", side_effect=spy_surface):
+        renderer.overlay_renderer.draw_unit_range_circles(unit, Position(160, 100), dynamic_radius)
 
     for size in allocated_sizes:
         assert size[0] <= 320 and size[1] <= 200
 
 
 def test_blit_uncached_circle_still_blends_and_culls():
-    """The public wrapper kept for backwards compatibility must retain the
-    same blending/culling behavior as before."""
+    """The grid renderer blends repeated circles and culls off-screen circles."""
     game, renderer = _make_test_renderer()
     color = (255, 69, 0, 40)
 
-    renderer._blit_uncached_circle((160, 100), 20, color)
+    renderer.grid_renderer.blit_uncached_circle((160, 100), 20, color)
     alpha_after_one = renderer.overlay_surface.get_at((160, 100)).a
 
-    renderer._blit_uncached_circle((160, 100), 20, color)
+    renderer.grid_renderer.blit_uncached_circle((160, 100), 20, color)
     alpha_after_two = renderer.overlay_surface.get_at((160, 100)).a
 
     assert alpha_after_one == 40
     assert alpha_after_two > alpha_after_one
 
     # Off-screen-only circle should not throw and should not paint anything.
-    renderer._blit_uncached_circle((100000, 100000), 50, color)
+    renderer.grid_renderer.blit_uncached_circle((100000, 100000), 50, color)
 
 
 def test_range_circles_drawn_when_single_unit_selected():

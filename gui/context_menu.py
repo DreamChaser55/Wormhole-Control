@@ -1,5 +1,5 @@
 """Right-click context menu construction, hit-testing, and submenu navigation."""
-from display_config import display_config_for
+from display_config import DisplayConfig, display_config_for
 import math
 import typing
 import pygame
@@ -11,25 +11,23 @@ from utils import ContextMenuOption
 
 
 def calculate_context_menu_min_col_width(
-    gui_or_screen_res: typing.Any,
+    gui: typing.Any,
     options: typing.Sequence[typing.Union[typing.Tuple[str, typing.Any], str]]
 ) -> int:
     """Calculates the minimum column width needed to display all context menu options without clipping.
 
     Args:
-        gui_or_screen_res: Target GUI_Handler instance or screen resolution Vector.
+        gui: Target GUI_Handler instance with an explicit DisplayConfig.
         options: Sequence of context menu option definitions.
 
     Returns:
         int: Minimum column width in pixels (at least CONTEXT_MENU_WIDTH - 10).
     """
-    base_col_width = display_config_for(gui_or_screen_res).context_menu_width - 10
+    base_col_width = display_config_for(gui).context_menu_width - 10
     if not options:
         return base_col_width
 
-    gui = gui_or_screen_res if hasattr(gui_or_screen_res, 'manager') or hasattr(gui_or_screen_res, 'screen_res') else None
-    screen_res = getattr(gui, 'screen_res', gui_or_screen_res)
-    screen_h = getattr(screen_res, 'y', 720)
+    screen_h = gui.display_config.height
 
     font = None
     if gui is not None and hasattr(gui, 'manager') and getattr(gui.manager, 'ui_theme', None):
@@ -72,7 +70,7 @@ def calculate_context_menu_min_col_width(
             except (pygame.error, ValueError, TypeError):
                 text_w = 0
 
-        # Heuristic fallback if font measurement is unavailable or failed (e.g. headless/mock tests)
+        # Heuristic fallback if font measurement is unavailable or failed
         if text_w <= 0:
             scale = max(0.5, (screen_h / 720.0) ** 1.15)
             text_w = int(len(display_text) * 8.0 * scale)
@@ -86,7 +84,7 @@ def calculate_context_menu_min_col_width(
 
 
 def compute_context_menu_layout(
-    screen_res: typing.Any,
+    display_config: DisplayConfig,
     options_count: int,
     max_items_cap: int = 14,
     min_col_width: typing.Optional[int] = None
@@ -102,11 +100,10 @@ def compute_context_menu_layout(
     Returns:
         tuple: (num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height)
     """
-    row_height = display_config_for(screen_res).context_menu_item_height + 2
+    row_height = display_config.context_menu_item_height + 2
     margin = 8
-    screen_w = getattr(screen_res, 'x', 1280)
-    screen_h = getattr(screen_res, 'y', 720)
-    avail_h = max(100, screen_h - display_config_for(screen_res).top_bar_height - 2 * margin)
+    screen_w, screen_h = display_config.width, display_config.height
+    avail_h = max(100, screen_h - display_config.top_bar_height - 2 * margin)
     max_items_per_col = max(4, min(max_items_cap, int((avail_h - 10) // row_height)))
 
     if options_count <= max_items_per_col:
@@ -116,7 +113,7 @@ def compute_context_menu_layout(
         num_cols = max(1, math.ceil(options_count / max_items_per_col))
         num_rows = max(1, math.ceil(options_count / num_cols))
 
-    base_col_width = display_config_for(screen_res).context_menu_width - 10
+    base_col_width = display_config.context_menu_width - 10
     col_gap = 4
     target_col_width = max(base_col_width, min_col_width) if min_col_width is not None else base_col_width
 
@@ -132,7 +129,7 @@ def compute_context_menu_layout(
 
 
 def calculate_menu_position(
-    screen_res: typing.Any,
+    display_config: DisplayConfig,
     anchor_pos: Position,
     panel_width: int,
     panel_height: int,
@@ -153,17 +150,16 @@ def calculate_menu_position(
     Returns:
         Position: Clamped top-left position for the menu panel.
     """
-    screen_w = getattr(screen_res, 'x', 1280)
-    screen_h = getattr(screen_res, 'y', 720)
+    screen_w, screen_h = display_config.width, display_config.height
 
     min_x = margin
     max_x = max(min_x, int(screen_w - panel_width - margin))
-    min_y = display_config_for(screen_res).top_bar_height + margin
+    min_y = display_config.top_bar_height + margin
     max_y = max(min_y, int(screen_h - panel_height - margin))
 
     # Vertical direction selection
     space_below = screen_h - anchor_pos.y - margin
-    space_above = anchor_pos.y - display_config_for(screen_res).top_bar_height - margin
+    space_above = anchor_pos.y - display_config.top_bar_height - margin
 
     if panel_height <= space_below:
         pos_y = anchor_pos.y
@@ -242,9 +238,9 @@ def open_context_menu(gui, position: Position, options: typing.List[ContextMenuO
 
     min_col_width = calculate_context_menu_min_col_width(gui, options)
     num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height = compute_context_menu_layout(
-        gui.screen_res, len(options), min_col_width=min_col_width
+        gui.display_config, len(options), min_col_width=min_col_width
     )
-    panel_pos = calculate_menu_position(gui.screen_res, position, panel_width, panel_height)
+    panel_pos = calculate_menu_position(gui.display_config, position, panel_width, panel_height)
 
     panel_rect = pygame.Rect(panel_pos.x, panel_pos.y, panel_width, panel_height)
 

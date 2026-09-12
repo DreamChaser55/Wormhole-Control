@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import pytest
 import pygame
@@ -26,6 +27,7 @@ Comprehensive test suite for the Retrofit Customization Options Wizard GUI.
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self, galaxy, players):
         self.galaxy = galaxy
         self.players = players

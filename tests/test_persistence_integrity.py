@@ -37,7 +37,7 @@ from unit_orders.base import Order, OrderStatus
 from campaign_graph import iter_objects, iter_units, find_unit
 from campaign_persistence import prepare_campaign, reconcile
 from save_manager import serialize_game_state, deserialize_game_state
-from tests.support.campaigns import campaign, ship, legacy_document
+from tests.support.campaigns import campaign, ship
 
 
 def value_snapshot(value):
@@ -50,7 +50,7 @@ def value_snapshot(value):
         return (type(value).__name__, value.id)
     if isinstance(value, Order):
         # Runtime order IDs and stance descendants are intentionally transient.
-        excluded = {"unit", "order_id", "parent_order", "_issuing_player", "_journal_root", "_legacy_charge"}
+        excluded = {"unit", "local_order_id", "parent_order", "_issuing_player", "_journal_root"}
         return {k: value_snapshot(v) for k, v in vars(value).items() if k not in excluded}
     if isinstance(value, AbilityInstance):
         return {k: value_snapshot(v) for k, v in vars(value).items()}
@@ -347,57 +347,19 @@ def test_docked_source_effects_expire_and_platform_cleanup_survives_load():
     assert all(find_unit(game.galaxy, uid) is None for uid in platforms)
 
 
-@pytest.mark.parametrize("version", [None, "3.0", "3.1", "3.2"])
-def test_declared_legacy_migrations_are_stable_and_preserve_recoverable_state(version):
-    from constants import StarType, NebulaType, StormType
-    from save_migrations import migrate_save
-    data = legacy_document(version)
-    original = deepcopy(data)
-    migrated, warnings = migrate_save(data)
-    assert data == original
-    assert migrated["version"] == "4.3" and warnings
-    assert migrate_save(migrated) == (migrated, [])
-    game = campaign()
-    assert deserialize_game_state(game, data)
-    unit = find_unit(game.galaxy, 10)
-    assert unit.engines_component.speed == 37.5
-    assert unit.sensors_component.short_range_radius == 567.5
-    assert unit.antimatter_component.current_amount == 15
-    assert not unit.is_disabled and unit.damage_reduction == 0
-    assert unit.commander_component.current_order is not None
-    assert unit.commander_component.current_order.status is OrderStatus.PENDING
-    if version == "3.2":
-        assert unit.commander_component.current_order.public_id == "0123456789abcdef0123456789abcdef"
-    bodies = game.galaxy.systems["Sol"].hexes[(0, 0)].celestial_bodies
-    assert bodies[0].star_type is StarType.G_TYPE
-    assert bodies[1].nebula_type is NebulaType.HYDROGEN
-    assert bodies[2].storm_type is StormType.PLASMA
-    assert GameObject.object_counter == 500 and Player.player_counter == 20
-    expected = canonical(game)
-    assert deserialize_game_state(game, json.loads(json.dumps(serialize_game_state(game))))
-    assert canonical(game) == expected
 
 
-def test_legacy_unrecoverable_dynamic_configuration_is_an_explicit_failure():
-    game = campaign()
-    data = legacy_document("3.2")
-    data["galaxy"]["systems"][0]["hexes"][0]["units"][0]["components"]["Weapons"] = {}
-    errors = []
-    before = canonical(game)
-    assert not deserialize_game_state(game, data, on_error=errors.append)
-    assert "configuration was not saved" in errors[0]
-    assert canonical(game) == before
 
 
-@pytest.mark.parametrize("stage", ["migrate_save", "deserialize_unit", "restore_component", "visibility"])
+@pytest.mark.parametrize("stage", ["validate_document", "deserialize_unit", "restore_component", "visibility"])
 def test_failure_during_hydration_and_reconciliation_preserves_all_counters(monkeypatch, stage):
-    import save_migrations, save_manager, unit_components.persistence, visibility
+    import campaign_persistence, save_manager, unit_components.persistence, visibility
     game = mutated_campaign()
     data = serialize_game_state(game)
     before, identities, rng, order_counter = canonical(game), dict(vars(game)), random.getstate(), Order.order_counter
     def fail(*args, **kwargs):
         raise ValueError("injected late load failure")
-    module, name = {"migrate_save": (save_migrations, "migrate_save"), "deserialize_unit": (save_manager, "deserialize_unit"),
+    module, name = {"validate_document": (campaign_persistence, "validate_document"), "deserialize_unit": (save_manager, "deserialize_unit"),
                     "restore_component": (unit_components.persistence, "restore_component"),
                     "visibility": (visibility.VisibilityService, "compute")}[stage]
     monkeypatch.setattr(module, name, fail)
@@ -487,7 +449,6 @@ def test_empty_or_removed_template_components_are_not_resurrected(monkeypatch):
     unit.template_name = "FIGHTER_WING"
     unit.remove_component(Sensors)
     unit.add_component(Weapons(unit))  # Deliberately empty turret inventory is valid.
-    monkeypatch.setattr(save_manager, "_build_unit_from_template", Mock(side_effect=AssertionError("template access")))
     assert deserialize_game_state(game, serialize_game_state(game))
     restored = find_unit(game.galaxy, unit.id)
     assert restored.sensors_component is None

@@ -12,7 +12,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from enum import Enum
 
 from utils import generate_short_id
@@ -26,7 +26,7 @@ from game_ai.runtime import (
     normalize_repair_retries,
 )
 from constants import (
-    HullSize, StarType, PlanetType, NebulaType, StormType, HULL_CAPACITIES, HIT_POINTS, FieldDensity
+    HullSize, StarType, PlanetType, NebulaType, StormType, FieldDensity
 )
 from domain.players import Player
 from domain.identity import GameObject
@@ -35,49 +35,14 @@ from domain.units import Unit
 from domain.minefields import Minefield
 from domain.communications import Conversation, Message
 from galaxy import Galaxy, StarSystem, Hex
-from unit_components.antimatter import AntimatterStorage, AntimatterHarvester
-from unit_components.movement import Engines, Hyperdrive
-from unit_components.enums import HyperdriveType, UnitStance
-from unit_components.commander import Commander
-from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
-from unit_components.weapons import Weapons, Turret
-from unit_components.defenses import Defenses
-from unit_components.colony import ColonyComponent
-from unit_components.civilian_habitat import CivilianHabitatComponent
-from unit_components.orbital_defense import OrbitalDefenseComponent
-from unit_components.trade import TradeComponent
-from unit_components.constructor import Constructor, instantiate_unit_from_template, instantiate_component_for_unit, get_component_class_by_name
-from unit_components.repair import RepairComponent
-from unit_components.mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
-from unit_components.hangar import HangarComponent
-from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
-from unit_components.sensors import Sensors
-from unit_components.abilities import AbilityComponent
-from unit_components.minelayer import MinelayerComponent
-from unit_components.marines import MarinesComponent
-from unit_components.cloaking import CloakingDevice
-from unit_components.intelligence import IntelligenceComponent
+from unit_components.enums import UnitStance
 from unit_orders.base import Order, OrderStatus, OrderType
-from unit_orders.movement import MoveOrder, ReachWaypointOrder
-from unit_orders.combat import AttackOrder, ProtectOrder
-from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
-from unit_orders.construction import ConstructOrder
-from unit_orders.inhibitor import ToggleInhibitorOrder
-from unit_orders.patrol import PatrolOrder
-from unit_orders.repair import RepairOrder
-from unit_orders.mining import MineOrder, UnloadResourcesOrder, ContinuousMineOrder
-from unit_orders.hangar import DockOrder, DeployUnitOrder
-from unit_orders.abilities import UseAbilityOrder
-from unit_orders.antimatter import TransferAntimatterOrder, ContinuousResupplyOrder
-from unit_orders.minelayer import LayMinefieldOrder
-from unit_orders.refit import RefitOrder
-from unit_orders.trade import TradeOrder, ContinuousTradeOrder
-from unit_orders.intelligence import InfiltrateUnitOrder, InfiltratePlanetOrder, RelocateAgentOrder, SabotageOrder, CISweepOrder, EliminateAgentOrder, ExtractAgentOrder
 from unit_orders.registry import ORDER_CLASS_REGISTRY
 
 logger = logging.getLogger(__name__)
 
 
+CURRENT_SAVE_VERSION = "4.4"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -98,7 +63,6 @@ CELESTIAL_CLASSES = {
 }
 
 ORDER_CLASSES = {order_type.name: order_cls for order_type, order_cls in ORDER_CLASS_REGISTRY.items()}
-
 
 
 def _ensure_saves_dir():
@@ -224,47 +188,35 @@ def _decode_known_enum(enum_name: str, value: Any) -> Any:
         if isinstance(enum_cls, type) and issubclass(enum_cls, Enum):
             try:
                 return enum_cls(value)
-            except (TypeError, ValueError):
-                try:
-                    return enum_cls[str(value)]
-                except (KeyError, TypeError):
-                    break
-    logger.warning("Unknown serialized enum %s=%r; preserving raw value.", enum_name, value)
-    return value
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Invalid {enum_name} value: {value!r}") from exc
+    raise ValueError(f"Unknown enum: {enum_name}")
 
 
-_POSITION_PARAMETER_KEYS = {"destination_position", "target_position", "waypoint", "position", "start_position"}
-_HEX_PARAMETER_KEYS = {"destination_hex", "target_hex", "destination_hex_coord", "target_hex_coord", "hex_coord", "start_hex_coord"}
-
-
-def _decode_order_value(value: Any, key_hint: Optional[str] = None) -> Any:
-    """Decode tagged 3.1 values and legacy untagged position/hex arrays."""
+def _decode_order_value(value: Any) -> Any:
+    """Decode explicitly tagged order values."""
     if isinstance(value, dict):
         type_tag = value.get("__type__")
         if type_tag == "position":
             return Position(value["x"], value["y"])
         if type_tag == "enum":
-            return _decode_known_enum(value.get("enum", ""), value.get("value"))
+            return _decode_known_enum(value["enum"], value["value"])
         if type_tag == "class":
-            return value.get("name")
+            return value["name"]
         if type_tag == "tuple":
-            return tuple(_decode_order_value(item) for item in value.get("items", []))
+            return tuple(_decode_order_value(item) for item in value["items"])
         if type_tag == "set":
-            return set(_decode_order_value(item) for item in value.get("items", []))
+            return set(_decode_order_value(item) for item in value["items"])
         if type_tag == "dict":
             return {
                 _decode_order_value(pair[0]): _decode_order_value(pair[1])
-                for pair in value.get("items", [])
-                if isinstance(pair, list) and len(pair) == 2
+                for pair in value["items"]
             }
-        return {key: _decode_order_value(item, str(key)) for key, item in value.items()}
+        if type_tag is not None:
+            raise ValueError(f"Unknown order value tag: {type_tag}")
+        return {key: _decode_order_value(item) for key, item in value.items()}
     if isinstance(value, list):
         decoded = [_decode_order_value(item) for item in value]
-        if len(decoded) == 2 and all(isinstance(item, (int, float)) for item in decoded):
-            if key_hint in _POSITION_PARAMETER_KEYS:
-                return Position(decoded[0], decoded[1])
-            if key_hint in _HEX_PARAMETER_KEYS:
-                return tuple(decoded)
         return decoded
     return value
 
@@ -361,7 +313,6 @@ def serialize_hex(hex_obj: Hex) -> dict:
     }
 
 
-
 def serialize_star_system(system: StarSystem) -> dict:
     hexes_list = [serialize_hex(h) for h in system.hexes.values()]
     return {
@@ -398,7 +349,7 @@ def serialize_game_state(game: Any) -> dict:
     ]
 
     return {
-        "version": "4.3",
+        "version": CURRENT_SAVE_VERSION,
         "timestamp": datetime.now().isoformat(),
         "game_state": {
             "turn_number": game.turn_number,
@@ -422,32 +373,32 @@ def serialize_game_state(game: Any) -> dict:
 
 def deserialize_player(data: dict) -> Player:
     ai_reasoning_effort = normalize_reasoning_effort(
-        data.get("ai_reasoning_effort")
+        data['ai_reasoning_effort']
     )
     player = Player(
-        name=data.get("name", "Player"),
-        color=tuple(data.get("color", (255, 255, 255))),
+        name=data['name'],
+        color=tuple(data['color']),
         controller=PlayerController(data["controller"]),
-        team_id=data.get("team_id", None),
-        persistent_id=data.get("persistent_id"),
-        agent_id=data.get("agent_id"),
+        team_id=data['team_id'],
+        persistent_id=data['persistent_id'],
+        agent_id=data['agent_id'],
         ai_reasoning_effort=ai_reasoning_effort,
         ai_repair_retries=normalize_repair_retries(
-            data.get("ai_repair_retries", DEFAULT_REPAIR_RETRIES)
+            data['ai_repair_retries']
         ),
-        ai_memory=data.get("ai_memory", {}),
-        homeworld_id=data.get("homeworld_id"),
+        ai_memory=data['ai_memory'],
+        homeworld_id=data['homeworld_id'],
     )
-    player.order_history = bounded_history(data.get("order_history", []))
-    player.order_event_sequence = max(int(data.get("order_event_sequence", 0)), max((e["event_id"] for e in player.order_history), default=0))
-    player.id = data.get("id", player.id)
+    player.order_history = bounded_history(data['order_history'])
+    player.order_event_sequence = max(int(data['order_event_sequence']), max((e["event_id"] for e in player.order_history), default=0))
+    player.id = data['id']
     if "team_id" in data:
         player.team_id = data["team_id"]
-    player.credits = data.get("credits", 20000.0)
-    player.metal = data.get("metal", 10000.0)
-    player.crystal = data.get("crystal", 10000.0)
+    player.credits = data['credits']
+    player.metal = data['metal']
+    player.crystal = data['crystal']
 
-    raw_intel = data.get("sector_intel", {})
+    raw_intel = data['sector_intel']
     if isinstance(raw_intel, dict):
         for key_str, turn in raw_intel.items():
             parts = key_str.split(":")
@@ -461,63 +412,60 @@ def deserialize_player(data: dict) -> Player:
 
 
 def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player], game: Any = None) -> CelestialBody:
-    if game is None and hasattr(players_by_id, 'players'):
-        game = players_by_id
-        players_by_id = {p.id: p for p in game.players}
-    class_name = data.get("class_name")
+    class_name = data['class_name']
     cls = CELESTIAL_CLASSES.get(class_name)
     if not cls:
         raise ValueError(f"Unknown CelestialBody class_name: {class_name}")
 
-    in_hex = tuple(data.get("in_hex", (0, 0)))
-    in_system = data.get("in_system", "")
+    in_hex = tuple(data['in_hex'])
+    in_system = data['in_system']
     position = Position(data["position"][0], data["position"][1])
 
     if cls == Star:
-        star_type = StarType[data.get("star_type", "G_TYPE")]
+        star_type = StarType[data['star_type']]
         body = Star(in_system=in_system, star_type=star_type)
     elif cls == Planet:
-        planet_type = PlanetType[data.get("planet_type", "TERRAN")]
+        planet_type = PlanetType[data['planet_type']]
         body = Planet(in_hex=in_hex, in_system=in_system, planet_type=planet_type)
-        owner_id = data.get("owner_id")
+        owner_id = data['owner_id']
         body.owner = players_by_id.get(owner_id) if owner_id is not None else None
-        body.population = data.get("population", 0.0)
-        body.max_population = data.get("max_population", 100.0)
-        body.population_growth_rate = data.get("population_growth_rate", 0.02)
+        body.population = data['population']
+        body.max_population = data['max_population']
+        body.population_growth_rate = data['population_growth_rate']
     elif cls in (Moon, ColonizableAsteroid):
         body = cls(in_hex=in_hex, in_system=in_system)
-        owner_id = data.get("owner_id")
+        owner_id = data['owner_id']
         body.owner = players_by_id.get(owner_id) if owner_id is not None else None
-        body.population = data.get("population", 0.0)
-        body.max_population = data.get("max_population", 50.0)
-        body.population_growth_rate = data.get("population_growth_rate", 0.01)
+        body.population = data['population']
+        body.max_population = data['max_population']
+        body.population_growth_rate = data['population_growth_rate']
     elif cls == MetalAsteroid:
         body = MetalAsteroid(in_hex=in_hex, in_system=in_system)
-        body.metal_yield = data.get("metal_yield", 10.0)
+        body.metal_yield = data['metal_yield']
     elif cls == Comet:
         body = Comet(in_hex=in_hex, in_system=in_system)
-        body.crystal_yield = data.get("crystal_yield", 10.0)
+        body.crystal_yield = data['crystal_yield']
     elif cls in (AsteroidField, DebrisField, IceField):
-        density = FieldDensity[data.get("density", "MEDIUM")]
+        density = FieldDensity[data['density']]
         body = cls(in_hex=in_hex, in_system=in_system, density=density)
         if cls == AsteroidField:
-            body.asteroid_count = data.get("asteroid_count", 100)
+            body.asteroid_count = data['asteroid_count']
     elif cls == Nebula:
-        nebula_type = NebulaType[data.get("nebula_type", "HYDROGEN")]
+        nebula_type = NebulaType[data['nebula_type']]
         body = Nebula(in_hex=in_hex, in_system=in_system, nebula_type=nebula_type)
     elif cls == Storm:
-        storm_type = StormType[data.get("storm_type", "PLASMA")]
+        storm_type = StormType[data['storm_type']]
         body = Storm(in_hex=in_hex, in_system=in_system, storm_type=storm_type)
     elif cls == Wormhole:
-        diameter = HullSize[data.get("diameter", "HUGE")]
-        exit_sys = data.get("exit_system_name", "")
-        stability = data.get("stability", 100)
+        diameter = HullSize[data['diameter']]
+        exit_sys = data['exit_system_name']
+        stability = data['stability']
         body = Wormhole(in_hex=in_hex, in_system=in_system, exit_system_name=exit_sys, stability=stability, diameter=diameter)
-        body.exit_wormhole_id = data.get("exit_wormhole_id")
+        body.exit_wormhole_id = data['exit_wormhole_id']
     else:
         body = cls(in_hex=in_hex, in_system=in_system)
 
-    body.id = data.get("id", body.id)
+    body.id = data['id']
     body.position = position
     if "name" in data and data["name"]:
         body.name = data["name"]
@@ -539,36 +487,30 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player], gam
     return body
 
 
-def deserialize_order(data: dict, unit: Unit, game: Any) -> Optional[Order]:
-    order_type_str = data.get("order_type")
+def deserialize_order(data: dict, unit: Unit, game: Any) -> Order:
+    order_type_str = data['order_type']
     order_cls = ORDER_CLASSES.get(order_type_str)
     if not order_cls:
-        logger.warning(f"Unknown Order class for order_type: {order_type_str}")
-        return None
+        raise ValueError(f"Unknown order type: {order_type_str}")
 
-    params = _decode_order_value(data.get("parameters", {}))
+    params = _decode_order_value(data['parameters'])
     if not isinstance(params, dict):
-        logger.warning("Invalid parameters for order_type %s", order_type_str)
-        return None
+        raise ValueError(f"Invalid parameters for order type {order_type_str}")
 
     order = order_cls(unit=unit, parameters=params)
     import uuid
-    try:
-        order.public_id = uuid.UUID(data.get("public_id", "")).hex
-    except (ValueError, TypeError, AttributeError):
-        pass
-    order.failure_reason = data.get("failure_reason")
-    order._outcome_recorded = bool(data.get("outcome_recorded", False))
-    status_str = data.get("status", "PENDING")
-    if hasattr(OrderStatus, status_str):
-        order.status = OrderStatus[status_str]
-    runtime_state = _decode_order_value(data.get("runtime_state", {}))
-    if isinstance(runtime_state, dict):
-        order.restore_persistence_state(runtime_state)
+    order.public_id = uuid.UUID(data["public_id"]).hex
+    order.failure_reason = data['failure_reason']
+    order._outcome_recorded = bool(data['outcome_recorded'])
+    order.status = OrderStatus[data['status']]
+    runtime_state = _decode_order_value(data['runtime_state'])
+    from state_codec import fields
+    fields(runtime_state, order.get_persistence_state().keys(), "order.runtime_state")
+    order.restore_persistence_state(runtime_state)
 
-    # Stance descendants are deliberately transient.  Ignore any such payload
-    # from hand-authored or pre-3.1 saves and let the policy reacquire safely.
-    serialized_sub_orders = [] if order_type_str == OrderType.STANCE.name else data.get("sub_orders", [])
+    if order_type_str == OrderType.STANCE.name and data["sub_orders"]:
+        raise ValueError("Standing-order descendants must not be persisted")
+    serialized_sub_orders = data["sub_orders"]
     for sub_data in serialized_sub_orders:
         sub_order = deserialize_order(sub_data, unit, game)
         if sub_order:
@@ -588,210 +530,18 @@ def _iter_unit_tree(root: Unit):
 
 
 def _restore_saved_commander(unit: Unit, game: Any) -> None:
-    if not hasattr(unit, "_saved_commander_data") or not unit.commander_component:
+    if not hasattr(unit, "_saved_commander_data"):
         return
-    commander_data = unit._saved_commander_data
+    data = unit._saved_commander_data
     commander = unit.commander_component
-    # Route all legacy/current forms through the Commander compatibility
-    # parser (stable values, enum names, and ``UnitStance.NAME`` strings).
-    raw_stance = commander_data.get("stance", UnitStance.DO_NOTHING.value)
-    try:
-        commander.set_stance(raw_stance)
-    except (TypeError, ValueError):
-        commander.set_stance(UnitStance.DO_NOTHING)
-
-    current_order = None
-    queued_orders = []
-    # A few 3.0 payloads put the legacy order list beside an otherwise empty
-    # commander object. Treat that list the same as a fully absent commander
-    # payload so current-vs-queued semantics remain deterministic.
-    legacy_orders = commander_data.get("legacy_orders")
-    if legacy_orders is None:
-        # Some transitional 3.0 writers nested the old list under the
-        # Commander object instead of placing it beside the unit payload.
-        legacy_orders = commander_data.get("orders")
-    if legacy_orders is None and not commander_data.get("current_order") and not commander_data.get("orders_queue"):
-        legacy_orders = getattr(unit, "_legacy_orders", None)
-
-    if legacy_orders is not None:
-        restored = [
-            order
-            for raw in legacy_orders
-            if (order := deserialize_order(raw, unit, game)) is not None
-        ]
-        if restored:
-            current_order, *queued_orders = restored
-    else:
-        current_data = commander_data.get("current_order")
-        if current_data:
-            current_order = deserialize_order(current_data, unit, game)
-        queued_orders = [
-            order
-            for raw in commander_data.get("orders_queue", [])
-            if (order := deserialize_order(raw, unit, game)) is not None
-        ]
-    commander.restore_explicit_orders(current_order, queued_orders, getattr(game, "galaxy", None), preserve_queue=True)
-    delattr(unit, "_saved_commander_data")
-    if hasattr(unit, "_legacy_orders"):
-        delattr(unit, "_legacy_orders")
-
-
-def _build_unit_from_template(template_name: str, owner: Player, position: Position, in_hex: Tuple[int, int], in_system: str, game: Any, custom_name: str) -> Unit:
-    from unit_templates import lookup_legacy_template
-    from unit_components.enums import TurretVariant, TurretType
-    template = lookup_legacy_template(template_name)
-    if not template:
-        return Unit(owner=owner, position=position, in_hex=in_hex, in_system=in_system, name=custom_name, hull_size=HullSize.MEDIUM, game=game, template_name=template_name)
-
-    hull_size_val = template["hull_size"]
-    if isinstance(hull_size_val, str):
-        hull_size_val = HullSize[hull_size_val.upper()]
-
-    new_unit = Unit(
-        owner=owner,
-        name=custom_name,
-        hull_size=hull_size_val,
-        game=game,
-        in_system=in_system,
-        in_hex=in_hex,
-        position=position,
-        template_name=template_name
-    )
-
-    if template.get("has_antimatter_storage", True):
-        from custom_unit_templates import calc_antimatter_hull_cost
-        cap = float(template.get("antimatter_capacity", 100.0))
-        cost = template.get("antimatter_hull_cost")
-        if cost is None:
-            cost = calc_antimatter_hull_cost(cap)
-        new_unit.add_component(AntimatterStorage(new_unit, max_capacity=cap, hull_cost=cost))
-    elif template.get("has_antimatter_storage") is False:
-        new_unit.remove_component(AntimatterStorage)
-
-    if template.get("has_antimatter_harvester"):
-        new_unit.add_component(AntimatterHarvester(new_unit, harvest_rate=template.get("antimatter_harvest_rate", 1.0)))
-
-    if template.get("has_engine"):
-        speed = template.get("engine_speed", 0)
-        new_unit.add_component(Engines(new_unit, speed=speed, hull_cost=template.get("engine_hull_cost", 0)))
-
-    if template.get("has_hyperdrive"):
-        htype_raw = template.get("hyperdrive_type", HyperdriveType.BASIC)
-        htype = HyperdriveType.ADVANCED if str(htype_raw).upper() == "ADVANCED" else HyperdriveType.BASIC
-        cost = template.get("hyperdrive_hull_cost", 5.0)
-        jump_range = template.get("hyperdrive_jump_range", 5)
-        new_unit.add_component(Hyperdrive(new_unit, drive_type=htype, hull_cost=cost, jump_range=jump_range))
-
-    if template.get("has_weapon_bays"):
-        weapons_comp = Weapons(new_unit, hull_cost=template.get("weapon_bays_hull_cost", 0))
-        for turret_def in template.get("turrets", []):
-            variant_str = turret_def.get("variant", "STANDARD")
-            variant = TurretVariant[variant_str.upper()] if hasattr(TurretVariant, variant_str.upper()) else TurretVariant.STANDARD
-            turret = Turret(
-                turret_type=TurretType[turret_def["type"]],
-                damage=turret_def["damage"],
-                range=turret_def["range"],
-                cooldown=turret_def["cooldown"],
-                parent_unit=new_unit,
-                variant=variant
-            )
-            weapons_comp.add_turret(turret)
-        new_unit.add_component(weapons_comp)
-
-    if template.get("has_defenses"):
-        new_unit.add_component(Defenses(new_unit, armor=template.get("armor", 0), shields=template.get("shields", 0), point_defense=template.get("point_defense", 0), hull_cost=template.get("defenses_hull_cost", 0)))
-
-    if template.get("has_constructor_component"):
-        new_unit.add_component(Constructor(new_unit, hull_cost=template.get("constructor_hull_cost", 0)))
-
-    if template.get("has_repair_component"):
-        new_unit.add_component(RepairComponent(new_unit, repair_rate=template.get("repair_rate", 10.0), repair_range=template.get("repair_range", 200.0)))
-
-    if template.get("has_mining_component"):
-        new_unit.add_component(MiningComponent(new_unit, mining_rate=template.get("mining_rate", 10.0), mining_range=template.get("mining_range", 200.0), max_cargo=template.get("max_mining_cargo", 100.0)))
-
-    if template.get("has_metal_refinery_component"):
-        new_unit.add_component(MetalRefineryComponent(new_unit, unload_range=template.get("unload_range", 300.0)))
-
-    if template.get("has_crystal_refinery_component"):
-        new_unit.add_component(CrystalRefineryComponent(new_unit, unload_range=template.get("unload_range", 300.0)))
-
-    if template.get("has_hangar"):
-        new_unit.add_component(HangarComponent(new_unit, max_slots=template.get("hangar_slots", 0)))
-
-    if template.get("has_strikecraft_bay"):
-        new_unit.add_component(StrikecraftBayComponent(new_unit, max_slots=template.get("strikecraft_bay_slots", 0)))
-
-    if new_unit.hull_size == HullSize.STRIKECRAFT_WING:
-        from unit_components.enums import WingType
-        wing_type_str = template.get("wing_type", "FIGHTER")
-        wing_type = WingType[wing_type_str.upper()] if hasattr(WingType, wing_type_str.upper()) else WingType.FIGHTER
-        new_unit.add_component(StrikecraftWingComponent(new_unit, wing_type=wing_type))
-
-    if template.get("has_colony_component"):
-        new_unit.add_component(ColonyComponent(new_unit))
-
-    if template.get("has_civilian_habitat_component"):
-        new_unit.add_component(CivilianHabitatComponent(
-            new_unit,
-            economic_bonus=template.get("civilian_habitat_bonus", 50.0),
-            hull_cost=template.get("civilian_habitat_hull_cost", 15.0)
-        ))
-
-    if template.get("has_orbital_defense_component"):
-        new_unit.add_component(OrbitalDefenseComponent(
-            new_unit,
-            radius=template.get("orbital_defense_radius", 500.0),
-            attack_bonus=template.get("orbital_defense_attack_bonus", 0.20),
-            defense_bonus=template.get("orbital_defense_defense_bonus", 0.20),
-            hull_cost=template.get("orbital_defense_hull_cost", 20.0)
-        ))
-
-    if template.get("has_trade_component"):
-        new_unit.add_component(TradeComponent(
-            new_unit,
-            hull_cost=template.get("trade_hull_cost", 10.0),
-            trade_revenue_multiplier=template.get("trade_revenue_multiplier", 1.0)
-        ))
-
-    if template.get("has_marines_component"):
-        new_unit.add_component(MarinesComponent(
-            new_unit,
-            marines_count=template.get("marines_count", 10),
-            hull_cost=template.get("marines_hull_cost", 0.0)
-        ))
-
-    if template.get("has_cloaking_device"):
-        from unit_components.cloaking import CloakingDevice
-        from unit_components.enums import CloakingType
-        from constants import DEFAULT_ADVANCED_CLOAKING_RADIUS
-        c_type_raw = template.get("cloaking_type", "BASIC")
-        c_type = CloakingType.ADVANCED if str(c_type_raw).upper() == "ADVANCED" else CloakingType.BASIC
-        c_radius = float(template.get("cloaking_radius", DEFAULT_ADVANCED_CLOAKING_RADIUS)) if c_type == CloakingType.ADVANCED else 0.0
-        c_cost = float(template.get("cloaking_hull_cost", CloakingDevice.calc_hull_cost(c_type, c_radius)))
-        new_unit.add_component(CloakingDevice(new_unit, device_type=c_type, area_radius=c_radius, hull_cost=c_cost))
-
-    if template.get("has_intelligence_component"):
-        from unit_components.intelligence import IntelligenceComponent
-        i_count = int(template.get("intelligence_agents_count", 1))
-        i_ci = bool(template.get("has_counter_intelligence", False))
-        i_cost = template.get("intelligence_hull_cost")
-        if i_cost is None:
-            i_cost = IntelligenceComponent.calc_hull_cost(i_count, i_ci)
-        new_unit.add_component(IntelligenceComponent(
-            new_unit,
-            agents_count=i_count,
-            agents_capacity=i_count,
-            has_counter_intelligence=i_ci,
-            hull_cost=i_cost
-        ))
-
-    return new_unit
+    commander.set_stance(UnitStance(data["stance"]))
+    current = deserialize_order(data["current_order"], unit, game) if data["current_order"] is not None else None
+    queued = [deserialize_order(raw, unit, game) for raw in data["orders_queue"]]
+    commander.restore_explicit_orders(current, queued, game.galaxy)
+    del unit._saved_commander_data
 
 
 def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) -> Unit:
-    if "schema_version" not in data:
-        return _deserialize_legacy_unit(data, players_by_id, game)
     from unit_components.persistence import restore_component
     if type(data["schema_version"]) is not int or data["schema_version"] != 1:
         raise ValueError("Unsupported unit schema")
@@ -799,7 +549,7 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
     if data["owner_id"] is not None and owner is None:
         raise ValueError(f"unit {data['id']}: unknown owner")
     unit = Unit(owner, Position(*data["position"]), tuple(data["in_hex"]), data["in_system"],
-                data["name"], HullSize[data["hull_size"]], game, data.get("template_name"))
+                data["name"], HullSize[data["hull_size"]], game, data['template_name'])
     unit.id = data["id"]
     for name in ("current_hit_points", "max_hit_points", "experience_points", "is_disabled",
                  "damage_reduction", "damage_amplification", "lifetime", "is_temporary"):
@@ -822,207 +572,27 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
     return unit
 
 
-def _deserialize_legacy_unit(data: dict, players_by_id: Dict[int, Player], game: Any) -> Unit:
-    hull_size = HullSize[data.get("hull_size", "MEDIUM")]
-    owner_id = data.get("owner_id")
-    owner = players_by_id.get(owner_id) if owner_id is not None else players_by_id.get(0)
-
-    in_hex = tuple(data["in_hex"]) if data.get("in_hex") else (0, 0)
-    in_system = data.get("in_system", "")
-    position = Position(data["position"][0], data["position"][1])
-    name = data.get("name", "Unit")
-    template_name = data.get("template_name")
-
-    if template_name:
-        unit = _build_unit_from_template(
-            template_name=template_name,
-            owner=owner,
-            position=position,
-            in_hex=in_hex,
-            in_system=in_system,
-            game=game,
-            custom_name=name
-        )
-    else:
-        unit = Unit(
-            owner=owner,
-            position=position,
-            in_hex=in_hex,
-            in_system=in_system,
-            name=name,
-            hull_size=hull_size,
-            game=game
-        )
-
-    unit.id = data.get("id", unit.id)
-    unit.current_hit_points = data.get("current_hit_points", unit.current_hit_points)
-    unit.max_hit_points = data.get("max_hit_points", unit.max_hit_points)
-    unit.experience_points = data.get("experience_points", 0)
-    unit.is_disabled = data.get("is_disabled", False)
-    unit.disabled_by_unit_ids = set(data.get("disabled_by_unit_ids", []))
-    unit.damage_reduction = data.get("damage_reduction", 0.0)
-    unit.damage_amplification = data.get("damage_amplification", 0.0)
-    unit.lifetime = data.get("lifetime")
-    unit.is_temporary = data.get("is_temporary", False)
-
-    # Restore component dynamic state
-    comps_data = data.get("components", {})
-
-    # First, restore dynamically added components that weren't in base template
-    for comp_name, comp_fields in comps_data.items():
-        comp_cls = get_component_class_by_name(comp_name)
-        if comp_cls and comp_cls not in unit.components:
-            inst = instantiate_component_for_unit(comp_name, unit, comp_fields)
-            if inst:
-                unit.add_component(inst)
-
-    for comp_name, comp_fields in comps_data.items():
-        if comp_name == "AntimatterStorage" and unit.antimatter_component:
-            unit.antimatter_component.current_amount = comp_fields.get("current_amount", unit.antimatter_component.current_amount)
-            unit.antimatter_component.max_capacity = comp_fields.get("max_capacity", unit.antimatter_component.max_capacity)
-        elif comp_name == "ColonyComponent" and unit.colony_component:
-            unit.colony_component.population_cargo = comp_fields.get("population_cargo", unit.colony_component.population_cargo)
-            unit.colony_component.max_cargo = comp_fields.get("max_cargo", unit.colony_component.max_cargo)
-        elif comp_name == "MiningComponent" and unit.mining_component:
-            unit.mining_component.mining_rate = comp_fields.get("mining_rate", unit.mining_component.mining_rate)
-            unit.mining_component.mining_range = comp_fields.get("mining_range", unit.mining_component.mining_range)
-            unit.mining_component.raw_metal_cargo = comp_fields.get("raw_metal_cargo", unit.mining_component.raw_metal_cargo)
-            unit.mining_component.raw_crystal_cargo = comp_fields.get("raw_crystal_cargo", unit.mining_component.raw_crystal_cargo)
-            unit.mining_component.max_cargo = comp_fields.get("max_cargo", unit.mining_component.max_cargo)
-        elif comp_name == "Hyperdrive" and unit.hyperdrive_component:
-            from unit_components.enums import JumpStatus
-            unit.hyperdrive_component.recharge_time_remaining = comp_fields.get("recharge_time_remaining", 0)
-            status_str = comp_fields.get("jump_status", "READY")
-            if hasattr(JumpStatus, status_str):
-                unit.hyperdrive_component.jump_status = JumpStatus[status_str]
-        elif comp_name == "CivilianHabitatComponent" and unit.civilian_habitat_component:
-            unit.civilian_habitat_component.economic_bonus = comp_fields.get("economic_bonus", unit.civilian_habitat_component.economic_bonus)
-        elif comp_name in ("IntelligenceComponent", "Intelligence") and getattr(unit, "intelligence_component", None):
-            unit.intelligence_component.agents_count = comp_fields.get("agents_count", unit.intelligence_component.agents_count)
-            unit.intelligence_component.agents_capacity = comp_fields.get("agents_capacity", unit.intelligence_component.agents_capacity)
-            unit.intelligence_component.has_counter_intelligence = comp_fields.get("has_counter_intelligence", unit.intelligence_component.has_counter_intelligence)
-            unit.intelligence_component.ci_cooldown_remaining = comp_fields.get("ci_cooldown_remaining", 0)
-        elif comp_name == "OrbitalDefenseComponent" and unit.orbital_defense_component:
-            unit.orbital_defense_component.radius = comp_fields.get("radius", unit.orbital_defense_component.radius)
-            unit.orbital_defense_component.attack_bonus = comp_fields.get("attack_bonus", unit.orbital_defense_component.attack_bonus)
-            unit.orbital_defense_component.defense_bonus = comp_fields.get("defense_bonus", unit.orbital_defense_component.defense_bonus)
-        elif comp_name == "TradeComponent" and unit.trade_component:
-            raw_sec = comp_fields.get("last_traded_sector")
-            if raw_sec and len(raw_sec) == 2:
-                unit.trade_component.last_traded_sector = (raw_sec[0], tuple(raw_sec[1]))
-            else:
-                unit.trade_component.last_traded_sector = None
-            unit.trade_component.last_traded_unit_id = comp_fields.get("last_traded_unit_id")
-            unit.trade_component.last_trade_income = comp_fields.get("last_trade_income", 0.0)
-            unit.trade_component.total_trade_income = comp_fields.get("total_trade_income", 0.0)
-            unit.trade_component.trades_completed = comp_fields.get("trades_completed", 0)
-            unit.trade_component.trade_revenue_multiplier = comp_fields.get("trade_revenue_multiplier", 1.0)
-        elif comp_name == "HyperspaceInhibitionFieldEmitter" and unit.inhibitor_component:
-            unit.inhibitor_component.is_active = comp_fields.get("is_active", unit.inhibitor_component.is_active)
-        elif comp_name == "CloakingDevice":
-            from unit_components.enums import CloakingType
-            from unit_components.cloaking import CloakingDevice
-            type_str = comp_fields.get("device_type", "BASIC")
-            c_type = CloakingType.ADVANCED if str(type_str).upper() == "ADVANCED" else CloakingType.BASIC
-            c_radius = float(comp_fields.get("area_radius", 0.0))
-            if not unit.cloaking_component:
-                unit.add_component(CloakingDevice(unit, device_type=c_type, area_radius=c_radius))
-            else:
-                unit.cloaking_component.device_type = c_type
-                unit.cloaking_component.area_radius = c_radius
-            unit.cloaking_component.is_active = comp_fields.get("is_active", False)
-        elif comp_name == "HangarComponent" and unit.hangar_component:
-            unit.hangar_component.docked_units.clear()
-            for docked_data in comp_fields.get("docked_units", []):
-                docked_u = deserialize_unit(docked_data, players_by_id, game)
-                unit.hangar_component.docked_units.append(docked_u)
-        elif comp_name == "StrikecraftBayComponent" and unit.strikecraft_bay_component:
-            from unit_components.enums import WingType
-            unit.strikecraft_bay_component.docked_units.clear()
-            for docked_data in comp_fields.get("docked_units", []):
-                docked_u = deserialize_unit(docked_data, players_by_id, game)
-                if docked_u.strikecraft_wing_component:
-                    docked_u.strikecraft_wing_component.mother_carrier = unit
-                unit.strikecraft_bay_component.docked_units.append(docked_u)
-            unit.strikecraft_bay_component.constructing = comp_fields.get("constructing", False)
-            unit.strikecraft_bay_component.construction_progress = comp_fields.get("construction_progress", 0)
-            wing_type_str = comp_fields.get("build_wing_type", "FIGHTER")
-            if hasattr(WingType, wing_type_str):
-                unit.strikecraft_bay_component.build_wing_type = WingType[wing_type_str]
-        elif comp_name == "StrikecraftWingComponent" and unit.strikecraft_wing_component:
-            from unit_components.enums import WingType
-            wing_type_str = comp_fields.get("wing_type", "FIGHTER")
-            if hasattr(WingType, wing_type_str):
-                unit.strikecraft_wing_component.wing_type = WingType[wing_type_str]
-        elif comp_name == "MarinesComponent":
-            marines_comp = unit.get_component(MarinesComponent)
-            if marines_comp:
-                marines_comp.marines_count = comp_fields.get("marines_count", marines_comp.marines_count)
-        elif comp_name == "Constructor" and unit.constructor_component:
-            if "current_construction_target" in comp_fields:
-                tgt_raw = comp_fields["current_construction_target"]
-                unit.constructor_component.current_construction_target = (tgt_raw[0], Position(tgt_raw[1][0], tgt_raw[1][1]))
-                unit.constructor_component.construction_progress = comp_fields.get("construction_progress", 0)
-                unit.constructor_component.time_to_build = comp_fields.get("time_to_build", 0)
-            if "current_refit_target" in comp_fields:
-                unit.constructor_component.current_refit_target = comp_fields["current_refit_target"]
-                unit.constructor_component.refit_progress = comp_fields.get("refit_progress", 0)
-                unit.constructor_component.refit_time = comp_fields.get("refit_time", 0)
-
-    # Remove components that were removed via refit
-    for comp_cls in list(unit.components.keys()):
-        if comp_cls == Commander:
-            continue
-        if comp_cls.__name__ not in comps_data and (comp_cls != HyperspaceInhibitionFieldEmitter or "Inhibitor" not in comps_data):
-            unit.remove_component(comp_cls)
-
-    # Restore infiltrating agents if present
-    if "infiltrating_agents" in data:
-        from unit_components.intelligence import Agent
-        unit.infiltrating_agents = [Agent.from_dict(ad, players_by_id, unit) for ad in data["infiltrating_agents"]]
-
-    # Commander state is restored after all units exist so target references resolve.
-    if "commander" in data:
-        unit._saved_commander_data = data.get("commander") or {}
-        # Preserve legacy arrays even when a partially migrated save already
-        # contains a commander key.
-        if (
-            data.get("orders")
-            and not unit._saved_commander_data.get("current_order")
-            and not unit._saved_commander_data.get("orders_queue")
-        ):
-            unit._legacy_orders = data.get("orders", [])
-    else:
-        # 3.0 compatibility: absent data means Do Nothing; tolerate legacy order arrays.
-        unit._saved_commander_data = {
-            "stance": UnitStance.DO_NOTHING.value,
-            "legacy_orders": data.get("orders", []),
-        }
-
-    return unit
-
-
 def deserialize_minefield(data: dict, players_by_id: Dict[int, Player]) -> Minefield:
-    owner_id = data.get("owner_id")
-    owner = players_by_id.get(owner_id) if owner_id is not None else players_by_id.get(0)
-    in_hex = tuple(data.get("in_hex", (0, 0)))
-    in_system = data.get("in_system", "")
+    owner_id = data['owner_id']
+    owner = players_by_id[owner_id] if owner_id is not None else None
+    in_hex = tuple(data['in_hex'])
+    in_system = data['in_system']
     position = Position(data["position"][0], data["position"][1])
-    minefield_type = data.get("minefield_type", "anti_ship")
+    minefield_type = data['minefield_type']
 
     minefield = Minefield(
         owner=owner,
         position=position,
         in_hex=in_hex,
         in_system=in_system,
-        mines_remaining=data.get("mines_remaining", 5),
-        mine_damage=data.get("mine_damage", 40.0),
-        detonation_radius=data.get("detonation_radius", 250.0),
+        mines_remaining=data['mines_remaining'],
+        mine_damage=data['mine_damage'],
+        detonation_radius=data['detonation_radius'],
         minefield_type=minefield_type
     )
-    minefield.id = data.get("id", minefield.id)
-    minefield.name = data.get("name", f"{minefield.minefield_type.display_name} Minefield {minefield.id}")
-    minefield.revealed_to_player_ids = set(data.get("revealed_to_player_ids", []))
+    minefield.id = data['id']
+    minefield.name = data['name']
+    minefield.revealed_to_player_ids = set(data['revealed_to_player_ids'])
     return minefield
 
 
@@ -1032,24 +602,23 @@ def deserialize_hex(data: dict, players_by_id: Dict[int, Player], game: Any) -> 
     in_system = data["in_system"]
     hex_obj = Hex(q, r, in_system=in_system)
 
-    for cb_data in data.get("celestial_bodies", []):
+    for cb_data in data['celestial_bodies']:
         body = deserialize_celestial_body(cb_data, players_by_id, game)
         hex_obj.add_celestial_body(body)
 
-    for unit_data in data.get("units", []):
+    for unit_data in data['units']:
         unit = deserialize_unit(unit_data, players_by_id, game)
         hex_obj.add_unit(unit)
 
-    for mf_data in data.get("minefields", []):
+    for mf_data in data['minefields']:
         mf = deserialize_minefield(mf_data, players_by_id)
         if not hex_obj.add_minefield(mf):
             raise ValueError("Too many minefields in sector")
 
     from tactical_persistence import deserialize as deserialize_tactical
-    hex_obj.deployables = [deserialize_tactical(d, players_by_id) for d in data.get("deployables", [])]
-    hex_obj.catalyst_patches = [deserialize_tactical(p, players_by_id, patch=True) for p in data.get("catalyst_patches", [])]
+    hex_obj.deployables = [deserialize_tactical(d, players_by_id) for d in data['deployables']]
+    hex_obj.catalyst_patches = [deserialize_tactical(p, players_by_id, patch=True) for p in data['catalyst_patches']]
     return hex_obj
-
 
 
 def deserialize_star_system(data: dict, players_by_id: Dict[int, Player], game: Any) -> StarSystem:
@@ -1064,7 +633,7 @@ def deserialize_star_system(data: dict, players_by_id: Dict[int, Player], game: 
     system.hexes = {}
     system.celestial_bodies_by_id = {}
 
-    for hex_data in data.get("hexes", []):
+    for hex_data in data['hexes']:
         hex_obj = deserialize_hex(hex_data, players_by_id, game)
         if (hex_obj.q, hex_obj.r) in system.hexes:
             raise ValueError("Duplicate sector coordinates")
@@ -1084,13 +653,13 @@ def deserialize_galaxy(data: dict, players_by_id: Dict[int, Player], game: Any) 
     galaxy.wormholes = {}
     galaxy.system_graph = {}
 
-    bounds = data.get("generation_bounds", {})
-    galaxy.generation_x_min = bounds.get("x_min", 50)
-    galaxy.generation_x_max = bounds.get("x_max", 1870)
-    galaxy.generation_y_min = bounds.get("y_min", 50)
-    galaxy.generation_y_max = bounds.get("y_max", 1030)
+    bounds = data['generation_bounds']
+    galaxy.generation_x_min = bounds['x_min']
+    galaxy.generation_x_max = bounds['x_max']
+    galaxy.generation_y_min = bounds['y_min']
+    galaxy.generation_y_max = bounds['y_max']
 
-    for sys_data in data.get("systems", []):
+    for sys_data in data['systems']:
         sys_obj = deserialize_star_system(sys_data, players_by_id, game)
         sys_obj.in_galaxy = galaxy
         if sys_obj.name in galaxy.systems:

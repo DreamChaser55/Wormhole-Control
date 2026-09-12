@@ -21,6 +21,7 @@ Comprehensive test suite for Intelligence (Espionage), Counter-Intelligence, and
 9. Agent extraction back to parent intelligence vessel
 10. Save and load persistence of intelligence state and agents
 """
+from display_config import DisplayConfig
 
 import pytest
 from unittest.mock import MagicMock
@@ -64,6 +65,7 @@ def test_setup():
     galaxy.systems = {"Sol": system}
 
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.galaxy = galaxy
     game.players = [p1, p2]
     game.current_player_index = 0
@@ -248,7 +250,7 @@ def test_colony_infiltration_and_sabotages(test_setup):
     planet.owner = p2
     planet.population = 80.0
     planet.max_population = 100.0
-    system.hexes[(0, 0)].add_celestial_body(planet)
+    system.add_celestial_body(planet)
 
     spy_unit = Unit(p1, Position(100, 100), (0, 0), "Sol", "Spy Ship", HullSize.MEDIUM, game)
     intel_comp = IntelligenceComponent(spy_unit, agents_count=2, agents_capacity=2)
@@ -336,7 +338,7 @@ def test_counter_intelligence_sweep_and_eliminate(test_setup):
     # Friendly colony near CI vessel
     planet = Planet((0, 0), "Sol", "TERRAN")
     planet.owner = p1
-    system.hexes[(0, 0)].add_celestial_body(planet)
+    system.add_celestial_body(planet)
 
     # Enemy spy ship placing agents on friendly ship and colony
     enemy_spy = Unit(p2, Position(120, 100), (0, 0), "Sol", "Enemy Spy", HullSize.MEDIUM, game)
@@ -477,6 +479,7 @@ def test_save_and_load_intelligence_state(test_setup):
 
     # Recreate blank game and deserialize
     new_game = MagicMock()
+    new_game.display_config = DisplayConfig()
     success = deserialize_game_state(new_game, save_data)
     assert success is True
 
@@ -811,7 +814,7 @@ def test_ci_sweep_removed_from_context_menus(test_setup):
     planet.owner = p1
     planet.population = 50.0
     planet.position = Position(200, 200)
-    system.hexes[(0, 0)].add_celestial_body(planet)
+    system.add_celestial_body(planet)
 
     # Attach discovered enemy agent to friendly ship
     enemy_spy = Unit(p2, Position(500, 500), (0, 0), "Sol", "Enemy Spy", HullSize.SMALL, game)

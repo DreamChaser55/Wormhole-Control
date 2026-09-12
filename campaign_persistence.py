@@ -136,7 +136,7 @@ def validate_document(data):
     def order(raw, path):
         if raw is None:
             return
-        require(raw, ("public_id", "order_type", "status", "parameters", "runtime_state", "sub_orders"), path)
+        require(raw, ("public_id", "order_type", "status", "parameters", "runtime_state", "sub_orders", "failure_reason", "outcome_recorded"), path)
         if raw["order_type"] not in ORDER_CLASSES or raw["status"] not in OrderStatus.__members__:
             raise ValueError(f"{path}: unknown order type/status")
         uid = uuid.UUID(raw["public_id"]).hex
@@ -145,6 +145,11 @@ def validate_document(data):
         public_ids.add(uid)
         if not isinstance(raw["parameters"], dict) or not isinstance(raw["runtime_state"], dict) or not isinstance(raw["sub_orders"], list):
             raise ValueError(f"{path}: malformed order state")
+        require(raw["runtime_state"], ("charged_credits", "charged_player_id"), f"{path}.runtime_state")
+        number(raw["runtime_state"]["charged_credits"], f"{path}.charged_credits", 0)
+        payer = raw["runtime_state"]["charged_player_id"]
+        if payer is not None and (type(payer) is not int or payer not in player_ids):
+            raise ValueError(f"{path}: unknown charge payer")
         order_values(raw["parameters"], f"{path}.parameters")
         order_values(raw["runtime_state"], f"{path}.runtime_state")
         for i, child in enumerate(raw["sub_orders"]):
@@ -168,7 +173,7 @@ def validate_document(data):
 
     def unit(raw, path):
         located(raw, path)
-        require(raw, ("schema_version", "name", "owner_id", "hull_size", "components", "current_hit_points",
+        require(raw, ("schema_version", "name", "owner_id", "hull_size", "template_name", "components", "current_hit_points",
                       "max_hit_points", "experience_points", "is_disabled", "disabled_by_unit_ids", "damage_reduction",
                       "damage_amplification", "lifetime", "is_temporary", "infiltrating_agents"), path)
         if not isinstance(raw["components"], dict):
@@ -429,10 +434,7 @@ def _cancel_testing_construction(candidate, warnings):
             active = next((node for node in commander._active_front_chain()
                            if node.public_id == constructor.construction_order_id), None)
             if active is not None:
-                # Historical charge reconstruction is not evidence of a recorded payment.
-                if active._legacy_charge:
-                    active._charged_credits = 0
-                commander.cancel_order(commander.current_order.order_id, promote_next=False)
+                commander.cancel_order(commander.current_order.local_order_id, promote_next=False)
         # Orphaned component jobs have no recorded order charge to refund.
         constructor.cancel_construction()
         warnings.append(f"Cancelled unavailable Testing construction {template_name} on {unit.name}; "
@@ -441,12 +443,14 @@ def _cancel_testing_construction(candidate, warnings):
 
 def prepare_campaign(data):
     import save_manager as sm
-    from save_migrations import migrate_save
     from domain.communications import Conversation
     from unit_orders.base import Order
     validate_json(data)
+    if not isinstance(data, dict) or data.get("version") != sm.CURRENT_SAVE_VERSION:
+        actual = data.get("version") if isinstance(data, dict) else None
+        raise ValueError(f"Unsupported save version: {actual!r}; expected {sm.CURRENT_SAVE_VERSION}. Start a new campaign.")
     with isolated_allocations() as allocations:
-        data, warnings = migrate_save(data)
+        warnings = []
         validate_document(data)
         info = data["game_state"]
         candidate = SimpleNamespace(**{name: info[name] for name in

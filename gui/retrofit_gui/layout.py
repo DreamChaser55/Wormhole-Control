@@ -22,7 +22,6 @@ from .catalog import (
     ABILITY_NAMES,
     HYPERDRIVE_TYPES,
     CLOAKING_TYPES,
-    WING_TYPES,
 )
 
 if typing.TYPE_CHECKING:
@@ -298,12 +297,10 @@ def _build_component_detail_groups(
     wizard._details_groups["Sensors"].extend([lbl_sr, wizard._sensor_short_range_entry, lbl_lr, wizard._sensor_long_range_entry])
 
     # 7. Strikecraft Bay
-    lbl_wt = make_label(pygame.Rect(pad, y, w, small_h), "Wing Type:", mgr, pan)
-    wizard._wt_dropdown = make_dropdown(pygame.Rect(pad, y + small_h + 2, w, dd_h), WING_TYPES, "FIGHTER", mgr, pan)
-    y_sc = y + small_h + dd_h + pad
+    y_sc = y
     lbl_scs = make_label(pygame.Rect(pad, y_sc, w, small_h), "Bay Slots:", mgr, pan)
     wizard._strikecraft_bay_slots_entry = make_entry(pygame.Rect(pad, y_sc + small_h + 2, w, entry_h), "2", mgr, pan)
-    wizard._details_groups["StrikecraftBayComponent"].extend([lbl_wt, wizard._wt_dropdown, lbl_scs, wizard._strikecraft_bay_slots_entry])
+    wizard._details_groups["StrikecraftBayComponent"].extend([lbl_scs, wizard._strikecraft_bay_slots_entry])
 
     # 8. Hangar Bay
     lbl_hs = make_label(pygame.Rect(pad, y, w, small_h), "Hangar Slots:", mgr, pan)

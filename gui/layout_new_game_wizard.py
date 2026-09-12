@@ -1109,8 +1109,7 @@ class NewGameWizard:
             )
             self._stage_elements.append(self.next_button)
 
-            # Assign start_button to next_button for backward compatibility in tests
-            self.start_button = self.next_button
+            self.start_button = None
             self.back_button = None
 
         else:
@@ -1390,7 +1389,7 @@ class NewGameWizard:
             if element is self.cancel_button:
                 return {"action": "cancel_new_game_wizard"}
 
-            if self._stage == 1 and (element is self.next_button or element is self.start_button):
+            if self._stage == 1 and element is self.next_button:
                 errs = self.get_map_validation_errors()
                 if errs:
                     return {

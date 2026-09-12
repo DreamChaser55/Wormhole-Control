@@ -182,7 +182,7 @@ class TestDefenseMitigationXpBonus:
 
     def test_max_xp_increases_max_mitigation(self):
         """At max XP the mitigation should be scaled up by XP_DEFENSE_BONUS."""
-        with patch("unit_components.random.randint", return_value=50):
+        with patch("unit_components.defenses.random.randint", return_value=50):
             defender = self._make_defender_with_defenses(armor=50, xp=0)
             defenses = defender.get_component(Defenses)
             baseline = defenses.calculate_mitigation(200, TurretType.MASS_DRIVER)

@@ -3,6 +3,7 @@
 Only the game/galaxy collaborators are mocked. Damage, healing, component
 lifecycle, diplomacy and XP always execute the production entity methods.
 """
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 
 from constants import HullSize
@@ -30,6 +31,7 @@ class ComponentUnit(Unit):
 
     def __init__(self):
         game = MagicMock()
+        game.display_config = DisplayConfig()
         game.galaxy.systems = {}
         super().__init__(ComponentPlayer(), Position(0, 0), (0, 0), "Sol",
                          "Test Unit", HullSize.MEDIUM, game)

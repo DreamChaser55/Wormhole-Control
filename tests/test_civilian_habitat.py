@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
@@ -87,6 +88,7 @@ class TestCivilianHabitatComponent(unittest.TestCase):
 
     def test_turn_processor_economic_bonus(self):
         game_mock = MagicMock()
+        game_mock.display_config = DisplayConfig()
         game_mock.galaxy = self.galaxy
         game_mock.players = [self.player]
         game_mock.current_player_index = 0
@@ -238,6 +240,7 @@ class TestCivilianHabitatComponent(unittest.TestCase):
 
         # Turn processing should only give +50 for the 1 active habitat (+ taxes)
         game_mock = MagicMock()
+        game_mock.display_config = DisplayConfig()
         game_mock.galaxy = self.galaxy
         game_mock.players = [self.player]
         game_mock.current_player_index = 0
@@ -318,6 +321,7 @@ class TestCivilianHabitatComponent(unittest.TestCase):
 
     def test_sidebar_status_labels(self):
         game_mock = MagicMock()
+        game_mock.display_config = DisplayConfig()
         game_mock.galaxy = self.galaxy
 
         # Uninhabited sector

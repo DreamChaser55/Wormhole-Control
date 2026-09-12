@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 import json
 import os
@@ -342,7 +343,7 @@ class TestUnitEditorGuiComponents(unittest.TestCase):
         from gui.unit_editor_gui import COMPONENT_ROWS
 
         gui_keys = {row["key"] for row in COMPONENT_ROWS}
-        config_keys = {f.name for f in dataclasses.fields(ComponentConfig) if f.name.startswith("has_")}
+        config_keys = {f.name for f in dataclasses.fields(ComponentConfig) if f.name.startswith("has_") and f.name != "has_counter_intelligence"}
 
         self.assertEqual(config_keys, gui_keys)
 
@@ -408,7 +409,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
 
         # Default selected component is "has_engine"
         self.assertEqual(win._selected_component_key, "has_engine")
@@ -437,7 +438,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
         win.show()
 
         # Ensure Add Turret button exists
@@ -460,7 +461,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
 
         # Verify entry widgets exist and contain default text
         self.assertIsNotNone(win._repair_rate_entry)
@@ -513,7 +514,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
         win.show()
 
         t = CustomUnitTemplate("Test Design", HullSize.MEDIUM)
@@ -536,7 +537,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
         win.show()
 
         t = CustomUnitTemplate("Test Design", HullSize.MEDIUM)
@@ -561,7 +562,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
 
         self.assertIsNotNone(win._comp_scroll_container)
         self.assertTrue(isinstance(win._comp_scroll_container, pygame_gui.elements.UIScrollingContainer))
@@ -583,7 +584,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
         win.show()
 
         c = win._comp
@@ -633,7 +634,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
         win.show()
 
         # Save an initial template
@@ -679,7 +680,7 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         mgr = pygame_gui.UIManager((1280, 720))
         tmp_mgr = CustomTemplateManager()
-        win = UnitEditorWindow(mgr, pygame.Vector2(1280, 720), tmp_mgr)
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
         win.show()
 
         # By default (MEDIUM hull with default components such as Antimatter Storage)
@@ -777,20 +778,20 @@ def test_wing_editor_load_switch_and_sensor_guard(pygame_context, tmp_path):
     from gui.unit_editor_gui.component_state import on_hull_changed
     from gui.unit_editor_gui.param_readers import read_sensor_params
     from gui.unit_editor_gui.template_io import sync_widgets_from_template
-    editor = UnitEditorWindow(pygame_gui.UIManager((1280, 720)), pygame.Vector2(1280, 720),
+    editor = UnitEditorWindow(pygame_gui.UIManager((1280, 720)), DisplayConfig(1280, 720),
                               CustomTemplateManager(data_file=str(tmp_path / 'designs.json')))
     try:
         editor.show()
-        legacy = CustomUnitTemplate('Old wing', HullSize.STRIKECRAFT_WING,
-            ComponentConfig(has_mining_component=True, has_sensors=True,
-                            sensor_long_range_hexes=2, has_antimatter_storage=False))
+        legacy = CustomUnitTemplate('Wing', HullSize.STRIKECRAFT_WING,
+            ComponentConfig(has_mining_component=False, has_sensors=True,
+                            sensor_long_range_hexes=0, has_antimatter_storage=False))
         sync_widgets_from_template(editor, legacy)
         assert not editor._comp.has_mining_component
         assert not editor._comp_toggles['has_mining_component'].is_enabled
         assert editor._comp.sensor_long_range_hexes == 0
         assert not editor._sensor_long_range_entry.is_enabled
         assert editor._sensor_long_range_label.text == 'Intra-sector only'
-        assert legacy.components.has_mining_component  # Loading only edits the copy.
+        assert not legacy.components.has_mining_component
         editor._sensor_long_range_entry.set_text('3')
         read_sensor_params(editor)
         assert editor._comp.sensor_long_range_hexes == 0

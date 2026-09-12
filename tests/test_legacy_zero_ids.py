@@ -22,7 +22,7 @@ from unit_orders.base import OrderStatus
 from unit_orders.abilities import UseAbilityOrder
 from unit_orders.gas_giant import EnterGasGiantOrder
 from gui.sidebar.order_formatting import format_order_state_data
-from tests.support.campaigns import campaign, ship, legacy_document
+from tests.support.campaigns import campaign, ship
 
 
 @pytest.mark.parametrize('order_type,key', [
@@ -143,26 +143,3 @@ def test_sector_overlay_targets_zero(atmosphere, order_type):
     assert not renderer.order_targets_sector(order, 'Beta', (0, 0))
     ability = UseAbilityOrder(unit, {'target_unit_id': 0, 'ability_type': 'ION_BOLT'})
     assert target.name in '\n'.join(format_order_state_data(ability.get_state_data(), game.galaxy))
-
-
-def test_legacy_zero_survives_migration_command_observation_and_resave():
-    from save_manager import deserialize_game_state, serialize_game_state
-    from game_ai.observation import build_observation
-    from game_ai.commands import CommandGateway, CommandBatch
-    from game_ai.contracts import Command
-    document = legacy_document('3.2')
-    document['galaxy']['systems'][0]['hexes'][0]['units'][0]['id'] = 0
-    game = campaign()
-    assert deserialize_game_state(game, document)
-    unit = game.galaxy.get_unit_by_id(0)
-    assert unit is not None
-    assert any(view['id'] == 0 for view in build_observation(game, game.players[0])['units'])
-    command = Command('move', (0,), system_name='Sol', hex_coord=(0, 0), position=(2000, 0))
-    result = CommandGateway(game).apply_batch(game.players[0], CommandBatch((command,)))
-    assert result.accepted, result.errors
-    assert unit.engines_component.move_target is not None
-    assert format_order_state_data(unit.commander_component.current_order.get_state_data(), game.galaxy)
-    current_save = serialize_game_state(game)
-    assert current_save['galaxy']['systems'][0]['hexes'][0]['units'][0]['id'] == 0
-    assert deserialize_game_state(game, current_save)
-    assert game.galaxy.get_unit_by_id(0) is not None

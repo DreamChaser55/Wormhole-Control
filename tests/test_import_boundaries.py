@@ -22,15 +22,6 @@ class BlockPresentation:
 sys.meta_path.insert(0, BlockPresentation())
 for module in [{first!r}, 'constants', 'domain.players', 'domain.communications', 'domain.celestials', 'domain.minefields', 'domain.units', 'unit_orders.registry', 'turn_processor', 'visibility', 'galaxy', 'game_settings']:
     importlib.import_module(module)
-import entities
-import unit_orders, unit_components
-for facade in (entities, unit_orders, unit_components):
-    for name in facade.__all__:
-        getattr(facade, name)
-from domain.units import Unit
-from domain.identity import GameObject
-from unit_orders.base import Order
-assert entities.Unit is Unit and entities.GameObject is GameObject and entities.Order is Order
 '''
     result = subprocess.run([sys.executable, '-c', script], cwd=ROOT, capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr

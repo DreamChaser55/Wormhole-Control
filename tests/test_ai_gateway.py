@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 
 
 import json
@@ -51,6 +52,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             sidebar_needs_update=False,
             visibility_dirty=False,
         )
+        game.display_config = DisplayConfig()
         return player, units, source, target, game
 
     @staticmethod
@@ -112,6 +114,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             sidebar_needs_update=False,
             visibility_dirty=False,
         )
+        game.display_config = DisplayConfig()
         return player, units, hex_obj, game
 
     def test_hidden_enemy_is_omitted_but_presence_is_retained(self):
@@ -133,6 +136,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             players=[viewer, enemy],
             turn_number=1,
         )
+        game.display_config = DisplayConfig()
         snapshot = SimpleNamespace(
             visible_enemy_unit_ids=set(),
             presence_hexes={("Sol", (0, 0))},
@@ -154,6 +158,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
                 return unit if unit_id == 10 else None
 
         game = SimpleNamespace(galaxy=Galaxy(), sidebar_needs_update=False)
+        game.display_config = DisplayConfig()
         batch = CommandBatch(
             commands=(
                 Command(type="cancel_orders", unit_ids=(10,)),
@@ -416,6 +421,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
                 return unit if unit_id == unit.id else None
 
         game = SimpleNamespace(galaxy=Galaxy(), sidebar_needs_update=False)
+        game.display_config = DisplayConfig()
         command = Command(
             type="construct",
             unit_ids=(unit.id,),
@@ -574,6 +580,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             },
         )
         game = SimpleNamespace(galaxy=galaxy, players=[player], turn_number=1)
+        game.display_config = DisplayConfig()
         snapshot = SimpleNamespace(
             visible_enemy_unit_ids=set(), presence_hexes=set()
         )
@@ -630,6 +637,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         graph["System 1"]["System 0"] = SimpleNamespace(value="huge")
         galaxy = SimpleNamespace(systems=systems, system_graph=graph)
         game = SimpleNamespace(galaxy=galaxy, players=[player], turn_number=1)
+        game.display_config = DisplayConfig()
         snapshot = SimpleNamespace(
             visible_enemy_unit_ids=set(), presence_hexes=set()
         )
@@ -702,6 +710,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             visibility_dirty=False,
             turn_number=1,
         )
+        game.display_config = DisplayConfig()
         return player, enemy_player, my_unit, enemy_unit, game
 
     def test_attack_with_subsystem_targeting(self):

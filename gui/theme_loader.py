@@ -1,5 +1,5 @@
 """Theme loader and UIManager construction for GUI."""
-from display_config import display_config_for
+from display_config import DisplayConfig
 import json
 import logging
 import typing
@@ -25,11 +25,11 @@ def preload_rich_text_fonts(manager) -> None:
                 font_dict.preload_font(**arguments)
 
 
-def build_ui_manager(screen_res) -> pygame_gui.UIManager:
+def build_ui_manager(display_config: DisplayConfig) -> pygame_gui.UIManager:
     """Build a UIManager with an in-memory scaled theme and preloaded fonts; write no files.
 
     Args:
-        screen_res: Screen resolution vector exposing .to_tuple().
+        display_config: Explicit application dimensions and UI metrics.
 
     Returns:
         pygame_gui.UIManager: Configured manager, falling back to the default theme on error.
@@ -47,9 +47,9 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
             if isinstance(fonts_data, list):
                 for font in fonts_data:
                     if 'size' in font:
-                        font['size'] = str(max(1, int(int(font['size']) * display_config_for(screen_res).text_scale)))
+                        font['size'] = str(max(1, int(int(font['size']) * display_config.text_scale)))
                     if 'point_size' in font:
-                        font['point_size'] = max(1, int(int(font['point_size']) * display_config_for(screen_res).text_scale))
+                        font['point_size'] = max(1, int(int(font['point_size']) * display_config.text_scale))
             elif isinstance(fonts_data, dict):
                 for font_name, font_info in fonts_data.items():
                     if isinstance(font_info, dict):
@@ -57,14 +57,14 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
                             if path_key in font_info:
                                 font_info[path_key] = resource_path(font_info[path_key])
                         if 'size' in font_info:
-                            font_info['size'] = str(max(1, int(int(font_info['size']) * display_config_for(screen_res).text_scale)))
+                            font_info['size'] = str(max(1, int(int(font_info['size']) * display_config.text_scale)))
                         if 'point_size' in font_info:
-                            font_info['point_size'] = max(1, int(int(font_info['point_size']) * display_config_for(screen_res).text_scale))
+                            font_info['point_size'] = max(1, int(int(font_info['point_size']) * display_config.text_scale))
             
             # Scale individual element font sizes
             for key, value in theme_data.items():
                 if isinstance(value, dict) and 'font' in value and 'size' in value['font']:
-                    value['font']['size'] = str(max(1, int(int(value['font']['size']) * display_config_for(screen_res).text_scale)))
+                    value['font']['size'] = str(max(1, int(int(value['font']['size']) * display_config.text_scale)))
 
             # Scale drop-down menu options list item height
             dropdown_list_theme_id = "drop_down_menu.#drop_down_options_list"
@@ -74,7 +74,7 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
                 theme_data[dropdown_list_theme_id]["misc"] = {}
             
             # Match the base height of 30 used for the dropdown button in game.py
-            scaled_item_height = max(20, int(30 * display_config_for(screen_res).text_scale))
+            scaled_item_height = max(20, int(30 * display_config.text_scale))
             theme_data[dropdown_list_theme_id]["misc"]["list_item_height"] = str(scaled_item_height)
             theme_data['#unit_catalog_list'] = {
                 'misc': {'list_item_height': str(scaled_item_height)}
@@ -85,20 +85,20 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
                 if window_theme_id in theme_data and isinstance(theme_data[window_theme_id], dict) and "misc" in theme_data[window_theme_id]:
                     if "title_bar_height" in theme_data[window_theme_id]["misc"]:
                         orig_tb_height = int(theme_data[window_theme_id]["misc"]["title_bar_height"])
-                        theme_data[window_theme_id]["misc"]["title_bar_height"] = str(max(24, int(orig_tb_height * display_config_for(screen_res).text_scale)))
+                        theme_data[window_theme_id]["misc"]["title_bar_height"] = str(max(24, int(orig_tb_height * display_config.text_scale)))
 
             theme_path_to_use = theme_data
         except (OSError, ValueError, TypeError, KeyError) as e:
             logger.error(f"Error generating scaled theme: {e}")
             theme_path_to_use = theme_path
             
-        manager = pygame_gui.UIManager(screen_res.to_tuple(), theme_path_to_use)
+        manager = pygame_gui.UIManager(display_config.resolution.to_tuple(), theme_path_to_use)
     except FileNotFoundError:
         logger.debug("Warning: theme.json not found. Using default UI theme.")
-        manager = pygame_gui.UIManager(screen_res.to_tuple())
+        manager = pygame_gui.UIManager(display_config.resolution.to_tuple())
     except pygame.error as e:
         logger.debug(f"Pygame error initializing UIManager (maybe font issue?): {e}")
-        manager = pygame_gui.UIManager(screen_res.to_tuple())
+        manager = pygame_gui.UIManager(display_config.resolution.to_tuple())
 
     # Programmatic preloading for problematic fonts
     if manager and manager.ui_theme and manager.ui_theme.get_font_dictionary():
@@ -111,16 +111,16 @@ def build_ui_manager(screen_res) -> pygame_gui.UIManager:
         # Preload DejaVu Sans fonts if registered
         if 'dejavu_sans' in font_dict.known_font_paths:
             for size, is_bold in [(15, False), (14, False), (14, True), (12, True), (12, False)]:
-                scaled_size = max(1, int(size * display_config_for(screen_res).text_scale))
+                scaled_size = max(1, int(size * display_config.text_scale))
                 f_id = font_dict.create_font_id(font_size=scaled_size, font_name='dejavu_sans', bold=is_bold, italic=False, antialiased=True)
                 if not font_dict.check_font_preloaded(f_id):
                     font_dict.preload_font(font_size=scaled_size, font_name='dejavu_sans', bold=is_bold, italic=False, antialiased=True)
 
         # Preload Noto Emoji font if registered
         if 'noto_emoji' in font_dict.known_font_paths:
-            noto_12_reg_id = font_dict.create_font_id(font_size=max(1, int(12 * display_config_for(screen_res).text_scale)), font_name='noto_emoji', bold=False, italic=False, antialiased=True)
+            noto_12_reg_id = font_dict.create_font_id(font_size=max(1, int(12 * display_config.text_scale)), font_name='noto_emoji', bold=False, italic=False, antialiased=True)
             if not font_dict.check_font_preloaded(noto_12_reg_id):
-                font_dict.preload_font(font_size=max(1, int(12 * display_config_for(screen_res).text_scale)), font_name='noto_emoji', bold=False, italic=False, antialiased=True)
+                font_dict.preload_font(font_size=max(1, int(12 * display_config.text_scale)), font_name='noto_emoji', bold=False, italic=False, antialiased=True)
 
     return manager
 

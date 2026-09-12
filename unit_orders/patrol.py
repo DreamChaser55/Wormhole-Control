@@ -97,6 +97,7 @@ class PatrolOrder(Order):
 
     def get_persistence_state(self) -> Dict[str, Any]:
         return {
+            **super().get_persistence_state(),
             "start_system_name": self.start_system_name,
             "start_hex_coord": self.start_hex_coord,
             "start_position": self.start_position,
@@ -105,11 +106,12 @@ class PatrolOrder(Order):
         }
 
     def restore_persistence_state(self, state: Dict[str, Any]) -> None:
-        self.start_system_name = state.get("start_system_name")
-        self.start_hex_coord = state.get("start_hex_coord")
-        self.start_position = state.get("start_position")
-        self.patrol_phase = state.get("patrol_phase", "TO_TARGET")
-        self.current_waypoint_index = int(state.get("current_waypoint_index", 0))
+        super().restore_persistence_state(state)
+        self.start_system_name = state["start_system_name"]
+        self.start_hex_coord = state["start_hex_coord"]
+        self.start_position = state["start_position"]
+        self.patrol_phase = state["patrol_phase"]
+        self.current_waypoint_index = int(state["current_waypoint_index"])
 
     def _find_nearby_enemy(self, galaxy_ref: 'Galaxy') -> Optional['Unit']:
         weapons = self.unit.weapons_component

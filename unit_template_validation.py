@@ -1,7 +1,6 @@
 """Read-only validation of external designs against current Designer rules.
 
-Storage decoding remains permissive for historical libraries. This module does
-not load or publish a user's library, initialize the GUI, or write files.
+This module does not load or publish a user's library, initialize the GUI, or write files.
 """
 import dataclasses
 import json
@@ -60,8 +59,6 @@ def component_value_errors(values):
 
     errors = []
     fields = {field.name: field.type for field in dataclasses.fields(ComponentConfig)}
-    fields.update(has_counter_intelligence=bool, has_fighter_bay=bool,
-                  fighter_bay_slots=int, has_scanner=bool)
     for name, kind in fields.items():
         if name not in values:
             continue
@@ -183,7 +180,9 @@ def validate_library(raw, is_builtin: bool = False):
         if not isinstance(data, dict):
             issues[key] = ['must be a JSON object.']
             continue
-        errors = component_value_errors(data)
+        from custom_unit_templates import template_field_names
+        errors = [f"{name}: unknown template field." for name in sorted(set(data) - template_field_names())]
+        errors.extend(component_value_errors(data))
         name = data.get('name', key)
         if not isinstance(name, str) or not name.strip():
             errors.append('name: must be a nonempty string.')

@@ -1,4 +1,5 @@
 """Automated tests for Gas Giant atmospheric hiding mechanics, orders, visibility, upkeep, UI, and AI."""
+from display_config import DisplayConfig
 import pytest
 from constants import PlanetType, HullSize
 from domain.units import Unit
@@ -119,6 +120,7 @@ class DummyGalaxy:
 
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.galaxy = DummyGalaxy()
         self.players = [Player("Player 1", (0, 100, 255)), Player("Player 2", (255, 50, 50))]
@@ -454,7 +456,7 @@ def test_save_load_roundtrip_with_submerged_units(game_factory):
     assert "hidden_units" in serialized_body
     assert len(serialized_body["hidden_units"]) == 1
 
-    restored_gg = deserialize_celestial_body(serialized_body, game)
+    restored_gg = deserialize_celestial_body(serialized_body, {p.id: p for p in game.players}, game)
     assert restored_gg is not None
     assert len(restored_gg.hidden_units) == 1
     restored_ship = restored_gg.hidden_units[0]

@@ -1,4 +1,4 @@
-from display_config import display_config_for
+from display_config import DisplayConfig
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,15 +26,15 @@ if typing.TYPE_CHECKING:
 
 class GUI_Handler:
     """Manages the Pygame GUI elements."""
-    def __init__(self, screen_res: Vector, game_instance: 'Game', *, display_config=None):
-        from display_config import display_config_for
-        self.display_config = display_config or display_config_for(screen_res)
+    def __init__(self, display_config: DisplayConfig, game_instance: 'Game'):
+        self.display_config = display_config
+        screen_res = display_config.resolution
         self.screen_res = screen_res
         self.game_instance = game_instance
         self.scale_x = screen_res.x / 1280.0
         self.scale_y = screen_res.y / 720.0
 
-        self.manager = build_ui_manager(self.screen_res)
+        self.manager = build_ui_manager(self.display_config)
         if self.manager:
             self.manager.set_visual_debug_mode(True)
 
@@ -372,7 +372,7 @@ class GUI_Handler:
             from .unit_editor_gui import UnitEditorWindow
             self.unit_editor_window = UnitEditorWindow(
                 manager=self.manager,
-                screen_res=pygame.Vector2(self.screen_res.x, self.screen_res.y),
+                display_config=self.display_config,
                 template_manager=template_manager,
             )
         if self.current_player_bg_color and getattr(self.unit_editor_window, '_panel', None):
@@ -701,5 +701,3 @@ class GUI_Handler:
     def is_retrofit_wizard_open(self) -> bool:
         """Returns True if the Retrofit Wizard is currently visible."""
         return bool(self.retrofit_wizard and self.retrofit_wizard.is_visible)
-
-

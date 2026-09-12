@@ -1,39 +1,41 @@
 # Campaign persistence
 
-The current save version is **4.3**. New saves preserve the installed component
+The current save version is **4.4**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
+Only version **4.4** is supported. Unversioned, older, unknown and future saves
+are rejected with the expected version before hydration. Alpha schema changes
+require a new campaign; no migrations or automatic conversions are provided.
+Rejected files are never modified.
+
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.3.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.4.
 
-After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; historical inferred prices and orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
+After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
-Older campaign-save migrations can read Testing definitions privately to recover historical component configuration; this does not make those templates buildable. Custom-design library migration from the repository is no longer supported and is separate from campaign-save migration.
-
-## Design compatibility
+## Design validation
 
 Campaign saves preserve installed equipment, HP, speed, field radii, component
 hull costs and subsystem HP. Unit hull capacity follows current hull rules.
 Changing catalogue balance does not rebuild saved ships from templates.
 
-Custom design libraries load permissively even when a design exceeds the current
-hull budget or violates current equipment rules. Editing and saving use current
-validation; a retrofit must leave a valid complete configuration. Recalculating
-a design uses current dynamic costs. Opening a wing design in the Editor removes
-Mining and resets long-range Sensors to zero; external validation reports these
-violations without modifying the library. See [design validation](REFERENCE.md#external-design-validation)
-and [field refitting](REFERENCE.md#field-refitting).
+Custom design libraries must pass current equipment and field validation before
+loading. Duplicate JSON keys, unknown fields, old field aliases and invalid designs
+reject the entire library. A rejected load preserves the disk and registered
+designs and blocks writes until a successful reload. Errors identify the template
+and field to repair. Editing uses the same equipment rules; opening a design does
+not repair it. See [design validation](REFERENCE.md#external-design-validation).
 
 ## Component and ability schemas
 
-Version 4.3 adds carrier ability participant IDs and deadlines, explicit Attack Run
-and Emergency Recovery phases, and per-wing recovery launch locks and Flak phase
-markers. Commander roots restore before carrier effects reconcile. Reloading never
-replays activation costs, salvos, docking or Flak damage. The existing migration
-chain initializes the new wing fields to inactive values for 4.2 saves.
+Saves include carrier participant IDs and deadlines, Attack Run and Emergency
+Recovery phases, recovery launch locks and Flak phase markers. Commander roots
+restore before carrier effects reconcile. Loading never replays activation costs,
+salvos, docking or Flak damage. Antimatter Storage uses component schema 2 and
+stores capacity and current fuel; passive regeneration is not part of the model.
 
 Every registered component owns its persistence through `UnitComponent.to_state()`
 and `restore_state()`. Each component declares its configuration, runtime fields,
@@ -67,7 +69,7 @@ Tactical activation checks the current shared equipment requirements in
 `tactical_balance.py`. Nebula Catalyst therefore requires operational Sensors and
 Antimatter Storage even when a saved definition retains the historical Harvester
 prerequisite. Loading preserves installed components, saved definitions and runtime
-state; this balance change needs no save migration or component replacement.
+state.
 
 Commander stores its stance in `configuration` and explicit `current_order` and
 `orders_queue` in `runtime`. Public order UUIDs, descendants, charges/refunds, and
@@ -77,8 +79,9 @@ without executing startup again. Transient stance engagement trees and their
 actuators are reacquired through normal play.
 
 When adding a component or ability, register it, declare every persistent field,
-and extend its independent round-trip fixture. A schema change requires an
-explicit migration; changing constructor defaults is not a migration.
+and extend its independent round-trip fixture. An incompatible schema change
+advances the save version and the affected component schema. Only the current
+versions are accepted.
 
 ## Transactional load
 
@@ -86,7 +89,7 @@ explicit migration; changing constructor defaults is not a migration.
 candidate before changing the running game:
 
 1. Parse JSON and reject duplicate keys, invalid values, and excessive nesting.
-2. Migrate by the declared save version.
+2. Require the current save version.
 3. Validate the current document and hydrate players and the ownership graph.
 4. Resolve references, rebuild derived state, and validate graph invariants.
 5. Calculate allocator high-water marks and prepare the committed state.
@@ -129,30 +132,14 @@ active targeted effects. Docked and hidden units still tick ability timers and
 temporary lifetimes on their owner's turn; stored units do not apply ongoing
 external ability actions.
 
-## Legacy migration
-
-Supported paths are `3.0 → 3.1 → 3.2 → 4.0 → 4.1 → 4.2 → 4.3`; recognized unversioned historical
-documents enter at 3.0. Unknown and future versions are rejected. Migration works
-on a copy and leaves the input unchanged. Legacy orders receive deterministic
-public UUIDs where missing; later migration passes preserve them.
-
-Versions before 4.0 omitted component damage, turret cooldowns, ability timers,
-and some configuration. That information cannot be recovered. Migration retains
-available fields and uses the named template or documented constructor defaults
-for omitted state, with a visible warning. It clears orphaned temporary status
-flags whose source timers were never saved. Empty legacy Weapons/Ability payloads
-without a matching template component are rejected with a specific error.
-Missing legacy celestial subtype keys use valid G-type star, hydrogen nebula,
-and plasma storm defaults.
-
 ## Verification
 
 `tests/test_persistence_integrity.py` covers all 26 registered components and all
-legacy abilities, including non-default definitions and dynamically installed
+registered abilities, including non-default definitions and dynamically installed
 components. Its canonical snapshot inspects runtime objects independently of the
 serialization field declarations. It exercises a deliberately mutated mid-game
 campaign through the actual file writer/reader, repeated loads, and idempotent
-reconciliation. Separate tests cover legacy wire fixtures, minefield IDs, queued
+reconciliation. Separate tests cover unsupported format rejection, minefield IDs, queued
 orders, paid construction/refit/replenishment, next-turn continuation, overlapping
 effects, stored timers, and injected failures throughout loading.
 
@@ -162,10 +149,9 @@ Run the regression suite from the repository root:
 ./.venv/Scripts/python.exe -m pytest -q -o cache_dir=.codex_test_cache
 ```
 
-## Tactical state in 4.1
+## Tactical state
 
-The 4.0 to 4.1 migration adds empty `deployables` and `catalyst_patches` arrays to
-each sector while retaining all existing abilities and timers. Deployables store
+Each sector stores `deployables` and `catalyst_patches` arrays. Deployables store
 owner, immutable historical deploying-ship ID, kind, position, HP, cache contents
 and emitter identification. Emitters/caches have no lifetime or expiry field.
 Patches store original owner, source ID, nebula ID, radius and finite deadline.
@@ -181,10 +167,10 @@ and equipment changes do not erase provenance or reset caps. Duplicate object ID
 and invalid patch references are rejected. Historical deploying-ship references
 may point to destroyed units; they still raise the object allocator's high-water
 mark so their IDs cannot be reused. See `tests/test_tactical_abilities.py` for
-independent gameplay, migration, round-trip and fake-provider acceptance coverage.
+independent gameplay, round-trip and fake-provider acceptance coverage.
 
 
-## Retrofit settlement in 4.2
+## Retrofit settlement
 
 Active Constructor refit jobs persist `payer_id` and `salvage_due` alongside the
 existing target, action, configuration, paid installation cost and duration. The
@@ -192,10 +178,7 @@ original order retains its charge ownership. A valid completed removal grants
 salvage once; failed or cancelled new removals grant none. Installation validation
 failures and cancellation refund the paid charge once to its original payer.
 
-The 4.1 → 4.2 migration traverses deployed, docked and hidden units. It takes the
-payer from the initiating order's saved charge owner (falling back to the ship
-owner for legacy jobs), sets legacy `salvage_due` to zero because old removals
-already paid upfront, and preserves paid costs and progress. Loading does not
+All jobs restore their recorded payer, salvage, costs and progress. Loading does not
 recharge a job, apply equipment changes, or reject historical equipment merely
 because it fails current Designer rules. Active jobs are revalidated against the
 complete resulting equipment when they complete. Pending jobs use current rules

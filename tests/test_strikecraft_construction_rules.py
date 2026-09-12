@@ -5,6 +5,7 @@ Verifies that strikecraft wings are excluded from constructor units (Constructor
 human Construct context menus, and AI interfaces (observation catalog, rules, and command validation),
 and confirms that strikecraft wings are constructed solely by units with a StrikecraftBayComponent.
 """
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from constants import HullSize
 from geometry import Position
@@ -89,6 +90,7 @@ def test_context_menu_construct_options_exclude_strikecraft_wings():
     from domain.players import Player
 
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = Player(name="Player 1", color=(0, 255, 0))
     game.players = [player]
     game.current_player_index = 0

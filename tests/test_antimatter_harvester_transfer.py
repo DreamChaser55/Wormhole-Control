@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
 from domain.units import Unit
@@ -30,6 +31,7 @@ class FakeGalaxy:
 
 def make_unit(owner, hull_size=HullSize.MEDIUM, position=None, in_hex=(0, 0), in_system="Sol"):
     game = MagicMock()
+    game.display_config = DisplayConfig()
     unit = Unit(
         owner=owner,
         position=position or Position(0, 0),

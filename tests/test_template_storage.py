@@ -112,7 +112,7 @@ def test_rename_delete_round_trip(tmp_path):
     assert json.loads(target.read_text()) == {}
 
 
-def test_historical_over_capacity_design_can_load(tmp_path):
+def test_over_capacity_design_load_preserves_registered_design(tmp_path):
     target = tmp_path / 'user.json'
     manager = CustomTemplateManager(data_file=target)
     manager.save_design(design())
@@ -120,8 +120,8 @@ def test_historical_over_capacity_design_can_load(tmp_path):
     raw['Storage Test']['engine_speed'] = 10000
     target.write_text(json.dumps(raw))
     manager.load_from_file()
-    assert manager.last_load_error is None
-    assert manager.get_design('Storage Test').components.engine_speed == 10000
+    assert manager.last_load_error is not None
+    assert manager.get_design('Storage Test').components.engine_speed != 10000
 
 
 @pytest.mark.parametrize('operation', ['save', 'delete'])

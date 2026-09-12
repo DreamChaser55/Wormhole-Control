@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from geometry import Position, Circle
 from domain.units import Unit
 from constants import HullSize
@@ -35,6 +36,7 @@ class DummyGalaxy:
 
 
 class DummyGUI:
+    display_config = DisplayConfig()
     def __init__(self):
         self.warning_dialogs = []
 
@@ -43,6 +45,7 @@ class DummyGUI:
 
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.galaxy = DummyGalaxy()
         self.gui = DummyGUI()

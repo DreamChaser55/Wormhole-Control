@@ -79,7 +79,6 @@ class OrderType(Enum):
     RECOVER_FUEL_CACHE = auto()
 
 
-
 class Order:
     """Represents an order given to a unit by the player.
     
@@ -89,13 +88,9 @@ class Order:
     order_counter = 0
     target_fields: tuple[OrderTargetField, ...] = ()
 
-    @property
-    def local_order_id(self) -> int:
-        """Process-local actuator/subtree identity; public commands use public_id."""
-        return self.order_id
 
     def primary_target_reference(self):
-        """Return the first declared public (kind, ID), retaining legacy ID zero."""
+        """Return the first declared public (kind, ID), treating None as the missing ID."""
         for field in self.target_fields:
             value = self.parameters.get(field.name)
             if field.public and value is not None:
@@ -111,9 +106,8 @@ class Order:
         self.failure_reason = None
         self._charged_credits = 0
         self._charged_player_id = None
-        self._legacy_charge = False
         from persistence_context import allocate_id
-        self.order_id = allocate_id(Order, "order_counter")
+        self.local_order_id = allocate_id(Order, "order_counter")
         self.order_type = order_type
         self.parameters = parameters or {}
         self.status = OrderStatus.PENDING
@@ -154,16 +148,15 @@ class Order:
         sub_order.parent_order = self
         sub_order.unit = self.unit
         self.sub_orders.append(sub_order)
-        logger.debug(f"  Added sub-order {sub_order.order_type.name} (id:{sub_order.order_id}) to order {self.order_type.name} (id:{self.order_id}) for unit {self.unit.name} (id:{self.unit.id}).")
+        logger.debug(f"  Added sub-order {sub_order.order_type.name} (id:{sub_order.local_order_id}) to order {self.order_type.name} (id:{self.local_order_id}) for unit {self.unit.name} (id:{self.unit.id}).")
         
-    def remove_sub_order(self, order_id: typing.Union[str, int]) -> bool:
-        """Remove a sub-order by its process-local ID (legacy keyword order_id).
+    def remove_sub_order(self, local_order_id: int) -> bool:
+        """Remove a sub-order by its process-local ID.
         
         Returns True if the order was found and removed, False otherwise.
         """
-        local_order_id = order_id
         for order in self.sub_orders:
-            if order.order_id == local_order_id:
+            if order.local_order_id == local_order_id:
                 self.sub_orders.remove(order)
                 return True
         return False
@@ -236,9 +229,8 @@ class Order:
 
     def restore_persistence_state(self, state: Dict[str, Any]) -> None:
         """Restore mutable runtime state saved by :meth:`get_persistence_state`."""
-        self._charged_credits = state.get("charged_credits", 0)
-        self._charged_player_id = state.get("charged_player_id")
-        self._legacy_charge = "charged_credits" not in state
+        self._charged_credits = state["charged_credits"]
+        self._charged_player_id = state["charged_player_id"]
 
     def refundable_credits(self, player_id):
         """Credits this subtree owns in active component jobs; used by preflight."""
@@ -276,14 +268,14 @@ class Order:
         pass
         
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(type={self.order_type.name}, status={self.status.name}, id={str(self.order_id)[:8]})"
+        return f"{self.__class__.__name__}(type={self.order_type.name}, status={self.status.name}, id={str(self.local_order_id)[:8]})"
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         """Execute this order."""
         if self.status != OrderStatus.PENDING:
             return
         self.status = OrderStatus.IN_PROGRESS
-        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] {self.__class__.__name__}.execute: {self.order_type.name} (id:{self.order_id}): Executing order.")
+        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] {self.__class__.__name__}.execute: {self.order_type.name} (id:{self.local_order_id}): Executing order.")
 
     def find_wormhole_to_system(self, current_system_name: str, target_system_name: str, galaxy_ref: 'Galaxy', ship_size: Optional[HullSize] = None) -> Optional['Wormhole']:
         if not galaxy_ref: return None

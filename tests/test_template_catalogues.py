@@ -15,7 +15,7 @@ from game_settings import SpawnProfile
 from game_setup import prepare_new_campaign, start_new_game
 from geometry import Position
 from save_manager import deserialize_game_state, serialize_game_state
-from tests.support.campaigns import campaign, legacy_document, ship
+from tests.support.campaigns import campaign, ship
 from tests.support.scenarios import settings_for
 from unit_components.constructor import Constructor, instantiate_unit_from_template
 from unit_orders.base import OrderStatus
@@ -250,21 +250,14 @@ def test_unrecorded_or_orphaned_build_never_invents_refund(recorded_charge):
         runtime.pop('charged_credits')
         runtime.pop('charged_player_id')
     credits = game.players[0].credits
-    assert deserialize_game_state(game, saved)
+    assert deserialize_game_state(game, saved) is recorded_charge
     assert game.players[0].credits == credits
+    if not recorded_charge:
+        assert builder.constructor_component.current_construction_target is not None
+        return
     assert find_unit(game.galaxy, builder.id).constructor_component.current_construction_target is None
 
 
-def test_legacy_testing_ship_migration_does_not_register_templates():
-    data = legacy_document('3.2')
-    raw = data['galaxy']['systems'][0]['hexes'][0]['units'][0]
-    raw['template_name'] = 'SPAWN_SHIP_TINY'
-    raw['components']['Weapons'] = {}
-    game = campaign()
-    assert not UNIT_TEMPLATES.keys() & TESTING_TEMPLATE_KEYS
-    assert deserialize_game_state(game, data)
-    assert find_unit(game.galaxy, 10).weapons_component.turrets
-    assert not UNIT_TEMPLATES.keys() & TESTING_TEMPLATE_KEYS
 
 
 def test_failure_after_candidate_refund_preserves_live_payment_and_catalogue(monkeypatch):

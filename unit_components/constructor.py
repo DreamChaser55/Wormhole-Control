@@ -59,7 +59,7 @@ def instantiate_unit_from_template(
     *,
     templates: Optional[dict] = None,
 ) -> Optional['Unit']:
-    """Module-level helper that builds a :class:`~entities.Unit` from a
+    """Module-level helper that builds a :class:`~domain.units.Unit` from a
     template entry in :data:`~unit_templates.UNIT_TEMPLATES` (or private templates
     for human players) and adds it to *galaxy*.
 
@@ -330,8 +330,7 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
                 hull_cost=template.get("ability_hull_cost", 10.0)
             ))
 
-    # Sensors: prefer explicit new flags; fall back to legacy has_scanner.
-    has_sensors = template.get("has_sensors", template.get("has_scanner", False))
+    has_sensors = template.get("has_sensors", False)
     if has_sensors:
         short_range = template.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)
         long_range_hexes = template.get("sensor_long_range_hexes", 0)
@@ -560,10 +559,6 @@ class Constructor(UnitComponent):
             )
         return None
 
-
-    def refresh_buildable_units(self, additional_names: typing.List[str]) -> None:
-        """Append template names to buildable_units if not already present. (Deprecated/No-op)"""
-        pass
 
     def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy') -> bool:
         """Starts the construction of a new unit."""
@@ -911,7 +906,7 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
         return float(CloakingDevice.calc_hull_cost(c_type, radius))
 
     elif comp_cls == IntelligenceComponent:
-        count = int(config.get("agents_count", config.get("agents_capacity", 1)))
+        count = int(config.get("agents_capacity", 1))
         ci = bool(config.get("has_counter_intelligence", False))
         return float(IntelligenceComponent.calc_hull_cost(count, ci))
 
@@ -1068,7 +1063,7 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         return component
 
     elif comp_cls == IntelligenceComponent:
-        count = int(config.get("agents_count", config.get("agents_capacity", 1)))
+        count = int(config.get("agents_capacity", 1))
         ci = bool(config.get("has_counter_intelligence", False))
         return IntelligenceComponent(unit, agents_count=count, agents_capacity=count, has_counter_intelligence=ci, hull_cost=cost)
 
@@ -1076,4 +1071,3 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         return Constructor(unit, hull_cost=cost)
 
     return None
-

@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from player_controller import PlayerController
 import os
@@ -165,7 +166,7 @@ class TestGUIModalDialogs(unittest.TestCase):
     def test_unit_editor_validation_modal(self):
         """Test unit designer invalid save triggers warning popup."""
         tmp_mgr = CustomTemplateManager()
-        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win = UnitEditorWindow(self.gui.manager, DisplayConfig(1280, 720), tmp_mgr)
 
         # Trying to save without display name should trigger warning modal
         editor_win._display_entry.set_text("")
@@ -202,7 +203,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         t = CustomUnitTemplate("Scout Alpha", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=100.0))
         tmp_mgr.save_design(t)
 
-        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win = UnitEditorWindow(self.gui.manager, DisplayConfig(1280, 720), tmp_mgr)
         editor_win.show()
         editor_win._sync_widgets_from_template(t)
         self.assertEqual(editor_win._editing_name, "Scout Alpha")
@@ -232,7 +233,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         t = CustomUnitTemplate("Scout Beta", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=100.0))
         tmp_mgr.save_design(t)
 
-        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win = UnitEditorWindow(self.gui.manager, DisplayConfig(1280, 720), tmp_mgr)
         editor_win.show()
         editor_win._sync_widgets_from_template(t)
         editor_win._engine_speed_entry.set_text("180")
@@ -263,7 +264,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         t = CustomUnitTemplate("Scout Gamma", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=100.0))
         tmp_mgr.save_design(t)
 
-        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win = UnitEditorWindow(self.gui.manager, DisplayConfig(1280, 720), tmp_mgr)
         editor_win.show()
         editor_win._sync_widgets_from_template(t)
         editor_win._engine_speed_entry.set_text("200")
@@ -303,7 +304,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         t = CustomUnitTemplate("Scout Delta", HullSize.MEDIUM, ComponentConfig(has_engine=True, engine_speed=100.0))
         tmp_mgr.save_design(t)
 
-        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win = UnitEditorWindow(self.gui.manager, DisplayConfig(1280, 720), tmp_mgr)
         editor_win.show()
         editor_win._sync_widgets_from_template(t)
         editor_win._engine_speed_entry.set_text("220")
@@ -332,7 +333,7 @@ class TestGUIModalDialogs(unittest.TestCase):
     def test_unit_editor_save_as_new_button_direct(self):
         """Test Column 1 Save as New button saves directly for unique names or opens modal for existing names."""
         tmp_mgr = CustomTemplateManager()
-        editor_win = UnitEditorWindow(self.gui.manager, pygame.Vector2(1280, 720), tmp_mgr)
+        editor_win = UnitEditorWindow(self.gui.manager, DisplayConfig(1280, 720), tmp_mgr)
         editor_win.show()
 
         # 1. Unique brand new design -> direct save
@@ -456,7 +457,7 @@ class TestGUIModalDialogs(unittest.TestCase):
         wizard._sys_radius_min_slider.set_current_value(8)
         wizard._sys_radius_max_slider.set_current_value(4)
 
-        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": wizard.start_button})
+        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, {"ui_element": wizard.next_button})
         from gui import event_router
         action = event_router.process_event(self.gui, event)
 

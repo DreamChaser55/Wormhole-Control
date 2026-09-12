@@ -18,7 +18,7 @@ jobs:
     - name: Undefined-name checks
       run: python -m ruff check .
     - name: Domain and boundary lint
-      run: python -m ruff check domain entities.py unit_orders/__init__.py unit_orders/registry.py unit_components/__init__.py display_config.py application_bootstrap.py turn_presentation.py game_actions/turn_presentation.py scripts/check_import_boundaries.py --select F,E9
+      run: python -m ruff check domain unit_orders/__init__.py unit_orders/registry.py unit_components/__init__.py display_config.py application_bootstrap.py turn_presentation.py game_actions/turn_presentation.py scripts/check_import_boundaries.py --select F,E9
     - name: Core dependency direction
       run: python scripts/check_import_boundaries.py
     - name: Typed boundary contracts (Linux)

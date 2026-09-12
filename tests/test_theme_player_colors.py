@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from pygame import Color
 from gui.theme_loader import create_player_scifi_theme_colors
@@ -33,6 +34,7 @@ def test_create_player_scifi_theme_colors_invalid_fallback():
 
 def test_update_hud_panel_colors():
     mock_gui = MagicMock()
+    mock_gui.display_config = DisplayConfig()
     mock_panel1 = MagicMock()
     mock_panel2 = MagicMock()
     mock_editor_panel = MagicMock()
@@ -56,10 +58,12 @@ def test_update_hud_panel_colors():
 
 
 class DummyGame(Game):
+    display_config = DisplayConfig()
     def __init__(self):
         self.players = []
         self.current_player_index = 0
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
 
 
 def test_update_player_turn_display_triggers_theme_update():

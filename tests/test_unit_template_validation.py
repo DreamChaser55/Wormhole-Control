@@ -147,23 +147,23 @@ def test_wing_turret_roles():
     assert 'cannot be ANTI_STRIKECRAFT' in messages(data)
 
 
-def test_export_and_legacy_defaults_round_trip_without_publication():
+def test_export_and_optional_defaults_round_trip_without_publication():
     comp = ComponentConfig(has_engine=True, has_weapon_bays=True,
                            turrets=[TurretConfig('BEAM', 1, 1, 0)])
     design = CustomUnitTemplate('Export', HullSize.MEDIUM, comp)
     manager = CustomTemplateManager()
-    data = manager._template_to_dict(design)
+    data = template_to_dict(design)
     data['hull_size'] = data['hull_size'].name
     before = copy.deepcopy(UNIT_TEMPLATES)
-    raw = {'Export': data, 'Legacy': record(has_scanner=True, sensor_long_range_hexes=1)}
+    raw = {'Export': data, 'Sensors': record(has_sensors=True, sensor_long_range_hexes=1)}
     original = copy.deepcopy(raw)
     assert validate_library(raw) == {}
     assert raw == original
     assert UNIT_TEMPLATES == before
-    assert template_from_dict('Legacy', raw['Legacy']).components.has_sensors
+    assert template_from_dict('Sensors', raw['Sensors']).components.has_sensors
     assert messages(record(hull_size='medium')) == ''
     assert template_from_dict('Defaults', {}).components.has_antimatter_storage
-    assert messages(record(has_fighter_bay=True, fighter_bay_slots=1)) == ''
+    assert messages(record(has_strikecraft_bay=True, strikecraft_bay_slots=1)) == ''
 
 
 def test_stored_derived_costs_are_ignored_but_fixed_costs_are_used():
@@ -221,13 +221,13 @@ def test_cli_default_override_missing_file_and_invalid_override(tmp_path):
     assert run_cli(tmp_path, '--unknown-option').returncode == 2
 
 
-def test_historical_library_loads_but_fails_current_validation(tmp_path):
+def test_invalid_library_load_reports_current_validation(tmp_path):
     target = tmp_path / 'custom_unit_templates.json'
     target.write_text(json.dumps({'Historical': record(engine_speed=10000)}))
     manager = CustomTemplateManager(data_file=target)
     manager.load_from_file()
-    assert manager.last_load_error is None
-    assert manager.get_design('Historical') is not None
+    assert manager.last_load_error is not None
+    assert manager.get_design('Historical') is None
     assert 'capacity' in messages(json.loads(target.read_text())['Historical'])
 
 
@@ -288,7 +288,6 @@ def test_cli_catalogue_builtin_and_options(tmp_path):
 @pytest.mark.parametrize('changes,invalid', [
     ({'has_mining_component': True}, True),
     ({'has_sensors': True, 'sensor_long_range_hexes': 1}, True),
-    ({'has_scanner': True, 'sensor_long_range_hexes': 1}, True),
     ({'has_sensors': True}, False),
     ({'has_sensors': True, 'sensor_long_range_hexes': 0}, False),
     ({'has_sensors': False, 'sensor_long_range_hexes': 1}, False),
@@ -322,3 +321,5 @@ def test_larger_hull_retains_mining_and_long_range_sensors():
     assert messages(record(hull_size='TINY', engine_speed=0, has_mining_component=True,
                            mining_rate=0, max_mining_cargo=0, has_sensors=True,
                            sensor_short_range=0, sensor_long_range_hexes=1)) == ''
+
+from custom_unit_templates import template_to_dict, template_from_dict

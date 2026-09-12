@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 from unittest.mock import MagicMock, patch
 import pygame
@@ -28,6 +29,7 @@ class MockPlayer:
 
 def test_ability_component_sidebar_data_unit_targeting_guidance():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = ("ion_bolt", True, False)
     player = MockPlayer()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -44,6 +46,7 @@ def test_ability_component_sidebar_data_unit_targeting_guidance():
 
 def test_ability_component_sidebar_data_pos_targeting_guidance():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = ("microjump", False, True)
     player = MockPlayer()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Caster", hull_size=HullSize.MEDIUM, game=game)
@@ -60,6 +63,7 @@ def test_ability_component_sidebar_data_pos_targeting_guidance():
 
 def test_unit_panel_top_level_targeting_banner():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = ("ion_bolt", True, False)
     player = MockPlayer()
     game.players = [player]
@@ -80,6 +84,7 @@ def test_unit_panel_top_level_targeting_banner():
 def test_sector_overlay_targeting_mode_renderer():
     pygame.font.init()
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = ("ion_bolt", True, False)
     game.sector_view_mouse_hover_object = None
 
@@ -100,6 +105,7 @@ def test_sector_overlay_targeting_mode_renders_range_ring():
     pygame.font.init()
     player = MockPlayer()
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.current_system_name = "Sol"
     game.current_sector_coord = (0, 0)
     game.pending_ability = ("cluster_warhead", False, True)
@@ -113,7 +119,7 @@ def test_sector_overlay_targeting_mode_renders_range_ring():
     parent.screen = pygame.Surface((1280, 720))
     parent.overlay_surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
     parent._font_cache = {}
-    parent._coords_to_pixels.return_value = Position(500, 400)
+    parent.grid_renderer.coords_to_pixels.return_value = Position(500, 400)
     parent.get_dynamic_sector_radius.return_value = 3000.0
 
     renderer = SectorOverlayRenderer(parent)
@@ -121,8 +127,8 @@ def test_sector_overlay_targeting_mode_renders_range_ring():
     with patch('pygame.mouse.get_pos', return_value=(500, 300)):
         renderer.draw_targeting_mode_overlay()
 
-    parent._draw_range_ring.assert_called_once()
-    args = parent._draw_range_ring.call_args[0]
+    parent.grid_renderer.draw_range_ring.assert_called_once()
+    args = parent.grid_renderer.draw_range_ring.call_args[0]
     assert args[0] == 500  # cx
     assert args[1] == 400  # cy
     assert args[2] == 300  # radius_px (500.0 * 3000 / 5000 = 300)
@@ -133,6 +139,7 @@ def test_sector_overlay_targeting_mode_microjump_no_range_ring():
     pygame.font.init()
     player = MockPlayer()
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.current_system_name = "Sol"
     game.current_sector_coord = (0, 0)
     game.pending_ability = ("microjump", False, True)
@@ -146,7 +153,7 @@ def test_sector_overlay_targeting_mode_microjump_no_range_ring():
     parent.screen = pygame.Surface((1280, 720))
     parent.overlay_surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
     parent._font_cache = {}
-    parent._coords_to_pixels.return_value = Position(500, 400)
+    parent.grid_renderer.coords_to_pixels.return_value = Position(500, 400)
     parent.get_dynamic_sector_radius.return_value = 3000.0
 
     renderer = SectorOverlayRenderer(parent)
@@ -155,11 +162,12 @@ def test_sector_overlay_targeting_mode_microjump_no_range_ring():
         renderer.draw_targeting_mode_overlay()
 
     # Microjump has range 0.0 (entire sector), so no range ring is drawn
-    parent._draw_range_ring.assert_not_called()
+    parent.grid_renderer.draw_range_ring.assert_not_called()
 
 
 def test_input_processor_left_click_protection_in_targeting_mode():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = ("ion_bolt", True, False)
     game.view_mode = 'sector'
     player = MockPlayer()
@@ -172,7 +180,7 @@ def test_input_processor_left_click_protection_in_targeting_mode():
     ip = InputProcessor(game)
 
     with patch('pygame.key.get_mods', return_value=0):
-        with patch('input_processor.is_pixel_in_sector', return_value=True):
+        with patch('input_processor.mouse_handler.is_pixel_in_sector', return_value=True):
             # Left click (button 1) should be consumed, leaving selection intact and pending_ability active
             ip.handle_mouse_click(1, Position(100, 100))
             assert game.pending_ability == ("ion_bolt", True, False)
@@ -181,6 +189,7 @@ def test_input_processor_left_click_protection_in_targeting_mode():
 
 def test_input_processor_right_click_empty_space_for_unit_ability():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = ("ion_bolt", True, False)
     game.view_mode = 'sector'
     player = MockPlayer()
@@ -194,7 +203,7 @@ def test_input_processor_right_click_empty_space_for_unit_ability():
     ip = InputProcessor(game)
 
     with patch('pygame.key.get_mods', return_value=0):
-        with patch('input_processor.is_pixel_in_sector', return_value=True):
+        with patch('input_processor.mouse_handler.is_pixel_in_sector', return_value=True):
             with patch.object(game.event_bus, 'publish') as mock_publish:
                 # Right click on empty space for unit-only ability should be consumed without firing event
                 ip.handle_mouse_click(3, Position(100, 100))
@@ -204,6 +213,7 @@ def test_input_processor_right_click_empty_space_for_unit_ability():
 
 def test_input_processor_right_click_target_unit_fires_event():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = ("ion_bolt", True, False)
     game.view_mode = 'sector'
     player = MockPlayer()
@@ -219,7 +229,7 @@ def test_input_processor_right_click_target_unit_fires_event():
     ip = InputProcessor(game)
 
     with patch('pygame.key.get_mods', return_value=0):
-        with patch('input_processor.is_pixel_in_sector', return_value=True):
+        with patch('input_processor.mouse_handler.is_pixel_in_sector', return_value=True):
             with patch.object(game.event_bus, 'publish') as mock_publish:
                 ip.handle_mouse_click(3, Position(100, 100))
                 mock_publish.assert_called_once()

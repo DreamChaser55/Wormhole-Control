@@ -1,12 +1,17 @@
+from display_config import DisplayConfig
 import pygame
 import pytest
-from constants import SCREEN_RES, TOP_BAR_HEIGHT, INFO_BOX_WIDTH
+from display_config import DEFAULT_DISPLAY_CONFIG
+SCREEN_RES = DEFAULT_DISPLAY_CONFIG.resolution
+TOP_BAR_HEIGHT = DEFAULT_DISPLAY_CONFIG.top_bar_height
+INFO_BOX_WIDTH = DEFAULT_DISPLAY_CONFIG.info_box_width
 from geometry import Position
 from gui.handler import GUI_Handler
 from gui.layout_hud import setup_game_ui
 
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self, view_mode="galaxy"):
         self.view_mode = view_mode
         self.current_player = None
@@ -23,7 +28,7 @@ def mock_gui():
 
     if not pygame.display.get_surface():
         pygame.display.set_mode((int(SCREEN_RES.x), int(SCREEN_RES.y)))
-    gui = GUI_Handler(SCREEN_RES, DummyGame())
+    gui = GUI_Handler(DisplayConfig(int(SCREEN_RES.x), int(SCREEN_RES.y)), DummyGame())
     return gui
 
 

@@ -49,7 +49,7 @@ def test_turrets_stop_when_attack_is_replaced_by_move():
     assert target.current_hit_points == 90
 
     turret.current_cooldown = 0
-    commander.clear_orders()
+    commander.stop_and_idle()
     move = Order(attacker, OrderType.MOVE)
     commander.add_order(move)
     assert commander.current_order is move

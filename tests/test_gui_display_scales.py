@@ -1,4 +1,5 @@
 """Real widgets at supported physical pixel sizes; layout warnings are failures."""
+from display_config import DisplayConfig
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -48,7 +49,7 @@ def test_application_views_at_explicit_display_sizes(game_factory, tmp_path, siz
     capture('wizard-players')
     gui.close_new_game_wizard()
 
-    editor = UnitEditorWindow(gui.manager, pygame.Vector2(*size), game.custom_template_manager)
+    editor = UnitEditorWindow(gui.manager, DisplayConfig(*size), game.custom_template_manager)
     editor.show()
     capture('designer')
     editor.kill()
@@ -71,9 +72,9 @@ def test_application_views_at_explicit_display_sizes(game_factory, tmp_path, siz
 def test_turn_processor_alias_has_one_owner(game_factory):
     game = game_factory(display_config=DisplayConfig(1280, 720, False))
     original = game.turn_processor
-    assert game.turn_manager is original
+    assert game.turn_processor is original
     sentinel = object()
-    game.turn_manager = sentinel
+    game.turn_processor = sentinel
     assert game.turn_processor is sentinel
     game.turn_processor = original
 
@@ -81,12 +82,13 @@ def test_turn_processor_alias_has_one_owner(game_factory):
 @pytest.mark.parametrize('size', [(1280, 720), (1920, 1080), (2560, 1440)])
 def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size):
     screen = pygame.display.set_mode(size)
-    manager = build_ui_manager(Vector(*size))
+    manager = build_ui_manager(DisplayConfig(*size))
     world = campaign()
     world.event_bus = SimpleNamespace(publish=lambda event: None)
     builder = instantiate_unit_from_template('CONSTRUCTOR_MK1', world.players[0],
         'Sol', (0, 0), Position(100, 100), world.galaxy, world)
     gui = SimpleNamespace(game_instance=world, screen_res=Vector(*size), manager=manager)
+    gui.display_config = DisplayConfig(int(Vector(*size).x), int(Vector(*size).y))
     catalog = UnitCatalogWindow(gui, [builder], Position(200, 200))
 
     def capture(name):

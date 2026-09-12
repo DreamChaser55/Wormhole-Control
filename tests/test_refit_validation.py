@@ -1,4 +1,5 @@
 """Designer parity and authoritative retrofit lifecycle regressions."""
+from display_config import DisplayConfig
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -31,6 +32,7 @@ def world():
     galaxy.systems['Sol'] = StarSystem('Sol', Position(0, 0))
     game = SimpleNamespace(galaxy=galaxy, players=[payer, ally], current_player_index=0,
                            gui=None, event_bus=EventBus(), sidebar_needs_update=False)
+    game.display_config = DisplayConfig()
     galaxy.game = game
     def unit(name):
         result = Unit(payer, Position(0, 0), HexCoord(0, 0), 'Sol', name, HullSize.HUGE, game=game)
@@ -404,13 +406,11 @@ def test_occupied_bay_rechecked_at_completion(world):
     assert order.status == OrderStatus.FAILED and target.hangar_component
 
 
-@pytest.mark.parametrize('legacy', [False, True])
 @pytest.mark.parametrize('outcome', ['success', 'cancel', 'invalid'])
-def test_saved_removal_settles_exactly_once(legacy, outcome):
+def test_saved_removal_settles_exactly_once(outcome):
     from tests.support.campaigns import campaign, ship
     from save_manager import serialize_game_state, deserialize_game_state
     from campaign_graph import find_unit
-    from save_migrations import migrate_save
     game = campaign()
     actor, target = ship(game, 'Builder'), ship(game, 'Target')
     target.antimatter_component.max_capacity = target.antimatter_component.current_amount = 200
@@ -422,25 +422,7 @@ def test_saved_removal_settles_exactly_once(legacy, outcome):
     actor.commander_component.add_order(order)
     salvage = actor.constructor_component.current_refit_target['salvage_due']
     state = serialize_game_state(game)
-    assert state['version'] == '4.3'
-    if legacy:
-        state['version'] = '4.1'
-        def strip(value):
-            if isinstance(value, dict):
-                if value.get('type') == 'Constructor':
-                    job = value['runtime']['current_refit_target']
-                    if job:
-                        job.pop('payer_id')
-                        job.pop('salvage_due')
-                for child in value.values():
-                    strip(child)
-            elif isinstance(value, list):
-                for child in value:
-                    strip(child)
-        strip(state)
-        state['players'][0]['credits'] += salvage  # historical upfront payment
-        migrated, _ = migrate_save(state)
-        assert migrate_save(migrated)[0] == migrated
+    assert state['version'] == '4.4'
     assert deserialize_game_state(game, state)
     actor, target = find_unit(game.galaxy, actor.id), find_unit(game.galaxy, target.id)
     order = actor.commander_component.current_order
@@ -450,7 +432,7 @@ def test_saved_removal_settles_exactly_once(legacy, outcome):
     elif outcome == 'invalid':
         target.add_component(instantiate_component_for_unit('TradeComponent', target))
     ctor.finish_refit(game.galaxy)
-    expected = 5000 + (salvage if legacy or outcome == 'success' else 0)
+    expected = 5000 + (salvage if outcome == 'success' else 0)
     assert game.players[0].credits == expected
     assert order.status == {'success': OrderStatus.COMPLETED, 'cancel': OrderStatus.CANCELLED,
                             'invalid': OrderStatus.FAILED}[outcome]
@@ -459,20 +441,5 @@ def test_saved_removal_settles_exactly_once(legacy, outcome):
     assert game.players[0].credits == expected
 
 
-def test_migration_finds_original_payer_on_nested_units():
-    from save_migrations import migrate_save
-    job = dict(target_unit_id=9, action='REMOVE', component_type='Engines', component_config={},
-               cost_credits=0, time_to_build=1)
-    raw = dict(owner_id=2, components={
-        'Constructor': dict(type='Constructor', runtime=dict(current_refit_target=job, refit_order_id='job')),
-        'Commander': dict(type='Commander', runtime=dict(current_order=dict(public_id='job', runtime_state=dict(charged_player_id=1)))),
-    })
-    state = dict(version='4.1', galaxy=dict(systems=[dict(hexes=[dict(
-        units=[dict(owner_id=2, components={'HangarComponent': dict(runtime=dict(docked_units=[raw]))})],
-        celestial_bodies=[dict(hidden_units=[deepcopy(raw)])])])]))
-    migrated, _ = migrate_save(state)
-    sector = migrated['galaxy']['systems'][0]['hexes'][0]
-    for unit in [sector['units'][0]['components']['HangarComponent']['runtime']['docked_units'][0],
-                 sector['celestial_bodies'][0]['hidden_units'][0]]:
-        assert unit['components']['Constructor']['runtime']['current_refit_target']['payer_id'] == 1
-        assert unit['components']['Constructor']['runtime']['current_refit_target']['salvage_due'] == 0
+
+from custom_unit_templates import template_to_dict, template_from_dict

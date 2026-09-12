@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
 from turn_processor import TurnProcessor
@@ -123,6 +124,7 @@ class SimpleGalaxy:
 
 def test_integration_sublight_movement_flow():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
     
@@ -183,6 +185,7 @@ def test_integration_sublight_movement_flow():
 
 def test_destroying_engines_fails_active_sublight_move_without_spending_antimatter():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
 
@@ -238,6 +241,7 @@ def test_destroying_engines_fails_active_sublight_move_without_spending_antimatt
 
 def test_destroyed_engines_do_not_block_hyperdrive_only_jump():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
 
@@ -276,6 +280,7 @@ def test_destroyed_engines_do_not_block_hyperdrive_only_jump():
 
 def test_integration_wormhole_jump_flow():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
     
@@ -362,6 +367,7 @@ def test_integration_wormhole_jump_flow():
 
 def test_integration_multi_system_movement():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     galaxy = SimpleGalaxy()
     # Add third system
     galaxy.systems["Sirius"] = SimpleSystem("Sirius")
@@ -469,6 +475,7 @@ def test_integration_multi_system_movement():
 
 def test_unstable_wormhole_damage():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
     
@@ -514,7 +521,7 @@ def test_unstable_wormhole_damage():
     navigation_owner = Order(unit, OrderType.REACH_WAYPOINT)
     navigation_owner.status = OrderStatus.IN_PROGRESS
     commander.current_order = navigation_owner
-    hd.set_wormhole_jump_target(wh_sol, navigation_owner.order_id)
+    hd.set_wormhole_jump_target(wh_sol, navigation_owner.local_order_id)
     
     galaxy.systems["Sol"].add_unit(unit)
     
@@ -545,7 +552,7 @@ def test_unstable_wormhole_damage():
     # Set engines current hit points to 5, so 20 damage will destroy engines (takes 5 damage) and spillover 15 to hull
     engines.current_hit_points = 5
     unit.current_hit_points = 100
-    hd.set_wormhole_jump_target(wh_sol, navigation_owner.order_id)
+    hd.set_wormhole_jump_target(wh_sol, navigation_owner.local_order_id)
     hd.jump_status = JumpStatus.READY
     # Move unit back to Sol for another jump
     galaxy.move_unit_between_systems(unit, "Vega", "Sol", (1, 1))
@@ -582,6 +589,7 @@ def test_wormhole_diameter_restrictions_pathfinding():
 def test_wormhole_diameter_restrictions_movement_planning():
     # Setup game, galaxy, player
     game = MagicMock()
+    game.display_config = DisplayConfig()
     galaxy = SimpleGalaxy()
     game.galaxy = galaxy
     

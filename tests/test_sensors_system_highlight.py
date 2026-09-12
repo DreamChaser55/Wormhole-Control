@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 from unittest.mock import MagicMock, patch
 import pytest
@@ -14,6 +15,7 @@ from unit_components.sensors import Sensors
 @pytest.fixture
 def system_renderer_setup():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player]
     game.current_player_index = 0

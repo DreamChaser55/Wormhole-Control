@@ -111,7 +111,7 @@ class InfiltratePlanetOrder(Order):
         super().__init__(unit, OrderType.INFILTRATE_PLANET, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
-        """Resolve target_body_id (or legacy body name/system/hex), then infiltrate.
+        """Resolve target_body_id, then infiltrate.
 
         The target must be an enemy colony. Approach work precedes deployment;
         success consumes agent capacity and attaches the agent before completion.
@@ -119,24 +119,13 @@ class InfiltratePlanetOrder(Order):
         super().execute(galaxy_ref)
 
         target_body_id = self.parameters.get("target_body_id")
-        target_body_name = self.parameters.get("target_body_name")
-        target_system = self.parameters.get("system", self.unit.in_system)
-        target_hex = self.parameters.get("hex", self.unit.in_hex)
-
-        target_body = None
-        sys_obj = galaxy_ref.systems.get(target_system)
-        if sys_obj:
-            for hex_coord, body in sys_obj.get_all_celestial_bodies():
-                if (target_body_id is not None and body.id == target_body_id) or (target_body_name and body.name == target_body_name):
-                    target_body = body
-                    target_hex = hex_coord
-                    break
-
+        target_body = galaxy_ref.get_celestial_body_by_id(target_body_id) if target_body_id is not None else None
         if not target_body:
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] INFILTRATE_PLANET failed: celestial body not found.")
             return
 
+        target_system, target_hex = target_body.in_system, target_body.in_hex
         body_owner = getattr(target_body, 'owner', None)
         from domain.players import are_allies
         if not body_owner or are_allies(self.unit.owner, body_owner):

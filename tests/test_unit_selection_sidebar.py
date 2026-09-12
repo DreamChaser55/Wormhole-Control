@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from domain.units import Unit
 from game import Game
@@ -7,6 +8,7 @@ from geometry import Position
 def test_multi_unit_selection_sidebar_buttons():
     # Setup mock game and units
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = True
     mock_game.selected_objects = []
@@ -60,6 +62,7 @@ def test_multi_unit_selection_sidebar_buttons():
 def test_handle_gui_action_select_individual_unit():
     # Setup mock game, galaxy, and units
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = False
     mock_game.selected_objects = []
@@ -85,6 +88,7 @@ def test_handle_gui_action_select_individual_unit():
 def test_handle_gui_action_deselect_individual_unit_shift():
     # Setup mock game, galaxy, and units
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = False
     
@@ -109,6 +113,7 @@ def test_handle_gui_action_deselect_individual_unit_shift():
 
 def test_single_unit_sidebar_tabs_basic_info():
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = True
     mock_game.selected_unit_tab = 'basic_info'
@@ -152,6 +157,7 @@ def test_single_unit_sidebar_tabs_basic_info():
 
 def test_single_unit_sidebar_tabs_switch_to_components():
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = True
     mock_game.selected_unit_tab = 'basic_info'
@@ -198,6 +204,7 @@ def test_single_unit_sidebar_tabs_switch_to_components():
 def test_component_overview_colored_labels():
     """Verify that component overview items return appropriate colored label object IDs based on state."""
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     player = MagicMock()
     mock_game.players = [player]
@@ -246,6 +253,7 @@ def test_component_overview_colored_labels():
 
 def test_stop_unit_button_visibility():
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = True
     mock_game.selected_objects = []
@@ -292,6 +300,7 @@ def test_stop_unit_button_visibility():
 
 def test_handle_gui_action_stop_unit():
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = False
 
@@ -334,6 +343,7 @@ def test_handle_gui_action_stop_unit():
 
 def test_stop_selected_units_multi_selection():
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = True
     mock_game.gui = MagicMock()

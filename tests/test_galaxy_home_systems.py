@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from unittest.mock import MagicMock, patch
 import pygame
@@ -18,8 +19,10 @@ pygame.font.init()
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
         self.gui.galaxy_generation_rect = pygame.Rect(0, 0, 800, 600)
         self.galaxy = None
         self.players = []
@@ -344,68 +347,5 @@ def test_save_load_preserves_homeworld_id():
     assert restored.homeworld_id == 42
 
 
-def test_deserialize_game_state_legacy_fallback():
-    """Legacy saves lacking homeworld_id recover it from owned planets."""
-    legacy_save_data = {
-        "game_state": {
-            "turn_number": 3,
-            "current_player_index": 0,
-            "view_mode": "galaxy",
-            "current_system_name": "Sol",
-        },
-        "players": [
-            {
-                "id": 1,
-                "name": "LegacyPlayer",
-                "color": [30, 120, 255],
-                "controller": "human",
-                # Note: homeworld_id is omitted (simulating legacy save)
-            }
-        ],
-        "galaxy": {
-            "systems": [
-                {
-                    "name": "Sol",
-                    "position": [0, 0],
-                    "radius": 5,
-                    "hexes": [
-                        {
-                            "q": 0,
-                            "r": 0,
-                            "in_system": "Sol",
-                            "celestial_bodies": [
-                                {
-                                    "class_name": "Planet",
-                                    "id": 99,
-                                    "name": "Earth",
-                                    "position": [0, 0],
-                                    "in_hex": [0, 0],
-                                    "in_system": "Sol",
-                                    "planet_type": "TERRAN",
-                                    "owner_id": 1,
-                                    "population": 50.0,
-                                    "max_population": 100.0,
-                                    "population_growth_rate": 0.02,
-                                }
-                            ],
-                            "units": [],
-                        }
-                    ],
-                }
-            ],
-            "wormholes": [],
-        },
-    }
-
-    game = MockGame()
-    success = deserialize_game_state(game, legacy_save_data)
-    assert success is True
-    assert len(game.players) == 1
-    assert game.players[0].homeworld_id == 99
-
-    # And verify get_home_systems_mapping correctly resolves it
-    mapping = get_home_systems_mapping(game)
-    assert "Sol" in mapping
-    assert mapping["Sol"] == [game.players[0]]
 
 pytestmark = pytest.mark.usefixtures("pygame_context")

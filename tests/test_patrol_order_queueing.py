@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock, patch
 from constants import HullSize
 from geometry import Position
@@ -16,10 +17,12 @@ from input_processor.context_actions import handle_context_menu_action
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.sidebar_needs_update = False
         self.galaxy = MagicMock()
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
         self.event_bus = EventBus()
         self.order_system = OrderSystem(self, self.event_bus)
         self.players = [Player("Player 1", (0, 255, 0))]

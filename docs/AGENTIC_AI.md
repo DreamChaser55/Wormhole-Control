@@ -84,7 +84,7 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 3.2 embeds:
+Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.4 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
@@ -92,9 +92,9 @@ Every campaign, player, and agent has a stable 8-character hexadecimal short ID.
 - selected `ai_repair_retries`;
 - bounded structured `ai_memory`.
 
-Missing identities migrate automatically upon save loading. The save is
-authoritative. The `memory.md` sidecar is generated for inspection and is not
-read back into the campaign.
+Saved identities are required and the save is authoritative. The `memory.md`
+sidecar is generated for inspection and is not read back into the campaign.
+Only the current save version is supported; unsupported saves are rejected.
 
 Memory contains strategy, objectives, commitments, beliefs, lessons, misc,
 and recent execution receipts bounded to 8,000 total characters. Individual turn
@@ -147,7 +147,7 @@ at preflight.
 Retrofit remains a human editor transaction because it requires a versioned
 component-configuration schema and dynamic cost preview. It is not advertised to
 the model. Its human editor and Constructor execution now share the Unit Designer's
-complete equipment validation, including removals. Version 4.2 saves record the
+complete equipment validation, including removals. Saves record the
 original refit payer and unpaid salvage; settlement occurs only once. Removal
 salvage is granted on successful completion, and failed installation validation
 refunds the original payer. No retrofit command is added to the AI contract.
@@ -216,8 +216,8 @@ units, non-finite coordinates, inappropriate parameters, and batches/groups abov
 validates the complete turn plan, including `end_turn=true`, before mutation, even for
 injected providers. Model, reasoning, timeout and token budgets are unchanged.
 
-Owned/allied units expose `standing_order`, `current_order` and `queued_orders`; the
-legacy flattened `orders` array is removed. Types and statuses are readable strings.
+Owned/allied units expose separate `standing_order`, `current_order` and
+`queued_orders` sections. Types and statuses are readable strings.
 Standing policy records suspension and its transient engagement. Explicit roots have
 opaque UUID `order_id` values, separate from internal integer actuator ownership IDs.
 All explicit root identities remain visible. Expanded suborders are limited to 32
@@ -295,8 +295,8 @@ retains at most 128 events and 32,000 serialized characters, dropping oldest who
 Monotonic event IDs and retention metadata identify duplicates and missing history. An
 observation exposes only its active player's journal, not an ally's entire history.
 
-Save 3.2 preserves order UUIDs recursively, history/counter, terminal-recording state and
-job charges. Legacy orders get new UUIDs and empty histories. Restored active orders rebind
+The current save preserves order UUIDs recursively, history/counter, terminal-recording state and
+job charges. Missing order identities and payment state are rejected. Restored active orders rebind
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
 The strict response schema is `wormhole_control_turn_v5`, and prompt cache key is
@@ -367,10 +367,9 @@ Uncertain travel/recovery cannot finance a cast or free a slot speculatively, an
 remote caches are not exclusively reserved. New object IDs require a fresh
 observation. Existing atomic rejection and partial-commit reporting remain intact.
 
-Save 4.1 stores independent objects, source provenance, identification, cache
+The current save stores independent objects, source provenance, identification, cache
 contents, patch allegiance/deadlines, link tuning/deadlines and processed pull
-phases. Save 4.0 migrates with empty tactical collections and unchanged legacy
-ability state. Counts are rebuilt from surviving objects and historical source
+phases. Counts are rebuilt from surviving objects and historical source
 IDs participate in allocator reconciliation. Offline fake-provider tests exercise
 all six command paths without live API calls.
 

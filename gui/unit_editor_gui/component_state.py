@@ -156,35 +156,14 @@ def refresh_component_details(editor) -> None:
 def apply_hull_restrictions(editor) -> None:
     """Disable forbidden components for the current hull size."""
     restricted = HULL_RESTRICTIONS.get(editor._hull_size, set())
-    c = editor._comp
-    for row in COMPONENT_ROWS:
-        key = row["key"]
-        btn = editor._comp_toggles.get(key)
-        sbtn = editor._comp_select_btns.get(key)
-        if key in restricted:
-            # Force off and disable button
-            setattr(c, key, False)
-            if btn:
-                btn.disable()
-            if sbtn:
-                sbtn.disable()
-        else:
-            if btn:
-                btn.enable()
-            if sbtn:
-                sbtn.enable()
-    wing = editor._hull_size == HullSize.STRIKECRAFT_WING
-    entry = getattr(editor, "_sensor_long_range_entry", None)
-    if wing:
-        c.sensor_long_range_hexes = 0
+    for key in restricted:
+        setattr(editor._comp, key, False)
+    if editor._hull_size == HullSize.STRIKECRAFT_WING:
+        editor._comp.sensor_long_range_hexes = 0
+        entry = getattr(editor, "_sensor_long_range_entry", None)
         if entry:
             entry.set_text("0")
-            entry.disable()
-    elif entry:
-        entry.enable()
-    label = getattr(editor, "_sensor_long_range_label", None)
-    if label:
-        label.set_text("Intra-sector only" if wing else "Long-Range (hexes):")
+    refresh_hull_controls(editor)
     # Advanced hyperdrive restriction
     hull_sizes = list(HullSize)
     min_idx = hull_sizes.index(ADVANCED_HYPERDRIVE_MIN_HULL)
@@ -239,3 +218,32 @@ def apply_hull_restrictions(editor) -> None:
     update_component_toggle_labels(editor)
     editor._sync_dynamic_costs()
     editor._update_capacity_label()
+
+
+def refresh_hull_controls(editor) -> None:
+    """Refresh hull-dependent controls without changing the loaded design."""
+    restricted = HULL_RESTRICTIONS.get(editor._hull_size, set())
+    for row in COMPONENT_ROWS:
+        key = row["key"]
+        btn = editor._comp_toggles.get(key)
+        sbtn = editor._comp_select_btns.get(key)
+        if key in restricted:
+            if btn:
+                btn.disable()
+            if sbtn:
+                sbtn.disable()
+        else:
+            if btn:
+                btn.enable()
+            if sbtn:
+                sbtn.enable()
+    wing = editor._hull_size == HullSize.STRIKECRAFT_WING
+    entry = getattr(editor, "_sensor_long_range_entry", None)
+    if wing:
+        if entry:
+            entry.disable()
+    elif entry:
+        entry.enable()
+    label = getattr(editor, "_sensor_long_range_label", None)
+    if label:
+        label.set_text("Intra-sector only" if wing else "Long-Range (hexes):")

@@ -17,13 +17,6 @@ from input_processor.context_menu_builder import (
 )
 from input_processor.context_actions import handle_context_menu_action
 
-# Re-export spatial utilities for backward compatibility with test monkeypatches
-from sector_utils import (
-    is_pixel_in_sector,
-    pixels_to_sector_coords,
-    sector_coords_to_pixels,
-    sector_radius_to_pixels,
-)
 
 __all__ = [
     "InputProcessor",
@@ -41,8 +34,4 @@ __all__ = [
     "get_refit_context_options",
     "get_ability_context_options",
     "handle_context_menu_action",
-    "is_pixel_in_sector",
-    "pixels_to_sector_coords",
-    "sector_coords_to_pixels",
-    "sector_radius_to_pixels",
 ]

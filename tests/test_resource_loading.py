@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 
 
 import builtins
@@ -25,7 +26,7 @@ def test_themes_are_scaled_in_memory_without_writes(tmp_path, monkeypatch):
     monkeypatch.setattr(builtins, 'open', read_only)
     for height in (720, 1080):
         scale = (height / 720.0) ** 1.15
-        manager = theme_loader.build_ui_manager(Vector(1280, height))
+        manager = theme_loader.build_ui_manager(DisplayConfig(1280, height))
         assert manager.ui_theme.get_font_dictionary().known_font_paths['dejavu_sans']
         assert manager.ui_theme.get_font_info(['defaults'])['size'] == int(12 * scale)
     assert not list(tmp_path.iterdir())

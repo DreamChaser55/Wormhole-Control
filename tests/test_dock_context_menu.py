@@ -7,6 +7,7 @@ Tests for disambiguated context menu docking options:
 - Mixed selection handling in context menu and action dispatching.
 - OrderSystem handle_dock support for strikecraft wings.
 """
+from display_config import DisplayConfig
 
 import pytest
 from unittest.mock import MagicMock
@@ -31,6 +32,7 @@ def dock_setup():
     galaxy.systems = {"Sol": system}
 
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.galaxy = galaxy
     game.players = [p1]
     game.current_player_index = 0

@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from unittest.mock import MagicMock
 from geometry import Position
@@ -26,6 +27,7 @@ def test_setup():
 def test_baseline_sensors_on_unit_creation(test_setup):
     p1, p2, galaxy, system = test_setup
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
 
     unit = Unit(
@@ -49,6 +51,7 @@ def test_baseline_sensors_on_unit_creation(test_setup):
 def test_short_range_detailed_visibility(test_setup):
     p1, p2, galaxy, system = test_setup
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
 
     friendly_unit = Unit(
@@ -84,6 +87,7 @@ def test_short_range_detailed_visibility(test_setup):
 def test_short_range_miss_hidden(test_setup):
     p1, p2, galaxy, system = test_setup
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
 
     friendly_unit = Unit(
@@ -119,6 +123,7 @@ def test_short_range_miss_hidden(test_setup):
 def test_long_range_same_hex_presence(test_setup):
     p1, p2, galaxy, system = test_setup
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
 
     friendly_unit = Unit(
@@ -155,6 +160,7 @@ def test_long_range_same_hex_presence(test_setup):
 def test_long_range_neighbor_hex_presence(test_setup):
     p1, p2, galaxy, system = test_setup
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
 
     friendly_unit = Unit(
@@ -192,6 +198,7 @@ def test_long_range_neighbor_hex_presence(test_setup):
 def test_detailed_overrides_presence(test_setup):
     p1, p2, galaxy, system = test_setup
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
 
     friendly_unit = Unit(
@@ -299,6 +306,7 @@ def test_new_game_visibility_turn1(game_factory):
 def test_wing_sensors_are_local(test_setup):
     p1, p2, galaxy, system = test_setup
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.galaxy = galaxy
     wing = Unit(owner=p1, position=Position(0, 0), in_hex=(0, 0),
                 in_system='Alpha', name='Wing', hull_size=HullSize.STRIKECRAFT_WING, game=game)

@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import unittest
 from geometry import Position, Circle, distance, segment_intersects_circle, compute_avoidance_waypoints
 from constants import STAR_RADIUS, PLANET_RADIUS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS
@@ -193,6 +194,7 @@ class TestMoveOrderCollisionAvoidance(unittest.TestCase):
     def setUp(self):
         from unittest.mock import MagicMock
         self.game = MagicMock()
+        self.game.display_config = DisplayConfig()
         self.galaxy = SimpleGalaxy()
         self.game.galaxy = self.galaxy
         self.system = self.galaxy.systems["Sol"]
@@ -286,6 +288,7 @@ class TestPatrolOrderCollisionAvoidance(unittest.TestCase):
     def setUp(self):
         from unittest.mock import MagicMock
         self.game = MagicMock()
+        self.game.display_config = DisplayConfig()
         self.galaxy = SimpleGalaxy()
         self.game.galaxy = self.galaxy
         self.system = self.galaxy.systems["Sol"]

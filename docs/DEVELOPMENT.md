@@ -48,12 +48,12 @@ It runs the full suite on Linux with Python 3.10 and 3.14 and Windows with Pytho
 | World services | `galaxy.py`, `geometry.py`, `pathfinding.py`, `visibility.py`, `environmental_effects.py` and `economy.py` |
 | Presentation | `gui/`, `rendering/` and `input_processor/` manage widgets, drawing, cameras and input; `events.py` decouples notifications |
 | Automated players | `game_ai/` owns observations, command validation and provider coordination; `game_control_protocol.py` serves the local bridge |
-| Persistence | `campaign_persistence.py`, `campaign_graph.py`, `state_codec.py` and `save_migrations.py` prepare and restore campaigns |
+| Persistence | `campaign_persistence.py`, `campaign_graph.py`, `state_codec.py` prepare and restore campaigns |
 | Design data | `data/` holds built-in and Testing templates, spawn rates and star names; `custom_unit_templates.py` manages the user library |
 
-Core imports must not initialize Pygame, GUI or displays. `entities`,
-`unit_orders` and `unit_components` expose explicit lazy exports. Canonical domain
-classes live in `domain/`; clean-process tests enforce the import boundary.
+Core imports must not initialize Pygame, GUI or displays. Import entities, orders
+and components from their defining modules. Canonical domain classes live in
+`domain/`; clean-process tests enforce the import boundary.
 
 Commander owns explicit queue promotion and stance arbitration. An Order owns
 subtree status, cancellation and outcomes; concrete orders own actuator/job cleanup.
@@ -71,7 +71,7 @@ follow the [observation disclosure policy](AGENTIC_AI.md#information-boundary).
 `Game` accepts an immutable per-application `DisplayConfig`, for example
 `Game(display_config=DisplayConfig(1920, 1080, False))`. Bootstrap discovers display
 metrics when none are supplied. Input, rendering and cameras use this configuration;
-display values in `constants.py` are fixed defaults and do not discover a display.
+UI collaborators receive an explicit `DisplayConfig`; incomplete adapters are rejected.
 Set `WORMHOLE_FULLSCREEN=true` to force full-screen mode.
 
 Resources resolve relative to the application module or PyInstaller bundle,
@@ -113,9 +113,10 @@ Template identity is stored separately from the mutable unit name.
 
 Hull names accept case-insensitive enum names; component enum values use canonical
 uppercase names. Abilities use exact `AbilityType.value` strings and cannot be
-selected twice. Omitted parameters and the aliases `has_scanner`, `has_fighter_bay`,
-`fighter_bay_slots` and `counter_intelligence` use the shared decoder's defaults
-and mappings. Unknown extra fields are ignored.
+selected twice. Omitted optional parameters use the shared decoder's defaults. Only canonical
+fields are accepted, including `has_sensors`, `has_strikecraft_bay`,
+`strikecraft_bay_slots` and `has_counter_intelligence`. Unknown fields and historical
+aliases are rejected.
 
 Numeric inputs must be finite JSON numbers; integer parameters must be JSON
 integers. Booleans and numeric strings are invalid numbers, and component toggles
@@ -135,8 +136,8 @@ Turret damage/range must be finite numbers and cooldown an integer; validation
 adds no balance bounds beyond those enforced by the Designer. Derived dynamic
 hull costs, HP, price and build time are regenerated for custom designs. Stored
 fixed costs still count toward enabled equipment's hull budget. Change performance
-parameters to change dynamic costs. Permissive loading and strict validation are
-distinct; see [design compatibility](SAVE_FORMAT.md#design-compatibility).
+parameters to change dynamic costs. Library loading and editing share current validation; see
+[design validation](SAVE_FORMAT.md#design-validation).
 
 ## Storage and lookup contracts
 
@@ -178,8 +179,8 @@ Keep `REFERENCE.md` focused on current player-facing rules. Update the existing
 topic in present tense; put historical explanations in commits and PRs. Give
 each contract one home and link to it. The README is a short introduction, not
 a destination for feature announcements or reference material removed elsewhere.
-Compatibility guidance belongs in `SAVE_FORMAT.md` while it describes supported
-behavior. Prefer a short package map over a file-by-file repository inventory.
+Alpha changes do not require backward compatibility. `SAVE_FORMAT.md` documents
+the sole supported save format and rejection behavior. Prefer a short package map over a file-by-file repository inventory.
 
 `scripts/generate_reference.py` owns six blocks in `REFERENCE.md`: components,
 abilities, order count, planets, environments and the built-in unit catalogue.

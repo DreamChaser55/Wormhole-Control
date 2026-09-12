@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from unittest.mock import MagicMock
 from constants import (
@@ -134,6 +135,7 @@ def test_order_rejection_hazard_blocked():
     galaxy.systems["Gamma"] = system
 
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.galaxy = galaxy
 
     battleship = _make_unit("Battleship", Position(0.0, 0.0), hex_coord, "Gamma", HullSize.LARGE, game=game)
@@ -162,18 +164,10 @@ def test_serialization_and_deserialization():
     assert restored.density == FieldDensity.HIGH
     assert restored.max_hull_size == HullSize.SMALL
 
-    # Test backward compatibility when density key is missing
-    legacy_data = {
-        "class_name": "AsteroidField",
-        "in_hex": [0, 0],
-        "in_system": "Delta",
-        "position": [0.0, 0.0],
-        "asteroid_count": 80
-    }
-    legacy_restored = deserialize_celestial_body(legacy_data, {})
-    assert isinstance(legacy_restored, AsteroidField)
-    assert legacy_restored.density == FieldDensity.MEDIUM
-    assert legacy_restored.max_hull_size == HullSize.MEDIUM
+    malformed = serialize_celestial_body(restored)
+    malformed.pop("density")
+    with pytest.raises(KeyError, match="density"):
+        deserialize_celestial_body(malformed, {})
 
 
 def test_ai_observation_and_command_validation():
@@ -187,6 +181,7 @@ def test_ai_observation_and_command_validation():
 
     # Command preflight rejection
     game = MagicMock()
+    game.display_config = DisplayConfig()
     galaxy = Galaxy()
     system = StarSystem(name="Sol", position=(0.0, 0.0))
     system.hexes[HexCoord(0, 0)] = Hex(0, 0, "Sol")
@@ -230,6 +225,7 @@ def test_turn_processor_boundary_clamping():
     galaxy.systems["Sol"] = system
 
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.galaxy = galaxy
 
     # Large ship at (2050, 0), attempting to move into center (0, 0)
@@ -247,7 +243,7 @@ def test_turn_processor_boundary_clamping():
     })
     order.status = OrderStatus.IN_PROGRESS
     large_ship.commander_component.current_order = order
-    large_ship.engines_component.set_move_target(Position(-2050.0, 0.0), order.order_id)
+    large_ship.engines_component.set_move_target(Position(-2050.0, 0.0), order.local_order_id)
 
     tp = TurnProcessor(game)
     tp._process_movement(large_ship.owner)

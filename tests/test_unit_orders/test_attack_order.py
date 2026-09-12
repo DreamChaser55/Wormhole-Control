@@ -110,7 +110,7 @@ def test_attack_order_pursuit():
     # The old move order should be cancelled and popped, and a new one spawned and set to IN_PROGRESS
     assert len(order.sub_orders) == 1
     new_move_sub = order.sub_orders[0]
-    assert new_move_sub.order_id != move_sub.order_id
+    assert new_move_sub.local_order_id != move_sub.local_order_id
     assert new_move_sub.status == OrderStatus.IN_PROGRESS
     assert new_move_sub.parameters["destination_position"] == Position(105.0, 0.0)
     
@@ -120,7 +120,7 @@ def test_attack_order_pursuit():
     
     assert len(order.sub_orders) == 1
     hex_jump_move_sub = order.sub_orders[0]
-    assert hex_jump_move_sub.order_id != new_move_sub.order_id
+    assert hex_jump_move_sub.local_order_id != new_move_sub.local_order_id
     assert hex_jump_move_sub.status == OrderStatus.IN_PROGRESS
     assert hex_jump_move_sub.parameters["destination_hex_coord"] == (0, 1)
     

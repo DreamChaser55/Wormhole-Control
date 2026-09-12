@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from unittest.mock import MagicMock
 from geometry import Position
@@ -21,6 +22,7 @@ def galaxy_setup():
     galaxy.systems = {"Alpha": system}
 
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
     mock_game.turn_number = 1
 

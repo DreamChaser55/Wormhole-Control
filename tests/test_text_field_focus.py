@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from unittest.mock import MagicMock, patch
 import pygame
@@ -7,6 +8,7 @@ from gui import GUI_Handler
 from input_processor import InputProcessor
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.view_mode = 'sector'
         self.game_started = True
@@ -16,6 +18,7 @@ class DummyGame:
         self.zoom_anchor_pixel = None
         self.zoom_anchor_logical = None
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
         self.is_running = True
         self.current_system_name = None
         self.current_sector_coord = None
@@ -42,7 +45,7 @@ def test_is_any_text_entry_focused():
     game = DummyGame()
     
     # We construct a real GUI_Handler (which sets up self.manager)
-    gui_handler = GUI_Handler(Position(800, 600), game)
+    gui_handler = GUI_Handler(DisplayConfig(800, 600), game)
     
     # Check initially false
     assert gui_handler.is_any_text_entry_focused() is False
@@ -115,7 +118,7 @@ def test_esc_unfocuses_text_entry():
     pygame.display.set_mode((100, 100))
     game = DummyGame()
     
-    gui_handler = GUI_Handler(Position(800, 600), game)
+    gui_handler = GUI_Handler(DisplayConfig(800, 600), game)
     entry = pygame_gui.elements.UITextEntryLine(
         relative_rect=pygame.Rect(10, 10, 100, 30),
         manager=gui_handler.manager

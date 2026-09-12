@@ -2,6 +2,7 @@
 cannot be selected by clicking inside their radius in sector view, and can only
 be selected via the sidebar of the hex they are in.
 """
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from constants import (
     PlanetType, StarType, NebulaType, StormType
@@ -43,6 +44,7 @@ def test_is_solid_attribute_on_celestial_bodies():
 
 def _setup_mock_game_in_sector():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.view_mode = 'sector'
     game.current_system_name = 'Sol'
     game.current_sector_coord = (0, 0)
@@ -67,6 +69,7 @@ def _setup_mock_game_in_sector():
     game.current_player = p1
 
     gui = MagicMock()
+    gui.display_config = DisplayConfig()
     gui.is_mouse_over_context_menu = MagicMock(return_value=False)
     gui.is_mouse_over_gui_panels = MagicMock(return_value=False)
     game.gui = gui

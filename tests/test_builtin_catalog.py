@@ -1,4 +1,5 @@
 """Catalog designs must be affordable quotes for the actual assembled equipment."""
+from display_config import DisplayConfig
 import json
 import math
 from pathlib import Path
@@ -331,8 +332,9 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
     builder.owner.credits = 10000
     events = []
     game.event_bus = SimpleNamespace(publish=events.append)
-    manager = build_ui_manager(Vector(1280, 720))
+    manager = build_ui_manager(DisplayConfig(1280, 720))
     gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720), manager=manager)
+    gui.display_config = DisplayConfig(int(Vector(1280, 720).x), int(Vector(1280, 720).y))
     window = UnitCatalogWindow(gui, [builder], Position(200, 200))
     try:
         assert [e['template_name'] for e in catalog_entries(UNIT_TEMPLATES, search='counter-intelligence')] == ['INTELLIGENCE_SHIP']
@@ -361,8 +363,9 @@ def test_catalog_consumes_game_hotkeys_and_camera_panning(pygame_context, monkey
     from gui.theme_loader import build_ui_manager
     game = campaign()
     builder = create(game, 'CONSTRUCTOR_MK1')
-    manager = build_ui_manager(Vector(1280, 720))
+    manager = build_ui_manager(DisplayConfig(1280, 720))
     gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720), manager=manager)
+    gui.display_config = DisplayConfig(int(Vector(1280, 720).x), int(Vector(1280, 720).y))
     window = UnitCatalogWindow(gui, [builder], Position(200, 200))
     gui.unit_catalog_window = window
     gui.process_event = lambda event: {'action': 'ui_handled'} if window.process_event(event) else None
@@ -398,9 +401,10 @@ def construction_catalog(pygame_context):
     OrderSystem(game, game.event_bus)
     builders = [create(game, 'CONSTRUCTOR_MK1') for _ in range(2)]
     game.players[0].credits = 100000
-    manager = build_ui_manager(Vector(1280, 720))
+    manager = build_ui_manager(DisplayConfig(1280, 720))
     game.gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720),
                                manager=manager)
+    game.gui.display_config = DisplayConfig(1280, 720)
     window = UnitCatalogWindow(game.gui, builders, Position(200, 200))
     events = []
     game.event_bus.subscribe(ConstructEvent, events.append)

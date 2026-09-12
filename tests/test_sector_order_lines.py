@@ -15,6 +15,7 @@ from rendering.galaxy_renderer import GalaxyViewRenderer
 def test_draw_sector_view_draws_lines_for_all_turn_player_units():
     # 1. Setup mock game, players, and renderer
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.HUMAN)
     game.players = [player1, player2]
@@ -61,15 +62,15 @@ def test_draw_sector_view_draws_lines_for_all_turn_player_units():
     hex_obj.units = [unit1, unit2, unit3]
 
     # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
-    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
-         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
-         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
-         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
-         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
-         patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
+    with patch("pygame.draw.line") as mock_draw_line, \
+         patch("pygame.draw.circle") as mock_draw_circle, \
+         patch("pygame.draw.lines") as mock_draw_lines, \
+         patch("pygame.draw.rect") as mock_draw_rect, \
+         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
+         patch("pygame.font.Font") as mock_font, \
+         patch("pygame.mouse.get_pos", return_value=(0, 0)):
 
         renderer.draw_sector_view()
 
@@ -86,6 +87,7 @@ def test_draw_sector_view_draws_lines_for_all_turn_player_units():
 
 def test_system_view_order_lines_only_for_active_player():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.HUMAN)
     game.players = [player1, player2]
@@ -147,6 +149,7 @@ def test_system_view_order_lines_only_for_active_player():
 
 def test_galaxy_view_order_lines_only_for_active_player():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.HUMAN)
     game.players = [player1, player2]
@@ -211,6 +214,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_rad
     from unit_components.movement import Engines
     # Setup mock game, player, and renderer
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.display_config = DisplayConfig(1920, 1080, False)
     game.sector_zoom = zoom
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
@@ -241,14 +245,14 @@ def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_rad
     hex_obj.units = [unit]
 
     # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
-    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
-         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
-         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
-         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
-         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
+    with patch("pygame.draw.line") as mock_draw_line, \
+         patch("pygame.draw.circle") as mock_draw_circle, \
+         patch("pygame.draw.lines") as mock_draw_lines, \
+         patch("pygame.draw.rect") as mock_draw_rect, \
+         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
+         patch("pygame.font.Font") as mock_font, \
          patch.object(renderer.entity_renderer, "draw_unit", return_value=logical_radius):
 
         renderer.draw_sector_view()
@@ -294,6 +298,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_rad
 def test_draw_sector_view_draws_turn_notches():
     # Setup mock game, player, and renderer
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0
@@ -327,14 +332,14 @@ def test_draw_sector_view_draws_turn_notches():
     hex_obj.units = [unit]
 
     # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
-    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
-         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
-         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
-         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
-         patch("rendering.sector_renderer.pygame.font.Font") as mock_font:
+    with patch("pygame.draw.line") as mock_draw_line, \
+         patch("pygame.draw.circle") as mock_draw_circle, \
+         patch("pygame.draw.lines") as mock_draw_lines, \
+         patch("pygame.draw.rect") as mock_draw_rect, \
+         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
+         patch("pygame.font.Font") as mock_font:
 
         renderer.draw_sector_view()
 
@@ -363,6 +368,7 @@ def test_system_view_wormhole_lines():
 
     # Setup mock game, player, and renderer
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.current_system_name = "Sol"
     game.system_view_mouse_hover_hex = None
     game.selected_objects = []
@@ -436,6 +442,9 @@ def test_system_view_wormhole_lines():
 def test_draw_sector_view_patrol_order_path():
     # 1. Setup mock game, player, and renderer
     game = MagicMock()
+    game.sector_zoom = 1.0
+    game.sector_pan_offset = Position(0, 0)
+    game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0  # Player 1's turn
@@ -496,16 +505,16 @@ def test_draw_sector_view_patrol_order_path():
 
     # Patrol lines now go through draw_dotted_line (not pygame.draw.line directly).
     # We patch draw_dotted_line in the sector_renderer module and inspect its start/end args.
-    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
-         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
-         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
-         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
-         patch("rendering.sector_renderer.draw_dotted_line") as mock_draw_dotted_line, \
-         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
-         patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
+    with patch("pygame.draw.line") as mock_draw_line, \
+         patch("pygame.draw.circle") as mock_draw_circle, \
+         patch("pygame.draw.lines") as mock_draw_lines, \
+         patch("pygame.draw.rect") as mock_draw_rect, \
+         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
+         patch("rendering.sector_renderer.sector_overlay_renderer.draw_dotted_line") as mock_draw_dotted_line, \
+         patch("pygame.font.Font") as mock_font, \
+         patch("pygame.mouse.get_pos", return_value=(0, 0)):
 
         def dotted_coords():
             """Return (start, end) tuples from all draw_dotted_line calls."""
@@ -551,6 +560,7 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
     """Verify that a movement order with sub-orders (e.g. avoidance waypoints)
     draws a single sequential path unit -> W1 -> W2 -> D without extra lines to D."""
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0
@@ -615,22 +625,22 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
     hex_obj.units = [unit]
 
     # 1. Verify waypoint collection order
-    waypoints = renderer._collect_all_waypoints(unit)
+    waypoints = renderer.overlay_renderer.collect_all_waypoints(unit)
     assert len(waypoints) == 3
     assert waypoints[0]['position'] == Position(100, 100)
     assert waypoints[1]['position'] == Position(200, 200)
     assert waypoints[2]['position'] == Position(500, 500)
 
     # 2. Verify drawn lines
-    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
-         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
-         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
-         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
-         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
-         patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
+    with patch("pygame.draw.line") as mock_draw_line, \
+         patch("pygame.draw.circle") as mock_draw_circle, \
+         patch("pygame.draw.lines") as mock_draw_lines, \
+         patch("pygame.draw.rect") as mock_draw_rect, \
+         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
+         patch("pygame.font.Font") as mock_font, \
+         patch("pygame.mouse.get_pos", return_value=(0, 0)):
 
         renderer.draw_sector_view()
 
@@ -663,6 +673,7 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
 def test_sector_view_attack_with_move_sub_order_sequential():
     """Verify that an attack order with a movement sub-order draws unit -> move_pos -> target."""
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.OPENAI)
     game.players = [player1, player2]
@@ -717,7 +728,7 @@ def test_sector_view_attack_with_move_sub_order_sequential():
     commander.current_order = attack_order
     commander.orders_queue = []
 
-    waypoints = renderer._collect_all_waypoints(unit)
+    waypoints = renderer.overlay_renderer.collect_all_waypoints(unit)
     assert len(waypoints) == 2
     assert waypoints[0]['position'] == Position(300, 300)
     assert waypoints[0]['order_type'] == OrderType.REACH_WAYPOINT
@@ -728,6 +739,7 @@ def test_sector_view_attack_with_move_sub_order_sequential():
 def test_sector_view_queued_orders_without_sub_orders_sequential():
     """Verify that current order and queued order without sub-orders chain sequentially."""
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     game.players = [player1]
     game.current_player_index = 0
@@ -781,20 +793,20 @@ def test_sector_view_queued_orders_without_sub_orders_sequential():
     hex_obj.celestial_bodies = []
     hex_obj.units = [unit]
 
-    waypoints = renderer._collect_all_waypoints(unit)
+    waypoints = renderer.overlay_renderer.collect_all_waypoints(unit)
     assert len(waypoints) == 2
     assert waypoints[0]['position'] == Position(100, 100)
     assert waypoints[1]['position'] == Position(200, 200)
 
-    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.sector_renderer.pygame.draw.circle") as mock_draw_circle, \
-         patch("rendering.sector_renderer.pygame.draw.lines") as mock_draw_lines, \
-         patch("rendering.sector_renderer.pygame.draw.rect") as mock_draw_rect, \
-         patch("rendering.sector_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.sector_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.draw_shape") as mock_draw_shape, \
-         patch("rendering.sector_renderer.pygame.font.Font") as mock_font, \
-         patch("rendering.sector_renderer.pygame.mouse.get_pos", return_value=(0, 0)):
+    with patch("pygame.draw.line") as mock_draw_line, \
+         patch("pygame.draw.circle") as mock_draw_circle, \
+         patch("pygame.draw.lines") as mock_draw_lines, \
+         patch("pygame.draw.rect") as mock_draw_rect, \
+         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
+         patch("pygame.font.Font") as mock_font, \
+         patch("pygame.mouse.get_pos", return_value=(0, 0)):
 
         renderer.draw_sector_view()
 

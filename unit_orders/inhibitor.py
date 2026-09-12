@@ -20,7 +20,7 @@ class ToggleInhibitorOrder(Order):
         turn_on = self.parameters.get("turn_on", False)
         
         if not self.unit.inhibitor_component:
-            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.order_id}): FAILED (no inhibitor component).")
+            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.local_order_id}): FAILED (no inhibitor component).")
             self.status = OrderStatus.FAILED
             return
 
@@ -30,7 +30,7 @@ class ToggleInhibitorOrder(Order):
                 "[%s (id:%s)] TOGGLE_INHIBITOR (%s): FAILED (%s).",
                 self.unit.name,
                 self.unit.id,
-                self.order_id,
+                self.local_order_id,
                 result.message,
             )
             self.status = OrderStatus.FAILED

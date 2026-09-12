@@ -1,4 +1,4 @@
-"""Canonical persistence registry. Refit aliases are accepted only by migrations."""
+"""Canonical component persistence registry."""
 
 
 def component_registry():

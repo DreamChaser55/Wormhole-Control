@@ -55,7 +55,7 @@ class Commander(UnitComponent):
 
     @property
     def stance(self) -> UnitStance:
-        """Compatibility property; assignments use the stance lifecycle safely."""
+        """Assignments use the stance lifecycle safely."""
         return self._stance
 
     @stance.setter
@@ -86,13 +86,6 @@ class Commander(UnitComponent):
         if galaxy_ref:
             self.standing_order.update(galaxy_ref)
 
-    def is_target_valid_for_stance(self, target: 'Unit', galaxy_ref: 'Galaxy', visibility_snapshot: Optional[typing.Any] = None) -> bool:
-        """Compatibility wrapper around the first-class standing order."""
-        return self.standing_order.is_target_valid(target, galaxy_ref, visibility_snapshot)
-
-    def find_stance_target(self, galaxy_ref: 'Galaxy', visibility_snapshot: Optional[typing.Any] = None) -> Optional['Unit']:
-        """Compatibility wrapper around the first-class standing order."""
-        return self.standing_order.find_target(galaxy_ref, visibility_snapshot)
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_basic_sidebar_data(game_state)
@@ -274,22 +267,13 @@ class Commander(UnitComponent):
     def set_stance(self, stance: UnitStance) -> None:
         """Replace the standing policy without interrupting explicit work."""
         if not isinstance(stance, UnitStance):
-            try:
-                stance = UnitStance(stance)
-            except (TypeError, ValueError):
-                raw_name = str(stance)
-                if raw_name.startswith("UnitStance."):
-                    raw_name = raw_name.rsplit(".", 1)[-1]
-                try:
-                    stance = UnitStance[raw_name.upper()]
-                except (KeyError, TypeError) as exc:
-                    raise ValueError(f"Unknown unit stance: {stance!r}") from exc
+            raise TypeError("stance must be a UnitStance")
         old_stance = getattr(self, "_stance", UnitStance.DO_NOTHING)
         old_order = getattr(self, "standing_order", None)
         # A normal assignment of the same policy is idempotent, but do not
         # leave a standing order permanently cancelled if an integration
         # cancelled/replaced the root directly.  Recreate the root in that
-        # case so the compatibility ``stance`` property remains safe.
+        # case so the ``stance`` property remains safe.
         if (
             old_order
             and old_stance == stance
@@ -321,9 +305,6 @@ class Commander(UnitComponent):
         """Return the explicit foreground root, otherwise the standing root."""
         return self.current_order or self.standing_order
 
-    def get_observable_active_order(self) -> Optional[Order]:
-        """Return the explicit root or transient stance Attack for legacy callers."""
-        return self.current_order or self.standing_order.active_attack
 
     def suspend_stance_activity(self, reason: str = "suspended") -> None:
         """Cancel only the transient engagement while retaining its policy."""
@@ -372,17 +353,12 @@ class Commander(UnitComponent):
             self.unit.hyperdrive_component.clear_jump_target()
         self._clear_weapon_target()
 
-    def clear_orders(self) -> None:
-        """Backward-compatible stop operation; new code should use an explicit API."""
-        self.stop_and_idle()
 
     def restore_explicit_orders(
         self,
         current_order: Optional[Order],
         queued_orders: Iterable[Order],
         galaxy_ref: Optional['Galaxy'] = None,
-        *,
-        preserve_queue: bool = False,
     ) -> None:
         """Restore serialized foreground roots without replaying side effects."""
         self.suspend_stance_activity("loaded explicit order")
@@ -391,23 +367,14 @@ class Commander(UnitComponent):
         for root in [current_order, *self.orders_queue]:
             if root is not None:
                 root.register_explicit_root(restored=True)
-        if not preserve_queue and self.current_order is None and self.orders_queue:
-            self.current_order = self.orders_queue.popleft()
         constructor = self.unit.constructor_component
         self._restored_pending = self.current_order if self.current_order and self.current_order.status == OrderStatus.PENDING else None
         if constructor and self.current_order:
             for node in self._active_front_chain():
                 if node.order_type == OrderType.CONSTRUCT and constructor.current_construction_target:
                     constructor.construction_order_id = node.public_id
-                    if node._legacy_charge:
-                        build = constructor.can_build(constructor.current_construction_target[0])
-                        node._charged_credits = build.cost_credits if build else 0
-                        node._charged_player_id = self.unit.owner.id
                 elif node.order_type == OrderType.REFIT_UNIT and constructor.current_refit_target:
                     constructor.refit_order_id = node.public_id
-                    if node._legacy_charge:
-                        node._charged_credits = constructor.current_refit_target.get("cost_credits", 0)
-                        node._charged_player_id = self.unit.owner.id
         if galaxy_ref is None:
             galaxy_ref = getattr(self.unit, "in_galaxy", None)
         if (self.current_order and galaxy_ref and self.current_order.status == OrderStatus.IN_PROGRESS
@@ -469,18 +436,17 @@ class Commander(UnitComponent):
         if weapons:
             weapons.clear_target()
 
-    def cancel_order(self, order_id: int | str, *, promote_next: bool = True) -> bool:
-        """Cancel an explicit root by its process-local ID (legacy keyword order_id).
+    def cancel_order(self, local_order_id: int, *, promote_next: bool = True) -> bool:
+        """Cancel an explicit root by its process-local ID.
 
         Args:
-            order_id: Process-local Order.local_order_id, never a public UUID.
+            local_order_id: Process-local Order.local_order_id, never a public UUID.
             promote_next: False settles cancellation without starting queued work.
 
         Returns:
             True if the order was found and cancelled, False otherwise
         """
-        local_order_id = order_id
-        if self.current_order and self.current_order.order_id == local_order_id:
+        if self.current_order and self.current_order.local_order_id == local_order_id:
             self.current_order.cancel()
             self._release_current_order()
             if promote_next:
@@ -488,7 +454,7 @@ class Commander(UnitComponent):
             return True
 
         for order_in_queue in list(self.orders_queue):
-            if order_in_queue.order_id == local_order_id:
+            if order_in_queue.local_order_id == local_order_id:
                 order_in_queue.cancel()
                 self.orders_queue.remove(order_in_queue)
                 if promote_next and self.current_order is None:
@@ -533,7 +499,7 @@ class Commander(UnitComponent):
                 or not weapons
                 or not weapons.eligible_turrets_for(target)
             ):
-                self.cancel_order(self.current_order.order_id)
+                self.cancel_order(self.current_order.local_order_id)
 
         # A Do Nothing standing policy must not leave a stale weapon lock from
         # an order that was removed by an external integration.
@@ -541,7 +507,7 @@ class Commander(UnitComponent):
             self._clear_weapon_target()
 
         active_ids = {
-            order.order_id
+            order.local_order_id
             for order in self._active_front_chain()
             if order.status == OrderStatus.IN_PROGRESS
             and order.order_type == OrderType.REACH_WAYPOINT

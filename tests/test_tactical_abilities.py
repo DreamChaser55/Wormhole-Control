@@ -1,4 +1,5 @@
 """Gameplay, persistence and public gateway acceptance for tactical abilities."""
+from display_config import DisplayConfig
 import json
 import pytest
 
@@ -141,7 +142,7 @@ def test_catalyst_designer_prerequisite_controls(pygame_context, tmp_path, flag,
     from gui.unit_editor_gui.window import UnitEditorWindow
     from gui.unit_editor_gui.component_state import toggle_ability, update_ability_toggle_labels
     manager = pygame_gui.UIManager((1280, 720))
-    editor = UnitEditorWindow(manager, pygame.Vector2(1280, 720),
+    editor = UnitEditorWindow(manager, DisplayConfig(1280, 720),
         CustomTemplateManager(data_file=str(tmp_path / 'designs.json')))
     try:
         editor.show()
@@ -186,7 +187,7 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert not activate(caster, kind, game.galaxy, position=Position(200, 0))
     assert caster.antimatter_component.current_amount == fuel
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.3'
+    assert state['version'] == '4.4'
     assert all('lifetime' not in d for s in state['galaxy']['systems'] for h in s['hexes'] for d in h['deployables'])
     restored = campaign()
     assert deserialize_game_state(restored, state)
@@ -360,7 +361,7 @@ def test_recovery_then_cast_projects_fuel_and_frees_source_slot():
 
 
 def test_pending_cast_reserves_fuel_and_replacement_releases_it():
-    from unit_orders import MoveOrder
+    from unit_orders.movement import MoveOrder
     game = campaign()
     caster = equipped(game)
     caster.antimatter_component.current_amount = 60
@@ -376,7 +377,7 @@ def test_pending_cast_reserves_fuel_and_replacement_releases_it():
 
 
 @pytest.mark.parametrize('reverse', [False, True])
-def test_legacy_and_new_abilities_share_batch_fuel_budget(reverse):
+def test_abilities_share_batch_fuel_budget(reverse):
     from unit_components.abilities.registry import ABILITY_CLASSES
     game = campaign()
     caster = equipped(game)
@@ -505,7 +506,7 @@ def test_owner_start_deadlines_do_not_depend_on_number_of_players(players_count)
     assert not inst.is_active and inst.cooldown_remaining == 4
 
 
-def test_historical_source_allocator_and_legacy_40_migration():
+def test_historical_source_allocator():
     from domain.identity import GameObject
     from campaign_persistence import prepare_campaign
     game = campaign()
@@ -519,14 +520,6 @@ def test_historical_source_allocator_and_legacy_40_migration():
     state['galaxy']['systems'][0]['hexes'][0]['deployables'][0]['deploying_ship_id'] = 999999
     assert deserialize_game_state(game, state)
     assert GameObject.object_counter >= 1000000
-    legacy = serialize_game_state(campaign())
-    legacy['version'] = '4.0'
-    for system in legacy['galaxy']['systems']:
-        for sector in system['hexes']:
-            sector.pop('deployables')
-            sector.pop('catalyst_patches')
-    prepared = prepare_campaign(legacy)
-    assert all(not s.deployables and not s.catalyst_patches for system in prepared.state.galaxy.systems.values() for s in system.hexes.values())
 
 
 def test_hidden_cache_and_missing_id_have_same_error_and_no_provenance_leak():
@@ -602,7 +595,7 @@ def test_custom_design_roundtrip_construction_and_use(tmp_path):
 
 
 def test_recovery_and_celestial_orders_roundtrip_without_replaying(tmp_path):
-    from unit_orders import MoveOrder
+    from unit_orders.movement import MoveOrder
     game = campaign()
     caster = equipped(game)
     assert activate(caster, 'fuel_cache', game.galaxy, position=Position(200, 0))
@@ -732,7 +725,7 @@ def test_designer_exposes_all_six_and_sidebar_persistent_caps(pygame_context, tm
     from custom_unit_templates import CustomTemplateManager
     from tactical_ui import ability_panel
     manager = pygame_gui.UIManager((1280, 720))
-    editor = UnitEditorWindow(manager, pygame.Vector2(1280, 720), CustomTemplateManager(data_file=str(tmp_path / 'designs.json')))
+    editor = UnitEditorWindow(manager, DisplayConfig(1280, 720), CustomTemplateManager(data_file=str(tmp_path / 'designs.json')))
     editor.show()
     editor._comp.has_ability_component = True
     editor._select_component('has_ability_component')

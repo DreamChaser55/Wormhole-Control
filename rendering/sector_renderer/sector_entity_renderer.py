@@ -1,14 +1,11 @@
+from rendering.drawing_utils import draw_shape
+import pygame
 from display_config import display_config_for
 from rendering.drawing_utils import station_icon_rect
-import sys
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, WHITE, RED, HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE, ICON_DOT_RADIUS, ICON_DOT_SPACING
 from domain.units import Unit
 from domain.minefields import Minefield
 from unit_components.enums import MinefieldType
-
-
-def _sr():
-    return sys.modules['rendering.sector_renderer']
 
 
 class SectorEntityRenderer:
@@ -37,19 +34,19 @@ class SectorEntityRenderer:
             return
         screen_size = self.screen.get_size()
         if self.parent._inhibition_surface is None or self.parent._inhibition_surface.get_size() != screen_size:
-            self.parent._inhibition_surface = _sr().pygame.Surface(screen_size, _sr().pygame.SRCALPHA)
+            self.parent._inhibition_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
         self.parent._inhibition_surface.fill((0, 0, 0, 0))
         drew_inhibition_zone = False
         for zone in hex_obj.get_all_inhibition_zones():
-            zone_pixel_center = self.parent._coords_to_pixels(zone.center)
+            zone_pixel_center = self.parent.grid_renderer.coords_to_pixels(zone.center)
             zone_pixel_radius = int(zone.radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
 
             if zone_pixel_radius <= 0:
                 continue
-            if self.parent._is_circle_off_screen((zone_pixel_center.x, zone_pixel_center.y), zone_pixel_radius):
+            if self.parent.grid_renderer.is_circle_off_screen((zone_pixel_center.x, zone_pixel_center.y), zone_pixel_radius):
                 continue
 
-            _sr().pygame.draw.circle(
+            pygame.draw.circle(
                 self.parent._inhibition_surface, (255, 0, 0, 25),
                 (int(zone_pixel_center.x), int(zone_pixel_center.y)), zone_pixel_radius
             )
@@ -69,18 +66,18 @@ class SectorEntityRenderer:
                 continue
             clk = getattr(unit, 'cloaking_component', None)
             if clk and clk.is_active and not clk.is_destroyed and getattr(clk, 'device_type', None) == CloakingType.ADVANCED:
-                center_px = self.parent._coords_to_pixels(unit.position)
+                center_px = self.parent.grid_renderer.coords_to_pixels(unit.position)
                 radius_px = int(clk.area_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                if radius_px > 0 and not self.parent._is_circle_off_screen((center_px.x, center_px.y), radius_px):
+                if radius_px > 0 and not self.parent.grid_renderer.is_circle_off_screen((center_px.x, center_px.y), radius_px):
                     screen_size = self.screen.get_size()
                     if self.parent._inhibition_surface is None or self.parent._inhibition_surface.get_size() != screen_size:
-                        self.parent._inhibition_surface = _sr().pygame.Surface(screen_size, _sr().pygame.SRCALPHA)
+                        self.parent._inhibition_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
                     self.parent._inhibition_surface.fill((0, 0, 0, 0))
-                    _sr().pygame.draw.circle(
+                    pygame.draw.circle(
                         self.parent._inhibition_surface, (70, 160, 240, 25),
                         (int(center_px.x), int(center_px.y)), radius_px
                     )
-                    _sr().pygame.draw.circle(
+                    pygame.draw.circle(
                         self.parent._inhibition_surface, (100, 190, 255, 70),
                         (int(center_px.x), int(center_px.y)), radius_px, 1
                     )
@@ -93,7 +90,7 @@ class SectorEntityRenderer:
         pixel_radius = max(5, int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL))
         is_anti_strikecraft = (getattr(minefield, 'minefield_type', None) == MinefieldType.ANTI_STRIKECRAFT)
         
-        _sr().pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
+        pygame.draw.circle(self.screen, obj_color, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
 
         n_dots = max(0, minefield.mines_remaining)
         if n_dots > 0:
@@ -111,9 +108,9 @@ class SectorEntityRenderer:
                         (dot_x, int(obj_pixel_pos.y) + d_sz),
                         (dot_x - d_sz, int(obj_pixel_pos.y))
                     ]
-                    _sr().pygame.draw.polygon(self.screen, obj_color, pts)
+                    pygame.draw.polygon(self.screen, obj_color, pts)
                 else:
-                    _sr().pygame.draw.circle(self.screen, obj_color, (dot_x, int(obj_pixel_pos.y)), icon_dot_radius_px)
+                    pygame.draw.circle(self.screen, obj_color, (dot_x, int(obj_pixel_pos.y)), icon_dot_radius_px)
         return obj_radius_logical
 
     def draw_unit(self, unit_obj: Unit, obj_pixel_pos, dynamic_radius):
@@ -132,7 +129,7 @@ class SectorEntityRenderer:
         current_icon_base_size_px = int(icon_radius_px)
         obj_radius_logical = current_icon_base_size_logical
 
-        _sr().draw_shape(self.screen, shape_type, obj_color, obj_pixel_pos, icon_radius_px)
+        draw_shape(self.screen, shape_type, obj_color, obj_pixel_pos, icon_radius_px)
         icon_left = obj_pixel_pos.x - current_icon_base_size_px
         icon_top = obj_pixel_pos.y - current_icon_base_size_px
         icon_bottom = obj_pixel_pos.y + current_icon_base_size_px
@@ -151,10 +148,10 @@ class SectorEntityRenderer:
             health_bar_x = icon_left
             health_bar_y = icon_bottom + 10
             
-            _sr().pygame.draw.rect(self.screen, (50, 50, 50), (health_bar_x, health_bar_y, health_bar_width, health_bar_height))
+            pygame.draw.rect(self.screen, (50, 50, 50), (health_bar_x, health_bar_y, health_bar_width, health_bar_height))
             
             health_color = (0, 255, 0) if health_percentage > 0.5 else (255, 255, 0) if health_percentage > 0.2 else (255, 0, 0)
-            _sr().pygame.draw.rect(self.screen, health_color, (health_bar_x, health_bar_y, health_bar_width * health_percentage, health_bar_height))
+            pygame.draw.rect(self.screen, health_color, (health_bar_x, health_bar_y, health_bar_width * health_percentage, health_bar_height))
 
         if dot_count > 0:
             icon_dot_radius_px = int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
@@ -179,7 +176,7 @@ class SectorEntityRenderer:
 
             for dot_i in range(dot_count):
                 dot_x = start_x + dot_i * icon_dot_spacing_px
-                _sr().pygame.draw.circle(self.screen, obj_color, (dot_x, dot_base_y), icon_dot_radius_px)
+                pygame.draw.circle(self.screen, obj_color, (dot_x, dot_base_y), icon_dot_radius_px)
 
         # Draw Unit Name
         bottom_y = icon_bottom
@@ -200,7 +197,7 @@ class SectorEntityRenderer:
                 
         name_font_size = max(1, int(10 * display_config_for(self.game).text_scale))
         if name_font_size not in self.parent._font_cache:
-            self.parent._font_cache[name_font_size] = _sr().pygame.font.Font(None, name_font_size)
+            self.parent._font_cache[name_font_size] = pygame.font.Font(None, name_font_size)
         name_font = self.parent._font_cache[name_font_size]
         name_surface = name_font.render(unit_obj.name, True, obj_color)
         name_rect = name_surface.get_rect()
@@ -217,7 +214,7 @@ class SectorEntityRenderer:
                 badge_color = (255, 140, 40) if (agent and agent.active_sabotage) else (50, 220, 255)
                 badge_font_size = max(1, int(9 * display_config_for(self.game).text_scale))
                 if badge_font_size not in self.parent._font_cache:
-                    self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
+                    self.parent._font_cache[badge_font_size] = pygame.font.Font(None, badge_font_size)
                 badge_font = self.parent._font_cache[badge_font_size]
                 badge_surf = badge_font.render(badge_text, True, badge_color)
                 badge_rect = badge_surf.get_rect()
@@ -231,7 +228,7 @@ class SectorEntityRenderer:
                     badge_color = (255, 100, 100)
                     badge_font_size = max(1, int(9 * display_config_for(self.game).text_scale))
                     if badge_font_size not in self.parent._font_cache:
-                        self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
+                        self.parent._font_cache[badge_font_size] = pygame.font.Font(None, badge_font_size)
                     badge_font = self.parent._font_cache[badge_font_size]
                     badge_surf = badge_font.render(badge_text, True, badge_color)
                     badge_rect = badge_surf.get_rect()

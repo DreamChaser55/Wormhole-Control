@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from domain.units import Unit
 from unit_components.antimatter import AntimatterStorage
@@ -8,7 +9,6 @@ from turn_processor import TurnProcessor
 from geometry import Position
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY,
-    DEFAULT_ANTIMATTER_REGEN,
     ENGINE_ANTIMATTER_COST_PER_TURN,
     HYPERDRIVE_SYSTEM_JUMP_COST,
     HYPERDRIVE_HEX_JUMP_COST,
@@ -20,17 +20,18 @@ from tests.support.units import ComponentPlayer, ComponentUnit
 def test_antimatter_storage_defaults():
     player = ComponentPlayer()
     game = MagicMock()
+    game.display_config = DisplayConfig()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Test Ship", hull_size=HullSize.MEDIUM, game=game)
     
     am_comp = unit.antimatter_component
     assert am_comp is not None
     assert am_comp.max_capacity == DEFAULT_ANTIMATTER_CAPACITY
     assert am_comp.current_amount == DEFAULT_ANTIMATTER_CAPACITY
-    assert am_comp.regen_rate == DEFAULT_ANTIMATTER_REGEN
 
-def test_antimatter_consumption_and_regen():
+def test_antimatter_consumption_and_transfer():
     player = ComponentPlayer()
     game = MagicMock()
+    game.display_config = DisplayConfig()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Test Ship", hull_size=HullSize.MEDIUM, game=game)
     
     am_comp = unit.antimatter_component
@@ -43,17 +44,18 @@ def test_antimatter_consumption_and_regen():
     assert am_comp.consume(70.0) is False
     assert am_comp.current_amount == 60.0
     
-    # Regen
-    am_comp.regenerate()
-    assert am_comp.current_amount == 60.0 + DEFAULT_ANTIMATTER_REGEN
+    # Add transferred fuel
+    am_comp.add(10.0)
+    assert am_comp.current_amount == 70.0
     
-    # Regen up to max
+    # Add transferred fuel up to max
     am_comp.current_amount = 95.0
-    am_comp.regenerate()
+    am_comp.add(10.0)
     assert am_comp.current_amount == DEFAULT_ANTIMATTER_CAPACITY
 
 def test_sublight_movement_consumes_antimatter():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer()
     
     # We use a ComponentUnit but add the required components
@@ -88,6 +90,7 @@ def test_sublight_movement_consumes_antimatter():
 
 def test_sublight_movement_fails_without_antimatter():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer()
     
     unit = ComponentUnit()
@@ -120,6 +123,7 @@ def test_sublight_movement_fails_without_antimatter():
 
 def test_hex_jump_consumes_antimatter():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer()
     
     unit = ComponentUnit()
@@ -157,6 +161,7 @@ def test_hex_jump_consumes_antimatter():
 
 def test_hex_jump_fails_without_antimatter():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer()
     
     unit = ComponentUnit()
@@ -197,6 +202,7 @@ def test_hex_jump_fails_without_antimatter():
 def test_ability_antimatter_consumption():
     player = ComponentPlayer()
     game = MagicMock()
+    game.display_config = DisplayConfig()
     unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol", name="Test Ship", hull_size=HullSize.MEDIUM, game=game)
     
     # Setup ability component
@@ -227,6 +233,7 @@ def test_ability_antimatter_consumption():
 
 def test_system_jump_consumes_antimatter():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer()
     
     unit = ComponentUnit()
@@ -279,6 +286,7 @@ def test_system_jump_consumes_antimatter():
 
 def test_system_jump_fails_without_antimatter():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer()
     
     unit = ComponentUnit()

@@ -26,7 +26,7 @@ def test_agent_destinations_do_not_become_generic_public_targets():
 def test_unit_target_cannot_be_revealed_by_visible_body_id():
     unit = ship(campaign())
     order = RepairOrder(unit, {'target_unit_id': 9})
-    unit.commander_component.restore_explicit_orders(None, [order], preserve_queue=True)
+    unit.commander_component.restore_explicit_orders(None, [order])
     view = order_layers(unit, 'self', set(), {9})['queued_orders'][0]
     assert view['target_id'] is None
     assert view['target_visibility'] == 'unavailable'

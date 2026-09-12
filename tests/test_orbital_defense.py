@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import unittest
 from unittest.mock import MagicMock
@@ -36,6 +37,7 @@ class TestOrbitalDefenseComponent(unittest.TestCase):
 
         self.hex_coord = (0, 0)
         self.game_mock = MagicMock(galaxy=self.galaxy)
+        self.game_mock.display_config = DisplayConfig()
 
         self.unit = Unit(
             owner=self.player,

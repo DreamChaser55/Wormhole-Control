@@ -189,7 +189,7 @@ def test_active_ability_save_round_trip(kind):
               'emergency_recovery': bomber}.get(kind)
     assert issue(game, carrier, kind, target).accepted
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.3'
+    assert state['version'] == '4.4'
     assert deserialize_game_state(game, state)
     restored = game.galaxy.get_unit_by_id(carrier.id)
     assert restored.antimatter_component.current_amount == carrier.antimatter_component.current_amount
@@ -326,7 +326,7 @@ def test_queued_cast_selects_wings_at_execution():
     assert not wing_order(bomber)
     later = make_wing(game, carrier)
     move = carrier.commander_component.current_order
-    carrier.commander_component.cancel_order(move.order_id)
+    carrier.commander_component.cancel_order(move.local_order_id)
     assert wing_order(bomber) and wing_order(later)
 
 
@@ -452,19 +452,3 @@ def test_evasion_guardian_and_sabotage_combine_without_base_mutation():
     turret.fire()
     assert target.current_hit_points == before - 1
     assert (turret.damage, turret.range, turret.cooldown) == initial
-
-
-def test_legacy_wing_fields_initialize_in_existing_migration_chain():
-    game, carrier, bomber, _, _, _ = scenario()
-    state = serialize_game_state(game)
-    state['version'] = '4.2'
-    from save_migrations import raw_units
-    for unit in raw_units(state):
-        for comp in unit['components'].values():
-            if comp['type'] == 'StrikecraftWingComponent':
-                for field in ('recovery_ready_round', 'last_flak_round', 'last_flak_owner_id'):
-                    comp['runtime'].pop(field)
-    assert deserialize_game_state(game, state)
-    restored = game.galaxy.get_unit_by_id(bomber.id).strikecraft_wing_component
-    assert restored.recovery_ready_round == 0
-    assert restored.last_flak_owner_id is None

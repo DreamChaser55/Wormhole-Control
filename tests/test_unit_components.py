@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 
 import pytest
@@ -157,12 +158,12 @@ def test_commander():
     commander = Commander(unit)
     
     order1 = MagicMock(spec=Order)
-    order1.order_id = "1"
+    order1.local_order_id = "1"
     order1.is_completed.return_value = False
     order1.status = OrderStatus.PENDING
     
     order2 = MagicMock(spec=Order)
-    order2.order_id = "2"
+    order2.local_order_id = "2"
     
     commander.add_order(order1)
     commander.add_order(order2)
@@ -178,7 +179,7 @@ def test_commander():
     order2.cancel.assert_called_once()
     
     # Clear orders
-    commander.clear_orders()
+    commander.stop_and_idle()
     assert commander.get_active_orders_count() == 0
     order1.cancel.assert_called_once()
 
@@ -707,7 +708,7 @@ def test_ship_size_hyperdrive_restrictions_in_constructor():
     galaxy.systems = {"Sol": mock_system}
     
     # Let's mock the UNIT_TEMPLATES dict in unit_components module to have custom templates
-    import unit_components
+    import unit_components.constructor
     from constants import HullSize
     
     # Backup original
@@ -927,6 +928,7 @@ def test_weapons_sidebar_data():
 
     # Call get_sidebar_data
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.players = [unit.owner]
     mock_game.current_player_index = 0
     sidebar_data = weapons.get_sidebar_data(mock_game)
@@ -979,7 +981,7 @@ def test_unit_template_name_assignment():
     from unit_components.enums import WingType
     from constants import HullSize
     from geometry import Position
-    import unit_components
+    import unit_components.constructor
 
     # 1. Test create_unit_from_template assigns template_name
     owner_unit = ComponentUnit()
@@ -1041,6 +1043,7 @@ def test_unit_template_name_in_sidebar():
     
     # Setup mock game and unit
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = True
     mock_game.selected_objects = []
@@ -1099,6 +1102,7 @@ def test_commander_get_sidebar_data_stance_dropdown():
 
     # Mock game
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.players = [player_friendly, player_enemy]
     mock_game.current_player_index = 0  # player_friendly is current
 

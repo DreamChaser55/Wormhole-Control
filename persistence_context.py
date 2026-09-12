@@ -10,8 +10,8 @@ _allocations: ContextVar[AllocationCounters | None] = ContextVar("campaign_load_
 def allocate_id(owner: type[Any], attribute: str) -> int:
     """Consume one ID from the preparation scope or the process-local class counter.
 
-    The owner is the canonical class, including when reached through a compatibility
-    export. Isolated preparation never changes live counters; commit reconciles them.
+    The owner is the defining class. Isolated preparation never changes live counters;
+    commit reconciles them.
     IDs are opaque and this helper does not perform campaign-wide allocation.
     """
     local = _allocations.get()

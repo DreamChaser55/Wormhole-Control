@@ -179,7 +179,7 @@ def start_new_game(game, settings: typing.Optional['GameSettings'] = None) -> bo
 
 def spawn_units(
     game,
-    player_homeworlds: typing.Optional[typing.Any] = None,
+    player_homeworlds: dict[Player, tuple[str, HexCoord, Position]],
     spawn_profile: typing.Optional[SpawnProfile] = None,
     *,
     templates: typing.Optional[dict] = None,
@@ -188,9 +188,7 @@ def spawn_units(
 
     Args:
         game: Target game instance.
-        player_homeworlds: Mapping of Player -> homeworld information. Accepts
-            dict of Player -> HexCoord (legacy), Player -> (system_name, hex_coord, position),
-            or Player -> Planet.
+        player_homeworlds: Complete Player -> (system name, hex, position) mapping.
         spawn_profile: The spawn profile to use (NORMAL or TESTING). When *None*,
             inferred from game settings or defaults to NORMAL.
     """
@@ -207,47 +205,11 @@ def spawn_units(
     else:
         spawn_profile = normalize_spawn_profile(spawn_profile)
 
-    if player_homeworlds is None:
-        player_homeworlds = {}
-
-    default_system_name = 'Sol' if 'Sol' in game.galaxy.systems else next(iter(game.galaxy.systems.keys()))
-
     for player in game.players:
-        hw_info = player_homeworlds.get(player)
-        target_system_name = default_system_name
-        spawn_hex = None
-        planet_pos = Position(0.0, 0.0)
-
-        if isinstance(hw_info, tuple):
-            if len(hw_info) == 3:
-                target_system_name, spawn_hex, planet_pos = hw_info
-            elif len(hw_info) == 2:
-                if isinstance(hw_info[0], str):
-                    target_system_name, spawn_hex = hw_info
-                else:
-                    # Legacy (q, r) HexCoord tuple
-                    spawn_hex = hw_info
-            elif len(hw_info) == 1:
-                spawn_hex = hw_info[0]
-        elif isinstance(hw_info, Planet):
-            target_system_name = hw_info.in_system
-            spawn_hex = hw_info.in_hex
-            planet_pos = hw_info.position
-
-        target_system = game.galaxy.systems.get(target_system_name)
-        if not target_system:
-            target_system = next(iter(game.galaxy.systems.values()))
-
-        # Determine spawn hex if not valid
-        if spawn_hex is None or spawn_hex not in target_system.hexes:
-            fallback_hexes = [
-                coord for coord, h in target_system.hexes.items()
-                if not any(isinstance(body, (Star, Wormhole)) for body in h.celestial_bodies)
-            ]
-            if fallback_hexes:
-                spawn_hex = random.choice(fallback_hexes)
-            else:
-                spawn_hex = next((c for c in target_system.hexes if c != (0, 0)), (0, 0))
+        target_system_name, spawn_hex, planet_pos = player_homeworlds[player]
+        target_system = game.galaxy.systems[target_system_name]
+        if spawn_hex not in target_system.hexes:
+            raise ValueError("Homeworld hex does not exist")
 
         logger.debug(f"Spawning units for {player.name} in hex {spawn_hex} of {target_system.name} (profile: {spawn_profile.value})")
 

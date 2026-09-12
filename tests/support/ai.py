@@ -28,10 +28,18 @@ class _Commander:
         self.stance = SimpleNamespace(value="do_nothing")
         self.clear_count = 0
 
-    def clear_orders(self):
+    def clear_explicit_orders(self):
         self.clear_count += 1
         self.current_order = None
         self.orders_queue.clear()
+
+    def stop_and_idle(self):
+        self.clear_explicit_orders()
+        from unit_components.enums import UnitStance
+        self.set_stance(UnitStance.DO_NOTHING)
+
+    def set_stance(self, stance):
+        self.stance = stance
 
     def add_order(self, order):
         self.orders_queue.append(order)

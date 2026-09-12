@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import pytest
 from unittest.mock import MagicMock
@@ -34,6 +35,7 @@ def ai_dock_setup():
     galaxy.systems = {"Sol": system}
 
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.galaxy = galaxy
     game.players = [p1]
     game.current_player_index = 0

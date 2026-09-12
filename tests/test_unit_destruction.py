@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 from domain.players import Player
 from domain.units import Unit
@@ -10,6 +11,7 @@ from visibility import VisibilityService
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.players = [
             Player("Player 1", (0, 0, 255), controller=PlayerController.HUMAN),

@@ -1,15 +1,14 @@
+from display_config import DisplayConfig
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 import pygame
 import game_camera
-from constants import (
-    INFO_BOX_WIDTH,
-    SCREEN_RES,
-    SYSTEM_CENTER_IN_PX,
-    SYSTEM_ZOOM_MAX,
-    SYSTEM_ZOOM_MIN,
-    TOP_BAR_HEIGHT,
-)
+from display_config import DEFAULT_DISPLAY_CONFIG
+from constants import SYSTEM_ZOOM_MAX, SYSTEM_ZOOM_MIN
+INFO_BOX_WIDTH = DEFAULT_DISPLAY_CONFIG.info_box_width
+SCREEN_RES = DEFAULT_DISPLAY_CONFIG.resolution
+SYSTEM_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
+TOP_BAR_HEIGHT = DEFAULT_DISPLAY_CONFIG.top_bar_height
 from geometry import Position
 from hexgrid_utils import get_hex_vertices, hex_to_pixel, pixel_to_hex
 from input_processor.hover_tracker import update_hover_states
@@ -38,10 +37,12 @@ def _camera_game(*, radius=10):
     )
     system = SimpleNamespace(name="Sol", radius=radius, hexes=_hex_coords(radius))
     gui = MagicMock()
+    gui.display_config = DisplayConfig()
     gui.galaxy_generation_rect = viewport
     gui.is_mouse_over_gui_panels.return_value = False
     gui.is_mouse_over_context_menu.return_value = False
     return SimpleNamespace(
+        display_config=DisplayConfig(),
         view_mode='system',
         game_started=True,
         current_system_name="Sol",

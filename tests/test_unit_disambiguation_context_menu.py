@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import pytest
 from unittest.mock import MagicMock, patch
@@ -52,6 +53,7 @@ def setup_pygame():
 
 def _create_mock_game():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = None
     player1 = MockPlayer("Player 1", player_id=1, team_id=1)
     player2 = MockPlayer("Player 2", player_id=2, team_id=2)
@@ -180,6 +182,7 @@ def test_mouse_handler_right_click_triggers_disambiguation():
 def test_disambiguation_submenu_navigation_selection_and_back():
     manager = pygame_gui.UIManager((1280, 720))
     gui = MagicMock()
+    gui.display_config = DisplayConfig()
     gui.screen_res = Vector(1280, 720)
     gui.manager = manager
     gui.context_menu_panel = None

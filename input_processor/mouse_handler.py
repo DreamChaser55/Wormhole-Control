@@ -1,10 +1,10 @@
+from sector_utils import is_pixel_in_sector, pixels_to_sector_coords, sector_coords_to_pixels
 """Mouse event processing, camera dragging, box selection, and click dispatch."""
 from display_config import display_config_for
 import typing
 import logging
 import pygame
 from geometry import Position, distance_sq
-import sys
 from domain.units import Unit
 from events import UseAbilityEvent
 from input_processor.context_menu_builder import (
@@ -17,34 +17,6 @@ from input_processor.hover_tracker import get_units_under_mouse
 logger = logging.getLogger(__name__)
 
 CAMERA_DRAG_THRESHOLD_PX = 5
-
-
-def is_pixel_in_sector(*args, **kwargs):
-    mod = sys.modules.get('input_processor')
-    fn = getattr(mod, 'is_pixel_in_sector', None) if mod else None
-    if fn is not None and fn is not is_pixel_in_sector:
-        return fn(*args, **kwargs)
-    import sector_utils
-    return sector_utils.is_pixel_in_sector(*args, **kwargs)
-
-
-def pixels_to_sector_coords(*args, **kwargs):
-    mod = sys.modules.get('input_processor')
-    fn = getattr(mod, 'pixels_to_sector_coords', None) if mod else None
-    if fn is not None and fn is not pixels_to_sector_coords:
-        return fn(*args, **kwargs)
-    import sector_utils
-    return sector_utils.pixels_to_sector_coords(*args, **kwargs)
-
-
-def sector_coords_to_pixels(*args, **kwargs):
-    mod = sys.modules.get('input_processor')
-    fn = getattr(mod, 'sector_coords_to_pixels', None) if mod else None
-    if fn is not None and fn is not sector_coords_to_pixels:
-        return fn(*args, **kwargs)
-    import sector_utils
-    return sector_utils.sector_coords_to_pixels(*args, **kwargs)
-
 
 
 def handle_mouse_button_down(game, gui, event: pygame.event.Event, mouse_pos: Position, gui_action: typing.Optional[dict], click_handler_fn: typing.Callable[[int, Position], None]) -> None:
@@ -336,11 +308,7 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
 
     elif game.view_mode == 'sector':
         zoom = game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
         pan_offset = game.sector_pan_offset
-        if not isinstance(pan_offset, Position):
-            pan_offset = Position(0, 0)
 
         if is_pixel_in_sector(position, zoom, pan_offset, display_config=display_config_for(game)):
             clicked_sector_coord = pixels_to_sector_coords(position, zoom, pan_offset, display_config=display_config_for(game))

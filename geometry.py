@@ -152,8 +152,6 @@ def position_at_distance_from_target(current_pos: Position, target_pos: Position
         destination = target_pos + (direction_from_target * desired_distance_from_target)
         return destination
 
-# Backwards compatible alias for position_at_distance_from_target
-move_towards_position = position_at_distance_from_target
 
 # --- Collision Avoidance Geometry ---
 

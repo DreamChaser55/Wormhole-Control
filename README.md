@@ -98,7 +98,7 @@ The game is officially unreleased and in active Alpha version development, thus 
 - [Development guide](docs/DEVELOPMENT.md): Architecture, validation APIs, testing, and documentation maintenance.
 - [Agentic AI Architecture](docs/AGENTIC_AI.md): Built-in AI configuration, information boundaries, and evaluation.
 - [Codex Control guide](docs/CODEX_CONTROL.md): Local control setup, commands, and recovery.
-- [Campaign persistence](docs/SAVE_FORMAT.md): Save schemas, compatibility, and migrations.
+- [Campaign persistence](docs/SAVE_FORMAT.md): Current save schema and transactional loading.
 
 ## License
 

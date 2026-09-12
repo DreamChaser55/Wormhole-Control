@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders.base import OrderStatus, OrderType
@@ -138,6 +139,7 @@ def test_order_system_handle_unload_resources():
     
     # Mock game and event bus
     game = MagicMock()
+    game.display_config = DisplayConfig()
     event_bus = MagicMock()
     galaxy = MagicMock()
     galaxy.get_unit_by_id.return_value = target_refinery

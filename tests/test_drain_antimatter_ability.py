@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
 from domain.units import Unit
@@ -13,6 +14,7 @@ from tests.support.units import ComponentPlayer
 
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.galaxy = MagicMock()
         self.selected_objects = []

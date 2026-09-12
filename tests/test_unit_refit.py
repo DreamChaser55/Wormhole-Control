@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import pytest
 from geometry import Position
@@ -21,6 +22,7 @@ from save_manager import serialize_unit, deserialize_unit
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self, galaxy, players):
         self.galaxy = galaxy
         self.players = players

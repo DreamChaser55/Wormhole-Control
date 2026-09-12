@@ -1,6 +1,3 @@
-import pygame
-from sector_utils import sector_coords_to_pixels
-from rendering.drawing_utils import draw_shape, draw_dotted_line
 
 from rendering.sector_renderer.sector_renderer import (
     SectorViewRenderer,

@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import pytest
 from domain.players import Player
@@ -23,7 +24,10 @@ from tests.support.campaigns import campaign, ship
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
+        self.system_zoom = 1.0
+        self.system_pan_offset = Position(0, 0)
         self.players = [
             Player("Player 1", (0, 0, 255), controller=PlayerController.HUMAN),
             Player("Player 2", (255, 0, 0), controller=PlayerController.OPENAI)
@@ -346,7 +350,7 @@ def test_minefield_single_circle_rendering():
     mock_parent._inhibition_surface = pygame.Surface((800, 600))
     sector_entity_renderer = SectorEntityRenderer(mock_parent)
 
-    with patch("rendering.sector_renderer.pygame.draw.circle") as mock_sec_circle:
+    with patch("pygame.draw.circle") as mock_sec_circle:
         sector_entity_renderer.draw_minefield(mf_sc, Position(400, 300), 200.0)
         circle_calls = [call for call in mock_sec_circle.call_args_list if call.args[1] == p1.color]
         # Anti-Strikecraft uses polygon diamonds for dots, so only the 1 boundary circle is drawn

@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
 from constants import HullSize
@@ -154,6 +155,7 @@ def test_cascading_destruction():
     
     # We will use real Unit instance to test cascade destruction
     game_mock = MagicMock()
+    game_mock.display_config = DisplayConfig()
     galaxy_mock = MagicMock()
     game_mock.galaxy = galaxy_mock
     

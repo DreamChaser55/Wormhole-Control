@@ -1,5 +1,6 @@
+from rendering.drawing_utils import draw_dotted_line
+import pygame
 from display_config import display_config_for
-import sys
 import math
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, FOG_OF_WAR_COLOR, XP_SPEED_BONUS
 from rendering.drawing_utils import draw_selection_brackets, selection_color_for, station_icon_rect
@@ -8,10 +9,6 @@ from domain.units import Unit
 from unit_orders.base import OrderType
 
 MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
-
-
-def _sr():
-    return sys.modules['rendering.sector_renderer']
 
 
 class SectorOverlayRenderer:
@@ -38,26 +35,26 @@ class SectorOverlayRenderer:
     def draw_selection_box(self):
         """Draws the transparent blue drag selection rectangle if active."""
         if self.game.is_dragging_selection_box and self.game.selection_box_start_pos:
-            mouse_pos = _sr().pygame.mouse.get_pos()
+            mouse_pos = pygame.mouse.get_pos()
             start_pos = self.game.selection_box_start_pos.to_tuple()
             
             rect_x = min(start_pos[0], mouse_pos[0])
             rect_y = min(start_pos[1], mouse_pos[1])
             rect_w = abs(start_pos[0] - mouse_pos[0])
             rect_h = abs(start_pos[1] - mouse_pos[1])
-            selection_rect = _sr().pygame.Rect(rect_x, rect_y, rect_w, rect_h)
+            selection_rect = pygame.Rect(rect_x, rect_y, rect_w, rect_h)
 
-            selection_surface = _sr().pygame.Surface(selection_rect.size, _sr().pygame.SRCALPHA)
+            selection_surface = pygame.Surface(selection_rect.size, pygame.SRCALPHA)
             selection_surface.fill((0, 100, 255, 64))
             self.overlay_surface.blit(selection_surface, selection_rect.topleft)
 
-            _sr().pygame.draw.rect(self.overlay_surface, (0, 150, 255), selection_rect, 1)
+            pygame.draw.rect(self.overlay_surface, (0, 150, 255), selection_rect, 1)
 
     def draw_hover_highlight(self, obj, obj_pixel_pos, dynamic_radius, obj_radius_logical):
         """Draws a hover highlight circle around the hovered object."""
         if obj == self.game.sector_view_mouse_hover_object:
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            _sr().pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
+            pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
 
     def draw_selection_brackets(self, obj, obj_pixel_pos, dynamic_radius, obj_radius_logical):
         """Draws corner brackets with each arm spanning one quarter of the box side."""
@@ -79,10 +76,10 @@ class SectorOverlayRenderer:
         """Draw a C&C-style grey fog of war over the sector view."""
         screen_width, screen_height = self.screen.get_size()
         screen_size = (screen_width, screen_height)
-        screen_rect = _sr().pygame.Rect(0, 0, screen_width, screen_height)
+        screen_rect = pygame.Rect(0, 0, screen_width, screen_height)
 
         if self.parent._fog_of_war_surface is None or self.parent._fog_of_war_surface.get_size() != screen_size:
-            self.parent._fog_of_war_surface = _sr().pygame.Surface(screen_size, _sr().pygame.SRCALPHA)
+            self.parent._fog_of_war_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
             self.parent._fog_cache_key = None
             self.parent._fog_blit_rect = None
 
@@ -92,7 +89,7 @@ class SectorOverlayRenderer:
         cx, cy = sector_center_px
         r = sector_radius_px
 
-        disc_bbox = _sr().pygame.Rect(cx - r, cy - r, 2 * r, 2 * r)
+        disc_bbox = pygame.Rect(cx - r, cy - r, 2 * r, 2 * r)
         fog_rect = screen_rect.clip(disc_bbox)
 
         if fog_rect.width <= 0 or fog_rect.height <= 0:
@@ -129,10 +126,10 @@ class SectorOverlayRenderer:
                 if not isinstance(short_range, (int, float)) or short_range <= 0:
                     continue
 
-                unit_px = self.parent._coords_to_pixels(unit.position)
+                unit_px = self.parent.grid_renderer.coords_to_pixels(unit.position)
                 sr_px = max(1, min(int(short_range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL), MAX_SAFE_CIRCLE_RADIUS_PX))
                 ucx, ucy = int(unit_px.x), int(unit_px.y)
-                unit_bbox = _sr().pygame.Rect(ucx - sr_px, ucy - sr_px, 2 * sr_px, 2 * sr_px)
+                unit_bbox = pygame.Rect(ucx - sr_px, ucy - sr_px, 2 * sr_px, 2 * sr_px)
                 if unit_bbox.colliderect(fog_rect):
                     cutouts.append((ucx, ucy, sr_px))
 
@@ -146,10 +143,10 @@ class SectorOverlayRenderer:
                         is_infiltrated_body = True
 
                 if is_infiltrated_body:
-                    body_px = self.parent._coords_to_pixels(body.position)
+                    body_px = self.parent.grid_renderer.coords_to_pixels(body.position)
                     sr_px = max(1, min(int(500.0 * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL), MAX_SAFE_CIRCLE_RADIUS_PX))
                     bcx, bcy = int(body_px.x), int(body_px.y)
-                    body_bbox = _sr().pygame.Rect(bcx - sr_px, bcy - sr_px, 2 * sr_px, 2 * sr_px)
+                    body_bbox = pygame.Rect(bcx - sr_px, bcy - sr_px, 2 * sr_px, 2 * sr_px)
                     if body_bbox.colliderect(fog_rect):
                         cutouts.append((bcx, bcy, sr_px))
 
@@ -173,7 +170,7 @@ class SectorOverlayRenderer:
         self.parent._fog_of_war_surface.fill((0, 0, 0, 0), clear_rect.clip(screen_rect))
 
         for ucx, ucy, sr_px in cutouts:
-            if self.parent._circle_covers_rect((ucx, ucy), sr_px, fog_rect):
+            if self.parent.grid_renderer.circle_covers_rect((ucx, ucy), sr_px, fog_rect):
                 self.parent.zoom_render_stats['fog_rebuilds'] += 1
                 self.parent.zoom_render_stats['fog_full_reveal'] += 1
                 self.parent._fog_cache_key = key
@@ -195,10 +192,10 @@ class SectorOverlayRenderer:
 
         fog_surf = self.parent._fog_of_war_surface
 
-        self.parent._fill_circle_on_surface(fog_surf, (cx, cy), r, FOG_OF_WAR_COLOR, fog_rect)
+        self.parent.grid_renderer.fill_circle_on_surface(fog_surf, (cx, cy), r, FOG_OF_WAR_COLOR, fog_rect)
 
         for ucx, ucy, sr_px in culled_cutouts:
-            self.parent._fill_circle_on_surface(fog_surf, (ucx, ucy), sr_px, (0, 0, 0, 0), fog_rect)
+            self.parent.grid_renderer.fill_circle_on_surface(fog_surf, (ucx, ucy), sr_px, (0, 0, 0, 0), fog_rect)
 
         self.screen.blit(fog_surf, fog_rect.topleft, area=fog_rect)
         self.parent.zoom_render_stats['fog_rebuilds'] += 1
@@ -213,7 +210,7 @@ class SectorOverlayRenderer:
         if sensors and sensors.has_short_range:
             from environmental_effects import sensor_radius
             sr_px = int(sensor_radius(unit) * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            self.parent._draw_range_ring(cx, cy, sr_px, (0, 200, 255))
+            self.parent.grid_renderer.draw_range_ring(cx, cy, sr_px, (0, 200, 255))
 
         weapons = unit.weapons_component
         if weapons and weapons.turrets:
@@ -223,13 +220,13 @@ class SectorOverlayRenderer:
                 if rng_px in drawn_ranges:
                     continue
                 drawn_ranges.add(rng_px)
-                self.parent._draw_range_ring(cx, cy, rng_px, (255, 80, 40))
+                self.parent.grid_renderer.draw_range_ring(cx, cy, rng_px, (255, 80, 40))
 
         orbital_defense = getattr(unit, 'orbital_defense_component', None)
         if orbital_defense and not orbital_defense.is_destroyed:
             od_px = int(orbital_defense.radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             from constants import ORBITAL_DEFENSE_RING_COLOR
-            self.parent._draw_range_ring(cx, cy, od_px, ORBITAL_DEFENSE_RING_COLOR)
+            self.parent.grid_renderer.draw_range_ring(cx, cy, od_px, ORBITAL_DEFENSE_RING_COLOR)
 
     def get_waypoint_style(self, waypoint):
         if waypoint['order_type'] == OrderType.ATTACK:
@@ -255,9 +252,9 @@ class SectorOverlayRenderer:
         return line_color, line_width
 
     def draw_single_notch(self, p_start, p_end, p_notch, color, line_width):
-        start_px = self.parent._coords_to_pixels(p_start)
-        end_px = self.parent._coords_to_pixels(p_end)
-        notch_px = self.parent._coords_to_pixels(p_notch)
+        start_px = self.parent.grid_renderer.coords_to_pixels(p_start)
+        end_px = self.parent.grid_renderer.coords_to_pixels(p_end)
+        notch_px = self.parent.grid_renderer.coords_to_pixels(p_notch)
         
         dx = end_px.x - start_px.x
         dy = end_px.y - start_px.y
@@ -272,7 +269,7 @@ class SectorOverlayRenderer:
             x2 = int(notch_px.x - nx * notch_half_len)
             y2 = int(notch_px.y - ny * notch_half_len)
             
-            _sr().pygame.draw.line(self.overlay_surface, color, (x1, y1), (x2, y2), max(2, line_width))
+            pygame.draw.line(self.overlay_surface, color, (x1, y1), (x2, y2), max(2, line_width))
 
     def draw_path_turn_notches_for_segment(self, segment, connect_to_unit, start_pos, effective_speed):
         if effective_speed <= 0 or not segment:
@@ -536,7 +533,7 @@ class SectorOverlayRenderer:
                     continue
                     
                 for i, waypoint in enumerate(segment):
-                    dest_pixel_point = self.parent._coords_to_pixels(waypoint['position'])
+                    dest_pixel_point = self.parent.grid_renderer.coords_to_pixels(waypoint['position'])
                     
                     if waypoint['order_type'] == OrderType.ATTACK:
                         line_color = RED
@@ -558,16 +555,16 @@ class SectorOverlayRenderer:
                     
                     if i == 0:
                         entry_color = WORMHOLE_JUMP_ORDER_COLOR
-                        _sr().pygame.draw.circle(self.overlay_surface, entry_color, 
+                        pygame.draw.circle(self.overlay_surface, entry_color,
                                            (dest_pixel_point.x, dest_pixel_point.y), 3, 1)
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
                     else:
                         if waypoint['order_type'] == OrderType.PATROL:
-                            _sr().draw_dotted_line(self.overlay_surface, line_color,
+                            draw_dotted_line(self.overlay_surface, line_color,
                                              (last_pixel_x, last_pixel_y),
                                              (dest_pixel_point.x, dest_pixel_point.y), line_width)
                         else:
-                            _sr().pygame.draw.line(self.overlay_surface, line_color, 
+                            pygame.draw.line(self.overlay_surface, line_color,
                                           (last_pixel_x, last_pixel_y), 
                                           (dest_pixel_point.x, dest_pixel_point.y), line_width)
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
@@ -575,12 +572,12 @@ class SectorOverlayRenderer:
                     is_exit_point = (i == len(segment) - 1 and segment_index < len(path_segments) - 1)
                     if is_exit_point:
                         exit_color = WORMHOLE_JUMP_ORDER_COLOR
-                        _sr().pygame.draw.circle(self.overlay_surface, exit_color, 
+                        pygame.draw.circle(self.overlay_surface, exit_color,
                                        (dest_pixel_point.x, dest_pixel_point.y), 3, 1)
                     else:
                         if i > 0 or segment_index == 0:
                             circle_size = 3 if not waypoint['is_sub_order'] else 2
-                            _sr().pygame.draw.circle(self.overlay_surface, line_color, 
+                            pygame.draw.circle(self.overlay_surface, line_color,
                                       (dest_pixel_point.x, dest_pixel_point.y), circle_size)
                 
                 if external_unit.engines_component:
@@ -627,7 +624,7 @@ class SectorOverlayRenderer:
                 )
                 
                 for i, waypoint in enumerate(segment):
-                    dest_pixel_point = self.parent._coords_to_pixels(waypoint['position'])
+                    dest_pixel_point = self.parent.grid_renderer.coords_to_pixels(waypoint['position'])
                     
                     if waypoint['order_type'] == OrderType.ATTACK:
                         line_color = RED
@@ -652,25 +649,25 @@ class SectorOverlayRenderer:
                     if i == 0:
                         if connect_to_unit:
                             if is_patrol:
-                                _sr().draw_dotted_line(self.overlay_surface, line_color,
+                                draw_dotted_line(self.overlay_surface, line_color,
                                                  (unit_pixel_x, unit_pixel_y),
                                                  (dest_pixel_point.x, dest_pixel_point.y), line_width)
                             else:
-                                _sr().pygame.draw.line(self.overlay_surface, line_color, 
+                                pygame.draw.line(self.overlay_surface, line_color,
                                               (unit_pixel_x, unit_pixel_y), 
                                               (dest_pixel_point.x, dest_pixel_point.y), line_width)
                         if segment_index > 0:
                             entry_color = WORMHOLE_JUMP_ORDER_COLOR
-                            _sr().pygame.draw.circle(self.overlay_surface, entry_color, 
+                            pygame.draw.circle(self.overlay_surface, entry_color,
                                            (dest_pixel_point.x, dest_pixel_point.y), 3, 1)
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
                     else:
                         if is_patrol:
-                            _sr().draw_dotted_line(self.overlay_surface, line_color,
+                            draw_dotted_line(self.overlay_surface, line_color,
                                              (last_pixel_x, last_pixel_y),
                                              (dest_pixel_point.x, dest_pixel_point.y), line_width)
                         else:
-                            _sr().pygame.draw.line(self.overlay_surface, line_color, 
+                            pygame.draw.line(self.overlay_surface, line_color,
                                           (last_pixel_x, last_pixel_y), 
                                           (dest_pixel_point.x, dest_pixel_point.y), line_width)
                         last_pixel_x, last_pixel_y = dest_pixel_point.x, dest_pixel_point.y
@@ -693,11 +690,11 @@ class SectorOverlayRenderer:
                     
                     if is_last_in_segment and will_exit_sector:
                         exit_color = WORMHOLE_JUMP_ORDER_COLOR
-                        _sr().pygame.draw.circle(self.overlay_surface, exit_color, 
+                        pygame.draw.circle(self.overlay_surface, exit_color,
                                       (dest_pixel_point.x, dest_pixel_point.y), 5, 2)
                     elif not (i == 0 and segment_index > 0):
                         circle_size = 3 if not waypoint['is_sub_order'] else 2
-                        _sr().pygame.draw.circle(self.overlay_surface, line_color, 
+                        pygame.draw.circle(self.overlay_surface, line_color,
                                       (dest_pixel_point.x, dest_pixel_point.y), circle_size)
 
                 if unit.engines_component:
@@ -745,15 +742,15 @@ class SectorOverlayRenderer:
             for unit in selected_units:
                 if (getattr(unit, 'in_system', None) == getattr(self.game, 'current_system_name', None) and
                         getattr(unit, 'in_hex', None) == getattr(self.game, 'current_sector_coord', None)):
-                    unit_px = self.parent._coords_to_pixels(unit.position)
+                    unit_px = self.parent.grid_renderer.coords_to_pixels(unit.position)
                     rng_px = int(defn.range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                     if rng_px > 1:
-                        self.parent._draw_range_ring(int(unit_px.x), int(unit_px.y), rng_px, (200, 100, 255))
+                        self.parent.grid_renderer.draw_range_ring(int(unit_px.x), int(unit_px.y), rng_px, (200, 100, 255))
 
         # 1. Draw top-center HUD targeting banner
         font_size = max(13, int(15 * display_config_for(self.game).text_scale))
         if font_size not in self.parent._font_cache:
-            self.parent._font_cache[font_size] = _sr().pygame.font.Font(None, font_size)
+            self.parent._font_cache[font_size] = pygame.font.Font(None, font_size)
         banner_font = self.parent._font_cache[font_size]
 
         text_surf = banner_font.render(guidance_text, True, (255, 230, 100))
@@ -771,10 +768,10 @@ class SectorOverlayRenderer:
         banner_x = int((screen_w - display_config_for(self.game).info_box_width - banner_w) // 2)
         banner_y = int(display_config_for(self.game).top_bar_height + 10)
 
-        banner_rect = _sr().pygame.Rect(banner_x, banner_y, banner_w, banner_h)
-        banner_surf = _sr().pygame.Surface((banner_w, banner_h), _sr().pygame.SRCALPHA)
+        banner_rect = pygame.Rect(banner_x, banner_y, banner_w, banner_h)
+        banner_surf = pygame.Surface((banner_w, banner_h), pygame.SRCALPHA)
         banner_surf.fill((15, 25, 45, 230))
-        _sr().pygame.draw.rect(banner_surf, (255, 200, 50, 255), banner_surf.get_rect(), 2, border_radius=4)
+        pygame.draw.rect(banner_surf, (255, 200, 50, 255), banner_surf.get_rect(), 2, border_radius=4)
 
         self.overlay_surface.blit(banner_surf, (banner_x, banner_y))
         text_rect.center = banner_rect.center
@@ -782,21 +779,21 @@ class SectorOverlayRenderer:
 
         # 2. Draw Hover Guidance / Reticle
         hovered_obj = getattr(self.game, 'sector_view_mouse_hover_object', None)
-        mouse_pos = _sr().pygame.mouse.get_pos()
+        mouse_pos = pygame.mouse.get_pos()
         if not isinstance(mouse_pos, (tuple, list)) or len(mouse_pos) < 2 or not isinstance(mouse_pos[0], (int, float)):
             mouse_pos = (0, 0)
 
         tip_font_size = max(11, int(13 * display_config_for(self.game).text_scale))
         if tip_font_size not in self.parent._font_cache:
-            self.parent._font_cache[tip_font_size] = _sr().pygame.font.Font(None, tip_font_size)
+            self.parent._font_cache[tip_font_size] = pygame.font.Font(None, tip_font_size)
         tip_font = self.parent._font_cache[tip_font_size]
 
         if req_unit:
             if isinstance(hovered_obj, Unit):
-                unit_px = self.parent._coords_to_pixels(hovered_obj.position)
-                _sr().pygame.draw.circle(self.overlay_surface, (255, 80, 80), (int(unit_px.x), int(unit_px.y)), 18, 2)
-                _sr().pygame.draw.line(self.overlay_surface, (255, 80, 80), (int(unit_px.x) - 24, int(unit_px.y)), (int(unit_px.x) + 24, int(unit_px.y)), 1)
-                _sr().pygame.draw.line(self.overlay_surface, (255, 80, 80), (int(unit_px.x), int(unit_px.y) - 24), (int(unit_px.x), int(unit_px.y) + 24), 1)
+                unit_px = self.parent.grid_renderer.coords_to_pixels(hovered_obj.position)
+                pygame.draw.circle(self.overlay_surface, (255, 80, 80), (int(unit_px.x), int(unit_px.y)), 18, 2)
+                pygame.draw.line(self.overlay_surface, (255, 80, 80), (int(unit_px.x) - 24, int(unit_px.y)), (int(unit_px.x) + 24, int(unit_px.y)), 1)
+                pygame.draw.line(self.overlay_surface, (255, 80, 80), (int(unit_px.x), int(unit_px.y) - 24), (int(unit_px.x), int(unit_px.y) + 24), 1)
 
                 tip_str = f"Right-Click to cast {pending_name} on {hovered_obj.name}"
                 tip_color = (120, 255, 120)
@@ -813,9 +810,9 @@ class SectorOverlayRenderer:
         # Draw tooltip near mouse pointer when inside sector viewport
         if mouse_pos[0] < screen_w - display_config_for(self.game).info_box_width and mouse_pos[1] > display_config_for(self.game).top_bar_height:
             tip_surf = tip_font.render(tip_str, True, tip_color)
-            tip_bg = _sr().pygame.Surface((tip_surf.get_width() + 10, tip_surf.get_height() + 6), _sr().pygame.SRCALPHA)
+            tip_bg = pygame.Surface((tip_surf.get_width() + 10, tip_surf.get_height() + 6), pygame.SRCALPHA)
             tip_bg.fill((10, 15, 25, 200))
-            _sr().pygame.draw.rect(tip_bg, tip_color, tip_bg.get_rect(), 1, border_radius=3)
+            pygame.draw.rect(tip_bg, tip_color, tip_bg.get_rect(), 1, border_radius=3)
 
             tip_x = int(mouse_pos[0] + 15)
             tip_y = int(mouse_pos[1] + 15)

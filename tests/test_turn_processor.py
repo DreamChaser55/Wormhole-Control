@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from game_actions.turn_presentation import ApplicationTurnPresentation
 from player_controller import PlayerController
 import pytest
@@ -11,6 +12,7 @@ from tests.support.units import ComponentUnit, ComponentPlayer
 
 def test_end_turn_advances_player():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = ComponentPlayer("Player 1")
     player2 = ComponentPlayer("Player 2")
     player2.controller = PlayerController.HUMAN
@@ -27,6 +29,7 @@ def test_end_turn_advances_player():
 
 def test_process_resource_generation():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer("Human Player")
     player.credits = 1000.0
     game.players = [player]
@@ -64,6 +67,7 @@ def test_process_resource_generation():
 
 def test_process_movement_sublight():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer("Player 1")
     unit = ComponentUnit()
     unit.owner = player
@@ -92,6 +96,7 @@ def test_process_movement_clears_stale_target_for_destroyed_engines():
     from unit_components.movement import Engines
 
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer("Player 1")
     unit = ComponentUnit()
     unit.owner = player
@@ -115,6 +120,7 @@ def test_process_movement_clears_stale_target_for_destroyed_engines():
 
 def test_process_population_growth():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     planet = MagicMock(spec=Planet)
     
     system = MagicMock()
@@ -133,6 +139,7 @@ def test_process_combat():
     from unit_orders.combat import AttackOrder
     from unit_orders.base import OrderStatus
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player1 = ComponentPlayer("Player 1")
     player2 = ComponentPlayer("Player 2")
     game.players = [player1, player2]
@@ -191,6 +198,7 @@ def test_process_combat():
 
 def test_process_unit_updates():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer("Human Player")
     game.players = [player]
     game.current_player_index = 0
@@ -216,6 +224,7 @@ def test_process_orders():
     from unit_orders.base import Order, OrderStatus
     
     game = MagicMock()
+    game.display_config = DisplayConfig()
     player = ComponentPlayer("Player 1")
     game.players = [player]
     game.current_player_index = 0
@@ -227,7 +236,7 @@ def test_process_orders():
     unit.add_component(commander)
     
     order = MagicMock(spec=Order)
-    order.order_id = 1
+    order.local_order_id = 1
     order.status = OrderStatus.PENDING
     order.is_completed.return_value = False
     
@@ -259,6 +268,7 @@ def _make_upkeep_unit(player, hull_usage, hull_size=HullSize.TINY, is_temporary=
 def _make_upkeep_game(units):
     """Helper that returns a mock game whose galaxy has a single system containing `units`."""
     game = MagicMock()
+    game.display_config = DisplayConfig()
     system = MagicMock()
     system.get_all_units.return_value = [(u, (0, 0)) for u in units]
     game.galaxy.systems = {"Sol": system}
@@ -346,6 +356,7 @@ def test_game_get_player_income():
     from domain.celestials import Planet
     
     class DummyGame(Game):
+        display_config = DisplayConfig()
         def __init__(self):
             self.galaxy = MagicMock()
 
@@ -382,6 +393,7 @@ def test_game_get_player_upkeep():
     from game import Game
     
     class DummyGame(Game):
+        display_config = DisplayConfig()
         def __init__(self):
             self.galaxy = MagicMock()
             
@@ -412,6 +424,7 @@ def test_game_get_player_upkeep():
 
 def test_turn_number_increment():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.turn_number = 1
     player1 = ComponentPlayer("Player 1")
     player2 = ComponentPlayer("Player 2")
@@ -435,6 +448,7 @@ def test_turn_number_increment():
 
 def test_global_round_execution_order_and_population_growth():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.turn_number = 1
     player1 = ComponentPlayer("Player 1")
     player2 = ComponentPlayer("Player 2")
@@ -473,6 +487,7 @@ def test_global_round_execution_order_and_population_growth():
 
 def test_check_and_schedule_ai_turn():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     ai_player = ComponentPlayer("AI Player")
     ai_player.controller = PlayerController.OPENAI
     human_player = ComponentPlayer("Human Player")
@@ -501,14 +516,15 @@ def test_ai_in_player_slot_zero_scheduled_on_start_new_game():
     from tests.support.campaigns import campaign
 
     game = MagicMock()
-    game.turn_manager = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
+    game.display_config = DisplayConfig()
+    game.turn_processor = TurnProcessor(game, presentation=ApplicationTurnPresentation(game))
     game.current_player_index = 0
     game.pending_ai_turn_end_time = 0
     game.galaxy = MagicMock()
     game.galaxy.systems = {"Sol": MagicMock()}
 
     def check_ai():
-        game.turn_manager.check_and_schedule_ai_turn()
+        game.turn_processor.check_and_schedule_ai_turn()
     game.check_and_schedule_ai_turn = check_ai
 
     from tests.support.scenarios import settings_for

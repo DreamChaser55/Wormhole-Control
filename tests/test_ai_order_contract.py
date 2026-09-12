@@ -188,7 +188,8 @@ def test_history_identity_roundtrip_and_bounded_exactly_once_outcomes():
     assert len(player.order_history) == 1
     legacy = dict(data)
     legacy.pop("public_id")
-    assert deserialize_order(legacy, unit, None).public_id != root.public_id
+    with pytest.raises(KeyError):
+        deserialize_order(legacy, unit, None)
     for _ in range(150):
         order = Order(unit, OrderType.MOVE)
         order.register_explicit_root()
@@ -265,9 +266,8 @@ def test_socket_partial_response_cached_and_observation_required():
     assert service._dispatch_or_wait({**request, "request_id": "fresh", "turn_token": observed["data"]["turn_token"]}, Future())["ok"]
 
 
-@pytest.mark.parametrize("legacy", [False, True])
 @pytest.mark.parametrize("kind", ["construct", "refit"])
-def test_restored_component_job_refunds_only_its_owner_once(legacy, kind):
+def test_restored_component_job_refunds_only_its_owner_once(kind):
     from save_manager import deserialize_order, serialize_order
     from unit_components.constructor import Constructor
     from unit_orders.construction import ConstructOrder
@@ -291,9 +291,6 @@ def test_restored_component_job_refunds_only_its_owner_once(legacy, kind):
         root._charged_credits = 100
         root._charged_player_id = player.id
     data = serialize_order(root)
-    if legacy:
-        data.pop("public_id")
-        data["runtime_state"] = {}
     restored = deserialize_order(data, unit, None)
     constructor.construction_order_id = constructor.refit_order_id = None
     unit.commander_component.restore_explicit_orders(restored, [], game.galaxy)

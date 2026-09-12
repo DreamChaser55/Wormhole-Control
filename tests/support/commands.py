@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from types import SimpleNamespace
 from game_ai.commands import CommandGateway
 from game_ai.contracts import CommandBatch
@@ -9,6 +10,7 @@ def world():
     galaxy, player, enemy = create_test_galaxy()
     game = SimpleNamespace(galaxy=galaxy, players=[player, enemy], turn_number=1,
                            sidebar_needs_update=False, visibility_dirty=False, gui=None)
+    game.display_config = DisplayConfig()
     galaxy.game = game
     unit = create_combat_ship(galaxy, player, "Scout", (0, 0))
     return game, player, enemy, unit

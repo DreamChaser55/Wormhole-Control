@@ -1,5 +1,5 @@
 import math
-from geometry import Vector, Position, Circle, distance, distance_sq, hex_distance, is_point_in_circle, do_circles_intersect, is_circle_contained, get_closest_point_on_circle_edge, move_towards_position
+from geometry import Vector, Position, Circle, distance, distance_sq, hex_distance, is_point_in_circle, do_circles_intersect, is_circle_contained, get_closest_point_on_circle_edge, position_at_distance_from_target
 import hexgrid_utils
 
 def test_vector_operations():
@@ -84,17 +84,17 @@ def test_get_closest_point_on_circle_edge():
     assert math.isclose(closest_center.x, 10.001)
     assert math.isclose(closest_center.y, 0.0)
 
-def test_move_towards_position():
+def test_position_at_distance_from_target():
     current = Position(0, 0)
     target = Position(10, 0)
     
     # Move and maintain a distance of 2 from target (so end up at 8, 0)
-    dest = move_towards_position(current, target, 2.0)
+    dest = position_at_distance_from_target(current, target, 2.0)
     assert math.isclose(dest.x, 8.0)
     assert math.isclose(dest.y, 0.0)
     
     # If starting at target
-    dest_same = move_towards_position(target, target, 3.0)
+    dest_same = position_at_distance_from_target(target, target, 3.0)
     assert math.isclose(dest_same.x, 13.0)
     assert math.isclose(dest_same.y, 0.0)
 

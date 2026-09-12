@@ -147,7 +147,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
     def test_move_order_sufficient_antimatter_succeeds(self):
         """Test issuing move order with sufficient antimatter assigns order without error modal."""
         self.unit.antimatter_component.current_amount = 200.0
-        self.unit.commander_component.clear_orders()
+        self.unit.commander_component.stop_and_idle()
 
         event = IssueMoveOrderEvent(
             units=[self.unit],
@@ -165,7 +165,7 @@ class TestAntimatterMoveDialog(unittest.TestCase):
         """Test issuing move order with insufficient antimatter blocks order and spawns error modal."""
         # Set antimatter to 0 so unit cannot make any jump or move
         self.unit.antimatter_component.current_amount = 0.0
-        self.unit.commander_component.clear_orders()
+        self.unit.commander_component.stop_and_idle()
 
         event = IssueMoveOrderEvent(
             units=[self.unit],

@@ -1,4 +1,5 @@
 """Unit tests for antimatter consumption by HyperspaceInhibitionFieldEmitter."""
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from domain.units import Unit
 from galaxy import Galaxy, StarSystem, Hex
@@ -13,6 +14,7 @@ def make_unit(name="Inhibitor Vessel", in_system="Sol", in_hex=(0, 0), position=
     if position is None:
         position = Position(0.0, 0.0)
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_player = MagicMock()
     mock_player.name = "Player 1"
     unit = Unit(

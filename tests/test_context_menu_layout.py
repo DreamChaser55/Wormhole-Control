@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+from display_config import DisplayConfig
 import pytest
 import pygame
 import pygame_gui
@@ -19,12 +21,12 @@ def test_compute_context_menu_layout_single_column():
     screen_res = Vector(1920, 1080)
     # 3 options (e.g. default system/sector context menu)
     num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height = compute_context_menu_layout(
-        screen_res, 3, max_items_cap=14
+        DisplayConfig(int(screen_res.x), int(screen_res.y)), 3, max_items_cap=14
     )
     assert num_cols == 1
     assert num_rows == 3
-    assert panel_width == display_config_for(screen_res).context_menu_width
-    assert panel_height == 3 * (display_config_for(screen_res).context_menu_item_height + 2) + 10
+    assert panel_width == DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_width
+    assert panel_height == 3 * (DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_item_height + 2) + 10
 
 
 
@@ -32,14 +34,14 @@ def test_compute_context_menu_layout_multi_column():
     screen_res = Vector(1920, 1080)
     # 16 options (e.g. Back + 15 unit templates)
     num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height = compute_context_menu_layout(
-        screen_res, 16, max_items_cap=14
+        DisplayConfig(int(screen_res.x), int(screen_res.y)), 16, max_items_cap=14
     )
     assert num_cols >= 2
     assert num_rows <= 14
-    expected_col_width = display_config_for(screen_res).context_menu_width - 10
+    expected_col_width = DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_width - 10
     expected_width = 10 + num_cols * expected_col_width + (num_cols - 1) * 4
     assert panel_width == expected_width
-    assert panel_height == num_rows * (display_config_for(screen_res).context_menu_item_height + 2) + 10
+    assert panel_height == num_rows * (DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_item_height + 2) + 10
 
 
 
@@ -47,10 +49,10 @@ def test_compute_context_menu_layout_three_columns():
     screen_res = Vector(1920, 1080)
     # 30 options
     num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height = compute_context_menu_layout(
-        screen_res, 30, max_items_cap=14
+        DisplayConfig(int(screen_res.x), int(screen_res.y)), 30, max_items_cap=14
     )
     assert num_cols >= 3
-    assert panel_height == num_rows * (display_config_for(screen_res).context_menu_item_height + 2) + 10
+    assert panel_height == num_rows * (DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_item_height + 2) + 10
 
 
 
@@ -59,7 +61,7 @@ def test_calculate_menu_position_open_downward():
     anchor = Position(500, 300)
     panel_width = 250
     panel_height = 200
-    pos = calculate_menu_position(screen_res, anchor, panel_width, panel_height)
+    pos = calculate_menu_position(DisplayConfig(int(screen_res.x), int(screen_res.y)), anchor, panel_width, panel_height)
     # Plenty of space below (1080 - 300 = 780 >= 200), so opens downwards at y=300
     assert pos.x == 500
     assert pos.y == 300
@@ -71,12 +73,12 @@ def test_calculate_menu_position_open_upward_near_bottom():
     anchor = Position(500, 950)
     panel_width = 250
     panel_height = 300
-    pos = calculate_menu_position(screen_res, anchor, panel_width, panel_height)
+    pos = calculate_menu_position(DisplayConfig(int(screen_res.x), int(screen_res.y)), anchor, panel_width, panel_height)
     # Space below is only 1080 - 950 - 8 = 122 < 300; space above is 950 - 52 - 8 = 890 >= 300
     # Opens upwards at y = 950 - 300 = 650
     assert pos.x == 500
     assert pos.y == 650
-    assert pos.y >= display_config_for(screen_res).top_bar_height
+    assert pos.y >= DisplayConfig(int(screen_res.x), int(screen_res.y)).top_bar_height
 
 
 
@@ -86,20 +88,20 @@ def test_calculate_menu_position_clamping_at_edges():
     anchor = Position(500, 1075)
     panel_width = 200
     panel_height = 400
-    pos = calculate_menu_position(screen_res, anchor, panel_width, panel_height)
+    pos = calculate_menu_position(DisplayConfig(int(screen_res.x), int(screen_res.y)), anchor, panel_width, panel_height)
     assert pos.y + panel_height <= 1080 - 8
-    assert pos.y >= display_config_for(screen_res).top_bar_height + 8
+    assert pos.y >= DisplayConfig(int(screen_res.x), int(screen_res.y)).top_bar_height + 8
 
     # 2. Extreme right edge
     anchor_right = Position(1900, 400)
-    pos_right = calculate_menu_position(screen_res, anchor_right, panel_width, panel_height)
+    pos_right = calculate_menu_position(DisplayConfig(int(screen_res.x), int(screen_res.y)), anchor_right, panel_width, panel_height)
     assert pos_right.x + panel_width <= 1920 - 8
     assert pos_right.x >= 8
 
     # 3. Extreme top edge
     anchor_top = Position(100, 10)
-    pos_top = calculate_menu_position(screen_res, anchor_top, panel_width, panel_height)
-    assert pos_top.y >= display_config_for(screen_res).top_bar_height + 8
+    pos_top = calculate_menu_position(DisplayConfig(int(screen_res.x), int(screen_res.y)), anchor_top, panel_width, panel_height)
+    assert pos_top.y >= DisplayConfig(int(screen_res.x), int(screen_res.y)).top_bar_height + 8
 
 
 
@@ -108,7 +110,9 @@ def test_open_context_menu_multi_column_button_layout():
     manager = pygame_gui.UIManager((1280, 720))
 
     gui = MagicMock()
+    gui.display_config = DisplayConfig()
     gui.screen_res = screen_res
+    gui.display_config = DisplayConfig(int(screen_res.x), int(screen_res.y))
     gui.manager = manager
     gui.context_menu_panel = None
     gui.context_menu_buttons = []
@@ -130,7 +134,7 @@ def test_open_context_menu_multi_column_button_layout():
     assert len(gui.context_menu_buttons) == 16
 
     num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height = compute_context_menu_layout(
-        screen_res, len(options)
+        DisplayConfig(int(screen_res.x), int(screen_res.y)), len(options)
     )
 
     for i, btn in enumerate(gui.context_menu_buttons):
@@ -152,7 +156,9 @@ def test_submenu_navigation_and_back():
     manager = pygame_gui.UIManager((1280, 720))
 
     gui = MagicMock()
+    gui.display_config = DisplayConfig()
     gui.screen_res = screen_res
+    gui.display_config = DisplayConfig(int(screen_res.x), int(screen_res.y))
     gui.manager = manager
     gui.context_menu_panel = None
     gui.context_menu_buttons = []
@@ -202,6 +208,7 @@ def test_submenu_navigation_and_back():
 
 def test_is_mouse_over_context_menu_accepts_tuple_and_position():
     gui = MagicMock()
+    gui.display_config = DisplayConfig()
     gui.context_menu_panel.visible = True
     gui.context_menu_panel.get_abs_rect.return_value = pygame.Rect(100, 100, 200, 200)
 
@@ -215,9 +222,9 @@ def test_is_mouse_over_context_menu_accepts_tuple_and_position():
 def test_calculate_context_menu_min_col_width_short_options():
     screen_res = Vector(1280, 720)
     options = [("Move Here", "move"), ("Patrol Here", "patrol"), ("Construct", "construct")]
-    min_w = calculate_context_menu_min_col_width(screen_res, options)
-    # Short options should not exceed standard display_config_for(screen_res).context_menu_width - 10
-    assert min_w == display_config_for(screen_res).context_menu_width - 10
+    min_w = calculate_context_menu_min_col_width(SimpleNamespace(display_config=DisplayConfig(int(screen_res.x), int(screen_res.y))), options)
+    # Short options should not exceed standard DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_width - 10
+    assert min_w == DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_width - 10
 
 
 
@@ -229,7 +236,7 @@ def test_calculate_context_menu_min_col_width_long_construct_options():
         ("Medium Orbital Defense Station (2500c)", "construct_MEDIUM_DEFENSE_STATION"),
         ("Crystal Refinery Station (1200c)", "construct_CRYSTAL_REFINERY"),
     ]
-    min_w = calculate_context_menu_min_col_width(screen_res, options)
+    min_w = calculate_context_menu_min_col_width(SimpleNamespace(display_config=DisplayConfig(int(screen_res.x), int(screen_res.y))), options)
     # "Medium Orbital Defense Station (2500c)" has 38 chars, text w ~ 268px + padding ~ 24px >= 290px
     assert min_w >= 280
 
@@ -237,9 +244,9 @@ def test_calculate_context_menu_min_col_width_long_construct_options():
 
 def test_compute_context_menu_layout_with_min_col_width():
     screen_res = Vector(1280, 720)
-    desired_width = display_config_for(screen_res).context_menu_width + 100
+    desired_width = DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_width + 100
     num_cols, num_rows, panel_width, panel_height, col_width, col_gap, row_height = compute_context_menu_layout(
-        screen_res, 4, max_items_cap=14, min_col_width=desired_width
+        DisplayConfig(int(screen_res.x), int(screen_res.y)), 4, max_items_cap=14, min_col_width=desired_width
     )
     assert num_cols == 1
     assert num_rows == 4
@@ -253,7 +260,9 @@ def test_open_context_menu_construct_submenu_expands_and_fits_text():
     manager = pygame_gui.UIManager((1280, 720))
 
     gui = MagicMock()
+    gui.display_config = DisplayConfig()
     gui.screen_res = screen_res
+    gui.display_config = DisplayConfig(int(screen_res.x), int(screen_res.y))
     gui.manager = manager
     gui.context_menu_panel = None
     gui.context_menu_buttons = []
@@ -282,7 +291,7 @@ def test_open_context_menu_construct_submenu_expands_and_fits_text():
     open_context_menu(gui, click_pos, parent_options, target=Position(100, 100))
     assert len(gui.context_menu_buttons) == 2
     for btn in gui.context_menu_buttons:
-        assert btn.relative_rect.width == display_config_for(screen_res).context_menu_width - 10
+        assert btn.relative_rect.width == DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_width - 10
 
     # 2. Click "Construct" -> navigates into submenu
     action = handle_button_index(gui, 1)
@@ -298,7 +307,7 @@ def test_open_context_menu_construct_submenu_expands_and_fits_text():
     assert action_back == {'action': 'ui_handled'}
     assert len(gui.context_menu_buttons) == 2
     for btn in gui.context_menu_buttons:
-        assert btn.relative_rect.width == display_config_for(screen_res).context_menu_width - 10
+        assert btn.relative_rect.width == DisplayConfig(int(screen_res.x), int(screen_res.y)).context_menu_width - 10
 
 
 pytestmark = pytest.mark.usefixtures("pygame_context")

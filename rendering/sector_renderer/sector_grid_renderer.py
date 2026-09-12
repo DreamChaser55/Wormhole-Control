@@ -1,14 +1,11 @@
+import pygame
+from sector_utils import sector_coords_to_pixels
 from display_config import display_config_for
-import sys
 import math
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_BORDER_COLOR, SECTOR_GRID_COLOR, SECTOR_GRID_SPACING
 from geometry import Position
 
 MAX_SAFE_CIRCLE_RADIUS_PX = 250_000
-
-
-def _sr():
-    return sys.modules['rendering.sector_renderer']
 
 
 class SectorGridRenderer:
@@ -33,19 +30,15 @@ class SectorGridRenderer:
 
     def coords_to_pixels(self, sector_pos):
         zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
         pan_offset = self.game.sector_pan_offset
-        if not isinstance(pan_offset, Position):
-            pan_offset = Position(0, 0)
-        return _sr().sector_coords_to_pixels(sector_pos, zoom, pan_offset, display_config=display_config_for(self.game))
+        return sector_coords_to_pixels(sector_pos, zoom, pan_offset, display_config=display_config_for(self.game))
 
     def draw_boundary(self, dynamic_radius):
         boundary_center = (
             int(display_config_for(self.game).center.x + self.game.sector_pan_offset.x),
             int(display_config_for(self.game).center.y + self.game.sector_pan_offset.y)
         )
-        _sr().pygame.draw.circle(self.screen, SECTOR_BORDER_COLOR, boundary_center, int(dynamic_radius), 1)
+        pygame.draw.circle(self.screen, SECTOR_BORDER_COLOR, boundary_center, int(dynamic_radius), 1)
 
     def draw_tactical_grid(self):
         """Draws a faint grey tactical grid clipped to the circular sector boundary."""
@@ -65,7 +58,7 @@ class SectorGridRenderer:
                 y_max = math.sqrt(y_max_sq)
                 p1 = self.coords_to_pixels(Position(val, -y_max))
                 p2 = self.coords_to_pixels(Position(val, y_max))
-                _sr().pygame.draw.line(self.screen, SECTOR_GRID_COLOR, (p1.x, p1.y), (p2.x, p2.y), 1)
+                pygame.draw.line(self.screen, SECTOR_GRID_COLOR, (p1.x, p1.y), (p2.x, p2.y), 1)
 
             # Horizontal grid line at y = val
             x_max_sq = radius * radius - val * val
@@ -73,7 +66,7 @@ class SectorGridRenderer:
                 x_max = math.sqrt(x_max_sq)
                 p1 = self.coords_to_pixels(Position(-x_max, val))
                 p2 = self.coords_to_pixels(Position(x_max, val))
-                _sr().pygame.draw.line(self.screen, SECTOR_GRID_COLOR, (p1.x, p1.y), (p2.x, p2.y), 1)
+                pygame.draw.line(self.screen, SECTOR_GRID_COLOR, (p1.x, p1.y), (p2.x, p2.y), 1)
 
     def is_circle_off_screen(self, center_px, radius_px):
         w, h = self.screen.get_size()
@@ -94,8 +87,8 @@ class SectorGridRenderer:
         if len(self.parent._circle_surface_cache) > 2000:
             self.parent._circle_surface_cache.clear()
             
-        surface = _sr().pygame.Surface((radius * 2, radius * 2), _sr().pygame.SRCALPHA)
-        _sr().pygame.draw.circle(surface, color, (radius, radius), radius)
+        surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(surface, color, (radius, radius), radius)
         self.parent._circle_surface_cache[key] = surface
         return surface
 
@@ -150,7 +143,7 @@ class SectorGridRenderer:
         if scaled_surface is None:
             source_width, source_height = source.get_size()
             source_region = source if source_rect == (0, 0, source_width, source_height) else source.subsurface(source_rect)
-            transform_fn = _sr().pygame.transform.smoothscale if smooth else _sr().pygame.transform.scale
+            transform_fn = pygame.transform.smoothscale if smooth else pygame.transform.scale
             scaled_surface = transform_fn(source_region, scaled_size)
             self.parent._scaled_effect_surfaces.put(cache_key, scaled_surface)
 
@@ -166,7 +159,7 @@ class SectorGridRenderer:
 
         source_width, source_height = source.get_size()
         source_region = source if source_rect == (0, 0, source_width, source_height) else source.subsurface(source_rect)
-        transform_fn = _sr().pygame.transform.smoothscale if smooth else _sr().pygame.transform.scale
+        transform_fn = pygame.transform.smoothscale if smooth else pygame.transform.scale
         scaled_surface = transform_fn(source_region, scaled_size)
         self.overlay_surface.blit(scaled_surface, (scaled_left, scaled_top))
         return True
@@ -200,13 +193,13 @@ class SectorGridRenderer:
             w, h = int(w), int(h)
         except (TypeError, ValueError):
             w, h = 1920, 1080
-        return self.circle_covers_rect(center_px, radius_px, _sr().pygame.Rect(0, 0, w, h))
+        return self.circle_covers_rect(center_px, radius_px, pygame.Rect(0, 0, w, h))
 
     def fill_circle_on_surface(self, surface, center_px, radius_px, rgba, clip_rect) -> bool:
         cx, cy = center_px
         radius_px = max(1, min(int(radius_px), MAX_SAFE_CIRCLE_RADIUS_PX))
 
-        circle_bbox = _sr().pygame.Rect(cx - radius_px, cy - radius_px, 2 * radius_px, 2 * radius_px)
+        circle_bbox = pygame.Rect(cx - radius_px, cy - radius_px, 2 * radius_px, 2 * radius_px)
         vis_rect = circle_bbox.clip(clip_rect)
         if vis_rect.width <= 0 or vis_rect.height <= 0:
             return False
@@ -217,7 +210,7 @@ class SectorGridRenderer:
 
         old_clip = surface.get_clip()
         surface.set_clip(vis_rect)
-        _sr().pygame.draw.circle(surface, rgba, (cx, cy), radius_px)
+        pygame.draw.circle(surface, rgba, (cx, cy), radius_px)
         surface.set_clip(old_clip)
         return True
 
@@ -226,14 +219,14 @@ class SectorGridRenderer:
         cx, cy = center_px
         radius_px = max(1, min(int(radius_px), MAX_SAFE_CIRCLE_RADIUS_PX))
 
-        circle_bbox = _sr().pygame.Rect(cx - radius_px, cy - radius_px, 2 * radius_px, 2 * radius_px)
+        circle_bbox = pygame.Rect(cx - radius_px, cy - radius_px, 2 * radius_px, 2 * radius_px)
         rect = circle_bbox.clip(self.screen.get_rect())
         if rect.width <= 0 or rect.height <= 0:
             return
 
         if (self.parent._range_circle_surface is None or
                 self.parent._range_circle_surface.get_size() != (screen_width, screen_height)):
-            self.parent._range_circle_surface = _sr().pygame.Surface((screen_width, screen_height), _sr().pygame.SRCALPHA)
+            self.parent._range_circle_surface = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         surf = self.parent._range_circle_surface
 
         surf.fill((0, 0, 0, 0), rect)
@@ -250,7 +243,7 @@ class SectorGridRenderer:
             return
 
         if not self.circle_covers_viewport((cx, cy), radius_px):
-            _sr().pygame.draw.circle(self.overlay_surface, outline_rgb, (cx, cy), radius_px, 2)
+            pygame.draw.circle(self.overlay_surface, outline_rgb, (cx, cy), radius_px, 2)
 
     def update_zoom_render_stats(self):
         self.parent.zoom_render_stats = {

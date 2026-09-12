@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 from unittest.mock import MagicMock
 from pygame import Color
@@ -5,10 +6,12 @@ from game import Game
 from domain.players import Player
 
 class DummyGame(Game):
+    display_config = DisplayConfig()
     def __init__(self):
         self.players = []
         self.current_player_index = 0
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
 
 def test_update_player_turn_display():
     game = DummyGame()

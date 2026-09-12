@@ -9,6 +9,7 @@ Comprehensive test suite for Basic and Advanced Cloaking Devices:
 - Custom unit template validation, build cost calculations, and serialization
 - Save/load game state persistence
 """
+from display_config import DisplayConfig
 
 import pytest
 from unittest.mock import MagicMock
@@ -43,6 +44,7 @@ def galaxy_setup():
     galaxy.systems = {"Alpha": system}
 
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
     mock_game.turn_number = 1
 
@@ -305,14 +307,14 @@ def test_template_dict_roundtrip():
     t.components.cloaking_type = "ADVANCED"
     t.components.cloaking_radius = 650.0
 
-    d = mgr._template_to_dict(t)
+    d = template_to_dict(t)
     assert d["has_cloaking_device"] is True
     assert d["cloaking_type"] == "ADVANCED"
     assert d["cloaking_radius"] == 650.0
     # (650 / 500) * 30.0 = 39.0
     assert d["cloaking_hull_cost"] == 39.0
 
-    rebuilt = mgr._dict_to_template("Phantom Cruiser", d)
+    rebuilt = template_from_dict("Phantom Cruiser", d)
     assert rebuilt.components.has_cloaking_device is True
     assert rebuilt.components.cloaking_type == "ADVANCED"
     assert rebuilt.components.cloaking_radius == 650.0
@@ -391,3 +393,5 @@ def test_save_manager_cloaking_serialization(galaxy_setup):
     assert restored.cloaking_component.is_active is True
     assert restored.cloaking_component.device_type == CloakingType.ADVANCED
     assert restored.cloaking_component.area_radius == 750.0
+
+from custom_unit_templates import template_to_dict, template_from_dict

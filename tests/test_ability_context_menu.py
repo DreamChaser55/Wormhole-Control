@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 from unittest.mock import MagicMock, patch
 from geometry import Position
@@ -22,6 +23,7 @@ class MockPlayer:
 
 def test_get_ability_context_options_empty():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = None
     player = MockPlayer()
     game.players = [player]
@@ -42,6 +44,7 @@ def test_get_ability_context_options_empty():
 
 def test_get_ability_context_options_single_unit():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = None
     player = MockPlayer()
     game.players = [player]
@@ -78,6 +81,7 @@ def test_get_ability_context_options_single_unit():
 
 def test_get_ability_context_options_multiple_units():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = None
     player = MockPlayer()
     game.players = [player]
@@ -105,6 +109,7 @@ def test_get_ability_context_options_multiple_units():
 
 def test_handle_context_menu_action_use_ability():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = None
     player = MockPlayer()
     game.players = [player]
@@ -130,6 +135,7 @@ def test_handle_context_menu_action_use_ability():
 
 def test_enemy_unit_context_menu_has_use_ability():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = None
     player = MockPlayer()
     enemy = MockPlayer("Enemy")
@@ -152,6 +158,7 @@ def test_enemy_unit_context_menu_has_use_ability():
 
 def test_enemy_unit_right_click_opens_menu_with_use_ability():
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.pending_ability = None
     player = MockPlayer()
     enemy = MockPlayer("Enemy")
@@ -174,8 +181,8 @@ def test_enemy_unit_right_click_opens_menu_with_use_ability():
     
     with patch('pygame.key.get_mods', return_value=0):
         with patch.object(game.gui, 'open_context_menu') as mock_open:
-            with patch('input_processor.is_pixel_in_sector', return_value=True):
-                with patch('input_processor.pixels_to_sector_coords', return_value=Position(100,0)):
+            with patch('input_processor.mouse_handler.is_pixel_in_sector', return_value=True):
+                with patch('input_processor.mouse_handler.pixels_to_sector_coords', return_value=Position(100,0)):
                     ip.handle_mouse_click(3, Position(0,0))
                     
                     mock_open.assert_called_once()
@@ -192,6 +199,7 @@ def test_enemy_unit_right_click_opens_menu_with_use_ability():
 def test_context_menu_submenu_handle_button_index():
     from gui.context_menu import handle_button_index
     gui = MagicMock()
+    gui.display_config = DisplayConfig()
     gui.screen_res = Position(800, 600)
     gui.context_menu_submenus = {0: [("Sub Item 1", "sub_action_1")]}
     gui.context_menu_options = [("Construct", [("Sub Item 1", "sub_action_1")])]

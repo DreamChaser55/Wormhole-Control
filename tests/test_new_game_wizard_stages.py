@@ -1,5 +1,6 @@
 """Unit and integration tests for the two-stage New Game Wizard and home star system assignment."""
 from __future__ import annotations
+from display_config import DisplayConfig
 import pygame
 import pygame_gui
 import pytest
@@ -14,8 +15,10 @@ pygame.font.init()
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
         self.gui.galaxy_generation_rect = pygame.Rect(0, 0, 800, 600)
         self.galaxy = None
         self.players = []
@@ -260,7 +263,7 @@ def test_gui_process_event_routes_map_preview_click():
             "selected_objects": [],
         },
     )()
-    gui = GUI_Handler(Vector(1280, 720), mock_game)
+    gui = GUI_Handler(DisplayConfig(1280, 720), mock_game)
     gui.show_new_game_wizard()
     wizard = gui.new_game_wizard
     wizard.go_to_stage(2)

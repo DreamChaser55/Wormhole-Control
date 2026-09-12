@@ -1,4 +1,5 @@
 """Unit tests for the toggle_inhibitor GUI action handler."""
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from game_actions import ACTION_HANDLERS, handle_gui_action
 from domain.units import Unit
@@ -15,6 +16,7 @@ def test_toggle_inhibitor_action_registered():
 def test_toggle_inhibitor_direct():
     """Verify direct toggle calls inhibitor.toggle(galaxy_ref=game.galaxy)."""
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_unit = MagicMock(spec=Unit)
     mock_unit.name = "Test Unit"
     mock_inhibitor = MagicMock(spec=HyperspaceInhibitionFieldEmitter)
@@ -32,6 +34,7 @@ def test_toggle_inhibitor_direct():
 def test_toggle_inhibitor_queued_with_shift():
     """Verify shift_pressed=True queues a ToggleInhibitorOrder with inverted turn_on state."""
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_unit = MagicMock(spec=Unit)
     mock_unit.name = "Test Unit"
     mock_inhibitor = MagicMock(spec=HyperspaceInhibitionFieldEmitter)

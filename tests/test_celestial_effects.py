@@ -1,4 +1,5 @@
 """Comprehensive tests for celestial body traits, environmental hazards, and tactical cover."""
+from display_config import DisplayConfig
 
 import pytest
 from domain.units import Unit
@@ -64,6 +65,7 @@ class MockHex:
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.galaxy = MockGalaxy()
         self.players = []
@@ -698,6 +700,7 @@ def test_gas_giant_antimatter_removal_integration():
 
     # 2. Sidebar: no "Antimatter Reservoir" label
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.players = [p1]
     mock_game.current_player_index = 0
     sidebar_data = build_celestial_body_panel(mock_game, gas_giant)

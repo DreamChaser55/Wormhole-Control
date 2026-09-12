@@ -1,12 +1,10 @@
+from display_config import DisplayConfig
 """Unit and integration tests for non-solid celestial body effect radii and turquoise circles."""
 
 from unittest.mock import MagicMock, patch
-from constants import (
-    ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS,
-    NEBULA_RADIUS, STORM_RADIUS, TURQUOISE, SECTOR_CIRCLE_RADIUS_LOGICAL,
-    SECTOR_CIRCLE_RADIUS_IN_PX, PlanetType, NebulaType, StormType, StarType,
-    FieldDensity, HYDROGEN_NEBULA_HARVEST_MULTIPLIER
-)
+from display_config import DEFAULT_DISPLAY_CONFIG
+from constants import ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS, NEBULA_RADIUS, STORM_RADIUS, TURQUOISE, SECTOR_CIRCLE_RADIUS_LOGICAL, PlanetType, NebulaType, StormType, StarType, FieldDensity, HYDROGEN_NEBULA_HARVEST_MULTIPLIER
+SECTOR_CIRCLE_RADIUS_IN_PX = DEFAULT_DISPLAY_CONFIG.sector_radius
 from domain.celestials import AsteroidField, IceField, DebrisField, Nebula, Storm, Planet, Star
 from geometry import Position
 from domain.coordinates import HexCoord
@@ -94,9 +92,10 @@ def test_sector_celestial_renderer_draws_turquoise_circle():
     """Verify SectorCelestialRenderer draws a turquoise circle for non-solid celestial bodies."""
     parent_mock = MagicMock()
     parent_mock.game = MagicMock()
+    parent_mock.game.display_config = DisplayConfig()
     parent_mock.game.sector_zoom = 1.0
     parent_mock.screen = MagicMock()
-    parent_mock._is_circle_off_screen.return_value = False
+    parent_mock.grid_renderer.is_circle_off_screen.return_value = False
     parent_mock._font_cache = {}
 
     renderer = SectorCelestialRenderer(parent_mock)
@@ -106,10 +105,8 @@ def test_sector_celestial_renderer_draws_turquoise_circle():
     obj_pixel_pos = Position(500.0, 400.0)
     dynamic_radius = SECTOR_CIRCLE_RADIUS_IN_PX * 1.0
 
-    with patch("rendering.sector_renderer.sector_celestial_renderer._sr") as mock_sr:
-        mock_sr.return_value = mock_sr
-        mock_sr.pygame = MagicMock()
-        mock_sr.pygame.time.get_ticks.return_value = 1000
+    with patch("rendering.sector_renderer.sector_celestial_renderer.pygame") as mock_pygame:
+        mock_pygame.time.get_ticks.return_value = 1000
 
         renderer.draw_celestial_object(df, obj_pixel_pos, dynamic_radius)
 
@@ -118,7 +115,7 @@ def test_sector_celestial_renderer_draws_turquoise_circle():
 
         # Verify pygame.draw.circle was called with screen, TURQUOISE, pos, expected_px_radius, 1
         found_turquoise_call = False
-        for call in mock_sr.pygame.draw.circle.call_args_list:
+        for call in mock_pygame.draw.circle.call_args_list:
             args = call[0]
             if len(args) >= 5 and args[1] == TURQUOISE:
                 assert args[2] == (int(obj_pixel_pos.x), int(obj_pixel_pos.y))
@@ -126,4 +123,4 @@ def test_sector_celestial_renderer_draws_turquoise_circle():
                 assert args[4] == 1
                 found_turquoise_call = True
                 break
-        assert found_turquoise_call, f"Expected turquoise circle call with radius {expected_px_radius}, calls: {mock_sr.pygame.draw.circle.call_args_list}"
+        assert found_turquoise_call, f"Expected turquoise circle call with radius {expected_px_radius}, calls: {mock_pygame.draw.circle.call_args_list}"

@@ -1,13 +1,9 @@
+import pygame
 from display_config import display_config_for
-import sys
 import math
 import random
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, NEBULA_RADIUS, STORM_RADIUS, STORM_LIGHTNING_COLOR, STORM_COMPOSE_MAX_DIAMETER, NEBULA_COLORS, STORM_COLORS, WHITE, YELLOW, CYAN, PURPLE, RED, STAR_COLORS, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS, CELESTIAL_FIELD_RADIUS, ASTEROID_FIELD_RADIUS, ICE_FIELD_RADIUS, DEBRIS_FIELD_RADIUS, PlanetType, FIELD_DENSITY_PARTICLES, ASTEROID_FIELD_PARTICLES, ICE_FIELD_PARTICLES, DEBRIS_FIELD_PARTICLES, TURQUOISE
 from domain.celestials import Star, Planet, Wormhole, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
-
-
-def _sr():
-    return sys.modules['rendering.sector_renderer']
 
 
 class SectorCelestialRenderer:
@@ -114,10 +110,10 @@ class SectorCelestialRenderer:
         center_x = -min_x + 2
         center_y = -min_y + 2
 
-        master_surface = _sr().pygame.Surface((width, height), _sr().pygame.SRCALPHA)
+        master_surface = pygame.Surface((width, height), pygame.SRCALPHA)
 
         for offset_x, offset_y, radius, color in circles:
-            circle_surface = self.parent._get_cached_circle_surface(radius, color)
+            circle_surface = self.parent.grid_renderer.get_cached_circle_surface(radius, color)
             if circle_surface:
                 cx = center_x + offset_x - radius
                 cy = center_y + offset_y - radius
@@ -132,8 +128,6 @@ class SectorCelestialRenderer:
 
     def draw_nebula(self, nebula, pos_px):
         zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
 
         pre_rendered = self.get_pre_rendered_nebula(nebula)
         if not pre_rendered:
@@ -143,7 +137,7 @@ class SectorCelestialRenderer:
         is_zooming = isinstance(target_zoom, (int, float)) and abs(target_zoom - zoom) > 1e-4
 
         if is_zooming:
-            self.parent._blit_scaled_surface_once(
+            self.parent.grid_renderer.blit_scaled_surface_once(
                 pre_rendered['master'],
                 (pre_rendered['center_x'], pre_rendered['center_y']),
                 (pos_px.x, pos_px.y),
@@ -151,8 +145,8 @@ class SectorCelestialRenderer:
                 smooth=False,
             )
         else:
-            quantized_zoom = self.parent._effect_zoom_bucket(zoom)
-            self.parent._blit_visible_scaled_surface(
+            quantized_zoom = self.parent.grid_renderer.effect_zoom_bucket(zoom)
+            self.parent.grid_renderer.blit_visible_scaled_surface(
                 pre_rendered['master'],
                 (pre_rendered['center_x'], pre_rendered['center_y']),
                 (pos_px.x, pos_px.y),
@@ -168,10 +162,8 @@ class SectorCelestialRenderer:
         else:
             num_objects = num_particles
         field_radius = getattr(field, 'radius', CELESTIAL_FIELD_RADIUS)
-        time_ms = _sr().pygame.time.get_ticks()
+        time_ms = pygame.time.get_ticks()
         zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
         dynamic_radius = display_config_for(self.game).sector_radius * zoom
 
         random.seed(field.id)
@@ -194,7 +186,7 @@ class SectorCelestialRenderer:
             offset_y_px = offset_y * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
             object_pos = (pos_px.x + offset_x_px, pos_px.y + offset_y_px)
 
-            _sr().pygame.draw.circle(self.screen, object_color, object_pos, object_size)
+            pygame.draw.circle(self.screen, object_color, object_pos, object_size)
 
         random.seed()
 
@@ -252,10 +244,8 @@ class SectorCelestialRenderer:
 
     def draw_storm(self, storm, pos_px):
         zoom = self.game.sector_zoom
-        if not isinstance(zoom, (int, float)):
-            zoom = 1.0
         dynamic_radius = display_config_for(self.game).sector_radius * zoom
-        time_ms = _sr().pygame.time.get_ticks()
+        time_ms = pygame.time.get_ticks()
 
         storm_data = self.get_pre_rendered_storm_circles(storm)
         particles = storm_data['particles']
@@ -264,10 +254,10 @@ class SectorCelestialRenderer:
         bounding_radius_logical = storm_data['bounding_radius_logical']
 
         bounding_radius_px = bounding_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
-        if bounding_radius_px > 0 and not self.parent._is_circle_off_screen((pos_px.x, pos_px.y), bounding_radius_px):
+        if bounding_radius_px > 0 and not self.parent.grid_renderer.is_circle_off_screen((pos_px.x, pos_px.y), bounding_radius_px):
             canvas_size = (int(canvas_diameter), int(canvas_diameter))
             if self.parent._storm_scratch_surface is None or self.parent._storm_scratch_surface.get_size() != canvas_size:
-                self.parent._storm_scratch_surface = _sr().pygame.Surface(canvas_size, _sr().pygame.SRCALPHA)
+                self.parent._storm_scratch_surface = pygame.Surface(canvas_size, pygame.SRCALPHA)
             scratch = self.parent._storm_scratch_surface
             scratch.fill((0, 0, 0, 0))
 
@@ -281,7 +271,7 @@ class SectorCelestialRenderer:
                 local_y = canvas_center_px + offset_y_logical * s_compose
                 local_radius_px = particle['local_radius_px']
 
-                circle_surface = self.parent._get_cached_circle_surface(local_radius_px, particle['color_key'])
+                circle_surface = self.parent.grid_renderer.get_cached_circle_surface(local_radius_px, particle['color_key'])
                 if circle_surface is not None:
                     scratch.blit(circle_surface, (local_x - local_radius_px, local_y - local_radius_px))
 
@@ -289,7 +279,7 @@ class SectorCelestialRenderer:
             is_zooming = isinstance(target_zoom, (int, float)) and abs(target_zoom - zoom) > 1e-4
             final_scale = (dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL) / s_compose
 
-            self.parent._blit_scaled_surface_once(
+            self.parent.grid_renderer.blit_scaled_surface_once(
                 scratch,
                 (canvas_center_px, canvas_center_px),
                 (pos_px.x, pos_px.y),
@@ -308,7 +298,7 @@ class SectorCelestialRenderer:
                 length_px = random.uniform(base_radius_px * 1.0, base_radius_px * 1.5)
                 end_pos_x = pos_px.x + length_px * math.cos(angle)
                 end_pos_y = pos_px.y + length_px * math.sin(angle)
-                _sr().pygame.draw.line(self.overlay_surface, STORM_LIGHTNING_COLOR, (pos_px.x, pos_px.y), (end_pos_x, end_pos_y), 2)
+                pygame.draw.line(self.overlay_surface, STORM_LIGHTNING_COLOR, (pos_px.x, pos_px.y), (end_pos_x, end_pos_y), 2)
 
     def draw_celestial_object(self, obj, obj_pixel_pos, dynamic_radius):
         """Draws a celestial object or field. Returns (should_draw_circle, obj_color, obj_radius_logical)."""
@@ -335,19 +325,19 @@ class SectorCelestialRenderer:
             obj_radius_logical = getattr(obj, 'collision_radius', PLANET_RADIUS)
             if obj.owner:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                _sr().pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
+                pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
         elif isinstance(obj, Moon):
             obj_color = (200, 200, 200)
             obj_radius_logical = getattr(obj, 'collision_radius', MOON_RADIUS)
             if obj.owner:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                _sr().pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
+                pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
         elif isinstance(obj, ColonizableAsteroid):
             obj_color = (90, 60, 50)
             obj_radius_logical = getattr(obj, 'collision_radius', ASTEROID_RADIUS)
             if obj.owner:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                _sr().pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
+                pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
         elif isinstance(obj, MetalAsteroid):
             obj_color = (140, 140, 160)
             obj_radius_logical = getattr(obj, 'collision_radius', ASTEROID_RADIUS)
@@ -385,18 +375,18 @@ class SectorCelestialRenderer:
             obj_color = PURPLE
             if obj.stability < 100:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                _sr().pygame.draw.circle(self.screen, RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
+                pygame.draw.circle(self.screen, RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
 
         if should_draw_circle:
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            _sr().pygame.draw.circle(self.screen, obj_color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius)
+            pygame.draw.circle(self.screen, obj_color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius)
 
             # Draw Celestial Body Name
             if hasattr(obj, 'name') and obj.name:
 
                 name_font_size = max(1, int(10 * display_config_for(self.game).text_scale))
                 if name_font_size not in self.parent._font_cache:
-                    self.parent._font_cache[name_font_size] = _sr().pygame.font.Font(None, name_font_size)
+                    self.parent._font_cache[name_font_size] = pygame.font.Font(None, name_font_size)
                 name_font = self.parent._font_cache[name_font_size]
                 name_surface = name_font.render(obj.name, True, obj_color)
                 name_rect = name_surface.get_rect()
@@ -412,7 +402,7 @@ class SectorCelestialRenderer:
 
                 badge_font_size = max(1, int(9 * display_config_for(self.game).text_scale))
                 if badge_font_size not in self.parent._font_cache:
-                    self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
+                    self.parent._font_cache[badge_font_size] = pygame.font.Font(None, badge_font_size)
                 badge_font = self.parent._font_cache[badge_font_size]
                 badge_surf = badge_font.render(badge_text, True, badge_color)
                 badge_rect = badge_surf.get_rect()
@@ -427,7 +417,7 @@ class SectorCelestialRenderer:
 
                     badge_font_size = max(1, int(9 * display_config_for(self.game).text_scale))
                     if badge_font_size not in self.parent._font_cache:
-                        self.parent._font_cache[badge_font_size] = _sr().pygame.font.Font(None, badge_font_size)
+                        self.parent._font_cache[badge_font_size] = pygame.font.Font(None, badge_font_size)
                     badge_font = self.parent._font_cache[badge_font_size]
                     badge_surf = badge_font.render(badge_text, True, badge_color)
                     badge_rect = badge_surf.get_rect()
@@ -436,7 +426,7 @@ class SectorCelestialRenderer:
 
         elif not getattr(obj, 'is_solid', True):
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-            if pixel_radius > 0 and not self.parent._is_circle_off_screen((obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius):
-                _sr().pygame.draw.circle(self.screen, TURQUOISE, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
+            if pixel_radius > 0 and not self.parent.grid_renderer.is_circle_off_screen((obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius):
+                pygame.draw.circle(self.screen, TURQUOISE, (int(obj_pixel_pos.x), int(obj_pixel_pos.y)), pixel_radius, 1)
 
         return obj_color, obj_radius_logical

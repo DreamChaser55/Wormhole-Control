@@ -1,3 +1,5 @@
+from domain.players import Player
+from display_config import DisplayConfig
 
 
 from player_controller import PlayerController
@@ -292,7 +294,7 @@ class TestMemory(unittest.TestCase):
 
     def test_player_deserialization_reasoning_effort_normalization(self):
 
-        from save_manager import deserialize_player
+        from save_manager import deserialize_player, serialize_player
 
         for raw_effort, expected_effort in (
             ("low", "low"),
@@ -307,7 +309,7 @@ class TestMemory(unittest.TestCase):
             ("max", "medium"),
             (None, "medium"),
         ):
-            data = {"name": "AI Player", "controller": PlayerController.OPENAI.value}
+            data = serialize_player(Player("AI Player", (1, 2, 3), controller=PlayerController.OPENAI))
             if raw_effort is not None:
                 data["ai_reasoning_effort"] = raw_effort
             restored = deserialize_player(data)
@@ -318,20 +320,20 @@ class TestMemory(unittest.TestCase):
 
     def test_new_save_schema_requires_controller_and_normalizes_repair_retries(self):
 
-        from save_manager import deserialize_player
+        from save_manager import deserialize_player, serialize_player
 
         with self.assertRaises(KeyError):
             deserialize_player({"name": "Old schema"})
         self.assertEqual(
-            deserialize_player({"controller": "openai", "ai_repair_retries": 0}).ai_repair_retries,
+            deserialize_player({**serialize_player(Player("AI", (1, 2, 3))), "controller": "openai", "ai_repair_retries": 0}).ai_repair_retries,
             MIN_REPAIR_RETRIES,
         )
         self.assertEqual(
-            deserialize_player({"controller": "openai", "ai_repair_retries": 100}).ai_repair_retries,
+            deserialize_player({**serialize_player(Player("AI", (1, 2, 3))), "controller": "openai", "ai_repair_retries": 100}).ai_repair_retries,
             MAX_REPAIR_RETRIES,
         )
         self.assertEqual(
-            deserialize_player({"controller": "openai", "ai_repair_retries": "bad"}).ai_repair_retries,
+            deserialize_player({**serialize_player(Player("AI", (1, 2, 3))), "controller": "openai", "ai_repair_retries": "bad"}).ai_repair_retries,
             DEFAULT_REPAIR_RETRIES,
         )
 
@@ -349,4 +351,5 @@ class TestMemory(unittest.TestCase):
             current_sector_coord=None,
             campaign_id="campaign",
         )
-        self.assertEqual(serialize_game_state(game)["version"], "4.3")
+        game.display_config = DisplayConfig()
+        self.assertEqual(serialize_game_state(game)["version"], "4.4")

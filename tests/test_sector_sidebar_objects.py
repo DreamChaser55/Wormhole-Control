@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from domain.units import Unit
 from domain.celestials import Planet, Star
@@ -9,6 +10,7 @@ from geometry import Position
 
 def test_hex_sidebar_objects_as_buttons_and_colored():
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.sidebar_needs_update = True
     mock_game.gui = MagicMock()
@@ -101,6 +103,7 @@ def test_hex_sidebar_objects_as_buttons_and_colored():
 
 def test_handle_gui_action_select_celestial_body():
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = MagicMock()
     mock_game.selected_objects = []
     mock_game.sidebar_needs_update = False
@@ -121,6 +124,7 @@ def test_build_minefield_panel_shows_remove_button_for_owned_minefield():
     p1 = Player(name="Player 1", color=(0, 0, 255))
     p1.id = 1
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.players = [p1]
     mock_game.current_player_index = 0
 
@@ -145,6 +149,7 @@ def test_build_minefield_panel_no_remove_button_for_enemy_minefield():
     p1 = Player(name="Player 1", color=(0, 0, 255))
     p2 = Player(name="Player 2", color=(255, 0, 0))
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.players = [p1, p2]
     mock_game.current_player_index = 0
 
@@ -173,6 +178,7 @@ def test_handle_gui_action_remove_minefield():
     # Test action handling on game
     p1 = Player(name="Player 1", color=(0, 0, 255))
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.players = [p1]
     game.current_player_index = 0
     game.galaxy = Galaxy(num_systems=0)
@@ -212,6 +218,7 @@ def test_build_celestial_body_panel_owner_style():
     p1 = Player(name="Player 1", color=(0, 0, 255))
     custom_player = Player(name="Red Empire", color=(255, 0, 0))
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.players = [p1, custom_player]
     mock_game.current_player_index = 0
     mock_game.galaxy = None
@@ -258,6 +265,7 @@ def test_apply_player_theme_registers_buttons_and_labels():
 
     p1 = Player(name="Blue Force", color=(0, 128, 255))
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.players = [p1]
     mock_theme = MagicMock()
     mock_game.gui.manager.get_theme.return_value = mock_theme

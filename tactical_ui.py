@@ -132,7 +132,7 @@ def draw(renderer, sector):
     config = display_config_for(game)
 
     def pixel(p):
-        v = renderer._coords_to_pixels(p)
+        v = renderer.grid_renderer.coords_to_pixels(p)
         return (int(v.x), int(v.y))
 
     def radius(value):

@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from types import SimpleNamespace
 from unittest.mock import Mock
 from geometry import Position
@@ -32,7 +33,7 @@ def test_stance_owns_attack_movement_tree_and_explicit_orders_take_priority():
     assert attack.parameters["target_unit_id"] == target.id
     assert attack.sub_orders[0].order_type == OrderType.MOVE
     assert attack.sub_orders[0].sub_orders[0].order_type == OrderType.REACH_WAYPOINT
-    assert attacker.engines_component.move_target_order_id == attack.sub_orders[0].sub_orders[0].order_id
+    assert attacker.engines_component.move_target_order_id == attack.sub_orders[0].sub_orders[0].local_order_id
 
     explicit = Order(attacker, OrderType.TOGGLE_INHIBITOR)
     commander.add_order(explicit)
@@ -113,11 +114,11 @@ def test_waypoint_cancellation_only_clears_the_target_it_owns():
     old = ReachWaypointOrder(unit, {})
     new = ReachWaypointOrder(unit, {})
 
-    unit.engines_component.set_move_target(Position(10, 0), old.order_id)
-    unit.engines_component.set_move_target(Position(20, 0), new.order_id)
+    unit.engines_component.set_move_target(Position(10, 0), old.local_order_id)
+    unit.engines_component.set_move_target(Position(20, 0), new.local_order_id)
     old.cancel()
     assert unit.engines_component.move_target == Position(20, 0)
-    assert unit.engines_component.move_target_order_id == new.order_id
+    assert unit.engines_component.move_target_order_id == new.local_order_id
 
     new.cancel()
     assert unit.engines_component.move_target is None
@@ -214,7 +215,7 @@ def test_loaded_explicit_movement_rebinds_new_waypoint_ownership():
     })
     commander.add_order(move)
     old_waypoint = move.sub_orders[0]
-    assert unit.engines_component.move_target_order_id == old_waypoint.order_id
+    assert unit.engines_component.move_target_order_id == old_waypoint.local_order_id
 
     payload = serialize_order(move)
     commander.clear_explicit_orders()
@@ -222,9 +223,9 @@ def test_loaded_explicit_movement_rebinds_new_waypoint_ownership():
     commander.restore_explicit_orders(restored, [], galaxy)
 
     new_waypoint = restored.sub_orders[0]
-    assert new_waypoint.order_id != old_waypoint.order_id
+    assert new_waypoint.local_order_id != old_waypoint.local_order_id
     assert unit.engines_component.move_target == Position(500, 0)
-    assert unit.engines_component.move_target_order_id == new_waypoint.order_id
+    assert unit.engines_component.move_target_order_id == new_waypoint.local_order_id
 
 
 def test_loaded_explicit_attack_rebinds_weapon_authority_without_execute():
@@ -248,7 +249,7 @@ def test_loaded_explicit_attack_rebinds_weapon_authority_without_execute():
     assert attacker.weapons_component.turrets[0].target is target
 
 
-def test_restoring_queue_only_resumes_in_progress_order_without_replaying_startup():
+def test_restoring_active_order_resumes_without_replaying_startup():
     galaxy, player, _ = create_test_galaxy()
     unit = create_combat_ship(galaxy, player, "Builder", (0, 0))
     order = Order(unit, OrderType.CONSTRUCT)
@@ -257,7 +258,7 @@ def test_restoring_queue_only_resumes_in_progress_order_without_replaying_startu
     order.resume = Mock()
     order.update = Mock()
 
-    unit.commander_component.restore_explicit_orders(None, [order], galaxy)
+    unit.commander_component.restore_explicit_orders(order, [], galaxy)
 
     assert unit.commander_component.current_order is order
     order.execute.assert_not_called()
@@ -310,12 +311,14 @@ def test_observation_and_sidebar_keep_standing_and_explicit_sections_compatible(
     assert observed["standing_order"]["engagement"]["origin"] == "stance"
 
     gui = SimpleNamespace(is_section_expanded=lambda _key: False)
+    gui.display_config = DisplayConfig()
     game = SimpleNamespace(
         players=[player],
         current_player_index=0,
         gui=gui,
         _generate_order_data_recursive=lambda order, _indent: order.order_type.name,
     )
+    game.display_config = DisplayConfig()
     sidebar = commander.get_sidebar_data(game)
     labels = [item.get("text") for item in sidebar if item.get("type") == "label"]
     assert "Stance Order:" in labels

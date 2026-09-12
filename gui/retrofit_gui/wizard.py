@@ -136,7 +136,6 @@ class RetrofitWizardWindow:
         self._sensor_short_range_entry: Optional[pygame_gui.elements.UITextEntryLine] = None
         self._sensor_long_range_entry: Optional[pygame_gui.elements.UITextEntryLine] = None
 
-        self._wt_dropdown: Optional[pygame_gui.elements.UIDropDownMenu] = None
         self._strikecraft_bay_slots_entry: Optional[pygame_gui.elements.UITextEntryLine] = None
         self._hangar_slots_entry: Optional[pygame_gui.elements.UITextEntryLine] = None
 
@@ -306,9 +305,6 @@ class RetrofitWizardWindow:
             param_readers.read_sensor_params(self)
         elif k == "StrikecraftBayComponent":
             param_readers.read_strikecraft_bay_params(self)
-            if self._wt_dropdown:
-                raw_wt = self._wt_dropdown.selected_option
-                self._comp_config["wing_type"] = raw_wt[0] if isinstance(raw_wt, tuple) else str(raw_wt)
         elif k == "HangarComponent":
             param_readers.read_hangar_params(self)
         elif k == "RepairComponent":
@@ -438,7 +434,7 @@ class RetrofitWizardWindow:
                     self.select_component(meta["comp_key"])
                 return {"action": "ui_handled"}
 
-            elif elem in (self._hd_type_dropdown, self._wt_dropdown, self._cloaking_type_dropdown):
+            elif elem in (self._hd_type_dropdown, self._cloaking_type_dropdown):
                 self._sync_cost_and_summary()
                 return {"action": "ui_handled"}
 

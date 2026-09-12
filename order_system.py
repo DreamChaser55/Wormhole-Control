@@ -672,7 +672,6 @@ class OrderSystem:
                 continue
             params = {
                 "target_body_id": getattr(event.target_body, 'id', None),
-                "target_body_name": getattr(event.target_body, 'name', None),
                 "system": event.target_system,
                 "hex": event.target_hex,
             }
@@ -850,4 +849,3 @@ class OrderSystem:
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True
         self.game.sidebar_needs_update = True
-

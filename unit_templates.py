@@ -36,13 +36,6 @@ def builtin_template_names() -> set[str]:
             for name in (key, value.get("name", key))}
 
 
-def lookup_legacy_template(name: str) -> dict:
-    """Resolve historical save definitions without publishing Testing designs."""
-    if name in TESTING_TEMPLATE_KEYS:
-        return load_testing_templates().get(name, {})
-    return UNIT_TEMPLATES.get(name, {})
-
-
 def publish_testing_templates(templates: dict) -> None:
     """Replace the active Testing subset, preserving the shared dictionary."""
     for key in TESTING_TEMPLATE_KEYS:

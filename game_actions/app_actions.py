@@ -78,22 +78,6 @@ def handle_toggle_unit_editor(game, action: dict) -> None:
         game.gui.open_unit_editor(game.custom_template_manager)
 
 
-def handle_unit_editor_design_saved(game, action: dict) -> None:
-    if game.galaxy:
-        all_units = [
-            u for system in game.galaxy.systems.values()
-            for h in system.hexes.values()
-            for u in h.units
-        ]
-        count = game.custom_template_manager.refresh_shipyard_buildables(all_units)
-        if count:
-            logger.debug(f"[Game] Refreshed constructors on {count} shipyard unit(s) with custom designs.")
-
-
-def handle_unit_editor_design_deleted(game, action: dict) -> None:
-    pass
-
-
 def handle_save_game(game, action: dict) -> None:
     game.save_game()
 
@@ -147,8 +131,6 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'toggle_ingame_menu': handle_toggle_ingame_menu,
     'update_ai_repair_retries': handle_update_ai_repair_retries,
     'toggle_unit_editor': handle_toggle_unit_editor,
-    'unit_editor_design_saved': handle_unit_editor_design_saved,
-    'unit_editor_design_deleted': handle_unit_editor_design_deleted,
     'save_game': handle_save_game,
     'load_game_file': handle_load_game_file,
     'quit_to_main_menu': handle_quit_to_main_menu,

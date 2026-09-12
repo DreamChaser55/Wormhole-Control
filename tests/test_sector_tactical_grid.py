@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 import pygame
 import math
@@ -11,6 +12,7 @@ from geometry import Position
 
 def test_tactical_grid_draws_lines_clipped_to_sector():
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.screen = pygame.Surface((800, 600))
     mock_game.overlay_surface = pygame.Surface((800, 600), pygame.SRCALPHA)
     mock_game.current_system_name = "TestSystem"
@@ -29,7 +31,7 @@ def test_tactical_grid_draws_lines_clipped_to_sector():
 
     renderer = SectorViewRenderer(mock_game)
 
-    with patch("rendering.sector_renderer.pygame.draw.line") as mock_draw_line:
+    with patch("pygame.draw.line") as mock_draw_line:
         renderer.draw_sector_view()
 
         # Filter calls that use SECTOR_GRID_COLOR
@@ -44,7 +46,8 @@ def test_tactical_grid_draws_lines_clipped_to_sector():
             for endpoint in call.args[2:4]:
                 point = pixels_to_sector_coords(Position(*endpoint), zoom=mock_game.sector_zoom, pan_offset=mock_game.sector_pan_offset)
                 # Pixel rounding permits at most one pixel per axis of overshoot.
-                from constants import SECTOR_CIRCLE_RADIUS_IN_PX
+                from display_config import DEFAULT_DISPLAY_CONFIG
+                SECTOR_CIRCLE_RADIUS_IN_PX = DEFAULT_DISPLAY_CONFIG.sector_radius
                 tolerance = math.sqrt(2) * SECTOR_CIRCLE_RADIUS_LOGICAL / SECTOR_CIRCLE_RADIUS_IN_PX
                 assert math.hypot(point.x, point.y) <= SECTOR_CIRCLE_RADIUS_LOGICAL + tolerance
 

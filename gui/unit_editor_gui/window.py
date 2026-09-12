@@ -4,6 +4,7 @@ window.py
 UnitEditorWindow class definition for the Unit Designer GUI overlay panel.
 """
 
+from display_config import DisplayConfig
 import logging
 import pygame
 import pygame_gui
@@ -41,12 +42,14 @@ class UnitEditorWindow:
     def __init__(
         self,
         manager: pygame_gui.UIManager,
-        screen_res: pygame.Vector2,
+        display_config: DisplayConfig,
         template_manager: CustomTemplateManager,
     ):
         self.manager = manager
         from gui.theme_loader import preload_rich_text_fonts
         preload_rich_text_fonts(manager)
+        self.display_config = display_config
+        screen_res = display_config.resolution
         self.screen_res = screen_res
         self.template_manager = template_manager
         self.is_visible = False

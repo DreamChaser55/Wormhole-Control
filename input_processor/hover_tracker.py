@@ -1,3 +1,4 @@
+from sector_utils import sector_coords_to_pixels, sector_radius_to_pixels
 """Spatial entity hover state tracking across galaxy, system, and sector views."""
 from display_config import display_config_for
 import typing
@@ -9,7 +10,6 @@ from constants import (
 )
 from geometry import Position, distance_sq
 from hexgrid_utils import pixel_to_hex
-import sys
 from sector_utils import (
     get_minefield_dot_pixel_positions,
     get_minefield_dot_radius_px,
@@ -19,25 +19,6 @@ from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAste
 from galaxy_utils import logical_to_screen_galaxy
 
 logger = logging.getLogger(__name__)
-
-
-def sector_coords_to_pixels(*args, **kwargs):
-    mod = sys.modules.get('input_processor')
-    fn = getattr(mod, 'sector_coords_to_pixels', None) if mod else None
-    if fn is not None and fn is not sector_coords_to_pixels:
-        return fn(*args, **kwargs)
-    import sector_utils
-    return sector_utils.sector_coords_to_pixels(*args, **kwargs)
-
-
-def sector_radius_to_pixels(*args, **kwargs):
-    mod = sys.modules.get('input_processor')
-    fn = getattr(mod, 'sector_radius_to_pixels', None) if mod else None
-    if fn is not None and fn is not sector_radius_to_pixels:
-        return fn(*args, **kwargs)
-    import sector_utils
-    return sector_utils.sector_radius_to_pixels(*args, **kwargs)
-
 
 
 def update_hover_states(game, gui, mouse_pos: Position) -> None:
@@ -71,8 +52,8 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
             return
         system = game.galaxy.systems[game.current_system_name]
         if system:
-            zoom = game.system_zoom if isinstance(getattr(game, 'system_zoom', 1.0), (int, float)) else 1.0
-            pan_offset = game.system_pan_offset if isinstance(getattr(game, 'system_pan_offset', None), Position) else Position(0, 0)
+            zoom = game.system_zoom
+            pan_offset = game.system_pan_offset
             hover_hex = pixel_to_hex(mouse_pos.x, mouse_pos.y, zoom, pan_offset, display_config=display_config_for(game))
             if hover_hex in system.hexes:
                 game.system_view_mouse_hover_hex = hover_hex
@@ -83,11 +64,7 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
         system = game.galaxy.systems[game.current_system_name]
         if system:
             zoom = game.sector_zoom
-            if not isinstance(zoom, (int, float)):
-                zoom = 1.0
             pan_offset = game.sector_pan_offset
-            if not isinstance(pan_offset, Position):
-                pan_offset = Position(0, 0)
 
             min_dist_sq = float('inf')
             hovered_obj = None
@@ -178,8 +155,8 @@ def get_units_under_mouse(game, mouse_pos: Position) -> typing.List[Unit]:
     if not hex_obj or not hex_obj.units:
         return []
 
-    zoom = game.sector_zoom if isinstance(getattr(game, 'sector_zoom', 1.0), (int, float)) else 1.0
-    pan_offset = game.sector_pan_offset if isinstance(getattr(game, 'sector_pan_offset', None), Position) else Position(0, 0)
+    zoom = game.sector_zoom
+    pan_offset = game.sector_pan_offset
 
     matching_units: typing.List[typing.Tuple[float, Unit]] = []
     for unit in hex_obj.units:

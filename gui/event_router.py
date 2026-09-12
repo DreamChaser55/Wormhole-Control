@@ -21,10 +21,6 @@ def _editor_action_to_gui_action(editor_action: str) -> typing.Optional[dict]:
     """
     if editor_action == 'close':
         return {'action': 'toggle_unit_editor'}
-    elif editor_action == 'design_saved':
-        return {'action': 'unit_editor_design_saved'}
-    elif editor_action == 'design_deleted':
-        return {'action': 'unit_editor_design_deleted'}
     return None
 
 

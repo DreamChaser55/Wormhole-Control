@@ -13,10 +13,10 @@ from custom_unit_templates import CustomUnitTemplate, TemplatePersistenceError
 from .catalog import HULL_SIZE_NAMES, HYPERDRIVE_TYPES, CLOAKING_TYPES
 from .widget_factory import replace_dropdown
 from .component_state import (
-    apply_hull_restrictions,
     update_component_toggle_labels,
     update_ability_toggle_labels,
     refresh_component_details,
+    refresh_hull_controls,
 )
 from .turret_editor import rebuild_turret_list
 from .save_dialog import SaveConfirmationDialog
@@ -148,7 +148,7 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
             group_key="has_cloaking_device",
         )
 
-    apply_hull_restrictions(editor)
+    refresh_hull_controls(editor)
     update_component_toggle_labels(editor)
     update_ability_toggle_labels(editor)
     rebuild_turret_list(editor)

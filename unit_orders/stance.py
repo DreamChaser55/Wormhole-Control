@@ -224,7 +224,7 @@ class StanceOrder(Order):
             "[%s (id:%s)] STANCE(id:%s): invalidating target %s (%s).",
             self.unit.name,
             self.unit.id,
-            self.order_id,
+            self.local_order_id,
             attack.parameters.get("target_unit_id"),
             reason,
         )
@@ -271,7 +271,7 @@ class StanceOrder(Order):
                 "[%s (id:%s)] STANCE(id:%s): acquired target %s (id:%s).",
                 self.unit.name,
                 self.unit.id,
-                self.order_id,
+                self.local_order_id,
                 target.name,
                 target.id,
             )

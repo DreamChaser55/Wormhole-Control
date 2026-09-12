@@ -6,6 +6,7 @@
 - Turn processor clamping at storm boundaries
 - AI rule generation and command preflight rejection
 """
+from display_config import DisplayConfig
 
 import math
 from domain.coordinates import HexCoord
@@ -83,6 +84,7 @@ class MockGalaxy:
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.galaxy = MockGalaxy()
         self.players = [MockPlayer()]
@@ -139,7 +141,7 @@ def test_strikecraft_ignores_field_speed_penalties():
     })
     order1.status = OrderStatus.IN_PROGRESS
     strikecraft.commander_component.current_order = order1
-    strikecraft.engines_component.set_move_target(Position(200.0, 0.0), order1.order_id)
+    strikecraft.engines_component.set_move_target(Position(200.0, 0.0), order1.local_order_id)
 
     order2 = ReachWaypointOrder(normal_ship, {
         "destination_system_name": "Alpha",
@@ -148,7 +150,7 @@ def test_strikecraft_ignores_field_speed_penalties():
     })
     order2.status = OrderStatus.IN_PROGRESS
     normal_ship.commander_component.current_order = order2
-    normal_ship.engines_component.set_move_target(Position(200.0, 0.0), order2.order_id)
+    normal_ship.engines_component.set_move_target(Position(200.0, 0.0), order2.local_order_id)
 
     tp._process_movement(game.players[0])
 
@@ -305,7 +307,7 @@ def test_strikecraft_sublight_movement_halts_at_storm_boundary():
     })
     order.status = OrderStatus.IN_PROGRESS
     strikecraft.commander_component.current_order = order
-    strikecraft.engines_component.set_move_target(Position(1000.0, 0.0), order.order_id)
+    strikecraft.engines_component.set_move_target(Position(1000.0, 0.0), order.local_order_id)
 
     tp._process_movement(game.players[0])
 

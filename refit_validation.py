@@ -45,7 +45,7 @@ COMPONENT_SPECS = {
     'CloakingDevice': ComponentSpec('has_cloaking_device', {'device_type': 'cloaking_type', 'area_radius': 'cloaking_radius'}),
     'AbilityComponent': ComponentSpec('has_ability_component'),
     'MinelayerComponent': ComponentSpec('has_minelayer_component', fixed_cost='minelayer_hull_cost'),
-    'IntelligenceComponent': ComponentSpec('has_intelligence_component', {'agents_capacity': 'intelligence_agents_count', 'has_counter_intelligence': 'counter_intelligence'}),
+    'IntelligenceComponent': ComponentSpec('has_intelligence_component', {'agents_capacity': 'intelligence_agents_count', 'has_counter_intelligence': 'has_counter_intelligence'}),
 }
 
 
@@ -120,8 +120,8 @@ def eligible_component(unit, name):
 def evaluate_refit(unit, action, component_name, configuration=None):
     """Validate a request and its complete result before any arithmetic or mutation.
 
-Derived cost hints from older events/saves are ignored. Parameter values are not
-coerced: malformed numbers/enums must reach the same validation as the Designer.
+    Derived cost hints are recalculated. Parameter values are not coerced:
+    malformed numbers/enums reach the same validation as the Designer.
 """
     result = RefitEvaluation(component_name=canonical_component_name(component_name))
     spec = COMPONENT_SPECS.get(result.component_name)
@@ -133,12 +133,6 @@ coerced: malformed numbers/enums must reach the same validation as the Designer.
         return result
     config = deepcopy(configuration or {})
     name = result.component_name
-    # Historical spellings use the same canonical capacity, never available agents.
-    if name == 'IntelligenceComponent' and 'agents_count' in config:
-        config.setdefault('agents_capacity', config.pop('agents_count'))
-    # Strikecraft bays do not have a wing role; this was an unused legacy UI field.
-    if name == 'StrikecraftBayComponent':
-        config.pop('wing_type', None)
     config.pop('hull_cost', None)
     existing = next((c for cls, c in unit.components.items() if cls.__name__ == name), None)
     if (action == 'ADD' and existing is not None) or (action == 'REMOVE' and existing is None):

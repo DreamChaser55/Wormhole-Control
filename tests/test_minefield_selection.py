@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import pytest
 from player_controller import PlayerController
 from unittest.mock import MagicMock
@@ -24,6 +25,7 @@ class MockPlayer:
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.view_mode = "sector"
         self.game_started = True
@@ -41,6 +43,7 @@ class MockGame:
         sys.hexes[(0, 0)] = Hex(0, 0, "Sol")
         self.galaxy.systems["Sol"] = sys
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
         self.gui.is_mouse_over_context_menu.return_value = False
         self.visibility = None
 

@@ -62,13 +62,13 @@ class Engines(UnitComponent):
         self.move_target = None
         self.move_target_order_id = None
 
-    def set_move_target(self, target: Position, order_id: int) -> None:
+    def set_move_target(self, target: Position, local_order_id: int) -> None:
         self.move_target = target
-        self.move_target_order_id = order_id
+        self.move_target_order_id = local_order_id
 
-    def clear_move_target(self, order_id: Optional[int] = None) -> bool:
-        """Clear the target only when ``order_id`` still owns it, if supplied."""
-        if order_id is not None and self.move_target_order_id != order_id:
+    def clear_move_target(self, local_order_id: Optional[int] = None) -> bool:
+        """Clear the target only when ``local_order_id`` still owns it, if supplied."""
+        if local_order_id is not None and self.move_target_order_id != local_order_id:
             return False
         self.move_target = None
         self.move_target_order_id = None
@@ -189,19 +189,19 @@ class Hyperdrive(UnitComponent):
             and self.unit.is_sabotaged(SabotageType.HYPERDRIVE)
         )
 
-    def set_hex_jump_target(self, target: Tuple[HexCoord, Position], order_id: int) -> None:
+    def set_hex_jump_target(self, target: Tuple[HexCoord, Position], local_order_id: int) -> None:
         self.hex_jump_target = target
         self.wormhole_jump_target = None
-        self.jump_target_order_id = order_id
+        self.jump_target_order_id = local_order_id
 
-    def set_wormhole_jump_target(self, target: 'Wormhole', order_id: int) -> None:
+    def set_wormhole_jump_target(self, target: 'Wormhole', local_order_id: int) -> None:
         self.wormhole_jump_target = target
         self.hex_jump_target = None
-        self.jump_target_order_id = order_id
+        self.jump_target_order_id = local_order_id
 
-    def clear_jump_target(self, order_id: Optional[int] = None) -> bool:
-        """Clear the jump target only when ``order_id`` still owns it, if supplied."""
-        if order_id is not None and self.jump_target_order_id != order_id:
+    def clear_jump_target(self, local_order_id: Optional[int] = None) -> bool:
+        """Clear the jump target only when ``local_order_id`` still owns it, if supplied."""
+        if local_order_id is not None and self.jump_target_order_id != local_order_id:
             return False
         self.hex_jump_target = None
         self.wormhole_jump_target = None
@@ -274,23 +274,22 @@ class Hyperdrive(UnitComponent):
         return data
 
 
-    def start_recharge(self, order_id: Optional[int] = None) -> None:
+    def start_recharge(self, local_order_id: Optional[int] = None) -> None:
         """Initiate recharge and release only the target owned by this jump.
 
-        ``order_id`` is normally supplied by the movement processor.  Keeping
-        it optional preserves the component's public API for callers that are
-        already operating on the currently bound target.
+        ``local_order_id`` is normally supplied by the movement processor.  Omit it when
+        operating directly on the currently bound target.
         """
         # A delayed movement pass may still hold the ID of a waypoint that
         # was cancelled/replaced after its snapshot was taken.  Never let that
         # stale completion put a newer jump into recharge or clear its target.
-        if order_id is not None and self.jump_target_order_id != order_id:
+        if local_order_id is not None and self.jump_target_order_id != local_order_id:
             return
 
         extra_turns = 3 if hasattr(self.unit, 'is_sabotaged') and self.unit.is_sabotaged(SabotageType.HYPERDRIVE) else 0
         self.jump_status = JumpStatus.CHARGING
         self.recharge_time_remaining = self.RECHARGE_DURATION + extra_turns
-        owner_id = self.jump_target_order_id if order_id is None else order_id
+        owner_id = self.jump_target_order_id if local_order_id is None else local_order_id
         self.clear_jump_target(owner_id)
         logger.debug(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive starting recharge for {self.recharge_time_remaining} turns. Status: CHARGING.")
 

@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 import logging
 import math
 from unittest.mock import MagicMock, patch
@@ -588,6 +589,7 @@ def test_inter_system_jump_drive_type_validation():
 def test_handle_jump_interhex_same_hex_different_system():
     event_bus = EventBus()
     game = MagicMock()
+    game.display_config = DisplayConfig()
     order_sys = OrderSystem(game, event_bus)
     
     unit = ComponentUnit()
@@ -816,6 +818,7 @@ def test_turn_processor_failed_hex_jump_does_not_mutate_position():
     hd.jump_status = JumpStatus.READY
 
     game = MagicMock()
+    game.display_config = DisplayConfig()
     start_hex = MagicMock()
     start_hex.get_all_inhibition_zones.return_value = []
     dest_hex = MagicMock()

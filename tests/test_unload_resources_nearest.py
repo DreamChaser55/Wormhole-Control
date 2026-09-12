@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
 from unit_components.mining import MiningComponent, MetalRefineryComponent, CrystalRefineryComponent
@@ -8,6 +9,7 @@ from tests.support.units import ComponentUnit, ComponentPlayer
 
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.galaxy = MagicMock()
         self.sidebar_needs_update = False

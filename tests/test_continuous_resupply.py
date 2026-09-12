@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
 from unit_components.antimatter import AntimatterHarvester
@@ -217,6 +218,7 @@ def test_player_event_continuous_resupply_accepts_legacy_star_id_zero():
     star.id = 0
     galaxy = _make_galaxy([harvester], star=star)
     game = MagicMock()
+    game.display_config = DisplayConfig()
     game.galaxy = galaxy
     game.gui = None
     harvester.game = game

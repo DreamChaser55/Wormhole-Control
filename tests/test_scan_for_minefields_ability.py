@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from geometry import Position
 from domain.units import Unit
 from domain.players import Player
@@ -71,6 +72,7 @@ class DummyGalaxy:
 
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self, players=None):
         self.players = players if players is not None else [
             Player("Player 1", (0, 255, 0)),

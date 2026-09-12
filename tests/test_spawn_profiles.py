@@ -1,4 +1,5 @@
 """Unit and integration tests for player and unit spawn profiles."""
+from display_config import DisplayConfig
 import pytest
 import pygame
 import pygame_gui
@@ -81,8 +82,10 @@ def test_codex_protocol_spawn_profile_parsing():
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self):
         self.gui = MagicMock()
+        self.gui.display_config = DisplayConfig()
         self.galaxy = None
         self.players = []
         self.current_player_index = 0

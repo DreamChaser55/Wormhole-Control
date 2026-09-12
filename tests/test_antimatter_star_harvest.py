@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from player_controller import PlayerController
 import pytest
 from domain.celestials import Star
@@ -39,12 +40,14 @@ class FakeGalaxy:
 
 
 class FakeGame:
+    display_config = DisplayConfig()
     def __init__(self, galaxy=None):
         self.galaxy = galaxy
 
 
 def make_unit_with_harvester(player, harvest_rate=DEFAULT_ANTIMATTER_HARVEST_RATE, initial_am=0.0, max_am=100.0):
     game = MagicMock()
+    game.display_config = DisplayConfig()
     unit = Unit(
         name="Harvester Unit",
         hull_size=HullSize.MEDIUM,

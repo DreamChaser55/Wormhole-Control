@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders.base import OrderStatus
@@ -35,6 +36,7 @@ def test_order_cancellation_cascade():
 
 def test_order_formatting():
     class MockGame(Game):
+        display_config = DisplayConfig()
         def __init__(self):
             self.galaxy = MagicMock()
             self.sidebar_needs_update = False

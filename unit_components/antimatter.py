@@ -5,7 +5,7 @@ import dataclasses
 from .base import UnitComponent
 from geometry import distance
 from constants import (
-    DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_REGEN,
+    DEFAULT_ANTIMATTER_CAPACITY,
     DEFAULT_ANTIMATTER_HARVEST_RATE, ANTIMATTER_HARVEST_RANGE,
     ANTIMATTER_HARVESTER_HULL_COST, ANTIMATTER_CAPACITY_PER_HULL_POINT,
     HYDROGEN_NEBULA_HARVEST_MULTIPLIER
@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass
 class AntimatterStorage(UnitComponent):
     """Component storing and managing antimatter energy levels for a unit."""
-    STATE_CONFIG = ('max_capacity', 'regen_rate')
+    SCHEMA_VERSION = 2
+    STATE_CONFIG = ('max_capacity',)
     STATE_RUNTIME = ('current_amount',)
     STATE_REFS = ()
 
@@ -34,14 +35,12 @@ class AntimatterStorage(UnitComponent):
     SIDEBAR_ORDER: int = 1
     max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY
     current_amount: float = DEFAULT_ANTIMATTER_CAPACITY
-    regen_rate: float = DEFAULT_ANTIMATTER_REGEN
 
-    def __init__(self, unit: 'Unit', max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY, regen_rate: float = DEFAULT_ANTIMATTER_REGEN, hull_cost: float = 0.0):
+    def __init__(self, unit: 'Unit', max_capacity: float = DEFAULT_ANTIMATTER_CAPACITY, hull_cost: float = 0.0):
         if hull_cost == 0.0:
             hull_cost = AntimatterStorage.calc_hull_cost(max_capacity)
         super().__init__(unit, hull_cost=hull_cost)
         self.max_capacity = max_capacity
-        self.regen_rate = regen_rate
         self.current_amount = max_capacity
 
     @staticmethod
@@ -61,22 +60,6 @@ class AntimatterStorage(UnitComponent):
             return True
         return False
 
-    def regenerate(self) -> None:
-        """Regenerates antimatter up to max_capacity.
-
-        Note: this is no longer called automatically every turn for all units.
-        Passive regeneration has been replaced by the AntimatterHarvester
-        component (which refills its own unit's storage while near a star)
-        and by transferring antimatter from another unit's storage. This
-        method is kept for components/abilities that may still want to grant
-        a flat regeneration tick (and for backward-compatible tests).
-        """
-        if self.is_destroyed:
-            return
-        if self.current_amount < self.max_capacity:
-            old = self.current_amount
-            self.current_amount = min(self.max_capacity, self.current_amount + self.regen_rate)
-            logger.debug(f"[{self.unit.name}] Regenerated {self.current_amount - old:.1f} antimatter. Current: {self.current_amount:.1f}/{self.max_capacity:.1f}")
 
     def add(self, amount: float) -> float:
         """Adds antimatter up to max_capacity. Returns the actual amount added.

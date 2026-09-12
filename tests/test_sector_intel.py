@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from domain.players import Player
 from domain.units import Unit
@@ -11,6 +12,7 @@ from save_manager import serialize_player, deserialize_player
 
 
 class MockGame:
+    display_config = DisplayConfig()
     def __init__(self, galaxy, players):
         self.galaxy = galaxy
         self.players = players
@@ -43,6 +45,7 @@ def test_long_range_sensor_updates_sector_intel():
     h10 = sys.hexes[(1, 0)]
 
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
 
     # Unit with long-range sensors (range = 2)
@@ -73,6 +76,7 @@ def test_short_range_only_sensor_does_not_update_intel():
     h00 = sys.hexes[(0, 0)]
 
     mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
     mock_game.galaxy = galaxy
 
     # Unit with ONLY short-range sensors

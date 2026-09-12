@@ -296,7 +296,7 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
                 self.current_order = None
                 self.orders_queue = []
 
-            def clear_orders(self):
+            def clear_explicit_orders(self):
                 self.current_order = None
                 self.orders_queue.clear()
 

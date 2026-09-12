@@ -1,3 +1,4 @@
+from display_config import DisplayConfig
 from unittest.mock import MagicMock, patch
 from geometry import Position
 from domain.units import Unit
@@ -17,7 +18,10 @@ from tests.support.units import ComponentPlayer
 
 
 class DummyGame:
+    display_config = DisplayConfig()
     def __init__(self):
+        self.system_zoom = 1.0
+        self.system_pan_offset = Position(0, 0)
         self.galaxy = MagicMock()
         self.selected_objects = []
         self.sector_view_mouse_hover_object = None
@@ -274,13 +278,13 @@ def test_sector_view_renderer_collect_waypoints_for_ability():
     })
     caster.commander_component.add_order(order)
     
-    waypoints = renderer._collect_all_waypoints(caster)
+    waypoints = renderer.overlay_renderer.collect_all_waypoints(caster)
     assert len(waypoints) == 1
     assert waypoints[0]['position'] == Position(100, 200)
     assert waypoints[0]['order_type'] == OrderType.USE_ABILITY
     
     # Verify styling
-    color, width = renderer._get_waypoint_style(waypoints[0])
+    color, width = renderer.overlay_renderer.get_waypoint_style(waypoints[0])
     assert color == (255, 105, 180) # Hot Pink
 
 def test_system_view_renderer_collect_waypoints_for_ability():

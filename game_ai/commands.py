@@ -66,32 +66,6 @@ class _Rejected(ValueError):
         self.code = code
 
 
-def _clear_explicit_orders(commander: Any) -> None:
-    method = getattr(commander, "clear_explicit_orders", None)
-    if callable(method):
-        method()
-    else:  # Compatibility for integrations implementing the pre-3.1 surface.
-        commander.clear_orders()
-
-
-def _stop_and_idle(commander: Any) -> None:
-    method = getattr(commander, "stop_and_idle", None)
-    if callable(method):
-        method()
-        return
-    commander.clear_orders()
-    from unit_components.enums import UnitStance
-    commander.stance = UnitStance.DO_NOTHING
-
-
-def _set_stance(commander: Any, stance: Any) -> None:
-    method = getattr(commander, "set_stance", None)
-    if callable(method):
-        method(stance)
-    else:
-        commander.stance = stance
-
-
 @dataclass
 class _Prepared:
     apply: Callable[[], None]
@@ -806,14 +780,14 @@ class CommandGateway:
         if command.type == "cancel_orders":
             return [
                 _Prepared(
-                    apply=lambda unit=unit: _stop_and_idle(unit.commander_component),
+                    apply=lambda unit=unit: unit.commander_component.stop_and_idle(),
                     receipt=f"Stopped {unit.name} and set its stance to Do Nothing.",
                 )
                 for unit in units
             ]
 
         if command.type == "clear_explicit_orders":
-            return [_Prepared(lambda unit=unit: _clear_explicit_orders(unit.commander_component), f"Cleared explicit orders for unit {unit.id}.") for unit in units]
+            return [_Prepared(lambda unit=unit: unit.commander_component.clear_explicit_orders(), f"Cleared explicit orders for unit {unit.id}.") for unit in units]
         if command.type == "cancel_order":
             order = projection._edit_target["order"]
             return [_Prepared(lambda: units[0].commander_component.cancel_order(order.local_order_id), f"Cancelled order {order.public_id}.", public_order_id=order.public_id)]
@@ -882,7 +856,7 @@ class CommandGateway:
                 order = factory(unit)
                 order.public_id = public_order_id
                 if not queue:
-                    _clear_explicit_orders(unit.commander_component)
+                    unit.commander_component.clear_explicit_orders()
                 unit.commander_component.add_order(order)
 
             operations.append(
@@ -977,7 +951,6 @@ class CommandGateway:
                     unit,
                     {
                         "target_body_id": target_body.id,
-                        "target_body_name": target_body.name,
                         "system": target_body.in_system,
                         "hex": target_body.in_hex,
                     },
@@ -1331,7 +1304,7 @@ class CommandGateway:
                 )
             operations.append(
                 _Prepared(
-                    apply=lambda unit=unit, stance=stance: _set_stance(unit.commander_component, stance),
+                    apply=lambda unit=unit, stance=stance: unit.commander_component.set_stance(stance),
                     receipt=f"Set {unit.name} stance to {stance.value}.",
                 )
             )

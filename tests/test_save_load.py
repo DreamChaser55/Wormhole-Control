@@ -189,49 +189,7 @@ class TestSaveLoad(unittest.TestCase):
     def test_order_registry_covers_every_order_type(self):
         self.assertEqual(set(ORDER_CLASS_REGISTRY), set(OrderType))
 
-    def test_legacy_commander_orders_restore_current_then_queue(self):
-        from types import SimpleNamespace
-        from unittest.mock import MagicMock
 
-        player = Player("Legacy", (0, 255, 0))
-        game = SimpleNamespace(galaxy=MagicMock())
-        unit = Unit(player, Position(0, 0), (0, 0), "Sol", "Legacy Ship", HullSize.MEDIUM, game)
-        current = MoveOrder(unit, {
-            "destination_system_name": "Sol",
-            "destination_hex_coord": (0, 0),
-            "destination_position": Position(50, 0),
-        })
-        current.status = OrderStatus.IN_PROGRESS
-        queued = AttackOrder(unit, {"target_unit_id": 123})
-        payload = serialize_unit(unit)
-        payload.pop("schema_version")
-        payload["components"] = {}
-        payload["orders"] = [serialize_order(current), serialize_order(queued)]
-
-        restored = deserialize_unit(payload, {player.id: player}, game)
-        _restore_saved_commander(restored, game)
-
-        self.assertEqual(restored.commander_component.stance, UnitStance.DO_NOTHING)
-        self.assertEqual(restored.commander_component.current_order.order_type, OrderType.MOVE)
-        self.assertEqual([order.order_type for order in restored.commander_component.orders_queue], [OrderType.ATTACK])
-
-    def test_version_3_without_commander_data_loads_idle(self):
-        from types import SimpleNamespace
-        from unittest.mock import MagicMock
-
-        player = Player("Legacy", (0, 255, 0))
-        game = SimpleNamespace(galaxy=MagicMock())
-        unit = Unit(player, Position(0, 0), (0, 0), "Sol", "Legacy Ship", HullSize.MEDIUM, game)
-        payload = serialize_unit(unit)
-        payload.pop("schema_version")
-        payload["components"] = {}
-
-        restored = deserialize_unit(payload, {player.id: player}, game)
-        _restore_saved_commander(restored, game)
-
-        self.assertEqual(restored.commander_component.stance, UnitStance.DO_NOTHING)
-        self.assertIsNone(restored.commander_component.current_order)
-        self.assertFalse(restored.commander_component.orders_queue)
 
     def test_full_game_save_load(self):
         game = self.make_game()
@@ -277,20 +235,20 @@ class TestSaveLoad(unittest.TestCase):
             if saved_filepath and os.path.exists(saved_filepath):
                 os.remove(saved_filepath)
 
-    def test_legacy_zero_object_id_is_preserved_and_counter_advances(self):
+    def test_zero_object_id_is_preserved_and_counter_advances(self):
 
         game = self.make_game()
         restored_game = None
         try:
             self.assertTrue(game.start_new_game())
-            legacy_star = next(
+            star = next(
                 body
                 for system in game.galaxy.systems.values()
                 for hex_obj in system.hexes.values()
                 for body in hex_obj.celestial_bodies
                 if isinstance(body, Star)
             )
-            legacy_star.id = 0
+            star.id = 0
 
             payload = serialize_game_state(game)
             restored_game = self.make_game()

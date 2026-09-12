@@ -125,8 +125,6 @@ class _AbilityRequirementsMap(dict):
 ABILITY_REQUIRED_COMPONENTS = _AbilityRequirementsMap()
 
 
-
-
 # --------------------------------------------------------------------------
 # Hull-size cost multipliers (used in build cost calculation)
 # --------------------------------------------------------------------------
@@ -302,7 +300,6 @@ def get_sublight_antimatter_cost_per_turn(hull_size: Optional[HullSize] = HullSi
     return float(ENGINE_ANTIMATTER_COST_PER_TURN * hull_mult * speed_mult)
 
 
-
 # --------------------------------------------------------------------------
 # Turret definition
 # --------------------------------------------------------------------------
@@ -449,15 +446,7 @@ class ComponentConfig:
     # Intelligence / Espionage
     has_intelligence_component: bool = False
     intelligence_agents_count: int = 1
-    counter_intelligence: bool = False
-
-    @property
-    def has_counter_intelligence(self) -> bool:
-        return self.counter_intelligence
-
-    @has_counter_intelligence.setter
-    def has_counter_intelligence(self, val: bool) -> None:
-        self.counter_intelligence = bool(val)
+    has_counter_intelligence: bool = False
 
 
     # ------------------------------------------------------------------
@@ -582,7 +571,6 @@ class ComponentConfig:
         return calc_intelligence_hull_cost(self.intelligence_agents_count, self.has_counter_intelligence)
 
 
-
 # --------------------------------------------------------------------------
 # Custom unit template dataclass
 # --------------------------------------------------------------------------
@@ -684,8 +672,6 @@ class CustomUnitTemplate:
 # --------------------------------------------------------------------------
 # CustomTemplateManager
 # --------------------------------------------------------------------------
-# Compatibility seam for existing callers/tests; normal storage is resolved per manager.
-_DATA_FILE = None
 
 
 class TemplatePersistenceError(OSError):
@@ -696,7 +682,7 @@ class CustomTemplateManager:
     """Persist custom designs before publishing changes to the global registry.
 
     An explicit data_file selects an isolated library.
-    Loading preserves historical designs, including ones now over today's hull budget.
+    Loading validates all designs against current equipment rules before publishing.
     """
 
     def __init__(self, data_file=None):
@@ -709,32 +695,16 @@ class CustomTemplateManager:
     def data_file(self) -> Path:
         if self._data_file is not None:
             return self._data_file
-        if _DATA_FILE is not None:
-            return Path(_DATA_FILE)
         return user_data_path() / "custom_unit_templates.json"
 
     def _decode_library(self, payload):
-        raw = json.loads(payload)
-        if not isinstance(raw, dict):
-            raise ValueError("Custom template library must be a JSON object.")
-        from unit_templates import builtin_template_names
-        builtin_names = builtin_template_names()
-        designs, names = {}, set()
-        for key, data in raw.items():
-            if not isinstance(data, dict):
-                raise ValueError("Each custom template must be a JSON object.")
-            name = data.get("name", key)
-            if not isinstance(name, str) or not name.strip():
-                raise ValueError("Custom templates require nonempty names.")
-            name = name.strip()
-            if name.lower() in names or name.lower() in builtin_names:
-                raise ValueError("Custom template names must be unique and not replace built-ins.")
-            template = self._dict_to_template(name, data)
-            # Decode and serialize before publishing, but don't retroactively apply balance rules.
-            self._template_to_dict(template)
-            names.add(name.lower())
-            designs[name] = template
-        return designs
+        from unit_template_validation import parse_library, validate_library
+        raw = parse_library(payload)
+        issues = validate_library(raw)
+        if issues:
+            raise ValueError("; ".join(f"{key}: {', '.join(errors)}" for key, errors in issues.items()))
+        return {data.get("name", key).strip(): template_from_dict(key, data)
+                for key, data in raw.items()}
 
     def _atomic_write(self, payload):
         target = self.data_file
@@ -760,7 +730,7 @@ class CustomTemplateManager:
 
     def _publish(self, designs):
         from unit_templates import PRIVATE_TEMPLATES
-        registered = {name: self._template_to_dict(template) for name, template in designs.items()}
+        registered = {name: template_to_dict(template) for name, template in designs.items()}
         for name in self.designs:
             PRIVATE_TEMPLATES.pop(name, None)
         self.designs = designs
@@ -778,7 +748,7 @@ class CustomTemplateManager:
             self.last_load_error = None
             self._loaded = True
         except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
-            self.last_load_error = TemplatePersistenceError("Could not load custom designs; repair the library and reload before saving.")
+            self.last_load_error = TemplatePersistenceError(f"Could not load custom designs: {exc}. Repair the library and reload before saving.")
             logger.warning("%s Failure type: %s.", self.last_load_error, type(exc).__name__)
 
     def _ensure_loaded(self):
@@ -790,7 +760,7 @@ class CustomTemplateManager:
     def _write_designs(self, designs):
         raw = {}
         for template in designs.values():
-            data = self._template_to_dict(template)
+            data = template_to_dict(template)
             if hasattr(data.get("hull_size"), "name"):
                 data["hull_size"] = data["hull_size"].name
             raw[template.display_name] = data
@@ -872,44 +842,6 @@ class CustomTemplateManager:
     def list_design_names(self) -> List[str]:
         return list(self.designs.keys())
 
-    # ------------------------------------------------------------------
-    # Constructor integration
-    # ------------------------------------------------------------------
-
-    def refresh_shipyard_buildables(self, units_iter) -> int:
-        """
-        Append custom designs to every SHIPYARD_MK1 constructor's buildable list. (Deprecated/No-op)
-        """
-        return 0
-
-    # ------------------------------------------------------------------
-    # Conversion helpers
-    # ------------------------------------------------------------------
-
-    def _register_in_global(self, template: CustomUnitTemplate) -> None:
-        from unit_templates import PRIVATE_TEMPLATES
-        PRIVATE_TEMPLATES[template.display_name] = self._template_to_dict(template)
-
-    def _unregister_from_global(self, display_name: str) -> None:
-        from unit_templates import PRIVATE_TEMPLATES
-        PRIVATE_TEMPLATES.pop(display_name, None)
-
-    def _template_to_dict(self, template: CustomUnitTemplate) -> Dict[str, Any]:
-        """Convert a CustomUnitTemplate to the unit_templates.json dict format.
-
-        Dynamic hull costs (Engines, Weapons, Defenses, Hyperdrive) are stored
-        as computed values so that create_unit_from_template() picks them up
-        correctly.  Performance parameters are also stored so the design can
-        be reconstructed faithfully on load.
-        """
-        return template_to_dict(template)
-
-
-    def _dict_to_template(self, key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
-        """Compatibility wrapper around the side-effect-free storage decoder."""
-        return template_from_dict(key, d)
-
-
 def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
     """Reconstruct a CustomUnitTemplate from its persisted dict form.
 
@@ -917,6 +849,9 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
     dynamic components are NOT read from the dict — they are recomputed
     from the performance parameters to ensure correctness.
     """
+    unknown = set(d) - template_field_names()
+    if unknown:
+        raise ValueError(f"Unknown template fields: {', '.join(sorted(unknown))}")
     # hull_size stored as string in JSON
     hull_size_raw = d.get("hull_size", "MEDIUM")
     if isinstance(hull_size_raw, str):
@@ -998,8 +933,8 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
         has_hangar=d.get("has_hangar", False),
         hangar_slots=d.get("hangar_slots", 2),
 
-        has_strikecraft_bay=d.get("has_strikecraft_bay", False) or d.get("has_fighter_bay", False),
-        strikecraft_bay_slots=d.get("strikecraft_bay_slots", d.get("fighter_bay_slots", 2)),
+        has_strikecraft_bay=d.get("has_strikecraft_bay", False),
+        strikecraft_bay_slots=d.get("strikecraft_bay_slots", 2),
         wing_type=d.get("wing_type", "FIGHTER"),
 
         has_inhibitor=d.get("has_inhibitor", False),
@@ -1008,7 +943,7 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
         has_ability_component=d.get("has_ability_component", False),
         abilities=d.get("abilities", []),
 
-        has_sensors=d.get("has_sensors", d.get("has_scanner", False)),
+        has_sensors=d.get("has_sensors", False),
         sensor_short_range=float(d.get("sensor_short_range", DEFAULT_SENSOR_SHORT_RANGE)),
         sensor_long_range_hexes=int(d.get("sensor_long_range_hexes", 0)),
 
@@ -1025,7 +960,7 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
 
         has_intelligence_component=d.get("has_intelligence_component", False),
         intelligence_agents_count=int(d.get("intelligence_agents_count", 1)),
-        counter_intelligence=bool(d.get("has_counter_intelligence", d.get("counter_intelligence", False))),
+        has_counter_intelligence=d.get("has_counter_intelligence", False),
     )
 
 
@@ -1034,7 +969,6 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
         hull_size=hull_size,
         components=comp,
     )
-
 
 
 def template_to_dict(template: CustomUnitTemplate, *, is_custom: bool = True) -> Dict[str, Any]:
@@ -1170,3 +1104,10 @@ def template_to_dict(template: CustomUnitTemplate, *, is_custom: bool = True) ->
         "is_custom": is_custom,  # marker so we know it's player-designed
     }
     return d
+
+
+def template_field_names() -> set[str]:
+    """Canonical exported fields plus the supported catalogue metadata."""
+    return set(template_to_dict(CustomUnitTemplate("", HullSize.MEDIUM))) | {
+        "category", "roles", "description", "default_unit_name",
+    }

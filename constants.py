@@ -10,25 +10,15 @@ PROFILE = False
 # Math constants
 SQRT3 = 1.7320508075688772
 
-# Compatibility defaults only. Runtime UI metrics belong to DisplayConfig.
-from display_config import DEFAULT_DISPLAY_CONFIG
-FULLSCREEN = DEFAULT_DISPLAY_CONFIG.fullscreen
-DEFAULT_RES = DEFAULT_DISPLAY_CONFIG.resolution
-SCREEN_RES = DEFAULT_RES
-TEXT_SCALE = DEFAULT_DISPLAY_CONFIG.text_scale
 
 # Logical Galaxy Constants
 LOGICAL_GALAXY_SIZE = Vector(2560.0, 1440.0)
 
 # System view parameters
-SYSTEM_CENTER_IN_PX = Position(SCREEN_RES.x // 2, SCREEN_RES.y // 2) # Center of system view hex grid in pixels
-HEX_SIZE = int(25 * (SCREEN_RES.y / 720.0)) # in pixels
 SYSTEM_ZOOM_MIN = 0.8
 SYSTEM_ZOOM_MAX = 15.0
 
 # Sector view circle parameters
-SECTOR_CIRCLE_CENTER_IN_PX = Position(SCREEN_RES.x // 2, SCREEN_RES.y // 2) # Center of sector view circle in pixels
-SECTOR_CIRCLE_RADIUS_IN_PX = SCREEN_RES.y // 2 # Radius for sector view circle in pixels
 SECTOR_CIRCLE_RADIUS_LOGICAL = 5000.0
 SECTOR_ZOOM_MIN = 0.8
 SECTOR_ZOOM_MAX = 15.0
@@ -68,7 +58,6 @@ TRADE_ARRIVAL_RANGE: float = 200.0
 # Antimatter Mechanics Constants
 DEFAULT_ANTIMATTER_CAPACITY: float = 100.0
 MIN_ANTIMATTER_CAPACITY: float = 100.0
-DEFAULT_ANTIMATTER_REGEN: float = 10.0
 ANTIMATTER_CAPACITY_PER_HULL_POINT: float = 20.0
 ENGINE_ANTIMATTER_COST_PER_TURN: float = 1.0
 BASELINE_ENGINE_SPEED: float = 100.0
@@ -158,10 +147,6 @@ SECTOR_OBJECT_CLICK_RADIUS_MULT = 1.5
 DEFAULT_SUBLIGHT_SHIP_SPEED = 100.0
 
 # UI Constants
-INFO_BOX_WIDTH = int(SCREEN_RES.x * (250 / 1280.0))
-TOP_BAR_HEIGHT = int(SCREEN_RES.y * (35 / 720.0))
-CONTEXT_MENU_WIDTH = int(SCREEN_RES.x * (180 / 1280.0))
-CONTEXT_MENU_ITEM_HEIGHT = int(SCREEN_RES.y * (25 / 720.0))
 SECTOR_GRID_SPACING = 1000.0 # Logical distance between tactical grid lines
 
 # Colors
@@ -567,7 +552,3 @@ def get_min_antimatter_capacity(hull_size: Optional[HullSize] = None) -> float:
     if hull_size is None:
         return MIN_ANTIMATTER_CAPACITY
     return MIN_ANTIMATTER_CAPACITY_BY_HULL.get(hull_size, MIN_ANTIMATTER_CAPACITY)
-
-
-# Compatibility alias: pulsars drain antimatter, not shields.
-PULSAR_SHIELD_DRAIN_PERCENT = PULSAR_ANTIMATTER_DRAIN_PERCENT

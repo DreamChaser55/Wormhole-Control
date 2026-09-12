@@ -324,7 +324,7 @@ and durations. Long-range turret costs use Designer stats before variant scaling
 Failed or cancelled installations refund their charge once to the original payer.
 Failed or cancelled removals pay no salvage. A pending job cannot cancel or refund
 another active job. For loading existing equipment and unfinished work, see
-[retrofit persistence](SAVE_FORMAT.md#retrofit-settlement-in-42).
+[retrofit persistence](SAVE_FORMAT.md#retrofit-settlement).
 
 ## Orders and combat
 
@@ -533,7 +533,7 @@ Ghost emitters and fuel caches have no expiry. Identifying a decoy or partially
 recovering a cache does not free a deployment slot. Source destruction, capture
 or refitting does not reset the cap attached to that deploying ship. Active links
 end if their participants cease to meet deployment, equipment, allegiance or range
-requirements. See [tactical persistence](SAVE_FORMAT.md#tactical-state-in-41) for saved state.
+requirements. See [tactical persistence](SAVE_FORMAT.md#tactical-state) for saved state.
 
 ### Carrier and anti-strikecraft abilities
 
@@ -817,8 +817,8 @@ teams and text.
 Use **Esc → Save Game** to write a JSON campaign under `saves/`. **Load Game** is
 available from the main menu and during a match. Loading validates a separate
 candidate before replacing the live campaign; a rejected save leaves play intact.
-See [Campaign persistence](SAVE_FORMAT.md) for supported formats, restoration and
-migration warnings. AI memory storage is described in
+See [Campaign persistence](SAVE_FORMAT.md) for the current format, restoration and
+load warnings. AI memory storage is described in
 [AI memory and persistence](AGENTIC_AI.md#memory-and-persistence).
 
 ### Custom-design storage
@@ -840,8 +840,8 @@ Malformed libraries and storage failures are reported in the log. Repair the fil
 and restart to reload it. Failed saves, renames and deletions preserve the previous
 disk library and registered designs; a failed load blocks writes until a successful
 reload. Built-in and Testing template keys and names are reserved even when Testing
-is inactive. For existing designs that fail current validation, see
-[design compatibility](SAVE_FORMAT.md#design-compatibility).
+is inactive. Libraries that fail current validation are rejected as a whole; diagnostics
+identify the fields to repair. See [design validation](SAVE_FORMAT.md#design-validation).
 
 ### External design validation
 
