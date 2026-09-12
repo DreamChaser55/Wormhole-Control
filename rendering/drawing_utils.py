@@ -69,6 +69,14 @@ def draw_dotted_line(surface: pygame.Surface, color: Color, start, end, width: i
         pos += segment
         drawing = not drawing
 
+def station_icon_rect(center_pos: 'Position', radius: float) -> pygame.Rect:
+    """Rasterize a station square matching the triangle's 1.6-radius span."""
+    half_size = 0.8 * radius
+    side = max(1, round(2 * half_size))
+    return pygame.Rect(round(center_pos.x - side / 2),
+                       round(center_pos.y - side / 2), side, side)
+
+
 def draw_shape(surface: pygame.Surface, shape_type: str, color: Color, center_pos: 'Position', radius: float):
     """Helper function to draw different shapes based on type."""
     draw_radius = int(max(1, radius))
@@ -76,8 +84,7 @@ def draw_shape(surface: pygame.Surface, shape_type: str, color: Color, center_po
     if shape_type == 'circle':
         pygame.draw.circle(surface, color, (center_pos.x, center_pos.y), draw_radius)
     elif shape_type == 'square':
-        rect = pygame.Rect(center_pos.x - draw_radius, center_pos.y - draw_radius, draw_radius * 2, draw_radius * 2)
-        pygame.draw.rect(surface, color, rect)
+        pygame.draw.rect(surface, color, station_icon_rect(center_pos, radius))
     elif shape_type == 'strikecraft_wing':
         cx, cy = center_pos.x, center_pos.y
         r = draw_radius

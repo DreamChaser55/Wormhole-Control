@@ -12,7 +12,7 @@ from domain.minefields import Minefield
 from visibility import is_minefield_visible
 from galaxy import Hex
 from geometry import Position
-from rendering.drawing_utils import draw_selection_brackets, selection_color_for
+from rendering.drawing_utils import draw_selection_brackets, selection_color_for, station_icon_rect
 
 
 class SystemViewRenderer:
@@ -306,13 +306,9 @@ class SystemViewRenderer:
                         pygame.draw.polygon(self.screen, unit_color, main_shape_points)
                         
                     else: # 'square'
-                        half_size = int(current_icon_base_size)
-                        p1 = (unit_screen_x - half_size, unit_screen_y - half_size)
-                        p2 = (unit_screen_x + half_size, unit_screen_y - half_size)
-                        p3 = (unit_screen_x + half_size, unit_screen_y + half_size)
-                        p4 = (unit_screen_x - half_size, unit_screen_y + half_size)
-                        main_shape_points = [p1, p2, p3, p4]
-                        pygame.draw.polygon(self.screen, unit_color, main_shape_points)
+                        rect = station_icon_rect(Position(unit_screen_x, unit_screen_y), current_icon_base_size)
+                        main_shape_points = [rect.topleft, rect.topright, rect.bottomright, rect.bottomleft]
+                        pygame.draw.rect(self.screen, unit_color, rect)
 
                     if unit in self.game.selected_objects:
                         left = min(p[0] for p in main_shape_points)

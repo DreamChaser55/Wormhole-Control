@@ -208,6 +208,7 @@ def test_galaxy_view_order_lines_only_for_active_player():
 @pytest.mark.parametrize("zoom", [0.1, 1.0, 4.0])
 @pytest.mark.parametrize("logical_radius", [1.0, 150.0, 900.0])
 def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_radius):
+    from unit_components.movement import Engines
     # Setup mock game, player, and renderer
     game = MagicMock()
     game.display_config = DisplayConfig(1920, 1080, False)
@@ -233,6 +234,7 @@ def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_rad
 
     # Create selected Unit
     unit = Unit(player1, Position(10, 10), (0, 0), "Sol", "Unit 1", HullSize.MEDIUM, game)
+    unit.add_component(Engines(unit))
     unit.max_hit_points = 0  # set to 0 to avoid extra healthbar draw lines
     game.selected_objects = [unit]
     hex_obj.celestial_bodies = []

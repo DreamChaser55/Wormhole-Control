@@ -2,7 +2,7 @@ from display_config import display_config_for
 import sys
 import math
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, FOG_OF_WAR_COLOR, XP_SPEED_BONUS
-from rendering.drawing_utils import draw_selection_brackets, selection_color_for
+from rendering.drawing_utils import draw_selection_brackets, selection_color_for, station_icon_rect
 from geometry import distance, Position
 from domain.units import Unit
 from unit_orders.base import OrderType
@@ -63,6 +63,11 @@ class SectorOverlayRenderer:
         """Draws corner brackets with each arm spanning one quarter of the box side."""
         if obj in self.game.selected_objects:
             selection_color = selection_color_for(obj)
+            if isinstance(obj, Unit) and obj.hull_size.name != 'STRIKECRAFT_WING' and not obj.engines_component:
+                radius = obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
+                rect = station_icon_rect(obj_pixel_pos, radius).inflate(10, 10)
+                draw_selection_brackets(self.overlay_surface, selection_color, rect)
+                return
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             r = pixel_radius + 5
             draw_selection_brackets(

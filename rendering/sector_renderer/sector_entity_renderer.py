@@ -1,4 +1,5 @@
 from display_config import display_config_for
+from rendering.drawing_utils import station_icon_rect
 import sys
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, WHITE, RED, HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE, ICON_DOT_RADIUS, ICON_DOT_SPACING
 from domain.units import Unit
@@ -127,20 +128,28 @@ class SectorEntityRenderer:
         current_icon_base_size_logical = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
         dot_count = HULL_DOT_COUNTS[unit_obj.hull_size]
         
-        current_icon_base_size_px = int(current_icon_base_size_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+        icon_radius_px = current_icon_base_size_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
+        current_icon_base_size_px = int(icon_radius_px)
         obj_radius_logical = current_icon_base_size_logical
 
-        _sr().draw_shape(self.screen, shape_type, obj_color, obj_pixel_pos, current_icon_base_size_px)
+        _sr().draw_shape(self.screen, shape_type, obj_color, obj_pixel_pos, icon_radius_px)
+        icon_left = obj_pixel_pos.x - current_icon_base_size_px
+        icon_top = obj_pixel_pos.y - current_icon_base_size_px
+        icon_bottom = obj_pixel_pos.y + current_icon_base_size_px
+        icon_width = current_icon_base_size_px * 2
+        if shape_type == 'square':
+            icon_rect = station_icon_rect(obj_pixel_pos, icon_radius_px)
+            icon_left, icon_top = icon_rect.topleft
+            icon_bottom, icon_width = icon_rect.bottom, icon_rect.width
 
         if unit_obj in self.game.selected_objects and unit_obj.max_hit_points > 0:
-            health_bar_width = current_icon_base_size_px * 2
+            health_bar_width = icon_width
             health_bar_height = 4
-            health_bar_y_offset = current_icon_base_size_px + 10
             
             health_percentage = unit_obj.current_hit_points / unit_obj.max_hit_points
             
-            health_bar_x = obj_pixel_pos.x - health_bar_width / 2
-            health_bar_y = obj_pixel_pos.y + health_bar_y_offset
+            health_bar_x = icon_left
+            health_bar_y = icon_bottom + 10
             
             _sr().pygame.draw.rect(self.screen, (50, 50, 50), (health_bar_x, health_bar_y, health_bar_width, health_bar_height))
             
@@ -153,7 +162,7 @@ class SectorEntityRenderer:
             
             dot_base_y_offset = current_icon_base_size_px * 0.6
             if shape_type == 'square':
-                dot_base_y_offset = current_icon_base_size_px
+                dot_base_y_offset = icon_bottom - obj_pixel_pos.y
             
             dot_base_y = obj_pixel_pos.y + dot_base_y_offset + icon_dot_radius_px + 2
 
@@ -163,8 +172,8 @@ class SectorEntityRenderer:
                 base_width = base_p3_x - base_p2_x
                 start_x = base_p2_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
             else:
-                base_p_left_x = obj_pixel_pos.x - current_icon_base_size_px
-                base_p_right_x = obj_pixel_pos.x + current_icon_base_size_px
+                base_p_left_x = icon_left
+                base_p_right_x = icon_left + icon_width
                 base_width = base_p_right_x - base_p_left_x
                 start_x = base_p_left_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
 
@@ -173,16 +182,18 @@ class SectorEntityRenderer:
                 _sr().pygame.draw.circle(self.screen, obj_color, (dot_x, dot_base_y), icon_dot_radius_px)
 
         # Draw Unit Name
-        bottom_y = obj_pixel_pos.y + current_icon_base_size_px
+        bottom_y = icon_bottom
         
         if unit_obj.max_hit_points > 0:
-            health_bar_bottom = obj_pixel_pos.y + current_icon_base_size_px + 14
+            health_bar_bottom = icon_bottom + 14
             if health_bar_bottom > bottom_y:
                 bottom_y = health_bar_bottom
                 
         if dot_count > 0:
             icon_dot_radius_px = int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
             dot_base_y_offset = current_icon_base_size_px * 0.6 if shape_type == 'triangle' else current_icon_base_size_px
+            if shape_type == 'square':
+                dot_base_y_offset = icon_bottom - obj_pixel_pos.y
             dot_bottom = obj_pixel_pos.y + dot_base_y_offset + 2 * icon_dot_radius_px + 2
             if dot_bottom > bottom_y:
                 bottom_y = dot_bottom
@@ -210,7 +221,7 @@ class SectorEntityRenderer:
                 badge_font = self.parent._font_cache[badge_font_size]
                 badge_surf = badge_font.render(badge_text, True, badge_color)
                 badge_rect = badge_surf.get_rect()
-                badge_rect.midbottom = (obj_pixel_pos.x, obj_pixel_pos.y - current_icon_base_size_px - 4)
+                badge_rect.midbottom = (obj_pixel_pos.x, icon_top - 4)
                 self.screen.blit(badge_surf, badge_rect)
 
             elif unit_obj.owner == current_viewer and hasattr(unit_obj, 'infiltrating_agents'):
@@ -224,7 +235,7 @@ class SectorEntityRenderer:
                     badge_font = self.parent._font_cache[badge_font_size]
                     badge_surf = badge_font.render(badge_text, True, badge_color)
                     badge_rect = badge_surf.get_rect()
-                    badge_rect.midbottom = (obj_pixel_pos.x, obj_pixel_pos.y - current_icon_base_size_px - 4)
+                    badge_rect.midbottom = (obj_pixel_pos.x, icon_top - 4)
                     self.screen.blit(badge_surf, badge_rect)
 
         return obj_radius_logical

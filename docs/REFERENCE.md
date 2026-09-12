@@ -65,6 +65,8 @@ Wormhole Control organizes space into three interconnected strategic perspective
 
 Selected objects in System and Sector views are marked with four L-shaped corner brackets. System View brackets enclose the displayed icon or environmental effect with a small fixed screen-space gap and follow camera zoom and panning. Object selection highlights use the selected object's owner's faction color blended 20% toward white, including units, colonies, and Sector View minefields, while icons retain their original colors. Unowned objects and white faction colors retain white highlights. Each selected object uses its own owner's color, and ownership changes update the highlight immediately. The blue drag-selection rectangle and hex highlights retain their existing colors.
 
+Station squares and ship triangles use matching icon widths and heights (within pixel rounding). Sector View scales icons by hull class; System View uses a uniform size for ordinary units. Station squares retain more filled area than triangles, and station selection brackets follow the displayed square.
+
 ### Turns and Resource Economy
 
 Matches operate on a hot-seat turn sequence. When finished issuing commands, press **`E`** or click **End Turn** on the HUD. This resolves that player's movement, mine contacts, resource income, upkeep, population growth and combat before advancing.
