@@ -107,6 +107,40 @@ def test_wing_engine_budget_matches_designer_serialization_and_refit(world, role
     assert installed.hull_cost == pytest.approx(hull_cost)
 
 
+@pytest.mark.parametrize('radius,hull_cost', [(100, 20 / 3), (300, 20), (750, 50), (1500, 100)])
+def test_inhibitor_budget_matches_designer_construction_and_refit(world, radius, hull_cost):
+    from custom_unit_templates import ComponentConfig, template_from_dict, template_to_dict
+    from gui.unit_editor_gui.cost_model import current_hull_used
+    from unit_components.constructor import assemble_unit_from_template
+    from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
+
+    game, _, _, _, target = world
+    empty_equipment(target)
+    components = ComponentConfig(has_inhibitor=True, inhibitor_radius=radius)
+    design = CustomUnitTemplate('Inhibitor test', target.hull_size, components)
+    editor = SimpleNamespace(_comp=components, _hull_size=target.hull_size)
+    assert current_hull_used(editor) == pytest.approx(hull_cost)
+    assert not design.validate()
+    data = template_to_dict(design)
+    assert data['inhibitor_hull_cost'] == pytest.approx(hull_cost)
+    # Historical derived costs must not override the configured radius on a new build.
+    data['inhibitor_hull_cost'] = radius / 5
+    assert template_from_dict('Inhibitor test', data).total_hull_cost == pytest.approx(hull_cost)
+    built = assemble_unit_from_template('Inhibitor test', data, target.owner, 'Sol',
+                                        target.in_hex, target.position, game)
+    assert built.inhibitor_component.hull_cost == pytest.approx(hull_cost)
+    assert HyperspaceInhibitionFieldEmitter(target, radius=radius).hull_cost == pytest.approx(hull_cost)
+    quote = evaluate_refit(target, 'ADD', 'HyperspaceInhibitionFieldEmitter', {'radius': radius})
+    assert not quote.errors
+    assert quote.hull_cost == pytest.approx(hull_cost)
+    assert quote.cost_credits == round(hull_cost * 30)
+    installed = instantiate_component_for_unit('HyperspaceInhibitionFieldEmitter', target, quote.configuration)
+    target.add_component(installed)
+    assert target.current_hull_usage == pytest.approx(hull_cost)
+    assert installed.radius == built.inhibitor_component.radius == radius
+    assert installed.max_hit_points == built.inhibitor_component.max_hit_points
+
+
 @pytest.mark.parametrize('role,variant,valid', [
     ('FIGHTER', 'ANTI_STRIKECRAFT', True), ('FIGHTER', 'STANDARD', False),
     ('FIGHTER', 'LONG_RANGE', False), ('BOMBER', 'ANTI_STRIKECRAFT', False),

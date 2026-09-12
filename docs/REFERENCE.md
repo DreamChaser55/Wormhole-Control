@@ -373,7 +373,7 @@ The Unit Designer provides **24 selectable component rows**. Commander is always
 | 15 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 |
 | 16 | `has_hangar` | Hangar | Dynamic | 20.0 |
 | 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 |
-| 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 20.0 |
+| 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 6.67 |
 | 19 | `has_ability_component` | Abilities | Dynamic | 10.0 |
 | 20 | `has_sensors` | Sensors | Dynamic | 2.0 |
 | 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 |
@@ -401,7 +401,7 @@ Hull restrictions and component behavior:
 - **Crystal Refinery**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Refines mined crystals into usable crystal stock.
 - **Hangar**: Restricted to `LARGE` and `HUGE` hulls only. Dynamic cost scales with hangar slot capacity.
 - **Strikecraft Bay**: Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with strikecraft wing slots. Solely responsible for the construction and replenishment of strikecraft wings.
-- **Inhibitor Field**: Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Dynamic cost scales with inhibition field radius.
+- **Inhibitor Field**: Requires `MEDIUM`, `LARGE`, or `HUGE` hull. Hull cost is `radius / 15`: 100 radius costs approximately 6.67 hull, and 300 radius costs 20 hull. Active fields consume `radius × 0.1` antimatter per turn and deactivate when fuel is insufficient. The entire field must fit inside its sector and cannot overlap existing natural or artificial inhibition zones.
 - **Abilities**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Dynamic cost scales with number of equipped abilities.
 - **Sensors**: Available on all hull sizes. Strikecraft wings are intra-sector only: short-range radius remains configurable, but `sensor_long_range_hexes` must be zero. Dynamic cost scales with short-range radius and long-range hex coverage. Coverage is shared across all allied players.
 - **Minelayer**: Forbidden on `STRIKECRAFT_WING` and `TINY`. Deploys tactical minefields that ignore friendly and allied vessels.
@@ -1077,6 +1077,8 @@ Existing campaign saves retain saved wing HP and installed equipment; hull capac
 
 The wing engine efficiency increase preserves saved units' installed speed and engine hull cost. Newly built catalog wings use the faster speeds above, with the same total hull usage, prices (260 credits for Fighters, 259 for Bombers) and two-turn production times. Existing custom wing designs retain their entered speed and receive the cheaper engine cost when recalculated; doubling that speed preserves their previous engine hull allocation. Built-in wings continue operating without antimatter storage, and existing fuel and carrier ability rules are unchanged.
 
+Inhibitors provide 15 radius per hull point, up from 5. Custom designs retain their entered radius and use one-third of the previous inhibitor hull allocation when recalculated; tripling their radius preserves that allocation. Newly constructed and refitted emitters calculate hull cost from radius. Subsystem HP follows the normal hull-cost formula, so a cheaper emitter with unchanged radius also has fewer HP (subject to the 10-HP minimum). Existing campaign components retain their saved radius, hull cost and HP; no save migration is needed.
+
 Loading preserves historical designs even if later balance changes put them over today's hull budget; editing and saving still uses current design validation. Built-in template keys and display names from both catalogues are reserved, including Testing designs while they are inactive.
 
 Malformed libraries and storage failures are reported in the log. Repair a malformed library and restart the game to reload it; failed operations preserve existing state as described below.
@@ -1288,8 +1290,13 @@ additional orders. These buttons work independently of Shift. Queued orders pay 
 start; an idle builder starts immediately. Multiple builders show their combined price. Wings can be
 inspected here but are produced in strikecraft bays. Utility Transports carry Tiny vessels.
 
-The Large Interdictor has radius 235 and uses 100/100 hull; the Huge Interdiction Fortress
-has radius 521 and uses 200/200. Both require valid non-overlapping field placement and fuel.
+The Large Interdictor has radius 705 and uses 100/100 hull; the Huge Interdiction Fortress
+has radius 1563 and uses 200/200. Their inhibitor allocations remain 47 and 104.2 hull,
+preserving their build prices, durations, upkeep and subsystem HP. Active fields consume
+70.5 and 156.3 AM per turn respectively. Full tanks support three Interdictor consumption
+ticks and one Fortress tick without resupply or other fuel use. Both require valid
+non-overlapping field placement and fuel. The Testing Medium Station has radius 300
+for 20 inhibitor hull and consumes 30 AM per active turn.
 The Large Intelligence Ship combines two agents, Basic cloaking and Counter-Intelligence,
 using 75/100 hull. It supports infiltration, sabotage, extraction, sweeps and elimination.
 

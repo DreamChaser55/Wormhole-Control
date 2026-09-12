@@ -532,7 +532,7 @@ def test_get_component_hull_cost_accuracy(setup_universe):
     assert get_component_hull_cost("CivilianHabitatComponent", target_unit) == 15.0
     assert get_component_hull_cost("OrbitalDefenseComponent", target_unit) == 20.0
     assert get_component_hull_cost("TradeComponent", target_unit) == 10.0
-    assert get_component_hull_cost("HyperspaceInhibitionFieldEmitter", target_unit) == 20.0
+    assert get_component_hull_cost("HyperspaceInhibitionFieldEmitter", target_unit) == pytest.approx(20.0 / 3)
     assert get_component_hull_cost("MinelayerComponent", target_unit) == 15.0
     assert get_component_hull_cost("MarinesComponent", target_unit) == 10.0
     assert get_component_hull_cost("Constructor", target_unit) == 15.0

@@ -9,12 +9,12 @@ import pytest
 from constants import HullSize
 from game_ai.contracts import Command
 from game_ai.observation import build_observation
-from geometry import Position, Vector
+from geometry import Circle, Position, Vector
 from tests.support.campaigns import campaign
 from tests.support.commands import issue
 from unit_catalog import describe_template, validate_builtin_catalog
 from unit_components.constructor import instantiate_unit_from_template
-from unit_templates import UNIT_TEMPLATES
+from unit_templates import UNIT_TEMPLATES, load_testing_templates
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILTINS = json.loads((ROOT / 'data/unit_templates.json').read_text(encoding='utf-8'))
@@ -72,16 +72,59 @@ def test_runtime_equipment_matches_description(key):
 
 def test_revised_specialists():
     game = campaign()
-    for key, radius, capacity in [('INTERDICTOR', 235, 100), ('INTERDICTION_FORTRESS', 521, 200)]:
-        unit = create(game, key)
-        assert unit.current_hull_usage == capacity
-        assert unit.inhibitor_component.radius == radius
-        assert unit.inhibitor_component.get_antimatter_cost_per_turn() > 0
     intel = create(game, 'INTELLIGENCE_SHIP')
     assert intel.current_hull_usage == 75
     assert intel.intelligence_component.agents_capacity == 2
     assert intel.intelligence_component.has_counter_intelligence
     assert intel.cloaking_component is not None
+
+
+@pytest.mark.parametrize('key,radius,hull_cost,total_hull,price,turns,am_cost,ticks', [
+    ('INTERDICTOR', 705, 47, 100, 4000, 30, 70.5, 3),
+    ('INTERDICTION_FORTRESS', 1563, 104.2, 200, 8000, 40, 156.3, 1),
+    ('SPAWN_STATION_MEDIUM', 300, 20, 40, 500, 7, 30, 6),
+])
+def test_inhibitor_catalog_budget_field_fuel_and_persistence(
+        key, radius, hull_cost, total_hull, price, turns, am_cost, ticks):
+    from save_manager import serialize_game_state, deserialize_game_state
+
+    game = campaign()
+    templates = UNIT_TEMPLATES | load_testing_templates()
+    unit = instantiate_unit_from_template(key, game.players[0], 'Sol', (0, 0),
+                                          Position(0, 0), game.galaxy, game, templates=templates)
+    emitter = unit.inhibitor_component
+    assert unit.current_hull_usage == pytest.approx(total_hull)
+    assert emitter.radius == radius
+    assert emitter.hull_cost == pytest.approx(hull_cost)
+    assert emitter.max_hit_points == round(hull_cost * 10)
+    assert templates[key]['build_cost'] == price
+    assert templates[key]['build_time'] == turns
+    assert emitter.get_antimatter_cost_per_turn() == pytest.approx(am_cost)
+    unit.position = Position(5000 - radius + 1, 0)
+    assert emitter.check_state_change(True, game.galaxy).code == 'inhibitor_out_of_bounds'
+    unit.position = Position(0, 0)
+    overlap = emitter.check_state_change(True, game.galaxy,
+                                        existing_zones=[Circle(Position(radius, 0), 50)])
+    assert overlap.code == 'inhibitor_overlap'
+    assert emitter.set_active(True, game.galaxy).allowed
+
+    restored = campaign()
+    deserialize_game_state(restored, serialize_game_state(game))
+    saved = restored.galaxy.get_unit_by_id(unit.id)
+    emitter = saved.inhibitor_component
+    sector = restored.galaxy.systems['Sol'].hexes[(0, 0)]
+    assert emitter.is_active
+    assert sector.dynamic_inhibition_zones[saved.id].radius == radius
+    assert emitter.hull_cost == pytest.approx(hull_cost)
+    assert emitter.max_hit_points == round(hull_cost * 10)
+    fuel = saved.antimatter_component.current_amount
+    for _ in range(ticks):
+        emitter.update()
+        assert emitter.is_active
+    assert saved.antimatter_component.current_amount == pytest.approx(fuel - ticks * am_cost)
+    emitter.update()
+    assert not emitter.is_active
+    assert saved.id not in sector.dynamic_inhibition_zones
 
 
 @pytest.mark.parametrize('key,speed,engine_hull,price,total_hull', [

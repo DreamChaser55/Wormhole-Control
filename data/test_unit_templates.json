@@ -231,7 +231,7 @@
       }
     ],
     "has_inhibitor": true,
-    "inhibitor_radius": 100.0,
+    "inhibitor_radius": 300.0,
     "inhibitor_hull_cost": 20.0,
     "has_constructor_component": false,
     "constructor_hull_cost": 0.0,

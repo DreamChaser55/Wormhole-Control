@@ -310,14 +310,9 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
 
     if template.get("has_inhibitor"):
         inh_radius = template.get("inhibitor_radius", 100.0)
-        inh_cost = template.get("inhibitor_hull_cost")
-        if inh_cost is None:
-            from custom_unit_templates import calc_inhibitor_hull_cost
-            inh_cost = calc_inhibitor_hull_cost(inh_radius)
         new_unit.add_component(HyperspaceInhibitionFieldEmitter(
             new_unit,
-            radius=inh_radius,
-            hull_cost=inh_cost
+            radius=inh_radius
         ))
 
     if template.get("has_ability_component"):

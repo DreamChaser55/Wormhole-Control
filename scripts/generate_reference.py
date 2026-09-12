@@ -64,7 +64,7 @@ def generated_blocks():
     blocks = {
         'components': f'The Unit Designer provides **{len(rows)} selectable component rows**. Commander is always present.\n\n' + table(
             ['#', 'Component Key', 'Label', 'Cost Type', 'Default Cost'],
-            [(i, f"`{r['key']}`", r['label'], 'Dynamic' if r['is_dynamic'] else 'Fixed', r['default_cost'])
+            [(i, f"`{r['key']}`", r['label'], 'Dynamic' if r['is_dynamic'] else 'Fixed', round(r['default_cost'], 2))
              for i, r in enumerate(rows, 1)]),
         'abilities': f'There are **{len(abilities)} special abilities** registered in the game.\n\n' + table(
             ['Ability', 'Cooldown (Turns)', 'Duration (Turns)', 'Range (logical units)', 'AM Cost', 'Required Component', 'Target Type'],
