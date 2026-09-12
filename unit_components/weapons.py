@@ -1,4 +1,5 @@
 import logging
+import math
 import typing
 from typing import Optional, TYPE_CHECKING
 import dataclasses
@@ -177,7 +178,8 @@ class Weapons(UnitComponent):
         """Compute the total hull cost of a Weapons component from its turrets."""
         if not turrets:
             return 0.0
-        return sum(Weapons.calc_turret_hull_cost(t) for t in turrets)
+        # Canonical catalog costs must not depend on Python's sum() algorithm.
+        return math.fsum(Weapons.calc_turret_hull_cost(t) for t in turrets)
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)

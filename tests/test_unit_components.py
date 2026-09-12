@@ -1,4 +1,8 @@
 from unittest.mock import MagicMock
+
+import pytest
+
+from custom_unit_templates import TurretConfig
 from geometry import Position, Circle
 from unit_components.movement import Engines, Hyperdrive
 from unit_components.enums import HyperdriveType, JumpStatus, SabotageType, UnitStance, TurretType, TurretVariant
@@ -363,6 +367,33 @@ def test_commander_stances():
     commander.update()
     assert commander.standing_order.active_attack is not None
     assert commander.standing_order.active_attack.parameters["target_unit_id"] == enemy_far.id
+
+@pytest.mark.parametrize('reverse', [False, True])
+def test_dreadnought_weapon_hull_cost_is_canonical(reverse):
+    turrets = [
+        TurretConfig('MISSILE', damage=20, range=400, cooldown=3,
+                     variant='LONG_RANGE')
+        for _ in range(6)
+    ] + [
+        TurretConfig('MASS_DRIVER', damage=4, range=300, cooldown=1,
+                     variant='ANTI_STRIKECRAFT')
+        for _ in range(2)
+    ]
+    if reverse:
+        turrets.reverse()
+    # Exact equality is intentional: the built-in catalog stores this value.
+    assert Weapons.calc_hull_cost(turrets) == 116.93333333333332
+
+
+def test_weapon_hull_cost_without_turrets():
+    assert Weapons.calc_hull_cost([]) == 0.0
+
+
+def test_weapon_hull_cost_with_one_turret():
+    turret = TurretConfig('MASS_DRIVER', damage=4, range=300, cooldown=1,
+                          variant='ANTI_STRIKECRAFT')
+    assert Weapons.calc_hull_cost([turret]) == 6.8
+
 
 def test_weapons_and_turrets():
     unit = ComponentUnit()

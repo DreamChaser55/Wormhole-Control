@@ -1,5 +1,6 @@
 """Catalog designs must be affordable quotes for the actual assembled equipment."""
 import json
+import math
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -35,6 +36,15 @@ def test_catalog_coverage_and_canonical_values():
     corrupt['MISSILE_PLATFORM']['build_cost'] = 0
     corrupt['SCOUT']['category'] = 'Unknown'
     assert set(validate_builtin_catalog(corrupt)) == {'MISSILE_PLATFORM', 'SCOUT'}
+
+
+def test_catalog_rejects_altered_canonical_weapon_cost():
+    key = 'SIEGE_DREADNOUGHT'
+    data = dict(BUILTINS[key])
+    data['weapon_bays_hull_cost'] = math.nextafter(data['weapon_bays_hull_cost'], math.inf)
+    issues = validate_builtin_catalog({key: data})
+    assert set(issues) == {key}
+    assert any(error.startswith('weapon_bays_hull_cost:') for error in issues[key])
 
 
 @pytest.mark.parametrize('key', BUILTINS)
