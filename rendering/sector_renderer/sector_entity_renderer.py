@@ -2,7 +2,18 @@ from rendering.drawing_utils import draw_shape
 import pygame
 from display_config import display_config_for
 from rendering.drawing_utils import station_icon_rect
-from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, WHITE, RED, HULL_BASE_ICON_SCALES, HULL_DOT_COUNTS, SECTOR_VIEW_BASE_ICON_SIZE, ICON_DOT_RADIUS, ICON_DOT_SPACING
+from constants import (
+    SECTOR_CIRCLE_RADIUS_LOGICAL,
+    WHITE,
+    RED,
+    HULL_BASE_ICON_SCALES,
+    HULL_DOT_COUNTS,
+    SECTOR_VIEW_BASE_ICON_SIZE,
+    ICON_DOT_RADIUS,
+    ICON_DOT_SPACING,
+    INHIBITION_FIELD_COLOR,
+    INHIBITION_FIELD_LINE_WIDTH,
+)
 from domain.units import Unit
 from domain.minefields import Minefield
 from unit_components.enums import MinefieldType
@@ -47,8 +58,11 @@ class SectorEntityRenderer:
                 continue
 
             pygame.draw.circle(
-                self.parent._inhibition_surface, (255, 0, 0, 25),
-                (int(zone_pixel_center.x), int(zone_pixel_center.y)), zone_pixel_radius
+                self.parent._inhibition_surface,
+                INHIBITION_FIELD_COLOR,
+                (int(zone_pixel_center.x), int(zone_pixel_center.y)),
+                zone_pixel_radius,
+                width=INHIBITION_FIELD_LINE_WIDTH,
             )
             drew_inhibition_zone = True
             self.parent.zoom_render_stats['direct_draw_fallbacks'] += 1

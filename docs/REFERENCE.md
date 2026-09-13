@@ -89,7 +89,7 @@ These limits apply to new campaigns. Loading uses the separate
 **Galaxy View** shows known systems, wormhole links and home-system faction markers.
 Shared homes have concentric markers. **System View** shows sector hexes, bodies,
 routes and fog of war; newly opened systems fit the available map area.
-**Sector View** shows individual units, weapon ranges, minefields and tactical movement.
+**Sector View** shows individual units, weapon ranges, minefields, hyperspace inhibition fields and tactical movement.
 System and Sector views have independent zoom and pan controls. Selected objects
 have corner brackets using their owner's faction color.
 
@@ -407,6 +407,7 @@ Tactical distances use logical sector units; each sector has radius **5000**.
 Sublight movement consumes fuel. Hyperdrives jump between sectors, with Advanced
 drives also using wormholes between systems. Natural and artificial inhibition
 fields block jump entry and exit; plan approach legs outside their boundaries.
+In Sector View, their jump-denial perimeters are drawn as red outlined circles.
 
 Ships automatically route around solid bodies and fields that exclude their hull
 size. Navigation keeps 50 units of clearance and stays inside the sector. A route
