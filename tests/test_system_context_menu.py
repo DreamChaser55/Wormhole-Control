@@ -16,7 +16,6 @@ from galaxy import Galaxy, StarSystem
 from unit_components.movement import Hyperdrive
 from unit_components.commander import Commander
 from input_processor.context_menu_builder import build_system_context_menu_options
-from input_processor.context_actions import handle_context_menu_action
 
 
 @pytest.fixture
@@ -154,11 +153,3 @@ def test_system_context_menu_unknown_system(system_setup):
     game.current_system_name = "NonExistentSystem"
     options = build_system_context_menu_options(game, (0, 0))
     assert options == []
-
-
-def test_context_action_view_planet_logs_without_error(system_setup):
-    p1, galaxy, system, game = system_setup
-    planet = Planet(in_hex=(1, 1), in_system="Sol")
-    planet.name = "Mars"
-    # Test that action dispatching works smoothly without raising an exception
-    handle_context_menu_action(game, "view_planet", target=planet)

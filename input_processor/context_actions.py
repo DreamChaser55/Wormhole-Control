@@ -52,15 +52,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
     if not isinstance(extracted_action_id, str):
         extracted_action_id = str(extracted_action_id)
 
-    if extracted_action_id == "view_planet":
-        logger.debug(f"  Action: View Planet {getattr(target, 'name', target)} Info (Not Implemented)")
-    elif extracted_action_id == "view_star":
-        logger.debug(f"  Action: View Star {getattr(target, 'name', target)} Info (Not Implemented)")
-    elif extracted_action_id == "view_wormhole":
-        logger.debug(f"  Action: View Wormhole {getattr(target, 'name', target)} Info (Not Implemented)")
-    elif extracted_action_id == "view_unit":
-        logger.debug(f"  Action: View Unit {getattr(target, 'name', target)} Info (Not Implemented)")
-    elif extracted_action_id in ('tactical_attack', 'tactical_recover'):
+    if extracted_action_id in ('tactical_attack', 'tactical_recover'):
         from tactical_ui import issue
         for unit in selected_units:
             issue(game, {'type': 'attack' if extracted_action_id == 'tactical_attack' else 'recover_fuel_cache',
@@ -90,7 +82,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
 
     elif selected_units:
         disabled_units = [u for u in selected_units if u.is_disabled]
-        if disabled_units and extracted_action_id not in ("cancel_orders", "view_unit", "view_planet", "view_star", "view_wormhole"):
+        if disabled_units and extracted_action_id != "cancel_orders":
             if game.gui:
                 unit_names = ", ".join(u.name for u in disabled_units)
                 game.gui.show_warning_dialog(

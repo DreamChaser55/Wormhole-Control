@@ -368,7 +368,6 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
     if target_object is not None:
         if isinstance(target_object, (Planet, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, Comet)):
             if isinstance(target_object, Planet):
-                options.append(("View Planet", "view_planet"))
                 if getattr(target_object, 'planet_type', None) == PlanetType.GAS_GIANT:
                     if any(a.owner == current_player and target_object.can_hide_unit(a) for a in actors):
                         options.append(("Hide in Gas Giant", "enter_gas_giant"))
@@ -430,16 +429,10 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
             if isinstance(target_object, (MetalAsteroid, Comet)) and any(getattr(a, 'mining_component', None) for a in actors):
                 options.append(("Mine", "mine"))
                 options.append(("Mine (continuously)", "continuous_mine"))
-        elif isinstance(target_object, Wormhole):
-            options.append(("View Wormhole Info", "view_wormhole"))
-        elif isinstance(target_object, Unit):
-            options.append(("View Unit Info", "view_unit"))
         elif isinstance(target_object, Star):
-            options.append(("View Star", "view_star"))
             if any(getattr(a, 'harvester_component', None) for a in actors):
                 options.append(("Resupply (continuously)", "continuous_resupply"))
         elif isinstance(target_object, Nebula):
-            options.append(("View Nebula", "view_nebula"))
             if getattr(target_object, 'nebula_type', None) == NebulaType.HYDROGEN:
                 if any(getattr(a, 'harvester_component', None) for a in actors):
                     options.append(("Resupply (continuously)", "continuous_resupply"))

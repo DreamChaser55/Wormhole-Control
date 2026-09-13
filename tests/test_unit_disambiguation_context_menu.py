@@ -140,10 +140,10 @@ def test_build_sector_unit_disambiguation_menu():
     assert "Player 1" in label1
     sub_opts1, sub_target1 = sub_data1
     assert sub_target1 == unit_friendly
-    # Friendly options should have Protect, View Unit Info, etc.
+    # Friendly options should have Protect, but no placeholder View Unit Info
     action_ids1 = [opt[1] for opt in sub_opts1 if isinstance(opt[1], str)]
     assert "protect_unit" in action_ids1
-    assert "view_unit" in action_ids1
+    assert "view_unit" not in action_ids1
 
     # Verify second entry (Enemy Unit)
     label2, sub_data2 = options[1]
@@ -151,10 +151,10 @@ def test_build_sector_unit_disambiguation_menu():
     assert "Player 2" in label2
     sub_opts2, sub_target2 = sub_data2
     assert sub_target2 == unit_enemy
-    # Enemy options should have Attack Hull, View Unit Info, etc.
+    # Enemy options should have Attack Hull, but no placeholder View Unit Info
     action_ids2 = [opt[1] for opt in sub_opts2 if isinstance(opt[1], str)]
     assert "attack_unit" in action_ids2
-    assert "view_unit" in action_ids2
+    assert "view_unit" not in action_ids2
 
 
 def test_mouse_handler_right_click_triggers_disambiguation():
@@ -265,6 +265,6 @@ def test_single_unit_falls_back_to_direct_menu():
                     # Directly opens unit1's context menu with target == unit1
                     assert target == unit1
                     action_ids = [opt[1] for opt in opened_options if isinstance(opt[1], str)]
-                    assert "view_unit" in action_ids
+                    assert "view_unit" not in action_ids
 
 pytestmark = pytest.mark.usefixtures("pygame_context")
