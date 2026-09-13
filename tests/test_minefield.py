@@ -347,7 +347,6 @@ def test_minefield_single_circle_rendering():
     mock_parent = MagicMock()
     mock_parent.game = game
     mock_parent.screen = pygame.Surface((800, 600))
-    mock_parent._inhibition_surface = pygame.Surface((800, 600))
     sector_entity_renderer = SectorEntityRenderer(mock_parent)
 
     with patch("pygame.draw.circle") as mock_sec_circle:

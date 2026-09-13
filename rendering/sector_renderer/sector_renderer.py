@@ -86,7 +86,7 @@ class SectorViewRenderer:
         self._storm_base_circle_surfaces = {}
         self._last_cached_sector = None
         self._scaled_effect_surfaces = _BoundedSurfaceCache()
-        self._inhibition_surface = None
+        self._cloaking_surface = None
         self._fog_of_war_surface = None
         self._fog_cache_key = None
         self._fog_blit_rect = None

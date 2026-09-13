@@ -238,12 +238,12 @@ class SectorGridRenderer:
     def blit_uncached_circle(self, circle_pos, radius_px, color):
         self.fill_circle_clipped(circle_pos, radius_px, color)
 
-    def draw_range_ring(self, cx, cy, radius_px, outline_rgb):
+    def draw_range_ring(self, cx, cy, radius_px, outline_rgb, width=2):
         if radius_px <= 1 or self.is_circle_off_screen((cx, cy), radius_px):
             return
 
         if not self.circle_covers_viewport((cx, cy), radius_px):
-            pygame.draw.circle(self.overlay_surface, outline_rgb, (cx, cy), radius_px, 2)
+            pygame.draw.circle(self.overlay_surface, outline_rgb, (cx, cy), radius_px, width)
 
     def update_zoom_render_stats(self):
         self.parent.zoom_render_stats = {

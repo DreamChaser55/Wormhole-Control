@@ -40,34 +40,20 @@ class SectorEntityRenderer:
         return self.parent.overlay_surface
 
     def draw_inhibition_zones(self, hex_obj, dynamic_radius):
-        """Draws sector inhibition zones into an overlay surface."""
+        """Draws opaque inhibition outlines on the shared range-circle overlay."""
         if not hex_obj:
             return
-        screen_size = self.screen.get_size()
-        if self.parent._inhibition_surface is None or self.parent._inhibition_surface.get_size() != screen_size:
-            self.parent._inhibition_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
-        self.parent._inhibition_surface.fill((0, 0, 0, 0))
-        drew_inhibition_zone = False
         for zone in hex_obj.get_all_inhibition_zones():
             zone_pixel_center = self.parent.grid_renderer.coords_to_pixels(zone.center)
             zone_pixel_radius = int(zone.radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
 
-            if zone_pixel_radius <= 0:
-                continue
-            if self.parent.grid_renderer.is_circle_off_screen((zone_pixel_center.x, zone_pixel_center.y), zone_pixel_radius):
-                continue
-
-            pygame.draw.circle(
-                self.parent._inhibition_surface,
-                INHIBITION_FIELD_COLOR,
-                (int(zone_pixel_center.x), int(zone_pixel_center.y)),
+            self.parent.grid_renderer.draw_range_ring(
+                int(zone_pixel_center.x),
+                int(zone_pixel_center.y),
                 zone_pixel_radius,
+                INHIBITION_FIELD_COLOR,
                 width=INHIBITION_FIELD_LINE_WIDTH,
             )
-            drew_inhibition_zone = True
-            self.parent.zoom_render_stats['direct_draw_fallbacks'] += 1
-        if drew_inhibition_zone:
-            self.screen.blit(self.parent._inhibition_surface, (0, 0))
 
     def draw_cloaking_fields(self, hex_obj, dynamic_radius):
         """Draws active advanced cloaking field boundaries for friendly/visible units."""
@@ -84,18 +70,18 @@ class SectorEntityRenderer:
                 radius_px = int(clk.area_radius * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
                 if radius_px > 0 and not self.parent.grid_renderer.is_circle_off_screen((center_px.x, center_px.y), radius_px):
                     screen_size = self.screen.get_size()
-                    if self.parent._inhibition_surface is None or self.parent._inhibition_surface.get_size() != screen_size:
-                        self.parent._inhibition_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
-                    self.parent._inhibition_surface.fill((0, 0, 0, 0))
+                    if self.parent._cloaking_surface is None or self.parent._cloaking_surface.get_size() != screen_size:
+                        self.parent._cloaking_surface = pygame.Surface(screen_size, pygame.SRCALPHA)
+                    self.parent._cloaking_surface.fill((0, 0, 0, 0))
                     pygame.draw.circle(
-                        self.parent._inhibition_surface, (70, 160, 240, 25),
+                        self.parent._cloaking_surface, (70, 160, 240, 25),
                         (int(center_px.x), int(center_px.y)), radius_px
                     )
                     pygame.draw.circle(
-                        self.parent._inhibition_surface, (100, 190, 255, 70),
+                        self.parent._cloaking_surface, (100, 190, 255, 70),
                         (int(center_px.x), int(center_px.y)), radius_px, 1
                     )
-                    self.screen.blit(self.parent._inhibition_surface, (0, 0))
+                    self.screen.blit(self.parent._cloaking_surface, (0, 0))
 
     def draw_minefield(self, minefield: Minefield, obj_pixel_pos, dynamic_radius):
         """Draws a minefield circle and its remaining mine dot/diamond icons. Returns obj_radius_logical."""
