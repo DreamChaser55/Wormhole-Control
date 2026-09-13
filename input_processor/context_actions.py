@@ -65,8 +65,6 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
         for unit in selected_units:
             issue(game, {'type': 'attack' if extracted_action_id == 'tactical_attack' else 'recover_fuel_cache',
                          'unit_ids': [unit.id], 'target_id': target.id, 'queue': shift_pressed})
-    elif extracted_action_id == "scan_hex":
-        logger.debug("  Action: Scan Hex Contents (Not Implemented)")
     elif extracted_action_id == "leave_gas_giant_all":
         if isinstance(target, Planet):
             units = [u for u in getattr(target, 'hidden_units', []) if u.owner == current_player]

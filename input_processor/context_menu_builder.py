@@ -60,16 +60,6 @@ def build_system_context_menu_options(game, target_hex_coord: HexCoord) -> typin
     if not current_system:
         return options
 
-    hex_obj = current_system.hexes.get(target_hex_coord)
-    if hex_obj:
-        if hex_obj.celestial_bodies or hex_obj.units:
-            options.append(("Scan Hex Contents", "scan_hex"))
-        planet = next((b for b in hex_obj.celestial_bodies if isinstance(b, Planet)), None)
-        if planet:
-            options.append(("View Planet", "view_planet"))
-        wormhole = next((b for b in hex_obj.celestial_bodies if isinstance(b, Wormhole)), None)
-        if wormhole:
-            options.append(("View Wormhole Info", "view_wormhole"))
 
     actors = game.selected_objects
     if any(isinstance(actor, Unit) for actor in actors):
