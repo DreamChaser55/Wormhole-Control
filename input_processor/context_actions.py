@@ -52,9 +52,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
     if not isinstance(extracted_action_id, str):
         extracted_action_id = str(extracted_action_id)
 
-    if extracted_action_id == "view_hex":
-        logger.debug("  Action: View Hex Details (Not Implemented)")
-    elif extracted_action_id == "view_planet":
+    if extracted_action_id == "view_planet":
         logger.debug(f"  Action: View Planet {getattr(target, 'name', target)} Info (Not Implemented)")
     elif extracted_action_id == "view_star":
         logger.debug(f"  Action: View Star {getattr(target, 'name', target)} Info (Not Implemented)")
@@ -94,7 +92,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
 
     elif selected_units:
         disabled_units = [u for u in selected_units if u.is_disabled]
-        if disabled_units and extracted_action_id not in ("cancel_orders", "view_unit", "view_hex", "view_planet", "view_star", "view_wormhole"):
+        if disabled_units and extracted_action_id not in ("cancel_orders", "view_unit", "view_planet", "view_star", "view_wormhole"):
             if game.gui:
                 unit_names = ", ".join(u.name for u in disabled_units)
                 game.gui.show_warning_dialog(

@@ -60,7 +60,6 @@ def build_system_context_menu_options(game, target_hex_coord: HexCoord) -> typin
     if not current_system:
         return options
 
-    options.append(("View Hex Details", "view_hex"))
     hex_obj = current_system.hexes.get(target_hex_coord)
     if hex_obj:
         if hex_obj.celestial_bodies or hex_obj.units:
