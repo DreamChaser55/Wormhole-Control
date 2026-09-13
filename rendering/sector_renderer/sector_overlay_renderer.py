@@ -228,6 +228,12 @@ class SectorOverlayRenderer:
             from constants import ORBITAL_DEFENSE_RING_COLOR
             self.parent.grid_renderer.draw_range_ring(cx, cy, od_px, ORBITAL_DEFENSE_RING_COLOR)
 
+        constructor = getattr(unit, 'constructor_component', None)
+        if constructor and not constructor.is_destroyed:
+            cr_px = int(constructor.build_range * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            from constants import CONSTRUCTOR_RANGE_RING_COLOR
+            self.parent.grid_renderer.draw_range_ring(cx, cy, cr_px, CONSTRUCTOR_RANGE_RING_COLOR)
+
     def get_waypoint_style(self, waypoint):
         if waypoint['order_type'] == OrderType.ATTACK:
             line_color = RED

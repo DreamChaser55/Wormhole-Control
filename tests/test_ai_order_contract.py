@@ -575,3 +575,25 @@ def test_command_diagnostics_are_private_and_preserve_results(stage, monkeypatch
     assert 'index=0 type=set_stance exception=RuntimeError' in caplog.text
     assert 'test_ai_order_contract.py' in caplog.text
     assert all(record.exc_info is None for record in caplog.records)
+
+
+def test_stationary_constructor_rejects_out_of_range_command():
+    from unit_components.constructor import Constructor
+    game, player, _, unit = world()
+    # Ensure unit is stationary (no engines)
+    if unit.engines_component:
+        unit.remove_component(type(unit.engines_component))
+    unit.add_component(Constructor(unit))
+    unit.constructor_component.can_build = lambda name: SimpleNamespace(cost_credits=100, time_to_build=5)
+    player.credits = 500
+
+    # Build at distance 600 (> 500 build_range)
+    build_far = Command("construct", (unit.id,), template_name="test", position=(600, 0))
+    res = issue(game, player, build_far)
+    assert not res.accepted
+    assert res.errors[0].code == "target_out_of_range"
+
+    # Build at distance 400 (<= 500 build_range)
+    build_near = Command("construct", (unit.id,), template_name="test", position=(400, 0))
+    res_near = issue(game, player, build_near)
+    assert res_near.accepted

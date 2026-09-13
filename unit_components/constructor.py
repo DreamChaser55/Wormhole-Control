@@ -29,11 +29,12 @@ from .enums import (
 )
 
 from domain.coordinates import HexCoord
-from geometry import Position
+from geometry import Position, distance
 from constants import (
     DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_ANTIMATTER_HARVEST_RATE,
     ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
-    DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE, REPAIR_CREDIT_COST_PER_HP
+    DEFAULT_JUMP_RANGE, HullSize, DEFAULT_SENSOR_SHORT_RANGE, REPAIR_CREDIT_COST_PER_HP,
+    CONSTRUCTOR_BUILD_RANGE,
 )
 
 
@@ -439,7 +440,7 @@ class Constructor(UnitComponent):
 
     DISPLAY_NAME: str = "Constructor"
     SIDEBAR_ORDER: int = 5
-    build_range: float = 500.0
+    build_range: float = CONSTRUCTOR_BUILD_RANGE
     
     # Construction state
     current_construction_target: Optional[tuple[str, Position]] = None # (unit_template_name, position)
@@ -563,6 +564,13 @@ class Constructor(UnitComponent):
     def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy') -> bool:
         """Starts the construction of a new unit."""
         if self.is_destroyed:
+            return False
+
+        if not isinstance(position, Position):
+            position = Position(*position)
+
+        if distance(self.unit.position, position) > self.build_range:
+            logger.debug(f"Error: Construction target {position} is beyond build range ({self.build_range}).")
             return False
 
         buildable = self.can_build(unit_template_name)

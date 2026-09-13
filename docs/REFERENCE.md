@@ -415,7 +415,7 @@ that cannot be completed fails with `path_unavailable`; it does not pass through
 an obstacle. Destinations in the clearance band just outside a solid surface are rejected.
 
 Approach orders stop at their operational range. Protect maintains 150 units from
-the target; Attack, Dock, Repair, Refit, trade, transfers, intelligence and targeted
+the target; Attack, Dock, Repair, Refit, Construct, trade, transfers, intelligence and targeted
 abilities use their respective ranges. Colonization and loading colonists stop
 150 units beyond the body's surface, approaching automatically if necessary.
 Microjump and carrier deployment also respect hull-blocking fields and storms.

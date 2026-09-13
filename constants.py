@@ -46,6 +46,10 @@ DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS: float = 0.20  # +20% weapon attack damage 
 DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS: float = 0.20  # +20% damage mitigation bonus
 ORBITAL_DEFENSE_HULL_COST: float = 20.0  # Base hull cost for orbital defense component
 ORBITAL_DEFENSE_RING_COLOR: tuple[int, int, int] = (100, 220, 100)  # Visual range ring color in sector view
+# Constructor Constants
+CONSTRUCTOR_BUILD_RANGE: float = 500.0
+CONSTRUCTOR_RANGE_RING_COLOR: tuple[int, int, int] = (255, 200, 50)  # Visual range ring color in sector view
+
 
 
 # Trade Mechanics Constants

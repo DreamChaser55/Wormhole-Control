@@ -217,6 +217,23 @@ def test_draw_unit_range_circles_deduplicates_identical_turret_ranges():
     assert ring_mock.call_count == 2
 
 
+def test_draw_unit_range_circles_draws_constructor_build_ring():
+    from constants import CONSTRUCTOR_RANGE_RING_COLOR
+    game, renderer = _make_test_renderer()
+    unit = _make_unit(sensor_range=None, turret_ranges=[])
+    constructor = MagicMock()
+    constructor.build_range = 500.0
+    constructor.is_destroyed = False
+    unit.constructor_component = constructor
+
+    with patch.object(renderer.grid_renderer, "draw_range_ring") as ring_mock:
+        renderer.overlay_renderer.draw_unit_range_circles(unit, Position(160, 100), 720.0)
+
+    assert ring_mock.call_count == 1
+    _, _, _, color = ring_mock.call_args[0]
+    assert color == CONSTRUCTOR_RANGE_RING_COLOR
+
+
 def test_draw_unit_range_circles_at_extreme_zoom_allocates_only_screen_sized_surface():
     """End-to-end regression test at a zoom level equivalent to the reported
     bug (near SECTOR_ZOOM_MAX): drawing a unit's range circles must never

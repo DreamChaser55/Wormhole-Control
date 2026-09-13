@@ -1661,6 +1661,19 @@ class CommandGateway:
                 raise _Rejected(
                     "invalid_value", f"Unit {unit.id} cannot build that template."
                 )
+            if getattr(unit, "engines_component", None) is None:
+                from geometry import Position, distance
+                target_pos = Position(*command.position)
+                build_range = getattr(constructor, "build_range", 500.0)
+                unit_pos = getattr(unit, "position", None)
+                if unit_pos is not None:
+                    if not isinstance(unit_pos, Position):
+                        unit_pos = Position(getattr(unit_pos, "x", 0), getattr(unit_pos, "y", 0))
+                    if distance(unit_pos, target_pos) > build_range:
+                        raise _Rejected(
+                            "target_out_of_range",
+                            f"Unit {unit.id} is stationary and cannot construct outside its build range ({build_range:g} units)."
+                        )
         elif command.type == "dock_in_hangar":
             hull = getattr(getattr(unit, "hull_size", None), "name", "").lower()
             if hull != "tiny":

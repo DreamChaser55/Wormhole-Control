@@ -1,7 +1,9 @@
 import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
+from geometry import Position, distance, position_at_distance_from_target
 from .base import Order, OrderStatus, OrderType
+from .movement import MoveOrder
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -25,10 +27,14 @@ class ConstructOrder(Order):
         unit_template_name = self.parameters.get("unit_template_name")
         target_pos = self.parameters.get("target_position")
 
-        if not unit_template_name or not target_pos:
+        if not unit_template_name or target_pos is None:
             self.fail("invalid_parameters")
             logger.debug(f"CONSTRUCT order failed: Missing parameters.")
             return
+
+        if not isinstance(target_pos, Position):
+            target_pos = Position(*target_pos)
+            self.parameters["target_position"] = target_pos
 
         constructor = self.unit.constructor_component
         buildable = constructor.can_build(unit_template_name)
@@ -38,7 +44,42 @@ class ConstructOrder(Order):
             logger.debug(f"CONSTRUCT order failed: {self.unit.name} cannot build {unit_template_name}.")
             return
 
-        player = next((p for p in self.unit.game.players if p.id == self.unit.owner.id), None)
+        target_sys = self.parameters.get("target_system_name", self.unit.in_system)
+        target_hex = self.parameters.get("target_hex_coord", self.unit.in_hex)
+
+        in_same_hex = (self.unit.in_system == target_sys and self.unit.in_hex == target_hex)
+        in_range = in_same_hex and (distance(self.unit.position, target_pos) <= constructor.build_range)
+
+        if not in_range:
+            engines = getattr(self.unit, "engines_component", None)
+            if not engines or not engines.is_operational:
+                self.fail("target_out_of_range")
+                logger.debug(f"CONSTRUCT order failed: {self.unit.name} cannot reach construction site because it lacks operational engines.")
+                gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
+                if gui:
+                    gui.show_warning_dialog(
+                        f"Unit <b>{self.unit.name}</b> cannot reach the construction site at ({target_pos.x:.0f}, {target_pos.y:.0f}) because it lacks operational engines.",
+                        title="Target Out of Range"
+                    )
+                return
+
+            if in_same_hex:
+                dest_pos = position_at_distance_from_target(self.unit.position, target_pos, constructor.build_range - 5.0)
+            else:
+                dest_pos = target_pos
+
+            move_params = {
+                "destination_system_name": target_sys,
+                "destination_hex_coord": target_hex,
+                "destination_position": dest_pos,
+            }
+            self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
+            self.add_sub_order(ConstructOrder(self.unit, self.parameters.copy(), parent_order=self))
+            return
+
+        player = next((p for p in getattr(getattr(self.unit, 'game', None), 'players', []) if p.id == self.unit.owner.id), None)
+        if not player and getattr(self.unit, 'owner', None):
+            player = self.unit.owner
         if not player:
             self.fail("execution_failed")
             logger.debug(f"CONSTRUCT order failed: Could not find player with id {self.unit.owner.id}.")
@@ -62,11 +103,18 @@ class ConstructOrder(Order):
             self.fail("construction_unavailable")
 
     def check_completion_conditions(self) -> None:
+        if self.sub_orders:
+            return
+        if self._charged_player_id is None:
+            self.status = OrderStatus.COMPLETED
+            return
         constructor = self.unit.constructor_component
         if not constructor or constructor.current_construction_target is None:
             self.status = OrderStatus.COMPLETED
 
     def cancel(self) -> None:
+        if self.status in {OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED}:
+            return
         constructor = self.unit.constructor_component
         if constructor and constructor.current_construction_target and getattr(constructor, "construction_order_id", None) == self.public_id:
             self.refund_charge()
