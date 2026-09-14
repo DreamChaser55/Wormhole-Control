@@ -128,11 +128,11 @@ def test_inhibitor_catalog_budget_field_fuel_and_persistence(
     assert saved.id not in sector.dynamic_inhibition_zones
 
 
-@pytest.mark.parametrize('key,speed,engine_hull,price,total_hull', [
-    ('FIGHTER_WING', 240, 2.4, 260, 7.0),
-    ('BOMBER_WING', 200, 2.0, 259, 6.966666666666667),
+@pytest.mark.parametrize('key,speed,engine_hull,price,total_hull,weapon_range', [
+    ('FIGHTER_WING', 300, 3.0, 260, 7.0, 90),
+    ('BOMBER_WING', 200, 2.0, 259, 6.966666666666667, 200),
 ])
-def test_production_prices_progress_complete_equipment_and_persistence(key, speed, engine_hull, price, total_hull):
+def test_production_prices_progress_complete_equipment_and_persistence(key, speed, engine_hull, price, total_hull, weapon_range):
     from save_manager import serialize_game_state, deserialize_game_state
     game = campaign()
     carrier = create(game, 'FLEET_CARRIER')
@@ -155,6 +155,7 @@ def test_production_prices_progress_complete_equipment_and_persistence(key, spee
     wing = saved.docked_units[0]
     assert wing.engines_component.speed == wing.engines_component.effective_speed == speed
     assert wing.engines_component.hull_cost == pytest.approx(engine_hull)
+    assert wing.weapons_component.turrets[0].range == weapon_range
     assert wing.current_hull_usage == pytest.approx(total_hull)
     assert wing.antimatter_component is None
     assert wing.current_hull_usage <= 7
@@ -171,7 +172,7 @@ def test_production_prices_progress_complete_equipment_and_persistence(key, spee
     assert unit_view['capability_details']['engines']['effective_speed'] == speed
 
 
-@pytest.mark.parametrize('key,speed', [('FIGHTER_WING', 240), ('BOMBER_WING', 200)])
+@pytest.mark.parametrize('key,speed', [('FIGHTER_WING', 300), ('BOMBER_WING', 200)])
 def test_wing_movement_uses_base_speed_and_clamps_arrival(key, speed):
     from turn_processor import TurnProcessor
 
@@ -188,26 +189,30 @@ def test_wing_movement_uses_base_speed_and_clamps_arrival(key, speed):
     assert wing.position == destination
 
 
-@pytest.mark.parametrize('key,speed', [('FIGHTER_WING', 120), ('BOMBER_WING', 100)])
+@pytest.mark.parametrize('key,speed', [
+    ('FIGHTER_WING', 300), ('BOMBER_WING', 200),
+    ('FIGHTER_WING', 120), ('BOMBER_WING', 100),
+])
 def test_existing_wing_save_retains_installed_speed_and_hull_cost(key, speed):
     from save_manager import serialize_game_state, deserialize_game_state
 
     game = campaign()
     wing = create(game, key)
-    wing.engines_component.speed = speed  # Installed before the engine-efficiency change.
+    wing.engines_component.speed = speed  # Current or previously installed speed.
     state = serialize_game_state(game)
     restored = campaign()
     deserialize_game_state(restored, state)
     saved_wing = restored.galaxy.get_unit_by_id(wing.id)
     assert saved_wing.engines_component.speed == saved_wing.engines_component.effective_speed == speed
     assert saved_wing.engines_component.hull_cost == wing.engines_component.hull_cost
+    assert saved_wing.weapons_component.turrets[0].range == wing.weapons_component.turrets[0].range
     assert saved_wing.current_hull_usage == wing.current_hull_usage
 
 
 @pytest.mark.parametrize('key,ability,boosted_speed', [
     ('BOMBER_WING', 'attack_run', 300),
     ('BOMBER_WING', 'emergency_recovery', 400),
-    ('FIGHTER_WING', 'emergency_recovery', 480),
+    ('FIGHTER_WING', 'emergency_recovery', 600),
 ])
 def test_catalog_wing_speed_composes_with_carrier_bonuses(key, ability, boosted_speed):
     from constants import MAX_UNIT_XP, XP_SPEED_BONUS

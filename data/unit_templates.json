@@ -1120,8 +1120,8 @@
     "build_time": 2,
     "build_cost": 260,
     "has_engine": true,
-    "engine_speed": 240,
-    "engine_hull_cost": 2.4000000000000004,
+    "engine_speed": 300,
+    "engine_hull_cost": 3.0,
     "has_antimatter_storage": false,
     "antimatter_capacity": 0.0,
     "antimatter_hull_cost": 0.0,
@@ -1132,12 +1132,12 @@
     "hyperdrive_jump_range": 5,
     "hyperdrive_hull_cost": 0.0,
     "has_weapon_bays": true,
-    "weapon_bays_hull_cost": 4.3,
+    "weapon_bays_hull_cost": 3.7,
     "turrets": [
       {
         "type": "MASS_DRIVER",
         "damage": 4,
-        "range": 150,
+        "range": 90,
         "cooldown": 2,
         "variant": "ANTI_STRIKECRAFT"
       }
