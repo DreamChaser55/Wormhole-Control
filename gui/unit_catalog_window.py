@@ -203,8 +203,5 @@ class UnitCatalogWindow:
                 if self.valid_context() and self.selected_key and event.ui_element.is_enabled:
                     queue = event.ui_element == self.queue_button
                     self.game.event_bus.publish(ConstructEvent(self.units, self.selected_key, self.position, queue))
-                    if queue:
-                        self.update()
-                    else:
-                        self.kill()
+                    self.kill()
         return True

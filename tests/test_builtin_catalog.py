@@ -425,32 +425,31 @@ def press_catalog(window, button):
     window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=button))
 
 
-def test_catalog_repeated_queue_and_build_replacement(construction_catalog):
+def test_catalog_queue_and_build_orders_close_window(construction_catalog):
     game, builders, window, events = construction_catalog
-    keys = ['SCOUT', 'FLEET_CARRIER', 'FLEET_CARRIER', 'MINELAYER']
-    for key in keys:
-        window.show_entry(describe_template(key, UNIT_TEMPLATES[key]))
-        press_catalog(window, window.queue_button)
-        assert window.window.alive()
-        assert window.selected_key == key
-    for builder in builders:
-        commander = builder.commander_component
-        orders = [commander.current_order, *commander.orders_queue]
-        assert [o.parameters['unit_template_name'] for o in orders] == keys
-        assert all(o.parameters['target_position'] == Position(200, 200) for o in orders)
-    assert all(event.shift_pressed for event in events)
-    assert game.players[0].credits == 100000 - 2 * UNIT_TEMPLATES['SCOUT']['build_cost']
-    assert '2 builders' in window.price_label.text
-    window.show_entry(describe_template('MINELAYER', UNIT_TEMPLATES['MINELAYER']))
-    press_catalog(window, window.build_button)
+    window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
+    press_catalog(window, window.queue_button)
     assert not window.window.alive()
-    assert events[-1].shift_pressed is False
+    assert len(events) == 1 and events[0].shift_pressed is True
     for builder in builders:
-        assert builder.commander_component.current_order.parameters['unit_template_name'] == 'MINELAYER'
-        assert not builder.commander_component.orders_queue
+        assert builder.commander_component.current_order.parameters['unit_template_name'] == 'SCOUT'
+        assert builder.commander_component.current_order.parameters['target_position'] == Position(200, 200)
+
+    from gui.unit_catalog_window import UnitCatalogWindow
+    window2 = UnitCatalogWindow(game.gui, builders, Position(200, 200))
+    try:
+        window2.show_entry(describe_template('MINELAYER', UNIT_TEMPLATES['MINELAYER']))
+        press_catalog(window2, window2.build_button)
+        assert not window2.window.alive()
+        assert len(events) == 2 and events[-1].shift_pressed is False
+        for builder in builders:
+            assert builder.commander_component.current_order.parameters['unit_template_name'] == 'MINELAYER'
+            assert not builder.commander_component.orders_queue
+    finally:
+        window2.kill()
 
 
-def test_catalog_queue_preserves_browsing_and_updates_affordability(construction_catalog):
+def test_catalog_queue_order_execution_and_affordability(construction_catalog):
     game, builders, window, events = construction_catalog
     key = 'FLEET_CARRIER'
     window.search.set_text('carrier')
@@ -460,21 +459,17 @@ def test_catalog_queue_preserves_browsing_and_updates_affordability(construction
     window.details.scroll_bar.set_scroll_from_start_percentage(.2)
     detail_scroll = window.details.scroll_bar.start_percentage
     selection = window.list.get_single_selection()
-    game.players[0].credits = UNIT_TEMPLATES[key]['build_cost'] * len(builders)
-    press_catalog(window, window.queue_button)
-    window.gui.manager.update(.1)
-    assert game.players[0].credits == 0
-    assert not window.build_button.is_enabled
-    assert window.queue_button.is_enabled
     assert window.search.get_text() == 'carrier'
     assert window.list.get_single_selection() == selection
     assert window.details.scroll_bar.start_percentage == pytest.approx(detail_scroll)
-    press_catalog(window, window.build_button)
-    assert len(events) == 1
+    assert window.build_button.is_enabled
+    assert window.queue_button.is_enabled
+
+    game.players[0].credits = UNIT_TEMPLATES[key]['build_cost'] * len(builders)
     press_catalog(window, window.queue_button)
-    assert len(events) == 2
-    assert window.window.alive()
-    assert all(len(b.commander_component.orders_queue) == 1 for b in builders)
+    assert not window.window.alive()
+    assert len(events) == 1 and events[0].shift_pressed is True
+    assert game.players[0].credits == 0
 
 
 def test_catalog_refresh_preserves_list_scroll_and_clears_filtered_selection(construction_catalog):
@@ -495,7 +490,8 @@ def test_catalog_refresh_preserves_list_scroll_and_clears_filtered_selection(con
     assert window.list.get_single_selection() == 'Fleet Carrier (6998c)'
     game.players[0].credits = 2 * UNIT_TEMPLATES['SCOUT']['build_cost']
     window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
-    press_catalog(window, window.queue_button)
+    game.players[0].credits = 0
+    window.update()
     assert window.window.alive()
     assert window.selected_key is None
     assert window.list.get_single_selection() is None

@@ -281,8 +281,8 @@ by name, role or ability; filter by category, hull, unit kind or price. Details
 show equipment, effective weapon ranges, fuel, abilities, costs and upkeep.
 
 **Build** replaces current orders and closes the catalogue. **Queue after existing
-orders** appends one build per selected builder and keeps it open. These buttons
-work independently of Shift. Queued builds pay when they start; idle builders
+orders** appends one build per selected builder and also closes the catalogue. These
+buttons work independently of Shift. Queued builds pay when they start; idle builders
 start immediately. Multiple builders show their combined price.
 
 Wings are produced in Strikecraft Bays aboard carriers and are not listed in

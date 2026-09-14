@@ -121,12 +121,8 @@ def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size
                 assert button.font.get_rect(item['text']).height < catalog.list.list_item_height
                 assert button.font.get_rect(item['text']).width < button.get_abs_rect().width
 
-        catalog.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
-                                                ui_element=catalog.queue_button))
-        assert catalog.window.alive()
         for button in (catalog.build_button, catalog.queue_button):
             assert button.font.get_rect(button.text).width < button.get_abs_rect().width - 10
-        capture('queued')
         assert catalog.list.scroll_bar is not None
         assert catalog.details.scroll_bar is not None
         for scroll_bar in (catalog.list.scroll_bar, catalog.details.scroll_bar):
@@ -142,6 +138,10 @@ def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size
             dropdown.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
                 ui_element=dropdown.current_state.close_button))
             manager.update(0.1)
+
+        catalog.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
+                                                ui_element=catalog.queue_button))
+        assert not catalog.window.alive()
     finally:
         catalog.kill()
         manager.clear_and_reset()
