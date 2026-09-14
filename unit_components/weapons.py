@@ -111,7 +111,7 @@ class Turret:
             hp_before = self.target.current_hit_points
 
             from tactical_abilities import combat_hit
-            combat_hit(self.target, int(effective_damage), self.turret_type, component_type=self.target_component_type)
+            combat_hit(self.target, int(effective_damage), self.turret_type, component_type=self.target_component_type, attacker=self.parent_unit)
 
             # Award XP based on actual HP lost (overkill damage does not grant bonus XP)
             xp_earned = max(0, hp_before - self.target.current_hit_points)

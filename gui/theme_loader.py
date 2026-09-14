@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def preload_rich_text_fonts(manager) -> None:
     """Load actual rich-text styles once, including a standalone manager's fallback."""
     font_dict = manager.ui_theme.get_font_dictionary()
-    for selector in (['text_box'], ['label'], ['text_box', '#turret_item_label']):
+    for selector in (['text_box'], ['label'], ['text_box', '#turret_item_label'], ['#turn_briefing_text', 'text_box']):
         info = manager.ui_theme.get_font_info(selector)
         for bold, italic in ((False, False), (True, False), (False, True), (True, True)):
             arguments = dict(font_size=info['size'], font_name=info['name'], bold=bold,

@@ -19,6 +19,9 @@ def handle_gui_action(game, action: dict) -> None:
         game: Target game instance.
         action (dict): Dictionary containing action details including the 'action' string key.
     """
+    from gui.turn_briefing_window import is_open
+    if is_open(getattr(game, 'gui', None)):
+        return
     action_type = action.get('action')
     handler = ACTION_HANDLERS.get(action_type)
     if handler is None:

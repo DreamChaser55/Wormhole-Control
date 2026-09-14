@@ -438,6 +438,9 @@ class CISweepOrder(Order):
                             discovered_count += 1
 
         self.status = OrderStatus.COMPLETED
+        from turn_briefing import record, refresh_discoveries
+        record(self.unit.game, self.unit.owner, "intelligence", "CI Sweep completed", subject=self.unit)
+        refresh_discoveries(self.unit.game)
         logger.info(f"[{self.unit.name}] CI Sweep complete! Discovered {discovered_count} enemy agent(s). (Cost: {CI_SWEEP_CREDIT_COST}c, {CI_SWEEP_ANTIMATTER_COST}am, Cooldown: {CI_SWEEP_COOLDOWN_TURNS}t)")
 
 

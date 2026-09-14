@@ -27,7 +27,12 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 8 and the command_catalog describes contract 6. The top-level intelligence
+Observations use schema 9 and the command_catalog describes contract 6. The final turn_summary
+section is your frozen briefing since the previous End Turn, including its resolution. Consider
+losses, problems, discoveries, messages and economic changes before planning. Historical contacts
+and locations do not make targets currently visible or legal; use the current observation for that.
+An empty entries list means no important events; omitted_count reports trimmed history.
+The top-level intelligence
 section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
 player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered
 agents, enemy Intelligence hardware, or whether one of your own agents has been discovered. Owned/allied units

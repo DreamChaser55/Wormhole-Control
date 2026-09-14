@@ -211,6 +211,9 @@ class Game:
     # --- GUI Action Handling ---
     def handle_gui_action(self, action: typing.Dict[str, typing.Any]):
         """Handles action events triggered by user interactions with GUI controls."""
+        from gui.turn_briefing_window import is_open
+        if is_open(getattr(self, "gui", None)):
+            return
         input_locked = isinstance(self, Game) and self.is_ai_input_locked()
         if input_locked and action.get('action') not in {
             'toggle_ingame_menu', 'save_game', 'load_game_file',
@@ -220,6 +223,8 @@ class Game:
             return
         import game_actions
         game_actions.handle_gui_action(self, action)
+        from turn_briefing import refresh_discoveries
+        refresh_discoveries(self)
 
     def is_ai_input_locked(self) -> bool:
         current = self.current_player
@@ -294,8 +299,10 @@ class Game:
             self.recompute_visibility()
 
         # Smooth tactical camera zoom
-        self.update_sector_camera(time_delta)
-        self.update_system_camera(time_delta)
+        from gui.turn_briefing_window import is_open
+        if not is_open(self.gui):
+            self.update_sector_camera(time_delta)
+            self.update_system_camera(time_delta)
 
         # Update the GUI Handler
         self.gui.update(time_delta)
@@ -590,6 +597,9 @@ class Game:
         conv = self.get_conversation(sender_id, target_id, create_if_missing=True)
         if conv is not None:
             conv.add_message(msg)
+        from turn_briefing import record
+        record(self, recipient_player, "communications", "New incoming message",
+               subject_id=sender_id, name=sender_player.name)
 
         logger.debug(f"[Comms] Message #{msg.id} sent from {sender_player.name} to {recipient_player.name} (Turn {self.turn_number}): '{msg.text}'")
 

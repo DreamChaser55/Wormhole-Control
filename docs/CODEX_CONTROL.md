@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":8}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":9}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -349,7 +349,7 @@ socket envelope remains protocol 3.
 
 ## Tactical ability commands
 
-Observation schema 8 and command contract 6 expose a deduplicated `ability_catalog`,
+Observation schema 9 and command contract 6 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
 response name is `wormhole_control_turn_v5`; unused OpenAI command fields stay null.
@@ -383,3 +383,19 @@ table for costs and timing. Existing campaign starts and automated-player settin
 are preserved.
 
 Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.
+
+
+## Turn-start event summary
+
+Every schema-9 observation ends with `turn_summary`: reporting rounds (`from_turn`
+and `to_turn`), grouped event `entries`, net `economy` changes, and `omitted_count`.
+Read this briefing before choosing orders. It covers the previous End Turn's
+resolution and intervening activity through this turn's opening effects. It is
+player-scoped and fixed for the entire turn; repeated observations do not consume
+or regenerate it. Empty entries indicate no important events. Historical subject
+IDs and sectors grant no authority to command currently hidden targets.
+
+The same briefing appears in the human modal and built-in AI prompt. Conversation
+history includes all messages received so far, including the current round. Existing
+socket protocol 3 and command contract 6 remain unchanged; no acknowledgement
+command is required from Codex.

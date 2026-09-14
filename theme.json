@@ -499,6 +499,9 @@
             "padding": "0,0"
         }
     },
+    "#turn_briefing_text": {
+        "font": {"name": "dejavu_sans", "size": "16"}
+    },
     "#comp_cost_label": {
         "font": {
             "name": "dejavu_sans",

@@ -1,18 +1,18 @@
 # Campaign persistence
 
-The current save version is **4.4**. New saves preserve the installed component
+The current save version is **4.5**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
-Only version **4.4** is supported. Unversioned, older, unknown and future saves
+Only version **4.5** is supported. Unversioned, older, unknown and future saves
 are rejected with the expected version before hydration. Alpha schema changes
 require a new campaign; no migrations or automatic conversions are provided.
 Rejected files are never modified.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.4.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.5.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
@@ -183,3 +183,20 @@ recharge a job, apply equipment changes, or reject historical equipment merely
 because it fails current Designer rules. Active jobs are revalidated against the
 complete resulting equipment when they complete. Pending jobs use current rules
 and prices when they start. No new retrofit AI or socket command is introduced.
+
+
+## Turn briefings
+
+Save 4.5 requires each player's `briefing` state: initialization/collection flags,
+reporting boundary, event sequence, bounded pending entries and omission count,
+economic baseline, discovery keys, frozen current report and human acknowledgement.
+The current report contains its start/end rounds, grouped entries, net economy
+changes and omission count. Reports and pending collections are limited to 128
+entries and 32,000 serialized characters including reserved report overhead.
+
+The loader validates field shapes, flags, finite amounts, counters, locations and
+retention limits on the isolated candidate. Historical references may identify
+objects that no longer exist and are not rebound to live targets. Hydration does
+not emit briefing events or refresh the frozen report. An unacknowledged human
+report reopens after load; an acknowledged one remains available from Turn Summary.
+Unsupported saves, including 4.4, require a new campaign.

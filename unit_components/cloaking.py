@@ -148,6 +148,8 @@ class CloakingDevice(UnitComponent):
 
         consumed = am_comp.consume(cost)
         if not consumed:
+            from turn_briefing import unit_event
+            unit_event(self.unit, "problem", "Cloaking device deactivated: insufficient antimatter", private=True, once=True)
             logger.debug(
                 f"[{self.unit.name}] Cloaking Device deactivated: insufficient antimatter "
                 f"({am_comp.current_amount:.1f} < {cost:.1f})."

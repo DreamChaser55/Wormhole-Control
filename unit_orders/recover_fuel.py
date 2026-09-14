@@ -41,7 +41,7 @@ class RecoverFuelCacheOrder(Order):
         added = self.unit.antimatter_component.add(cache.fuel)
         cache.fuel -= added
         if cache.fuel <= 0:
-            cache.destroy()
+            cache.destroy(reason='recovered')
         self.status = OrderStatus.COMPLETED
 
     def update(self, galaxy_ref):

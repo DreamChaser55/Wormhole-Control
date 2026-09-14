@@ -22,6 +22,7 @@ from constants import (
 )
 from turn_presentation import NullTurnPresentation, TurnPresentation
 from economy import calculate_unit_upkeep, calculate_player_upkeep
+from turn_briefing import record, unit_event
 
 
 class TurnProcessor:
@@ -36,6 +37,8 @@ class TurnProcessor:
         """Processes the end of the current player's turn and advances turn/round state."""
         turn_num = getattr(self.game, 'turn_number', 1)
         current_player = self.game.players[self.game.current_player_index]
+        from turn_briefing import begin_window, finish_window
+        begin_window(self.game, current_player)
         logger.debug(f"--- Turn {turn_num} - End of {current_player.name}'s Turn ---")
         self.process_player_turn(current_player)
 
@@ -54,6 +57,7 @@ class TurnProcessor:
 
         from tactical_abilities import start_owner_turn
         start_owner_turn(self.game.galaxy, next_player, new_turn_num)
+        finish_window(self.game, next_player)
         self.presentation.refresh_player_turn(next_player)
 
         self.check_and_schedule_ai_turn()
@@ -158,6 +162,7 @@ class TurnProcessor:
 
                 # Units disabled by Ion Bolt cannot move
                 if unit.is_disabled:
+                    unit_event(unit, "problem", "Operations blocked: unit disabled", private=True, once=True)
                     logger.debug(f"   {unit.name} is disabled (Ion Bolt) — movement skipped.")
                     continue
 
@@ -169,6 +174,7 @@ class TurnProcessor:
                         or unit.hyperdrive_component.wormhole_jump_target
                     )
                 ):
+                    unit_event(unit, "problem", "Jump blocked: hyperdrive unavailable", private=True, once=True)
                     unit.hyperdrive_component.clear_jump_target(
                         unit.hyperdrive_component.jump_target_order_id
                     )
@@ -198,6 +204,7 @@ class TurnProcessor:
                 elif unit.engines_component and unit.engines_component.move_target:
                     target_order_id = unit.engines_component.move_target_order_id
                     if not unit.engines_component.is_operational:
+                        unit_event(unit, "problem", "Movement blocked: engines unavailable", private=True, once=True)
                         unit.engines_component.clear_move_target(target_order_id)
                         logger.debug(
                             f"   {unit.name} cannot move sub-light: Engines are destroyed or offline. "
@@ -215,6 +222,7 @@ class TurnProcessor:
                     # Engines consume antimatter per turn while moving
                     am_comp = unit.antimatter_component
                     if am_comp and am_comp.current_amount < sublight_cost:
+                        unit_event(unit, "problem", "Movement blocked: insufficient antimatter", private=True, once=True)
                         logger.debug(f"   {unit.name} cannot move sub-light: Insufficient antimatter ({am_comp.current_amount:.1f}/{sublight_cost:.1f}).")
                         continue
 
@@ -363,6 +371,7 @@ class TurnProcessor:
                         sys_jump_cost = get_hyperdrive_system_jump_cost(unit.hull_size)
                         am_comp = unit.antimatter_component
                         if am_comp and am_comp.current_amount < sys_jump_cost:
+                            unit_event(unit, "problem", "Jump blocked: insufficient antimatter", private=True, once=True)
                             logger.debug(f"   {unit.name} system jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{sys_jump_cost:.1f}).")
                             hd_comp.jump_status = JumpStatus.ERROR
                             hd_comp.clear_jump_target(expected_order_id)
@@ -401,20 +410,17 @@ class TurnProcessor:
                                         if eligible_components:
                                             target_comp_type = random.choice(eligible_components)
                                             logger.debug(f"   Wormhole instability damages {unit.name}'s {target_comp_type.__name__} component for {damage_amount} damage.")
-                                            spillover = unit.take_component_damage(target_comp_type, damage_amount)
+                                            spillover = unit.take_component_damage(target_comp_type, damage_amount, cause="wormhole instability")
                                             if spillover > 0:
                                                 logger.debug(f"   {spillover} damage spilled over to {unit.name}'s hull.")
-                                                unit.take_damage(spillover)
+                                                unit.take_damage(spillover, cause="wormhole instability")
                                             component_damaged = True
                                             
                                     if not component_damaged:
                                         logger.debug(f"   Wormhole instability damages {unit.name}'s hull for {damage_amount} damage.")
-                                        unit.take_damage(damage_amount)
+                                        unit.take_damage(damage_amount, cause="wormhole instability")
 
-                                    self.presentation.warn_human(unit.owner,
-                                        f"Unit <b>{unit.name}</b> sustained structural damage jumping through unstable wormhole <b>{entry_wormhole.name}</b> ({damage_amount} damage)!",
-                                        title="Wormhole Damage"
-                                    )
+
 
                             hd_comp.start_recharge(expected_order_id) # Clears this jump's target and sets status to CHARGING
                         else:
@@ -498,6 +504,7 @@ class TurnProcessor:
                     hex_jump_cost = get_hyperdrive_hex_jump_cost(unit.hull_size)
                     am_comp = unit.antimatter_component
                     if am_comp and am_comp.current_amount < hex_jump_cost:
+                        unit_event(unit, "problem", "Jump blocked: insufficient antimatter", private=True, once=True)
                         logger.debug(f"   {unit.name} hex jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{hex_jump_cost:.1f}).")
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.clear_jump_target(expected_order_id)
@@ -530,7 +537,6 @@ class TurnProcessor:
             return
         from environmental_effects import describe_body
         movements = sublight_movements or {}
-        hazards_encountered = []
         for system in self.game.galaxy.systems.values():
             for hex_coord, sector in system.hexes.items():
                 bodies = list(sector.celestial_bodies)
@@ -559,18 +565,15 @@ class TurnProcessor:
                                      if hazard.amount_basis == 'fraction_of_current_antimatter'
                                      else min(hazard.amount, storage.current_amount))
                             if drain > 0 and storage.consume(drain):
-                                hazards_encountered.append(f'{unit.name}: {hazard.kind.title()} AM drain (-{drain:g} AM)')
+                                unit_event(unit, 'hazard', f'{hazard.kind.title()} AM drain', amount=drain)
                         elif hazard.target == 'random_non_destroyed_component':
                             components = unit.components.values()
                             candidates = [c for c in components if not c.is_destroyed]
                             if candidates:
                                 component = self.rng.choice(candidates)
-                                unit.take_component_damage(type(component), int(hazard.amount))
-                                hazards_encountered.append(f'{unit.name}: Radiation damage to {component.DISPLAY_NAME}')
+                                unit.take_component_damage(type(component), int(hazard.amount), cause=hazard.kind)
                         else:
-                            previous_hp = unit.current_hit_points
-                            unit.take_damage(int(hazard.amount))
-                            hazards_encountered.append(f'{unit.name}: {hazard.kind.replace("_", " ").title()} damage (-{previous_hp - unit.current_hit_points} HP)')
+                            unit.take_damage(int(hazard.amount), cause=hazard.kind)
                 for obj in list(getattr(sector, 'deployables', ())):
                     if obj.owner != current_player:
                         continue
@@ -578,17 +581,7 @@ class TurnProcessor:
                         if obj.current_hit_points <= 0:
                             break
                         if hazard.affects_deployables and hazard.contains(obj.position, body):
-                            obj.take_damage(int(hazard.amount))
-
-        if hazards_encountered and getattr(current_player, 'is_human', False):
-            summary_msg = "<br>".join(hazards_encountered[:5])
-            if len(hazards_encountered) > 5:
-                summary_msg += f"<br>...and {len(hazards_encountered) - 5} more."
-            self.presentation.warn_human(
-                current_player,
-                f"Your units encountered environmental hazards this turn:<br><br>{summary_msg}",
-                title="Environmental Hazard Alert",
-            )
+                            obj.take_damage(int(hazard.amount), cause=hazard.kind)
 
     def _process_resource_generation(self, current_player):
         total_credits_generated = 0
@@ -653,10 +646,8 @@ class TurnProcessor:
 
         if total_upkeep > 0:
             if current_player.credits < total_upkeep:
-                self.presentation.warn_human(current_player,
-                    f"Treasury depleted! Unable to fully pay total unit upkeep of <b>{total_upkeep:.0f}</b> credits.",
-                    title="Upkeep Shortage"
-                )
+                record(self.game, current_player, "problem", "Treasury depleted: insufficient credits for upkeep", amount=total_upkeep)
+
             current_player.credits = max(0.0, current_player.credits - total_upkeep)
             logger.debug(f"  {current_player.name} paid {total_upkeep:.2f} credits in unit upkeep.")
 
@@ -710,10 +701,6 @@ class TurnProcessor:
 
                         if distance(unit.position, minefield.position) <= minefield.detonation_radius:
                             minefield.detonate_against(unit)
-                            self.presentation.warn_human(unit.owner,
-                                f"Unit <b>{unit.name}</b> triggered an enemy minefield in sector <b>{hex_coord}</b>!",
-                                title="Minefield Detonation"
-                            )
                             if minefield.mines_remaining <= 0:
                                 minefields_to_remove.append(minefield)
                                 break
@@ -732,4 +719,6 @@ class TurnProcessor:
             for unit, _ in system.get_all_units():
                 if unit.current_hit_points <= 0:
                     unit.destroy()
+        from turn_briefing import refresh_discoveries
+        refresh_discoveries(self.game)
 

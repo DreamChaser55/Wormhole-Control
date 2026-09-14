@@ -45,6 +45,8 @@ class IonBoltAbility(AbilityInstance):
 
         self.target_unit_id = target_unit_id
         self.restore_effect(component, galaxy)
+        from turn_briefing import unit_event
+        unit_event(target_unit, "combat", "Disabled by Ion Bolt", actor=component.unit)
         logger.debug(f"[{component.unit.name}] Ion Bolt disabled {target_unit.name}.")
         return True
 

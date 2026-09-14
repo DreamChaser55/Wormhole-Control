@@ -366,7 +366,7 @@ class Unit(GameObject):
         pos = position if position is not None else self.position
         return is_position_blocked_by_celestial_field(g, self.in_system, self.in_hex, pos, self)
 
-    def take_damage(self, amount: int, damage_type: Optional[TurretType] = None, *, is_splash: bool = False) -> None:
+    def take_damage(self, amount: int, damage_type: Optional[TurretType] = None, *, is_splash: bool = False, cause: Optional[str] = None) -> None:
         """Reduces the unit's current hit points by the given amount, applying any active damage reduction, environmental cover, and defenses mitigation."""
         if amount <= 0:
             return
@@ -391,6 +391,8 @@ class Unit(GameObject):
             amount = max(0, int(amount * (1.0 - reduction)))
         if amount <= 0:
             return
+        from turn_briefing import unit_event
+        unit_event(self, "hazard" if cause else "combat", f"{cause}: hull damage (HP)" if cause else "Hull damage (HP)", amount=min(amount, self.current_hit_points))
         self.current_hit_points -= amount
         if self.current_hit_points < 0:
             self.current_hit_points = 0
@@ -400,7 +402,7 @@ class Unit(GameObject):
             self.current_hit_points = 0
             self.destroy()
 
-    def take_component_damage(self, component_type: type, amount: int, damage_type: Optional[TurretType] = None, *, apply_reduction: bool = False) -> int:
+    def take_component_damage(self, component_type: type, amount: int, damage_type: Optional[TurretType] = None, *, apply_reduction: bool = False, cause: Optional[str] = None) -> int:
         """
         Applies damage to a specific component. 
         Returns any excess damage (spillover) if the component is destroyed.
@@ -426,10 +428,15 @@ class Unit(GameObject):
             return amount  # All damage spills over if component is missing or already destroyed
 
         logger.debug(f"Unit '{self.name}' component {component_type.__name__} takes {amount} damage.")
+        from turn_briefing import unit_event
+        if amount > 0:
+            unit_event(self, "hazard" if cause else "combat", f"{cause + ': ' if cause else ''}{component.DISPLAY_NAME} damage (HP)",
+                       amount=min(amount, component.current_hit_points), component_type=component_type)
         component.current_hit_points -= amount
         spillover = 0
         
         if component.current_hit_points <= 0:
+            unit_event(self, "combat", f"{component.DISPLAY_NAME} destroyed", component_type=component_type, once=True)
             spillover = abs(component.current_hit_points)
             component.current_hit_points = 0
             component.on_destroyed()
@@ -470,6 +477,9 @@ class Unit(GameObject):
         """
         if getattr(self, "_destroyed", False):
             return
+        if self.lifetime is None or self.lifetime > 0:
+            from turn_briefing import unit_event
+            unit_event(self, "loss", "Destroyed", once=True)
         self._destroyed = True
         from campaign_graph import detach_unit, iter_units
         galaxy = self.in_galaxy or getattr(self.game, "galaxy", None)

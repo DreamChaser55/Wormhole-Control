@@ -9,7 +9,7 @@ CORE_FILES = (
     'constants.py', 'geometry.py', 'utils.py', 'display_config.py',
     'turn_presentation.py', 'turn_processor.py', 'galaxy.py', 'game_settings.py',
     'visibility.py', 'environmental_effects.py', 'celestial_descriptions.py', 'economy.py', 'pathfinding.py', 'sector_utils.py',
-    'hexgrid_utils.py', 'order_history.py',
+    'hexgrid_utils.py', 'order_history.py', 'turn_briefing.py',
 )
 FORBIDDEN = {
     'pygame', 'pygame_gui', 'gui', 'rendering', 'renderer', 'input_processor',

@@ -351,6 +351,8 @@ class StrikecraftBayComponent(UnitComponent):
 
         # Direct dock
         self.docked_units.append(new_unit)
+        from turn_briefing import unit_event
+        unit_event(new_unit, "development", "Wing construction completed", private=True)
         logger.debug(f"Auto-constructed and docked new strikecraft wing {new_unit.name} ({new_unit.id}) for carrier {self.unit.name}.")
 
     def update(self, galaxy: 'Galaxy'):

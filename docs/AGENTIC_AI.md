@@ -49,7 +49,7 @@ player. It includes:
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 8 gives full body detail in systems containing friendly
+Observation schema 9 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -59,6 +59,34 @@ no identity or geometry for the conflicting inhibition zone.
 The observation intentionally excludes enemy resources and hidden entity IDs.
 The command gateway independently recomputes visibility for enemy targets, so a
 fabricated or remembered hidden ID cannot bypass fog of war.
+
+## Turn-start briefing
+
+Observation schema 9 appends `turn_summary` to the observation JSON included in
+every built-in planning request and Codex observation. It contains `from_turn`,
+`to_turn`, priority-ordered `entries`, net `economy` changes, and `omitted_count`.
+Turn zero as `from_turn` means campaign setup. Each entry has an event ID, round,
+category, historical subject ID/name/sector where authorized, detail, occurrence
+count and total amount. Anonymous radar entries have no subject ID, name or unit
+count. An empty entries list means no important events.
+
+The engine collects committed events from just before the player's previous End
+Turn resolution through the next owner-turn opening effects. It freezes the report
+before presentation and AI scheduling. Observations, semantic repairs and manual
+retries reuse that report without consuming it. Current observation visibility and
+command legality take precedence over historical references. No additional model
+request creates the summary, and model settings and command contracts are unchanged.
+
+Human, built-in and Codex controllers share the same disclosure rules and report
+content. Allied combat and discoveries are shared; production, economic and order
+recaps are personal. The new journal is separate from `order_history`, whose strict
+terminal-outcome format remains unchanged. Event hooks run during actual execution,
+never during preflight or save hydration. Pending and current reports are bounded to
+128 entries / 32,000 serialized characters, with explicit omission counts.
+
+`conversations` now includes all already-sent transmissions, including messages from
+earlier players in the current round, matching human Comms timing. Briefings contain
+counts by sender; message text stays in conversation history.
 
 ## OpenAI adapter
 
@@ -84,13 +112,14 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.4 embeds:
+Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.5 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
 - selected `ai_reasoning_effort`;
 - selected `ai_repair_retries`;
-- bounded structured `ai_memory`.
+- bounded structured `ai_memory`;
+- pending and frozen turn briefings, discovery/economy baselines and human acknowledgement.
 
 Saved identities are required and the save is authoritative. The `memory.md`
 sidecar is generated for inspection and is not read back into the campaign.
@@ -204,7 +233,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 8 / commands 6 / socket 3)
+## Shared order contract (observation 9 / commands 6 / socket 3)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -300,7 +329,7 @@ job charges. Missing order identities and payment state are rejected. Restored a
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
 The strict response schema is `wormhole_control_turn_v5`, and prompt cache key is
-`wormhole-control-turn-v7`. No live API call is required for regression testing.
+`wormhole-control-turn-v8`. No live API call is required for regression testing.
 
 ### Gameplay invariant guidance
 
@@ -344,7 +373,7 @@ The [built-in catalogue](REFERENCE.md#built-in-unit-catalog) includes designs fo
 every ability. Automated players construct public designs or use equipped ships;
 custom design editing is a human workflow.
 
-Observation 8 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
+Observation 9 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
 `ability_links`. Authorized ability state includes actual blockers/readiness,
 cooldown/duration, active targets, ongoing AM, reserved casts, persistent deployment
 counts/caps and Guardian tuning. Speed includes Tractor; environmental values
@@ -375,7 +404,7 @@ all six command paths without live API calls.
 
 Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.
 
-### Celestial observation contract (schema 8)
+### Celestial observation contract (schema 9)
 
 Already-exposed bodies use readable uppercase `subtype` names (`MAGNETIC`,
 `BLACK_HOLE`, etc.). `collision_radius` and `inhibition_field_radius` describe
@@ -400,4 +429,4 @@ Catalyst patch records describe only the enhancement relevant to their nebula.
 
 Enrichment preserves existing body visibility and remote summaries and exposes
 no additional enemy equipment. Command contract 6, socket protocol 3, response
-schema v5 and save format are unchanged. Prompt cache key is v7.
+schema v5 and save format are unchanged. Prompt cache key is v8.

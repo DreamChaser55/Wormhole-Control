@@ -38,13 +38,22 @@ class InputProcessor:
         mouse_pos = Position(mouse_pos_tuple[0], mouse_pos_tuple[1])
 
         # Keyboard camera panning in sector view
-        handle_keyboard_panning(self.game, self.gui, time_delta)
+        from gui.turn_briefing_window import is_open
+        if not is_open(self.gui):
+            handle_keyboard_panning(self.game, self.gui, time_delta)
 
+        briefing_consumed = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.game.is_running = False
                 return
 
+            if is_open(self.gui):
+                self.gui.process_event(event)
+                briefing_consumed = True
+                continue
+            if briefing_consumed:
+                continue
             catalog = getattr(self.gui, 'unit_catalog_window', None)
             catalog_was_open = bool(catalog and catalog.window.alive() is True)
             gui_action = self.gui.process_event(event)

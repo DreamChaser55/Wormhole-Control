@@ -83,6 +83,8 @@ class Minefield(GameObject):
             effective_damage *= (1.0 + unit.damage_amplification)
 
         damage_int = int(round(effective_damage))
+        from turn_briefing import unit_event
+        unit_event(unit, "hazard", "Mine detonation: hull damage (HP)", amount=min(damage_int, unit.current_hit_points))
         unit.current_hit_points = max(0, unit.current_hit_points - damage_int)
         self.mines_remaining -= 1
 

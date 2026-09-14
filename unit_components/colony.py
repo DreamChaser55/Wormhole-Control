@@ -86,6 +86,8 @@ class ColonyComponent(UnitComponent):
 
         if planet.owner is None:
             planet.owner = self.unit.owner
+            from turn_briefing import record
+            record(self.unit.game, self.unit.owner, "development", "Colony established", subject=planet)
             logger.debug(f"Planet {planet.name} has been colonized by {self.unit.owner.name}.")
 
         if planet.owner != self.unit.owner:

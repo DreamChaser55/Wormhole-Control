@@ -79,12 +79,18 @@ def validate_document(data):
     player_ids = set()
     for p in data["players"]:
         require(p, ("id", "name", "color", "controller", "team_id", "credits", "metal", "crystal",
-                    "sector_intel", "order_history", "order_event_sequence", "persistent_id", "agent_id",
+                    "sector_intel", "order_history", "order_event_sequence", "briefing", "persistent_id", "agent_id",
                     "ai_memory", "ai_reasoning_effort", "ai_repair_retries", "homeworld_id"), "player")
         number(p["id"], "player.id", 0, integer=True)
         if p["id"] in player_ids:
             raise ValueError("Duplicate player ID")
         player_ids.add(p["id"])
+        from turn_briefing import state_from_dict
+        briefing = state_from_dict(p["briefing"])
+        if briefing.from_turn > state["turn_number"] or briefing.current.to_turn > state["turn_number"]:
+            raise ValueError("Briefing refers to a future turn")
+        if any(entry.turn > state["turn_number"] for entry in briefing.pending):
+            raise ValueError("Pending briefing event refers to a future turn")
         for name in ("credits", "metal", "crystal", "order_event_sequence"):
             number(p[name], f"player.{name}", 0, integer=name == "order_event_sequence")
         if not isinstance(p["color"], list) or len(p["color"]) != 3:

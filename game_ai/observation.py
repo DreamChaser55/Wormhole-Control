@@ -23,6 +23,7 @@ from .tactical import visible_deployables
 from .order_view import order_layers, enum_name
 from component_visibility import public_components
 from order_history import history_view
+from turn_briefing import summary_view
 
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
@@ -150,7 +151,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 8,
+        "schema_version": 9,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -191,7 +192,6 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                         "text": str(m.text),
                     }
                     for m in conv.messages
-                    if getattr(m, "turn_sent", 1) < turn
                 ],
             }
             for conv in (
@@ -199,7 +199,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
                 if hasattr(game, "get_conversations_for_player")
                 else []
             )
-            if any(getattr(m, "turn_sent", 1) < turn for m in conv.messages)
+            if conv.messages
         ],
         "systems": systems,
         "units": units,
@@ -247,6 +247,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
             "construction_templates": construction_templates,
             "wing_templates": _wing_catalog(visible_unit_objects, player),
         },
+        "turn_summary": summary_view(player),
     }
 
 

@@ -97,6 +97,40 @@ Inspect non-solid bodies—fields, nebulae and storms—through their hex sideba
 Clicking inside these regions remains available for movement and targeting.
 Their boundary circles show the affected area.
 
+### Turn-start briefing
+
+A scrollable briefing opens at the start of each human turn when important events
+occurred. Its window begins immediately before the previous **End Turn** resolves
+and ends after the next turn's opening effects. Your actions while issuing orders
+are excluded. On a player's first turn, it covers events since campaign setup;
+starting ships and colonies are not announcements.
+
+The briefing groups combat and hazards, losses and captures, your completed
+construction/refits/colonies, failed or involuntarily cancelled orders, fuel and
+upkeep problems, new contacts and explored sectors, revealed mines, authorized
+intelligence outcomes, and incoming-message counts by sender. Combat and sensor
+discoveries include shared allied information. Production, orders and economy
+remain personal. Repeated hits are aggregated; ordinary movement, successful
+support orders, voluntary cancellations and normal temporary-unit expiration are
+omitted. The economy footer shows net credits, metal, crystal and total colony
+population changes; economy-only turns do not open the modal automatically.
+
+Use **Continue**, **Esc**, or **X** to acknowledge the report. Game controls are
+blocked while it is open. **Open Comms** closes the briefing and opens conversations;
+acknowledgement alone does not mark messages read. Comms no longer opens automatically
+at turn start. **Esc → Turn Summary** reopens the current report even on quiet turns.
+
+Reports retain what you could know when an event happened, including historical
+names and sectors. They do not expose hidden attackers, covert equipment or
+undiscovered agents. Anonymous radar presence has no identity or count, and a
+vanished contact is not a confirmed loss. Historical contacts are not necessarily
+currently visible or valid targets.
+
+The report remains fixed throughout the turn, including after loading. Acknowledged
+reports do not reopen automatically on load. Collections and reports retain at most
+128 entries and 32,000 serialized characters, prioritizing losses and failures and
+stating omitted counts if necessary.
+
 ## Economy and logistics
 
 Press **E** or **End Turn** when finished issuing orders. The hot-seat sequence

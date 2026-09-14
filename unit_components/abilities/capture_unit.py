@@ -85,6 +85,8 @@ class CaptureUnitAbility(AbilityInstance):
             return False
 
         # Transfer ownership
+        from turn_briefing import unit_event
+        unit_event(target_unit, "capture", "Captured", once=True, new_owner=component.unit.owner)
         from order_history import interrupt_unit_orders
         interrupt_unit_orders(target_unit, "ownership_lost")
         old_owner = target_unit.owner

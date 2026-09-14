@@ -51,6 +51,8 @@ def record_outcome(order, outcome=None, reason=None):
              "type": order.order_type.name.lower(), "outcome": outcome,
              "reason": public_reason(reason or getattr(order, "failure_reason", None) or outcome)}
     owner.order_history = bounded_history([*getattr(owner, "order_history", []), event])
+    from turn_briefing import order_outcome
+    order_outcome(order, outcome, event["reason"])
 
 
 def interrupt_unit_orders(unit, reason):

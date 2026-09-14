@@ -85,7 +85,7 @@ COMPONENT_DESCRIPTIONS = {
     "has_colony_component": "Carries colonists to settle habitable planets, moons and colonizable asteroids. Load population from friendly or allied colonies before colonizing. Gas giants cannot be colonized.",
     "has_civilian_habitat_component": "Provides 50 credits per turn while supported by its owner's populated colony in the same sector. Active habitats are destinations for trade routes.",
     "has_orbital_defense_component": "A supported installation boosts weapon damage and defense mitigation for friendly and allied ships in range. Colony support slots are shared across allies. Overlapping auras stack additively.",
-    "has_trade_component": "Earns credits by travelling between active Civilian Habitats in different sectors. Longer routes yield more income. Continuous Trade repeats the route.",
+    "has_trade_component": "The Trade Module requires Engines and earns credits by travelling between active Civilian Habitats in different sectors. Longer routes yield more income. Continuous Trade repeats the route.",
     "has_mining_component": "Extracts metal from Metal Asteroids and crystal from Comets into cargo storage. Unload at the matching refinery. Continuous Mine repeats harvesting and delivery.",
     "has_metal_refinery_component": "Processes mined metal cargo delivered by mining ships into usable metal resources. It does not mine asteroids itself.",
     "has_crystal_refinery_component": "Processes mined crystal cargo delivered by mining ships into usable crystal resources. It does not mine comets itself.",

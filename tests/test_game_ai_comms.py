@@ -48,8 +48,9 @@ class TestGameAIComms(unittest.TestCase):
         # Check conversation with Player 0
         p0_conv = next(c for c in conversations if c["partner_id"] == self.player0.id)
         self.assertEqual(p0_conv["partner_name"], "Player 1")
-        # Should include Turn 1 messages (both incoming and outgoing), but NOT current Turn 2 message
-        self.assertEqual(len(p0_conv["messages"]), 2)
+        # Should include Turn 1 messages (both incoming and outgoing), and the current Turn 2 message
+        self.assertEqual(len(p0_conv["messages"]), 3)
+        self.assertEqual(p0_conv["messages"][2]["text"], "Message from Turn 2 (current turn)")
         self.assertEqual(p0_conv["messages"][0]["text"], "Hello AI from Turn 1")
         self.assertEqual(p0_conv["messages"][0]["sender_id"], self.player0.id)
         self.assertEqual(p0_conv["messages"][1]["text"], "Greetings human commander")

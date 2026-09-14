@@ -42,7 +42,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.4"
+CURRENT_SAVE_VERSION = "4.5"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -94,6 +94,7 @@ def serialize_player(player: Player) -> dict:
         "ai_memory": getattr(player, "ai_memory", {}),
         "order_history": bounded_history(getattr(player, "order_history", [])),
         "order_event_sequence": getattr(player, "order_event_sequence", 0),
+        "briefing": player.briefing.to_dict(),
         "credits": player.credits,
         "metal": player.metal,
         "crystal": player.crystal,
@@ -392,6 +393,8 @@ def deserialize_player(data: dict) -> Player:
     player.order_history = bounded_history(data['order_history'])
     player.order_event_sequence = max(int(data['order_event_sequence']), max((e["event_id"] for e in player.order_history), default=0))
     player.id = data['id']
+    from turn_briefing import state_from_dict
+    player.briefing = state_from_dict(data['briefing'])
     if "team_id" in data:
         player.team_id = data["team_id"]
     player.credits = data['credits']

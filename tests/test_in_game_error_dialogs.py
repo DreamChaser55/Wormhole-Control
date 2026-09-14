@@ -239,12 +239,15 @@ class TestInGameErrorDialogs(unittest.TestCase):
         self.game.galaxy.systems["Sol"].add_unit(unit)
 
         self.player.credits = 0.0
+        from turn_briefing import begin_window, finish_window
+        from gui.turn_briefing_window import show_briefing
+        begin_window(self.game, self.player)
         tp = TurnProcessor(self.game)
         tp._process_unit_upkeep(self.player)
-        self.assertGreater(len(self.gui.active_dialogs), 0)
-        dlg = self.gui.active_dialogs[-1]
-        self.assertIn("Upkeep Shortage", dlg.window_display_title)
-        self.assertIn("Treasury depleted", dlg.text_block.html_text)
+        self.assertEqual(len(self.gui.active_dialogs), 0)
+        finish_window(self.game, self.player)
+        show_briefing(self.gui, self.player)
+        self.assertIn("Treasury depleted", self.gui.turn_briefing_window.text.html_text)
     def test_move_order_cross_sector_without_hyperdrive_shows_warning(self):
         """Move order to a different hex on a unit without hyperdrive should show 'No Hyperdrive' dialog."""
         unit = Unit(

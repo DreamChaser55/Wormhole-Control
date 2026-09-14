@@ -34,6 +34,10 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
     Returns:
         typing.Optional[dict]: Action payload dict, {'action': 'ui_handled'}, or None.
     """
+    from .turn_briefing_window import is_open
+    if is_open(gui):
+        gui.turn_briefing_window.process_event(event)
+        return {'action': 'ui_handled'}
     editor = getattr(gui, 'unit_editor_window', None)
     if editor and editor.is_visible is True and getattr(editor, '_description_dialog', None):
         # UIWindow blocking only protects mouse presses. Stop typing and background
@@ -156,6 +160,8 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         elif gui.resume_button and event.ui_element == gui.resume_button:
             logger.debug("Resume button pressed (GUI)")
             action_result = {'action': 'toggle_ingame_menu'}
+        elif getattr(gui, 'turn_summary_button', None) and event.ui_element == gui.turn_summary_button:
+            action_result = {'action': 'show_turn_summary'}
         elif gui.ai_settings_button and event.ui_element == gui.ai_settings_button:
             logger.debug("AI Settings button pressed (GUI)")
             gui.show_ai_settings_dialog()

@@ -66,6 +66,8 @@ class DrainAntimatterAbility(AbilityInstance):
             return False
 
         target_am.current_amount -= drain_amount
+        from turn_briefing import unit_event
+        unit_event(target_unit, "combat", "Antimatter drained (AM)", actor=component.unit, amount=drain_amount)
         added = source_am.add(drain_amount)
 
         logger.debug(

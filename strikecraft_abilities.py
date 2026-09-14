@@ -185,7 +185,7 @@ def process_flak(galaxy, player, round_number):
                            and distance(u.position, wing.position) <= FLAK_RADIUS), None)
             if source:
                 before = wing.current_hit_points
-                combat_hit(wing, FLAK_DAMAGE, TurretType.MASS_DRIVER)
+                combat_hit(wing, FLAK_DAMAGE, TurretType.MASS_DRIVER, attacker=source)
                 source.gain_experience(max(0, before - wing.current_hit_points))
 
 

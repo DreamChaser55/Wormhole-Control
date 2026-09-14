@@ -697,7 +697,7 @@ class Constructor(UnitComponent):
         Delegates to the module-level :func:`instantiate_unit_from_template`
         helper, passing ``self.unit.game`` as the game context.
         """
-        instantiate_unit_from_template(
+        built = instantiate_unit_from_template(
             template_name=template_name,
             owner=owner,
             system_name=system_name,
@@ -706,6 +706,9 @@ class Constructor(UnitComponent):
             galaxy=galaxy,
             game=self.unit.game,
         )
+        if built is not None:
+            from turn_briefing import unit_event
+            unit_event(built, "development", "Construction completed", private=True)
 
     def finish_construction(self, galaxy: 'Galaxy'):
         """Finalizes the construction and creates the new unit."""
@@ -755,6 +758,8 @@ class Constructor(UnitComponent):
         else:
             target.remove_component(get_component_class_by_name(result.component_name))
         self._settle_refit(success=True)
+        from turn_briefing import record
+        record(self.unit.game, self.unit.owner, "development", "Refit completed", subject=target)
 
 
 COMPONENT_NAME_MAP = {

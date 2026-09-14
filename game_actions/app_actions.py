@@ -119,6 +119,11 @@ def handle_ui_handled(game, action: dict) -> None:
     pass
 
 
+def handle_show_turn_summary(game, action: dict) -> None:
+    from gui.turn_briefing_window import show_briefing
+    show_briefing(game.gui, game.current_player, automatic=False)
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'new_game': handle_new_game,
     'start_new_game_with_settings': handle_start_new_game_with_settings,
@@ -137,4 +142,5 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'navigate_back': handle_navigate_back,
     'toggle_comms': handle_toggle_comms,
     'ui_handled': handle_ui_handled,
+    'show_turn_summary': handle_show_turn_summary,
 }

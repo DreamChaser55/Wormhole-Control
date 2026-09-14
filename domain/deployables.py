@@ -45,16 +45,25 @@ class Deployable(DeploymentProvenance, GameObject):
     def get_component(self, component_type):
         return None
 
-    def take_damage(self, amount, damage_type=None, *, is_splash=False):
+    def take_damage(self, amount, damage_type=None, *, is_splash=False, cause=None):
         if is_splash:
             from environmental_effects import splash_damage
             amount = splash_damage(amount, self)
         if amount > 0:
+            from turn_briefing import unit_event
+            unit_event(self, 'hazard' if cause else 'combat', f'{cause}: damage (HP)' if cause else 'Damage (HP)',
+                       amount=min(int(amount), self.current_hit_points))
             self.current_hit_points = max(0, self.current_hit_points - int(amount))
             if self.current_hit_points == 0:
                 self.destroy()
 
-    def destroy(self):
+    def destroy(self, *, reason='destroyed'):
+        if getattr(self, '_destroyed', False):
+            return
+        if reason == 'destroyed':
+            from turn_briefing import unit_event
+            unit_event(self, 'loss', 'Destroyed', once=True)
+        self._destroyed = True
         self.current_hit_points = 0
         if self.in_galaxy:
             system = self.in_galaxy.systems.get(self.in_system)

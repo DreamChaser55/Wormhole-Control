@@ -50,6 +50,8 @@ class Player:
         self.homeworld_id: Optional[int] = homeworld_id
         self.order_history = []
         self.order_event_sequence = 0
+        from turn_briefing import BriefingState
+        self.briefing = BriefingState()
         self.last_ai_report: Dict[str, Any] = {}
         self.credits = 20000
         self.metal = 10000

@@ -373,9 +373,11 @@ def process_pulls(galaxy, player, round_number):
     reconcile_links(galaxy)
 
 
-def combat_hit(target, amount, damage_type=None, *, component_type=None, is_splash=False):
+def combat_hit(target, amount, damage_type=None, *, component_type=None, is_splash=False, attacker=None):
     """Route once, then retain each recipient's existing mitigation and spillover rules."""
     from strikecraft_abilities import incoming_multiplier
+    from turn_briefing import unit_event
+    unit_event(target, "combat", "Attacked", actor=attacker)
     amount = max(0, int(amount * incoming_multiplier(target)))
     galaxy = getattr(target, 'in_galaxy', None)
     link = incoming_link(target, 'guardian_link', galaxy) if galaxy and amount else None
@@ -394,6 +396,7 @@ def combat_hit(target, amount, damage_type=None, *, component_type=None, is_spla
         if spillover > 0:
             if link:
                 # take_component_damage has already applied defenses; use a hull-only debit.
+                unit_event(target, "combat", "Hull damage (HP)", amount=min(spillover, target.current_hit_points))
                 target.current_hit_points = max(0, target.current_hit_points - spillover)
                 if target.current_hit_points == 0:
                     target.destroy()

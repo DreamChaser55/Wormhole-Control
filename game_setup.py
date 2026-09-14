@@ -138,6 +138,8 @@ def prepare_new_campaign(settings):
             if sum(unit.owner is player for unit, _ in iter_units(galaxy)) != expected_units:
                 raise ValueError(f"Could not create the complete starter fleet for {player.name}.")
         objects, agents = reconcile(candidate)
+        from turn_briefing import initialize_campaign
+        initialize_campaign(candidate)
         return PreparedCampaign(candidate,
             max(objects, default=0) + 1,
             allocations.get((Player, 'player_counter'), 0),

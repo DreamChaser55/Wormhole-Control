@@ -43,6 +43,12 @@ Select a unit and use its contextual actions to issue orders. Hold **Shift** whe
 | E | End Turn |
 | Esc | Open the in-game menu, cancel targeting, or deselect |
 
+At the start of your turn, an event briefing reports combat, losses, completed
+construction, problems, discoveries and new messages since your previous **End
+Turn**, including its resolution. Quiet turns skip the modal. Use **Esc → Turn
+Summary** to reopen it, or **Open Comms** to read new messages. Automated players
+receive the same player-visible briefing in their observations.
+
 Inspect non-solid bodies, such as nebulae and storms, through their hex sidebar. For rules and detailed interaction guidance, see [controls and views](docs/REFERENCE.md#controls-and-views).
 
 Click **Unit Editor** beside **Comms** in the bottom panel to open the **Unit Designer** and create ship templates for construction. The button is available in Galaxy, System, and Sector views. Open **Save Game** from the in-game menu to save a campaign; **Load Game** is available from the main menu and during a match. Custom designs use a separate [user-data library](docs/REFERENCE.md#custom-design-storage).

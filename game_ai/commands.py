@@ -748,6 +748,8 @@ class CommandGateway:
                     may_have_partial_effects=True, requires_observation=True)
             receipts.append(operation.receipt)
             results.append(self._operation_result(operation, "applied"))
+            from turn_briefing import refresh_discoveries
+            refresh_discoveries(self.game)
         self._mark_dirty()
         return CommandResult(True, applied_count=len(receipts), receipts=tuple(receipts),
                              failure_stage=None, retryable=False, operation_results=tuple(results))
@@ -1358,6 +1360,8 @@ class CommandGateway:
                     raise RuntimeError("sabotage authorization changed")
                 if not host.apply_sabotage(agent, command.sabotage_type):
                     raise RuntimeError("sabotage failed")
+                from turn_briefing import record
+                record(self.game, player, "intelligence", "Sabotage activated")
 
             return [
                 _Prepared(
@@ -1391,6 +1395,8 @@ class CommandGateway:
                 agent.target_id = live_target.id
                 agent.active_sabotage = None
                 agent.is_discovered = False
+                from turn_briefing import record
+                record(self.game, player, "intelligence", "Agent relocation completed")
 
             return [
                 _Prepared(
