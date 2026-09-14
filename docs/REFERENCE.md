@@ -285,12 +285,12 @@ orders** appends one build per selected builder and keeps it open. These buttons
 work independently of Shift. Queued builds pay when they start; idle builders
 start immediately. Multiple builders show their combined price.
 
-Wings can be inspected here but are produced in Strikecraft Bays. Select Fighter
-or Bomber production in the bay's panel while it is operational and not building;
-selection is allowed while idle or replenishing. New carriers produce Fighters.
-Choose Bombers for Attack Run. Fighters specialize in intercepting wings; Bombers
-attack larger ships. Built-in wings need no antimatter tank and travel between
-sectors aboard their carrier.
+Wings are produced in Strikecraft Bays aboard carriers and are not listed in
+the Constructor catalogue. Select Fighter or Bomber production in the bay's panel
+while it is operational and not building; selection is allowed while idle or
+replenishing. New carriers produce Fighters. Choose Bombers for Attack Run.
+Fighters specialize in intercepting wings; Bombers attack larger ships. Built-in
+wings need no antimatter tank and travel between sectors aboard their carrier.
 
 <!-- BEGIN GENERATED: unit-catalog -->
 | Design | Category | Hull / kind | Hull used | Credits | Turns | Upkeep | Role and operation |

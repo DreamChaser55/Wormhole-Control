@@ -181,3 +181,51 @@ def test_strikecraft_bay_sole_construction_intact():
     assert docked_wing.hull_size == HullSize.STRIKECRAFT_WING
     assert docked_wing.strikecraft_wing_component is not None
     assert docked_wing.strikecraft_wing_component.wing_type == WingType.FIGHTER
+
+
+def test_construct_catalog_window_excludes_strikecraft_wings(pygame_context):
+    """Verify that UnitCatalogWindow and catalog_entries exclude strikecraft wings."""
+    from gui.unit_catalog_window import UnitCatalogWindow, catalog_entries
+    from gui.theme_loader import build_ui_manager
+    from types import SimpleNamespace
+    from geometry import Vector
+    from unit_templates import UNIT_TEMPLATES
+
+    entries = catalog_entries(UNIT_TEMPLATES)
+    assert not any(e['template_name'] in ('FIGHTER_WING', 'BOMBER_WING') for e in entries)
+    assert not any(e['hull_size'] == 'STRIKECRAFT_WING' or e['kind'] == 'wing' for e in entries)
+
+    # Test with custom strikecraft wing template
+    custom_name = "CUSTOM_ASSAULT_WING"
+    register_template(custom_name, {
+        "name": "Custom Assault",
+        "hull_size": HullSize.STRIKECRAFT_WING,
+        "build_time": 2,
+        "build_cost": 180,
+    })
+    try:
+        custom_entries = catalog_entries(UNIT_TEMPLATES)
+        assert not any(e['template_name'] == custom_name for e in custom_entries)
+    finally:
+        unregister_template(custom_name)
+
+    # Verify UI window dropdown options and entries
+    from tests.support.campaigns import campaign, ship
+    game = campaign()
+    builder = ship(game, "Constructor Ship", owner=0, hull=HullSize.MEDIUM)
+    builder.add_component(Constructor(builder))
+    manager = build_ui_manager(DisplayConfig(1280, 720))
+    gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720), manager=manager)
+    gui.display_config = DisplayConfig(1280, 720)
+    window = UnitCatalogWindow(gui, [builder], Position(200, 200))
+    try:
+        kind_options = [opt[0] if isinstance(opt, tuple) else opt for opt in window.kind.options_list]
+        hull_options = [opt[0] if isinstance(opt, tuple) else opt for opt in window.hull.options_list]
+        assert 'wing' not in kind_options
+        assert 'STRIKECRAFT_WING' not in hull_options
+        assert not any(e['template_name'] in ('FIGHTER_WING', 'BOMBER_WING') for e in window.entries.values())
+        assert not any(e['hull_size'] == 'STRIKECRAFT_WING' or e['kind'] == 'wing' for e in window.entries.values())
+    finally:
+        window.kill()
+        manager.clear_and_reset()
+

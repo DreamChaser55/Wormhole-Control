@@ -17,7 +17,9 @@ def catalog_entries(templates, *, search='', category='All roles', hull='All hul
     entries = [describe_template(key, raw) for key, raw in templates.items()]
     query = search.casefold().strip()
     return sorted((entry for entry in entries
-                   if (category == 'All roles' or entry['category'] == category)
+                   if entry['kind'] != 'wing'
+                   and entry['hull_size'] != 'STRIKECRAFT_WING'
+                   and (category == 'All roles' or entry['category'] == category)
                    and (hull == 'All hulls' or entry['hull_size'] == hull)
                    and (kind == 'All units' or entry['kind'] == kind)
                    and (not affordable or entry['credit_cost'] <= credits)
@@ -60,8 +62,6 @@ def details_html(entry):
         lines.append('<b>Equipment</b>')
         for name, data in entry['support'].items():
             lines.append(label(name.removesuffix('_component')) + (': ' + values(data) if data else ''))
-    if entry['kind'] == 'wing':
-        lines.append('<b>Produced automatically in a strikecraft bay. Select production on the carrier.</b>')
     return '<br><br>'.join(lines)
 
 
@@ -99,8 +99,9 @@ class UnitCatalogWindow:
                                              placeholder_text='Search designs, roles or abilities')
         col = (content_w - 3 * gap) // 4
         self.category = elements.UIDropDownMenu(['All roles', *CATEGORIES, 'Custom'], 'All roles', pygame.Rect(pad, filter_y, col, control_h), gui.manager, container=panel)
-        self.hull = elements.UIDropDownMenu(['All hulls', *HullSize.__members__], 'All hulls', pygame.Rect(pad+col+gap, filter_y, col, control_h), gui.manager, container=panel)
-        self.kind = elements.UIDropDownMenu(['All units', 'ship', 'station', 'wing'], 'All units', pygame.Rect(pad+(col+gap)*2, filter_y, col, control_h), gui.manager, container=panel)
+        hull_choices = ['All hulls', *(h for h in HullSize.__members__ if h != 'STRIKECRAFT_WING')]
+        self.hull = elements.UIDropDownMenu(hull_choices, 'All hulls', pygame.Rect(pad+col+gap, filter_y, col, control_h), gui.manager, container=panel)
+        self.kind = elements.UIDropDownMenu(['All units', 'ship', 'station'], 'All units', pygame.Rect(pad+(col+gap)*2, filter_y, col, control_h), gui.manager, container=panel)
         price_x = pad + (col + gap) * 3
         self.affordability = elements.UIDropDownMenu(['All prices', 'Affordable'], 'All prices', pygame.Rect(price_x, filter_y, w-pad-price_x, control_h), gui.manager, container=panel)
         self.list = elements.UISelectionList(pygame.Rect(pad, content_y, left_w, content_h), [], gui.manager, container=panel,
@@ -174,9 +175,9 @@ class UnitCatalogWindow:
             if button is not None:
                 button.select() if selected else button.unselect()
         if entry:
-            buildable = entry['kind'] != 'wing' and self.valid_context() and all(u.constructor_component.can_build(self.selected_key) for u in self.units)
+            buildable = self.valid_context() and all(u.constructor_component.can_build(self.selected_key) for u in self.units)
             affordable = self.player.credits >= entry['credit_cost'] * len(self.units)
-            self.price_label.set_text('Produced in a strikecraft bay' if entry['kind'] == 'wing' else
+            self.price_label.set_text(
                 f"Total: {entry['credit_cost'] * len(self.units)} credits "
                 f"({len(self.units)} {'builder' if len(self.units) == 1 else 'builders'})")
             if buildable:

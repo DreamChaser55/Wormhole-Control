@@ -344,7 +344,8 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
     try:
         assert [e['template_name'] for e in catalog_entries(UNIT_TEMPLATES, search='counter-intelligence')] == ['INTELLIGENCE_SHIP']
         assert all(e['credit_cost'] <= 1000 for e in catalog_entries(UNIT_TEMPLATES, affordable=True, credits=1000))
-        window.show_entry(describe_template('BOMBER_WING', UNIT_TEMPLATES['BOMBER_WING']))
+        assert not any(e['template_name'] in ('FIGHTER_WING', 'BOMBER_WING') for e in window.entries.values())
+        window.show_entry(None)
         assert not window.build_button.is_enabled
         window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
         window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.build_button))
@@ -503,11 +504,11 @@ def test_catalog_refresh_preserves_list_scroll_and_clears_filtered_selection(con
 
 def test_catalog_disabled_and_stale_actions(construction_catalog):
     game, builders, window, events = construction_catalog
-    for key in (None, 'BOMBER_WING'):
-        window.show_entry(describe_template(key, UNIT_TEMPLATES[key]) if key else None)
-        for button in (window.build_button, window.queue_button):
-            assert not button.is_enabled
-            press_catalog(window, button)
+    assert 'BOMBER_WING' not in [e['template_name'] for e in window.entries.values()]
+    window.show_entry(None)
+    for button in (window.build_button, window.queue_button):
+        assert not button.is_enabled
+        press_catalog(window, button)
     assert not events
     window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
     builders[0].owner = game.players[1]
