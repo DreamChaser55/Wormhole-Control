@@ -87,7 +87,7 @@ class TurnProcessor:
             from tactical_abilities import reconcile_links
             reconcile_links(self.game.galaxy)
             with ProfileTimer("Movement processing"):
-                self._process_movement(current_player)
+                sublight_movements = self._process_movement(current_player)
 
             from tactical_abilities import process_pulls
             process_pulls(self.game.galaxy, current_player, turn_num)
@@ -101,7 +101,7 @@ class TurnProcessor:
                 self._cleanup_dead_units()
 
             with ProfileTimer("Environmental hazards"):
-                self._process_environmental_hazards(current_player)
+                self._process_environmental_hazards(current_player, sublight_movements)
                 self._cleanup_dead_units()
 
             with ProfileTimer("Resource generation"):
@@ -134,7 +134,9 @@ class TurnProcessor:
 
             logger.debug(f"Finished End of Round {turn_num} processing.")
 
-    def _process_movement(self, current_player):
+    def _process_movement(self, current_player) -> dict[int, float]:
+        # A record exists only for positive sublight displacement this phase.
+        sublight_movements: dict[int, float] = {}
         for system_name, system in self.game.galaxy.systems.items():
             units_to_move: typing.List[typing.Tuple['Unit', tuple]] = []
 
@@ -204,31 +206,11 @@ class TurnProcessor:
                         continue
 
                     from custom_unit_templates import get_sublight_antimatter_cost_per_turn
-                    raw_eff = getattr(unit.engines_component, 'effective_speed', None)
-                    if isinstance(raw_eff, (int, float)):
-                        effective_speed = float(raw_eff)
-                    else:
-                        effective_speed = float(getattr(unit.engines_component, 'speed', 100.0))
-
+                    from environmental_effects import modifiers_for_unit, sublight_speed
+                    effective_speed = sublight_speed(unit)
                     current_hex_obj = system.hexes.get(unit.in_hex)
-                    speed_mod = 1.0
-                    in_hydrogen_nebula = False
-                    if current_hex_obj:
-                        for body in current_hex_obj.celestial_bodies:
-                            radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
-                            if distance(unit.position, body.position) <= radius:
-                                speed_mult = getattr(body, 'speed_multiplier', None)
-                                if speed_mult is not None and unit.hull_size != HullSize.STRIKECRAFT_WING:
-                                    speed_mod = min(speed_mod, speed_mult)
-                                from domain.celestials import Nebula
-                                if isinstance(body, Nebula) and getattr(body, 'nebula_type', None) == NebulaType.HYDROGEN:
-                                    in_hydrogen_nebula = True
-
-                    effective_speed *= speed_mod
                     sublight_cost = get_sublight_antimatter_cost_per_turn(unit.hull_size, effective_speed)
-                    if in_hydrogen_nebula:
-                        from environmental_effects import modifiers_for_unit
-                        sublight_cost *= modifiers_for_unit(unit).fuel_multiplier
+                    sublight_cost *= modifiers_for_unit(unit).fuel_multiplier
 
                     # Engines consume antimatter per turn while moving
                     am_comp = unit.antimatter_component
@@ -276,6 +258,8 @@ class TurnProcessor:
                                             curr_order.fail("hazard_blocked")
                                         logger.debug(f"   {unit.name} ({unit.hull_size.name}) halted at boundary of dense {body.name}.")
                                         break
+                    if distance(unit.position, new_pos) > 0:
+                        sublight_movements[unit.id] = effective_speed
                     unit.position = new_pos
                     logger.debug(f"   {unit.name} moved to {unit.position} (sub-light, speed={effective_speed:.1f})")
                     
@@ -532,107 +516,69 @@ class TurnProcessor:
                         if hd_comp.hex_jump_target: # Ensure target is cleared on failure
                              hd_comp.clear_jump_target(expected_order_id)
 
+        return sublight_movements
+
     def _process_population_growth(self):
         for system in self.game.galaxy.systems.values():
             for hexcoord, body in system.get_all_celestial_bodies():
                 if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
                     body.update_population()
 
-    def _process_environmental_hazards(self, current_player):
-        """Processes environmental hazards (Storms, Black Holes, Debris Fields) for the current player's units."""
+    def _process_environmental_hazards(self, current_player, sublight_movements=None):
+        """Apply public hazard rules once per source after the owner's movement."""
         if not self.game.galaxy or not self.game.galaxy.systems:
             return
-
-        from domain.celestials import Storm, Star, DebrisField
-        from constants import (
-            STORM_PLASMA_DAMAGE_PER_TURN, STORM_MAGNETIC_AM_DRAIN_PER_TURN,
-            STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN,
-            BLACK_HOLE_EVENT_HORIZON_RADIUS, BLACK_HOLE_EVENT_HORIZON_DAMAGE,
-            PULSAR_ANTIMATTER_DRAIN_PERCENT,
-            DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD, DEBRIS_FIELD_HAZARD_DAMAGE
-        )
-
+        from environmental_effects import describe_body
+        movements = sublight_movements or {}
         hazards_encountered = []
-
         for system in self.game.galaxy.systems.values():
-            for unit, hex_coord in system.get_all_units():
-                if unit.owner != current_player or unit.current_hit_points <= 0:
-                    continue
-
-                hex_obj = system.hexes.get(hex_coord)
-                if not hex_obj:
-                    continue
-
-                # 1. Storm Hazards
-                for body in hex_obj.celestial_bodies:
-                    if isinstance(body, Storm):
-                        radius = getattr(body, 'radius', STORM_RADIUS)
-                        if distance(unit.position, body.position) <= radius:
-                            if body.storm_type == StormType.PLASMA:
-                                unit.take_damage(int(STORM_PLASMA_DAMAGE_PER_TURN))
-                                logger.debug(f"{unit.name} took {STORM_PLASMA_DAMAGE_PER_TURN} plasma storm thermal damage in {system.name}")
-                                hazards_encountered.append(f"{unit.name}: Plasma Storm damage (-{int(STORM_PLASMA_DAMAGE_PER_TURN)} HP)")
-                            elif body.storm_type == StormType.MAGNETIC:
-                                am_comp = getattr(unit, 'antimatter_component', None)
-                                if am_comp:
-                                    am_comp.consume(STORM_MAGNETIC_AM_DRAIN_PER_TURN)
-                                    logger.debug(f"{unit.name} lost {STORM_MAGNETIC_AM_DRAIN_PER_TURN} AM in magnetic storm in {system.name}")
-                                    hazards_encountered.append(f"{unit.name}: Magnetic Storm AM drain (-{int(STORM_MAGNETIC_AM_DRAIN_PER_TURN)} AM)")
-                            elif body.storm_type == StormType.RADIATION:
-                                comps_source = getattr(unit, 'components', {})
-                                if isinstance(comps_source, dict):
-                                    comps = [c for c in comps_source.values() if not c.is_destroyed]
-                                elif isinstance(comps_source, (list, tuple)):
-                                    comps = [c for c in comps_source if not isinstance(c, type) and not getattr(c, 'is_destroyed', False)]
-                                else:
-                                    comps = []
-                                if comps:
-                                    target_comp = self.rng.choice(comps)
-                                    unit.take_component_damage(type(target_comp), int(STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN))
-                                    logger.debug(f"{unit.name} took {STORM_RADIATION_COMPONENT_DAMAGE_PER_TURN} radiation damage to {target_comp.__class__.__name__}")
-                                    hazards_encountered.append(f"{unit.name}: Radiation Storm damage to {getattr(target_comp, 'DISPLAY_NAME', target_comp.__class__.__name__)}")
-
-                    # 2. Debris Field High-Speed Navigation Hazard
-                    elif isinstance(body, DebrisField):
-                        if unit.hull_size == HullSize.STRIKECRAFT_WING:
+            for hex_coord, sector in system.hexes.items():
+                bodies = list(sector.celestial_bodies)
+                # Some scenarios keep the central star only on the system.
+                star = getattr(system, 'star', None)
+                if hex_coord == (0, 0) and star is not None and star not in bodies:
+                    bodies.append(star)
+                sources = [(body, hazard) for body in bodies for hazard in describe_body(body).hazards]
+                for unit in list(sector.units):
+                    if unit.owner != current_player or unit.current_hit_points <= 0 or getattr(unit, 'is_hidden_in_gas_giant', False):
+                        continue
+                    for body, hazard in sources:
+                        if unit.current_hit_points <= 0:
+                            break
+                        if not hazard.contains(unit.position, body):
                             continue
-                        radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
-                        if distance(unit.position, body.position) <= radius:
-                            eng = getattr(unit, 'engines_component', None)
-                            speed = getattr(eng, 'effective_speed', getattr(eng, 'speed', 0.0)) if eng else 0.0
-                            if speed > DEBRIS_FIELD_HAZARD_SPEED_THRESHOLD and getattr(eng, 'move_target', None) is not None:
-                                dmg = getattr(body, 'hazard_damage', DEBRIS_FIELD_HAZARD_DAMAGE)
-                                unit.take_damage(int(dmg))
-                                logger.debug(f"{unit.name} suffered debris abrasion at high speed in {system.name}")
-                                hazards_encountered.append(f"{unit.name}: Debris Field abrasion (-{int(dmg)} HP)")
-
-                # 3. Central Star Remnant Hazards (Black Hole / Pulsar)
-                if hex_coord == (0, 0):
-                    star = getattr(system, 'star', None)
-                    if star and isinstance(star, Star):
-                        if star.star_type == StarType.BLACK_HOLE:
-                            if distance(unit.position, star.position) <= BLACK_HOLE_EVENT_HORIZON_RADIUS:
-                                unit.take_damage(int(BLACK_HOLE_EVENT_HORIZON_DAMAGE))
-                                logger.debug(f"{unit.name} caught in Black Hole event horizon tidal pull in {system.name} (-{BLACK_HOLE_EVENT_HORIZON_DAMAGE} HP)")
-                                hazards_encountered.append(f"{unit.name}: Black Hole tidal damage (-{int(BLACK_HOLE_EVENT_HORIZON_DAMAGE)} HP)")
-                        elif star.star_type == StarType.PULSAR:
-                            am_comp = getattr(unit, 'antimatter_component', None)
-                            if am_comp and am_comp.current_amount > 0:
-                                drain = am_comp.current_amount * PULSAR_ANTIMATTER_DRAIN_PERCENT
-                                am_comp.consume(drain)
-                                logger.debug(f"{unit.name} drained {drain:.1f} AM by Pulsar radiation in {system.name}")
-
-        for sector in (s for system in self.game.galaxy.systems.values() for s in system.hexes.values()):
-            for obj in list(getattr(sector, 'deployables', ())):
-                if obj.owner != current_player:
-                    continue
-                for body in sector.celestial_bodies:
-                    if isinstance(body, Storm) and body.storm_type == StormType.PLASMA and distance(obj.position, body.position) <= body.radius:
-                        obj.take_damage(int(STORM_PLASMA_DAMAGE_PER_TURN))
-                    elif isinstance(body, Star) and body.star_type == StarType.BLACK_HOLE and distance(obj.position, body.position) <= BLACK_HOLE_EVENT_HORIZON_RADIUS:
-                        obj.take_damage(int(BLACK_HOLE_EVENT_HORIZON_DAMAGE))
-                    if obj.current_hit_points <= 0:
-                        break
+                        if unit.hull_size == HullSize.STRIKECRAFT_WING and not hazard.affects_strikecraft:
+                            continue
+                        if hazard.requires_sublight_movement and movements.get(unit.id, 0) <= hazard.speed_threshold:
+                            continue
+                        if hazard.target == 'antimatter':
+                            storage = getattr(unit, 'antimatter_component', None)
+                            if storage is None or storage.is_destroyed:
+                                continue
+                            drain = (storage.current_amount * hazard.amount
+                                     if hazard.amount_basis == 'fraction_of_current_antimatter'
+                                     else min(hazard.amount, storage.current_amount))
+                            if drain > 0 and storage.consume(drain):
+                                hazards_encountered.append(f'{unit.name}: {hazard.kind.title()} AM drain (-{drain:g} AM)')
+                        elif hazard.target == 'random_non_destroyed_component':
+                            components = unit.components.values()
+                            candidates = [c for c in components if not c.is_destroyed]
+                            if candidates:
+                                component = self.rng.choice(candidates)
+                                unit.take_component_damage(type(component), int(hazard.amount))
+                                hazards_encountered.append(f'{unit.name}: Radiation damage to {component.DISPLAY_NAME}')
+                        else:
+                            previous_hp = unit.current_hit_points
+                            unit.take_damage(int(hazard.amount))
+                            hazards_encountered.append(f'{unit.name}: {hazard.kind.replace("_", " ").title()} damage (-{previous_hp - unit.current_hit_points} HP)')
+                for obj in list(getattr(sector, 'deployables', ())):
+                    if obj.owner != current_player:
+                        continue
+                    for body, hazard in sources:
+                        if obj.current_hit_points <= 0:
+                            break
+                        if hazard.affects_deployables and hazard.contains(obj.position, body):
+                            obj.take_damage(int(hazard.amount))
 
         if hazards_encountered and getattr(current_player, 'is_human', False):
             summary_msg = "<br>".join(hazards_encountered[:5])

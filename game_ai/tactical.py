@@ -28,6 +28,7 @@ def deployable_view(obj, viewer):
 
 def patch_views(game, player):
     from environmental_effects import effects_for_body
+    from celestial_descriptions import catalyst_profile
     # Public terrain in a locally visible patch, or a patch deployed by the team.
     if not any(getattr(s, 'catalyst_patches', ()) for s in sectors(game.galaxy)):
         return []
@@ -38,12 +39,14 @@ def patch_views(game, player):
             if not are_allies(patch.owner, player) and patch.id not in getattr(snapshot, 'visible_patch_ids', set()):
                 continue
             body = game.galaxy.get_celestial_body_by_id(patch.nebula_id)
+            relation, effects, rule = catalyst_profile(body)
             results.append({'id': patch.id, 'owner_id': patch.owner.id, 'nebula_id': patch.nebula_id,
                 'system_name': patch.in_system, 'hex_coord': list(patch.in_hex),
                 'position': [patch.position.x, patch.position.y], 'radius': patch.radius,
                 'expires_on_owner_round': patch.expires_round, 'baseline_effects': effects_for_body(body),
-                'friendly_effects': {'hydrogen_fuel_multiplier': 0.25, 'nitrogen_cooldown_reduction': 2},
-                'enemy_effects': {'oxygen_splash_multiplier': 1.35, 'dust_sensor_multiplier': 0.5}})
+                'friendly_effects': effects if relation == 'friendly' else {},
+                'enemy_effects': effects if relation == 'enemy' else {},
+                'rules': [rule, 'Applies only inside both the patch and its nebula, including boundaries. Strongest effect applies; other relations retain baseline effects.']})
     return results
 
 

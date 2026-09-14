@@ -96,14 +96,8 @@ class VisibilityService:
                         if sensors and not sensors.is_destroyed:
                             from environmental_effects import sensor_radius
                             sr_radius = sensor_radius(unit)
-                            lr_hexes = getattr(sensors, 'effective_long_range_hexes', sensors.long_range_hexes)
-
-                            # Environmental sensor effects on observer unit
-                            for b in hex_obj.celestial_bodies:
-                                from domain.celestials import Storm
-                                if isinstance(b, Storm) and getattr(b, 'storm_type', None) == StormType.MAGNETIC:
-                                    if distance(unit.position, b.position) <= getattr(b, 'radius', STORM_RADIUS):
-                                        lr_hexes = 0
+                            from environmental_effects import long_range_sensor_hexes
+                            lr_hexes = long_range_sensor_hexes(unit)
 
                             if sr_radius > 0:
                                 key = (system_name, hex_coord)
@@ -127,12 +121,13 @@ class VisibilityService:
                                 active_area_cloaks[hex_key].append((unit.owner, unit.position, cloaking.area_radius))
 
                 for body in hex_obj.celestial_bodies:
-                    from domain.celestials import Nebula, AsteroidField
-                    if isinstance(body, (Nebula, AsteroidField)):
+                    from environmental_effects import describe_body
+                    description = describe_body(body)
+                    if dict(description.effects).get('long_range_concealment', False):
                         hex_key = (system_name, hex_coord)
                         if hex_key not in nebulae_by_hex:
                             nebulae_by_hex[hex_key] = []
-                        field_radius = getattr(body, 'radius', NEBULA_RADIUS if isinstance(body, Nebula) else CELESTIAL_FIELD_RADIUS)
+                        field_radius = description.effect_radius
                         nebulae_by_hex[hex_key].append((body.position, field_radius))
 
                     is_infiltrated_body = False
@@ -313,5 +308,4 @@ def is_unit_in_asteroid_field(unit: Optional['Unit'], galaxy: Optional['Galaxy']
             if distance(body.position, unit.position) <= field_radius:
                 return True
     return False
-
 

@@ -53,9 +53,7 @@ def component_rows():
 
 
 def generated_blocks():
-    from constants import (PLANET_TRAITS, FieldDensity, ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS,
-        DEBRIS_FIELD_DENSITY_DEFENSE_BONUS, ICE_FIELD_COOLDOWN_REDUCTION,
-        NITROGEN_NEBULA_COOLDOWN_REDUCTION, OXYGEN_NEBULA_SPLASH_DAMAGE_MOD)
+    from constants import PLANET_TRAITS
     from unit_components.abilities.registry import ABILITY_DEFINITIONS
     from unit_orders.base import OrderType
     rows = component_rows()
@@ -76,13 +74,7 @@ def generated_blocks():
             [(f"**{kind.name.replace('_', ' ').title()}**", 'Yes' if t['is_colonizable'] else 'No',
               t['max_population'], f"{t['growth_rate'] * 100:g}% / turn", t['passive_metal'],
               t['passive_crystal'], f"{t['am_harvest_multiplier']}x") for kind, t in PLANET_TRAITS.items()]),
-        'environment': table(['Density', 'Ice beam cover', 'Debris kinetic/missile cover'],
-            [(d.name.title(), f'{ICE_FIELD_DENSITY_BEAM_DEFENSE_BONUS[d]:.0%}',
-              f'{DEBRIS_FIELD_DENSITY_DEFENSE_BONUS[d]:.0%}') for d in FieldDensity]) + '\n\n' + table(
-            ['Environment', 'Combat modifier'],
-            [('Ice field', f'-{ICE_FIELD_COOLDOWN_REDUCTION} turn to cooldown reset when firing'),
-             ('Nitrogen nebula', f'-{NITROGEN_NEBULA_COOLDOWN_REDUCTION} turn to cooldown reset when firing'),
-             ('Oxygen nebula', f'{OXYGEN_NEBULA_SPLASH_DAMAGE_MOD:g}x splash damage taken')]),
+
     }
     from unit_templates import _load_templates
     from unit_catalog import describe_template
@@ -91,8 +83,48 @@ def generated_blocks():
     blocks['unit-catalog'] = table(
         ['Design', 'Category', 'Hull / kind', 'Hull used', 'Credits', 'Turns', 'Upkeep', 'Role and operation'],
         [(e['name'], e['category'], e['hull_size'] + ' ' + e['kind'], f"{e['hull_used']:.2f}/{e['hull_capacity']:g}",
-          e['credit_cost'], e['turns'], f"{e['upkeep']:.2f}", e['description']) for e in entries])
+         e['credit_cost'], e['turns'], f"{e['upkeep']:.2f}", e['description']) for e in entries])
+    blocks['environment'] = environmental_tables()
     return blocks
+
+
+def environmental_tables():
+    """Use the same public terrain values as gameplay, sidebar and observations."""
+    from constants import FieldDensity, NebulaType, StarType, StormType
+    from domain.celestials import AsteroidField, DebrisField, IceField, Nebula, Star, Storm
+    from environmental_effects import describe_body
+    rows = []
+    for cls in (AsteroidField, IceField, DebrisField):
+        for density in FieldDensity:
+            body = cls((0, 0), 'Reference', density)
+            description = describe_body(body)
+            effects = dict(description.effects)
+            rows.append((cls.__name__.replace('Field', ' Field'), density.name.title(), body.max_hull_size.name.title(),
+                f'{description.effect_radius:g}', f'{effects["speed_multiplier"]:.0%}',
+                f'{effects.get("beam_cover", 0):.0%}', f'{effects.get("kinetic_missile_cover", 0):.0%}',
+                effects.get('cooldown_reduction', 0), f'{description.hazards[0].amount:g}' if description.hazards else 0))
+    fields = table(['Field', 'Density', 'Largest hull', 'Effect radius', 'Speed', 'Beam cover',
+                    'Kinetic/missile cover', 'Turret cooling (turns)', 'Abrasion (base HP)'], rows)
+    rows = []
+    for kind in NebulaType:
+        effects = dict(describe_body(Nebula((0, 0), 'Reference', kind)).effects)
+        rows.append((kind.name.title(), f'{effects.get("harvest_multiplier", 0):g}x',
+            f'{effects.get("fuel_multiplier", 1):.0%}', f'{effects.get("sensor_multiplier", 1):.0%}',
+            effects.get('cooldown_reduction', 0), f'{effects.get("splash_damage_multiplier", 1):g}x'))
+    nebulae = table(['Nebula', 'AM harvest', 'Propulsion AM', 'Short-range radius',
+                     'Turret cooling (turns)', 'Cluster Warhead splash taken'], rows)
+    bodies = [Storm((0, 0), 'Reference', kind) for kind in StormType]
+    bodies.extend(Star('Reference', kind) for kind in (StarType.BLACK_HOLE, StarType.PULSAR))
+    rows = []
+    for body in bodies:
+        for hazard in describe_body(body).hazards:
+            amount = f'{hazard.amount:.0%} of current AM' if hazard.amount_basis == 'fraction_of_current_antimatter' else f'{hazard.amount:g}'
+            if hazard.kind == 'magnetic':
+                amount = f'Up to {amount}'
+            area = 'Whole star sector' if hazard.scope == 'sector' else f'Radius {hazard.radius:g}'
+            rows.append((hazard.kind.replace('_', ' ').title(), amount, hazard.target.replace('_', ' '), area))
+    hazards = table(['Hazard', 'Base amount per owner turn', 'Target', 'Area (inclusive)'], rows)
+    return fields + '\n\n' + nebulae + '\n\n' + hazards
 
 
 def replace_block(text, key, generated):

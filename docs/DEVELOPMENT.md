@@ -45,7 +45,7 @@ It runs the full suite on Linux with Python 3.10 and 3.14 and Windows with Pytho
 | Equipment | `unit_components/` owns installed equipment and ability state; `tactical_balance.py` supplies tactical defaults |
 | Orders | `order_system.py` adapts human events; `unit_orders/` implements movement, combat and jobs; `order_history.py` records outcomes |
 | Turn resolution | `turn_processor.py` resolves game rules; `TurnPresentation` supplies optional presentation callbacks |
-| World services | `galaxy.py`, `geometry.py`, `pathfinding.py`, `visibility.py`, `environmental_effects.py` and `economy.py` |
+| World services | `galaxy.py`, `geometry.py`, `pathfinding.py`, `visibility.py`, `environmental_effects.py`, `celestial_descriptions.py` and `economy.py` |
 | Presentation | `gui/`, `rendering/` and `input_processor/` manage widgets, drawing, cameras and input; `events.py` decouples notifications |
 | Automated players | `game_ai/` owns observations, command validation and provider coordination; `game_control_protocol.py` serves the local bridge |
 | Persistence | `campaign_persistence.py`, `campaign_graph.py`, `state_codec.py` prepare and restore campaigns |
@@ -195,3 +195,17 @@ For reference edits, check Markdown links and run:
 python scripts/generate_reference.py --check
 python -m pytest tests/test_reference_generation.py
 ```
+
+### Shared celestial rules
+
+`celestial_descriptions.describe_body` produces immutable public body profiles
+from balance constants and body attributes. Environmental execution, sidebar
+rules, AI body descriptions and generated reference tables consume these profiles.
+`environmental_effects` combines current deployed-unit modifiers and exposes
+`sublight_speed`, `sensor_radius`, and `long_range_sensor_hexes`; presentation and
+observations use those queries rather than applying terrain independently.
+
+Movement returns a transient map of unit IDs to the post-drag speed used for
+positive sublight displacement. The same owner-turn hazard phase consumes this
+map, so arrival does not erase abrasion eligibility and old movement cannot leak
+into a later turn. No movement receipts are persisted.

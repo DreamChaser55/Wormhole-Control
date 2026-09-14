@@ -146,27 +146,19 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
     from tactical_ui import patch_panel
     data.extend(patch_panel(game, body))
 
-    # Type-specific info
-    from constants import StarType, PlanetType, NebulaType, StormType
+    from constants import PlanetType
+    from environmental_effects import describe_body
+    for attribute in ('star_type', 'planet_type', 'nebula_type', 'storm_type'):
+        subtype = getattr(body, attribute, None)
+        if subtype is not None:
+            data.append({'type': 'label', 'text': f'Type: {subtype.name.replace("_", " ").title()}', 'object_id': '#sidebar_info_label', 'height': 20})
+    for rule in describe_body(body).rules:
+        data.append({'type': 'label', 'text': rule, 'object_id': '#sidebar_info_label', 'height': 20})
 
-    if isinstance(body, Star):
-        data.append({'type': 'label', 'text': f"Type: {body.star_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
-        mult = getattr(body, 'harvest_multiplier', 1.0)
-        data.append({'type': 'label', 'text': f"AM Harvest Multiplier: {mult:.1f}x", 'object_id': '#sidebar_info_label', 'height': 20})
-        if body.star_type == StarType.BLACK_HOLE:
-            data.append({'type': 'label', 'text': "⚠ Event Horizon: 15 damage/turn within 750 radius.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-            data.append({'type': 'label', 'text': f"Hyperspace Inhibition: {int(body.inhibition_field_radius)} radius.", 'object_id': '#sidebar_info_label', 'height': 20})
-        elif body.star_type == StarType.PULSAR:
-            data.append({'type': 'label', 'text': "⚠ Pulsar Radiation: Drains 5% antimatter/turn.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-        elif body.star_type in (StarType.BLUE_GIANT, StarType.RED_GIANT):
-            data.append({'type': 'label', 'text': f"Giant Star: Collision 600 radius; Inhibition {int(body.inhibition_field_radius)}.", 'object_id': '#sidebar_info_label', 'height': 20})
-
-    elif isinstance(body, (Planet, Moon, ColonizableAsteroid)):
+    if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
         if isinstance(body, Planet):
-            data.append({'type': 'label', 'text': f"Type: {body.planet_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
             if body.planet_type == PlanetType.GAS_GIANT:
                 data.append({'type': 'label', 'text': "Massive Gas Giant (Atmospheric Hiding)", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-                data.append({'type': 'label', 'text': f"Collision {int(body.collision_radius)} radius; Inhibition {int(body.inhibition_field_radius)}.", 'object_id': '#sidebar_info_label', 'height': 20})
 
                 current_player = game.players[game.current_player_index] if game.players else None
                 if current_player:
@@ -277,61 +269,6 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         data.append({'type': 'label', 'text': f"Exit Wormhole: {body.exit_wormhole_id if body.exit_wormhole_id is not None else 'None'}", 'object_id': '#sidebar_info_label', 'height': 25})
         data.append({'type': 'label', 'text': f"Stability: {body.stability}", 'object_id': '#sidebar_info_label', 'height': 25})
         data.append({'type': 'label', 'text': f"Diameter: {body.diameter.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 25})
-
-    elif isinstance(body, DebrisField):
-        density_str = getattr(body, 'density', None)
-        density_label = f"Density: {density_str.name.capitalize()} (Max Hull: {body.max_hull_size.name.capitalize()})" if density_str else "Debris Field"
-        data.append({'type': 'label', 'text': density_label, 'object_id': '#sidebar_info_label', 'height': 20})
-        drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.75)) * 100))
-        cover_pct = int(round(getattr(body, 'defense_bonus', 0.10) * 100))
-        data.append({'type': 'label', 'text': f"Sublight speed drag -{drag_pct}%. Cover: +{cover_pct}% Kinetic/Missile.", 'object_id': '#sidebar_info_label', 'height': 20})
-        dmg = int(getattr(body, 'hazard_damage', 2.0))
-        data.append({'type': 'label', 'text': f"⚠ Navigation Hazard: {dmg} dmg when moving speed > 50.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-
-    elif isinstance(body, AsteroidField):
-        density_str = getattr(body, 'density', None)
-        density_label = f"Density: {density_str.name.capitalize()} (Max Hull: {body.max_hull_size.name.capitalize()})" if density_str else "Asteroid Field"
-        data.append({'type': 'label', 'text': density_label, 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': f"Asteroid Count: {body.asteroid_count}", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': "Tactical Radar Stealth: Conceals from long-range sensors.", 'object_id': '#sidebar_info_label', 'height': 20})
-        drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.75)) * 100))
-        data.append({'type': 'label', 'text': f"Sublight navigation drag -{drag_pct}%.", 'object_id': '#sidebar_info_label', 'height': 20})
-
-    elif isinstance(body, IceField):
-        density_str = getattr(body, 'density', None)
-        density_label = f"Density: {density_str.name.capitalize()} (Max Hull: {body.max_hull_size.name.capitalize()})" if density_str else "Ice Field"
-        data.append({'type': 'label', 'text': density_label, 'object_id': '#sidebar_info_label', 'height': 20})
-        beam_pct = int(round(getattr(body, 'beam_defense_bonus', 0.10) * 100))
-        drag_pct = int(round((1.0 - getattr(body, 'speed_multiplier', 0.80)) * 100))
-        data.append({'type': 'label', 'text': f"Tactical Cover: +{beam_pct}% Beam defense (scattering).", 'object_id': '#sidebar_info_label', 'height': 20})
-        from environmental_effects import effects_for_body
-        cooling = effects_for_body(body)['cooldown_reduction']
-        data.append({'type': 'label', 'text': f"Coolant: -{cooling} turn on firing (non-stacking). Drag -{drag_pct}%.", 'object_id': '#sidebar_info_label', 'height': 20})
-
-    elif isinstance(body, Nebula):
-        data.append({'type': 'label', 'text': f"Type: {body.nebula_type.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': "Stealth: Conceals units from long-range sensors.", 'object_id': '#sidebar_info_label', 'height': 20})
-        if body.nebula_type == NebulaType.HYDROGEN:
-            data.append({'type': 'label', 'text': "Fuel Scooping: 0.4x AM harvest; -50% sublight AM burn.", 'object_id': '#sidebar_info_label', 'height': 20})
-        elif body.nebula_type == NebulaType.NITROGEN:
-            from environmental_effects import effects_for_body
-            cooling = effects_for_body(body)['cooldown_reduction']
-            data.append({'type': 'label', 'text': f"Coolant: -{cooling} turn on firing (non-stacking).", 'object_id': '#sidebar_info_label', 'height': 20})
-        elif body.nebula_type == NebulaType.OXYGEN:
-            from environmental_effects import effects_for_body
-            splash = round((effects_for_body(body)['splash_damage_multiplier'] - 1) * 100)
-            data.append({'type': 'label', 'text': f"Volatile Gas: +{splash}% splash damage taken (non-stacking).", 'object_id': '#sidebar_info_label', 'height': 20})
-        elif body.nebula_type == NebulaType.DUST:
-            data.append({'type': 'label', 'text': "Dense Particulate: Reduces optical vision by 30%.", 'object_id': '#sidebar_info_label', 'height': 20})
-
-    elif isinstance(body, Storm):
-        data.append({'type': 'label', 'text': f"Type: {body.storm_type.name.capitalize()} Storm", 'object_id': '#sidebar_info_label', 'height': 20})
-        if body.storm_type == StormType.PLASMA:
-            data.append({'type': 'label', 'text': "⚠ Plasma Hazard: 8 thermal damage/turn to ships.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-        elif body.storm_type == StormType.MAGNETIC:
-            data.append({'type': 'label', 'text': "⚠ Magnetic Hazard: Drains 6 AM/turn; jams radar.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-        elif body.storm_type == StormType.RADIATION:
-            data.append({'type': 'label', 'text': "⚠ Radiation Hazard: 4 component damage/turn.", 'object_id': '#sidebar_status_charging_label', 'height': 20})
 
     elif isinstance(body, Comet):
         data.append({'type': 'label', 'text': "A celestial body of ice and rock.", 'object_id': '#sidebar_info_label', 'height': 20})

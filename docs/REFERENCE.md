@@ -617,6 +617,8 @@ including gas giants. No eligible hex or planet means no moon spawn.
 ### Stars
 
 Every system has a central star. Its type multiplies the base antimatter harvest rate.
+A functioning Harvester must be within its harvesting range of the star's center
+(default 3000 units). Collision, inhibition and harvesting radii are distinct.
 
 | Star type | Harvest multiplier |
 |---|---|
@@ -632,8 +634,9 @@ Every system has a central star. Its type multiplies the base antimatter harvest
 | Brown Dwarf | 0.3× |
 | Black Hole | 0.1× |
 
-Black holes inflict 15 damage/turn within their 750-radius event horizon. Pulsars
-drain 5% of a ship's current AM each turn anywhere in their sector. Blue and Red
+Black holes inflict 15 base hull damage per owner turn within their 750-radius
+event horizon. Pulsars drain 5% of a ship's current AM from functioning storage
+per owner turn anywhere in their sector. Both are checked after movement. Blue and Red
 Giants use the enlarged collision and inhibition radii in the dimensions table.
 
 ### Planetary traits
@@ -662,30 +665,49 @@ into the owner's treasury each turn. Gas giants cannot be colonized.
 Field density controls access, speed and cover. An excluded hull routes around
 the field, cannot microjump or deploy into it, and stops at its boundary with
 `hazard_blocked` if movement would enter it. Wings can traverse all field densities
-and are exempt from field speed penalties and debris abrasion.
-
-| Density | Largest permitted hull | Asteroid/debris speed | Ice speed | Debris damage/turn above speed 50 |
-|---|---|---|---|---|
-| Low | Large | 85% | 90% | 1 HP |
-| Medium | Medium | 75% | 80% | 2 HP |
-| High | Small | 65% | 70% | 3 HP |
+and are exempt from field speed penalties and debris abrasion, while retaining
+cover and cooling. Drag applies once after other engine modifiers; the strongest
+overlapping penalty applies. Displayed effective speed includes current terrain.
 
 <!-- BEGIN GENERATED: environment -->
-| Density | Ice beam cover | Debris kinetic/missile cover |
-| --- | --- | --- |
-| Low | 5% | 5% |
-| Medium | 10% | 10% |
-| High | 15% | 15% |
+| Field | Density | Largest hull | Effect radius | Speed | Beam cover | Kinetic/missile cover | Turret cooling (turns) | Abrasion (base HP) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Asteroid Field | Low | Large | 3600 | 85% | 0% | 0% | 0 | 0 |
+| Asteroid Field | Medium | Medium | 3600 | 75% | 0% | 0% | 0 | 0 |
+| Asteroid Field | High | Small | 3600 | 65% | 0% | 0% | 0 | 0 |
+| Ice Field | Low | Large | 3600 | 90% | 5% | 0% | 1 | 0 |
+| Ice Field | Medium | Medium | 3600 | 80% | 10% | 0% | 1 | 0 |
+| Ice Field | High | Small | 3600 | 70% | 15% | 0% | 1 | 0 |
+| Debris Field | Low | Large | 2000 | 85% | 0% | 5% | 0 | 1 |
+| Debris Field | Medium | Medium | 2000 | 75% | 0% | 10% | 0 | 2 |
+| Debris Field | High | Small | 2000 | 65% | 0% | 15% | 0 | 3 |
 
-| Environment | Combat modifier |
-| --- | --- |
-| Ice field | -1 turn to cooldown reset when firing |
-| Nitrogen nebula | -1 turn to cooldown reset when firing |
-| Oxygen nebula | 1.15x splash damage taken |
+| Nebula | AM harvest | Propulsion AM | Short-range radius | Turret cooling (turns) | Cluster Warhead splash taken |
+| --- | --- | --- | --- | --- | --- |
+| Hydrogen | 0.4x | 50% | 100% | 0 | 1x |
+| Nitrogen | 0x | 100% | 100% | 1 | 1x |
+| Oxygen | 0x | 100% | 100% | 0 | 1.15x |
+| Dust | 0x | 100% | 70% | 0 | 1x |
+
+| Hazard | Base amount per owner turn | Target | Area (inclusive) |
+| --- | --- | --- | --- |
+| Plasma | 8 | hull | Radius 3600 |
+| Magnetic | Up to 6 | antimatter | Radius 3600 |
+| Radiation | 4 | random non destroyed component | Radius 3600 |
+| Black Hole | 15 | hull | Radius 750 |
+| Pulsar | 5% of current AM | antimatter | Whole star sector |
 <!-- END GENERATED: environment -->
 
-Asteroid fields provide long-range concealment. Ice and debris provide the cover
-shown above. Fields cannot be mined: target Metal Asteroids or Comets instead.
+Asteroid fields provide long-range concealment. Ice and debris reduce incoming
+damage of the listed type by the cover percentage **before equipment defenses**;
+this does not increase equipment stats. Strongest overlapping cover applies.
+
+Debris abrasion is checked after movement on the ship owner's turn. It requires
+positive sublight displacement at **post-drag speed above 50** and a final position
+inside the debris field. Arrivals count, even if the remaining distance was short.
+Stationary, disabled, fuel-blocked, jump-only and tractor-only ships are exempt.
+Crossing without ending inside is safe. Each overlapping debris source applies
+its density-based base hull damage separately; active damage reduction can reduce it.
 
 Ice/nitrogen cooling reduces a turret's cooldown reset **when it fires**, after
 variant scaling. Positive cooldowns have a minimum reset of one; zero-cooldown
@@ -695,25 +717,30 @@ benefit; ability cooldowns are unaffected.
 
 ### Nebulae and storms
 
-All nebulae conceal ships from long-range detection. Their subtype adds:
+All nebulae conceal ships from long-range detection.
 
-| Nebula | Effect inside the cloud |
-|---|---|
-| Hydrogen | Harvest at 0.4× base rate; sublight propulsion uses 50% less AM |
-| Nitrogen | Turret cooling, using the same rule as ice fields |
-| Oxygen | Increased splash damage taken, using the generated multiplier above |
-| Dust | Short-range sensor radius reduced by 30% |
+The generated tables above give baseline subtype values. Hydrogen harvesting
+requires a functioning Harvester within its harvesting range of the cloud **center**
+(default 3000 units); the cloud's effect radius does not extend harvesting range.
+Its propulsion discount applies to sublight movement only, not jumps or equipment.
+Dust reduces the observer's short-range sensor **radius**, not its scanned area.
 
 Oxygen affects Cluster Warhead splash, not ordinary missiles, mines, hazards or
 component spillover. Apply it once after distance falloff and before mitigation,
 truncating the product to an integer. Overlapping oxygen clouds do not stack.
 [Nebula Catalyst](#deployment-and-link-abilities) selectively enhances these effects.
 
-| Storm | Effect inside the storm |
-|---|---|
-| Plasma | 8 thermal hull damage/turn |
-| Magnetic | 6 AM drain/turn and no long-range sensor projection; wings cannot enter or launch inside |
-| Radiation | 4 damage/turn to a random functional component |
+Storms and star hazards apply after movement on each affected owner's turn.
+Plasma and black-hole values are base hull damage: equipment defenses do not
+mitigate them, but active hull damage reduction still applies. They also damage
+deployables. Radiation targets one randomly selected non-destroyed component;
+excess damage beyond that component's remaining HP is discarded.
+
+Magnetic storms drain **up to 6 AM**, limited to the remaining fuel in functioning
+storage, and suppress the affected ship's long-range sensor projection. They do
+not conceal the ship from enemy radar or disable short-range vision. Wings cannot
+enter magnetic storms or launch from carriers inside them. Each overlapping hazard
+source applies separately.
 
 Environmental boundaries include points exactly on the radius. Hidden and docked
 units receive no external environmental modifiers.

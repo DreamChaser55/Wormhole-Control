@@ -45,6 +45,14 @@ def setup_game_ui(gui) -> None:
         manager=gui.manager,
         object_id='#side_bar_info_panel'
     )
+    sidebar_area = gui.side_bar_info_panel.get_container().get_rect()
+    gui.side_bar_scroll_container = pygame_gui.elements.UIScrollingContainer(
+        relative_rect=pygame.Rect(0, 0, sidebar_area.width, sidebar_area.height),
+        manager=gui.manager,
+        container=gui.side_bar_info_panel,
+        allow_scroll_x=False,
+        object_id='#sidebar_scroll',
+    )
 
     # --- Top Bar Panel (Spans to left edge of sidebar) ---
     top_panel_width = side_bar_info_panel_x

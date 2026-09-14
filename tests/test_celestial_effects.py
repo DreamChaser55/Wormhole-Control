@@ -615,7 +615,7 @@ def test_debris_field_speed_hazard():
     system.hexes[(0, 0)] = hex_obj
     game.galaxy.systems["Sol"] = system
 
-    processor._process_environmental_hazards(p1)
+    processor._process_environmental_hazards(p1, {u.id: 90.0})
 
     # FastShip took DEBRIS_FIELD_HAZARD_DAMAGE (2)
     assert u.current_hit_points == 98

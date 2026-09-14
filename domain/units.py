@@ -5,18 +5,13 @@ import typing
 from typing import TYPE_CHECKING, Any, Optional
 
 from constants import (
-    CELESTIAL_FIELD_RADIUS,
-    DEBRIS_FIELD_DEFENSE_BONUS,
     DEFAULT_SENSOR_SHORT_RANGE,
     HIT_POINTS,
     HULL_CAPACITIES,
-    ICE_FIELD_BEAM_DEFENSE_BONUS,
     MAX_UNIT_XP,
     HullSize,
 )
 from domain.celestials import (
-    DebrisField,
-    IceField,
     _normalize_sabotage_type,
     is_position_blocked_by_celestial_field,
     is_position_in_magnetic_storm,
@@ -24,7 +19,7 @@ from domain.celestials import (
 from domain.coordinates import HexCoord
 from domain.identity import GameObject
 from domain.players import Player
-from geometry import Position, distance
+from geometry import Position
 from unit_components.abilities import AbilityComponent
 from unit_components.antimatter import AntimatterHarvester, AntimatterStorage
 from unit_components.base import UnitComponent
@@ -343,35 +338,16 @@ class Unit(GameObject):
 
     def get_environmental_cover_bonus(self, damage_type: Optional[TurretType]) -> float:
         """Returns extra percentage damage reduction from environmental cover (e.g. IceField, DebrisField)."""
-        if not damage_type or not self.in_system or self.in_hex is None or not self.position:
-            return 0.0
-
-        g = getattr(self, 'in_galaxy', None)
-        if not g and getattr(self, 'game', None):
-            g = getattr(self.game, 'galaxy', None)
-        if not g:
-            return 0.0
-
-        system = g.systems.get(self.in_system)
-        if not system:
-            return 0.0
-
-        hex_obj = system.hexes.get(self.in_hex)
-        if not hex_obj:
-            return 0.0
-
-        cover_bonus = 0.0
-        for body in hex_obj.celestial_bodies:
-            radius = getattr(body, 'radius', CELESTIAL_FIELD_RADIUS)
-            if distance(self.position, body.position) <= radius:
-                is_beam = damage_type == TurretType.BEAM or (isinstance(damage_type, str) and damage_type.lower() == "beam")
-                is_kinetic_missile = damage_type in (TurretType.MASS_DRIVER, TurretType.MISSILE) or (isinstance(damage_type, str) and damage_type.lower() in ("mass_driver", "missile", "kinetic"))
-                if isinstance(body, IceField) and is_beam:
-                    cover_bonus = max(cover_bonus, getattr(body, 'beam_defense_bonus', ICE_FIELD_BEAM_DEFENSE_BONUS))
-                elif isinstance(body, DebrisField) and is_kinetic_missile:
-                    cover_bonus = max(cover_bonus, getattr(body, 'defense_bonus', DEBRIS_FIELD_DEFENSE_BONUS))
-
-        return cover_bonus
+        from environmental_effects import modifiers_for_unit
+        modifiers = modifiers_for_unit(self)
+        kind = getattr(damage_type, 'value', damage_type)
+        if isinstance(kind, str):
+            kind = kind.lower()
+        if damage_type == TurretType.BEAM or kind == 'beam':
+            return modifiers.beam_cover
+        if damage_type in (TurretType.MASS_DRIVER, TurretType.MISSILE) or kind in ('mass_driver', 'missile', 'kinetic'):
+            return modifiers.kinetic_missile_cover
+        return 0.0
 
     @property
     def is_strikecraft_wing(self) -> bool:

@@ -3,12 +3,11 @@
 Queries use the deployed unit's current sector and inclusive body boundaries.
 No modifier is persisted: turret base/reset state remains owned by the turret.
 """
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from decimal import Decimal
 
-from constants import (ICE_FIELD_COOLDOWN_REDUCTION,
-                       NITROGEN_NEBULA_COOLDOWN_REDUCTION,
-                       OXYGEN_NEBULA_SPLASH_DAMAGE_MOD, NebulaType)
+from constants import HullSize
+from celestial_descriptions import describe_body
 from geometry import distance
 
 
@@ -18,26 +17,15 @@ class EnvironmentalModifiers:
     splash_damage_multiplier: float = 1.0
     fuel_multiplier: float = 1.0
     sensor_multiplier: float = 1.0
+    speed_multiplier: float = 1.0
+    beam_cover: float = 0.0
+    kinetic_missile_cover: float = 0.0
+    blocks_long_range_sensors: bool = False
 
 
 def effects_for_body(body):
-    """Return public numeric effects for an already-visible celestial body."""
-    from domain.celestials import IceField, DebrisField, Nebula
-    if isinstance(body, IceField):
-        return {'cooldown_reduction': ICE_FIELD_COOLDOWN_REDUCTION,
-                'beam_cover': body.beam_defense_bonus}
-    if isinstance(body, DebrisField):
-        return {'kinetic_missile_cover': body.defense_bonus}
-    if isinstance(body, Nebula):
-        if body.nebula_type == NebulaType.HYDROGEN:
-            return {'fuel_multiplier': 0.5}
-        if body.nebula_type == NebulaType.DUST:
-            return {'sensor_multiplier': 0.7}
-        if body.nebula_type == NebulaType.NITROGEN:
-            return {'cooldown_reduction': NITROGEN_NEBULA_COOLDOWN_REDUCTION}
-        if body.nebula_type == NebulaType.OXYGEN:
-            return {'splash_damage_multiplier': OXYGEN_NEBULA_SPLASH_DAMAGE_MOD}
-    return {}
+    """Return public numeric effects and hazards for an already-visible body."""
+    return describe_body(body).environmental_effects()
 
 
 def modifiers_for_unit(unit):
@@ -52,20 +40,42 @@ def modifiers_for_unit(unit):
     sector = system.hexes.get(getattr(unit, 'in_hex', None)) if system else None
     if sector is None or unit not in sector.units and unit not in getattr(sector, 'deployables', ()):
         return neutral
-    cooling, splash, fuel, sensor = 0, 1.0, 1.0, 1.0
+    values = asdict(neutral)
+    wing = getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING
     for body in sector.celestial_bodies:
-        effects = effects_for_body(body)
-        radius = getattr(body, 'effect_radius', getattr(body, 'radius', 0))
-        if effects and distance(unit.position, body.position) <= radius:
-            cooling = max(cooling, effects.get('cooldown_reduction', 0))
-            splash = max(splash, effects.get('splash_damage_multiplier', 1.0))
-            fuel = min(fuel, effects.get('fuel_multiplier', 1.0))
-            sensor = min(sensor, effects.get('sensor_multiplier', 1.0))
+        description = describe_body(body)
+        if description.effect_radius is None or distance(unit.position, body.position) > description.effect_radius:
+            continue
+        effects = dict(description.effects)
+        for key in ('cooldown_reduction', 'splash_damage_multiplier', 'beam_cover', 'kinetic_missile_cover'):
+            values[key] = max(values[key], effects.get(key, values[key]))
+        for key in ('fuel_multiplier', 'sensor_multiplier', 'speed_multiplier'):
+            if key != 'speed_multiplier' or not wing:
+                values[key] = min(values[key], effects.get(key, values[key]))
+        values['blocks_long_range_sensors'] |= effects.get('blocks_long_range_sensors', False)
     from tactical_abilities import catalyst_effects
     enhanced = catalyst_effects(unit, galaxy)
-    return EnvironmentalModifiers(max(cooling, enhanced.get('cooldown_reduction', 0)),
-        max(splash, enhanced.get('splash_damage_multiplier', 1.0)),
-        min(fuel, enhanced.get('fuel_multiplier', 1.0)), min(sensor, enhanced.get('sensor_multiplier', 1.0)))
+    for key in ('cooldown_reduction', 'splash_damage_multiplier'):
+        values[key] = max(values[key], enhanced.get(key, values[key]))
+    for key in ('fuel_multiplier', 'sensor_multiplier'):
+        values[key] = min(values[key], enhanced.get(key, values[key]))
+    return EnvironmentalModifiers(**values)
+
+
+def sublight_speed(unit):
+    """Current movement speed: engine modifiers followed by terrain drag once."""
+    engines = getattr(unit, 'engines_component', None)
+    if engines is None or engines.is_destroyed:
+        return 0.0
+    return engines.effective_speed * modifiers_for_unit(unit).speed_multiplier
+
+
+def long_range_sensor_hexes(unit):
+    """Current long-range projection, including magnetic suppression."""
+    sensors = getattr(unit, 'sensors_component', None)
+    if sensors is None or sensors.is_destroyed or modifiers_for_unit(unit).blocks_long_range_sensors:
+        return 0
+    return sensors.effective_long_range_hexes
 
 
 def splash_damage(amount, unit):

@@ -38,6 +38,7 @@ class MockHex:
     def __init__(self, coord):
         self.coord = coord
         self.celestial_bodies = []
+        self.units = []
         self.dynamic_inhibition_zones = {}
 
     def get_all_inhibition_zones(self):
@@ -57,10 +58,12 @@ class MockSystem:
     def add_unit(self, unit):
         if unit not in self.units:
             self.units.append(unit)
+            self.hexes[unit.in_hex].units.append(unit)
 
     def remove_unit(self, unit):
         if unit in self.units:
             self.units.remove(unit)
+            self.hexes[unit.in_hex].units.remove(unit)
 
 
 class MockGalaxy:
@@ -179,7 +182,7 @@ def test_strikecraft_ignores_debris_abrasion():
     strikecraft.engines_component.set_move_target(Position(200.0, 0.0), 1)
     normal_ship.engines_component.set_move_target(Position(200.0, 0.0), 2)
 
-    tp._process_environmental_hazards(game.players[0])
+    tp._process_environmental_hazards(game.players[0], {strikecraft.id: 80, normal_ship.id: 60})
 
     # Strikecraft wing should take 0 damage
     assert strikecraft.current_hit_points == strikecraft.max_hit_points

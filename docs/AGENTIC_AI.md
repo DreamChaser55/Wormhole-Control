@@ -38,7 +38,7 @@ player. It includes:
 - owned and allied units;
 - enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);
 - celestial fields (asteroid, debris, ice) with density parameters (`density`, `max_hull_size`), solidity status (`is_solid: false`), and exact `effect_radius` values that restrict hulls exceeding the field's maximum allowable hull, rejecting forbidden commands with `hazard_blocked`;
-- space storms (plasma, magnetic, radiation) and nebulae exposing `is_solid: false` and exact `effect_radius`, along with black hole event horizons that inflict active environmental hazards (strikecraft wings are banned from entering or launching in magnetic storms, but are immune to negative field effects and can enter fields of all densities);
+- space storms (plasma, magnetic, radiation) and nebulae exposing `is_solid: false` and exact `effect_radius`, along with separately scoped black-hole and pulsar hazards (strikecraft wings are banned from entering or launching in magnetic storms, but ignore field drag and debris abrasion and can enter fields of all densities);
 - visible minefields;
 - undetailed enemy-presence hexes without count, identity, owner, or strength;
 - per-owned-unit supported commands, currently legal commands, conditional
@@ -49,7 +49,7 @@ player. It includes:
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 7 gives full body detail in systems containing friendly
+Observation schema 8 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -204,7 +204,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 7 / commands 6 / socket 3)
+## Shared order contract (observation 8 / commands 6 / socket 3)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -300,7 +300,7 @@ job charges. Missing order identities and payment state are rejected. Restored a
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
 The strict response schema is `wormhole_control_turn_v5`, and prompt cache key is
-`wormhole-control-turn-v6`. No live API call is required for regression testing.
+`wormhole-control-turn-v7`. No live API call is required for regression testing.
 
 ### Gameplay invariant guidance
 
@@ -344,7 +344,7 @@ The [built-in catalogue](REFERENCE.md#built-in-unit-catalog) includes designs fo
 every ability. Automated players construct public designs or use equipped ships;
 custom design editing is a human workflow.
 
-Observation 7 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
+Observation 8 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
 `ability_links`. Authorized ability state includes actual blockers/readiness,
 cooldown/duration, active targets, ongoing AM, reserved casts, persistent deployment
 counts/caps and Guardian tuning. Speed includes Tractor; environmental values
@@ -374,3 +374,30 @@ IDs participate in allocator reconciliation. Offline fake-provider tests exercis
 all six command paths without live API calls.
 
 Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.
+
+### Celestial observation contract (schema 8)
+
+Already-exposed bodies use readable uppercase `subtype` names (`MAGNETIC`,
+`BLACK_HOLE`, etc.). `collision_radius` and `inhibition_field_radius` describe
+independent boundaries; non-solid bodies additionally expose `effect_radius`.
+Mechanical radii retain full precision. `environmental_effects` retains existing
+modifier keys and adds speed, concealment, sensor suppression, wing exceptions,
+and `hazards`. Each hazard specifies kind, amount/basis, target, timing, scope,
+radius, affected unit classes, and any sublight-movement/speed requirement.
+Black-hole hazards have their own radius; pulsar hazards cover the whole sector.
+
+`environmental_rules` contains the same explanations shown in human body panels:
+stacking, cooldown floors, damage classification, harvesting range, timing and
+exceptions. The built-in AI receives these explanations in its observation;
+repository documentation is not implicitly included in its request.
+
+Friendly/allied `capability_details.engines.effective_speed` includes current
+terrain drag; `sensors.effective_long_range_hexes` includes magnetic suppression.
+Base speed and sensor ranges remain available separately. Unit
+`environmental_modifiers` includes current cover, drag, sensor suppression and
+relation-filtered Catalyst enhancements; body values describe baseline terrain.
+Catalyst patch records describe only the enhancement relevant to their nebula.
+
+Enrichment preserves existing body visibility and remote summaries and exposes
+no additional enemy equipment. Command contract 6, socket protocol 3, response
+schema v5 and save format are unchanged. Prompt cache key is v7.

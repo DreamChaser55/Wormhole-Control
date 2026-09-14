@@ -427,7 +427,8 @@ class SystemViewRenderer:
                     sensors_comp = unit.sensors_component
                     if getattr(sensors_comp, 'is_destroyed', False):
                         continue
-                    sensor_range = getattr(sensors_comp, 'effective_long_range_hexes', getattr(sensors_comp, 'long_range_hexes', 0))
+                    from environmental_effects import long_range_sensor_hexes
+                    sensor_range = long_range_sensor_hexes(unit)
 
                     if sensor_range <= 0:
                         continue

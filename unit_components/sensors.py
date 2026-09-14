@@ -55,9 +55,9 @@ class Sensors(UnitComponent):
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
-        from environmental_effects import sensor_radius
+        from environmental_effects import sensor_radius, long_range_sensor_hexes
         sr_text = f"Short Range: {int(sensor_radius(self.unit))} (base {int(self.short_range_radius)})" if self.has_short_range else "Short Range: None"
-        lr_text = f"Long Range: {self.long_range_hexes} hex(es)" if self.has_long_range else "Long Range: None"
+        lr_text = f"Long Range: {long_range_sensor_hexes(self.unit)} hex(es) (base {self.long_range_hexes})" if self.has_long_range else "Long Range: None"
         data.append({'type': 'label', 'text': sr_text, 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': lr_text, 'object_id': '#sidebar_info_label', 'height': 20})
         return data
@@ -66,9 +66,9 @@ class Sensors(UnitComponent):
         data = super().get_basic_sidebar_data(game_state)
         if self.is_destroyed:
             return data
-        from environmental_effects import sensor_radius
+        from environmental_effects import sensor_radius, long_range_sensor_hexes
         sr = int(sensor_radius(self.unit)) if self.has_short_range else 0
-        lr = self.long_range_hexes if self.has_long_range else 0
+        lr = long_range_sensor_hexes(self.unit)
         data.append({
             'type': 'label',
             'text': f"• Sensor Range: Short {sr} | Long {lr} hexes",

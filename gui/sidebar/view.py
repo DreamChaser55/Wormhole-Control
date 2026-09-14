@@ -47,18 +47,27 @@ def toggle_section_expansion(gui, section_id: str) -> None:
 
 def _build_label(gui, item_data: dict, x: int, y: int, width: int, height: int, container, obj_id) -> int:
     text = item_data.get('text', '')
-    font = gui.manager.get_theme().get_font(obj_id)
-    lines, line_height = gui.wrap_text_to_lines(text, width, font)
+    # Resolve the actual widget font, including inherited/scaled theme selectors.
+    # Looking up just ObjectID can select a different font from the rendered label.
+    first = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect(x, y, width, -1), text='',
+        manager=gui.manager, container=container, object_id=obj_id)
+    lines, _ = gui.wrap_text_to_lines(text, width, first.font)
+    if not lines:
+        first.kill()
+        return 0
     total_height = 0
-    for line in lines:
+    for index, line in enumerate(lines):
         label_rect = pygame.Rect(x, y + total_height, width, -1)
-        label = pygame_gui.elements.UILabel(
+        label = first if index == 0 else pygame_gui.elements.UILabel(
             relative_rect=label_rect,
             text=line,
             manager=gui.manager,
             container=container,
             object_id=obj_id
         )
+        if index == 0:
+            label.set_text(line)
         gui.side_bar_dynamic_elements.append(label)
         total_height += label.get_relative_rect().height
     return total_height
@@ -203,13 +212,18 @@ def update_side_bar_content(gui, data_list: typing.List[dict]) -> None:
     if not gui.side_bar_info_panel or not gui.side_bar_info_panel.alive():
         return
 
+    scroll = gui.side_bar_scroll_container
+    identity = data_list[0].get('text') if data_list else None
+    previous_scroll = (scroll.vert_scroll_bar.start_percentage
+                       if gui.sidebar_scroll_identity == identity else 0.0)
+    gui.sidebar_scroll_identity = identity
     clear_side_bar_content(gui)
 
     current_y_offset = 5
     element_padding = 3
     gap = 4
-    base_container_rect = gui.side_bar_info_panel.get_container().get_rect()
-    base_container_width = base_container_rect.width if base_container_rect else display_config_for(gui).info_box_width
+    # Reserve scrollbar space even before it appears, keeping wrapped rows stable.
+    base_container_width = scroll.get_relative_rect().width - 20
     indent_size = 15
 
     rows: typing.List[typing.List[dict]] = []
@@ -241,7 +255,7 @@ def update_side_bar_content(gui, data_list: typing.List[dict]) -> None:
             class_id_str = item_data.get('class_id', None)
             height_from_data = int(item_data.get('height', 25) * display_config_for(gui).text_scale)
 
-            target_container_for_element = gui.side_bar_info_panel.get_container()
+            target_container_for_element = scroll.get_container()
             current_element_y = current_y_offset
             current_element_x = start_x + col_idx * (item_width + gap)
             current_element_width = item_width
@@ -268,3 +282,7 @@ def update_side_bar_content(gui, data_list: typing.List[dict]) -> None:
             current_y_offset += row_max_height + element_padding
         else:
             current_y_offset += element_padding
+    scroll.set_scrollable_area_dimensions((base_container_width, max(current_y_offset, scroll.get_relative_rect().height)))
+    scroll.update(0)
+    scroll.vert_scroll_bar.set_scroll_from_start_percentage(previous_scroll)
+    scroll.update(0)

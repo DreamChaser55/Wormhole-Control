@@ -115,7 +115,8 @@ class Engines(UnitComponent):
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
         xp = getattr(self.unit, 'experience_points', 0)
-        eff_speed = self.effective_speed
+        from environmental_effects import sublight_speed
+        eff_speed = sublight_speed(self.unit)
         is_sab = hasattr(self.unit, 'is_sabotaged') and self.unit.is_sabotaged(SabotageType.ENGINES)
         
         status_extra = []
@@ -127,7 +128,7 @@ class Engines(UnitComponent):
         if status_extra:
             speed_text = f"Speed: {self.speed} ({', '.join(status_extra)} → {eff_speed:.1f})"
         else:
-            speed_text = f"Speed: {self.speed}"
+            speed_text = f"Speed: {eff_speed:.1f} (base {self.speed:g})"
         data.append({'type': 'label', 'text': speed_text, 'object_id': '#sidebar_info_label', 'height': 20})
         return data
 
@@ -135,7 +136,8 @@ class Engines(UnitComponent):
         data = super().get_basic_sidebar_data(game_state)
         if self.is_destroyed:
             return data
-        eff_speed = self.effective_speed
+        from environmental_effects import sublight_speed
+        eff_speed = sublight_speed(self.unit)
         data.append({
             'type': 'label',
             'text': f"• Speed: {eff_speed:.1f}",

@@ -150,7 +150,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 7,
+        "schema_version": 8,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -350,7 +350,7 @@ def _body_view(
         if hasattr(body, enum_attr):
             enum_val = getattr(body, enum_attr)
             if enum_val is not None:
-                data["subtype"] = _enum_value(enum_val)
+                data["subtype"] = enum_val.name
     if hasattr(body, "density") and body.density is not None:
         data["density"] = _enum_value(body.density)
         data["max_hull_size"] = getattr(body.max_hull_size, "name", str(body.max_hull_size))
@@ -358,14 +358,14 @@ def _body_view(
         data["exit_system_name"] = str(body.exit_system_name)
     is_solid = getattr(body, "is_solid", True)
     data["is_solid"] = is_solid
-    if not is_solid:
-        effect_rad = getattr(body, "effect_radius", getattr(body, "radius", None))
-        if effect_rad is not None:
-            data["effect_radius"] = _rounded(effect_rad)
-    from environmental_effects import effects_for_body
-    effects = effects_for_body(body)
-    if effects:
-        data["environmental_effects"] = effects
+    from environmental_effects import describe_body
+    description = describe_body(body)
+    data['collision_radius'] = description.collision_radius
+    data['inhibition_field_radius'] = description.inhibition_radius
+    if description.effect_radius is not None:
+        data['effect_radius'] = description.effect_radius
+    data['environmental_effects'] = description.environmental_effects()
+    data['environmental_rules'] = list(description.rules)
     friendly_hidden = [
         int(u.id) for u in getattr(body, "hidden_units", [])
         if _relation(viewer, getattr(u, "owner", None)) != "enemy"
@@ -401,11 +401,12 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
             )
         ]
     }
+    from environmental_effects import sublight_speed, long_range_sensor_hexes
     engines = getattr(unit, "engines_component", None)
     if engines is not None:
         details["engines"] = {
             "speed": _rounded(getattr(engines, "speed", 0)),
-            "effective_speed": _rounded(getattr(engines, "effective_speed", 0)),
+            "effective_speed": _rounded(sublight_speed(unit)),
             "destroyed": bool(getattr(engines, "is_destroyed", False)),
         }
     hyperdrive = getattr(unit, "hyperdrive_component", None)
@@ -429,6 +430,7 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     if sensors is not None:
         from environmental_effects import sensor_radius
         details["sensors"]["effective_short_range_radius"] = sensor_radius(unit)
+        details["sensors"]["effective_long_range_hexes"] = long_range_sensor_hexes(unit)
     weapons = getattr(unit, "weapons_component", None)
     if weapons is not None:
         details["weapons"] = {"operational": not bool(weapons.is_destroyed), "turrets": [

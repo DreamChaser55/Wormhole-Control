@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":7}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":8}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -349,7 +349,7 @@ socket envelope remains protocol 3.
 
 ## Tactical ability commands
 
-Observation schema 7 and command contract 6 expose a deduplicated `ability_catalog`,
+Observation schema 8 and command contract 6 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
 response name is `wormhole_control_turn_v5`; unused OpenAI command fields stay null.

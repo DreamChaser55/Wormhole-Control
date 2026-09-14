@@ -27,7 +27,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 7 and the command_catalog describes contract 6. The top-level intelligence
+Observations use schema 8 and the command_catalog describes contract 6. The top-level intelligence
 section contains only owned agents and discovered enemy agents on friendly/allied hosts. Use
 player_commands for player-level sabotage and relocation with unit_ids=[]. Never infer undiscovered
 agents, enemy Intelligence hardware, or whether one of your own agents has been discovered. Owned/allied units
@@ -96,4 +96,13 @@ Units with active cloaking devices, or positioned inside nebulae or asteroid fie
 long-range sensors, requiring close short-range visual scouting to reveal. Space storms (plasma, magnetic,
 radiation) and black hole event horizons present active environmental hazards to ships inside them. Non-solid
 celestial bodies (nebulae, storms, asteroid/ice/debris fields) report is_solid=false and an exact effect_radius
-within which their environmental cover, sublight drag, harvesting, or hazard effects apply."""
+within which their area effects apply. Body subtype is a readable uppercase name. Read each body's
+environmental_effects and environmental_rules for exact values, scope, timing and exceptions.
+Hazards specify a separate radius or whole-sector scope; harvesting uses the harvester's range
+from the body center. collision_radius and inhibition_field_radius are distinct from effect_radius.
+Owned/allied effective_speed includes terrain drag at the current position; effective_long_range_hexes
+includes magnetic suppression. Base hardware values are listed separately. Terrain rules describe
+baseline effects; environmental_modifiers includes applicable Catalyst enhancements.
+Debris abrasion uses positive sublight movement this owner turn at post-drag speed >50 and the final
+position inside debris; arrival still counts. Wings ignore field drag and abrasion and cannot enter
+or launch in magnetic storms. Magnetic drain is limited to the AM remaining in functioning storage."""

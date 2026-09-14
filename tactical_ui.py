@@ -112,8 +112,8 @@ def patch_panel(game, body):
             continue
         owner = next(p for p in game.players if p.id == patch['owner_id'])
         data.append(label(f'Catalyst: {owner.name}; expires on owner round {patch["expires_on_owner_round"]}'))
-        data.append(label('Friendly: hydrogen fuel 25%; nitrogen cooldown -2.'))
-        data.append(label('Enemy: oxygen splash 1.35x; dust sensors 50%.'))
+        data.append(label(f'Patch radius: {patch["radius"]:g} units.'))
+        data.extend(label(rule) for rule in patch['rules'])
     return data
 
 
