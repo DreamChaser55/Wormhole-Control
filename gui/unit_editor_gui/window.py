@@ -13,8 +13,6 @@ import typing
 from constants import HullSize
 from custom_unit_templates import CustomUnitTemplate, ComponentConfig, TurretConfig, CustomTemplateManager
 
-from . import catalog
-from . import widget_factory
 from . import cost_model
 from . import param_readers
 from . import turret_editor
@@ -25,6 +23,7 @@ from . import event_handlers
 from . import layout
 from . import layout_details
 from .save_dialog import SaveConfirmationDialog
+from .description_dialog import DescriptionDialog
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +60,9 @@ class UnitEditorWindow:
         self._selected_abilities: typing.Set[str] = set()
         self._editing_name: typing.Optional[str] = None  # display name of design being edited
         self._save_dialog: typing.Optional[SaveConfirmationDialog] = None
+        self._description_dialog: typing.Optional[DescriptionDialog] = None
+        self._comp_help_buttons: typing.Dict[str, pygame_gui.elements.UIButton] = {}
+        self._ability_help_buttons: typing.Dict[str, pygame_gui.elements.UIButton] = {}
 
         # --- Panel geometry ---
         panel_x = 20
@@ -195,6 +197,7 @@ class UnitEditorWindow:
     def hide(self) -> None:
         """Hide the editor without destroying widgets."""
         self.is_visible = False
+        self.close_description()
         if self._save_dialog:
             self._save_dialog.kill()
             self._save_dialog = None
@@ -203,6 +206,7 @@ class UnitEditorWindow:
 
     def kill(self) -> None:
         """Destroy all widgets."""
+        self.close_description()
         if self._save_dialog:
             self._save_dialog.kill()
             self._save_dialog = None
@@ -216,9 +220,22 @@ class UnitEditorWindow:
         self._comp_select_btns.clear()
         self._details_groups.clear()
         self._ability_buttons.clear()
+        self._comp_help_buttons.clear()
+        self._ability_help_buttons.clear()
         self._ability_scroll_container = None
         self._elements.clear()
         self._save_as_button = None
+
+    def show_description(self, title: str, body: str) -> None:
+        """Open help without changing the selected component or design."""
+        if not self.is_visible or self._save_dialog or self._description_dialog:
+            return
+        self._description_dialog = DescriptionDialog(self.manager, self.display_config, title, body)
+
+    def close_description(self) -> None:
+        if self._description_dialog:
+            self._description_dialog.kill()
+            self._description_dialog = None
 
     def process_event(self, event: pygame.event.Event) -> typing.Optional[str]:
         """Process a pygame event."""

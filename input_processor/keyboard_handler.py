@@ -15,6 +15,9 @@ def handle_keyboard_panning(game, gui, time_delta: float) -> None:
         gui: Target GUI_Handler instance.
         time_delta (float): Elapsed frame time in seconds.
     """
+    editor = getattr(gui, 'unit_editor_window', None)
+    if editor and editor.is_visible is True and getattr(editor, '_description_dialog', None):
+        return
     catalog = getattr(gui, 'unit_catalog_window', None)
     if catalog and catalog.window.alive() is True:
         return
@@ -73,6 +76,12 @@ def handle_key_down(game, gui, event: pygame.event.Event) -> bool:
     Returns:
         bool: True if the event was consumed or intercepted by modals/focus, False otherwise.
     """
+    editor = getattr(gui, 'unit_editor_window', None)
+    if editor and editor.is_visible is True and getattr(editor, '_description_dialog', None):
+        if event.key == pygame.K_ESCAPE:
+            editor.close_description()
+        return True
+
     # If a text entry field has active focus, intercept KEYDOWN to block shortcuts and handle ESC
     is_typing = False
     if hasattr(gui, 'is_any_text_entry_focused'):

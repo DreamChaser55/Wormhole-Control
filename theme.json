@@ -489,6 +489,16 @@
             "padding": "3,0"
         }
     },
+    "#editor_help_button": {
+        "font": {
+            "name": "dejavu_sans",
+            "size": "13"
+        },
+        "misc": {
+            "text_horiz_alignment": "center",
+            "padding": "0,0"
+        }
+    },
     "#comp_cost_label": {
         "font": {
             "name": "dejavu_sans",

@@ -34,6 +34,18 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
     Returns:
         typing.Optional[dict]: Action payload dict, {'action': 'ui_handled'}, or None.
     """
+    editor = getattr(gui, 'unit_editor_window', None)
+    if editor and editor.is_visible is True and getattr(editor, '_description_dialog', None):
+        # UIWindow blocking only protects mouse presses. Stop typing and background
+        # widget events before UIManager can alter focused fields or dropdown state.
+        dialog = editor._description_dialog
+        if event.type in (pygame.KEYDOWN, pygame.KEYUP, pygame.TEXTINPUT, pygame.TEXTEDITING):
+            return {'action': 'ui_handled'}
+        if hasattr(event, 'ui_element') and not dialog.owns_element(event.ui_element):
+            return {'action': 'ui_handled'}
+        gui.manager.process_events(event)
+        editor.process_event(event)
+        return {'action': 'ui_handled'}
     handled_by_manager = gui.manager.process_events(event)
     catalog = getattr(gui, 'unit_catalog_window', None)
     if catalog and catalog.process_event(event):

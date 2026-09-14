@@ -7,6 +7,8 @@ Uses widget_factory helper functions to streamline widget creation.
 
 import pygame
 import pygame_gui
+from unit_components.abilities import ABILITY_DEFINITIONS
+from unit_components.enums import AbilityType
 from .catalog import (
     COMPONENT_ROWS,
     HYPERDRIVE_TYPES,
@@ -18,6 +20,8 @@ from .catalog import (
     COMPONENT_DESCRIPTIONS,
 )
 from .widget_factory import make_label, make_entry, make_dropdown, make_button
+from .widget_factory import make_help_button, set_wrapped_button_text
+from .descriptions import component_description
 
 
 def build_col3_details(
@@ -182,7 +186,9 @@ def build_col3_details(
     )
     ab_widgets.append(editor._ability_scroll_container)
     # UIScrollingContainer reserves 20 pixels for its vertical scrollbar.
-    button_width = c3w - 20
+    help_w = max(24, int(24 * editor.display_config.text_scale))
+    help_gap = max(2, int(2 * editor.display_config.text_scale))
+    button_width = c3w - 20 - help_w - help_gap
 
     for aname in ABILITY_NAMES:
         abtn = make_button(
@@ -190,6 +196,9 @@ def build_col3_details(
             mgr, editor._ability_scroll_container, "#ability_toggle_button",
         )
         editor._ability_buttons[aname] = abtn
+        editor._ability_help_buttons[aname] = make_help_button(
+            editor, editor._ability_scroll_container, ABILITY_DEFINITIONS[AbilityType(aname)].name,
+        )
     editor._details_groups["has_ability_component"].extend(ab_widgets)
     editor._update_ability_toggle_labels()
 
@@ -220,19 +229,23 @@ def build_col3_details(
     editor._intel_agents_entry = make_entry(pygame.Rect(c3x, y_intel + small_h + 2, c3w, entry_h), str(int(getattr(editor._comp, "intelligence_agents_count", 1))), mgr, pan)
     y_intel += small_h + entry_h + pad + 2
     editor._intel_ci_btn = make_button(
-        pygame.Rect(c3x, y_intel, c3w, btn_h),
+        pygame.Rect(c3x, y_intel, c3w - help_w - help_gap, -1),
         "[x] Counter-Intelligence" if getattr(editor._comp, "has_counter_intelligence", False) else "[ ] Counter-Intelligence",
         mgr, pan, "#ability_toggle_button"
     )
+    ci_help = make_help_button(editor, pan, "Counter-Intelligence")
+    set_wrapped_button_text(editor._intel_ci_btn, editor._intel_ci_btn.text, help_w)
+    ci_help.set_relative_position((c3x + c3w - help_w, y_intel))
+    editor._comp_help_buttons["has_counter_intelligence"] = ci_help
     editor._details_groups["has_intelligence_component"].extend([
-        lbl_intel_cnt, editor._intel_agents_entry, editor._intel_ci_btn,
+        lbl_intel_cnt, editor._intel_agents_entry, editor._intel_ci_btn, ci_help,
     ])
 
     # --- 15. Fixed & Info-only Components ---
-    for comp_key, desc in COMPONENT_DESCRIPTIONS.items():
+    for comp_key in COMPONENT_DESCRIPTIONS:
         if comp_key in editor._details_groups and not editor._details_groups[comp_key]:
             box = pygame_gui.elements.UITextBox(
-                html_text=desc,
+                html_text=component_description(comp_key)[1],
                 relative_rect=pygame.Rect(c3x, c3y_base, c3w, int(150 * scale_y)),
                 manager=mgr,
                 container=pan,

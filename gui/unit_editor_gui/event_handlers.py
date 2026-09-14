@@ -9,6 +9,7 @@ import pygame_gui
 import typing
 from .template_io import do_save, do_save_as_new, do_delete, load_design, handle_save_dialog_action
 from .turret_editor import do_add_turret, rebuild_turret_list
+from .descriptions import component_description, ability_description
 from .component_state import (
     select_component,
     toggle_component,
@@ -41,6 +42,11 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
     if not editor.is_visible:
         return None
 
+    if editor._description_dialog:
+        if editor._description_dialog.process_event(event):
+            editor.close_description()
+        return "ui_handled"
+
     # Route events to active save confirmation dialog if open
     if getattr(editor, "_save_dialog", None) and editor._save_dialog.alive():
         dialog_res = editor._save_dialog.process_event(event)
@@ -52,6 +58,15 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
 
     if event.type == pygame_gui.UI_BUTTON_PRESSED:
         elem = event.ui_element
+
+        for key, button in editor._comp_help_buttons.items():
+            if elem is button:
+                editor.show_description(*component_description(key))
+                return "ui_handled"
+        for name, button in editor._ability_help_buttons.items():
+            if elem is button:
+                editor.show_description(*ability_description(name))
+                return "ui_handled"
 
         if elem is editor._close_button:
             return "close"

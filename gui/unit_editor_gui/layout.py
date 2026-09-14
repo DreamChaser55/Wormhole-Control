@@ -10,6 +10,7 @@ import pygame_gui
 
 from .catalog import COMPONENT_ROWS, HULL_SIZE_NAMES
 from .layout_details import build_col3_details
+from .widget_factory import make_help_button
 
 
 def build_col1_config(
@@ -171,17 +172,17 @@ def build_col2_components(
     cost_w = max(40, int(40 * display_config_for(editor).text_scale))
     select_w = max(38, int(38 * display_config_for(editor).text_scale))
     gap = max(2, int(2 * display_config_for(editor).text_scale))
-    btn_w = inner_w - cost_w - select_w - (gap * 2)
+    help_w = max(24, int(24 * editor.display_config.text_scale))
+    btn_w = inner_w - cost_w - select_w - help_w - (gap * 3)
 
-    row_spacing = small_h + 3
-    for idx, row in enumerate(COMPONENT_ROWS):
+    cy = 0
+    for row in COMPONENT_ROWS:
         cx = 0
-        cy = idx * row_spacing
 
         key, label, cost_display = row["key"], row["label"], ("~" if row["is_dynamic"] else str(row["default_cost"]))
 
         btn = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(cx, cy, btn_w, small_h),
+            relative_rect=pygame.Rect(cx, cy, btn_w, -1),
             text=f"[ ] {label}",
             manager=editor.manager,
             container=editor._comp_scroll_container,
@@ -191,6 +192,11 @@ def build_col2_components(
         editor._elements.append(btn)
 
         cx += btn_w + gap
+        help_btn = make_help_button(editor, editor._comp_scroll_container, label)
+        help_btn.set_relative_position((cx, cy))
+        editor._comp_help_buttons[key] = help_btn
+        editor._elements.append(help_btn)
+        cx += help_w + gap
         cost_lbl = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(cx, cy, cost_w, small_h),
             text=cost_display,
@@ -211,9 +217,9 @@ def build_col2_components(
         )
         editor._comp_select_btns[key] = sel_btn
         editor._elements.append(sel_btn)
+        cy += max(small_h, btn.relative_rect.height, help_w) + 3
 
-    total_content_h = len(COMPONENT_ROWS) * row_spacing
-    editor._comp_scroll_container.set_scrollable_area_dimensions((inner_w, total_content_h))
+    editor._comp_scroll_container.set_scrollable_area_dimensions((inner_w, cy))
 
     c2y += avail_h + pad
     return c2y

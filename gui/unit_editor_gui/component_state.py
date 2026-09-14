@@ -5,7 +5,6 @@ Component selection, component/ability toggles, toggle label updates,
 and hull restriction enforcement.
 """
 
-import pygame_gui
 from constants import HullSize, get_min_antimatter_capacity
 from custom_unit_templates import (
     HULL_RESTRICTIONS,
@@ -14,7 +13,7 @@ from custom_unit_templates import (
     ABILITY_REQUIRED_COMPONENTS,
 )
 from .catalog import COMPONENT_ROWS, HYPERDRIVE_TYPES, CLOAKING_TYPES, ability_button_text
-from .widget_factory import replace_dropdown
+from .widget_factory import replace_dropdown, set_wrapped_button_text
 from .turret_editor import rebuild_turret_list, hide_turret_list
 
 
@@ -75,7 +74,20 @@ def update_component_toggle_labels(editor) -> None:
         enabled = getattr(c, key, False)
         btn = editor._comp_toggles.get(key)
         if btn:
-            btn.set_text(f"[x] {label}" if enabled else f"[ ] {label}")
+            set_wrapped_button_text(btn, f"[x] {label}" if enabled else f"[ ] {label}",
+                                    editor._comp_help_buttons[key].relative_rect.height)
+    # Wrapping can change when the selection marker changes; keep each row intact.
+    y = 0
+    for key, btn in editor._comp_toggles.items():
+        widgets = [btn, editor._comp_help_buttons[key], editor._comp_cost_labels[key],
+                   editor._comp_select_btns[key]]
+        height = max(widget.relative_rect.height for widget in widgets)
+        for widget in widgets:
+            widget.set_relative_position((widget.relative_rect.x, y))
+        y += height + 3
+    if editor._comp_scroll_container:
+        width = max(btn.relative_rect.right for btn in editor._comp_select_btns.values())
+        editor._comp_scroll_container.set_scrollable_area_dimensions((width, y))
 
 
 def update_ability_toggle_labels(editor) -> None:
@@ -95,12 +107,16 @@ def update_ability_toggle_labels(editor) -> None:
             btn.disable()
         else:
             btn.enable()
-        btn.set_text(ability_button_text(aname, aname in editor._selected_abilities, missing))
+        set_wrapped_button_text(btn, ability_button_text(aname, aname in editor._selected_abilities, missing),
+                                editor._ability_help_buttons[aname].relative_rect.height)
         # Dynamic-height buttons wrap within the column; reflow when requirements change.
         btn.set_relative_position((0, y))
-        y += btn.relative_rect.height + 3
+        help_btn = editor._ability_help_buttons[aname]
+        gap = max(2, int(2 * editor.display_config.text_scale))
+        help_btn.set_relative_position((btn.relative_rect.right + gap, y))
+        y += max(btn.relative_rect.height, help_btn.relative_rect.height) + 3
     if editor._ability_scroll_container:
-        width = next(iter(editor._ability_buttons.values())).relative_rect.width
+        width = next(iter(editor._ability_help_buttons.values())).relative_rect.right
         editor._ability_scroll_container.set_scrollable_area_dimensions((width, y))
 
 

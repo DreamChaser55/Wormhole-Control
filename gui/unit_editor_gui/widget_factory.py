@@ -128,3 +128,20 @@ def make_button(
         object_id=object_id,
     )
 
+
+def make_help_button(editor, container, title: str):
+    """Build a square help control independent of its equipment toggle's state."""
+    size = max(24, int(24 * editor.display_config.text_scale))
+    button = make_button(pygame.Rect(0, 0, size, size), "?", editor.manager,
+                         container, "#editor_help_button")
+    button.set_tooltip(f"About {title}")
+    return button
+
+
+def set_wrapped_button_text(button, text: str, minimum_height: int) -> None:
+    """Measure wrapped text, then retain a comfortable minimum click target."""
+    button.set_text(text)
+    width = button.relative_rect.width
+    button.set_dimensions((width, -1))
+    button.set_dimensions((width, max(minimum_height, button.relative_rect.height)))
+

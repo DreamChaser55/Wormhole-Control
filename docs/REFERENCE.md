@@ -133,6 +133,13 @@ Custom designs use a separate [user-data library](#custom-design-storage) and ar
 available to human players only; automated players use public built-in designs.
 The Designer and retrofit editor enforce the same complete equipment rules.
 
+Click **?** beside a component or ability toggle in the Unit Editor to read its
+description and key rules, including requirements and costs. Help is available
+even when that equipment cannot currently be selected. The dialog also covers
+Counter-Intelligence. Scroll to read longer entries; use **Close**, the window's
+**X**, or **Esc** to return to the unchanged design. While help is open, editor
+controls and game actions are blocked; **Esc** dismisses help before the editor.
+
 ### Hull sizes
 
 Hull capacity is the budget for installed equipment. Minimum AM applies when
