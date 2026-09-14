@@ -201,7 +201,7 @@ class Weapons(UnitComponent):
             variant_str = turret.variant.name.replace('_', ' ').title()
             type_str = turret.turret_type.name.replace('_', ' ').title()
             
-            header_text = f"â€¢ Turret {i + 1}: {variant_str} {type_str}"
+            header_text = f"• Turret {i + 1}: {variant_str} {type_str}"
             data.append({
                 'type': 'label',
                 'text': header_text,
@@ -220,7 +220,7 @@ class Weapons(UnitComponent):
             if od_atk_bonus > 0:
                 bonus_parts.append(f"+{int(od_atk_bonus * 100)}% OD")
             if bonus_parts:
-                stats_text = f"Damage: {turret.damage} ({', '.join(bonus_parts)} â†’ {effective_dmg:.1f}) | Range: {turret.range} | Cooldown: {turret.cooldown}t"
+                stats_text = f"Damage: {turret.damage} ({', '.join(bonus_parts)} → {effective_dmg:.1f}) | Range: {turret.range} | Cooldown: {turret.cooldown}t"
             else:
                 stats_text = f"Damage: {turret.damage} | Range: {turret.range} | Cooldown: {turret.cooldown}t"
             data.append({
@@ -261,7 +261,7 @@ class Weapons(UnitComponent):
         if not self.turrets:
             data.append({
                 'type': 'label',
-                'text': "â€¢ Turrets: None",
+                'text': "• Turrets: None",
                 'object_id': '#sidebar_status_idle_label',
                 'height': 18,
                 'indent_level': 1
@@ -271,7 +271,7 @@ class Weapons(UnitComponent):
         xp_dmg_mult = self.unit.xp_multiplier(XP_WEAPON_DAMAGE_BONUS)
         data.append({
             'type': 'label',
-            'text': f"â€¢ Turrets ({len(self.turrets)}):",
+            'text': f"• Turrets ({len(self.turrets)}):",
             'object_id': '#sidebar_component_header_label',
             'height': 18,
             'indent_level': 1

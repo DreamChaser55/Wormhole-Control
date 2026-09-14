@@ -974,6 +974,24 @@ def test_weapons_sidebar_data():
     assert "Status: On Cooldown (2t)" in t2_status['text']
     assert "Target: Enemy Cruisey (Engines)" in t2_status['text']
 
+    # Verify unicode characters and no mojibake
+    assert t1_header['text'].startswith("• Turret 1")
+    assert t2_header['text'].startswith("• Turret 2")
+    assert all("â" not in row.get('text', '') for row in sidebar_data)
+
+    # Verify basic sidebar data
+    basic_data = weapons.get_basic_sidebar_data(mock_game)
+    assert basic_data[0]['text'] == "• Turrets (2):"
+    assert basic_data[1]['text'].startswith("Turret 1:")
+    assert basic_data[2]['text'].startswith("Turret 2:")
+    assert all("â" not in row.get('text', '') for row in basic_data)
+
+    # Verify empty basic sidebar data
+    empty_weapons = Weapons(unit)
+    empty_basic_data = empty_weapons.get_basic_sidebar_data(mock_game)
+    assert empty_basic_data[0]['text'] == "• Turrets: None"
+    assert all("â" not in row.get('text', '') for row in empty_basic_data)
+
 
 def test_unit_template_name_assignment():
     from unittest.mock import MagicMock
