@@ -39,7 +39,7 @@ class AbilityDefinition:
             return ['enemy']
         if self.ability_type.value in ('evasive_formation', 'emergency_recovery'):
             return ['self']
-        if self.ability_type.value == 'guardian_link':
+        if self.ability_type.value in ('guardian_link', 'multiply_antimatter'):
             return ['self', 'ally']
         if self.ability_type.value == 'tractor_tether':
             return ['self', 'ally', 'enemy']

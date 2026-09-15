@@ -231,7 +231,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 6, shared field
+Read `observation.command_catalog`: it contains command contract version 7, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -344,15 +344,15 @@ matching an ordinary warship with identical visible equipment. Catalog entries e
 generic; an already safe name requires no change. Enemy observations omit all three
 order-layer fields and never expose design identity, actual hull usage, upkeep or
 construction/refit details. These rules apply to all enemy units, preserving owners'
-and allies' existing access. Observation schema is 7, command contract is 6, and the
+and allies' existing access. Observation schema is 10, command contract is 6, and the
 socket envelope remains protocol 3.
 
 ## Tactical ability commands
 
-Observation schema 9 and command contract 6 expose a deduplicated `ability_catalog`,
+Observation schema 10 and command contract 7 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v5`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v6`; unused OpenAI command fields stay null.
 
 
 ```json
@@ -360,34 +360,30 @@ response name is `wormhole_control_turn_v5`; unused OpenAI command fields stay n
 {"type":"use_ability","unit_ids":[101],"ability":"tractor_tether","target_id":102}
 {"type":"use_ability","unit_ids":[101],"ability":"mine_clearing_sweep","position":[900,0]}
 {"type":"use_ability","unit_ids":[101],"ability":"guardian_link","target_id":102}
-{"type":"use_ability","unit_ids":[101],"ability":"fuel_cache","position":[200,0]}
+{"type":"use_ability","unit_ids":[101],"ability":"multiply_antimatter"}
 {"type":"use_ability","unit_ids":[101],"ability":"nebula_catalyst","target_id":201,"position":[200,0]}
-{"type":"recover_fuel_cache","unit_ids":[101],"target_id":301,"queue":true}
+{"type":"transfer_antimatter","unit_ids":[101],"target_id":102}
+{"type":"take_antimatter","unit_ids":[101],"target_id":102,"queue":true}
+{"type":"continuous_antimatter_transport","unit_ids":[101],"source_id":102,"target_id":103,"queue":false}
 {"type":"cancel_ability","unit_ids":[101],"ability":"guardian_link","queue":false}
 ```
 
 These are separate command examples, not an executable batch; substitute IDs from
 a fresh observation. Position casts require local range, while unit-targeted
-casts and recovery approach automatically. Nebula Catalyst's `target_id` is a known nebula, not a ship.
-Only active Tractor/Guardian links are cancellable. Recovery needs
-functional storage/free capacity, but no ability module. Enemy visible caches can
-be recovered. Ghost emitters and caches persist indefinitely with caps of one and
-three respectively per deploying ship across all sectors. Partial recovery and
-decoy identification do not free slots.
+casts and antimatter exchange approach automatically. Nebula Catalyst's `target_id` is a known nebula. Only active Tractor/Guardian links are cancellable. Ghost emitters persist indefinitely with one surviving emitter per deploying ship across the galaxy.
 
-Preflight reserves queued cast costs/slots and projects guaranteed immediate
-recovery, never speculative fuel from future travel. Observe newly deployed IDs
-before targeting them. See the [tactical ability overview](REFERENCE.md#deployment-and-link-abilities)
-for Catalyst requirements, targeting and selective effects, and the linked ability
-table for costs and timing. Existing campaign starts and automated-player settings
-are preserved.
+Transfer and Take need functional storage and a friendly/allied target. Take moves the recipient; Transfer moves the donor. Exchange is limited to 25 AM per owner turn within 200 units and ends on empty supply or full capacity. The repeating transport command takes one mobile actor and two distinct friendly unit endpoints. It waits for supply/space and protects a buffered return reserve. Its phase, waiting reason, and reserve appear in the current order. See [antimatter logistics](REFERENCE.md#antimatter-logistics) for route rules and the three public Logistics designs.
+
+Multiply Antimatter pays 20 AM, then doubles friendly current fuel within 500 units, capped by storage. Empty tanks gain nothing. The caster and every recipient that gains fuel have independent 30-round deadlines; the recipient deadline is shared across casters. Pulses with no positive net generation are rejected. Read the projected gains and net AM in ability state. Immediate pulse gains can fund later commands in the same batch; queued pulses reserve only their cost, and future pickups/travel cannot finance an immediate cast. Unused strict-response fields, including `source_id`, remain null.
+
+Preflight reserves queued cast costs and slots. Observe newly deployed emitter IDs before targeting them. See the [tactical ability overview](REFERENCE.md#deployment-and-link-abilities) for the other ability rules.
 
 Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.
 
 
 ## Turn-start event summary
 
-Every schema-9 observation ends with `turn_summary`: reporting rounds (`from_turn`
+Every schema-10 observation ends with `turn_summary`: reporting rounds (`from_turn`
 and `to_turn`), grouped event `entries`, net `economy` changes, and `omitted_count`.
 Read this briefing before choosing orders. It covers the previous End Turn's
 resolution and intervening activity through this turn's opening effects. It is
@@ -397,5 +393,5 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 6 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 7 remain unchanged; no acknowledgement
 command is required from Codex.

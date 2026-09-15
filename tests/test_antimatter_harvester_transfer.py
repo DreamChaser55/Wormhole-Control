@@ -1,5 +1,6 @@
 from display_config import DisplayConfig
 from unittest.mock import MagicMock
+from types import SimpleNamespace
 from geometry import Position
 from domain.units import Unit
 from domain.celestials import Star
@@ -145,6 +146,7 @@ def test_transfer_antimatter_order_moves_am_when_in_range():
 
     galaxy = MagicMock()
     galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    galaxy.systems = {"Sol": SimpleNamespace(hexes={(0, 0): SimpleNamespace(units=[source, target])})}
     source.game.galaxy = galaxy
     source.in_galaxy = galaxy
 
@@ -175,6 +177,7 @@ def test_transfer_antimatter_order_uses_target_approach_when_out_of_range():
 
     galaxy = MagicMock()
     galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    galaxy.systems = {"Sol": SimpleNamespace(hexes={(0, 0): SimpleNamespace(units=[source, target])})}
     source.game.galaxy = galaxy
 
     order = TransferAntimatterOrder(source, {"target_unit_id": target.id})
@@ -196,6 +199,7 @@ def test_transfer_antimatter_order_fails_for_unfriendly_target():
 
     galaxy = MagicMock()
     galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    galaxy.systems = {"Sol": SimpleNamespace(hexes={(0, 0): SimpleNamespace(units=[source, target])})}
     source.game.galaxy = galaxy
 
     order = TransferAntimatterOrder(source, {"target_unit_id": target.id})
@@ -214,6 +218,7 @@ def test_transfer_antimatter_order_completes_when_target_full():
 
     galaxy = MagicMock()
     galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    galaxy.systems = {"Sol": SimpleNamespace(hexes={(0, 0): SimpleNamespace(units=[source, target])})}
     source.game.galaxy = galaxy
     source.in_galaxy = galaxy
 
@@ -224,7 +229,7 @@ def test_transfer_antimatter_order_completes_when_target_full():
     assert order.status == OrderStatus.COMPLETED
 
 
-def test_harvester_transfer_stops_at_60_reserve():
+def test_explicit_harvester_transfer_uses_full_tank():
     player = ComponentPlayer()
     source = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
     target = make_unit(player, position=Position(0, 0), in_hex=(0, 0))
@@ -238,6 +243,7 @@ def test_harvester_transfer_stops_at_60_reserve():
 
     galaxy = MagicMock()
     galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    galaxy.systems = {"Sol": SimpleNamespace(hexes={(0, 0): SimpleNamespace(units=[source, target])})}
     source.game.galaxy = galaxy
     source.in_galaxy = galaxy
 
@@ -245,10 +251,10 @@ def test_harvester_transfer_stops_at_60_reserve():
     order.execute(galaxy)
     order.update(galaxy)
 
-    # Should transfer only 10.0 (70 - 60) and hit reserve threshold of 60.0
-    assert target.antimatter_component.current_amount == 10.0
-    assert source.antimatter_component.current_amount == 60.0
-    assert order.status == OrderStatus.COMPLETED
+    # Explicit transfers use the same 25 AM rate for harvesters.
+    assert target.antimatter_component.current_amount == 25.0
+    assert source.antimatter_component.current_amount == 45.0
+    assert order.status == OrderStatus.IN_PROGRESS
 
 
 def test_non_harvester_transfer_can_deplete_to_zero():
@@ -261,6 +267,7 @@ def test_non_harvester_transfer_can_deplete_to_zero():
 
     galaxy = MagicMock()
     galaxy.get_unit_by_id.side_effect = lambda uid: target if uid == target.id else None
+    galaxy.systems = {"Sol": SimpleNamespace(hexes={(0, 0): SimpleNamespace(units=[source, target])})}
     source.game.galaxy = galaxy
     source.in_galaxy = galaxy
 

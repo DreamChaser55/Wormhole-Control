@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 6
+CONTRACT_VERSION = 7
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -56,6 +56,8 @@ COMMAND_SPECS = {
     "deploy_unit": _spec("Deploy the identified docked craft.", ("target_id",)),
     "deploy_all_wings": _spec("Deploy all docked wings.", capability=("strikecraft_bay_component",)),
     "transfer_antimatter": _spec("Transfer antimatter to a friendly unit.", ("target_id",), capability=("antimatter_component",)),
+    "take_antimatter": _spec("Approach a friendly source and take antimatter without changing its orders.", ("target_id",), capability=("antimatter_component",)),
+    "continuous_antimatter_transport": _spec("Repeat pickups from source_id and deliveries to target_id with automatic return fuel reserves.", ("source_id", "target_id"), capability=("antimatter_component", "engines_component"), single_unit=True),
     "continuous_resupply": _spec("Repeat harvesting and friendly refuelling indefinitely.", ("target_id",), capability=("harvester_component", "antimatter_component")),
     "lay_minefield": _spec("Lay anti_ship (default) or anti_strikecraft mines.", ("minefield_type",), ()),
     "trade": _spec("Trade with a friendly active habitat.", ("target_id",), capability=("trade_component",)),
@@ -70,7 +72,6 @@ COMMAND_SPECS = {
     "eliminate_agent": _spec("Approach and eliminate a discovered enemy agent on a friendly asset.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
     "sabotage": _spec("Immediately set an owned embedded agent's sabotage operation.", ("agent_id", "sabotage_type"), queued=False, player_level=True),
     "relocate_agent": _spec("Immediately relocate an owned embedded agent to a visible in-range enemy host.", ("agent_id", "target_id"), queued=False, player_level=True),
-    "recover_fuel_cache": _spec("Approach and recover fuel from a visible cache, including enemy caches.", ("target_id",), capability=("antimatter_component",), single_unit=True),
     "cancel_ability": _spec("Release an active Tractor Tether or Guardian Link without refunding its cost.", ("ability",), queued=False, single_unit=True),
     "use_ability": _spec("Use an ability; target requirements are provided in ability options.", ("ability", "target_id", "position"), ("ability",), capability=("ability_component",)),
     "enter_gas_giant": _spec("Hide eligible ships in a gas giant atmosphere.", ("target_id",), capability=("engines_component",)),
@@ -99,6 +100,7 @@ COMMAND_PROPERTIES = {
     "minefield_type": {"type": ["string", "null"], "enum": [None, "anti_ship", "anti_strikecraft"]},
     "target_component": NULLABLE_STRING, "message": NULLABLE_STRING, "order_id": NULLABLE_STRING,
     "agent_id": {"type": ["integer", "null"]},
+    "source_id": {"type": ["integer", "null"]},
     "sabotage_type": {"type": ["string", "null"], "enum": [None, "engines", "weapons", "defenses", "hyperdrive", "sensors", "antimatter", "economy", "growth"]},
     "waypoints": {"anyOf": [{"type": "array", "items": WAYPOINT_SCHEMA, "minItems": 1, "maxItems": MAX_WAYPOINTS}, {"type": "null"}]},
 }
@@ -131,7 +133,7 @@ def validate_command(raw):
         if value is None:
             require(field not in spec.required, f"{kind} requires {field}.")
             continue
-        if field in {"target_id", "agent_id"}:
+        if field in {"target_id", "agent_id", "source_id"}:
             require(type(value) is int and value >= 0, f"{field} must be a nonnegative integer.")
         elif field == "amount":
             require(type(value) in (int, float) and _finite(value) and value > 0, "amount must be finite and positive.")

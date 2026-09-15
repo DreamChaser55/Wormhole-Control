@@ -77,7 +77,7 @@ class AbilityType(Enum):
     TRACTOR_TETHER = "tractor_tether"
     MINE_CLEARING_SWEEP = "mine_clearing_sweep"
     GUARDIAN_LINK = "guardian_link"
-    FUEL_CACHE = "fuel_cache"
+    MULTIPLY_ANTIMATTER = "multiply_antimatter"
     NEBULA_CATALYST = "nebula_catalyst"
 
 

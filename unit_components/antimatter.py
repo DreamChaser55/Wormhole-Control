@@ -79,6 +79,10 @@ class AntimatterStorage(UnitComponent):
         data = super().get_sidebar_data(game_state)
         status = f"{self.current_amount:.1f}/{self.max_capacity:.1f}"
         data.append({'type': 'label', 'text': f"Antimatter: {status}", 'object_id': '#sidebar_info_label', 'height': 20})
+        remaining = max(0, self.unit.multiply_receive_ready_round - game_state.turn_number) if game_state else 0
+        from component_visibility import unit_details_are_public_in_game
+        if remaining and unit_details_are_public_in_game(self.unit, game_state):
+            data.append({'type': 'label', 'text': f'Multiplication recovery: {remaining} rounds', 'height': 20})
         return data
 
     def get_basic_sidebar_data(self, game_state: 'Game') -> list[dict]:
@@ -98,11 +102,8 @@ class AntimatterStorage(UnitComponent):
 class AntimatterHarvester(UnitComponent):
     """Component that lets a unit generate new antimatter for its own storage.
 
-    Only units equipped with this component can replenish antimatter, and
-    only while positioned near a star (same system+hex as a Star, within
-    harvest_range of it). Units without a harvester must be topped up by
-    another unit transferring antimatter from its own storage instead
-    (see TransferAntimatterOrder).
+    Harvests near a star or inside a hydrogen nebula. Storage-equipped units
+    can also exchange fuel, or receive a Multiply Antimatter pulse.
     """
     STATE_CONFIG = ('harvest_rate', 'harvest_range')
     STATE_RUNTIME = ('is_harvesting',)

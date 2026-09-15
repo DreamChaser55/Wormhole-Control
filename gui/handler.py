@@ -31,6 +31,7 @@ class GUI_Handler:
         screen_res = display_config.resolution
         self.screen_res = screen_res
         self.game_instance = game_instance
+        self.antimatter_transport_window = None
         self.turn_briefing_window = None
         self.turn_summary_button = None
         self.scale_x = screen_res.x / 1280.0
@@ -194,6 +195,8 @@ class GUI_Handler:
         self.menu_button = self.resume_button = self.ai_settings_button = self.save_game_button = self.ingame_load_game_button = self.quit_to_menu_button = None
         self.unit_editor_button = None
 
+        if self.antimatter_transport_window:
+            self.antimatter_transport_window.close()
         from .turn_briefing_window import close_briefing
         close_briefing(self)
         self.turn_summary_button = None

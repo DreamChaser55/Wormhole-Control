@@ -144,6 +144,22 @@ combat before advancing to the next player.
 | Crystal | Mine Comets and unload at a Crystal Refinery; some colonies also produce it passively |
 | Antimatter (AM) | Per-ship fuel for movement and equipment; harvest near stars or inside hydrogen nebulae, then transfer to other ships |
 
+### Antimatter logistics
+
+Every unit with functional Antimatter Storage can donate or receive fuel. **Transfer Antimatter** moves the donor toward the recipient; **Take Antimatter** moves the recipient toward the donor without changing the donor's orders or stance. Both work with owned/allied ships and stations, within 200 units in the same sector, at up to 25 AM per acting unit's owner turn. They conserve fuel and finish when the recipient fills or the donor empties. Shift queues either order. Manual transfers may empty harvesters; Continuous Resupply alone retains its 60 AM reserve. Harvesters remain necessary for stellar and hydrogen-nebula collection.
+
+For unattended deliveries, select one mobile transporter and open **Continuous Antimatter Transport...** on a friendly depot. Choose source and destination, then Start or Queue. The repeating root follows those unit IDs and their current positions. It loads to capacity, or departs with a partial load after the source empties if it can pay for the round trip and deliver positive cargo. It waits for insufficient supply or a full destination, and reserves the return trip's fuel before each donation. Stop it with Cancel Orders; work queued after it waits indefinitely.
+
+Journey estimates account for operational engines/hyperdrive, wormhole topology, collision detours, terrain drag, and active equipment consumption. Each leg reserves `ceil(1.25 × estimated AM) + 10` when travel costs fuel, otherwise zero. Future harvesting and multiplication do not finance the estimate. Unreachable routes, insufficient tank capacity for a productive round trip, or invalid endpoints fail; temporary shortages wait. Damage or changing routes can still interrupt delivery. The sidebar reports phase, waiting reason, and return reserve.
+
+| Logistics design | Hull | AM capacity | Hull used | Credits | Build turns |
+|---|---|---:|---:|---:|---:|
+| Antimatter Transporter | Medium | 600 | 49/50 | 1970 | 20 |
+| Antimatter Storage Station | Large | 1600 | 90/100 | 3700 | 29 |
+| Antimatter Cache Station | **Small** | **460** | 25/25 | 1000 | 12 |
+
+The transporter has speed 100 and Advanced Hyperdrive range 5. Both stations are stationary. These designs have storage, sensors and defenses, with no harvester or special ability, and start with full tanks under the normal construction rules.
+
 **Continuous Mine** fills cargo, unloads at a compatible refinery and repeats.
 **Continuous Resupply** alternates harvesting at a star and refueling friendly or
 allied ships. **Continuous Trade** travels between active Civilian Habitats in
@@ -325,16 +341,19 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Blockade Runner | Economy | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Designed for covert inter-system trade. Inter-system travel. Needs active habitats in different sectors. |
 | Industrial Hub | Economy | LARGE station | 92.99/100 | 3790 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
 | Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
+| Antimatter Cache Station | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Small stationary fuel reserve with 460 AM storage. Accept deliveries and supply local friendly ships through Transfer Antimatter or Take Antimatter. |
 | Shipyard | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Designed for stationary construction. Stationary installation. |
 | Constructor | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Designed for mobile construction and refitting. Inter-system travel. |
 | Fuel Depot | Logistics | MEDIUM station | 43.00/50 | 1790 | 19 | 0.43 | Designed for stationary fuel collection. Stationary installation. Harvest near stars or inside hydrogen nebulae. |
 | Antimatter Harvester | Logistics | MEDIUM ship | 45.00/50 | 1850 | 19 | 0.45 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Small Repair Station | Logistics | MEDIUM station | 47.99/50 | 1940 | 20 | 0.48 | Designed for stationary repair. Stationary installation. |
+| Antimatter Transporter | Logistics | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Dedicated antimatter transport. Inter-system travel. Take Antimatter loads from friendly units; Continuous Antimatter Transport repeats deliveries with an automatic return reserve. |
 | Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |
 | Nebula Tender | Logistics | LARGE ship | 80.50/100 | 3415 | 27 | 0.81 | Designed for nebula and fuel support. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Fleet Tanker | Logistics | LARGE ship | 87.50/100 | 3625 | 28 | 0.88 | Designed for fleet resupply. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Fleet Repair Ship | Logistics | LARGE ship | 87.99/100 | 3640 | 28 | 0.88 | Designed for fleet repair. Inter-system travel. |
 | Heavy Shipyard | Logistics | LARGE station | 88.79/100 | 3664 | 28 | 0.89 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
+| Antimatter Storage Station | Logistics | LARGE station | 90.00/100 | 3700 | 29 | 0.90 | Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Transfer Antimatter or receiver-issued Take Antimatter. |
 | Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
 | Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
 | Covert Intelligence Ship | Special Operations | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Externally identical to the Patrol Escort, with two hidden intelligence agents. Constructed under the cover name ‘Patrol Escort’. After construction, you may rename it to another generic warship name; avoid names that reveal its intelligence role. Inter-system travel. |
@@ -399,7 +418,7 @@ can block queued work until cancelled or replaced.
 ### Order types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **37 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **38 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order type | Action |
@@ -424,7 +443,9 @@ The `OrderType` enum defines **37 order types**, including the persistent `STANC
 | `DEPLOY_ALL_WINGS` | Launch the carrier's wings. |
 | `USE_ABILITY` | Activate an equipped ability. |
 | `CONTINUOUS_MINE` | Repeat mining and refinery deliveries. |
-| `TRANSFER_ANTIMATTER` | Refuel a friendly/allied ship. |
+| `TRANSFER_ANTIMATTER` | Approach and donate fuel to a friendly/allied unit. |
+| `TAKE_ANTIMATTER` | Approach and take fuel from a friendly/allied unit. |
+| `CONTINUOUS_ANTIMATTER_TRANSPORT` | Repeatedly load at one depot and deliver to another, reserving return fuel. |
 | `CONTINUOUS_RESUPPLY` | Alternate star harvesting and fleet refueling. |
 | `LAY_MINEFIELD` | Deploy a minefield at the ship's position. |
 | `TRADE` | Visit an active habitat in another sector for income. |
@@ -440,7 +461,6 @@ The `OrderType` enum defines **37 order types**, including the persistent `STANC
 | `LEAVE_GAS_GIANT` | Emerge when a safe departure position is available. |
 | `ATTACK_RUN` | Bomber approach and salvo created by the carrier ability. |
 | `EMERGENCY_RECOVERY` | Wing return created by the carrier ability. |
-| `RECOVER_FUEL_CACHE` | Approach and collect fuel from a visible cache. |
 
 ### Movement and collision avoidance
 
@@ -523,7 +543,7 @@ There are **21 special abilities** registered in the game.
 | **Tractor Tether** | 6 | 3 | 400 | 20 | Engines | Unit |
 | **Mine-Clearing Sweep** | 4 | 0 | 1000 | 25 | Sensors, Minelayer | Position |
 | **Guardian Link** | 7 | 3 | 450 | 25 | Defenses | Unit |
-| **Fuel Cache** | 4 | 0 | 250 | 55 | Antimatter Storage | Position |
+| **Multiply Antimatter** | 30 | 0 | 500 | 20 | Antimatter Storage | Self |
 | **Nebula Catalyst** | 7 | 3 | 750 | 30 | Sensors, Antimatter Storage | Nebula + Position |
 <!-- END GENERATED: abilities -->
 
@@ -545,7 +565,7 @@ There are **21 special abilities** registered in the game.
 ### Deployment and link abilities
 
 Position casts require a legal location within local range. Tractor/Guardian
-unit targeting and fuel recovery approach automatically. Cooldowns and finite
+unit targeting and antimatter exchange approach automatically. Cooldowns and finite
 durations advance at the caster owner's turn start. Required equipment must be
 operational, and activation requires enough AM.
 
@@ -561,17 +581,14 @@ operational, and activation requires enough AM.
   to the guardian. The redirected share is reduced by 25% before guardian defenses.
   It protects an ally, requires continued range, and can be cancelled explicitly.
   A target can have only one incoming link of each type; Guardian chains cannot form cycles.
-- **Fuel Cache:** Spends 55 AM to deploy a persistent pod holding 50 AM. Recovery
-  requires functional storage with free capacity and an explicit order within
-  150 units; it needs no Ability component. Enemies can recover visible caches.
-  Each deploying ship can have three surviving caches across the galaxy.
+- **Multiply Antimatter:** Pay 20 AM, then double current fuel in friendly/allied tanks within 500 units in the same sector, including the caster, capped by each tank's capacity. The caster's seed is its fuel after paying the cost. Empty tanks gain nothing. Requires functional storage and an Ability component; the caster must be deployed and enabled. Recipients may be disabled but must have functional storage and be deployed, alive, and outside gas giant atmospheres. Rejects pulses whose total gains do not exceed the 20 AM cost. The caster has a 30-round cooldown; each recipient that gains fuel has a shared 30-round recovery period across all casters. These deadlines survive refits, capture, docking, and saving. The pulse is centered on the caster and needs no target or approach.
 - **Nebula Catalyst:** Requires **Sensors and Antimatter Storage**; a Harvester is
   optional. Select a known nebula in the current sector and a position inside it
   within cast range. One 600-radius patch per ship enhances hydrogen fuel savings
   and nitrogen cooling for allies, and oxygen splash damage and dust sensor
   penalties for enemies. Baseline nebula effects continue outside those enhancements.
 
-Ghost emitters and fuel caches have no expiry. Identifying a decoy or partially
+Ghost emitters have no expiry. Identifying a decoy or partially
 recovering a cache does not free a deployment slot. Source destruction, capture
 or refitting does not reset the cap attached to that deploying ship. Active links
 end if their participants cease to meet deployment, equipment, allegiance or range

@@ -15,6 +15,9 @@ class ApplicationTurnPresentation:
         if gui:
             from gui.turn_briefing_window import close_briefing, show_briefing
             close_briefing(gui)
+            transport = getattr(gui, 'antimatter_transport_window', None)
+            if transport:
+                transport.close()
             gui.close_communications_window()
             gui.close_unit_editor()
             gui.close_retrofit_wizard()

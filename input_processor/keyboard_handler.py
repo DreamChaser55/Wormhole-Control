@@ -21,6 +21,9 @@ def handle_keyboard_panning(game, gui, time_delta: float) -> None:
     catalog = getattr(gui, 'unit_catalog_window', None)
     if catalog and catalog.window.alive() is True:
         return
+    from gui.antimatter_transport_window import is_open as transport_is_open
+    if transport_is_open(gui):
+        return
     keys = pygame.key.get_pressed()
     is_typing = False
     if hasattr(gui, 'is_any_text_entry_focused'):

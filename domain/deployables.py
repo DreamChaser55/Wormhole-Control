@@ -1,7 +1,7 @@
 """Persistent tactical objects, deliberately separate from ships."""
 from domain.identity import GameObject
 from constants import HullSize
-from tactical_balance import DEPLOYABLE_HP, CACHE_FUEL, CATALYST_RADIUS
+from tactical_balance import DEPLOYABLE_HP, CATALYST_RADIUS
 
 
 class DeploymentProvenance:
@@ -36,9 +36,10 @@ class Deployable(DeploymentProvenance, GameObject):
         self.owner = owner
         self.kind = kind
         self._deploying_ship_id = deploying_ship_id
-        self.name = 'Ghost Emitter' if kind == 'ghost_fleet' else 'Fuel Cache'
+        if kind != 'ghost_fleet':
+            raise ValueError('Unknown deployable kind')
+        self.name = 'Ghost Emitter'
         self.current_hit_points = DEPLOYABLE_HP
-        self.fuel = float(CACHE_FUEL) if kind == 'fuel_cache' else 0.0
         self.identified_player_ids = set()
         self.in_galaxy = galaxy
 

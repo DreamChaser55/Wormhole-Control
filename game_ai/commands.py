@@ -107,8 +107,8 @@ class _BatchProjection:
         self._tactical_used = set()
         self._tactical_links = {}
         self._tactical_deployments = {}
-        self._tactical_cache_fuel = {}
-        self._tactical_recovered = {}
+        self._multiply_ready = {}
+        self._tactical_gained = {}
         self._tactical_cancelled = set()
         self._inhibitor_static_zones: dict[tuple[str, tuple[int, int]], list[Any]] = {}
         self._inhibitor_dynamic_zones: dict[
@@ -443,12 +443,20 @@ class _BatchProjection:
             planned.append(unit)
         return planned
 
+    def fuel_amount(self, unit):
+        storage = unit.antimatter_component
+        return self._ci_antimatter.get(unit.id, float(storage.current_amount) if storage else 0) + self._tactical_gained.get(unit.id, 0) - self._tactical_spent.get(unit.id, 0)
+
+    def multiplication_preview(self, unit):
+        from antimatter_multiplication import preview
+        excluded = self._unavailable_units | {uid for uid, hidden in self._settled_hidden.items() if hidden}
+        return preview(unit, self.game.galaxy, self.fuel_amount,
+            lambda target: self._multiply_ready.get(target.id, target.multiply_receive_ready_round), excluded)
+
     def tactical_budget(self, unit):
         from unit_components.abilities.registry import ABILITY_DEFINITIONS
         costs = {kind.value: definition.antimatter_cost for kind, definition in ABILITY_DEFINITIONS.items()}
-        storage = unit.antimatter_component
-        available = self._ci_antimatter.get(unit.id, float(storage.current_amount) if storage else 0)
-        available += self._tactical_recovered.get(unit.id, 0) - self._tactical_spent.get(unit.id, 0)
+        available = self.fuel_amount(unit)
         for entry in self._order_ledger.get(unit.id, ()):
             kind = entry['parameters'].get('ability_type')
             if entry['type'] == 'use_ability' and not entry.get('settled') and kind in costs:
@@ -498,10 +506,12 @@ class _BatchProjection:
                     reserved_links[(kind, entry['parameters'].get('target_unit_id', entry['parameters'].get('target_id')))] = uid
         if (unit.id, command.ability) in used:
             raise _Rejected('capability_unavailable', 'Ability already used or reserved.')
+        if command.ability == 'multiply_antimatter' and not any(not e.get('settled') for e in self._order_ledger.get(unit.id, ())):
+            if sum(amount for _, amount in self.multiplication_preview(unit)) <= spec.cost:
+                raise _Rejected('target_unavailable', 'The pulse would produce no net antimatter.')
         if spec.cost > self.tactical_budget(unit):
             raise _Rejected('insufficient_resources', 'Ability fuel is already spent or reserved.')
-        surviving = [obj for obj in deployments(self.game.galaxy, unit.id, command.ability)
-                     if self._tactical_cache_fuel.get(obj.id, 1) > 0]
+        surviving = deployments(self.game.galaxy, unit.id, command.ability)
         if spec.cap and len(surviving) + count >= spec.cap:
             raise _Rejected('deployment_cap_reached', 'Deployment limit reached or reserved.')
         if command.ability in ('tractor_tether', 'guardian_link') and (command.ability, command.target_id) in reserved_links:
@@ -552,7 +562,11 @@ class _BatchProjection:
             if ability in SPECS:
                 raw_point = params.get('target_position')
                 point = raw_point if isinstance(raw_point, Position) else Position(*raw_point) if raw_point is not None else None
-                if validate(unit, ability, self.game.galaxy, params.get('target_id', params.get('target_unit_id')), point, check_ready=False, links=False, participants=False) is None:
+                if validate(unit, ability, self.game.galaxy, params.get('target_id', params.get('target_unit_id')), point, check_ready=False, resources=False, links=False, participants=False) is None:
+                    if ability == 'multiply_antimatter':
+                        for recipient, amount in self.multiplication_preview(unit):
+                            self._tactical_gained[recipient.id] = self._tactical_gained.get(recipient.id, 0) + amount
+                            self._multiply_ready[recipient.id] = self.game.turn_number + SPECS[ability].cooldown
                     self._tactical_spent[unit.id] = self._tactical_spent.get(unit.id, 0) + SPECS[ability].cost
                     self._tactical_used.add((unit.id, ability))
                     self._tactical_cancelled.discard((unit.id, ability))
@@ -594,16 +608,6 @@ class _BatchProjection:
                     self._tactical_spent[unit.id] = self._tactical_spent.get(unit.id, 0) + definition.antimatter_cost
                     self._tactical_used.add((unit.id, ability))
                     entry['settled'] = True
-        elif kind == 'recover_fuel_cache':
-            from tactical_abilities import find_deployable, RECOVERY_RANGE, sector_for
-            from geometry import distance
-            cache = find_deployable(self.game.galaxy, params.get('target_id'))
-            if cache and sector_for(unit, self.game.galaxy) is sector_for(cache, self.game.galaxy) and distance(unit.position, cache.position) <= RECOVERY_RANGE:
-                left = self._tactical_cache_fuel.get(cache.id, cache.fuel)
-                amount = min(left, max(0, unit.antimatter_component.max_capacity-unit.antimatter_component.current_amount-self._tactical_recovered.get(unit.id, 0)+self._tactical_spent.get(unit.id, 0)))
-                self._tactical_cache_fuel[cache.id] = left-amount
-                self._tactical_recovered[unit.id] = self._tactical_recovered.get(unit.id, 0)+amount
-                entry['settled'] = True
         elif kind == 'enter_gas_giant':
             from unit_orders.gas_giant import within_gas_giant_range
             body = self.game.galaxy.get_celestial_body_by_id(params.get('target_id'))
@@ -717,7 +721,8 @@ class CommandGateway:
                     self._selected_units = units
                     projection.before(command, units)
                     operations = self._prepare(player, command, units, projection)
-                    projection.record(command, units)
+                    if not (command.type == 'use_ability' and command.ability == 'multiply_antimatter'):
+                        projection.record(command, units)
                 for offset, operation in enumerate(operations):
                     operation.command_index = index
                     operation.command_type = command.type
@@ -852,6 +857,8 @@ class CommandGateway:
         for unit in units:
             self._require_capability(unit, command.type)
             self._validate_unit_command(unit, command, projection)
+            if command.type == 'use_ability' and command.ability == 'multiply_antimatter':
+                projection.record(command, [unit])
             public_order_id = uuid.uuid4().hex
 
             def apply(unit=unit, factory=order_factory, public_order_id=public_order_id, queue=command.queue):
@@ -886,10 +893,6 @@ class CommandGateway:
         from unit_orders.combat import resolve_component_type
 
         from tactical_abilities import SPECS
-        if command.type == 'recover_fuel_cache':
-            from unit_orders.recover_fuel import RecoverFuelCacheOrder
-            self._visible_combat_target(player, command.target_id)
-            return (lambda unit: RecoverFuelCacheOrder(unit, {'target_unit_id': command.target_id}), 'Recover fuel cache')
         if command.type == 'use_ability' and command.ability in SPECS:
             spec = SPECS[command.ability]
             if spec.target_kind in ('unit', 'celestial_position') and command.target_id is None:
@@ -924,6 +927,8 @@ class CommandGateway:
             "dock_in_hangar",
             "dock_in_strikecraft_bay",
             "transfer_antimatter",
+            "take_antimatter",
+            "continuous_antimatter_transport",
             "trade",
         } or (command.type == "use_ability" and command.target_id is not None):
             target_unit = self._visible_combat_target(player, command.target_id) if command.type == "attack" else self._visible_unit(player, command.target_id)
@@ -1191,25 +1196,18 @@ class CommandGateway:
             )
         if command.type == "deploy_all_wings":
             return (lambda unit: DeployAllWingsOrder(unit), "Deploy all wings")
-        if command.type == "transfer_antimatter":
+        if command.type in {"transfer_antimatter", "take_antimatter"}:
             self._require_friendly(player, target_unit)
-            target_storage = getattr(target_unit, "antimatter_component", None)
-            if target_storage is None:
-                raise _Rejected(
-                    "invalid_target", "The transfer target has no antimatter storage."
-                )
-            if float(getattr(target_storage, "current_amount", 0)) >= float(
-                getattr(target_storage, "max_capacity", 0)
-            ):
-                raise _Rejected(
-                    "invalid_target", "The transfer target's antimatter storage is full."
-                )
-            return (
-                lambda unit: TransferAntimatterOrder(
-                    unit, {"target_unit_id": target_unit.id}
-                ),
-                f"Transfer antimatter to {target_unit.name}",
-            )
+            from unit_orders.fuel_transport import TakeAntimatterOrder
+            cls = TakeAntimatterOrder if command.type == 'take_antimatter' else TransferAntimatterOrder
+            return (lambda unit: cls(unit, {"target_unit_id": target_unit.id}), command.type)
+        if command.type == 'continuous_antimatter_transport':
+            from unit_orders.fuel_transport import ContinuousAntimatterTransportOrder
+            source = self._visible_unit(player, command.source_id)
+            self._require_friendly(player, source)
+            self._require_friendly(player, target_unit)
+            return (lambda unit: ContinuousAntimatterTransportOrder(unit,
+                {'source_unit_id': source.id, 'target_unit_id': target_unit.id}), 'Transport antimatter')
         if command.type == "continuous_resupply":
             if not is_antimatter_source(target_body):
                 raise _Rejected("invalid_target", "The resupply target is not a star or hydrogen nebula.")
@@ -1748,26 +1746,32 @@ class CommandGateway:
         elif command.type == "leave_gas_giant":
             if not hidden:
                 raise _Rejected("invalid_state", "Unit is not submerged in a gas giant atmosphere.")
-        elif command.type == "transfer_antimatter":
-            storage = getattr(unit, "antimatter_component", None)
-            if storage is None or getattr(storage, "current_amount", 0) <= 0:
-                raise _Rejected(
-                    "capability_unavailable", f"Unit {unit.id} has no antimatter to transfer."
-                )
+        elif command.type in {'transfer_antimatter', 'take_antimatter', 'continuous_antimatter_transport'}:
+            from antimatter_logistics import exchange_blocker, route_budget
+            target = self._visible_unit(unit.owner, command.target_id)
+            error = exchange_blocker(unit, target, self.game.galaxy)
+            if error:
+                raise _Rejected(error, 'Antimatter endpoint unavailable.')
+            if command.type == 'continuous_antimatter_transport':
+                source = self._visible_unit(unit.owner, command.source_id)
+                error = exchange_blocker(unit, source, self.game.galaxy)
+                if error or source is target:
+                    raise _Rejected(error or 'invalid_target', 'Choose two distinct friendly depots.')
+                budget = route_budget(unit, source, target, self.game.galaxy)
+                if budget is None:
+                    raise _Rejected('path_unavailable', 'The depot route is unreachable.')
+                if budget >= unit.antimatter_component.max_capacity:
+                    raise _Rejected('insufficient_capacity', 'This tank cannot carry fuel beyond the route reserve.')
+            elif not command.queue:
+                source, recipient = (target, unit) if command.type == 'take_antimatter' else (unit, target)
+                if projection.fuel_amount(source) <= 0 or projection.fuel_amount(recipient) >= recipient.antimatter_component.max_capacity:
+                    raise _Rejected('capability_unavailable', 'No antimatter can be exchanged now.')
         elif command.type == "continuous_resupply":
             if getattr(unit, "antimatter_component", None) is None:
                 raise _Rejected(
                     "capability_unavailable",
                     f"Unit {unit.id} has no antimatter storage for resupply.",
                 )
-        elif command.type == 'recover_fuel_cache':
-            from tactical_abilities import find_deployable
-            from unit_orders.recover_fuel import recovery_blocker
-            error = recovery_blocker(unit, find_deployable(self.game.galaxy, command.target_id), self.game.galaxy, fuel_amount=projection.tactical_budget(unit))
-            if projection._tactical_cache_fuel.get(command.target_id, 1) <= 0:
-                error = 'target_unavailable'
-            if error:
-                raise _Rejected(error, 'Fuel cache cannot be recovered.')
         elif command.type == "use_ability":
             from tactical_abilities import SPECS, validate
             if command.ability in SPECS:
@@ -1792,7 +1796,7 @@ class CommandGateway:
             instance = unit.ability_component.abilities.get(ability_type)
             if instance and unit.antimatter_component and projection.tactical_budget(unit) < instance.definition.antimatter_cost:
                 raise _Rejected('insufficient_resources', 'Ability fuel is already spent or reserved.')
-            if not unit.ability_component.can_use(ability_type):
+            if not unit.ability_component.can_use(ability_type, resources=False):
                 raise _Rejected(
                     "capability_unavailable",
                     f"Ability {command.ability} is unavailable on unit {unit.id}.",

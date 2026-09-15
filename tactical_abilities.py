@@ -8,7 +8,7 @@ from geometry import Position, distance
 
 from tactical_balance import (SPECS, EQUIPMENT, TRACTOR_PULL, TRACTOR_STANDOFF, TRACTOR_BREAK,
     TRACTOR_COST, TRACTOR_SPEED, SWEEP_RADIUS, SWEEP_MINES, GUARDIAN_FRACTION, GUARDIAN_CAP,
-    GUARDIAN_RETAINED, RECOVERY_RANGE, CATALYST_HYDROGEN_FUEL, CATALYST_NITROGEN_COOLING,
+    GUARDIAN_RETAINED, CATALYST_HYDROGEN_FUEL, CATALYST_NITROGEN_COOLING,
     CATALYST_OXYGEN_SPLASH, CATALYST_DUST_SENSORS)
 
 
@@ -90,6 +90,8 @@ def availability(unit, kind, galaxy, *, ignore_reservations=False, resources=Tru
     if kind in STRIKECRAFT_ABILITIES and unit.hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY):
         return 'capability_unavailable'
     if not deployed(unit, galaxy) or not inst or unit.ability_component.is_destroyed or unit.is_disabled or getattr(unit, 'is_hidden_in_gas_giant', False):
+        return 'capability_unavailable'
+    if kind == 'multiply_antimatter' and unit.multiply_cast_ready_round > getattr(unit.game, 'turn_number', 1):
         return 'capability_unavailable'
     if not inst.is_ready or not equipment_ready(unit, spec):
         return 'capability_unavailable'
@@ -188,6 +190,14 @@ def validate(unit, kind, galaxy, target_id=None, position=None, *, approach=Fals
     if kind in STRIKECRAFT_ABILITIES:
         from strikecraft_abilities import validate_target
         return validate_target(unit, kind, galaxy, target_id, position, check_participants=participants)
+    if kind == 'multiply_antimatter':
+        if target_id is not None or position is not None:
+            return 'invalid_value'
+        if participants:
+            from antimatter_multiplication import preview
+            if sum(amount for _, amount in preview(unit, galaxy)) <= spec.cost:
+                return 'target_unavailable'
+        return None
     if spec.target_kind == 'unit':
         from visibility import VisibilityService, is_unit_visible
         target = galaxy.get_unit_by_id(target_id)
@@ -221,7 +231,7 @@ def validate(unit, kind, galaxy, target_id=None, position=None, *, approach=Fals
             return 'out_of_range'
         if distance(unit.position, position) > spec.range:
             return 'out_of_range'
-        if kind in ('ghost_fleet', 'fuel_cache') and not valid_placement(unit, position, galaxy):
+        if kind == 'ghost_fleet' and not valid_placement(unit, position, galaxy):
             return 'path_unavailable'
         if kind == 'mine_clearing_sweep' and not sweep_fields(unit, position, galaxy):
             return 'target_unavailable'
@@ -245,10 +255,16 @@ def activate(unit, kind, galaxy, target_id=None, position=None):
     if game is not None:
         galaxy.game = game
     # Validation above is mutation-free; the following operation is synchronous.
-    if not unit.antimatter_component.consume(spec.cost):
+    if kind == 'multiply_antimatter':
+        from antimatter_multiplication import activate as multiply
+        if not multiply(unit, galaxy):
+            return False
+    elif not unit.antimatter_component.consume(spec.cost):
         return False
-    if kind in ('ghost_fleet', 'fuel_cache'):
+    if kind == 'ghost_fleet':
         sector.deployables.append(Deployable(unit.owner, position, unit.in_hex, unit.in_system, kind, unit.id, galaxy))
+    elif kind == 'multiply_antimatter':
+        inst.is_active = False
     elif kind == 'nebula_catalyst':
         sector.catalyst_patches.append(CatalystPatch(unit.owner, position, unit.in_hex, unit.in_system, unit.id, target_id, now + spec.duration))
     elif kind == 'mine_clearing_sweep':
@@ -299,6 +315,8 @@ def start_owner_turn(galaxy, player, round_number):
             inst = get_instance(unit, kind)
             if not inst:
                 continue
+            if kind == 'multiply_antimatter':
+                inst.ready_round = unit.multiply_cast_ready_round
             inst.cooldown_remaining = max(0, (inst.ready_round or round_number) - round_number)
             inst.duration_remaining = max(0, (inst.expires_round or round_number) - round_number)
             from tactical_balance import STRIKECRAFT_ABILITIES
@@ -430,18 +448,17 @@ def catalyst_effects(unit, galaxy):
 def ability_catalog():
     from dataclasses import asdict
     from unit_components.abilities.registry import ABILITY_DEFINITIONS
-    from tactical_balance import DEPLOYABLE_HP, CACHE_FUEL, CACHE_OVERHEAD, CATALYST_RADIUS
+    from tactical_balance import DEPLOYABLE_HP, CATALYST_RADIUS
     catalog = {kind.value: {'name': d.name, 'description': d.description, 'cost': d.antimatter_cost,
         'equipment': d.required_components, 'range': d.range, 'cooldown': d.cooldown,
         'duration': d.duration, 'target_kind': d.target_kind, 'allowed_relations': d.allowed_relations,
         'approach': d.automatic_approach, 'clock': 'legacy_owner_turn_end'} for kind, d in ABILITY_DEFINITIONS.items()}
     for kind, spec in SPECS.items():
-        catalog[kind].update(**asdict(spec), persistent=kind in ('ghost_fleet', 'fuel_cache'),
+        catalog[kind].update(**asdict(spec), persistent=kind == 'ghost_fleet',
             clock='owner_turn_start', stacking='strongest_eligible' if kind == 'nebula_catalyst' else 'one_per_target' if spec.target_kind == 'unit' else 'independent',
             local_sector=True, approach=spec.target_kind == 'unit')
-    for kind in ('ghost_fleet', 'fuel_cache'):
-        catalog[kind].update(hit_points=DEPLOYABLE_HP, cap_scope='historical_deploying_ship_galaxy_wide')
-    catalog['fuel_cache'].update(stored_antimatter=CACHE_FUEL, overhead=CACHE_OVERHEAD, recovery_range=RECOVERY_RANGE)
+    catalog['ghost_fleet'].update(hit_points=DEPLOYABLE_HP, cap_scope='historical_deploying_ship_galaxy_wide')
+    catalog['multiply_antimatter'].update(multiplier=2, radius=500, recipient_cooldown=30, includes_caster=True, empty_tanks_gain=False, stacking='shared_recipient_cooldown', clock='round_deadline')
     catalog['tractor_tether'].update(pull_distance=TRACTOR_PULL, stop_distance=TRACTOR_STANDOFF,
         break_distance=TRACTOR_BREAK, ongoing_antimatter=TRACTOR_COST, speed_multiplier=TRACTOR_SPEED)
     catalog['guardian_link'].update(redirect_fraction=GUARDIAN_FRACTION, redirect_cap=GUARDIAN_CAP,

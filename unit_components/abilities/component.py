@@ -148,7 +148,7 @@ class AbilityComponent(UnitComponent):
             })
         return data
 
-    def can_use(self, ability_type: AbilityType, *, ignore_reservations=False) -> bool:
+    def can_use(self, ability_type: AbilityType, *, ignore_reservations=False, resources=True) -> bool:
         """Returns True if the ability exists, the component is intact, it is off cooldown, and has enough antimatter."""
         from tactical_abilities import SPECS, availability
         if ability_type.value in SPECS:
@@ -162,7 +162,7 @@ class AbilityComponent(UnitComponent):
         if not instance.is_ready:
             return False
         am_comp = self.unit.antimatter_component
-        if am_comp and am_comp.current_amount < instance.definition.antimatter_cost:
+        if resources and am_comp and am_comp.current_amount < instance.definition.antimatter_cost:
             return False
         return True
 

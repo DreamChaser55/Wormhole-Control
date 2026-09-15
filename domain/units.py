@@ -94,6 +94,8 @@ class Unit(GameObject):
         self.is_temporary: bool = False
 
         # Experience points earned through combat (0 – MAX_UNIT_XP).
+        self.multiply_cast_ready_round: int = 0
+        self.multiply_receive_ready_round: int = 0
         self.experience_points: int = 0
 
         self.template_name: typing.Optional[str] = template_name
@@ -542,11 +544,8 @@ class Unit(GameObject):
             if self.commander_component:
                 self.commander_component.update()
             return
-        # Antimatter is no longer regenerated automatically for all units.
-        # Only units with an AntimatterHarvester component can replenish their
-        # own antimatter, and only while positioned near a star. All other
-        # units must receive antimatter via TransferAntimatterOrder from
-        # another unit's existing storage.
+        # Passive collection requires a harvester. Transfers and multiplication
+        # are explicit orders with their own resource rules.
         if self.harvester_component and self.in_galaxy:
             self.harvester_component.update(self.in_galaxy)
 

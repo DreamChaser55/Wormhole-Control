@@ -29,6 +29,8 @@ Explore star systems, establish colonies, build ships, and keep your fleets supp
 
 Use **Galaxy View** (`G`) to see systems and wormhole connections, **System View** (`S`) to inspect a system's sectors, and **Sector View** for individual ships, celestial objects, and tactical positioning. The System and Sector cameras support zooming and panning.
 
+Storage-equipped ships and stations can **Transfer Antimatter** or **Take Antimatter** from friendly units. A **Continuous Antimatter Transport** route repeatedly loads at one depot and supplies another while reserving return fuel. Dedicated transporter, storage station, and Small cache station designs are available in the Logistics catalogue. Harvesters collect fuel from stars and hydrogen nebulae; **Multiply Antimatter** doubles nearby friendly tanks with a 30-round cooldown and a shared recipient recovery period.
+
 Select a unit and use its contextual actions to issue orders. Hold **Shift** when issuing an order to queue it behind existing work. When finished, press **E** or click **End Turn** to resolve your player's actions and advance to the next player.
 
 | Input | Action |

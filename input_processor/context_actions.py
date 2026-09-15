@@ -52,10 +52,10 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
     if not isinstance(extracted_action_id, str):
         extracted_action_id = str(extracted_action_id)
 
-    if extracted_action_id in ('tactical_attack', 'tactical_recover'):
+    if extracted_action_id == 'tactical_attack':
         from tactical_ui import issue
         for unit in selected_units:
-            issue(game, {'type': 'attack' if extracted_action_id == 'tactical_attack' else 'recover_fuel_cache',
+            issue(game, {'type': 'attack',
                          'unit_ids': [unit.id], 'target_id': target.id, 'queue': shift_pressed})
     elif extracted_action_id == "leave_gas_giant_all":
         if isinstance(target, Planet):
@@ -183,13 +183,17 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                     shift_pressed
                 ))
 
-        elif extracted_action_id == "transfer_antimatter":
+        elif extracted_action_id in ('transfer_antimatter', 'take_antimatter'):
             if isinstance(target, Unit):
-                game.event_bus.publish(TransferAntimatterEvent(
-                    selected_units,
-                    target,
-                    shift_pressed
-                ))
+                from tactical_ui import issue
+                from antimatter_logistics import exchange_blocker
+                actors = [u.id for u in selected_units if exchange_blocker(u, target, game.galaxy) is None and (shift_pressed or (u.antimatter_component.current_amount > 0 if extracted_action_id == 'transfer_antimatter' else u.antimatter_component.current_amount < u.antimatter_component.max_capacity))]
+                if actors:
+                    issue(game, {'type': extracted_action_id, 'unit_ids': actors, 'target_id': target.id, 'queue': shift_pressed})
+        elif extracted_action_id == 'continuous_antimatter_transport':
+            if isinstance(target, Unit) and len(selected_units) == 1:
+                from gui.antimatter_transport_window import AntimatterTransportWindow
+                game.gui.antimatter_transport_window = AntimatterTransportWindow(game.gui, selected_units[0], target)
 
         elif extracted_action_id == "protect_unit":
             if isinstance(target, Unit):

@@ -31,8 +31,8 @@ def handle_action(game, action):
         game.pending_catalyst_body_id = data
     elif kind == 'cancel_tactical_ability':
         issue(game, {'type': 'cancel_ability', 'unit_ids': [data['unit_id']], 'ability': data['ability']})
-    elif kind in ('recover_tactical_cache', 'attack_deployable'):
-        issue(game, {'type': 'recover_fuel_cache' if kind == 'recover_tactical_cache' else 'attack',
+    elif kind == 'attack_deployable':
+        issue(game, {'type': 'attack',
                      'unit_ids': [data['unit_id']], 'target_id': data['target_id'], 'queue': action.get('shift_pressed', False)})
     game.sidebar_needs_update = True
 
@@ -54,11 +54,10 @@ def ability_panel(unit, game):
             data.append(label('Unavailable: ' + blocker.replace('_', ' ')))
         if spec.cap:
             count = len(deployments(galaxy, unit.id, kind))
-            noun = 'emitters' if kind == 'ghost_fleet' else 'fuel caches' if kind == 'fuel_cache' else 'patches'
+            noun = 'emitters' if kind == 'ghost_fleet' else 'patches'
             data.append(label(f'{count}/{spec.cap} {noun}' + (' - Persistent' if kind != 'nebula_catalyst' else '')))
             if count >= spec.cap:
                 reason = {'ghost_fleet': 'An existing emitter must be destroyed.',
-                          'fuel_cache': 'Empty or destroy an existing cache.',
                           'nebula_catalyst': 'Wait for the existing patch to expire.'}[kind]
                 data.append(label('At cap: ' + reason))
         if kind in ('tractor_tether', 'guardian_link') and inst.is_active:
@@ -71,6 +70,13 @@ def ability_panel(unit, game):
                 root = wing.commander_component.current_order
                 work = root.order_type.name.replace('_', ' ').title() if root else 'Idle'
                 data.append(label(f'{wing.name}: {work}; {len(wing.commander_component.orders_queue)} queued'))
+        if kind == 'multiply_antimatter':
+            from antimatter_multiplication import preview
+            gains = preview(unit, galaxy)
+            data.append(label(f'Pulse: {len(gains)} recipients; net {sum(amount for _, amount in gains)-spec.cost:g} AM'))
+            data.append(label(f'Caster cooldown: {max(0, unit.multiply_cast_ready_round-game.turn_number)} rounds; recipient cooldown: 30 rounds'))
+            for recipient, amount in gains:
+                data.append(label(f'{recipient.name}: +{amount:g} AM'))
         if kind == 'flak_barrage':
             from tactical_balance import FLAK_RADIUS
             data.append(label(f'Moving hostile-wing defense radius: {FLAK_RADIUS:g}'))
@@ -84,23 +90,16 @@ def ability_panel(unit, game):
             for body in sector_for(unit, galaxy).celestial_bodies:
                 if isinstance(body, Nebula):
                     data.append(button(('Selected: ' if selected == body.id else 'Catalyze: ') + body.name, 'choose_catalyst_nebula', body.id))
-    from game_ai.tactical import visible_deployables
-    from unit_orders.recover_fuel import recovery_blocker
-    for cache in visible_deployables(game, unit.owner):
-        if recovery_blocker(unit, cache, galaxy) is None:
-            data.append(button(f'Recover cache {cache.id}: {cache.fuel:g} AM', 'recover_tactical_cache', {'unit_id': unit.id, 'target_id': cache.id}))
     return data
 
 
 def deployable_panel(game, obj):
     data = [label(obj.name), label(f'HP: {obj.current_hit_points}/{obj.max_hit_points}'), label('Persistent')]
-    if obj.kind == 'fuel_cache':
-        data.append(label(f'Fuel: {obj.fuel:g} AM'))
     from game_ai.tactical import deployable_view
     view = deployable_view(obj, game.players[game.current_player_index])
     if 'deploying_ship_id' in view:
         data.append(label(f'Deploying ship: {view["deploying_ship_id"]}'))
-    data.append(label('Select a ship and right-click this object to attack/recover.'))
+    data.append(label('Select a ship and right-click this object to attack.'))
     return data
 
 
@@ -163,6 +162,8 @@ def draw(renderer, sector):
         from tactical_balance import FLAK_RADIUS
         if effect_valid(source, 'flak_barrage', game.galaxy):
             pygame.draw.circle(renderer.screen, source.owner.color, pixel(source.position), radius(FLAK_RADIUS), 2)
+        if source in game.selected_objects and source.owner == game.players[game.current_player_index] and get_instance(source, 'multiply_antimatter'):
+            pygame.draw.circle(renderer.screen, source.owner.color, pixel(source.position), radius(SPECS['multiply_antimatter'].range), 1)
         root = wing_order(source)
         if root:
             font = pygame.font.Font(None, 18)

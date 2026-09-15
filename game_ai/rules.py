@@ -161,7 +161,9 @@ def supported_commands(unit: Any) -> list[str]:
     if getattr(unit, "mining_component", None):
         commands.extend(["mine", "continuous_mine", "unload_resources"])
     if getattr(unit, "antimatter_component", None):
-        commands.append("transfer_antimatter")
+        commands.extend(["transfer_antimatter", "take_antimatter"])
+        if has_operational_engines(unit):
+            commands.append("continuous_antimatter_transport")
     if getattr(unit, "harvester_component", None) and getattr(
         unit, "antimatter_component", None
     ):
@@ -180,8 +182,6 @@ def supported_commands(unit: Any) -> list[str]:
         commands.append("toggle_inhibitor")
     if getattr(unit, "cloaking_component", None):
         commands.append("toggle_cloaking")
-    if getattr(unit, "antimatter_component", None):
-        commands.append("recover_fuel_cache")
     if getattr(unit, "ability_component", None):
         commands.append("use_ability")
         commands.append("cancel_ability")
@@ -353,11 +353,34 @@ def command_guidance(
             if getattr(candidate, "civilian_habitat_component", None)
         ],
     }
+    from antimatter_logistics import exchange_blocker
+    fuel_targets = [candidate for candidate in friendly_units if exchange_blocker(unit, candidate, game.galaxy) is None]
+    target_options['transfer_antimatter'] = [candidate.id for candidate in fuel_targets if unit.antimatter_component.current_amount > 0 and candidate.antimatter_component.current_amount < candidate.antimatter_component.max_capacity]
+    target_options['take_antimatter'] = [candidate.id for candidate in fuel_targets if candidate.antimatter_component.current_amount > 0]
+    if getattr(unit, 'antimatter_component', None) and unit.antimatter_component.current_amount >= unit.antimatter_component.max_capacity:
+        target_options['take_antimatter'] = []
+    if 'continuous_antimatter_transport' in supported:
+        options['continuous_antimatter_transport'] = {'source_ids': [candidate.id for candidate in fuel_targets], 'target_ids': [candidate.id for candidate in fuel_targets], 'distinct_endpoints': True, 'automatic_return_reserve': True}
+        if len(fuel_targets) >= 2:
+            legal.add('continuous_antimatter_transport')
     for command_type, target_ids in target_options.items():
         if command_type in supported:
             options[command_type] = {"target_ids": target_ids}
             if target_ids:
                 legal.add(command_type)
+
+    # Empty/full tanks can still plan a pickup followed by delivery, or the
+    # reverse. Keep conditional target choices separate from standalone ones.
+    for kind, prior in (('transfer_antimatter', 'take_antimatter'),
+                        ('take_antimatter', 'transfer_antimatter')):
+        if kind in supported and kind not in legal and prior in legal:
+            choices = [candidate.id for candidate in fuel_targets if (
+                candidate.antimatter_component.current_amount > 0 if kind == 'take_antimatter'
+                else candidate.antimatter_component.current_amount < candidate.antimatter_component.max_capacity)]
+            if choices:
+                options[kind]['queued_target_ids'] = choices
+                conditional.append({'type': kind, 'requires_prior_command': prior,
+                                    'same_unit': True, 'queue': True})
 
     if "attack" in options:
         options["attack"]["target_components"] = {str(candidate.id): public_target_components(candidate) for candidate in enemy_units if candidate.id in options["attack"]["target_ids"]}

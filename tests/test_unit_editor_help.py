@@ -85,7 +85,7 @@ def test_descriptions_follow_definitions_and_explain_special_cases(monkeypatch):
     assert "123 AM" in body and "17 turns" in body
     assert "Anti-Strikecraft turret" in body
     assert "Track &lt;wings&gt; &amp; protect allies." in body
-    for name in ("ghost_fleet", "fuel_cache"):
+    for name in ("ghost_fleet",):
         body = ability_description(name)[1]
         assert "Persistent deployment (no expiry)" in body
         assert "Instant / one-shot" not in body

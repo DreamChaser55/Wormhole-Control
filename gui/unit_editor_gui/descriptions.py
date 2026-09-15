@@ -115,7 +115,7 @@ def ability_description(name: str) -> tuple[str, str]:
     required = [labels[key] for key in definition.required_components]
     if name in ("tracking_lock", "flak_barrage"):
         required.append("an Anti-Strikecraft turret")
-    persistent = name in ("ghost_fleet", "fuel_cache")
+    persistent = name in ("ghost_fleet",)
     duration = ("Persistent deployment (no expiry)" if persistent else
                 f"{definition.duration} turns" if definition.duration else "Instant / one-shot")
     range_text = ("Any legal position in the same sector" if name == "microjump" else

@@ -27,7 +27,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 9 and the command_catalog describes contract 6. The final turn_summary
+Observations use schema 10 and the command_catalog describes contract 7. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.
@@ -62,11 +62,11 @@ commands like send_message (with target_id) and message_developer (without targe
 Player-level sabotage uses agent_id and sabotage_type; relocate_agent uses agent_id and target_id.
 Infiltration, extraction, CI sweep, and elimination remain unit commands and must use only the
 agent and target options listed for the selected owned unit.
-The ability_catalog describes tactical abilities and their targeting/cost rules. Ghost emitters and
-fuel caches are persistent, capped per deploying ship (1 and 3); identification does not free an emitter
-slot, and partial recovery does not free a cache slot. Radar presence may be a decoy: scout visually.
-Use recover_fuel_cache to approach a visible cache, including enemy caches; uncertain future recovery
-cannot fund a current cast. cancel_ability releases Tractor Tether or Guardian Link without refund.
+Use transfer_antimatter to donate and take_antimatter to approach a friendly source and load fuel.
+continuous_antimatter_transport uses source_id and target_id for a repeating depot shuttle with automatic return fuel reserves. It waits for supply/capacity and blocks queued work.
+The ability_catalog describes targeting and costs. Multiply Antimatter doubles seeded friendly tanks within 500, including self, after a 20 AM cost. Caster and recipients have 30-round cooldowns. Empty tanks gain nothing. Future pickups and queued pulses cannot finance immediate casts.
+Ghost emitters are persistent, capped at one per source; identification does not free the slot. Scout radar presence visually.
+cancel_ability releases Tractor Tether or Guardian Link without refund.
 Tractor pulls after caster movement and consumes 5 AM per positive pull; preserve fuel and break range.
 Mine-Clearing Sweep reduces revealed whole-field counts; a remaining field is dangerous everywhere.
 Guardian redirects 30% of weapon damage, capped at 20 raw damage/hit, then reduces the redirected share

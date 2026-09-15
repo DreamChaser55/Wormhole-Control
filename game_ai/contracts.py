@@ -21,6 +21,7 @@ class Command:
     type: str
     unit_ids: tuple[int, ...] = ()
     target_id: int | None = None
+    source_id: int | None = None
     system_name: str | None = None
     hex_coord: tuple[int, int] | None = None
     position: tuple[float, float] | None = None
@@ -56,6 +57,7 @@ class Command:
             "type": self.type,
             "unit_ids": list(self.unit_ids),
             "target_id": self.target_id,
+            "source_id": self.source_id,
             "system_name": self.system_name,
             "hex_coord": list(self.hex_coord) if self.hex_coord is not None else None,
             "position": list(self.position) if self.position is not None else None,

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from order_history import public_reason
 
-CONTINUOUS = {"patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade"}
+CONTINUOUS = {"patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade", "continuous_antimatter_transport"}
 
 
 def enum_name(value):
@@ -42,6 +42,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
         known_targets = (body_ids if target_kind == "celestial" else visible_ids
                          if target_kind == "unit" else visible_ids | body_ids)
         hidden = redacted or (target_id is not None and target_id not in known_targets)
+        if kind == 'continuous_antimatter_transport':
+            hidden = hidden or any(params.get(key) not in visible_ids for key in ('source_unit_id', 'target_unit_id'))
         data.update(order_id=getattr(order, "public_id", None), active=active and actionable,
                     cancellable=own and origin == "explicit" and root and actionable,
                     editable=own and origin == "explicit" and root and actionable and kind == "patrol",
@@ -70,8 +72,12 @@ def order_layers(unit, relation, visible_ids, body_ids):
                 route = params["waypoints"]
                 public["waypoints"] = [{"system_name": w.get("system_name"), "hex_coord": point(w.get("hex_coord")), "position": point(w.get("position"))} for w in route[:16]]
                 public["omitted_waypoints"] = max(0, len(route) - 16)
+            if kind == 'continuous_antimatter_transport':
+                public.update(source_id=params.get('source_unit_id'), target_id=params.get('target_unit_id'))
             data["parameters"] = public
         progress = {}
+        if kind == 'continuous_antimatter_transport' and not hidden:
+            progress = {'phase': order.phase, 'waiting_reason': order.waiting_reason, 'return_reserve': order.return_reserve}
         if kind in {'attack_run', 'emergency_recovery'}:
             progress = {'phase': order.phase, 'expires_on_owner_round': params['expires_round']}
             if kind == 'attack_run':

@@ -49,7 +49,7 @@ player. It includes:
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 9 gives full body detail in systems containing friendly
+Observation schema 10 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -62,7 +62,7 @@ fabricated or remembered hidden ID cannot bypass fog of war.
 
 ## Turn-start briefing
 
-Observation schema 9 appends `turn_summary` to the observation JSON included in
+Observation schema 10 appends `turn_summary` to the observation JSON included in
 every built-in planning request and Codex observation. It contains `from_turn`,
 `to_turn`, priority-ordered `entries`, net `economy` changes, and `omitted_count`.
 Turn zero as `from_turn` means campaign setup. Each entry has an event ID, round,
@@ -112,7 +112,7 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.5 embeds:
+Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.6 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
@@ -233,7 +233,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 9 / commands 6 / socket 3)
+## Shared order contract (observation 10 / commands 7 / socket 3)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -328,8 +328,8 @@ The current save preserves order UUIDs recursively, history/counter, terminal-re
 job charges. Missing order identities and payment state are rejected. Restored active orders rebind
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
-The strict response schema is `wormhole_control_turn_v5`, and prompt cache key is
-`wormhole-control-turn-v8`. No live API call is required for regression testing.
+The strict response schema is `wormhole_control_turn_v6`, and prompt cache key is
+`wormhole-control-turn-v9`. No live API call is required for regression testing.
 
 ### Gameplay invariant guidance
 
@@ -384,27 +384,21 @@ require both endpoints visible. Ghost signals use ordinary
 `undetailed_enemy_presence`, without decoy flags, hidden IDs, counts or strength.
 
 `use_ability` distinguishes unit targets, position targets and Catalyst's nebula
-ID plus position. `recover_fuel_cache` supports explicit queued approaches;
+ID plus position. `multiply_antimatter` is a self-centered pulse with no target;
 `cancel_ability` is immediate and accepts active Tractor/Guardian links. Typed
 celestial/deployable references participate in recursive order redaction.
 
-Preflight projects AM, cooldown use, incoming-link occupancy/cycles, per-source
-galaxy-wide caps, cancellation and guaranteed immediate recovery in array order.
-Pending casts reserve resources and slots through explicit order roots; replacing
-or cancelling releases reservations. Execution rechecks authoritative state.
-Uncertain travel/recovery cannot finance a cast or free a slot speculatively, and
-remote caches are not exclusively reserved. New object IDs require a fresh
-observation. Existing atomic rejection and partial-commit reporting remain intact.
+Preflight projects AM, cooldown use, incoming-link occupancy/cycles, per-source galaxy-wide caps, and cancellation in array order. Immediate multiplication projects recipient gains and shared recipient deadlines before validating the next command. A queued pulse reserves only its caster cost: recipients are determined at execution. Pending pickup, delivery, or travel never finances an immediate cast. Replacing or cancelling pending orders releases reservations. Execution rechecks authoritative state, and batch rejection remains atomic.
 
-The current save stores independent objects, source provenance, identification, cache
-contents, patch allegiance/deadlines, link tuning/deadlines and processed pull
-phases. Counts are rebuilt from surviving objects and historical source
-IDs participate in allocator reconciliation. Offline fake-provider tests exercise
-all six command paths without live API calls.
+`transfer_antimatter` and `take_antimatter` require functional storage, friendly endpoints, and normal approach capability. Queued pickup/delivery may depend on preceding resource changes. `continuous_antimatter_transport` takes exactly one actor, `source_id`, `target_id`, and `queue`. It repeatedly loads and delivers with a buffered return reserve; temporary supply/capacity shortages wait. Both endpoint references and child approach positions are recursively redacted if either endpoint becomes unavailable. Observations expose source/destination choices and order phase, waiting reason, and return reserve.
+
+Multiplication observations include radius, projected recipient gains, net AM, caster cooldown, and friendly units' shared recipient recovery. Cast and recipient deadlines live on the unit and persist independently of components. Enemy observations do not expose these deadlines. Save 4.6 uses unit schema 2. Fuel Cache, its deployable kind, and its recovery command have been removed; no compatibility aliases are provided.
+
+The current save stores independent ghost emitters, source provenance, identification, patch allegiance/deadlines, link tuning/deadlines and processed pull phases. Counts are rebuilt from surviving objects. Typed endpoint references and transport phase/wait/reserve state restore without replaying transfers, casts or approach execution.
 
 Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.
 
-### Celestial observation contract (schema 9)
+### Celestial observation contract (schema 10)
 
 Already-exposed bodies use readable uppercase `subtype` names (`MAGNETIC`,
 `BLACK_HOLE`, etc.). `collision_radius` and `inhibition_field_radius` describe
@@ -428,5 +422,5 @@ relation-filtered Catalyst enhancements; body values describe baseline terrain.
 Catalyst patch records describe only the enhancement relevant to their nebula.
 
 Enrichment preserves existing body visibility and remote summaries and exposes
-no additional enemy equipment. Command contract 6, socket protocol 3, response
-schema v5 and save format are unchanged. Prompt cache key is v8.
+no additional enemy equipment. Command contract 7, socket protocol 3, response
+schema v6 and save format 4.6 apply. Prompt cache key is v9.

@@ -1,18 +1,18 @@
 # Campaign persistence
 
-The current save version is **4.5**. New saves preserve the installed component
+The current save version is **4.6**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
-Only version **4.5** is supported. Unversioned, older, unknown and future saves
+Only version **4.6** is supported. Unversioned, older, unknown and future saves
 are rejected with the expected version before hydration. Alpha schema changes
 require a new campaign; no migrations or automatic conversions are provided.
 Rejected files are never modified.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.5.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.6.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
@@ -152,13 +152,13 @@ Run the regression suite from the repository root:
 ## Tactical state
 
 Each sector stores `deployables` and `catalyst_patches` arrays. Deployables store
-owner, immutable historical deploying-ship ID, kind, position, HP, cache contents
-and emitter identification. Emitters/caches have no lifetime or expiry field.
+owner, immutable historical deploying-ship ID, ghost-emitter kind, position, HP
+and identification. Emitters have no lifetime or expiry field.
 Patches store original owner, source ID, nebula ID, radius and finite deadline.
 
 New ability runtime persists owner-round readiness/expiry deadlines, active
 targets, source allegiance, processed pull phase and Guardian split/cap/mitigation
-tuning. Recovery and celestial-targeted orders retain typed references and UUIDs.
+tuning. Antimatter exchange, depot transport, and celestial-targeted orders retain typed references and UUIDs.
 Loading restores these without activation, fuel charges, spawns or repeated pulls,
 and reconciles expired effects according to each owner's last started turn.
 
@@ -187,7 +187,7 @@ and prices when they start. No new retrofit AI or socket command is introduced.
 
 ## Turn briefings
 
-Save 4.5 requires each player's `briefing` state: initialization/collection flags,
+Save 4.6 requires each player's `briefing` state: initialization/collection flags,
 reporting boundary, event sequence, bounded pending entries and omission count,
 economic baseline, discovery keys, frozen current report and human acknowledgement.
 The current report contains its start/end rounds, grouped entries, net economy
@@ -200,3 +200,19 @@ objects that no longer exist and are not rebound to live targets. Hydration does
 not emit briefing events or refresh the frozen report. An unacknowledged human
 report reopens after load; an acknowledged one remains available from Turn Summary.
 Unsupported saves, including 4.4, require a new campaign.
+
+## Antimatter state
+
+Unit schema 2 requires nonnegative integer `multiply_cast_ready_round` and
+`multiply_receive_ready_round` fields, including for docked units and units with
+no Ability component. They survive equipment replacement and ownership changes.
+New units initialize both to zero. A successful pulse at round R sets the caster
+deadline and each positive recipient's shared deadline to R + 30. Loading never
+replays the pulse or its 20 AM charge.
+
+`TAKE_ANTIMATTER` and `TRANSFER_ANTIMATTER` persist typed target references.
+`CONTINUOUS_ANTIMATTER_TRANSPORT` persists both unit references, loading/delivering
+phase, bounded waiting reason, return reserve, and its active approach subtree.
+Loading resumes that state without extra transfer ticks. Fuel-cache deployables,
+recovery orders and the old ability identifier are unsupported in this alpha
+format; save 4.5 and unit schema 1 are rejected before hydration.

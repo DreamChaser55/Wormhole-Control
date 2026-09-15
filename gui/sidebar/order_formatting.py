@@ -1,5 +1,6 @@
 """HTML order-text formatting utilities for UI sidebar order queues."""
 import typing
+from html import escape
 from geometry import Position
 from unit_orders.base import Order
 
@@ -185,9 +186,20 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_unit_id}</i></font>"
         return [f"{unload_type_styled} {target_styled}"]
 
-    elif order_type == "TRANSFER_ANTIMATTER":
-        transfer_type_styled = f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>Transfer Antimatter:</b></font>"
-        return [f"{transfer_type_styled} {_target_name_html(state_data)}"]
+    elif order_type in ("TRANSFER_ANTIMATTER", "TAKE_ANTIMATTER"):
+        label = "Take Antimatter" if order_type == "TAKE_ANTIMATTER" else "Transfer Antimatter"
+        return [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>{label}:</b></font> {_target_name_html(state_data)}"]
+
+    elif order_type == "CONTINUOUS_ANTIMATTER_TRANSPORT":
+        source = escape(str(state_data.get('source_name') or parameters.get('source_unit_id')))
+        target = escape(str(state_data.get('target_name') or parameters.get('target_unit_id')))
+        phase = escape(str(state_data.get('phase', 'loading')).title())
+        lines = [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>Continuous Antimatter Transport:</b></font>",
+                 f"  {source} → {target}", f"  Phase: {phase}",
+                 f"  Return reserve: {state_data.get('return_reserve', 0):.1f} AM"]
+        if state_data.get('waiting_reason'):
+            lines.append('  Waiting: ' + escape(state_data['waiting_reason'].replace('_', ' ')))
+        return lines
 
     elif order_type == "CONSTRUCT":
         unit_template_name = parameters.get("unit_template_name", "Unknown Unit")

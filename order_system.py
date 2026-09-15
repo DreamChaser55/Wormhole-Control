@@ -541,16 +541,11 @@ class OrderSystem:
     def handle_transfer_antimatter(self, event: TransferAntimatterEvent):
         """Creates TransferAntimatterOrders for selected units that have antimatter
         to give, sending it to the friendly target unit's storage."""
-        for unit in event.units:
-            am_comp = getattr(unit, 'antimatter_component', None)
-            if am_comp and am_comp.current_amount > 0 and unit is not event.target_unit:
-                transfer_params = {"target_unit_id": event.target_unit.id}
-                transfer_order = TransferAntimatterOrder(unit, transfer_params)
-                if not event.shift_pressed:
-                    unit.commander_component.clear_explicit_orders()
-                unit.commander_component.add_order(transfer_order)
-                logger.debug(f"  Unit {unit.name} ordered to transfer antimatter to {event.target_unit.name} via event.")
-        self.game.sidebar_needs_update = True
+        from tactical_ui import issue
+        from antimatter_logistics import exchange_blocker
+        units = [u.id for u in event.units if exchange_blocker(u, event.target_unit, self.game.galaxy) is None and (event.shift_pressed or u.antimatter_component.current_amount > 0)]
+        if units:
+            issue(self.game, {'type': 'transfer_antimatter', 'unit_ids': units, 'target_id': event.target_unit.id, 'queue': event.shift_pressed})
 
     def handle_continuous_resupply(self, event: ContinuousResupplyEvent):
         """Creates ContinuousResupplyOrders for selected units that have an

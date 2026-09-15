@@ -631,7 +631,7 @@ class Commander(UnitComponent):
                     self.current_order.execute(galaxy_ref=galaxy_ref)
                 elif self.current_order.status == OrderStatus.IN_PROGRESS:
                     self.current_order.resume(galaxy_ref=galaxy_ref)
-                if self.current_order and self.current_order.status == OrderStatus.IN_PROGRESS:
+                if self.current_order and self.current_order.status == OrderStatus.IN_PROGRESS and self.current_order.update_on_start:
                     self.current_order.update(galaxy_ref=galaxy_ref)
             else:
                 unit_name = getattr(self.unit, 'name', f"Unit ID {getattr(self.unit, 'id', 'Unknown')}")

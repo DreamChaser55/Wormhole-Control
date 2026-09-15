@@ -1,4 +1,4 @@
-"""Central balancing defaults for the six tactical abilities."""
+"""Central balancing defaults for tactical abilities."""
 from dataclasses import dataclass
 
 
@@ -34,8 +34,8 @@ SPECS = {
         description='Remove 3 mines across revealed enemy fields along a 200-wide sweep. Remaining fields are still hazardous.'),
     'guardian_link': TacticalSpec('Guardian Link', ('has_defenses',), 'unit', 25, 450, 7, 3,
         description='Redirect 30% of weapon damage (cap 20/hit), reducing the redirected share by 25% before guardian defenses.'),
-    'fuel_cache': TacticalSpec('Fuel Cache', ('has_antimatter_storage',), 'position', 55, 250, 4, cap=3,
-        description='Store 50 AM in a persistent pod for 5 AM overhead. Explicit recovery; enemies can steal it. Limit: 3 per ship.'),
+    'multiply_antimatter': TacticalSpec('Multiply Antimatter', ('has_antimatter_storage',), 'self', 20, 500, 30,
+        description='Double current AM in friendly tanks within 500, including self, capped by capacity. Pay 20 AM first. Empty tanks gain nothing. Each recipient can benefit once per 30 rounds.'),
     'nebula_catalyst': TacticalSpec('Nebula Catalyst', ('has_sensors', 'has_antimatter_storage'), 'celestial_position', 30, 750, 7, 3, cap=1,
         description='Catalyze a 600-radius nebula patch: hydrogen/nitrogen benefit allies; oxygen/dust hinder enemies. Baseline effects remain.'),
 }
@@ -53,11 +53,8 @@ SWEEP_MINES = 3
 GUARDIAN_FRACTION = 0.30
 GUARDIAN_CAP = 20
 GUARDIAN_RETAINED = 0.75
-RECOVERY_RANGE = 150.0
 
 DEPLOYABLE_HP = 20
-CACHE_FUEL = 50
-CACHE_OVERHEAD = 5
 CATALYST_RADIUS = 600.0
 CATALYST_HYDROGEN_FUEL = 0.25
 CATALYST_NITROGEN_COOLING = 2

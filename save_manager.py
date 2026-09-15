@@ -42,7 +42,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.5"
+CURRENT_SAVE_VERSION = "4.6"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -261,7 +261,7 @@ def serialize_components(unit: Unit) -> dict:
 
 def serialize_unit(unit: Unit) -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "id": unit.id,
         "name": unit.name,
         "owner_id": unit.owner.id if unit.owner else None,
@@ -275,6 +275,8 @@ def serialize_unit(unit: Unit) -> dict:
         "experience_points": unit.experience_points,
         "is_disabled": unit.is_disabled,
         "disabled_by_unit_ids": list(unit.disabled_by_unit_ids),
+        "multiply_cast_ready_round": unit.multiply_cast_ready_round,
+        "multiply_receive_ready_round": unit.multiply_receive_ready_round,
         "damage_reduction": unit.damage_reduction,
         "damage_amplification": unit.damage_amplification,
         "lifetime": unit.lifetime,
@@ -546,7 +548,7 @@ def _restore_saved_commander(unit: Unit, game: Any) -> None:
 
 def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) -> Unit:
     from unit_components.persistence import restore_component
-    if type(data["schema_version"]) is not int or data["schema_version"] != 1:
+    if type(data["schema_version"]) is not int or data["schema_version"] != 2:
         raise ValueError("Unsupported unit schema")
     owner = players_by_id.get(data["owner_id"])
     if data["owner_id"] is not None and owner is None:
@@ -555,7 +557,8 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
                 data["name"], HullSize[data["hull_size"]], game, data['template_name'])
     unit.id = data["id"]
     for name in ("current_hit_points", "max_hit_points", "experience_points", "is_disabled",
-                 "damage_reduction", "damage_amplification", "lifetime", "is_temporary"):
+                 "damage_reduction", "damage_amplification", "lifetime", "is_temporary",
+                 "multiply_cast_ready_round", "multiply_receive_ready_round"):
         setattr(unit, name, data[name])
     unit.disabled_by_unit_ids = set(data["disabled_by_unit_ids"])
     # A new shell has no installed equipment to decommission.

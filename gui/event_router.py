@@ -38,6 +38,12 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
     if is_open(gui):
         gui.turn_briefing_window.process_event(event)
         return {'action': 'ui_handled'}
+    transport = getattr(gui, 'antimatter_transport_window', None)
+    from .antimatter_transport_window import is_open as transport_is_open
+    if transport_is_open(gui):
+        gui.manager.process_events(event)
+        transport.process_event(event)
+        return {'action': 'ui_handled'}
     editor = getattr(gui, 'unit_editor_window', None)
     if editor and editor.is_visible is True and getattr(editor, '_description_dialog', None):
         # UIWindow blocking only protects mouse presses. Stop typing and background

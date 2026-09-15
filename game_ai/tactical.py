@@ -19,8 +19,6 @@ def deployable_view(obj, viewer):
             'system_name': obj.in_system, 'hex_coord': list(obj.in_hex),
             'position': [obj.position.x, obj.position.y], 'hit_points': obj.current_hit_points,
             'persistent': True}
-    if obj.kind == 'fuel_cache':
-        data['antimatter'] = obj.fuel
     if are_allies(obj.owner, viewer):
         data['deploying_ship_id'] = obj.deploying_ship_id
     return data
@@ -66,11 +64,18 @@ def enrich_states(unit, states):
             ongoing_antimatter=5 if kind == 'tractor_tether' else 0,
             deployment_count=len(deployments(galaxy, unit.id, kind)) if spec.cap else 0,
             reserved_casts=sum(k == kind for k, _ in pending_casts(unit)),
-            deployment_limit=spec.cap, persistent=kind in ('ghost_fleet', 'fuel_cache'))
+            deployment_limit=spec.cap, persistent=kind == 'ghost_fleet')
         if inst.target_unit_id is not None:
             target = galaxy.get_unit_by_id(inst.target_unit_id)
             snapshot = VisibilityService.compute(galaxy, unit.owner, record_intel=False)
             state['target_id'] = target.id if target and is_unit_visible(snapshot, target) else None
+        if kind == 'multiply_antimatter':
+            from antimatter_multiplication import preview
+            gains = preview(unit, galaxy)
+            state.update(cooldown_remaining=max(0, unit.multiply_cast_ready_round-unit.game.turn_number),
+                radius=spec.range, multiplier=2, recipient_cooldown=30,
+                projected_gains=[{'unit_id': u.id, 'amount': amount} for u, amount in gains],
+                net_antimatter=sum(amount for _, amount in gains)-spec.cost)
         if kind == 'guardian_link':
             state.update(redirect_fraction=inst.redirect_fraction, redirect_cap=inst.redirect_cap, redirected_damage_reduction=1-inst.redirect_retained)
         from tactical_balance import STRIKECRAFT_ABILITIES
@@ -86,7 +91,6 @@ def enrich_states(unit, states):
 
 def guidance(game, player, unit, legal, options, visible_units, exact_bodies):
     from tactical_abilities import get_instance
-    from unit_orders.recover_fuel import recovery_blocker
     deployables = visible_deployables(game, player)
     targets = options.get('use_ability', {}).get('targets_by_ability', {})
     for kind, spec in SPECS.items():
@@ -110,14 +114,12 @@ def guidance(game, player, unit, legal, options, visible_units, exact_bodies):
             spec = SPECS.get(kind)
             if spec and spec.target_kind == 'unit' and not targets.get(kind):
                 values.remove(kind)
+            elif kind == 'multiply_antimatter' and validate(unit, kind, game.galaxy) is not None:
+                values.remove(kind)
             elif kind == 'nebula_catalyst' and not options['use_ability']['nebula_ids']:
                 values.remove(kind)
         if not values:
             legal.discard('use_ability')
-    recoverable = [d.id for d in deployables if recovery_blocker(unit, d, game.galaxy) is None]
-    options['recover_fuel_cache'] = {'target_ids': recoverable}
-    if recoverable:
-        legal.add('recover_fuel_cache')
     cancellable = [k for k in ('tractor_tether', 'guardian_link') if get_instance(unit, k) and get_instance(unit, k).is_active]
     options['cancel_ability'] = {'values': cancellable}
     if cancellable:

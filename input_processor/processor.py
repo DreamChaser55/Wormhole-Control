@@ -56,6 +56,8 @@ class InputProcessor:
                 continue
             catalog = getattr(self.gui, 'unit_catalog_window', None)
             catalog_was_open = bool(catalog and catalog.window.alive() is True)
+            from gui.antimatter_transport_window import is_open as transport_is_open
+            transport_was_open = transport_is_open(self.gui)
             gui_action = self.gui.process_event(event)
 
             if gui_action:
@@ -72,7 +74,7 @@ class InputProcessor:
                 if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION, pygame.MOUSEWHEEL]:
                     continue
 
-            if catalog_was_open and event.type == pygame.KEYDOWN:
+            if transport_was_open or (catalog_was_open and event.type == pygame.KEYDOWN):
                 continue
 
             if hasattr(self.game, "is_ai_input_locked") and self.game.is_ai_input_locked():

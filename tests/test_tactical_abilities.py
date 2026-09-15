@@ -173,7 +173,7 @@ def test_catalyst_designer_prerequisite_controls(pygame_context, tmp_path, flag,
         editor.hide()
 
 
-@pytest.mark.parametrize('kind,cap', [('ghost_fleet', 1), ('fuel_cache', 3)])
+@pytest.mark.parametrize('kind,cap', [('ghost_fleet', 1)])
 def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     game = campaign()
     caster = equipped(game)
@@ -187,7 +187,7 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert not activate(caster, kind, game.galaxy, position=Position(200, 0))
     assert caster.antimatter_component.current_amount == fuel
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.5'
+    assert state['version'] == '4.6'
     assert all('lifetime' not in d for s in state['galaxy']['systems'] for h in s['hexes'] for d in h['deployables'])
     restored = campaign()
     assert deserialize_game_state(restored, state)
@@ -201,24 +201,6 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert availability(caster, kind, restored.galaxy) is None
     caster.destroy()
     assert len(deployments(restored.galaxy, caster.id, kind)) == cap-1
-
-
-def test_fuel_recovery_partial_theft_and_empty_slot():
-    game = campaign()
-    caster = equipped(game)
-    assert activate(caster, 'fuel_cache', game.galaxy, position=Position(220, 0))
-    cache = deployments(game.galaxy, caster.id, 'fuel_cache')[0]
-    thief = equipped(game, 'thief', owner=1)
-    thief.position = Position(250, 0)
-    thief.antimatter_component.current_amount = 980
-    command = Command(type='recover_fuel_cache', unit_ids=(thief.id,), target_id=cache.id)
-    assert CommandGateway(game).apply_batch(thief.owner, CommandBatch((command,))).accepted
-    assert thief.antimatter_component.current_amount == 1000
-    assert cache.fuel == 30
-    thief.antimatter_component.current_amount = 900
-    assert CommandGateway(game).apply_batch(thief.owner, CommandBatch((command,))).accepted
-    assert thief.antimatter_component.current_amount == 930
-    assert not deployments(game.galaxy, caster.id, 'fuel_cache')
 
 
 @pytest.mark.parametrize('damage,loss,guardian_loss', [(40, 28, 9), (100, 80, 15), (1, 1, 0), (0, 0, 0)])
@@ -294,32 +276,32 @@ def test_ghost_radar_has_no_identity_and_inspection_discredits_it():
     scout = equipped(game, 'scout', owner=1)
     scout.position = Position(3000, 0)
     assert activate(caster, 'ghost_fleet', game.galaxy, position=Position(200, 0))
-    cache = deployments(game.galaxy, caster.id, 'ghost_fleet')[0]
+    emitter = deployments(game.galaxy, caster.id, 'ghost_fleet')[0]
     game.galaxy.systems['Sol'].hexes[(0, 0)].units.remove(caster)
     snapshot = VisibilityService.compute(game.galaxy, scout.owner)
     assert ('Sol', (0, 0)) in snapshot.presence_hexes
     obs = build_observation(game, scout.owner)
     assert not obs['visible_deployables']
-    assert cache.id not in snapshot.visible_enemy_unit_ids
+    assert emitter.id not in snapshot.visible_enemy_unit_ids
     scout.position = Position(250, 0)
     VisibilityService.compute(game.galaxy, scout.owner)
     scout.position = Position(3000, 0)
     assert ('Sol', (0, 0)) not in VisibilityService.compute(game.galaxy, scout.owner).presence_hexes
-    assert cache in deployments(game.galaxy, caster.id, 'ghost_fleet')
+    assert emitter in deployments(game.galaxy, caster.id, 'ghost_fleet')
 
 
 def test_gateway_duplicate_spending_is_atomic_and_catalog_has_all_six():
     game = campaign()
     caster = equipped(game)
     before = caster.antimatter_component.current_amount
-    cmd = Command(type='use_ability', unit_ids=(caster.id,), ability='fuel_cache', position=(200, 0))
+    cmd = Command(type='use_ability', unit_ids=(caster.id,), ability='ghost_fleet', position=(200, 0))
     result = CommandGateway(game).apply_batch(caster.owner, CommandBatch((cmd, cmd)))
     assert not result.accepted
     assert caster.antimatter_component.current_amount == before
-    assert not deployments(game.galaxy, caster.id, 'fuel_cache')
-    assert issue(game, caster, 'fuel_cache', position=(200, 0)).accepted
+    assert not deployments(game.galaxy, caster.id, 'ghost_fleet')
+    assert issue(game, caster, 'ghost_fleet', position=(200, 0)).accepted
     observation = build_observation(game, caster.owner)
-    assert observation['schema_version'] == 9
+    assert observation['schema_version'] == 10
     assert set(SPECS) <= set(observation['ability_catalog'])
     assert observation['visible_deployables'][0]['persistent'] is True
 
@@ -328,7 +310,7 @@ def test_invalid_cast_is_mutation_free_and_deadlines_roundtrip():
     game = campaign()
     caster, target = equipped(game), ship(game, 'target')
     am = caster.antimatter_component.current_amount
-    assert not activate(caster, 'fuel_cache', game.galaxy, position=caster.position)
+    assert not activate(caster, 'ghost_fleet', game.galaxy, position=caster.position)
     assert caster.antimatter_component.current_amount == am
     target.position = Position(250, 0)
     assert activate(caster, 'guardian_link', game.galaxy, target.id)
@@ -342,38 +324,19 @@ def test_invalid_cast_is_mutation_free_and_deadlines_roundtrip():
     assert not inst.is_active and inst.cooldown_remaining == 4
 
 
-def test_recovery_then_cast_projects_fuel_and_frees_source_slot():
-    game = campaign()
-    caster = equipped(game)
-    for index in range(3):
-        assert activate(caster, 'fuel_cache', game.galaxy, position=Position(200, 0))
-        game.turn_number += 4
-        start_owner_turn(game.galaxy, caster.owner, game.turn_number)
-    cache = deployments(game.galaxy, caster.id, 'fuel_cache')[0]
-    caster.antimatter_component.current_amount = 5
-    commands = (Command(type='recover_fuel_cache', unit_ids=(caster.id,), target_id=cache.id),
-                Command(type='use_ability', unit_ids=(caster.id,), ability='fuel_cache', position=(200, 0)))
-    result = CommandGateway(game).apply_batch(caster.owner, CommandBatch(commands))
-    assert result.accepted, result.errors
-    assert caster.antimatter_component.current_amount == 0
-    assert len(deployments(game.galaxy, caster.id, 'fuel_cache')) == 3
-    assert cache.current_hit_points == 0
-
-
 def test_pending_cast_reserves_fuel_and_replacement_releases_it():
     from unit_orders.movement import MoveOrder
     game = campaign()
     caster = equipped(game)
-    caster.antimatter_component.current_amount = 60
+    caster.antimatter_component.current_amount = 40
     caster.commander_component.add_order(MoveOrder(caster, {'destination_system_name': 'Sol',
         'destination_hex_coord': (0, 0), 'destination_position': Position(1000, 0)}))
-    assert issue(game, caster, 'fuel_cache', position=(200, 0), queue=True).accepted
-    assert availability(caster, 'ghost_fleet', game.galaxy) == 'insufficient_resources'
+    assert issue(game, caster, 'ghost_fleet', position=(200, 0), queue=True).accepted
+    assert availability(caster, 'ghost_fleet', game.galaxy) == 'capability_unavailable'
     assert not issue(game, caster, 'ghost_fleet', position=(200, 0), queue=True).accepted
     assert issue(game, caster, 'ghost_fleet', position=(200, 0), queue=False).accepted
-    assert caster.antimatter_component.current_amount == 35
+    assert caster.antimatter_component.current_amount == 15
     assert len(deployments(game.galaxy, caster.id, 'ghost_fleet')) == 1
-    assert not deployments(game.galaxy, caster.id, 'fuel_cache')
 
 
 @pytest.mark.parametrize('reverse', [False, True])
@@ -383,15 +346,15 @@ def test_abilities_share_batch_fuel_budget(reverse):
     caster = equipped(game)
     caster.ability_component.abilities[AbilityType.ADAPTIVE_FORCEFIELD] = ABILITY_CLASSES[AbilityType.ADAPTIVE_FORCEFIELD]()
     old = caster.ability_component.abilities[AbilityType.ADAPTIVE_FORCEFIELD]
-    caster.antimatter_component.current_amount = 55 + old.definition.antimatter_cost - 1
+    caster.antimatter_component.current_amount = 25 + old.definition.antimatter_cost - 1
     before = caster.antimatter_component.current_amount
-    commands = [Command(type='use_ability', unit_ids=(caster.id,), ability='fuel_cache', position=(200, 0)),
+    commands = [Command(type='use_ability', unit_ids=(caster.id,), ability='ghost_fleet', position=(200, 0)),
                 Command(type='use_ability', unit_ids=(caster.id,), ability='adaptive_forcefield')]
     if reverse:
         commands.reverse()
     result = CommandGateway(game).apply_batch(caster.owner, CommandBatch(tuple(commands)))
     assert not result.accepted and caster.antimatter_component.current_amount == before
-    assert not old.is_active and not deployments(game.galaxy, caster.id, 'fuel_cache')
+    assert not old.is_active and not deployments(game.galaxy, caster.id, 'ghost_fleet')
 
 
 def test_batch_link_occupancy_cycles_and_cancellation():
@@ -522,21 +485,6 @@ def test_historical_source_allocator():
     assert GameObject.object_counter >= 1000000
 
 
-def test_hidden_cache_and_missing_id_have_same_error_and_no_provenance_leak():
-    game = campaign()
-    caster, enemy = equipped(game), equipped(game, 'enemy', owner=1)
-    enemy.position = Position(3000, 0)
-    assert activate(caster, 'fuel_cache', game.galaxy, position=Position(200, 0))
-    cache = deployments(game.galaxy, caster.id, 'fuel_cache')[0]
-    def recover(target_id):
-        return CommandGateway(game).apply_batch(enemy.owner, CommandBatch((Command(type='recover_fuel_cache', unit_ids=(enemy.id,), target_id=target_id),)))
-    assert recover(cache.id).errors[0].code == recover(99999999).errors[0].code
-    assert not build_observation(game, enemy.owner)['visible_deployables']
-    enemy.position = Position(250, 0)
-    view = build_observation(game, enemy.owner)['visible_deployables'][0]
-    assert 'deploying_ship_id' not in view and 'lifetime' not in view
-
-
 @pytest.mark.parametrize('kind', [k for k in SPECS if k not in STRIKECRAFT_ABILITIES])
 def test_fake_provider_can_issue_each_tactical_ability(kind):
     from game_ai.adapters.fake import FakePlanningProvider
@@ -554,6 +502,9 @@ def test_fake_provider_can_issue_each_tactical_ability(kind):
     field.reveal_to(caster.owner)
     game.galaxy.systems['Sol'].hexes[(0, 0)].minefields.append(field)
     kwargs = {'target_id': target.id} if SPECS[kind].target_kind == 'unit' else {'position': (200, 0)}
+    if SPECS[kind].target_kind == 'self':
+        kwargs = {}
+        caster.antimatter_component.current_amount = 100
     if kind == 'nebula_catalyst':
         kwargs['target_id'] = body.id
     command = Command(type='use_ability', unit_ids=(caster.id,), ability=kind, **kwargs)
@@ -592,30 +543,6 @@ def test_custom_design_roundtrip_construction_and_use(tmp_path):
     built = next(u for u in game.galaxy.systems['Sol'].hexes[(0, 0)].units if u.template_name == design.display_name)
     assert set(k.value for k in built.ability_component.abilities) == set(SPECS)
     assert issue(game, built, 'ghost_fleet', position=(700, 0)).accepted
-
-
-def test_recovery_and_celestial_orders_roundtrip_without_replaying(tmp_path):
-    from unit_orders.movement import MoveOrder
-    game = campaign()
-    caster = equipped(game)
-    assert activate(caster, 'fuel_cache', game.galaxy, position=Position(200, 0))
-    cache = deployments(game.galaxy, caster.id, 'fuel_cache')[0]
-    body = Nebula((0, 0), 'Sol', NebulaType.HYDROGEN)
-    body.position, body.radius = Position(200, 0), 1000
-    game.galaxy.systems['Sol'].add_celestial_body(body)
-    caster.commander_component.add_order(MoveOrder(caster, {'destination_system_name': 'Sol',
-        'destination_hex_coord': (0, 0), 'destination_position': Position(1000, 0)}))
-    commands = (Command(type='recover_fuel_cache', unit_ids=(caster.id,), target_id=cache.id, queue=True),
-                Command(type='use_ability', unit_ids=(caster.id,), ability='nebula_catalyst', target_id=body.id, position=(200, 0), queue=True))
-    assert CommandGateway(game).apply_batch(caster.owner, CommandBatch(commands)).accepted
-    roots = list(caster.commander_component.orders_queue)
-    before = caster.antimatter_component.current_amount
-    assert deserialize_game_state(game, json.loads(json.dumps(serialize_game_state(game))))
-    restored = game.galaxy.get_unit_by_id(caster.id)
-    assert [o.public_id for o in restored.commander_component.orders_queue] == [o.public_id for o in roots]
-    assert restored.antimatter_component.current_amount == before
-    assert not deployments(game.galaxy, caster.id, 'nebula_catalyst')
-    assert len(deployments(game.galaxy, caster.id, 'fuel_cache')) == 1
 
 
 def test_ghost_concealment_team_identification_and_real_enemy_coexistence():
@@ -676,46 +603,18 @@ def test_deployable_ordinary_turret_attack_and_subsystem_rejection():
     game = campaign()
     caster, attacker = equipped(game), equipped(game, 'attacker', owner=1)
     attacker.position = Position(400, 0)
-    assert activate(caster, 'fuel_cache', game.galaxy, position=Position(200, 0))
-    cache = deployments(game.galaxy, caster.id, 'fuel_cache')[0]
+    assert activate(caster, 'ghost_fleet', game.galaxy, position=Position(200, 0))
+    emitter = deployments(game.galaxy, caster.id, 'ghost_fleet')[0]
     weapons = Weapons(attacker)
     attacker.add_component(weapons)
     weapons.add_turret(Turret(TurretType.BEAM, damage=25, range=500, cooldown=1, parent_unit=attacker))
-    command = Command(type='attack', unit_ids=(attacker.id,), target_id=cache.id, target_component='Engines')
+    command = Command(type='attack', unit_ids=(attacker.id,), target_id=emitter.id, target_component='Engines')
     assert not CommandGateway(game).apply_batch(attacker.owner, CommandBatch((command,))).accepted
-    command = Command(type='attack', unit_ids=(attacker.id,), target_id=cache.id)
+    command = Command(type='attack', unit_ids=(attacker.id,), target_id=emitter.id)
     result = CommandGateway(game).apply_batch(attacker.owner, CommandBatch((command,)))
     assert result.accepted, result.errors
     weapons.update(game.galaxy)
-    assert cache.current_hit_points == 0
-
-
-def test_codex_protocol_requires_observation_of_new_cache_before_recovery():
-    from game_control_protocol import ControlService, PROTOCOL_VERSION
-    from player_controller import PlayerController
-    game = campaign()
-    caster = equipped(game)
-    caster.owner.controller = PlayerController.CODEX
-    game.current_player = caster.owner
-    service = ControlService(game, port=0)
-    try:
-        observed = service._dispatch('observe', 'obs', {})
-        assert observed['ok'] and observed['protocol_version'] == PROTOCOL_VERSION == 3
-        token = observed['data']['turn_token']
-        command = Command(type='use_ability', unit_ids=(caster.id,), ability='fuel_cache', position=(200, 0))
-        result = service._dispatch('command', 'deploy', {'turn_token': token, 'commands': [command.to_dict()]})
-        assert result['ok'], result
-        cache = deployments(game.galaxy, caster.id, 'fuel_cache')[0]
-        recover = Command(type='recover_fuel_cache', unit_ids=(caster.id,), target_id=cache.id).to_dict()
-        result = service._dispatch('command', 'guess', {'turn_token': token, 'commands': [recover]})
-        assert not result['ok'] and cache.fuel == 50
-        observation = service._dispatch('observe', 'fresh', {})
-        assert observation['data']['observation']['visible_deployables'][0]['id'] == cache.id
-        result = service._dispatch('command', 'recover', {'turn_token': token, 'commands': [recover]})
-        assert result['ok'], result
-        assert not deployments(game.galaxy, caster.id, 'fuel_cache')
-    finally:
-        service.shutdown()
+    assert emitter.current_hit_points == 0
 
 
 def test_designer_exposes_all_six_and_sidebar_persistent_caps(pygame_context, tmp_path):

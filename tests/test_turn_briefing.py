@@ -359,19 +359,19 @@ def test_refit_success_has_one_personal_completion():
     assert len([e for e in builder.owner.briefing.pending if e.detail == "Refit completed"]) == 1
 
 
-def test_deployable_damage_and_destruction_are_visible_but_recovery_is_not_a_loss():
+def test_deployable_damage_and_destruction_are_visible_but_cleanup_is_not_a_loss():
     from domain.deployables import Deployable
     game = setup()
     owner = game.players[0]
     ship(game)
     sector = game.galaxy.systems["Sol"].hexes[(0, 0)]
-    cache = Deployable(owner, Position(100, 0), (0, 0), "Sol", "fuel_cache", 900, game.galaxy)
-    recovered = Deployable(owner, Position(200, 0), (0, 0), "Sol", "fuel_cache", 900, game.galaxy)
+    cache = Deployable(owner, Position(100, 0), (0, 0), "Sol", "ghost_fleet", 900, game.galaxy)
+    recovered = Deployable(owner, Position(200, 0), (0, 0), "Sol", "ghost_fleet", 900, game.galaxy)
     sector.deployables.extend([cache, recovered])
     initialize_campaign(game)
     begin_window(game, owner)
     cache.take_damage(999, cause="plasma")
-    recovered.destroy(reason="recovered")
+    recovered.destroy(reason="cleanup")
     assert any(e.category == "hazard" and e.subject_id == cache.id for e in owner.briefing.pending)
     assert [e.subject_id for e in owner.briefing.pending if e.category == "loss"] == [cache.id]
 

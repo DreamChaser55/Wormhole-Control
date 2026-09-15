@@ -151,7 +151,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 9,
+        "schema_version": 10,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -287,6 +287,7 @@ def _unit_view(
         data["is_hidden_in_gas_giant"] = True
         data["hidden_in_gas_giant_id"] = getattr(unit, "hidden_in_gas_giant_id", None)
     if relation in {"self", "ally"}:
+        data["multiplication_receive_cooldown"] = max(0, getattr(unit, 'multiply_receive_ready_round', 0)-game.turn_number)
         data["capability_details"] = _capability_details(unit, game)
         from .tactical import environmental_view
         data["environmental_modifiers"] = environmental_view(unit)

@@ -76,7 +76,8 @@ class OrderType(Enum):
     ENTER_GAS_GIANT = auto()     # Enter a gas giant's atmosphere to conceal the ship
     LEAVE_GAS_GIANT = auto()     # Emerge from a gas giant's atmosphere onto a random vector
     STANCE = auto()              # Persistent standing policy that owns a transient Attack subtree
-    RECOVER_FUEL_CACHE = auto()
+    TAKE_ANTIMATTER = auto()
+    CONTINUOUS_ANTIMATTER_TRANSPORT = auto()
 
 
 class Order:
@@ -85,6 +86,8 @@ class Order:
     Orders can contain sub-orders that must be completed before the main order
     is considered complete. This creates a recursive order structure.
     """
+    # Resource exchange ticks run at owner-turn resolution, never on issuance.
+    update_on_start = True
     order_counter = 0
     target_fields: tuple[OrderTargetField, ...] = ()
 

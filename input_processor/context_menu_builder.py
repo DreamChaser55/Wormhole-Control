@@ -216,11 +216,8 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
     if isinstance(target_object, Deployable):
         if game.is_unit_visible(target_object):
             from domain.players import are_enemies
-            from unit_orders.recover_fuel import recovery_blocker
             if any(a.owner == current_player and a.weapons_component and are_enemies(a.owner, target_object.owner) for a in actors):
                 options.append(('Attack deployable', 'tactical_attack'))
-            if any(a.owner == current_player and recovery_blocker(a, target_object, game.galaxy) is None for a in actors):
-                options.append(('Recover fuel cache', 'tactical_recover'))
         return options, target
     if any(actors):
         if target_coords is not None:
@@ -303,14 +300,14 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                     if target_is_damaged and any(a.repair_component for a in actors):
                         options.append(("Repair", "repair_unit"))
 
-                    has_antimatter_to_give = any(
-                        a.antimatter_component and a.antimatter_component.current_amount > 0
-                        for a in actors if a is not target_object
-                    )
-                    target_am_comp = getattr(target_object, 'antimatter_component', None)
-                    target_has_space = target_am_comp is not None and target_am_comp.current_amount < target_am_comp.max_capacity
-                    if has_antimatter_to_give and target_has_space:
+                    from antimatter_logistics import exchange_blocker
+                    fuel_actors = [a for a in actors if exchange_blocker(a, target_object, game.galaxy) is None]
+                    if fuel_actors:
                         options.append(("Transfer Antimatter", "transfer_antimatter"))
+                    if fuel_actors:
+                        options.append(("Take Antimatter", "take_antimatter"))
+                    if len(actors) == 1 and fuel_actors and fuel_actors[0].engines_component and fuel_actors[0].engines_component.is_operational:
+                        options.append(("Continuous Antimatter Transport...", "continuous_antimatter_transport"))
 
                     is_metal_refinery = bool(getattr(target_object, 'metal_refinery_component', None))
 

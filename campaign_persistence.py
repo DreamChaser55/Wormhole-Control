@@ -181,12 +181,13 @@ def validate_document(data):
         located(raw, path)
         require(raw, ("schema_version", "name", "owner_id", "hull_size", "template_name", "components", "current_hit_points",
                       "max_hit_points", "experience_points", "is_disabled", "disabled_by_unit_ids", "damage_reduction",
-                      "damage_amplification", "lifetime", "is_temporary", "infiltrating_agents"), path)
+                      "damage_amplification", "lifetime", "is_temporary", "infiltrating_agents",
+                      "multiply_cast_ready_round", "multiply_receive_ready_round"), path)
         if not isinstance(raw["components"], dict):
             raise ValueError(f"{path}.components: expected object")
         if raw["owner_id"] is None:
             raise ValueError(f"{path}.owner_id: unit has no owner")
-        for name in ("current_hit_points", "max_hit_points", "experience_points"):
+        for name in ("current_hit_points", "max_hit_points", "experience_points", "multiply_cast_ready_round", "multiply_receive_ready_round"):
             number(raw[name], f"{path}.{name}", 0, integer=True)
         if raw["max_hit_points"] <= 0 or raw["current_hit_points"] > raw["max_hit_points"]:
             raise ValueError(f"{path}: invalid hull HP")
