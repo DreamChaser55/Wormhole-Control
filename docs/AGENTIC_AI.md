@@ -165,7 +165,7 @@ The observation and gateway share side-effect-free legality rules. The gateway
 also projects guaranteed effects through a batch, allowing a valid
 `load_colonists` command to satisfy a later `colonize` command for the same unit
 when colonization is queued. Entity-targeted commands (`colonize`, `load_colonists`,
-`mine`, `repair`, `attack`, `trade`) require only `target_id` (plus amount/component
+`mine`, `repair`, `attack`, `attack_long_range`, `trade`) require only `target_id` (plus amount/component
 if applicable); approach movement is automated, so coordinates (`position`, `hex_coord`,
 `system_name`) must be null or omitted. Inhibitor toggles likewise project active dynamic
 zones, so overlapping activations are rejected before commit and a preceding
@@ -180,6 +180,15 @@ complete equipment validation, including removals. Saves record the
 original refit payer and unpaid salvage; settlement occurs only once. Removal
 salvage is granted on successful completion, and failed installation validation
 refunds the original payer. No retrofit command is added to the AI contract.
+
+`attack` approaches until all target-eligible turrets are in range.
+`attack_long_range` requires functional Weapons and at least one eligible Long Range
+variant turret, approaching until all such turrets are in range. Both permit every
+eligible turret to fire within its own range and neither retreats. The commands
+share `unit_ids`, `target_id`, optional `target_component`, and `queue`; coordinates
+are unused. Discovery exposes eligible unit and deployable targets. Missing capability
+rejects the entire batch before replacement or cancellation; later capability loss
+fails the order without changing it to normal Attack. See [attack rules](REFERENCE.md#queues-and-stances).
 
 ## Failure behavior
 
@@ -233,7 +242,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 10 / commands 7 / socket 3)
+## Shared order contract (observation 10 / commands 8 / socket 3)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -328,8 +337,8 @@ The current save preserves order UUIDs recursively, history/counter, terminal-re
 job charges. Missing order identities and payment state are rejected. Restored active orders rebind
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
-The strict response schema is `wormhole_control_turn_v6`, and prompt cache key is
-`wormhole-control-turn-v9`. No live API call is required for regression testing.
+The strict response schema is `wormhole_control_turn_v7`, and prompt cache key is
+`wormhole-control-turn-v10`. No live API call is required for regression testing.
 
 ### Gameplay invariant guidance
 
@@ -422,5 +431,5 @@ relation-filtered Catalyst enhancements; body values describe baseline terrain.
 Catalyst patch records describe only the enhancement relevant to their nebula.
 
 Enrichment preserves existing body visibility and remote summaries and exposes
-no additional enemy equipment. Command contract 7, socket protocol 3, response
-schema v6 and save format 4.6 apply. Prompt cache key is v9.
+no additional enemy equipment. Command contract 8, socket protocol 3, response
+schema v7 and save format 4.6 apply. Prompt cache key is v10.

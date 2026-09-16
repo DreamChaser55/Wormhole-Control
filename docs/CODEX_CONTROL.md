@@ -231,7 +231,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 7, shared field
+Read `observation.command_catalog`: it contains command contract version 8, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -344,15 +344,35 @@ matching an ordinary warship with identical visible equipment. Catalog entries e
 generic; an already safe name requires no change. Enemy observations omit all three
 order-layer fields and never expose design identity, actual hull usage, upkeep or
 construction/refit details. These rules apply to all enemy units, preserving owners'
-and allies' existing access. Observation schema is 10, command contract is 6, and the
+and allies' existing access. Observation schema is 10, command contract is 8, and the
 socket envelope remains protocol 3.
+
+## Attack range commands
+
+`attack` approaches until every turret eligible to hit its target is in range.
+`attack_long_range` requires functional Weapons and at least one eligible Long Range
+variant turret, and approaches until all eligible Long Range turrets are in range.
+All eligible turrets may fire within their own ranges under either order, and neither
+order retreats. Select targets from the unit's command options; both support visible
+enemy units and deployables and optional public subsystem targeting.
+
+```json
+{"type":"attack_long_range","unit_ids":[101],"target_id":102,"queue":false}
+{"type":"attack_long_range","unit_ids":[101],"target_id":102,"target_component":"Weapons","queue":true}
+```
+
+These are separate examples; substitute observed IDs. Omit coordinates. Ineligible
+units reject the whole command batch before any orders change. Later loss of all
+eligible long-range turrets fails the order instead of switching to normal Attack.
+The public order type is `attack_long_range`; queueing, cancellation and target
+redaction follow the ordinary [order contract](#command-discovery-and-order-control).
 
 ## Tactical ability commands
 
-Observation schema 10 and command contract 7 expose a deduplicated `ability_catalog`,
+Observation schema 10 and command contract 8 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v6`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v7`; unused OpenAI command fields stay null.
 
 
 ```json
@@ -393,5 +413,5 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 7 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 8 remain unchanged; no acknowledgement
 command is required from Codex.

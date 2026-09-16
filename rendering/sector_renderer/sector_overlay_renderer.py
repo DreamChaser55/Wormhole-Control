@@ -235,7 +235,7 @@ class SectorOverlayRenderer:
             self.parent.grid_renderer.draw_range_ring(cx, cy, cr_px, CONSTRUCTOR_RANGE_RING_COLOR)
 
     def get_waypoint_style(self, waypoint):
-        if waypoint['order_type'] == OrderType.ATTACK:
+        if waypoint['order_type'] in {OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE}:
             line_color = RED
             line_width = 2
         elif waypoint['order_type'] == OrderType.PROTECT:
@@ -346,10 +346,11 @@ class SectorOverlayRenderer:
                 dhex = order.parameters.get("target_hex_coord") or order.unit.in_hex
                 if dsys == system_name and dhex == hex_coord:
                     return True
-        elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
+        elif order.order_type in [OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE, OrderType.PROTECT]:
+            from tactical_abilities import combat_target
             target_unit_id = order.parameters.get("target_unit_id")
             if target_unit_id is not None:
-                target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
+                target_unit = combat_target(self.game.galaxy, target_unit_id)
                 if target_unit and target_unit.in_system == system_name and target_unit.in_hex == hex_coord:
                     return True
 
@@ -449,10 +450,11 @@ class SectorOverlayRenderer:
                     'sequence_index': sequence_index,
                     'order_type': order.order_type
                 })
-        elif order.order_type in [OrderType.ATTACK, OrderType.PROTECT]:
+        elif order.order_type in [OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE, OrderType.PROTECT]:
+            from tactical_abilities import combat_target
             target_unit_id = order.parameters.get("target_unit_id")
             if target_unit_id is not None:
-                target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
+                target_unit = combat_target(self.game.galaxy, target_unit_id)
                 if target_unit:
                     sequence_index = len(all_waypoints_sequence)
                     all_waypoints_sequence.append({
@@ -541,7 +543,7 @@ class SectorOverlayRenderer:
                 for i, waypoint in enumerate(segment):
                     dest_pixel_point = self.parent.grid_renderer.coords_to_pixels(waypoint['position'])
                     
-                    if waypoint['order_type'] == OrderType.ATTACK:
+                    if waypoint['order_type'] in {OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE}:
                         line_color = RED
                         line_width = 2
                     elif waypoint['order_type'] == OrderType.PROTECT:
@@ -632,7 +634,7 @@ class SectorOverlayRenderer:
                 for i, waypoint in enumerate(segment):
                     dest_pixel_point = self.parent.grid_renderer.coords_to_pixels(waypoint['position'])
                     
-                    if waypoint['order_type'] == OrderType.ATTACK:
+                    if waypoint['order_type'] in {OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE}:
                         line_color = RED
                         line_width = 2
                     elif waypoint['order_type'] == OrderType.PROTECT:

@@ -86,9 +86,24 @@ def resolve_component_type(comp_spec: Any) -> Optional[type]:
 
 class AttackOrder(Order):
     target_fields = (OrderTargetField('target_unit_id', 'unit', public=True),)
+    attack_type = OrderType.ATTACK
+    long_range_only = False
 
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
-        super().__init__(unit, OrderType.ATTACK, parameters, parent_order)
+        super().__init__(unit, self.attack_type, parameters, parent_order)
+
+    def approach_range(self, target_unit: 'Unit') -> Optional[float]:
+        """Shortest effective range of the turrets that determine this approach."""
+        weapons = self.unit.weapons_component
+        if not weapons:
+            return None
+        turrets = weapons.eligible_turrets_for(target_unit, long_range_only=self.long_range_only)
+        if not isinstance(turrets, (list, tuple)):
+            # Keep lightweight weapon collaborators usable by order tests.
+            from unit_components.enums import TurretVariant
+            turrets = [t for t in getattr(weapons, 'turrets', [])
+                       if not self.long_range_only or t.variant == TurretVariant.LONG_RANGE]
+        return min((turret.range for turret in turrets), default=None)
 
     def get_state_data(self) -> Dict[str, Any]:
         state_data = super().get_state_data()
@@ -131,10 +146,8 @@ class AttackOrder(Order):
         if not weapons:
             self.fail("capability_unavailable")
             return
-        eligible_turrets = weapons.eligible_turrets_for(target_unit)
-        if not isinstance(eligible_turrets, (list, tuple)):
-            eligible_turrets = list(getattr(weapons, "turrets", []))
-        if not eligible_turrets:
+        min_turret_range = self.approach_range(target_unit)
+        if min_turret_range is None:
             self.fail("capability_unavailable")
             weapons.clear_target()
             return
@@ -145,13 +158,7 @@ class AttackOrder(Order):
         else:
             in_the_same_system_and_hex = True
 
-        in_range = False
-        for turret in eligible_turrets:
-            if distance(self.unit.position, target_unit.position) < turret.range:
-                in_range = True
-                break
-            
-        min_turret_range = min(turret.range for turret in eligible_turrets)
+        in_range = distance(self.unit.position, target_unit.position) < min_turret_range
 
         if not in_the_same_system_and_hex or not in_range:
             move_order = MoveOrder.for_unit_approach(
@@ -186,28 +193,21 @@ class AttackOrder(Order):
             return
 
         weapons = self.unit.weapons_component
-        eligible_turrets = weapons.eligible_turrets_for(target_unit) if weapons else []
-        if weapons and not isinstance(eligible_turrets, (list, tuple)):
-            eligible_turrets = list(getattr(weapons, "turrets", []))
-        if not weapons or not eligible_turrets:
+        min_turret_range = self.approach_range(target_unit)
+        if min_turret_range is None:
             for child in list(self.sub_orders):
                 child.cancel()
             self.sub_orders.clear()
-            self.status = OrderStatus.FAILED
+            self.fail("capability_unavailable")
             if self._owns_weapon_engagement() and weapons:
                 weapons.clear_target()
             return
 
-        min_turret_range = min(turret.range for turret in eligible_turrets)
+        standoff_distance = max(1.0, min_turret_range - 5.0)
 
         in_the_same_system_and_hex = (self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex)
         
-        in_range = False
-        if in_the_same_system_and_hex:
-            for turret in eligible_turrets:
-                if distance(self.unit.position, target_unit.position) < turret.range:
-                    in_range = True
-                    break
+        in_range = in_the_same_system_and_hex and distance(self.unit.position, target_unit.position) < min_turret_range
 
         # Check if we have an active movement sub-order
         has_movement_order = False
@@ -234,7 +234,7 @@ class AttackOrder(Order):
                         approach_resolved = current_sub.parameters.get("approach_position_resolved", True)
                         if approach_resolved:
                             current_offset = distance(dest_pos, target_unit.position)
-                            if abs(current_offset - (min_turret_range - 5.0)) > 15.0:
+                            if abs(current_offset - standoff_distance) > 15.0:
                                 target_moved = True
 
                     if target_moved:
@@ -249,7 +249,7 @@ class AttackOrder(Order):
                 move_order = MoveOrder.for_unit_approach(
                     self.unit,
                     target_unit,
-                    max(1.0, min_turret_range - 5.0),
+                    standoff_distance,
                     parent_order=self,
                 )
                 self.add_sub_order(move_order)
@@ -311,12 +311,18 @@ class AttackOrder(Order):
         target = combat_target(galaxy_ref, target_id) if target_id is not None else None
         weapons = self.unit.weapons_component
         from domain.players import are_enemies
-        if target and weapons and are_enemies(self.unit.owner, target.owner) and weapons.eligible_turrets_for(target):
+        if target and weapons and are_enemies(self.unit.owner, target.owner) and self.approach_range(target) is not None:
             weapons.set_target(target, resolve_component_type(self.parameters.get("target_component_type")))
         elif weapons:
             # Rebinding must not advance order lifecycle or write history on load.
             weapons.clear_target()
         super().resume(galaxy_ref)
+
+
+class AttackLongRangeOrder(AttackOrder):
+    """Use long-range turrets for approach distance; all eligible turrets may fire."""
+    attack_type = OrderType.ATTACK_LONG_RANGE
+    long_range_only = True
 
 
 class ProtectOrder(Order):

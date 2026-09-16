@@ -298,11 +298,13 @@ class Weapons(UnitComponent):
         """
         self.turrets.append(turret)
 
-    def eligible_turrets_for(self, target_unit: Optional['Unit']) -> list[Turret]:
+    def eligible_turrets_for(self, target_unit: Optional['Unit'], *, long_range_only: bool = False) -> list[Turret]:
         """Return the turrets whose hull/wing rules permit this target."""
         if not target_unit or self.is_destroyed:
             return []
-        return [t for t in self.turrets if self.turret_accepts_hull(t, target_unit.hull_size)]
+        return [t for t in self.turrets
+                if (not long_range_only or t.variant == TurretVariant.LONG_RANGE)
+                and self.turret_accepts_hull(t, target_unit.hull_size)]
 
     def turret_accepts_hull(self, turret: Turret, hull_size: HullSize) -> bool:
         """Hardware target-class policy, independent of current operational state."""

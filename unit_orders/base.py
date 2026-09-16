@@ -46,6 +46,7 @@ class OrderType(Enum):
     MOVE = auto()           # High-level move to a location (system, hex, position). Will plan a potentially multi-leg route to the destination and spawn one or more sub-orders of REACH_WAYPOINT.
     PATROL = auto()         # Patrol between positions
     ATTACK = auto()         # Attack a target
+    ATTACK_LONG_RANGE = auto()  # Approach using only long-range turret ranges
     DEFEND = auto()         # Defend a position or unit
     PROTECT = auto()        # Protect a friendly unit, follow it and attack nearby enemies
     TOGGLE_INHIBITOR = auto() # Turn the hyperspace inhibitor on or off

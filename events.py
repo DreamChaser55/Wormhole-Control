@@ -66,11 +66,12 @@ class JumpWormholeEvent(Event):
         self.shift_pressed = shift_pressed
 
 class AttackUnitEvent(Event):
-    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool, target_component_type_str: typing.Optional[str] = None):
+    def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool, target_component_type_str: typing.Optional[str] = None, long_range_only: bool = False):
         self.units = units
         self.target_unit = target_unit
         self.shift_pressed = shift_pressed
         self.target_component_type_str = target_component_type_str
+        self.long_range_only = long_range_only
 
 class IssueProtectOrderEvent(Event):
     def __init__(self, units: list, target_unit: typing.Any, shift_pressed: bool):
@@ -287,4 +288,3 @@ class LeaveGasGiantEvent(Event):
     def __init__(self, units: list, shift_pressed: bool = False):
         self.units = units
         self.shift_pressed = shift_pressed
-

@@ -57,7 +57,7 @@ and components from their defining modules. Canonical domain classes live in
 
 Commander owns explicit queue promotion and stance arbitration. An Order owns
 subtree status, cancellation and outcomes; concrete orders own actuator/job cleanup.
-Turret authorization requires an `IN_PROGRESS` Attack on the active root's front
+Turret authorization requires an `IN_PROGRESS` Attack or Attack (long-range only) on the active root's front
 child chain. Cached targets, queued attacks and suspended subtrees cannot authorize
 fire. See [player order rules](REFERENCE.md#queues-and-stances).
 

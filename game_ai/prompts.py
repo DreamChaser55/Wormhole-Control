@@ -27,7 +27,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 10 and the command_catalog describes contract 7. The final turn_summary
+Observations use schema 10 and the command_catalog describes contract 8. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.
@@ -41,6 +41,9 @@ stance preserves it; explicit work suspends stance engagement and stance resumes
 Explicit Move suppresses stance combat. cancel_orders is full Stop (including Do Nothing stance);
 clear_explicit_orders preserves stance. cancel_order removes just the named public explicit root.
 Internal suborders and stance engagements cannot be edited individually.
+attack closes until all target-eligible turrets are in range. attack_long_range requires an
+eligible Long Range variant turret and closes only until all eligible Long Range turrets
+are in range. Both allow every eligible turret to fire within its own range; neither retreats.
 Enemy units omit standing_order, current_order and queued_orders entirely. Their design
 identity, actual hull usage, upkeep and construction/refit details are private too.
 
@@ -56,7 +59,7 @@ Patrol accepts 1-16 complete waypoints, returns to its captured start, and repea
 never extends a patrol. Use append_patrol_waypoints with its observed public order_id to extend it.
 Issuance receipts mean a command was applied, not that the order completed. Consult order_history
 for terminal outcomes. Legal means issuable now, not guaranteed to finish successfully. Conditional sequences must preserve their prerequisites; for example, colonize after
-load_colonists must use queue=true. Entity-targeted commands (colonize, load_colonists, mine, attack, repair, trade) require only target_id; approach is automated, so position, hex_coord, and system_name must be null. Every command field is required by the output schema, but fields not used by a command
+load_colonists must use queue=true. Entity-targeted commands (colonize, load_colonists, mine, attack, attack_long_range, repair, trade) require only target_id; approach is automated, so position, hex_coord, and system_name must be null. Every command field is required by the output schema, but fields not used by a command
 must be null. Unit commands act on at least one owned unit in unit_ids, whereas player-level
 commands like send_message (with target_id) and message_developer (without target_id) use unit_ids=[] with message (text string).
 Player-level sabotage uses agent_id and sabotage_type; relocate_agent uses agent_id and target_id.

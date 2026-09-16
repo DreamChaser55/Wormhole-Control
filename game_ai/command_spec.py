@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 7
+CONTRACT_VERSION = 8
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -40,7 +40,8 @@ COMMAND_SPECS = {
     "append_patrol_waypoints": _spec("Append waypoints to an existing explicit patrol without interrupting its leg.", ("order_id", "waypoints"), queued=False, single_unit=True),
     "move": _spec("Move to a destination. Explicit movement suspends stance combat.", DESTINATION, capability=("engines_component",)),
     "patrol": _spec("Loop through waypoints then return to the starting position. Queuing creates a separate loop.", (*DESTINATION, "waypoints"), (), capability=("engines_component",)),
-    "attack": _spec("Attack a visible enemy, optionally selecting a publicly visible subsystem.", ("target_id", "target_component"), ("target_id",), capability=("weapons_component",)),
+    "attack": _spec("Approach until all eligible turrets are in range and attack a visible enemy, optionally selecting a publicly visible subsystem.", ("target_id", "target_component"), ("target_id",), capability=("weapons_component",)),
+    "attack_long_range": _spec("Requires a Long Range turret eligible for the target. Approach until all eligible Long Range turrets are in range; all eligible turrets may fire if in range. Does not retreat. Optionally select a publicly visible subsystem.", ("target_id", "target_component"), ("target_id",), capability=("weapons_component",)),
     "defend": _spec("Hold a destination or target location, engaging intruders within the guard radius.", (*DESTINATION, "target_id"), (), capability=("engines_component", "weapons_component")),
     "protect": _spec("Escort a friendly unit and engage nearby enemies.", ("target_id",), capability=("engines_component",)),
     "colonize": _spec("Colonize an unowned body; queue behind a required colonist load.", ("target_id",), capability=("colony_component",)),

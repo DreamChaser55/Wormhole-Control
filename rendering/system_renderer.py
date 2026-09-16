@@ -530,9 +530,10 @@ class SystemViewRenderer:
                     else:
                         final_pos = end_of_sub_orders_pos
                         final_sys = end_of_sub_orders_sys
-                elif order.order_type == OrderType.ATTACK:
+                elif order.order_type in {OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE}:
+                    from tactical_abilities import combat_target
                     target_unit_id = order.parameters["target_unit_id"]
-                    target_unit = self.game.galaxy.get_unit_by_id(target_unit_id)
+                    target_unit = combat_target(self.game.galaxy, target_unit_id)
                     if target_unit:
                         all_hex_waypoints.append({
                             'start_hex': start_hex,
@@ -781,7 +782,7 @@ class SystemViewRenderer:
                         start_x, start_y = start_pixel_point.x, start_pixel_point.y
                         end_x, end_y = end_pixel_point.x, end_pixel_point.y
                     
-                    if jump.get('order_type') == OrderType.ATTACK:
+                    if jump.get('order_type') in {OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE}:
                         line_color = RED
                         line_width = 2
                     elif jump.get('order_type') == OrderType.USE_ABILITY:

@@ -11,7 +11,7 @@ from events import (
     EnterGasGiantEvent, LeaveGasGiantEvent
 )
 from unit_orders.movement import MoveOrder, calculate_required_antimatter
-from unit_orders.combat import AttackOrder, ProtectOrder
+from unit_orders.combat import AttackOrder, AttackLongRangeOrder, ProtectOrder
 from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
 from unit_orders.construction import ConstructOrder
 from unit_orders.repair import RepairOrder
@@ -297,10 +297,20 @@ class OrderSystem:
 
     def handle_attack_unit(self, event: AttackUnitEvent):
         for unit in event.units:
+            if event.long_range_only:
+                from domain.players import are_enemies
+                if (unit.owner != self.game.players[self.game.current_player_index]
+                        or unit.is_disabled or unit.is_hidden_in_gas_giant
+                        or not are_enemies(unit.owner, event.target_unit.owner)
+                        or not self.game.is_unit_visible(event.target_unit)
+                        or not unit.weapons_component
+                        or not unit.weapons_component.eligible_turrets_for(event.target_unit, long_range_only=True)):
+                    continue
             attack_params = {"target_unit_id": event.target_unit.id}
             if event.target_component_type_str:
                 attack_params["target_component_type"] = event.target_component_type_str
-            attack_order = AttackOrder(unit, attack_params)
+            order_class = AttackLongRangeOrder if event.long_range_only else AttackOrder
+            attack_order = order_class(unit, attack_params)
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(attack_order)

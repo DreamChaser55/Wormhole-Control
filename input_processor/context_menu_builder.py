@@ -218,6 +218,10 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
             from domain.players import are_enemies
             if any(a.owner == current_player and a.weapons_component and are_enemies(a.owner, target_object.owner) for a in actors):
                 options.append(('Attack deployable', 'tactical_attack'))
+            if any(a.owner == current_player and not a.is_disabled and not a.is_hidden_in_gas_giant
+                   and are_enemies(a.owner, target_object.owner) and a.weapons_component
+                   and a.weapons_component.eligible_turrets_for(target_object, long_range_only=True) for a in actors):
+                options.append(('Attack (long-range only)', 'attack_long_range'))
         return options, target
     if any(actors):
         if target_coords is not None:
@@ -256,6 +260,19 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                             component_type = type(component).__name__
                             label = getattr(component, "DISPLAY_NAME", component_type)
                             options.append((f"Attack {label}", f"attack_unit_{component_type}"))
+
+                    if game.is_unit_visible(target_object) and any(
+                            a.owner == current_player and not a.is_disabled and not a.is_hidden_in_gas_giant
+                            and a.weapons_component
+                            and a.weapons_component.eligible_turrets_for(target_object, long_range_only=True)
+                            for a in actors):
+                        from component_visibility import public_components
+                        ranged_options = [("Hull", "attack_long_range")]
+                        for component in public_components(target_object, enemy=True):
+                            component_type = type(component).__name__
+                            label = getattr(component, "DISPLAY_NAME", component_type)
+                            ranged_options.append((label, f"attack_long_range_{component_type}"))
+                        options.append(("Attack (long-range only)", ranged_options))
 
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
                     if has_intel_actors:

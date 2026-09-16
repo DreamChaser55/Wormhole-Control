@@ -126,10 +126,12 @@ def guidance(game, player, unit, legal, options, visible_units, exact_bodies):
         legal.add('cancel_ability')
     weapons = getattr(unit, 'weapons_component', None)
     if weapons and not weapons.is_destroyed:
-        enemies = [d.id for d in deployables if are_enemies(player, d.owner) and weapons.eligible_turrets_for(d)]
-        if enemies:
-            options.setdefault('attack', {}).setdefault('target_ids', []).extend(enemies)
-            legal.add('attack')
+        for kind in ('attack', 'attack_long_range'):
+            enemies = [d.id for d in deployables if are_enemies(player, d.owner)
+                       and weapons.eligible_turrets_for(d, long_range_only=kind == 'attack_long_range')]
+            if enemies:
+                options.setdefault(kind, {}).setdefault('target_ids', []).extend(enemies)
+                legal.add(kind)
 
 
 def environmental_view(unit):

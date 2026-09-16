@@ -431,8 +431,22 @@ only explicit work; see [order control](CODEX_CONTROL.md#command-discovery-and-o
 
 Stance pursuit stops when the enemy becomes hidden or leaves the selected boundary.
 A direct Attack order is independent of that boundary. Turrets fire only for an
-active Attack, including one performed by Stance, Patrol, Protect or Defend;
+active Attack or Attack (long-range only), including normal attacks performed by Stance, Patrol, Protect or Defend;
 queued, suspended or cancelled attacks do not authorize fire.
+
+**Attack** approaches until all turrets eligible to hit the target are in range.
+**Attack (long-range only)** requires functional Weapons with at least one eligible
+Long Range variant turret and approaches only until all eligible Long Range turrets
+are in range. Each order uses the shortest effective range of its relevant turrets;
+cooldowns do not change that distance. Both orders let every eligible turret fire
+within its own range, including standard turrets if the enemy comes closer.
+Neither order retreats to regain distance. Pursuit resumes if the target moves out
+of the required range; losing all eligible long-range turrets fails the long-range order.
+
+Right-click an enemy and use **Attack (long-range only)** to choose Hull or a public
+subsystem. The option appears for eligible selected units; in a mixed selection,
+ineligible units keep their existing orders. Shift queues the attack. Visible enemy
+deployables also offer the long-range action when eligible.
 
 **Add Patrol Waypoint** extends an active or queued patrol without interrupting
 its current leg. Shift queues a separate patrol. Patrol returns to its captured
@@ -442,7 +456,7 @@ can block queued work until cancelled or replaced.
 ### Order types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **38 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **39 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order type | Action |
@@ -450,7 +464,8 @@ The `OrderType` enum defines **38 order types**, including the persistent `STANC
 | `REACH_WAYPOINT` | Internal movement leg created by Move. |
 | `MOVE` | Travel to a position, sector or system through a planned route. |
 | `PATROL` | Repeat a waypoint route and return to the patrol's start. |
-| `ATTACK` | Approach weapon range and engage an enemy. |
+| `ATTACK` | Approach until all eligible turrets are in range and engage an enemy. |
+| `ATTACK_LONG_RANGE` | Approach until all eligible Long Range turrets are in range; any eligible turret may fire within its own range. |
 | `STANCE` | Standing engagement policy, separate from explicit orders. |
 | `DEFEND` | Guard a position or friendly/allied unit. |
 | `PROTECT` | Escort a friendly/allied unit and intercept enemies. |

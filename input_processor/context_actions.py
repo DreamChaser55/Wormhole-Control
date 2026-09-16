@@ -142,10 +142,12 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                     shift_pressed
                 ))
 
-        elif extracted_action_id.startswith("attack_unit"):
-            if isinstance(target, Unit):
-                parts = extracted_action_id.split("_", 2)
-                target_component_type_str = parts[2] if len(parts) == 3 else None
+        elif extracted_action_id.startswith(("attack_unit", "attack_long_range")):
+            from domain.deployables import Deployable
+            long_range_only = extracted_action_id.startswith("attack_long_range")
+            if isinstance(target, Unit) or (long_range_only and isinstance(target, Deployable)):
+                prefix = "attack_long_range" if long_range_only else "attack_unit"
+                target_component_type_str = extracted_action_id[len(prefix):].removeprefix("_") or None
                 if target_component_type_str:
                     from component_visibility import public_target_components
                     if target_component_type_str not in public_target_components(target):
@@ -154,7 +156,8 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                     selected_units,
                     target,
                     shift_pressed,
-                    target_component_type_str
+                    target_component_type_str,
+                    long_range_only=long_range_only,
                 ))
 
         elif extracted_action_id == "colonize":

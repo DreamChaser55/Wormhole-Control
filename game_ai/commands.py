@@ -875,7 +875,7 @@ class CommandGateway:
 
     def _order_factory(self, player: Any, command: Any):
         from geometry import Position
-        from unit_orders.combat import AttackOrder, ProtectOrder
+        from unit_orders.combat import AttackOrder, AttackLongRangeOrder, ProtectOrder
         from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
         from unit_orders.construction import ConstructOrder
         from unit_orders.mining import ContinuousMineOrder, MineOrder, UnloadResourcesOrder
@@ -920,6 +920,7 @@ class CommandGateway:
         target_body = None
         if command.type in {
             "attack",
+            "attack_long_range",
             "protect",
             "repair",
             "unload_resources",
@@ -931,7 +932,7 @@ class CommandGateway:
             "continuous_antimatter_transport",
             "trade",
         } or (command.type == "use_ability" and command.target_id is not None):
-            target_unit = self._visible_combat_target(player, command.target_id) if command.type == "attack" else self._visible_unit(player, command.target_id)
+            target_unit = self._visible_combat_target(player, command.target_id) if command.type in {"attack", "attack_long_range"} else self._visible_unit(player, command.target_id)
         if command.type in {
             "colonize",
             "load_colonists",
@@ -994,7 +995,7 @@ class CommandGateway:
                 ),
                 command.type.capitalize(),
             )
-        if command.type == "attack":
+        if command.type in {"attack", "attack_long_range"}:
             self._require_relation(player, target_unit, "enemy")
             target_comp_type = None
             receipt_suffix = ""
@@ -1008,9 +1009,11 @@ class CommandGateway:
             attack_params = {"target_unit_id": target_unit.id}
             if target_comp_type is not None:
                 attack_params["target_component_type"] = target_comp_type
+            order_class = AttackLongRangeOrder if command.type == "attack_long_range" else AttackOrder
+            label = "Attack (long-range only)" if command.type == "attack_long_range" else "Attack"
             return (
-                lambda unit: AttackOrder(unit, dict(attack_params)),
-                f"Attack {target_unit.name}{receipt_suffix}",
+                lambda unit: order_class(unit, dict(attack_params)),
+                f"{label} {target_unit.name}{receipt_suffix}",
             )
         if command.type == "defend":
             if command.target_id is not None:
@@ -1644,10 +1647,10 @@ class CommandGateway:
                         raise _Rejected("hazard_blocked", "Strikecraft wings cannot enter magnetic storms.")
                 if is_position_blocked_by_celestial_field(self.game.galaxy, command.system_name, tuple(command.hex_coord), defend_pos, unit):
                     raise _Rejected("hazard_blocked", f"Unit '{unit.name}' ({unit.hull_size.name}) is too large to enter this dense celestial field.")
-        elif command.type == "attack":
+        elif command.type in {"attack", "attack_long_range"}:
             target = self._visible_combat_target(unit.owner, command.target_id)
             check = getattr(unit.weapons_component, "eligible_turrets_for", None)
-            if callable(check) and not check(target):
+            if callable(check) and not check(target, long_range_only=command.type == "attack_long_range"):
                 raise _Rejected("capability_unavailable", "No eligible weapons for this target.")
         elif command.type == "colonize":
             if projection.cargo_for(unit) <= 0:

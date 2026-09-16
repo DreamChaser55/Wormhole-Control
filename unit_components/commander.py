@@ -426,7 +426,7 @@ class Commander(UnitComponent):
         if root and root.order_type == OrderType.ATTACK_RUN and getattr(root, 'phase', None) != 'release':
             return None
         for order in self._active_front_chain():
-            if order.order_type == OrderType.ATTACK and order.status == OrderStatus.IN_PROGRESS:
+            if order.order_type in {OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE} and order.status == OrderStatus.IN_PROGRESS:
                 return order
         return None
 
@@ -487,19 +487,21 @@ class Commander(UnitComponent):
             self.set_stance(UnitStance.DO_NOTHING)
         elif galaxy_ref and not self.current_order:
             self.standing_order.validate_engagement(galaxy_ref)
-        elif galaxy_ref and getattr(self.current_order, "order_type", None) == OrderType.ATTACK:
+        if galaxy_ref and getattr(self.current_order, "order_type", None) in {OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE}:
+            from tactical_abilities import combat_target
             target_id = self.current_order.parameters.get("target_unit_id")
-            target = galaxy_ref.get_unit_by_id(target_id) if target_id is not None else None
+            target = combat_target(galaxy_ref, target_id) if target_id is not None else None
             from domain.players import are_enemies
             weapons = self.unit.weapons_component
             if (
                 target is None
                 or target.current_hit_points <= 0
                 or not are_enemies(self.unit.owner, target.owner)
-                or not weapons
-                or not weapons.eligible_turrets_for(target)
             ):
                 self.cancel_order(self.current_order.local_order_id)
+            elif not weapons or self.current_order.approach_range(target) is None:
+                # Let the order fail and release its approach before movement.
+                self.current_order.update(galaxy_ref)
 
         # A Do Nothing standing policy must not leave a stale weapon lock from
         # an order that was removed by an external integration.

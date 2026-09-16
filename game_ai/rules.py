@@ -124,6 +124,11 @@ def body_is_public(game, player, body, selected_units=()):
 
 
 def capability_blocker(unit, command_type):
+    if command_type == "attack_long_range":
+        from unit_components.enums import TurretVariant
+        if getattr(unit, 'is_disabled', False) is True or not any(t.variant == TurretVariant.LONG_RANGE
+                   for t in getattr(getattr(unit, 'weapons_component', None), 'turrets', ())):
+            return "capability_unavailable"
     if command_type == "lay_minefield":
         component = _component_by_name(unit, "MinelayerComponent")
         if component is None or getattr(component, "is_destroyed", False) is True:
@@ -152,6 +157,9 @@ def supported_commands(unit: Any) -> list[str]:
         commands.append("leave_gas_giant")
     if getattr(unit, "weapons_component", None):
         commands.append("attack")
+        from unit_components.enums import TurretVariant
+        if any(t.variant == TurretVariant.LONG_RANGE for t in unit.weapons_component.turrets):
+            commands.append("attack_long_range")
     if getattr(unit, "colony_component", None):
         commands.extend(["colonize", "load_colonists"])
     if getattr(unit, "constructor_component", None):
@@ -317,6 +325,9 @@ def command_guidance(
 
     target_options = {
         "attack": [candidate.id for candidate in enemy_units if not callable(getattr(getattr(unit, "weapons_component", None), "eligible_turrets_for", None)) or unit.weapons_component.eligible_turrets_for(candidate)],
+        "attack_long_range": [candidate.id for candidate in enemy_units
+                              if getattr(unit, "weapons_component", None)
+                              and unit.weapons_component.eligible_turrets_for(candidate, long_range_only=True)],
         "protect": [candidate.id for candidate in friendly_units],
         "repair": [candidate.id for candidate in friendly_units],
         "unload_resources": [
@@ -382,8 +393,9 @@ def command_guidance(
                 conditional.append({'type': kind, 'requires_prior_command': prior,
                                     'same_unit': True, 'queue': True})
 
-    if "attack" in options:
-        options["attack"]["target_components"] = {str(candidate.id): public_target_components(candidate) for candidate in enemy_units if candidate.id in options["attack"]["target_ids"]}
+    for kind in ("attack", "attack_long_range"):
+        if kind in options:
+            options[kind]["target_components"] = {str(candidate.id): public_target_components(candidate) for candidate in enemy_units if candidate.id in options[kind]["target_ids"]}
 
     colony = getattr(unit, "colony_component", None)
     if colony is not None:

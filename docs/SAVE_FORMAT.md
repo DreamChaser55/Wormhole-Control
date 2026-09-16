@@ -78,6 +78,10 @@ split, including an empty current slot. Active orders rebind their actuators
 without executing startup again. Transient stance engagement trees and their
 actuators are reacquired through normal play.
 
+`ATTACK_LONG_RANGE` uses the same order envelope as `ATTACK`, retaining its distinct
+type, target/subsystem, UUID and approach descendants. Restoring it rebinds firing
+and navigation without replaying execution. The save format remains 4.6.
+
 When adding a component or ability, register it, declare every persistent field,
 and extend its independent round-trip fixture. An incompatible schema change
 advances the save version and the affected component schema. Only the current

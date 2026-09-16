@@ -5,7 +5,7 @@ from .fuel_transport import TakeAntimatterOrder, ContinuousAntimatterTransportOr
 from .antimatter import ContinuousResupplyOrder, TransferAntimatterOrder
 from .base import Order, OrderStatus, OrderType
 from .colony import ColonizeOrder, LoadColonistsOrder
-from .combat import AttackOrder, ProtectOrder
+from .combat import AttackOrder, AttackLongRangeOrder, ProtectOrder
 from .construction import ConstructOrder
 from .defend import DefendOrder
 from .gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
@@ -37,6 +37,7 @@ ORDER_CLASS_REGISTRY = {
     OrderType.MOVE: MoveOrder,
     OrderType.PATROL: PatrolOrder,
     OrderType.ATTACK: AttackOrder,
+    OrderType.ATTACK_LONG_RANGE: AttackLongRangeOrder,
     OrderType.DEFEND: DefendOrder,
     OrderType.PROTECT: ProtectOrder,
     OrderType.TOGGLE_INHIBITOR: ToggleInhibitorOrder,
@@ -80,6 +81,7 @@ __all__ = [
     "calculate_required_antimatter",
     "PatrolOrder",
     "AttackOrder",
+    "AttackLongRangeOrder",
     "AttackRunOrder",
     "EmergencyRecoveryOrder",
     "ProtectOrder",

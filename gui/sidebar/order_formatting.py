@@ -135,8 +135,9 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         lines.append(f"{prefix}WP Start (Return)")
         return lines
 
-    elif order_type == "ATTACK":
-        attack_type_styled = f"<font color='{ATTACK_TYPE_COLOR}'><b>Attack:</b></font>"
+    elif order_type in {"ATTACK", "ATTACK_LONG_RANGE"}:
+        label = "Attack (long-range only)" if order_type == "ATTACK_LONG_RANGE" else "Attack"
+        attack_type_styled = f"<font color='{ATTACK_TYPE_COLOR}'><b>{label}:</b></font>"
         return [f"{attack_type_styled} {_target_name_html(state_data)}"]
 
     elif order_type == "COLONIZE":
