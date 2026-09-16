@@ -87,6 +87,7 @@ class GUI_Handler:
         self.side_bar_info_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.side_bar_scroll_container: typing.Optional[pygame_gui.elements.UIScrollingContainer] = None
         self.sidebar_scroll_identity = None
+        self.sidebar_scroll_anchor = None
         self.side_bar_scroll_bar: typing.Optional[pygame_gui.elements.UIVerticalScrollBar] = None
         self.side_bar_dynamic_elements: typing.List[pygame_gui.core.UIElement] = []
         self.dynamic_button_actions: typing.Dict[pygame_gui.elements.UIButton, typing.Dict[str, typing.Any]] = {}
@@ -158,6 +159,7 @@ class GUI_Handler:
         if self.side_bar_info_panel: self.side_bar_info_panel.kill(); self.side_bar_info_panel = None
         self.side_bar_scroll_container = None
         self.sidebar_scroll_identity = None
+        self.sidebar_scroll_anchor = None
         
         if self.context_menu_panel: self.context_menu_panel.kill(); self.context_menu_panel = None
 

@@ -50,7 +50,7 @@ def test_every_subtype_is_readable_and_rules_reach_both_audiences(cls, attribute
         assert observation['subtype'] == kind.name
         assert observation['collision_radius'] == body.collision_radius
         assert observation['inhibition_field_radius'] == body.inhibition_field_radius
-        panel = build_celestial_body_panel(game, body)
+        panel = build_celestial_body_panel(game, body, show_rules=True)
         text = [row.get('text') for row in panel]
         assert observation['environmental_rules']
         assert all(rule in text for rule in observation['environmental_rules'])
@@ -326,7 +326,7 @@ def test_catalyst_describes_only_its_nebula(kind, key, value, relation):
     view = patch_views(game, game.players[0])[0]
     assert view[f'{relation}_effects'] == {key: value}
     assert view['enemy_effects' if relation == 'friendly' else 'friendly_effects'] == {}
-    panel = [row.get('text') for row in patch_panel(game, body)]
+    panel = [row.get('text') for row in patch_panel(game, body, show_rules=True)]
     assert all(rule in panel for rule in view['rules'])
 
 
@@ -349,7 +349,8 @@ def test_remote_terrain_and_enemy_equipment_stay_private():
 
 @pytest.mark.filterwarnings('error:Label Rect is too small:UserWarning')
 @pytest.mark.parametrize('size', [(1280, 720), (2560, 1440)])
-def test_celestial_panels_wrap_scroll_and_keep_actions(game_factory, tmp_path, size):
+@pytest.mark.parametrize('show_rules', [False, True])
+def test_celestial_panels_wrap_scroll_and_keep_actions(game_factory, tmp_path, size, show_rules):
     import pygame
     import pygame_gui
     from display_config import DisplayConfig
@@ -368,7 +369,7 @@ def test_celestial_panels_wrap_scroll_and_keep_actions(game_factory, tmp_path, s
         hidden.is_hidden_in_gas_giant = True
         bodies[-1].hidden_units.append(hidden)
     for index, body in enumerate(bodies):
-        rows = build_celestial_body_panel(game, body)
+        rows = build_celestial_body_panel(game, body, show_rules=show_rules)
         gui = game.gui
         gui.update_side_bar_content(rows)
         gui.manager.update(.1)
@@ -390,7 +391,7 @@ def test_celestial_panels_wrap_scroll_and_keep_actions(game_factory, tmp_path, s
         game.screen.fill((5, 10, 20))
         gui.manager.draw_ui(game.screen)
         pygame.image.save(game.screen, str(tmp_path / f'body-{index}-bottom.png'))
-        if index == 4:
+        if index == 4 and not show_rules:
             assert scroll.vert_scroll_bar.start_percentage > 0
             button = [b for b, action in gui.dynamic_button_actions.items()
                       if action['action_id'] == 'order_unit_leave_gas_giant'][-1]

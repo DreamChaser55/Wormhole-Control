@@ -331,6 +331,22 @@
             "text_horiz_alignment": "left"
         }
     },
+    "#sidebar_effect_neutral_label": {
+        "prototype": "#sidebar_info_label",
+        "colours": {"normal_text": "#A0A0B0"}
+    },
+    "#sidebar_effect_benefit_label": {
+        "prototype": "#sidebar_info_label",
+        "colours": {"normal_text": "#50E550"}
+    },
+    "#sidebar_effect_restriction_label": {
+        "prototype": "#sidebar_info_label",
+        "colours": {"normal_text": "#FFD700"}
+    },
+    "#sidebar_effect_hazard_label": {
+        "prototype": "#sidebar_info_label",
+        "colours": {"normal_text": "#FF8080"}
+    },
     "#sidebar_neutral_button": {
         "colours": { 
             "normal_text": "#A0A0B0",

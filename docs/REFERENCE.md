@@ -97,6 +97,13 @@ Inspect non-solid bodies—fields, nebulae and storms—through their hex sideba
 Clicking inside these regions remains available for movement and targeting.
 Their boundary circles show the affected area.
 
+Body sidebars show compact effect summaries: green for benefits, amber for
+restrictions, red for damage or fuel drain, and neutral text for geometry and
+facts. Expand **Full rules** below the body's information and actions for exact
+timing, stacking, and exceptions. Active Catalyst summaries identify the patch
+owner and affected allies or enemies relative to that owner. Expansion is
+remembered per body and campaign during the application session, not in saves.
+
 ### Turn-start briefing
 
 A scrollable briefing opens at the start of each human turn according to

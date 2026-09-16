@@ -122,6 +122,7 @@ class DummyGalaxy:
 class DummyGame:
     display_config = DisplayConfig()
     def __init__(self):
+        self.campaign_id = 'gasgiant'
         self.galaxy = DummyGalaxy()
         self.players = [Player("Player 1", (0, 100, 255)), Player("Player 2", (255, 50, 50))]
         self.current_player_index = 0

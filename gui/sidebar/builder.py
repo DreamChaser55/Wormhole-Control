@@ -119,7 +119,9 @@ def build_sidebar_data(game) -> list[dict]:
     elif isinstance(selected_obj, Hex):
         return build_hex_panel(game, selected_obj)
     elif isinstance(selected_obj, CelestialBody):
-        return build_celestial_body_panel(game, selected_obj)
+        from .celestial_formatting import rules_section_key
+        return build_celestial_body_panel(game, selected_obj,
+            show_rules=game.gui.is_section_expanded(rules_section_key(game, selected_obj)))
     elif isinstance(selected_obj, Minefield):
         return build_minefield_panel(game, selected_obj)
     elif isinstance(selected_obj, Unit):

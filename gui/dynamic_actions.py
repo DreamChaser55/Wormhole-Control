@@ -54,6 +54,18 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
             'unit_id': target_data,
             'shift_pressed': _shift_pressed()
         }
+    elif action_id == 'toggle_celestial_rules':
+        from domain.celestials import CelestialBody
+        from gui.sidebar.celestial_formatting import rules_section_key
+        game = gui.game_instance
+        selected = game.selected_objects
+        if len(selected) == 1 and isinstance(selected[0], CelestialBody) and selected[0].id == target_data:
+            scroll = gui.side_bar_scroll_container
+            gui.sidebar_scroll_anchor = (gui.sidebar_scroll_identity,
+                                         -scroll.get_container().get_relative_rect().y)
+            gui.toggle_section_expansion(rules_section_key(game, selected[0]))
+            game.sidebar_needs_update = True
+        return {'action': 'ui_handled'}
     elif action_id == 'toggle_orders_queue':
         section_key = f"{target_data}_orders_queue"
         gui.toggle_section_expansion(section_key)

@@ -418,10 +418,12 @@ and `hazards`. Each hazard specifies kind, amount/basis, target, timing, scope,
 radius, affected unit classes, and any sublight-movement/speed requirement.
 Black-hole hazards have their own radius; pulsar hazards cover the whole sector.
 
-`environmental_rules` contains the same explanations shown in human body panels:
-stacking, cooldown floors, damage classification, harvesting range, timing and
-exceptions. The built-in AI receives these explanations in its observation;
-repository documentation is not implicitly included in its request.
+`environmental_rules` contains complete explanations of stacking, cooldown floors,
+damage classification, harvesting range, timing and exceptions. Humans can expand
+**Full rules** in body panels to read these explanations; the default view uses
+concise colored summaries. The built-in AI continues to receive the complete
+explanations in its observation; repository documentation is not implicitly
+included in its request.
 
 Friendly/allied `capability_details.engines.effective_speed` includes current
 terrain drag; `sensors.effective_long_range_hexes` includes magnetic suppression.

@@ -121,10 +121,12 @@ def build_hex_panel(game, hex_obj: Hex) -> list[dict]:
     return data
 
 
-def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
+def build_celestial_body_panel(game, body: CelestialBody, *, show_rules: bool = False) -> list[dict]:
     """Constructs sidebar data payload for a selected CelestialBody."""
+    from .celestial_formatting import rules_section_key
     data = [
-        {'type': 'label', 'text': f"{body.__class__.__name__}: {body.name}", 'object_id': '#sidebar_title_label', 'height': 30},
+        {'type': 'label', 'text': f"{body.__class__.__name__}: {body.name}", 'object_id': '#sidebar_title_label', 'height': 30,
+         'sidebar_identity': rules_section_key(game, body)},
         {'type': 'label', 'text': f"System: {body.in_system or 'None'}", 'object_id': '#sidebar_info_label', 'height': 25}
     ]
 
@@ -144,22 +146,29 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         })
 
     from tactical_ui import patch_panel
-    data.extend(patch_panel(game, body))
-
+    from .celestial_formatting import body_summary
     from constants import PlanetType
     from environmental_effects import describe_body
     for attribute in ('star_type', 'planet_type', 'nebula_type', 'storm_type'):
         subtype = getattr(body, attribute, None)
         if subtype is not None:
             data.append({'type': 'label', 'text': f'Type: {subtype.name.replace("_", " ").title()}', 'object_id': '#sidebar_info_label', 'height': 20})
-    for rule in describe_body(body).rules:
-        data.append({'type': 'label', 'text': rule, 'object_id': '#sidebar_info_label', 'height': 20})
+    description = describe_body(body)
+    data.extend(row.panel_row() for row in body_summary(body, description))
+    data.extend(patch_panel(game, body))
+    rules_footer = [{
+        'type': 'button', 'text': '▼ Full rules' if show_rules else '▶ Full rules',
+        'object_id': '#sidebar_expand_button', 'height': 25,
+        'action_id': 'toggle_celestial_rules', 'target_data': body.id,
+    }]
+    if show_rules:
+        rules_footer.extend({'type': 'label', 'text': rule, 'object_id': '#sidebar_info_label', 'height': 20}
+                            for rule in description.rules)
+        rules_footer.extend(patch_panel(game, body, show_rules=True))
 
     if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
         if isinstance(body, Planet):
             if body.planet_type == PlanetType.GAS_GIANT:
-                data.append({'type': 'label', 'text': "Massive Gas Giant (Atmospheric Hiding)", 'object_id': '#sidebar_status_charging_label', 'height': 20})
-
                 current_player = game.players[game.current_player_index] if game.players else None
                 if current_player:
                     friendly_hidden = [u for u in getattr(body, 'hidden_units', []) if u.owner == current_player]
@@ -206,14 +215,14 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
                             'target_data': body.id,
                             'height': 25
                         })
-                return data
+                return data + rules_footer
 
             p_metal = getattr(body, 'passive_metal', 0.0)
             p_crystal = getattr(body, 'passive_crystal', 0.0)
             if p_metal > 0:
-                data.append({'type': 'label', 'text': f"• Passive Mineral Deposit: +{p_metal:.1f} Metal/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+                data.append({'type': 'label', 'text': f"Passive metal: +{p_metal:g}/turn", 'object_id': '#sidebar_effect_benefit_label', 'height': 20})
             if p_crystal > 0:
-                data.append({'type': 'label', 'text': f"• Passive Crystal Deposit: +{p_crystal:.1f} Crystal/turn", 'object_id': '#sidebar_info_label', 'height': 20})
+                data.append({'type': 'label', 'text': f"Passive crystal: +{p_crystal:g}/turn", 'object_id': '#sidebar_effect_benefit_label', 'height': 20})
 
         owner_name = body.owner.name if body.owner else "Uninhabited"
         owner_style_id = f'#player_{owner_name.lower().replace(" ", "_")}_label' if body.owner else '#sidebar_info_label'
@@ -271,10 +280,9 @@ def build_celestial_body_panel(game, body: CelestialBody) -> list[dict]:
         data.append({'type': 'label', 'text': f"Diameter: {body.diameter.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 25})
 
     elif isinstance(body, Comet):
-        data.append({'type': 'label', 'text': "A celestial body of ice and rock.", 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': f"Crystal Yield: {body.crystal_yield}", 'object_id': '#sidebar_info_label', 'height': 25})
 
-    return data
+    return data + rules_footer
 
 
 def build_minefield_panel(game, mf: Minefield) -> list[dict]:

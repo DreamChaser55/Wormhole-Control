@@ -103,16 +103,21 @@ def deployable_panel(game, obj):
     return data
 
 
-def patch_panel(game, body):
+def patch_panel(game, body, *, show_rules=False):
     from game_ai.tactical import patch_views
+    from gui.sidebar.celestial_formatting import catalyst_summary
     data = []
+    if not game.players:
+        return data
     for patch in patch_views(game, game.players[game.current_player_index]):
         if patch['nebula_id'] != body.id:
             continue
         owner = next(p for p in game.players if p.id == patch['owner_id'])
-        data.append(label(f'Catalyst: {owner.name}; expires on owner round {patch["expires_on_owner_round"]}'))
-        data.append(label(f'Patch radius: {patch["radius"]:g} units.'))
-        data.extend(label(rule) for rule in patch['rules'])
+        if show_rules:
+            data.append(label(f'Catalyst: {owner.name}'))
+            data.extend(label(rule) for rule in patch['rules'])
+        else:
+            data.extend(row.panel_row() for row in catalyst_summary(patch, owner.name))
     return data
 
 

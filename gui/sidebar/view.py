@@ -213,11 +213,16 @@ def update_side_bar_content(gui, data_list: typing.List[dict]) -> None:
         return
 
     scroll = gui.side_bar_scroll_container
-    identity = data_list[0].get('text') if data_list else None
+    identity = data_list[0].get('sidebar_identity', data_list[0].get('text')) if data_list else None
     previous_scroll = (scroll.vert_scroll_bar.start_percentage
                        if gui.sidebar_scroll_identity == identity else 0.0)
+    anchor = gui.sidebar_scroll_anchor
+    gui.sidebar_scroll_anchor = None
     gui.sidebar_scroll_identity = identity
     clear_side_bar_content(gui)
+    # Measure the new content from the viewport origin. Resizing while the old
+    # content is scrolled can inflate pygame_gui's computed scrolling extent.
+    scroll.get_container().set_relative_position((0, 0))
 
     current_y_offset = 5
     element_padding = 3
@@ -284,5 +289,9 @@ def update_side_bar_content(gui, data_list: typing.List[dict]) -> None:
             current_y_offset += element_padding
     scroll.set_scrollable_area_dimensions((base_container_width, max(current_y_offset, scroll.get_relative_rect().height)))
     scroll.update(0)
+    if anchor is not None and anchor[0] == identity:
+        # pygame_gui's start percentage is relative to the entire content height,
+        # not just its scrollable overflow. The scrollbar clamps the bottom edge.
+        previous_scroll = anchor[1] / max(1, scroll.scrolling_height)
     scroll.vert_scroll_bar.set_scroll_from_start_percentage(previous_scroll)
     scroll.update(0)
