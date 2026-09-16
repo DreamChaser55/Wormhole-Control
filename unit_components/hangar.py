@@ -105,6 +105,8 @@ class HangarComponent(UnitComponent):
         unit.position = Position(self.unit.position.x, self.unit.position.y)
         
         self.docked_units.append(unit)
+        from environmental_resistance import deactivate
+        deactivate(unit)
         if unit.commander_component:
             unit.commander_component.clear_explicit_orders()
             unit.commander_component.suspend_stance_activity("docked")

@@ -26,6 +26,8 @@ class AbilityDefinition:
     requires_target_position: bool   # True if the ability needs a position click
     antimatter_cost: int = 0         # Cost in antimatter to activate this ability
     required_components: List[str] = dataclasses.field(default_factory=list)  # Component flags required on the unit design to equip this ability
+    activation_mode: str = 'cast'
+    ongoing_antimatter: float = 0.0
 
     @property
     def target_kind(self):
@@ -62,7 +64,7 @@ class AbilityDefinition:
 class AbilityInstance:
     """Base runtime state for a single ability on a unit."""
     DEFINITION: ClassVar[AbilityDefinition]
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = 2
     STATE_FIELDS = ("cooldown_remaining", "is_active", "duration_remaining", "target_unit_id",
                     "target_position", "spawned_unit_ids")
 
@@ -85,6 +87,11 @@ class AbilityInstance:
         definition = AbilityDefinition(**{k: decode(v) for k, v in state["definition"].items()})
         if definition.ability_type != atype:
             raise ValueError("Ability definition type mismatch")
+        if definition.activation_mode not in ('cast', 'toggle') or definition.activation_mode != ability_cls.DEFINITION.activation_mode:
+            raise ValueError('Invalid ability activation mode')
+        number(definition.ongoing_antimatter, 'ability.definition.ongoing_antimatter', 0)
+        if definition.ongoing_antimatter != ability_cls.DEFINITION.ongoing_antimatter:
+            raise ValueError('Invalid ability upkeep')
         for name in ("cooldown", "duration", "range", "antimatter_cost"):
             number(getattr(definition, name), f"ability.definition.{name}", 0, integer=name in ("cooldown", "duration"))
         for name in ("requires_target_unit", "requires_target_position"):

@@ -7,6 +7,9 @@ def refresh(unit):
     unit.damage_amplification = sum(amount for kind, amount in effects.values() if kind == "amplification")
     unit.disabled_by_unit_ids = {source for (source, _), (kind, _) in effects.items() if kind == "disable"}
     unit.is_disabled = bool(unit.disabled_by_unit_ids)
+    if unit.is_disabled:
+        from environmental_resistance import deactivate
+        deactivate(unit)
 
 
 def add(unit, source_id, ability_type, kind, amount=0):

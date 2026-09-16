@@ -27,6 +27,8 @@ ABILITY_CLASSES: Dict[AbilityType, Type[AbilityInstance]] = {
 
 from .tactical import TACTICAL_CLASSES
 ABILITY_CLASSES.update(TACTICAL_CLASSES)
+from .resistance import RESISTANCE_CLASSES
+ABILITY_CLASSES.update(RESISTANCE_CLASSES)
 
 ABILITY_DEFINITIONS: Dict[AbilityType, AbilityDefinition] = {
     atype: cls.DEFINITION for atype, cls in ABILITY_CLASSES.items()

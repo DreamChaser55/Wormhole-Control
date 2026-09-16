@@ -1,7 +1,7 @@
 """Registry adapters for tactical abilities; rules live in tactical_abilities."""
 from .base import AbilityDefinition, AbilityInstance
 from ..enums import AbilityType
-from tactical_abilities import SPECS, GUARDIAN_FRACTION, GUARDIAN_CAP, GUARDIAN_RETAINED
+from tactical_abilities import SPECS, GUARDIAN_FRACTION, GUARDIAN_CAP, GUARDIAN_RETAINED, TRACTOR_COST
 
 
 class TacticalAbility(AbilityInstance):
@@ -50,7 +50,8 @@ class StrikecraftAbility(TacticalAbility):
 def _ability_class(kind, spec):
     definition = AbilityDefinition(AbilityType(kind), spec.name, spec.description,
         spec.cooldown, spec.duration, spec.range, spec.target_kind == 'unit',
-        spec.target_kind in ('position', 'celestial_position'), spec.cost, list(spec.equipment))
+        spec.target_kind in ('position', 'celestial_position'), spec.cost, list(spec.equipment),
+        ongoing_antimatter=TRACTOR_COST if kind == 'tractor_tether' else 0)
     from tactical_balance import STRIKECRAFT_ABILITIES
     base = StrikecraftAbility if kind in STRIKECRAFT_ABILITIES else TacticalAbility
     return type(''.join(part.title() for part in kind.split('_')) + 'Ability', (base,), {'DEFINITION': definition})

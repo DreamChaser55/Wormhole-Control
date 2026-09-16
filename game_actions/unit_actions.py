@@ -485,7 +485,7 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'cycle_stance': handle_cycle_stance,
     'rename_unit': handle_rename_unit,
     'use_ability': handle_use_ability,
-    **{name: handle_tactical_action for name in ('select_deployable', 'choose_catalyst_nebula', 'cancel_tactical_ability', 'recover_tactical_cache', 'attack_deployable')},
+    **{name: handle_tactical_action for name in ('select_deployable', 'choose_catalyst_nebula', 'cancel_tactical_ability', 'toggle_resistance_ability', 'recover_tactical_cache', 'attack_deployable')},
     'stop_unit': handle_stop_unit,
     'stop_selected_units': handle_stop_selected_units,
     'toggle_inhibitor': handle_toggle_inhibitor,

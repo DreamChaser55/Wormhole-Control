@@ -58,6 +58,9 @@ class WingType(Enum):
     BOMBER = "bomber"
 
 class AbilityType(Enum):
+    HAZARD_SHIELDING = "hazard_shielding"
+    RADIATION_HARDENING = "radiation_hardening"
+    ANTIMATTER_CONTAINMENT = "antimatter_containment"
     ATTACK_RUN = "attack_run"
     EVASIVE_FORMATION = "evasive_formation"
     EMERGENCY_RECOVERY = "emergency_recovery"

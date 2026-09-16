@@ -63,6 +63,8 @@ Select a Constructor and choose **Construct...** from its location context menu 
 search the [built-in unit catalogue](docs/REFERENCE.md#built-in-unit-catalog).
 Carriers produce Fighter or Bomber Wings through their strikecraft bays. Equipment
 supports [combat, deployment and carrier abilities](docs/REFERENCE.md#abilities),
+including [toggleable environmental resistances](docs/REFERENCE.md#environmental-resistance-abilities)
+that reduce matching hazards by 75% while consuming antimatter each owner turn,
 while intelligence ships can infiltrate enemies and operate under
 [covert names](docs/REFERENCE.md#covert-ships-and-unit-names).
 

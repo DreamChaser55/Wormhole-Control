@@ -353,6 +353,7 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Beam Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for beam combat. Inter-system travel. |
 | Kinetic Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for kinetic combat. Inter-system travel. |
 | Missile Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for missile combat. Inter-system travel. |
+| Hazard Escort | Combat | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Reduces plasma, black hole, debris hazards by 75% for this unit while enabled. Costs 2 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Flak Battery | Combat | MEDIUM station | 49.10/50 | 1973 | 20 | 0.49 | Designed for stationary air defense. Stationary installation. |
 | Flak Escort | Combat | MEDIUM ship | 49.80/50 | 1994 | 20 | 0.50 | Designed for fleet air defense. Inter-system travel. |
 | Artillery Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 29 | 0.90 | Designed for ranged fire support. Inter-system travel. |
@@ -379,6 +380,7 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Antimatter Harvester | Logistics | MEDIUM ship | 45.00/50 | 1850 | 19 | 0.45 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Small Repair Station | Logistics | MEDIUM station | 47.99/50 | 1940 | 20 | 0.48 | Designed for stationary repair. Stationary installation. |
 | Antimatter Transporter | Logistics | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Dedicated antimatter transport. Inter-system travel. Take Antimatter loads from friendly units; Continuous Antimatter Transport repeats deliveries with an automatic return reserve. |
+| Pulsar Harvester | Logistics | LARGE ship | 66.50/100 | 2995 | 25 | 0.67 | Reduces magnetic, pulsar hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |
 | Nebula Tender | Logistics | LARGE ship | 80.50/100 | 3415 | 27 | 0.81 | Designed for nebula and fuel support. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Fleet Tanker | Logistics | LARGE ship | 87.50/100 | 3625 | 28 | 0.88 | Designed for fleet resupply. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
@@ -386,6 +388,7 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Heavy Shipyard | Logistics | LARGE station | 88.79/100 | 3664 | 28 | 0.89 | Designed for construction and repair base. Stationary installation. Hangar accepts Tiny vessels, not strikecraft wings. Support facilities do not accelerate construction. |
 | Antimatter Storage Station | Logistics | LARGE station | 90.00/100 | 3700 | 29 | 0.90 | Stationary bulk antimatter reservoir. Accept deliveries and supply friendly ships through Transfer Antimatter or receiver-issued Take Antimatter. |
 | Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
+| Radiation Surveyor | Reconnaissance | MEDIUM ship | 42.25/50 | 1768 | 18 | 0.42 | Reduces radiation hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
 | Covert Intelligence Ship | Special Operations | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Externally identical to the Patrol Escort, with two hidden intelligence agents. Constructed under the cover name ‘Patrol Escort’. After construction, you may rename it to another generic warship name; avoid names that reveal its intelligence role. Inter-system travel. |
 | Minelayer | Special Operations | MEDIUM ship | 49.50/50 | 1985 | 20 | 0.49 | Designed for mine deployment. Inter-system travel. |
@@ -566,32 +569,76 @@ Human controls and both automated controllers use shared validation and orders.
 See [Codex commands](CODEX_CONTROL.md#tactical-ability-commands) for payloads.
 
 <!-- BEGIN GENERATED: abilities -->
-There are **21 special abilities** registered in the game.
+There are **24 special abilities** registered in the game.
 
-| Ability | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Required Component | Target Type |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Adaptive Forcefield** | 8 | 3 | 0.0 | 20 | Defenses | Self |
-| **Cluster Warhead** | 5 | 0 | 500.0 | 30 | Weapons | Position |
-| **Designate Target** | 6 | 4 | 450.0 | 15 | Sensors | Unit |
-| **Ion Bolt** | 7 | 3 | 400.0 | 25 | Weapons | Unit |
-| **Missile Batteries** | 10 | 4 | 0.0 | 40 | Weapons | Self |
-| **Repair Cloud** | 8 | 4 | 350.0 | 35 | Repair | Self |
-| **Capture Unit** | 10 | 0 | 100.0 | 40 | Marines | Unit |
-| **Drain Antimatter** | 6 | 0 | 300.0 | 0 | Antimatter Storage | Unit |
-| **Microjump** | 5 | 0 | 0.0 | 25 | Hyperdrive | Position |
-| **Scan for Minefields** | 6 | 0 | 1500.0 | 35 | Sensors | Self |
-| **Attack Run** | 8 | 6 | 750 | 40 | Strikecraft Bay, Sensors | Unit |
-| **Evasive Formation** | 6 | 3 | 750 | 20 | Strikecraft Bay, Sensors | Unit |
-| **Emergency Recovery** | 8 | 6 | 750 | 30 | Strikecraft Bay | Unit |
-| **Tracking Lock** | 6 | 3 | 600 | 20 | Sensors, Weapons | Unit |
-| **Flak Barrage** | 8 | 3 | 0 | 35 | Weapons | Self |
-| **Ghost Fleet** | 8 | 0 | 750 | 25 | Sensors | Position |
-| **Tractor Tether** | 6 | 3 | 400 | 20 | Engines | Unit |
-| **Mine-Clearing Sweep** | 4 | 0 | 1000 | 25 | Sensors, Minelayer | Position |
-| **Guardian Link** | 7 | 3 | 450 | 25 | Defenses | Unit |
-| **Multiply Antimatter** | 30 | 0 | 500 | 20 | Antimatter Storage | Self |
-| **Nebula Catalyst** | 7 | 3 | 750 | 30 | Sensors, Antimatter Storage | Nebula + Position |
+| Ability | Mode | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Ongoing AM / owner turn | Required Component | Target Type |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Adaptive Forcefield** | Cast | 8 | 3 | 0.0 | 20 | 0.0 | Defenses | Self |
+| **Cluster Warhead** | Cast | 5 | 0 | 500.0 | 30 | 0.0 | Weapons | Position |
+| **Designate Target** | Cast | 6 | 4 | 450.0 | 15 | 0.0 | Sensors | Unit |
+| **Ion Bolt** | Cast | 7 | 3 | 400.0 | 25 | 0.0 | Weapons | Unit |
+| **Missile Batteries** | Cast | 10 | 4 | 0.0 | 40 | 0.0 | Weapons | Self |
+| **Repair Cloud** | Cast | 8 | 4 | 350.0 | 35 | 0.0 | Repair | Self |
+| **Capture Unit** | Cast | 10 | 0 | 100.0 | 40 | 0.0 | Marines | Unit |
+| **Drain Antimatter** | Cast | 6 | 0 | 300.0 | 0 | 0.0 | Antimatter Storage | Unit |
+| **Microjump** | Cast | 5 | 0 | 0.0 | 25 | 0.0 | Hyperdrive | Position |
+| **Scan for Minefields** | Cast | 6 | 0 | 1500.0 | 35 | 0.0 | Sensors | Self |
+| **Attack Run** | Cast | 8 | 6 | 750 | 40 | 0 | Strikecraft Bay, Sensors | Unit |
+| **Evasive Formation** | Cast | 6 | 3 | 750 | 20 | 0 | Strikecraft Bay, Sensors | Unit |
+| **Emergency Recovery** | Cast | 8 | 6 | 750 | 30 | 0 | Strikecraft Bay | Unit |
+| **Tracking Lock** | Cast | 6 | 3 | 600 | 20 | 0 | Sensors, Weapons | Unit |
+| **Flak Barrage** | Cast | 8 | 3 | 0 | 35 | 0 | Weapons | Self |
+| **Ghost Fleet** | Cast | 8 | 0 | 750 | 25 | 0 | Sensors | Position |
+| **Tractor Tether** | Cast | 6 | 3 | 400 | 20 | 5 | Engines | Unit |
+| **Mine-Clearing Sweep** | Cast | 4 | 0 | 1000 | 25 | 0 | Sensors, Minelayer | Position |
+| **Guardian Link** | Cast | 7 | 3 | 450 | 25 | 0 | Defenses | Unit |
+| **Multiply Antimatter** | Cast | 30 | 0 | 500 | 20 | 0 | Antimatter Storage | Self |
+| **Nebula Catalyst** | Cast | 7 | 3 | 750 | 30 | 0 | Sensors, Antimatter Storage | Nebula + Position |
+| **Hazard Shielding** | Toggle | 0 | Until disabled | 0 | 0 | 2 | Antimatter Storage | Self |
+| **Radiation Hardening** | Toggle | 0 | Until disabled | 0 | 0 | 1 | Antimatter Storage | Self |
+| **Antimatter Containment** | Toggle | 0 | Until disabled | 0 | 0 | 1 | Antimatter Storage | Self |
 <!-- END GENERATED: abilities -->
+
+### Environmental resistance abilities
+
+Equip these self-only toggles through the Designer or a refit. They require
+functional **Abilities** and **Antimatter Storage**, on Small-or-larger hulls.
+The normal Ability component cost applies: 10 hull plus 5 per equipped ability.
+
+| Ability | Protected hazards | Reduction | Ongoing AM / owner turn |
+|---|---|---:|---:|
+| Hazard Shielding | Plasma, black-hole and debris hull damage | 75% | 2 |
+| Radiation Hardening | Radiation component damage | 75% | 1 |
+| Antimatter Containment | Magnetic-storm and pulsar fuel drain | 75% | 1 |
+
+Use **Enable/Disable** in the Abilities component panel. New units start disabled.
+Toggling is immediate, costs no activation AM, has no cooldown, and preserves
+orders and stance. Enabling requires enough current fuel for the combined upkeep
+of the resulting active resistances; it does not reserve that fuel.
+
+Upkeep is charged once per owner turn after movement and mines, immediately
+before environmental hazards, including turns in safe space. If the combined
+bill cannot be paid, all resistances disable with no partial charge; the turn
+briefing reports the shutdown. Subsequent harvesting cannot fund that phase.
+Paying exactly the bill still protects against that phase's hazards.
+
+Each source's nominal damage or drain is reduced to 25%, before HP truncation or
+fuel clamping. Plasma damage becomes 2 HP, black-hole damage 3 HP, radiation 1
+component HP, and debris abrasion 0 HP at every density. Hull protection applies
+before Adaptive Forcefield; radiation still discards component spillover.
+Magnetic storms drain at most 1.5 AM. Pulsars drain 1.25% of fuel remaining after
+upkeep and earlier hazards. Overlapping hazard sources resolve separately.
+
+Protection disables on capture, destruction, docking, atmospheric hiding,
+disablement, prerequisite loss or refitting the Ability component. Repairs,
+deployment and restored functionality do not reactivate it automatically.
+Equipment is rechecked for each hazard, so radiation can disable protection
+before another overlapping source resolves.
+
+These abilities do not affect weapons, mines, wormhole instability, sabotage,
+oxygen splash amplification, movement penalties, sensors or entry restrictions.
+They protect only the equipped unit. **Hazard Escort**, **Radiation Surveyor**
+and **Pulsar Harvester** are buildable specialist variants with one resistance each.
 
 ### Combat and support abilities
 

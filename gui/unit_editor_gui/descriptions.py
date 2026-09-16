@@ -118,6 +118,8 @@ def ability_description(name: str) -> tuple[str, str]:
     persistent = name in ("ghost_fleet",)
     duration = ("Persistent deployment (no expiry)" if persistent else
                 f"{definition.duration} turns" if definition.duration else "Instant / one-shot")
+    if definition.activation_mode == 'toggle':
+        duration = 'Until disabled; no cooldown'
     range_text = ("Any legal position in the same sector" if name == "microjump" else
                   f"{definition.range:g} logical units" if definition.range else "Self")
     targets = {"self": "Self", "unit": "Unit", "position": "Position",
@@ -131,6 +133,14 @@ def ability_description(name: str) -> tuple[str, str]:
         ("Target", targets[definition.target_kind]),
     ]
     spec = SPECS.get(name)
+    if definition.activation_mode == 'toggle':
+        facts.extend([
+            ('Ongoing cost', f'{definition.ongoing_antimatter:g} AM each owner turn, including safe space.'),
+            ('Payment', 'Combined resistance upkeep is paid after movement, before environmental hazards. Insufficient fuel disables all resistances without a partial charge.'),
+            ('Lifecycle', 'Disables on capture, docking, atmospheric hiding, disablement, prerequisite loss or Ability refit. Does not reactivate automatically.'),
+            ('Damage', 'HP damage is truncated; debris abrasion can become zero. Hull protection applies before Adaptive Forcefield.'),
+        ])
+        return definition.name, _body(definition.description, facts)
     if spec and spec.cap:
         facts.append(("Deployment limit", f"{spec.cap} per deploying ship across the galaxy."))
     if name == "microjump":

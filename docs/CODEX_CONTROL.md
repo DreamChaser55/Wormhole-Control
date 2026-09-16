@@ -231,7 +231,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 8, shared field
+Read `observation.command_catalog`: it contains command contract version 9, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -369,10 +369,24 @@ redaction follow the ordinary [order contract](#command-discovery-and-order-cont
 
 ## Tactical ability commands
 
-Observation schema 10 and command contract 8 expose a deduplicated `ability_catalog`,
+Environmental resistance abilities use a separate immediate command:
+
+```json
+{"type":"toggle_ability","unit_ids":[101],"ability":"hazard_shielding","queue":false}
+```
+
+The other values are `radiation_hardening` and `antimatter_containment`. Select
+exactly one owned unit; omit target fields. The command flips that equipped
+resistance without replacing orders. Read `command_options.toggle_ability`,
+`ability_states` and `environmental_resistances` for legality and state.
+Upkeep is charged before environmental hazards each owner turn, even in safe
+space; enabling checks the combined bill but does not reserve fuel. These toggles
+cannot be issued through `use_ability` or `cancel_ability`.
+
+Observation schema 11 and command contract 9 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v7`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v8`; unused OpenAI command fields stay null.
 
 
 ```json
@@ -413,5 +427,5 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 8 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 9 remain unchanged; no acknowledgement
 command is required from Codex.

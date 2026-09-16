@@ -92,7 +92,7 @@ COMPONENT_DESCRIPTIONS = {
     "has_hangar": "Carries Tiny vessels for transport and later deployment. Hangars do not accept strikecraft wings; those use a Strikecraft Bay.",
     "has_strikecraft_bay": "Builds, carries and replenishes Fighter or Bomber Wings. Fighters intercept wings; Bombers attack larger ships. Wings travel between sectors aboard their carrier.",
     "has_inhibitor": "Projects a field preventing hyperdrive jumps into or out of its area. The field must fit inside the sector and cannot overlap another natural or artificial inhibition zone. Running out of fuel deactivates it.",
-    "has_ability_component": "Equips active combat and support abilities. Each ability requires its listed equipment; activation also requires operational equipment, enough antimatter and a ready cooldown.",
+    "has_ability_component": "Equips combat, support and toggleable environmental resistance abilities. Each ability requires its listed equipment. Casts require enough antimatter and a ready cooldown; resistance toggles consume antimatter each owner turn while enabled.",
     "has_sensors": "Provides short-range visual coverage and long-range sector detection, shared with allies. Short-range inspection reveals detail; long-range detection can be defeated by cloaking or terrain concealment.",
     "has_minelayer_component": "Deploys Anti-Ship or Anti-Strikecraft minefields. Enemy ships ending their owner's movement phase inside a matching field can trigger mines; allied, hidden and docked ships are excluded.",
     "has_marines_component": "Carries boarding teams for capturing enemy vessels through the Capture Unit ability. Equipping Marines alone does not equip that ability.",

@@ -499,7 +499,7 @@ def test_save_and_load_intelligence_state(test_setup):
 
     from game_ai.observation import build_observation
     observation = build_observation(new_game, new_game.players[0])
-    assert observation["schema_version"] == 10
+    assert observation["schema_version"] == 11
     assert observation["intelligence"]["owned_agents"] == [
         {
             "agent_id": loaded_agent.id,

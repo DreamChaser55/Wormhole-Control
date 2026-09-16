@@ -79,7 +79,8 @@ def exchange(source, receiver, reserve=0.0):
 
 
 def equipment_upkeep(unit):
-    result = 0.0
+    from environmental_resistance import upkeep
+    result = upkeep(unit)
     for name in ("cloaking_component", "inhibitor_component"):
         component = getattr(unit, name, None)
         if component and not component.is_destroyed and component.is_active:

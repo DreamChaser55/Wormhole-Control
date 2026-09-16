@@ -90,6 +90,8 @@ class CaptureUnitAbility(AbilityInstance):
         from order_history import interrupt_unit_orders
         interrupt_unit_orders(target_unit, "ownership_lost")
         old_owner = target_unit.owner
+        from environmental_resistance import deactivate
+        deactivate(target_unit)
         target_unit.owner = component.unit.owner
 
         # Reset targets and stance of the captured unit to prevent unwanted behaviors

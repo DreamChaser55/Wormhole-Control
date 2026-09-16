@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 8
+CONTRACT_VERSION = 9
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -66,6 +66,7 @@ COMMAND_SPECS = {
     "set_stance": _spec("Change standing policy without cancelling explicit work, even an explicit Attack.", ("stance",), queued=False),
     "toggle_inhibitor": _spec("Immediately flip the inhibitor; activation requires a valid non-overlapping field.", queued=False, capability=("inhibitor_component",)),
     "toggle_cloaking": _spec("Immediately flip a functioning cloak.", queued=False, capability=("cloaking_component",)),
+    "toggle_ability": _spec("Immediately enable or disable an equipped environmental resistance without changing orders. Enabling checks combined upkeep; payment occurs before owner-turn hazards.", ("ability",), queued=False, single_unit=True),
     "infiltrate_unit": _spec("Deploy an agent onto a visible enemy unit.", ("target_id",), capability=("intelligence_component",)),
     "infiltrate_planet": _spec("Deploy an agent onto an exact enemy colony.", ("target_id",), capability=("intelligence_component",)),
     "extract_agent": _spec("Recover an owned embedded agent into this Intelligence ship.", ("agent_id",), capability=("intelligence_component",), single_unit=True),

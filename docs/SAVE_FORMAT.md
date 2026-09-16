@@ -1,18 +1,18 @@
 # Campaign persistence
 
-The current save version is **4.6**. New saves preserve the installed component
+The current save version is **4.7**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
-Only version **4.6** is supported. Unversioned, older, unknown and future saves
+Only version **4.7** is supported. Unversioned, older, unknown and future saves
 are rejected with the expected version before hydration. Alpha schema changes
 require a new campaign; no migrations or automatic conversions are provided.
 Rejected files are never modified.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.6.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.7.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
@@ -65,6 +65,14 @@ Each ability has its own type and schema version, a saved definition, and separa
 runtime state: active flag, cooldown, remaining duration, target ID/position, and
 spawned-unit IDs. Restoration never calls ability activation.
 
+Ability schema **2** adds `activation_mode` (`cast` or `toggle`) and
+`ongoing_antimatter` to each definition. Loading validates these against the
+registered ability; upkeep must also be finite and non-negative. Environmental
+resistances persist their active flag with zero timers and no targets or
+deployments. Active toggles survive loading when eligible, without payment or
+activation replay. Ineligible toggles reconcile to disabled. No previous-save
+migration is provided.
+
 Tactical activation checks the current shared equipment requirements in
 `tactical_balance.py`. Nebula Catalyst therefore requires operational Sensors and
 Antimatter Storage even when a saved definition retains the historical Harvester
@@ -80,7 +88,7 @@ actuators are reacquired through normal play.
 
 `ATTACK_LONG_RANGE` uses the same order envelope as `ATTACK`, retaining its distinct
 type, target/subsystem, UUID and approach descendants. Restoring it rebinds firing
-and navigation without replaying execution. The save format remains 4.6.
+and navigation without replaying execution. The save format remains 4.7.
 
 When adding a component or ability, register it, declare every persistent field,
 and extend its independent round-trip fixture. An incompatible schema change
@@ -191,7 +199,7 @@ and prices when they start. No new retrofit AI or socket command is introduced.
 
 ## Turn briefings
 
-Save 4.6 requires each player's `briefing` state: initialization/collection flags,
+Save 4.7 requires each player's `briefing` state: initialization/collection flags,
 reporting boundary, event sequence, bounded pending entries and omission count,
 economic baseline, discovery keys, frozen current report and human acknowledgement.
 The current report contains its start/end rounds, grouped entries, net economy

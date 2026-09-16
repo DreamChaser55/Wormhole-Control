@@ -151,7 +151,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 10,
+        "schema_version": 11,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -291,6 +291,13 @@ def _unit_view(
         data["capability_details"] = _capability_details(unit, game)
         from .tactical import environmental_view
         data["environmental_modifiers"] = environmental_view(unit)
+        from environmental_resistance import instances, details, operational, upkeep
+        data['environmental_resistances'] = {
+            'ongoing_antimatter': upkeep(unit),
+            'abilities': {kind: dict(details(kind), active=inst.is_active,
+                                     operational=inst.is_active and operational(unit))
+                          for kind, inst in instances(unit).items()},
+        }
         wing = getattr(unit, 'strikecraft_wing_component', None)
         if wing:
             from strikecraft_abilities import incoming_multiplier, evasion, round_now, wing_order

@@ -31,6 +31,8 @@ def handle_action(game, action):
         game.pending_catalyst_body_id = data
     elif kind == 'cancel_tactical_ability':
         issue(game, {'type': 'cancel_ability', 'unit_ids': [data['unit_id']], 'ability': data['ability']})
+    elif kind == 'toggle_resistance_ability':
+        issue(game, {'type': 'toggle_ability', 'unit_ids': [data['unit_id']], 'ability': data['ability']})
     elif kind == 'attack_deployable':
         issue(game, {'type': 'attack',
                      'unit_ids': [data['unit_id']], 'target_id': data['target_id'], 'queue': action.get('shift_pressed', False)})

@@ -276,6 +276,8 @@ class StrikecraftBayComponent(UnitComponent):
             unit.strikecraft_wing_component.mother_carrier = self.unit
         
         self.docked_units.append(unit)
+        from environmental_resistance import deactivate
+        deactivate(unit)
         if unit.commander_component:
             unit.commander_component.clear_explicit_orders()
             unit.commander_component.suspend_stance_activity("docked")

@@ -193,6 +193,9 @@ def supported_commands(unit: Any) -> list[str]:
     if getattr(unit, "ability_component", None):
         commands.append("use_ability")
         commands.append("cancel_ability")
+        from environmental_resistance import instances
+        if instances(unit):
+            commands.append('toggle_ability')
     intelligence = getattr(unit, "intelligence_component", None)
     if intelligence is not None:
         commands.extend(["infiltrate_unit", "infiltrate_planet", "extract_agent"])
@@ -514,7 +517,7 @@ def command_guidance(
             legal.add("deploy_all_wings")
 
     if "use_ability" in supported:
-        ready_states = [state for state in ability_states(unit) if state["ready"]]
+        ready_states = [state for state in ability_states(unit) if state["ready"] and state.get('activation_mode') != 'toggle']
         abilities = [state["ability"] for state in ready_states]
         options["use_ability"] = {
             "values": abilities,
@@ -531,6 +534,16 @@ def command_guidance(
         }
         if abilities:
             legal.add("use_ability")
+
+    if 'toggle_ability' in supported:
+        from environmental_resistance import instances, availability
+        choices = {kind: {'active': inst.is_active, 'resulting_state': not inst.is_active,
+                         'unavailable_reason': availability(unit, kind, not inst.is_active)}
+                   for kind, inst in instances(unit).items()}
+        values = [kind for kind, detail in choices.items() if detail['unavailable_reason'] is None]
+        options['toggle_ability'] = {'values': values, 'abilities': choices}
+        if values:
+            legal.add('toggle_ability')
 
     if "lay_minefield" in supported:
         options["lay_minefield"] = {
@@ -589,6 +602,14 @@ def ability_states(unit: Any) -> list[dict[str, Any]]:
             }
         )
     from .tactical import enrich_states
+    from environmental_resistance import SPECS as RESISTANCES, availability, details
+    for state in result:
+        kind = state['ability']
+        if kind in RESISTANCES:
+            instance = component.abilities[next(key for key in component.abilities if key.value == kind)]
+            blocker = availability(unit, kind, not instance.is_active)
+            state.update(details(kind), active=instance.is_active, ready=blocker is None,
+                         unavailable_reason=blocker, activation_antimatter=0)
     return enrich_states(unit, result)
 
 

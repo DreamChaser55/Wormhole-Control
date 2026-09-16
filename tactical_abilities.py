@@ -450,6 +450,7 @@ def ability_catalog():
     from unit_components.abilities.registry import ABILITY_DEFINITIONS
     from tactical_balance import DEPLOYABLE_HP, CATALYST_RADIUS
     catalog = {kind.value: {'name': d.name, 'description': d.description, 'cost': d.antimatter_cost,
+        'activation_mode': d.activation_mode, 'ongoing_antimatter': d.ongoing_antimatter,
         'equipment': d.required_components, 'range': d.range, 'cooldown': d.cooldown,
         'duration': d.duration, 'target_kind': d.target_kind, 'allowed_relations': d.allowed_relations,
         'approach': d.automatic_approach, 'clock': 'legacy_owner_turn_end'} for kind, d in ABILITY_DEFINITIONS.items()}
@@ -470,4 +471,8 @@ def ability_catalog():
     from strikecraft_abilities import catalogue_details
     for kind, details in catalogue_details().items():
         catalog[kind].update(details, approach=False)
+    from environmental_resistance import SPECS as RESISTANCES, details as resistance_details
+    for kind in RESISTANCES:
+        catalog[kind].update(resistance_details(kind), duration=None, approach=False,
+                             stacking='independent_hazard_sources', local_sector=True)
     return catalog

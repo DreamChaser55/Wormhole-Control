@@ -97,6 +97,7 @@ class _BatchProjection:
         self._docking_slots: dict[int, int] = {}
         self._inhibitor_states: dict[int, bool] = {}
         self._cloaking_states: dict[int, bool] = {}
+        self._resistance_states: dict[int, set[str]] = {}
         self._agent_hosts: dict[int, Any] = {}
         self._agent_objects: dict[int, Any] = {}
         self._agent_sabotage: dict[int, str | None] = {}
@@ -818,6 +819,22 @@ class CommandGateway:
                     raise _Rejected('capability_unavailable', 'This link is not active.')
                 projection._tactical_cancelled.add((unit.id, command.ability))
             return [_Prepared(apply=lambda unit=unit: cancel(unit, command.ability), receipt='Cancelled ability link.') for unit in units]
+        if command.type == 'toggle_ability':
+            from environmental_resistance import active_kinds, availability, set_enabled
+            unit = units[0]
+            states = projection._resistance_states.setdefault(unit.id, active_kinds(unit))
+            enabled = command.ability not in states
+            error = availability(unit, command.ability, enabled, states=states, fuel=projection.fuel_amount(unit))
+            if enabled and projection.hidden_for(unit):
+                error = 'capability_unavailable'
+            if error:
+                raise _Rejected(error, 'Environmental resistance is unavailable or combined upkeep exceeds current antimatter.')
+            if enabled:
+                states.add(command.ability)
+            else:
+                states.discard(command.ability)
+            return [_Prepared(lambda: set_enabled(unit, command.ability, enabled),
+                              f"{'Enabled' if enabled else 'Disabled'} {command.ability} on unit {unit.id}.")]
         if command.type == "set_wing_production":
             unit = units[0]
             self._require_capability(unit, command.type)

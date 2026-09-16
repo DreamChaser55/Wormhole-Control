@@ -536,6 +536,7 @@ class TurnProcessor:
         if not self.game.galaxy or not self.game.galaxy.systems:
             return
         from environmental_effects import describe_body
+        from environmental_resistance import pay_upkeep, retained_fraction
         movements = sublight_movements or {}
         for system in self.game.galaxy.systems.values():
             for hex_coord, sector in system.hexes.items():
@@ -548,6 +549,7 @@ class TurnProcessor:
                 for unit in list(sector.units):
                     if unit.owner != current_player or unit.current_hit_points <= 0 or getattr(unit, 'is_hidden_in_gas_giant', False):
                         continue
+                    pay_upkeep(unit)
                     for body, hazard in sources:
                         if unit.current_hit_points <= 0:
                             break
@@ -557,13 +559,14 @@ class TurnProcessor:
                             continue
                         if hazard.requires_sublight_movement and movements.get(unit.id, 0) <= hazard.speed_threshold:
                             continue
+                        amount = hazard.amount * retained_fraction(unit, hazard.kind)
                         if hazard.target == 'antimatter':
                             storage = getattr(unit, 'antimatter_component', None)
                             if storage is None or storage.is_destroyed:
                                 continue
-                            drain = (storage.current_amount * hazard.amount
+                            drain = (storage.current_amount * amount
                                      if hazard.amount_basis == 'fraction_of_current_antimatter'
-                                     else min(hazard.amount, storage.current_amount))
+                                     else min(amount, storage.current_amount))
                             if drain > 0 and storage.consume(drain):
                                 unit_event(unit, 'hazard', f'{hazard.kind.title()} AM drain', amount=drain)
                         elif hazard.target == 'random_non_destroyed_component':
@@ -571,9 +574,9 @@ class TurnProcessor:
                             candidates = [c for c in components if not c.is_destroyed]
                             if candidates:
                                 component = self.rng.choice(candidates)
-                                unit.take_component_damage(type(component), int(hazard.amount), cause=hazard.kind)
+                                unit.take_component_damage(type(component), int(amount), cause=hazard.kind)
                         else:
-                            unit.take_damage(int(hazard.amount), cause=hazard.kind)
+                            unit.take_damage(int(amount), cause=hazard.kind)
                 for obj in list(getattr(sector, 'deployables', ())):
                     if obj.owner != current_player:
                         continue

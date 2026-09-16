@@ -27,6 +27,10 @@ class AntimatterStorage(UnitComponent):
     STATE_RUNTIME = ('current_amount',)
     STATE_REFS = ()
 
+    def on_destroyed(self):
+        from environmental_resistance import deactivate
+        deactivate(self.unit)
+
     def validate_state(self):
         if self.current_amount > self.max_capacity:
             raise ValueError("Antimatter amount exceeds capacity")

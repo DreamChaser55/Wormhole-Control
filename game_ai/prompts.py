@@ -70,6 +70,11 @@ continuous_antimatter_transport uses source_id and target_id for a repeating dep
 The ability_catalog describes targeting and costs. Multiply Antimatter doubles seeded friendly tanks within 500, including self, after a 20 AM cost. Caster and recipients have 30-round cooldowns. Empty tanks gain nothing. Future pickups and queued pulses cannot finance immediate casts.
 Ghost emitters are persistent, capped at one per source; identification does not free the slot. Scout radar presence visually.
 cancel_ability releases Tractor Tether or Guardian Link without refund.
+Environmental resistances use toggle_ability with one owned unit, ability and queue=false; no targets.
+They preserve orders and reduce their listed hazards by 75%. Pay combined upkeep every owner turn,
+even in safe space, after movement and before hazards. Insufficient fuel disables all resistances.
+Enabling checks current AM but does not reserve it. Movement, weapons, sensors and terrain access
+are unaffected. Read environmental_resistances and ability_catalog for state, hazards and costs.
 Tractor pulls after caster movement and consumes 5 AM per positive pull; preserve fuel and break range.
 Mine-Clearing Sweep reduces revealed whole-field counts; a remaining field is dangerous everywhere.
 Guardian redirects 30% of weapon damage, capped at 20 raw damage/hit, then reduces the redirected share

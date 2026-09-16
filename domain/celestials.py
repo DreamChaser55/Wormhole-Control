@@ -245,6 +245,8 @@ class Planet(CelestialBody):
         unit.in_hex = self.in_hex
         unit.position = Position(self.position.x, self.position.y)
         unit.is_hidden_in_gas_giant = True
+        from environmental_resistance import deactivate
+        deactivate(unit)
         unit.hidden_in_gas_giant_id = self.id
 
         if getattr(unit, 'commander_component', None):

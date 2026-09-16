@@ -110,6 +110,22 @@ class AbilityComponent(UnitComponent):
 
         for ability_type, instance in self.abilities.items():
             defn = instance.definition
+            if defn.activation_mode == 'toggle':
+                from environmental_resistance import availability, SPECS as RESISTANCES
+                blocker = availability(self.unit, ability_type.value, not instance.is_active)
+                data.append({'type': 'label', 'text': f"{defn.name}: {'Active' if instance.is_active else 'Inactive'}",
+                             'object_id': '#sidebar_section_header_label', 'height': 28})
+                data.append({
+                    'type': 'button', 'text': f"{'Disable' if instance.is_active else 'Enable'} ({defn.ongoing_antimatter:g} AM/turn)",
+                    'object_id': '#sidebar_expand_button', 'action_id': 'toggle_resistance_ability',
+                    'target_data': {'unit_id': self.unit.id, 'ability': ability_type.value},
+                    'height': 28, 'enabled': blocker is None and self.unit.owner == game_state.players[game_state.current_player_index],
+                })
+                for hazard in RESISTANCES[ability_type.value].hazards:
+                    data.append({'type': 'label', 'text': f"{RESISTANCES[ability_type.value].reduction:.0%} resistance: {hazard.replace('_', ' ').title()}", 'height': 22})
+                if blocker:
+                    data.append({'type': 'label', 'text': 'Unavailable: ' + blocker.replace('_', ' '), 'height': 22})
+                continue
             if instance.is_active:
                 cd_str = f"Active ({instance.duration_remaining} turns)"
                 btn_obj_id = '#sidebar_section_header_label'
@@ -158,6 +174,8 @@ class AbilityComponent(UnitComponent):
             return False
         instance = self.abilities.get(ability_type)
         if not instance:
+            return False
+        if instance.definition.activation_mode == 'toggle':
             return False
         if not instance.is_ready:
             return False
@@ -240,7 +258,11 @@ class AbilityComponent(UnitComponent):
 
     def reconcile_effects(self, galaxy):
         from campaign_graph import find_unit
+        from environmental_resistance import reconcile
+        reconcile(self.unit)
         for atype, instance in self.abilities.items():
+            if instance.definition.activation_mode == 'toggle':
+                continue
             target_missing = instance.definition.requires_target_unit and find_unit(galaxy, instance.target_unit_id) is None
             if instance.is_active and (self.is_destroyed or self.unit.current_hit_points <= 0 or instance.duration_remaining <= 0 or target_missing):
                 self._expire_ability(atype, galaxy)
@@ -259,6 +281,10 @@ class AbilityComponent(UnitComponent):
             return
 
         for ability_type, instance in self.abilities.items():
+            if instance.definition.activation_mode == 'toggle':
+                from environmental_resistance import reconcile
+                reconcile(self.unit)
+                continue
             from tactical_abilities import SPECS
             if ability_type.value in SPECS:
                 continue

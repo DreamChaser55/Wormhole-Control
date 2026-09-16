@@ -110,7 +110,7 @@ def mutate(component, target):
         component.turrets = [Turret(t, 17.5, 140.25, 3, component.unit, v, current_cooldown=2)
                              for t in TurretType for v in TurretVariant]
     if isinstance(component, AbilityComponent):
-        component.abilities = {t: cls(cooldown_remaining=5, is_active=cls.DEFINITION.duration > 0,
+        component.abilities = {t: cls(is_active=True) if cls.DEFINITION.activation_mode == 'toggle' else cls(cooldown_remaining=5, is_active=cls.DEFINITION.duration > 0,
             duration_remaining=2 if cls.DEFINITION.duration else 0, target_unit_id=target.id,
             target_position=Position(13.5, -10), spawned_unit_ids=[]) for t, cls in ABILITY_CLASSES.items()}
     if isinstance(component, (MiningComponent, RepairComponent)):
@@ -153,11 +153,16 @@ def test_every_component_round_trip_with_nondefault_state(name):
 
 @pytest.mark.parametrize("atype", list(ABILITY_CLASSES))
 def test_every_ability_definition_and_runtime_round_trip(atype):
-    instance = ABILITY_CLASSES[atype](cooldown_remaining=7, is_active=True, duration_remaining=2,
+    ability_cls = ABILITY_CLASSES[atype]
+    toggle = ability_cls.DEFINITION.activation_mode == 'toggle'
+    instance = ability_cls(is_active=True) if toggle else ability_cls(
+        cooldown_remaining=7, is_active=True, duration_remaining=2,
         target_unit_id=932, target_position=Position(13.5, -4.2), spawned_unit_ids=[77, 78])
     instance.definition = deepcopy(instance.definition)
-    instance.definition.range += 19.5
-    instance.definition.antimatter_cost += 3
+    instance.definition.description += ' Saved definition.'
+    if not toggle:
+        instance.definition.range += 19.5
+        instance.definition.antimatter_cost += 3
     restored = AbilityInstance.from_state(json.loads(json.dumps(instance.to_state())))
     assert type(restored) is type(instance)
     assert value_snapshot(restored) == value_snapshot(instance)
@@ -551,7 +556,7 @@ def test_observed_minefield_id_overrides_stale_serialized_counter():
 
 
 @pytest.mark.parametrize("mutation", [
-    lambda a, unit: a.update(schema_version=2),
+    lambda a, unit: a.update(schema_version=AbilityInstance.SCHEMA_VERSION + 1),
     lambda a, unit: a["runtime"].update(duration_remaining=-1),
     lambda a, unit: a["runtime"].update(spawned_unit_ids=[unit.id]),
     lambda a, unit: a["definition"].update(ability_type={"$enum": "AbilityType", "name": "ION_BOLT"}),
