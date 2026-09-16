@@ -99,8 +99,22 @@ Their boundary circles show the affected area.
 
 ### Turn-start briefing
 
-A scrollable briefing opens at the start of each human turn when important events
-occurred. Its window begins immediately before the previous **End Turn** resolves
+A scrollable briefing opens at the start of each human turn according to
+**Settings → Turn summary mode**, available from the main and in-game menus:
+
+| Mode | Automatic display |
+|---|---|
+| Always show turn summary | Every human turn, including quiet and economy-only turns |
+| Automatic (default) | Only when significant events occurred |
+| Do not show turn summary | Never opens automatically; manual access remains available |
+
+Choose **Apply** to save the preference for all human players and campaigns,
+including after restarting. Changes affect subsequent turn starts and campaign
+loads without immediately opening a report. **Cancel**, **Esc**, or **X** discards
+pending changes. If saving fails, the previous preference remains active and the
+dialog stays open with an error.
+
+The report's window begins immediately before the previous **End Turn** resolves
 and ends after the next turn's opening effects. Your actions while issuing orders
 are excluded. On a player's first turn, it covers events since campaign setup;
 starting ships and colonies are not announcements.
@@ -113,12 +127,13 @@ discoveries include shared allied information. Production, orders and economy
 remain personal. Repeated hits are aggregated; ordinary movement, successful
 support orders, voluntary cancellations and normal temporary-unit expiration are
 omitted. The economy footer shows net credits, metal, crystal and total colony
-population changes; economy-only turns do not open the modal automatically.
+population changes; economy-only turns do not open the modal in Automatic mode.
 
 Use **Continue**, **Esc**, or **X** to acknowledge the report. Game controls are
 blocked while it is open. **Open Comms** closes the briefing and opens conversations;
 acknowledgement alone does not mark messages read. Comms no longer opens automatically
-at turn start. **Esc → Turn Summary** reopens the current report even on quiet turns.
+at turn start. **Esc → Turn Summary** reopens the current report in every mode,
+even on quiet turns.
 
 Reports retain what you could know when an event happened, including historical
 names and sectors. They do not expose hidden attackers, covert equipment or
@@ -906,6 +921,14 @@ candidate before replacing the live campaign; a rejected save leaves play intact
 See [Campaign persistence](SAVE_FORMAT.md) for the current format, restoration and
 load warnings. AI memory storage is described in
 [AI memory and persistence](AGENTIC_AI.md#memory-and-persistence).
+
+### Application preferences
+
+Application preferences are stored separately from campaigns in `preferences.json`
+in the same user-data directory listed below, honoring `WORMHOLE_USER_DATA_DIR`.
+Missing preferences use Automatic without creating a file. Invalid or unreadable
+preferences log a warning and use Automatic. Loading a campaign does not change
+the application preference.
 
 ### Custom-design storage
 

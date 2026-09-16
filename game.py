@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # Local module imports
 from constants import PROFILE, RED, BLUE, YELLOW
 from display_config import DisplayConfig
+from app_preferences import load_preferences
 from application_bootstrap import configure_dpi_awareness, discover_display_config
 from domain.coordinates import HexCoord
 from utils import generate_short_id
@@ -64,6 +65,7 @@ class Game:
             self.screen = pygame.display.set_mode(self.display_config.resolution.to_tuple())
         self.clock = pygame.time.Clock()
         
+        self.preferences = load_preferences()
         # Instantiate the GUI Handler
         self.gui = GUI_Handler(self.display_config, self)
 
@@ -213,6 +215,9 @@ class Game:
         """Handles action events triggered by user interactions with GUI controls."""
         from gui.turn_briefing_window import is_open
         if is_open(getattr(self, "gui", None)):
+            return
+        from gui.settings_dialog import is_open as settings_is_open
+        if settings_is_open(getattr(self, "gui", None)):
             return
         input_locked = isinstance(self, Game) and self.is_ai_input_locked()
         if input_locked and action.get('action') not in {

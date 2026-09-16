@@ -13,6 +13,43 @@ from save_manager import serialize_game_state
 from tests.support.campaigns import ship
 from tests.test_turn_briefing import setup
 from turn_briefing import begin_window, finish_window, initialize_campaign, record, summary_view
+from app_preferences import AppPreferences, TurnSummaryMode
+
+
+@pytest.mark.parametrize("mode", list(TurnSummaryMode))
+@pytest.mark.parametrize("kind", ["significant", "omitted", "quiet", "economy"])
+@pytest.mark.parametrize("acknowledged", [False, True])
+def test_summary_mode_gate(game_factory, mode, kind, acknowledged):
+    game = game_with_report(game_factory, count=int(kind == "significant"))
+    game.preferences = AppPreferences(mode)
+    state = game.current_player.briefing
+    assert not state.acknowledged
+    state.current = replace(state.current, omitted_count=int(kind == "omitted"),
+                            economy=(("credits", 10 if kind == "economy" else 0),))
+    state.acknowledged = acknowledged
+    show_briefing(game.gui, game.current_player)
+    expected = not acknowledged and (mode == TurnSummaryMode.ALWAYS or
+               (mode == TurnSummaryMode.AUTOMATIC and kind in ("significant", "omitted")))
+    assert is_open(game.gui) == expected
+    assert state.acknowledged == acknowledged
+    show_briefing(game.gui, game.current_player, automatic=False)
+    assert is_open(game.gui)
+
+
+def test_always_quiet_first_turn_handoff_and_load(game_factory, tmp_path):
+    from game_settings import GameSettings, PlayerConfig
+    game = game_factory()
+    game.preferences = AppPreferences(TurnSummaryMode.ALWAYS)
+    assert game.start_new_game(GameSettings(player_configs=[
+        PlayerConfig("One", (0, 0, 255), team_id=1), PlayerConfig("Two", (255, 0, 0), team_id=2)]))
+    assert is_open(game.gui)
+    game.gui.process_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+    path = tmp_path / "quiet.json"
+    path.write_text(json.dumps(serialize_game_state(game)))
+    assert game.load_game(str(path))
+    assert not is_open(game.gui)
+    game.end_turn()
+    assert is_open(game.gui)
 
 pytestmark = [
     pytest.mark.filterwarnings("error:Finding font with id:UserWarning"),
@@ -96,16 +133,33 @@ def test_quiet_turn_skips_modal_but_can_be_reopened_and_handoff_closes_windows(g
     assert game.gui.communications_window is None
 
 
+@pytest.mark.parametrize("mode", list(TurnSummaryMode))
+@pytest.mark.parametrize("count", [0, 1])
 @pytest.mark.parametrize("acknowledged", [True, False])
-def test_loading_only_opens_unacknowledged_report(game_factory, tmp_path, acknowledged):
-    game = game_with_report(game_factory)
+def test_loading_only_opens_unacknowledged_report(game_factory, tmp_path, acknowledged, mode, count):
+    game = game_with_report(game_factory, count=count)
+    game.preferences = AppPreferences(mode)
     game.current_player.briefing.acknowledged = acknowledged
     path = tmp_path / "briefing-save.json"
     path.write_text(json.dumps(serialize_game_state(game)))
     expected = summary_view(game.current_player)
     assert game.load_game(str(path))
-    assert is_open(game.gui) is (not acknowledged)
+    assert is_open(game.gui) is (not acknowledged and (mode == TurnSummaryMode.ALWAYS or
+                                (mode == TurnSummaryMode.AUTOMATIC and count > 0)))
     assert summary_view(game.current_player) == expected
+
+
+@pytest.mark.parametrize("mode", list(TurnSummaryMode))
+@pytest.mark.parametrize("controller", [PlayerController.OPENAI, PlayerController.CODEX])
+def test_automated_reports_remain_available_without_popup(game_factory, mode, controller):
+    game = game_with_report(game_factory)
+    game.preferences = AppPreferences(mode)
+    game.current_player.controller = controller
+    before = summary_view(game.current_player)
+    show_briefing(game.gui, game.current_player)
+    show_briefing(game.gui, game.current_player, automatic=False)
+    assert not is_open(game.gui)
+    assert summary_view(game.current_player) == before
 
 
 @pytest.mark.parametrize("width,height,count", [(960, 540, 1), (1280, 720, 1), (1280, 720, 80), (1920, 1080, 80), (2560, 1440, 1), (2560, 1440, 80)])

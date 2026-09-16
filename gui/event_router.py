@@ -34,6 +34,10 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
     Returns:
         typing.Optional[dict]: Action payload dict, {'action': 'ui_handled'}, or None.
     """
+    from .settings_dialog import is_open as settings_is_open
+    if settings_is_open(gui):
+        gui.settings_dialog.process_event(event)
+        return {'action': 'ui_handled'}
     from .turn_briefing_window import is_open
     if is_open(gui):
         gui.turn_briefing_window.process_event(event)
@@ -82,8 +86,12 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         if DEBUG:
             logger.debug(f"[GUI_Handler DEBUG] UI_BUTTON_PRESSED: event.ui_element={event.ui_element}")
 
+        if event.ui_element in (getattr(gui, 'settings_button', None), getattr(gui, 'ingame_settings_button', None)):
+            gui.show_settings_dialog()
+            action_result = {'action': 'ui_handled'}
+
         # Modal AI settings dialog
-        if gui.ai_settings_dialog and gui.ai_settings_dialog.is_alive:
+        elif gui.ai_settings_dialog and gui.ai_settings_dialog.is_alive:
             action_result = gui.ai_settings_dialog.process_event(event)
             if action_result is None:
                 action_result = {'action': 'ui_handled'}

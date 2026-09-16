@@ -7,6 +7,7 @@ import pygame_gui
 
 from player_controller import PlayerController
 from turn_briefing import BriefingState, entry_text
+from app_preferences import AppPreferences, TurnSummaryMode
 
 
 def is_open(gui):
@@ -27,8 +28,12 @@ def show_briefing(gui: Any, player: Any, *, automatic: bool = True) -> None:
     state = getattr(player, "briefing", None)
     if player is None or player.controller != PlayerController.HUMAN or not isinstance(state, BriefingState):
         return
-    if automatic and (state.acknowledged or not (state.current.entries or state.current.omitted_count)):
-        return
+    if automatic:
+        mode = getattr(gui.game_instance, "preferences", AppPreferences()).turn_summary_mode
+        if state.acknowledged or mode == TurnSummaryMode.NEVER:
+            return
+        if mode == TurnSummaryMode.AUTOMATIC and not (state.current.entries or state.current.omitted_count):
+            return
     if is_open(gui) and gui.turn_briefing_window.player is player:
         return
     close_briefing(gui)

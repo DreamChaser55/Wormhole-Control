@@ -47,7 +47,11 @@ Select a unit and use its contextual actions to issue orders. Hold **Shift** whe
 
 At the start of your turn, an event briefing reports combat, losses, completed
 construction, problems, discoveries and new messages since your previous **End
-Turn**, including its resolution. Quiet turns skip the modal. Use **Esc → Turn
+Turn**, including its resolution. **Settings → Turn summary mode**, available
+from the main and in-game menus, offers **Always show turn summary**,
+**Automatic** (the default: significant events only), and **Do not show turn
+summary**. The choice is remembered across restarts for all campaigns and human
+players. Use **Esc → Turn
 Summary** to reopen it, or **Open Comms** to read new messages. Automated players
 receive the same player-visible briefing in their observations.
 

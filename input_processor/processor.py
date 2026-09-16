@@ -39,20 +39,21 @@ class InputProcessor:
 
         # Keyboard camera panning in sector view
         from gui.turn_briefing_window import is_open
-        if not is_open(self.gui):
+        from gui.settings_dialog import is_open as settings_is_open
+        if not is_open(self.gui) and not settings_is_open(self.gui):
             handle_keyboard_panning(self.game, self.gui, time_delta)
 
-        briefing_consumed = False
+        modal_consumed = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.game.is_running = False
                 return
 
-            if is_open(self.gui):
+            if is_open(self.gui) or settings_is_open(self.gui):
                 self.gui.process_event(event)
-                briefing_consumed = True
+                modal_consumed = True
                 continue
-            if briefing_consumed:
+            if modal_consumed:
                 continue
             catalog = getattr(self.gui, 'unit_catalog_window', None)
             catalog_was_open = bool(catalog and catalog.window.alive() is True)

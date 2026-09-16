@@ -425,7 +425,9 @@ def test_game_get_player_upkeep():
 
 
 def test_turn_number_increment():
+    from app_preferences import AppPreferences
     game = MagicMock()
+    game.gui.game_instance.preferences = AppPreferences()
     game.display_config = DisplayConfig()
     game.turn_number = 1
     player1 = ComponentPlayer("Player 1")
@@ -449,7 +451,9 @@ def test_turn_number_increment():
 
 
 def test_global_round_execution_order_and_population_growth():
+    from app_preferences import AppPreferences
     game = MagicMock()
+    game.gui.game_instance.preferences = AppPreferences()
     game.display_config = DisplayConfig()
     game.turn_number = 1
     player1 = ComponentPlayer("Player 1")

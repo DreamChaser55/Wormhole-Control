@@ -265,7 +265,7 @@ def finish_window(game, player):
         tuple(sorted(state.pending, key=lambda e: (PRIORITY[e.category], e.category, e.event_id))), delta, state.omitted_count)
     state.collecting = False
     state.pending, state.omitted_count = [], 0
-    state.acknowledged = not (state.current.entries or state.current.omitted_count)
+    state.acknowledged = False
 
 
 def summary_view(player):

@@ -26,6 +26,7 @@ class ApplicationTurnPresentation:
                 gui.unit_catalog_window = None
             gui.close_context_menu()
             gui.close_ai_settings_dialog()
+            gui.close_settings_dialog()
             if gui.load_save_window:
                 gui.load_save_window.kill()
                 gui.load_save_window = None
@@ -46,6 +47,7 @@ class ApplicationTurnPresentation:
         # Also used after new-campaign setup and load, where no handoff occurs.
         gui = getattr(self.game, "gui", None)
         if gui:
+            gui.close_settings_dialog()
             from gui.turn_briefing_window import show_briefing
             show_briefing(gui, player)
         self.game.pending_ai_turn_end_time = (

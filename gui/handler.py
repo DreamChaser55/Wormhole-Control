@@ -16,6 +16,7 @@ from . import layout_main_menu, layout_ingame_menu, layout_hud, text_layout, con
 from .layout_new_game_wizard import NewGameWizard
 from .sidebar import view as sidebar_view
 from .communications_window import CommunicationsWindow
+from .settings_dialog import SettingsDialog
 if typing.TYPE_CHECKING:
     from game import Game
     from domain.players import Player
@@ -34,6 +35,9 @@ class GUI_Handler:
         self.antimatter_transport_window = None
         self.turn_briefing_window = None
         self.turn_summary_button = None
+        self.settings_button = None
+        self.ingame_settings_button = None
+        self.settings_dialog: typing.Optional[SettingsDialog] = None
         self.scale_x = screen_res.x / 1280.0
         self.scale_y = screen_res.y / 720.0
 
@@ -131,6 +135,8 @@ class GUI_Handler:
 
     def clear_and_reset(self):
         """Clears all UI elements managed by this class."""
+        self.close_settings_dialog()
+        self.settings_button = self.ingame_settings_button = None
         if self.unit_catalog_window:
             self.unit_catalog_window.kill()
             self.unit_catalog_window = None
@@ -313,6 +319,18 @@ class GUI_Handler:
         if self.ai_settings_dialog and self.ai_settings_dialog.is_alive:
             return
         self.ai_settings_dialog = layout_ingame_menu.AISettingsDialog(self)
+
+    def show_settings_dialog(self) -> None:
+        if self.settings_dialog and self.settings_dialog.window.alive():
+            return
+        self.game_instance.is_dragging_camera = False
+        self.game_instance.is_dragging_selection_box = False
+        self.settings_dialog = SettingsDialog(self)
+
+    def close_settings_dialog(self) -> None:
+        if self.settings_dialog:
+            self.settings_dialog.window.kill()
+            self.settings_dialog = None
 
     def close_ai_settings_dialog(self) -> None:
         """Close and forget the AI settings editor."""

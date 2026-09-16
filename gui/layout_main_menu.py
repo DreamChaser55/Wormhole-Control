@@ -34,7 +34,7 @@ def setup_main_menu(gui) -> None:
     gui.clear_and_reset()
 
     menu_width = int(300 * gui.scale_x)
-    menu_height = int(360 * gui.scale_y)
+    menu_height = int(420 * gui.scale_y)
     menu_x = (gui.screen_res.x - menu_width) // 2
     menu_y = (gui.screen_res.y - menu_height) // 2
 
@@ -73,8 +73,16 @@ def setup_main_menu(gui) -> None:
         object_id='#load_game_button'
     )
 
-    gui.about_button = pygame_gui.elements.UIButton(
+    gui.settings_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((button_x, int(190 * gui.scale_y)), (button_width, button_height)),
+        text='Settings',
+        manager=gui.manager,
+        container=gui.main_menu_panel,
+        object_id='#settings_button'
+    )
+
+    gui.about_button = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((button_x, int(250 * gui.scale_y)), (button_width, button_height)),
         text='About',
         manager=gui.manager,
         container=gui.main_menu_panel,
@@ -82,7 +90,7 @@ def setup_main_menu(gui) -> None:
     )
 
     gui.quit_button = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((button_x, int(250 * gui.scale_y)), (button_width, button_height)),
+        relative_rect=pygame.Rect((button_x, int(310 * gui.scale_y)), (button_width, button_height)),
         text='Quit',
         manager=gui.manager,
         container=gui.main_menu_panel,

@@ -14,6 +14,7 @@ from player_controller import PlayerController
 _INGAME_MENU_BUTTONS = [
     ('resume_button', 'Resume', '#resume_button'),
     ('turn_summary_button', 'Turn Summary', '#turn_summary_button'),
+    ('ingame_settings_button', 'Settings', '#ingame_settings_button'),
     ('ai_settings_button', 'AI Settings', '#ai_settings_button'),
     ('save_game_button', 'Save Game', '#save_game_button'),
     ('ingame_load_game_button', 'Load Game', '#ingame_load_game_button'),
