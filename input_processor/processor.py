@@ -40,7 +40,8 @@ class InputProcessor:
         # Keyboard camera panning in sector view
         from gui.turn_briefing_window import is_open
         from gui.settings_dialog import is_open as settings_is_open
-        if not is_open(self.gui) and not settings_is_open(self.gui):
+        from gui.antimatter_transport_window import is_open as transport_is_open
+        if not is_open(self.gui) and not settings_is_open(self.gui) and not transport_is_open(self.gui):
             handle_keyboard_panning(self.game, self.gui, time_delta)
 
         modal_consumed = False
@@ -49,7 +50,7 @@ class InputProcessor:
                 self.game.is_running = False
                 return
 
-            if is_open(self.gui) or settings_is_open(self.gui):
+            if is_open(self.gui) or settings_is_open(self.gui) or transport_is_open(self.gui):
                 self.gui.process_event(event)
                 modal_consumed = True
                 continue
@@ -57,8 +58,6 @@ class InputProcessor:
                 continue
             catalog = getattr(self.gui, 'unit_catalog_window', None)
             catalog_was_open = bool(catalog and catalog.window.alive() is True)
-            from gui.antimatter_transport_window import is_open as transport_is_open
-            transport_was_open = transport_is_open(self.gui)
             gui_action = self.gui.process_event(event)
 
             if gui_action:
@@ -75,7 +74,7 @@ class InputProcessor:
                 if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION, pygame.MOUSEWHEEL]:
                     continue
 
-            if transport_was_open or (catalog_was_open and event.type == pygame.KEYDOWN):
+            if catalog_was_open and event.type == pygame.KEYDOWN:
                 continue
 
             if hasattr(self.game, "is_ai_input_locked") and self.game.is_ai_input_locked():

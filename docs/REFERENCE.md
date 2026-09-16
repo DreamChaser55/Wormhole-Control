@@ -165,6 +165,15 @@ Every unit with functional Antimatter Storage can donate or receive fuel. **Tran
 
 For unattended deliveries, select one mobile transporter and open **Continuous Antimatter Transport...** on a friendly depot. Choose source and destination, then Start or Queue. The repeating root follows those unit IDs and their current positions. It loads to capacity, or departs with a partial load after the source empties if it can pay for the round trip and deliver positive cargo. It waits for insufficient supply or a full destination, and reserves the return trip's fuel before each donation. Stop it with Cancel Orders; work queued after it waits indefinitely.
 
+The clicked depot starts selected as Source, filtered to its system and hex;
+Destination starts unselected with all eligible units available. Each endpoint
+has independent System and Hex filters and a live search by name or unit ID
+(with or without `#`). Choose a system to enable its Hex filter. Search ignores
+case and matches partial names or IDs within the selected location. Changing
+filters clears a selection if it no longer matches. **Swap source and destination**
+exchanges both units and their filters. Start, Queue, and Swap require two distinct
+eligible units. Filters reset each time the window opens.
+
 Journey estimates account for operational engines/hyperdrive, wormhole topology, collision detours, terrain drag, and active equipment consumption. Each leg reserves `ceil(1.25 × estimated AM) + 10` when travel costs fuel, otherwise zero. Future harvesting and multiplication do not finance the estimate. Unreachable routes, insufficient tank capacity for a productive round trip, or invalid endpoints fail; temporary shortages wait. Damage or changing routes can still interrupt delivery. The sidebar reports phase, waiting reason, and return reserve.
 
 | Logistics design | Hull | AM capacity | Hull used | Credits | Build turns |

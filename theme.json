@@ -51,6 +51,11 @@
             "border_colour": "#3A6D8CC8"
         }
     },
+    "#transport_destination_dropdown": {
+        "misc": {
+            "expand_direction": "up"
+        }
+    },
     "#new_game_wizard_window": {
         "colours": {
             "dark_bg": "#0F1524D8",

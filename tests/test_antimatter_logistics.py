@@ -566,16 +566,63 @@ def test_dedicated_designs_assemble_as_quoted(key, hull, capacity, cost, turns):
     assert unit.harvester_component is None and unit.ability_component is None
 
 
+def select_endpoint(window, picker, field, value):
+    import pygame
+    import pygame_gui
+
+    label = next(label for label, candidate in picker.choices[field].items() if candidate == value)
+    window.process_event(pygame.event.Event(
+        pygame_gui.UI_DROP_DOWN_MENU_CHANGED, ui_element=getattr(picker, field), text=label))
+
+
+def search_endpoint(window, picker, text):
+    import pygame
+    import pygame_gui
+
+    picker.search.set_text(text)
+    window.process_event(pygame.event.Event(
+        pygame_gui.UI_TEXT_ENTRY_CHANGED, ui_element=picker.search, text=text))
+
+
+def endpoint_ids(picker):
+    return {uid for uid in picker.choices['unit'].values() if uid is not None}
+
+
+def make_route_window(game, actor, source, size=(1280, 720)):
+    from types import SimpleNamespace
+    from display_config import DisplayConfig
+    from gui.antimatter_transport_window import AntimatterTransportWindow
+    from gui.theme_loader import build_ui_manager
+
+    config = DisplayConfig(*size, False)
+    game.gui = SimpleNamespace(game_instance=game, display_config=config,
+                               manager=build_ui_manager(config), context_menu_panel=None)
+    window = AntimatterTransportWindow(game.gui, actor, source)
+    game.gui.antimatter_transport_window = window
+    return window
+
+
+@pytest.fixture
+def route_dialog(pygame_context):
+    game, actor, source, target, _ = route_scenario()
+    window = make_route_window(game, actor, source)
+    yield game, actor, source, target, window
+    window.close()
+    game.gui.manager.clear_and_reset()
+
+
 def test_route_dialog_emits_start_and_queue_commands(monkeypatch, pygame_context):
     import pygame
     import pygame_gui
     from types import SimpleNamespace
+    from display_config import DisplayConfig
     from gui.antimatter_transport_window import AntimatterTransportWindow
 
     game, actor, source, target, command = route_scenario()
     gui = SimpleNamespace(
         game_instance=game,
         manager=pygame_gui.UIManager((1000, 700)),
+        display_config=DisplayConfig(1000, 700, False),
         antimatter_transport_window=None,
     )
     emitted = []
@@ -585,10 +632,7 @@ def test_route_dialog_emits_start_and_queue_commands(monkeypatch, pygame_context
     for queued in (False, True):
         window = AntimatterTransportWindow(gui, actor, source)
         gui.antimatter_transport_window = window
-        window.destination.selected_option = (
-            next(label for label, uid in window.targets.items() if uid == target.id),
-            "",
-        )
+        select_endpoint(window, window.destination, 'unit', target.id)
         window.process_event(
             pygame.event.Event(
                 pygame_gui.UI_BUTTON_PRESSED,
@@ -597,6 +641,327 @@ def test_route_dialog_emits_start_and_queue_commands(monkeypatch, pygame_context
         )
         assert emitted[-1] == dict(command, unit_ids=[actor.id], queue=queued)
         assert gui.antimatter_transport_window is None
+
+
+@pytest.mark.parametrize('overlapping', [False, True])
+def test_route_dialog_clicked_source_and_blank_destination(pygame_context, overlapping):
+    from input_processor.context_actions import handle_context_menu_action
+    from input_processor.context_menu_builder import build_sector_unit_disambiguation_menu
+    from gui.context_menu import open_context_menu, handle_button_index
+
+    game, actor, source, target, _ = route_scenario()
+    target.name = source.name
+    target.position = source.position
+    game.selected_objects = [actor]
+    window = make_route_window(game, actor, source)
+    window.close()
+    action, clicked = 'continuous_antimatter_transport', target
+    if overlapping:
+        options, menu_target = build_sector_unit_disambiguation_menu(game, [source, target], target.position)
+        open_context_menu(game.gui, Position(300, 200), options, menu_target)
+        handle_button_index(game.gui, 1)
+        index = next(i for i, (_, command) in enumerate(game.gui.context_menu_options) if command == action)
+        selected = handle_button_index(game.gui, index)
+        action, clicked = selected['action_id'], selected['target']
+    handle_context_menu_action(game, action, clicked)
+    window = game.gui.antimatter_transport_window
+    try:
+        assert window.source.state.unit_id == target.id
+        assert window.source.state.system == target.in_system
+        assert window.source.state.hex_coord == target.in_hex
+        assert window.destination.state.unit_id is None
+        assert window.destination.state.system is None
+        assert not window.destination.hex.is_enabled
+        assert not any(button.is_enabled for button in (window.start, window.queue, window.swap))
+        search_endpoint(window, window.source, 'source')
+        assert window.source.state.unit_id == target.id
+    finally:
+        window.close()
+        game.gui.manager.clear_and_reset()
+
+
+def test_route_dialog_combines_independent_location_and_search_filters(route_dialog):
+    game, actor, source, target, window = route_dialog
+    remote = ship(game, 'Destination Beta', system='Beta', sector=(1, 0))
+    remote.add_component(AntimatterStorage(remote, max_capacity=600))
+    local = vessel(game, 'Destination local', sector=(1, 0))
+    window._refresh_candidates()
+    window.destination.refresh()
+    picker = window.destination
+    select_endpoint(window, picker, 'system', 'Beta')
+    assert picker.hex.is_enabled
+    assert list(picker.choices['hex']) == ['All hexes', '(1, 0)']
+    select_endpoint(window, picker, 'hex', (1, 0))
+    search_endpoint(window, picker, '  dEsTiNaTiOn  ')
+    assert endpoint_ids(picker) == {remote.id}
+    select_endpoint(window, picker, 'unit', remote.id)
+    search_endpoint(window, picker, f' #{remote.id} ')
+    assert endpoint_ids(picker) == {remote.id} and picker.state.unit_id == remote.id
+    assert window.source.state.unit_id == source.id
+    assert window.source.state.system == 'Sol' and window.source.state.hex_coord == (0, 0)
+
+    select_endpoint(window, picker, 'system', 'Sol')
+    assert picker.state.hex_coord is None and picker.state.unit_id is None
+    assert not endpoint_ids(picker) and not picker.unit.is_enabled
+    assert 'No matching units' in picker.choices['unit']
+    assert not window.start.is_enabled
+    search_endpoint(window, picker, 'destination')
+    assert endpoint_ids(picker) == {target.id, local.id}
+    select_endpoint(window, picker, 'hex', (1, 0))
+    assert endpoint_ids(picker) == {local.id}
+    select_endpoint(window, picker, 'system', None)
+    assert not picker.hex.is_enabled and picker.state.hex_coord is None
+    assert endpoint_ids(picker) == {target.id, local.id, remote.id}
+
+
+def test_route_dialog_search_selection_and_focus(route_dialog):
+    game, _, source, target, window = route_dialog
+    picker = window.destination
+    select_endpoint(window, picker, 'unit', target.id)
+    entry = picker.search
+    game.gui.manager.set_focus_set(entry.get_focus_set())
+    for text in ('dest', '  DESTINATION ', str(target.id), f'#{target.id}'):
+        search_endpoint(window, picker, text)
+        assert picker.state.unit_id == target.id
+        assert window.start.is_enabled
+        assert picker.search is entry and entry.is_focused
+    search_endpoint(window, picker, 'unmatched')
+    assert picker.state.unit_id is None and not endpoint_ids(picker)
+    assert not window.start.is_enabled
+    search_endpoint(window, picker, '')
+    assert endpoint_ids(picker) == {source.id, target.id}
+    assert picker.state.unit_id is None
+
+
+def test_route_dialog_swap_exchanges_filters_and_emits_reversed_route(route_dialog, monkeypatch):
+    from dataclasses import replace
+    import pygame
+    import pygame_gui
+
+    _, actor, source, target, window = route_dialog
+    select_endpoint(window, window.destination, 'unit', target.id)
+    search_endpoint(window, window.source, 'sou')
+    search_endpoint(window, window.destination, f'#{target.id}')
+    original = (replace(window.source.state), replace(window.destination.state))
+    event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.swap)
+    window.process_event(event)
+    assert (window.source.state, window.destination.state) == original[::-1]
+    assert window.source.search.get_text() == f'#{target.id}'
+    assert window.destination.search.get_text() == 'sou'
+    assert window.start.is_enabled
+    window.process_event(event)
+    assert (window.source.state, window.destination.state) == original
+    window.process_event(event)
+    emitted = []
+    monkeypatch.setattr('tactical_ui.issue', lambda game, payload: emitted.append(payload) or True)
+    window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.queue))
+    assert emitted == [dict(type='continuous_antimatter_transport', unit_ids=[actor.id],
+                            source_id=target.id, target_id=source.id, queue=True)]
+
+
+@pytest.mark.parametrize('invalid', ['blank', 'same', 'destroyed', 'enemy', 'removed'])
+def test_route_dialog_cannot_submit_invalid_endpoints(route_dialog, monkeypatch, invalid):
+    import pygame
+    import pygame_gui
+
+    game, _, source, target, window = route_dialog
+    if invalid != 'blank':
+        select_endpoint(window, window.destination, 'unit', source.id if invalid == 'same' else target.id)
+    if invalid == 'destroyed':
+        target.antimatter_component.current_hit_points = 0
+    elif invalid == 'enemy':
+        target.owner = game.players[1]
+    elif invalid == 'removed':
+        game.galaxy.systems[target.in_system].hexes[target.in_hex].units.remove(target)
+    emitted = []
+    monkeypatch.setattr('tactical_ui.issue', lambda game, payload: emitted.append(payload) or True)
+    for button in (window.start, window.queue, window.swap):
+        window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=button))
+    assert not emitted and window.window.alive()
+    assert not any(button.is_enabled for button in (window.start, window.queue, window.swap))
+    assert window.status.text
+
+
+def test_route_dialog_unavailable_clicked_source_never_substituted(pygame_context):
+    game, actor, source, target, _ = route_scenario()
+    source.current_hit_points = 0
+    window = make_route_window(game, actor, source)
+    try:
+        assert window.source.state.unit_id is None
+        assert 'Source unit unavailable' in window.status.text
+        assert endpoint_ids(window.source) == {target.id}
+        assert not window.start.is_enabled
+    finally:
+        window.close()
+        game.gui.manager.clear_and_reset()
+
+
+def test_route_dialog_eligibility_sorting_and_partial_id_search(pygame_context):
+    game, actor, source, target, _ = route_scenario()
+    source.name, target.name = 'beta', 'Alpha'
+    allied = vessel(game, 'Alpha', owner=1)
+    game.players[1].team_id = game.players[0].team_id
+    hidden = vessel(game, 'Hidden')
+    hidden.is_hidden_in_gas_giant = True
+    vessel(game, 'Dead').current_hit_points = 0
+    vessel(game, 'Broken').antimatter_component.current_hit_points = 0
+    ship(game, 'No storage').remove_component(AntimatterStorage)
+    window = make_route_window(game, actor, source)
+    try:
+        assert list(window.candidates) == [target.id, allied.id, source.id]
+        query = str(target.id)[-1:]
+        search_endpoint(window, window.destination, query)
+        assert endpoint_ids(window.destination) == {u.id for u in (source, target, allied) if query in str(u.id)}
+    finally:
+        window.close()
+        game.gui.manager.clear_and_reset()
+
+
+def test_route_dialog_rejected_command_keeps_window_and_selections(route_dialog, monkeypatch):
+    import pygame
+    import pygame_gui
+
+    _, _, source, target, window = route_dialog
+    select_endpoint(window, window.destination, 'unit', target.id)
+    monkeypatch.setattr('tactical_ui.issue', lambda game, payload: False)
+    window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.start))
+    assert window.window.alive()
+    assert (window.source.state.unit_id, window.destination.state.unit_id) == (source.id, target.id)
+
+
+@pytest.mark.parametrize('dismiss', ['escape', 'cancel', 'close'])
+def test_route_dialog_modal_typing_and_dismissal(route_dialog, monkeypatch, dismiss):
+    import pygame
+    import pygame_gui
+    from input_processor.processor import InputProcessor
+    from gui.event_router import process_event
+
+    game, _, _, _, window = route_dialog
+    game.gui.process_event = lambda event: process_event(game.gui, event)
+    processor = InputProcessor(game)
+    monkeypatch.setattr(processor, 'update_hover_states', lambda pos: None)
+    background = []
+    monkeypatch.setattr('input_processor.processor.handle_keyboard_panning', lambda *args: background.append('pan'))
+    monkeypatch.setattr('input_processor.processor.handle_key_down', lambda *args: background.append('key'))
+    monkeypatch.setattr('tactical_ui.issue', lambda *args: background.append('command'))
+    game.gui.manager.set_focus_set(window.destination.search.get_focus_set())
+    for key in (pygame.K_e, pygame.K_g, pygame.K_s, pygame.K_LEFT):
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=key, mod=0, unicode=''))
+    pygame.event.post(pygame.event.Event(pygame.TEXTINPUT, text='eggs'))
+    processor.handle_input()
+    processor.handle_input()  # Deliver the text-entry change posted by the manager.
+    assert window.destination.search.get_text() == 'eggs'
+    assert window.destination.state.query == 'eggs'
+    assert not background
+    event = (pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE) if dismiss == 'escape' else
+             pygame.event.Event(pygame_gui.UI_WINDOW_CLOSE, ui_element=window.window) if dismiss == 'close' else
+             pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.cancel))
+    pygame.event.post(event)
+    pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
+    processor.handle_input()
+    assert game.gui.antimatter_transport_window is None and not background
+
+
+@pytest.mark.parametrize('size', [(1280, 720), (1920, 1080), (2560, 1440), (1000, 700)])
+@pytest.mark.filterwarnings('error:Label Rect is too small:UserWarning')
+def test_route_dialog_themed_layout(pygame_context, tmp_path, size):
+    import pygame
+    import pygame_gui
+
+    game, actor, source, target, _ = route_scenario()
+    for i in range(35):
+        vessel(game, f'Fuel station {i:02}')
+    source.name = 'Antimatter Storage Station'
+    screen = pygame.display.set_mode(size)
+    window = make_route_window(game, actor, source, size)
+    manager = game.gui.manager
+
+    def capture(name):
+        manager.update(0.1)
+        screen.fill((5, 10, 20))
+        manager.draw_ui(screen)
+        pygame.image.save(screen, str(tmp_path / f'transport-{name}.png'))
+
+    try:
+        select_endpoint(window, window.destination, 'unit', target.id)
+        capture('selected')
+        assert screen.get_rect().contains(window.window.get_abs_rect())
+        outer = window.window.get_container().get_rect()
+        for widget in (window.body, window.status, window.start, window.queue, window.cancel):
+            assert outer.contains(widget.get_abs_rect())
+        widgets = [window.swap]
+        for picker in (window.source, window.destination):
+            widgets.extend((picker.system, picker.hex, picker.search, picker.unit))
+        for i, widget in enumerate(widgets):
+            assert window.body.get_abs_rect().contains(widget.get_abs_rect())
+            assert all(not widget.get_abs_rect().colliderect(other.get_abs_rect()) for other in widgets[i + 1:])
+        for button in (window.swap, window.start, window.queue, window.cancel):
+            assert button.font.get_rect(button.text).width < button.get_abs_rect().width - 10
+        for name, dropdown in [('source-units', window.source.unit), ('destination-units', window.destination.unit),
+                               ('destination-systems', window.destination.system)]:
+            dropdown.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
+                                                      ui_element=dropdown.current_state.open_button))
+            capture(name)
+            options = dropdown.current_state.options_selection_list
+            assert window.body.get_abs_rect().contains(options.get_abs_rect())
+            if name.endswith('units'):
+                assert options.scroll_bar is not None
+            dropdown.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
+                                                      ui_element=dropdown.current_state.close_button))
+    finally:
+        window.close()
+        manager.clear_and_reset()
+
+
+def test_route_dialog_selects_unit_through_real_dropdown_events(route_dialog):
+    import pygame
+    import pygame_gui
+    from gui.event_router import process_event
+
+    game, _, _, target, window = route_dialog
+    manager = game.gui.manager
+    dropdown = window.destination.unit
+    dropdown.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
+                                              ui_element=dropdown.current_state.open_button))
+    manager.update(0.1)
+    label = next(label for label, uid in window.destination.choices['unit'].items() if uid == target.id)
+    option = next(item for item in dropdown.current_state.options_selection_list.item_list if item['text'] == label)
+    pygame.event.post(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=option['button_element']))
+    for _ in range(8):
+        events = pygame.event.get()
+        if not events:
+            break
+        for event in events:
+            process_event(game.gui, event)
+        manager.update(0.1)
+    assert window.destination.state.unit_id == target.id
+    assert window.start.is_enabled and window.swap.is_enabled
+    assert window.destination.unit.selected_option[0] == label
+
+
+def test_route_dialog_scrolls_body_without_moving_footer(route_dialog):
+    from gui.antimatter_transport_window import AntimatterTransportWindow
+
+    game, actor, source, target, original = route_dialog
+    original.close()
+    # A smaller viewport with the same text size forces the scrolling fallback.
+    game.gui.manager.set_window_resolution((1000, 480))
+    window = AntimatterTransportWindow(game.gui, actor, source)
+    game.gui.antimatter_transport_window = window
+    try:
+        game.gui.manager.update(0.1)
+        footer = window.start.get_abs_rect().copy()
+        scroll = window.body.vert_scroll_bar
+        assert scroll is not None and scroll.visible
+        scroll.set_scroll_from_start_percentage(1.0)
+        game.gui.manager.update(0.1)
+        assert window.body.get_abs_rect().contains(window.destination.unit.get_abs_rect())
+        assert window.start.get_abs_rect() == footer
+        assert window.window.get_container().get_rect().contains(footer)
+        select_endpoint(window, window.destination, 'unit', target.id)
+        assert window.start.is_enabled
+    finally:
+        window.close()
 
 
 def test_issuance_and_replacement_never_exchange_extra_fuel():
