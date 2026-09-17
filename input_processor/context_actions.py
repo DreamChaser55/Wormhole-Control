@@ -110,37 +110,59 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
                     title="Units Disabled"
                 )
 
-        if extracted_action_id == "cancel_orders":
+        if extracted_action_id == "select_constructor_unit":
+            builder = getattr(target, 'constructor_unit', None)
+            if builder:
+                game.selected_objects = [builder]
+                game.sidebar_needs_update = True
+            return
+
+        elif extracted_action_id == "cancel_construction_job":
+            builder = getattr(target, 'constructor_unit', None)
+            if builder and getattr(builder, 'constructor_component', None):
+                order = builder.constructor_component._owning_construction_order()
+                if order:
+                    order.cancel()
+                else:
+                    builder.constructor_component.cancel_construction()
+                game.selected_objects = [builder]
+                game.sidebar_needs_update = True
+            return
+
+        elif extracted_action_id == "cancel_orders":
             game.event_bus.publish(CancelOrdersEvent(selected_units))
 
         elif extracted_action_id == "issue_move_order":
-            if isinstance(target, Position):
+            target_pos = target.position if hasattr(target, 'position') else target
+            if isinstance(target_pos, Position):
                 game.event_bus.publish(IssueMoveOrderEvent(
                     selected_units,
                     site_system,
                     site_hex,
-                    target,
+                    target_pos,
                     shift_pressed
                 ))
 
         elif extracted_action_id == "issue_patrol_order":
-            if isinstance(target, Position):
+            target_pos = target.position if hasattr(target, 'position') else target
+            if isinstance(target_pos, Position):
                 game.event_bus.publish(IssuePatrolOrderEvent(
                     selected_units,
                     site_system,
                     site_hex,
-                    target,
+                    target_pos,
                     shift_pressed=shift_pressed,
                     add_waypoint=False
                 ))
 
         elif extracted_action_id == "add_patrol_waypoint":
-            if isinstance(target, Position):
+            target_pos = target.position if hasattr(target, 'position') else target
+            if isinstance(target_pos, Position):
                 game.event_bus.publish(IssuePatrolOrderEvent(
                     selected_units,
                     site_system,
                     site_hex,
-                    target,
+                    target_pos,
                     shift_pressed=False,
                     add_waypoint=True
                 ))

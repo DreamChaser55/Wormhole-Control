@@ -322,6 +322,19 @@ class SystemViewRenderer:
                     if current_viewer and hasattr(unit, 'has_infiltrating_agent_from') and unit.has_infiltrating_agent_from(current_viewer):
                         pygame.draw.circle(self.screen, (50, 220, 255), (int(unit_screen_x), int(unit_screen_y)), int(current_icon_base_size + 2), 1)
 
+            # Draw construction marker badge if hex contains active construction
+            from domain.construction_job import get_sector_construction_jobs
+            current_viewer = getattr(self.game, 'current_player', None)
+            sector_jobs = get_sector_construction_jobs(hex_obj, viewer=current_viewer)
+            if sector_jobs:
+                from constants import CONSTRUCTOR_RANGE_RING_COLOR
+                badge_radius = max(2, int(3.5 * scale_val))
+                badge_x = int(hex_center_pixel.x + 14 * scale_val)
+                badge_y = int(hex_center_pixel.y - 14 * scale_val)
+                pygame.draw.circle(self.screen, CONSTRUCTOR_RANGE_RING_COLOR, (badge_x, badge_y), badge_radius, 1)
+                pygame.draw.line(self.screen, CONSTRUCTOR_RANGE_RING_COLOR, (badge_x - badge_radius + 1, badge_y), (badge_x + badge_radius - 1, badge_y), 1)
+                pygame.draw.line(self.screen, CONSTRUCTOR_RANGE_RING_COLOR, (badge_x, badge_y - badge_radius + 1), (badge_x, badge_y + badge_radius - 1), 1)
+
 
         # 3. Highlight Hovered Hex
 
@@ -339,7 +352,7 @@ class SystemViewRenderer:
                      hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
                      pygame.draw.polygon(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, hex_points_tuples, 2)
 
-        # 5. Highlight Hex Containing the Selected Unit/Body
+        # 5. Highlight Hex Containing the Selected Unit/Body/Job
         for obj in self.game.selected_objects:
             selected_object_hex = None
             if isinstance(obj, Unit):
@@ -350,6 +363,9 @@ class SystemViewRenderer:
                 body: CelestialBody = obj
                 if body.in_system == self.game.current_system_name:
                     selected_object_hex = body.in_hex
+            elif hasattr(obj, 'in_system') and hasattr(obj, 'in_hex'):
+                if obj.in_system == self.game.current_system_name:
+                    selected_object_hex = obj.in_hex
 
             if selected_object_hex:
                 q, r = selected_object_hex

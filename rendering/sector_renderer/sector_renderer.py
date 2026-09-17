@@ -166,15 +166,30 @@ class SectorViewRenderer:
             self.screen.blit(text_surface, text_rect)
 
         from domain.deployables import Deployable
+        from domain.construction_job import ConstructionJob, get_sector_construction_jobs
         from tactical_ui import draw, draw_deployable
         draw(self, hex_obj)
-        all_objects_in_sector = bodies_to_draw + units_to_draw + minefields_to_draw + [d for d in getattr(hex_obj, 'deployables', ()) if self.game.is_unit_visible(d)]
+
+        current_turn_player = self.game.players[self.game.current_player_index] if self.game.players else None
+        construction_jobs_to_draw = get_sector_construction_jobs(hex_obj, viewer=current_turn_player)
+        for job in construction_jobs_to_draw:
+            self.entity_renderer.draw_construction_beam(job, dynamic_radius)
+
+        all_objects_in_sector = (
+            bodies_to_draw
+            + units_to_draw
+            + minefields_to_draw
+            + [d for d in getattr(hex_obj, 'deployables', ()) if self.game.is_unit_visible(d)]
+            + construction_jobs_to_draw
+        )
 
         for obj in all_objects_in_sector:
             obj_pixel_pos = self.grid_renderer.coords_to_pixels(obj.position)
 
             if isinstance(obj, Unit):
                 obj_radius_logical = self.entity_renderer.draw_unit(obj, obj_pixel_pos, dynamic_radius)
+            elif isinstance(obj, ConstructionJob):
+                obj_radius_logical = self.entity_renderer.draw_construction_job(obj, obj_pixel_pos, dynamic_radius)
             elif isinstance(obj, Deployable):
                 obj_radius_logical = draw_deployable(self, obj, obj_pixel_pos)
             elif isinstance(obj, Minefield):

@@ -1,7 +1,12 @@
-from rendering.drawing_utils import draw_shape
+from rendering.drawing_utils import (
+    draw_shape,
+    draw_wireframe_shape,
+    draw_scaffold_brackets,
+    draw_dotted_line,
+    station_icon_rect,
+)
 import pygame
 from display_config import display_config_for
-from rendering.drawing_utils import station_icon_rect
 from constants import (
     SECTOR_CIRCLE_RADIUS_LOGICAL,
     WHITE,
@@ -13,9 +18,11 @@ from constants import (
     ICON_DOT_SPACING,
     INHIBITION_FIELD_COLOR,
     INHIBITION_FIELD_LINE_WIDTH,
+    CONSTRUCTOR_RANGE_RING_COLOR,
 )
 from domain.units import Unit
 from domain.minefields import Minefield
+from domain.construction_job import ConstructionJob
 from unit_components.enums import MinefieldType
 
 
@@ -236,3 +243,91 @@ class SectorEntityRenderer:
                     self.screen.blit(badge_surf, badge_rect)
 
         return obj_radius_logical
+
+    def draw_construction_job(self, job: ConstructionJob, obj_pixel_pos, dynamic_radius: float) -> float:
+        """Draws an active construction site with blueprint scaffolding, progress bar, and label."""
+        shape_type = 'square' if job.is_station else 'triangle'
+        scale_factor = HULL_BASE_ICON_SCALES.get(job.hull_size, 1.0)
+        current_icon_base_size_logical = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
+        dot_count = HULL_DOT_COUNTS.get(job.hull_size, 0)
+
+        icon_radius_px = current_icon_base_size_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
+        current_icon_base_size_px = int(icon_radius_px)
+        obj_radius_logical = current_icon_base_size_logical
+
+        accent_color = CONSTRUCTOR_RANGE_RING_COLOR  # (255, 200, 50) amber
+        owner_color = job.owner.color if job.owner else WHITE
+
+        # 1. Corner scaffold brackets
+        draw_scaffold_brackets(self.screen, accent_color, obj_pixel_pos, icon_radius_px, inflate=8)
+
+        # 2. Wireframe shape
+        draw_wireframe_shape(self.screen, shape_type, owner_color, obj_pixel_pos, icon_radius_px, width=1)
+
+        icon_left = obj_pixel_pos.x - current_icon_base_size_px
+        icon_top = obj_pixel_pos.y - current_icon_base_size_px
+        icon_bottom = obj_pixel_pos.y + current_icon_base_size_px
+        icon_width = current_icon_base_size_px * 2
+        if shape_type == 'square':
+            icon_rect = station_icon_rect(obj_pixel_pos, icon_radius_px)
+            icon_left, icon_top = icon_rect.topleft
+            icon_bottom, icon_width = icon_rect.bottom, icon_rect.width
+
+        # 3. Hull dots
+        if dot_count > 0:
+            icon_dot_radius_px = int(ICON_DOT_RADIUS * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            icon_dot_spacing_px = int(ICON_DOT_SPACING * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            dot_base_y_offset = current_icon_base_size_px * 0.6 if shape_type == 'triangle' else (icon_bottom - obj_pixel_pos.y)
+            dot_base_y = obj_pixel_pos.y + dot_base_y_offset + icon_dot_radius_px + 2
+
+            if shape_type == 'triangle':
+                base_p2_x = obj_pixel_pos.x - int(current_icon_base_size_px * 0.8)
+                base_p3_x = obj_pixel_pos.x + int(current_icon_base_size_px * 0.8)
+                base_width = base_p3_x - base_p2_x
+                start_x = base_p2_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
+            else:
+                base_p_left_x = icon_left
+                base_p_right_x = icon_left + icon_width
+                base_width = base_p_right_x - base_p_left_x
+                start_x = base_p_left_x + (base_width - (dot_count - 1) * icon_dot_spacing_px) / 2
+
+            for dot_i in range(dot_count):
+                dot_x = start_x + dot_i * icon_dot_spacing_px
+                pygame.draw.circle(self.screen, accent_color, (int(dot_x), int(dot_base_y)), max(1, icon_dot_radius_px), 1)
+
+        # 4. Progress bar
+        bar_width = max(24, icon_width)
+        bar_height = 4
+        bar_x = obj_pixel_pos.x - bar_width // 2
+        bar_y = icon_bottom + (10 if dot_count > 0 else 6)
+        pygame.draw.rect(self.screen, (40, 40, 40), (bar_x, bar_y, bar_width, bar_height))
+        pct = min(1.0, max(0.0, job.percent / 100.0))
+        if pct > 0:
+            pygame.draw.rect(self.screen, accent_color, (bar_x, bar_y, int(bar_width * pct), bar_height))
+        pygame.draw.rect(self.screen, (80, 80, 80), (bar_x, bar_y, bar_width, bar_height), 1)
+
+        # 5. Label
+        viewer = self.game.players[self.game.current_player_index] if (self.game and self.game.players) else None
+        display_label = f"{job.get_display_name(viewer)} ({job.progress}/{job.time_to_build}t)"
+        name_font_size = max(1, int(10 * display_config_for(self.game).text_scale))
+        if name_font_size not in self.parent._font_cache:
+            self.parent._font_cache[name_font_size] = pygame.font.Font(None, name_font_size)
+        name_font = self.parent._font_cache[name_font_size]
+        name_surface = name_font.render(display_label, True, accent_color)
+        name_rect = name_surface.get_rect()
+        name_rect.midtop = (obj_pixel_pos.x, bar_y + bar_height + 3)
+        self.screen.blit(name_surface, name_rect)
+
+        return obj_radius_logical
+
+    def draw_construction_beam(self, job: ConstructionJob, dynamic_radius: float) -> None:
+        """Draws a visual construction laser/tether connecting the constructor to the job site."""
+        if not job.constructor_unit or not job.position:
+            return
+        p1 = self.parent.grid_renderer.coords_to_pixels(job.constructor_unit.position)
+        p2 = self.parent.grid_renderer.coords_to_pixels(job.position)
+        accent_color = CONSTRUCTOR_RANGE_RING_COLOR
+        draw_dotted_line(self.screen, accent_color, (p1.x, p1.y), (p2.x, p2.y), width=1, dot_len=4, gap_len=6)
+        pygame.draw.circle(self.screen, accent_color, (int(p1.x), int(p1.y)), 2)
+        pygame.draw.circle(self.screen, accent_color, (int(p2.x), int(p2.y)), 2)
+

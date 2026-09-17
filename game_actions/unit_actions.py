@@ -477,6 +477,30 @@ def handle_planetary_upgrade(game, action):
     issue(game, {"type": "upgrade_planetary_defenses", "unit_ids": [], "target_id": action["target_data"], "queue": False})
 
 
+def handle_select_constructor_unit(game, action: dict) -> None:
+    unit_id = action.get('target_data') or action.get('unit_id')
+    if unit_id is not None and getattr(game, 'galaxy', None):
+        unit = game.galaxy.get_unit_by_id(unit_id)
+        if unit:
+            game.selected_objects = [unit]
+            game.sidebar_needs_update = True
+
+
+def handle_cancel_construction_job(game, action: dict) -> None:
+    unit_id = action.get('target_data') or action.get('unit_id')
+    if unit_id is not None and getattr(game, 'galaxy', None):
+        unit = game.galaxy.get_unit_by_id(unit_id)
+        if unit and getattr(unit, 'constructor_component', None):
+            constructor = unit.constructor_component
+            order = constructor._owning_construction_order()
+            if order:
+                order.cancel()
+            else:
+                constructor.cancel_construction()
+            game.selected_objects = [unit]
+            game.sidebar_needs_update = True
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'upgrade_planetary_defenses': handle_planetary_upgrade,
     'deploy_ship': handle_deploy_ship,
@@ -494,6 +518,8 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     **{name: handle_tactical_action for name in ('select_deployable', 'choose_catalyst_nebula', 'cancel_tactical_ability', 'toggle_resistance_ability', 'recover_tactical_cache', 'attack_deployable')},
     'stop_unit': handle_stop_unit,
     'stop_selected_units': handle_stop_selected_units,
+    'select_constructor_unit': handle_select_constructor_unit,
+    'cancel_construction_job': handle_cancel_construction_job,
     'toggle_inhibitor': handle_toggle_inhibitor,
     'toggle_cloaking': handle_toggle_cloaking,
     'confirm_retrofit': handle_confirm_retrofit,

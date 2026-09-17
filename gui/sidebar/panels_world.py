@@ -322,3 +322,50 @@ def build_minefield_panel(game, mf: Minefield) -> list[dict]:
         })
 
     return data
+
+
+def build_construction_job_panel(game, job) -> list[dict]:
+    """Constructs sidebar data payload for a selected ConstructionJob."""
+    viewer = game.players[game.current_player_index] if (getattr(game, 'players', None) and 0 <= getattr(game, 'current_player_index', 0) < len(game.players)) else None
+    display_title = job.get_display_name(viewer)
+    owner_name = job.owner.name if job.owner else "Unknown"
+    owner_style = f'#player_{owner_name.lower().replace(" ", "_")}_label'
+    hull_label = job.hull_size.name.replace('_', ' ').title() if hasattr(job.hull_size, 'name') else 'Medium'
+    kind_label = 'Station' if job.is_station else 'Ship'
+
+    data = [
+        {'type': 'label', 'text': f"Site: {display_title}", 'object_id': '#sidebar_title_label', 'height': 30},
+        {'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_style, 'height': 22},
+        {'type': 'label', 'text': f"Hull: {hull_label} ({kind_label})", 'object_id': '#sidebar_info_label', 'height': 22},
+        {'type': 'label', 'text': f"Location: ({job.position.x:.0f}, {job.position.y:.0f})", 'object_id': '#sidebar_info_label', 'height': 22},
+        {'type': 'label', 'text': f"Progress: {job.progress} / {job.time_to_build} turns ({job.percent}%)", 'object_id': '#sidebar_info_label', 'height': 22},
+        {
+            'type': 'progress_bar',
+            'progress': job.progress,
+            'total': job.time_to_build,
+            'height': 22
+        },
+        {'type': 'label', 'text': f"Turns Remaining: {max(0, job.time_to_build - job.progress)}", 'object_id': '#sidebar_info_label', 'height': 22},
+        {'type': 'label', 'text': f"Builder: {job.constructor_unit.name}", 'object_id': '#sidebar_info_label', 'height': 22},
+        {
+            'type': 'button',
+            'text': f"Focus Builder ({job.constructor_unit.name})",
+            'object_id': '#sidebar_expand_button',
+            'action_id': 'select_constructor_unit',
+            'target_data': job.constructor_unit.id,
+            'height': 25
+        }
+    ]
+
+    if viewer and job.owner == viewer:
+        data.append({
+            'type': 'button',
+            'text': "Cancel Construction (Refund)",
+            'object_id': '#sidebar_expand_button',
+            'action_id': 'cancel_construction_job',
+            'target_data': job.constructor_unit.id,
+            'height': 25
+        })
+
+    return data
+

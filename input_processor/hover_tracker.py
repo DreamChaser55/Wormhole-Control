@@ -73,7 +73,10 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                 bodies = hex_obj.celestial_bodies
                 units = hex_obj.units
                 from domain.deployables import Deployable
-                for obj in units + bodies + list(getattr(hex_obj, 'deployables', ())):
+                from domain.construction_job import ConstructionJob, get_sector_construction_jobs
+                current_viewer = getattr(game, 'current_player', None)
+                construction_jobs = get_sector_construction_jobs(hex_obj, viewer=current_viewer)
+                for obj in units + bodies + list(getattr(hex_obj, 'deployables', ())) + construction_jobs:
                     if isinstance(obj, Deployable) and not game.is_unit_visible(obj):
                         continue
                     if isinstance(obj, Unit) and not game.is_unit_visible(obj):
@@ -89,8 +92,8 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                         obj_radius_logical = getattr(obj, 'collision_radius', PLANET_RADIUS)
                     elif isinstance(obj, Wormhole):
                         obj_radius_logical = WORMHOLE_RADIUS
-                    elif isinstance(obj, Unit):
-                        scale_factor = HULL_BASE_ICON_SCALES[obj.hull_size]
+                    elif isinstance(obj, (Unit, ConstructionJob)):
+                        scale_factor = HULL_BASE_ICON_SCALES.get(obj.hull_size, 1.0)
                         effective_icon_size = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
                         obj_radius_logical = effective_icon_size
                     elif isinstance(obj, Moon):

@@ -110,6 +110,10 @@ def build_sidebar_data(game) -> list[dict]:
         return _build_multi_selection_panel(game)
 
     selected_obj = game.selected_objects[0]
+    from domain.construction_job import ConstructionJob
+    if isinstance(selected_obj, ConstructionJob):
+        from .panels_world import build_construction_job_panel
+        return build_construction_job_panel(game, selected_obj)
     from domain.deployables import Deployable
     if isinstance(selected_obj, Deployable):
         from tactical_ui import deployable_panel

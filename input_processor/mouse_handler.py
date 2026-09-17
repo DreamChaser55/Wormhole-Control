@@ -330,13 +330,14 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
                     clicked_object = None
                 if clicked_object:
                     if shift_pressed:
-                        if isinstance(clicked_object, Unit):
+                        from domain.construction_job import ConstructionJob
+                        if isinstance(clicked_object, (Unit, ConstructionJob)):
                             if clicked_object in game.selected_objects:
                                 game.selected_objects.remove(clicked_object)
-                                logger.debug(f"Deselected unit: {clicked_object.name}")
+                                logger.debug(f"Deselected object: {clicked_object.name}")
                             else:
                                 game.selected_objects.append(clicked_object)
-                                logger.debug(f"Added unit to selection: {clicked_object.name}")
+                                logger.debug(f"Added object to selection: {clicked_object.name}")
                             game.sidebar_needs_update = True
                     else:
                         game.selected_objects = [clicked_object]
