@@ -27,7 +27,7 @@ class PatrolOrder(Order):
         self.patrol_phase = "TO_TARGET" # "TO_TARGET" or "TO_START"
         self.current_waypoint_index = 0
 
-        if "waypoints" not in self.parameters and "destination_position" in self.parameters:
+        if "waypoints" not in self.parameters and all(key in self.parameters for key in ("destination_position", "destination_system_name", "destination_hex_coord")):
             self.parameters["waypoints"] = [{
                 "system_name": self.parameters["destination_system_name"],
                 "hex_coord": self.parameters["destination_hex_coord"],
@@ -35,7 +35,12 @@ class PatrolOrder(Order):
             }]
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        from location_validation import validate_order
+        if not validate_order(self, galaxy_ref):
+            return
         super().execute(galaxy_ref)
+        if "waypoints" not in self.parameters:
+            self.parameters["waypoints"] = [{"system_name": self.parameters["destination_system_name"], "hex_coord": self.parameters["destination_hex_coord"], "position": self.parameters["destination_position"]}]
         self.start_system_name = self.unit.in_system
         self.start_hex_coord = self.unit.in_hex
         self.start_position = Position(self.unit.position.x, self.unit.position.y)
@@ -68,6 +73,8 @@ class PatrolOrder(Order):
         self.add_sub_order(MoveOrder(self.unit, move_params, parent_order=self))
 
     def add_waypoint(self, system_name: str, hex_coord: HexCoord, position: Position) -> None:
+        from location_validation import location
+        system_name, hex_coord, position = location(system_name, hex_coord, position, getattr(self.unit.game, "galaxy", None))
         if "waypoints" not in self.parameters:
             self.parameters["waypoints"] = []
             if "destination_position" in self.parameters:

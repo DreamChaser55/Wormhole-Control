@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":13}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":14}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -383,19 +383,19 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 13 and command contract 11 expose a deduplicated `ability_catalog`,
+Observation schema 14 and command contract 12 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v10`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v11`; unused OpenAI command fields stay null.
 
 
 ```json
-{"type":"use_ability","unit_ids":[101],"ability":"ghost_fleet","position":[200,0]}
+{"type":"use_ability","unit_ids":[101],"ability":"ghost_fleet","system_name":"Sol","hex_coord":[0,0],"position":[200,0]}
 {"type":"use_ability","unit_ids":[101],"ability":"tractor_tether","target_id":102}
-{"type":"use_ability","unit_ids":[101],"ability":"mine_clearing_sweep","position":[900,0]}
+{"type":"use_ability","unit_ids":[101],"ability":"mine_clearing_sweep","system_name":"Sol","hex_coord":[0,0],"position":[900,0]}
 {"type":"use_ability","unit_ids":[101],"ability":"guardian_link","target_id":102}
 {"type":"use_ability","unit_ids":[101],"ability":"multiply_antimatter"}
-{"type":"use_ability","unit_ids":[101],"ability":"nebula_catalyst","target_id":201,"position":[200,0]}
+{"type":"use_ability","unit_ids":[101],"ability":"nebula_catalyst","target_id":201,"system_name":"Sol","hex_coord":[0,0],"position":[200,0]}
 {"type":"transfer_antimatter","unit_ids":[101],"target_id":102}
 {"type":"take_antimatter","unit_ids":[101],"target_id":102,"queue":true}
 {"type":"continuous_antimatter_transport","unit_ids":[101],"source_id":102,"target_id":103,"queue":false}
@@ -427,7 +427,7 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 11 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 12 remain unchanged; no acknowledgement
 command is required from Codex.
 
 
@@ -460,7 +460,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.9 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.10 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
@@ -478,3 +478,19 @@ turn and makes both directions safe for everyone, including enemies. Fuel
 shortages wait. Cancel the continuous root to release queued work. Observations
 expose natural/effective stability and progress without hidden support identities.
 See [complete rules](REFERENCE.md#wormhole-stabilization).
+
+
+### Complete positional destinations
+
+Construct, Move, positional Defend, Patrol waypoints, and position-targeted abilities
+require `system_name`, integer `hex_coord: [q, r]`, and finite `position: [x, y]`.
+Missing/null fields and nonexistent systems or sectors are rejected before commit.
+Entity-targeted and self-centered commands retain their target-ID/no-location forms.
+Local-only abilities still require the caster to be in the specified sector.
+
+```json
+{"type":"construct","unit_ids":[101],"template_name":"CRYSTAL_REFINERY_STATION","system_name":"Epsilon Eridani","hex_coord":[10,-4],"position":[-431.75,-557.65],"queue":false}
+```
+
+Destinations stay fixed across queues, approach, and saves. Once a build starts,
+displacement out of sector or build range fails it and refunds its charge once.

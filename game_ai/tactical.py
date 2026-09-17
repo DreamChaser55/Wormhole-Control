@@ -59,6 +59,7 @@ def enrich_states(unit, states):
         spec = SPECS[kind]
         blocker = availability(unit, kind, galaxy)
         state.update(ready=blocker is None, unavailable_reason=blocker, target_kind=spec.target_kind,
+            required_location_fields=["system_name", "hex_coord", "position"] if spec.target_kind in ("position", "celestial_position") else [],
             cooldown_remaining=inst.cooldown_remaining, duration_remaining=inst.duration_remaining,
             active=inst.is_active, activation_antimatter=spec.cost,
             ongoing_antimatter=5 if kind == 'tractor_tether' else 0,

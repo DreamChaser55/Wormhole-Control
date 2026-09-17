@@ -68,7 +68,7 @@ class TestOpenAIAdapter(unittest.TestCase):
         self.assertEqual(responses.kwargs["reasoning"], {"effort": "high"})
         self.assertEqual(result.reasoning_effort, "high")
         self.assertNotIn("tools", responses.kwargs)
-        self.assertEqual(responses.kwargs["prompt_cache_key"], "wormhole-control-turn-v13")
+        self.assertEqual(responses.kwargs["prompt_cache_key"], "wormhole-control-turn-v14")
         self.assertNotIn("previous_response_id", responses.kwargs)
 
     def test_responses_adapter_classifies_invalid_output_as_repairable(self):

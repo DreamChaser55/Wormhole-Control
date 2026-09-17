@@ -23,6 +23,7 @@ class DummyGame:
         self.system_zoom = 1.0
         self.system_pan_offset = Position(0, 0)
         self.galaxy = MagicMock()
+        self.galaxy.systems = {"Sol": MagicMock(hexes={(0, 0): MagicMock()})}
         self.selected_objects = []
         self.sector_view_mouse_hover_object = None
         self.is_dragging_selection_box = False

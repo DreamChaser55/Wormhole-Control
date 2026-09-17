@@ -268,7 +268,7 @@ def test_normal_start_builds_economy_escort_and_bomber_carrier():
         before = {u.id for u, _ in iter_units(game.galaxy)}
         position = (builder.position.x + 100, builder.position.y)
         credits = player.credits
-        result = issue(game, player, Command('construct', (builder.id,), template_name=key, position=position))
+        result = issue(game, player, Command('construct', (builder.id,), template_name=key, position=position, system_name=builder.in_system, hex_coord=builder.in_hex))
         assert result.accepted, result.errors
         assert player.credits == credits - BUILTINS[key]['build_cost']
         for _ in range(BUILTINS[key]['build_time']):
@@ -324,7 +324,7 @@ def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     assert len(catalog['construction_templates']) == 64
     assert len(catalog['wing_templates']) == 2
     assert all(e['description'] and e['roles'] and 'support' in e for e in catalog['construction_templates'])
-    assert observation['command_catalog']['version'] == 11
+    assert observation['command_catalog']['version'] == 12
 
 
 def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context):
@@ -340,7 +340,7 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
     manager = build_ui_manager(DisplayConfig(1280, 720))
     gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720), manager=manager)
     gui.display_config = DisplayConfig(int(Vector(1280, 720).x), int(Vector(1280, 720).y))
-    window = UnitCatalogWindow(gui, [builder], Position(200, 200))
+    window = UnitCatalogWindow(gui, [builder], Position(200, 200), system_name=([builder])[0].in_system, hex_coord=([builder])[0].in_hex)
     try:
         assert [e['template_name'] for e in catalog_entries(UNIT_TEMPLATES, search='counter-intelligence')] == ['INTELLIGENCE_SHIP']
         assert all(e['credit_cost'] <= 1000 for e in catalog_entries(UNIT_TEMPLATES, affordable=True, credits=1000))
@@ -352,7 +352,7 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
         assert len(events) == 1
         assert events[0].shift_pressed is False
         assert not window.window.alive()
-        window = UnitCatalogWindow(gui, [builder], Position(200, 200))
+        window = UnitCatalogWindow(gui, [builder], Position(200, 200), system_name=([builder])[0].in_system, hex_coord=([builder])[0].in_hex)
         game.current_player_index = 1
         window.update()
         assert not window.window.alive()
@@ -372,7 +372,7 @@ def test_catalog_consumes_game_hotkeys_and_camera_panning(pygame_context, monkey
     manager = build_ui_manager(DisplayConfig(1280, 720))
     gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720), manager=manager)
     gui.display_config = DisplayConfig(int(Vector(1280, 720).x), int(Vector(1280, 720).y))
-    window = UnitCatalogWindow(gui, [builder], Position(200, 200))
+    window = UnitCatalogWindow(gui, [builder], Position(200, 200), system_name=([builder])[0].in_system, hex_coord=([builder])[0].in_hex)
     gui.unit_catalog_window = window
     gui.process_event = lambda event: {'action': 'ui_handled'} if window.process_event(event) else None
     game.gui = gui
@@ -411,7 +411,7 @@ def construction_catalog(pygame_context):
     game.gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720),
                                manager=manager)
     game.gui.display_config = DisplayConfig(1280, 720)
-    window = UnitCatalogWindow(game.gui, builders, Position(200, 200))
+    window = UnitCatalogWindow(game.gui, builders, Position(200, 200), system_name=(builders)[0].in_system, hex_coord=(builders)[0].in_hex)
     events = []
     game.event_bus.subscribe(ConstructEvent, events.append)
     yield game, builders, window, events
@@ -436,7 +436,7 @@ def test_catalog_queue_and_build_orders_close_window(construction_catalog):
         assert builder.commander_component.current_order.parameters['target_position'] == Position(200, 200)
 
     from gui.unit_catalog_window import UnitCatalogWindow
-    window2 = UnitCatalogWindow(game.gui, builders, Position(200, 200))
+    window2 = UnitCatalogWindow(game.gui, builders, Position(200, 200), system_name=(builders)[0].in_system, hex_coord=(builders)[0].in_hex)
     try:
         window2.show_entry(describe_template('MINELAYER', UNIT_TEMPLATES['MINELAYER']))
         press_catalog(window2, window2.build_button)
@@ -447,6 +447,29 @@ def test_catalog_queue_and_build_orders_close_window(construction_catalog):
             assert not builder.commander_component.orders_queue
     finally:
         window2.kill()
+
+
+@pytest.mark.parametrize("queue", [False, True])
+def test_catalog_retains_clicked_sector_for_every_builder_after_view_change(construction_catalog, queue):
+    from gui.unit_catalog_window import UnitCatalogWindow
+    game, builders, original, events = construction_catalog
+    original.kill()
+    point = Position(200, 200)
+    window = UnitCatalogWindow(game.gui, builders, point, system_name="Sol", hex_coord=(1, 0))
+    point.x = 999
+    game.current_system_name, game.current_sector_coord = "Beta", (0, 0)
+    try:
+        window.show_entry(describe_template('CRYSTAL_REFINERY_STATION', UNIT_TEMPLATES['CRYSTAL_REFINERY_STATION']))
+        press_catalog(window, window.queue_button if queue else window.build_button)
+        assert events[-1].target_system_name == "Sol"
+        assert events[-1].target_hex_coord == (1, 0)
+        for builder in builders:
+            params = builder.commander_component.current_order.parameters
+            assert params['target_system_name'] == 'Sol'
+            assert params['target_hex_coord'] == (1, 0)
+            assert params['target_position'] == Position(200, 200)
+    finally:
+        window.kill()
 
 
 def test_catalog_queue_order_execution_and_affordability(construction_catalog):

@@ -45,7 +45,7 @@ def handle_context_menu_select(game, action: dict) -> None:
     action_id = action.get('action_id')
     target = action.get('target')
     if action_id and target is not None:
-        game.input_processor.handle_context_menu_action(action_id, target)
+        game.input_processor.handle_context_menu_action(action_id, target, location_context=action.get("location"))
     else:
         logger.debug(f"Warning: Context menu action '{action_id}' missing ID or target.")
 

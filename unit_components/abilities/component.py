@@ -200,6 +200,12 @@ class AbilityComponent(UnitComponent):
         Performs validation, applies immediate effects, and sets the active
         state. Returns True on success, False on failure.
         """
+        from location_validation import ability_target_kind, location
+        if ability_target_kind(ability_type.value) in {"position", "celestial_position"}:
+            try:
+                target_system_name, target_hex_coord, target_position = location(target_system_name, target_hex_coord, target_position, galaxy)
+            except ValueError:
+                return False
         from tactical_abilities import SPECS, activate
         if ability_type.value in SPECS:
             if target_system_name not in (None, self.unit.in_system) or target_hex_coord not in (None, self.unit.in_hex):

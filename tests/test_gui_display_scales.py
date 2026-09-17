@@ -89,7 +89,7 @@ def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size
         'Sol', (0, 0), Position(100, 100), world.galaxy, world)
     gui = SimpleNamespace(game_instance=world, screen_res=Vector(*size), manager=manager)
     gui.display_config = DisplayConfig(int(Vector(*size).x), int(Vector(*size).y))
-    catalog = UnitCatalogWindow(gui, [builder], Position(200, 200))
+    catalog = UnitCatalogWindow(gui, [builder], Position(200, 200), system_name=([builder])[0].in_system, hex_coord=([builder])[0].in_hex)
 
     def capture(name):
         manager.update(0.1)

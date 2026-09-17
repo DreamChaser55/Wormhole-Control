@@ -417,6 +417,23 @@ def reconcile(candidate):
     # Carrier effects depend on restored explicit wing roots as well as the object graph.
     for obj, _ in list(iter_units(galaxy)):
         sm._restore_saved_commander(obj, candidate)
+    from location_validation import location
+    for unit, _ in iter_units(galaxy):
+        constructor = unit.constructor_component
+        if constructor and constructor.current_construction_target:
+            job = constructor.current_construction_target
+            location(job["system_name"], job["hex_coord"], job["position"], galaxy)
+            order = constructor._owning_construction_order()
+            if (order is None or order.order_type.name != "CONSTRUCT" or order.status.name != "IN_PROGRESS"
+                    or order not in unit.commander_component._active_front_chain()):
+                raise ValueError("Construction job has no active owning order")
+            params = order.parameters
+            if (params.get("unit_template_name") != job["template_name"]
+                    or params.get("target_system_name") != job["system_name"]
+                    or params.get("target_hex_coord") != job["hex_coord"]
+                    or params.get("target_position") != job["position"]
+                    or order._charged_player_id is None):
+                raise ValueError("Construction job does not match its owning order")
     from wormhole_stabilization import reconcile as reconcile_stabilizers
     reconcile_stabilizers(candidate)
     reconcile_links(galaxy)
@@ -450,7 +467,7 @@ def _cancel_testing_construction(candidate, warnings):
         constructor = unit.constructor_component
         if not constructor or not constructor.current_construction_target:
             continue
-        template_name = constructor.current_construction_target[0]
+        template_name = constructor.current_construction_target["template_name"]
         if template_name not in TESTING_TEMPLATE_KEYS:
             continue
         commander = unit.commander_component

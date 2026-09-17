@@ -117,7 +117,16 @@ class Order:
         from persistence_context import allocate_id
         self.local_order_id = allocate_id(Order, "order_counter")
         self.order_type = order_type
-        self.parameters = parameters or {}
+        self.parameters = dict(parameters or {})
+        if order_type in {OrderType.CONSTRUCT, OrderType.MOVE, OrderType.REACH_WAYPOINT,
+                          OrderType.PATROL, OrderType.DEFEND, OrderType.USE_ABILITY}:
+            from location_validation import order_locations
+            try:
+                self.parameters = order_locations(order_type.name, self.parameters)
+            except ValueError:
+                # Invalid internal input is rejected cleanly at execute; valid
+                # destinations are copied now so queued intent cannot drift.
+                pass
         self.status = OrderStatus.PENDING
         self.sub_orders: Deque['Order'] = deque()
         self.parent_order = parent_order

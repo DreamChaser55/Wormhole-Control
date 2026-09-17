@@ -564,7 +564,8 @@ class _BatchProjection:
         elif COMMAND_SPECS[command.type].queued:
             params = {"target_id": command.target_id, "agent_id": command.agent_id, "amount": command.amount,
                       "unit_template_name": command.template_name, "target_carrier_id": command.target_id,
-                      "waypoints": list(command.waypoints or []), "ability_type": command.ability, "target_unit_id": command.target_id, "target_position": command.position}
+                      "waypoints": list(command.waypoints or []), "ability_type": command.ability, "target_unit_id": command.target_id, "target_position": command.position,
+                      "target_system_name": command.system_name, "target_hex_coord": command.hex_coord}
             for unit in units:
                 self._order_ledger[unit.id].append({"id": uuid.uuid4().hex, "type": command.type, "parameters": params, "order": None, "started": False, "settled": False})
                 self._settle_front(unit)
@@ -589,7 +590,8 @@ class _BatchProjection:
             if ability in SPECS:
                 raw_point = params.get('target_position')
                 point = raw_point if isinstance(raw_point, Position) else Position(*raw_point) if raw_point is not None else None
-                if validate(unit, ability, self.game.galaxy, params.get('target_id', params.get('target_unit_id')), point, check_ready=False, resources=False, links=False, participants=False) is None:
+                same_sector = (params.get('target_system_name') == unit.in_system and params.get('target_hex_coord') == unit.in_hex)
+                if (SPECS[ability].target_kind not in ('position', 'celestial_position') or same_sector) and validate(unit, ability, self.game.galaxy, params.get('target_id', params.get('target_unit_id')), point, check_ready=False, resources=False, links=False, participants=False) is None:
                     if ability == 'multiply_antimatter':
                         for recipient, amount in self.multiplication_preview(unit):
                             self._tactical_gained[recipient.id] = self._tactical_gained.get(recipient.id, 0) + amount
@@ -630,7 +632,9 @@ class _BatchProjection:
                 if definition and definition.requires_target_unit:
                     in_range = target is not None and target.in_system == unit.in_system and target.in_hex == unit.in_hex and distance(unit.position, target.position) <= definition.range
                 elif definition and definition.requires_target_position:
-                    in_range = point is not None and distance(unit.position, point) <= definition.range
+                    in_range = (point is not None and params.get("target_system_name") == unit.in_system
+                                and params.get("target_hex_coord") == unit.in_hex
+                                and (ability == "microjump" or distance(unit.position, point) <= definition.range))
                 if in_range:
                     self._tactical_spent[unit.id] = self._tactical_spent.get(unit.id, 0) + definition.antimatter_cost
                     self._tactical_used.add((unit.id, ability))
@@ -924,6 +928,12 @@ class CommandGateway:
                 if not queue:
                     unit.commander_component.clear_explicit_orders()
                 unit.commander_component.add_order(order)
+                if order.order_type.name == "CONSTRUCT":
+                    from location_validation import format_location
+                    params = order.parameters
+                    logger.debug("Unit %s ordered to construct %s at %s via command.", unit.name,
+                                 params["unit_template_name"], format_location(params["target_system_name"],
+                                 params["target_hex_coord"], params["target_position"]))
 
             operations.append(
                 _Prepared(apply=apply, receipt=f"{command.type} issued for unit {unit.id}.", public_order_id=public_order_id)
@@ -975,11 +985,9 @@ class CommandGateway:
             if command.target_id is not None:
                 params['target_body_id' if spec.target_kind == 'celestial_position' else 'target_unit_id'] = command.target_id
             if command.position is not None:
-                params['target_position'] = Position(*command.position)
+                params.update(target_position=self._destination(command), target_system_name=command.system_name, target_hex_coord=command.hex_coord)
             def tactical_order(unit):
                 bound = dict(params)
-                if spec.target_kind != 'unit':
-                    bound.update(target_system_name=unit.in_system, target_hex_coord=unit.in_hex)
                 return UseAbilityOrder(unit, bound)
             return (tactical_order, 'Use ' + command.ability)
         target_unit = None
@@ -1172,15 +1180,17 @@ class CommandGateway:
         if command.type == "construct":
             if not command.template_name or command.position is None:
                 raise _Rejected(
-                    "missing_field", "construct requires template_name and position."
+                    "missing_field", "construct requires template_name, system_name, hex_coord and position."
                 )
-            position = Position(*command.position)
+            position = self._destination(command)
             return (
                 lambda unit: ConstructOrder(
                     unit,
                     {
                         "unit_template_name": command.template_name,
-                        "target_position": position,
+                        "target_position": Position(position.x, position.y),
+                        "target_system_name": command.system_name,
+                        "target_hex_coord": command.hex_coord,
                     },
                 ),
                 f"Construct {command.template_name}",
@@ -1351,7 +1361,7 @@ class CommandGateway:
         if target_unit is not None:
             params["target_unit_id"] = target_unit.id
         if command.position is not None:
-            params["target_position"] = Position(*command.position)
+            params.update(target_position=self._destination(command), target_system_name=command.system_name, target_hex_coord=command.hex_coord)
         return (
             lambda unit: UseAbilityOrder(unit, dict(params)),
             f"Use {command.ability}",
@@ -1636,16 +1646,11 @@ class CommandGateway:
         return result
 
     def _destination(self, command: Any):
-        from geometry import Position
-
-        if command.system_name is None or command.hex_coord is None or command.position is None:
-            raise _Rejected(
-                "missing_field", "move/patrol requires system_name, hex_coord, and position."
-            )
-        system = self.game.galaxy.systems.get(command.system_name)
-        if system is None or command.hex_coord not in system.hexes:
-            raise _Rejected("invalid_destination", "The destination hex does not exist.")
-        return Position(*command.position)
+        from location_validation import location
+        try:
+            return location(command.system_name, command.hex_coord, command.position, self.game.galaxy)[2]
+        except ValueError as exc:
+            raise _Rejected("invalid_destination", str(exc)) from exc
 
     def _require_capability(self, unit: Any, command_type: str) -> None:
         from .rules import capability_blocker
@@ -1748,15 +1753,16 @@ class CommandGateway:
                 raise _Rejected(
                     "invalid_value", f"Unit {unit.id} cannot build that template."
                 )
-            if getattr(unit, "engines_component", None) is None:
+            target_pos = self._destination(command)
+            if not has_operational_engines(unit):
                 from geometry import Position, distance
-                target_pos = Position(*command.position)
                 build_range = getattr(constructor, "build_range", 500.0)
                 unit_pos = getattr(unit, "position", None)
                 if unit_pos is not None:
                     if not isinstance(unit_pos, Position):
                         unit_pos = Position(getattr(unit_pos, "x", 0), getattr(unit_pos, "y", 0))
-                    if distance(unit_pos, target_pos) > build_range:
+                    if (unit.in_system != command.system_name or unit.in_hex != command.hex_coord
+                            or distance(unit_pos, target_pos) > build_range):
                         raise _Rejected(
                             "target_out_of_range",
                             f"Unit {unit.id} is stationary and cannot construct outside its build range ({build_range:g} units)."
@@ -1857,6 +1863,10 @@ class CommandGateway:
                 )
         elif command.type == "use_ability":
             from tactical_abilities import SPECS, validate
+            if command.position is not None:
+                self._destination(command)
+            if command.ability == "microjump" and (command.system_name != unit.in_system or command.hex_coord != unit.in_hex):
+                raise _Rejected("out_of_range", "Microjump requires the current sector.")
             if command.ability in SPECS:
                 if command.system_name not in (None, unit.in_system) or (command.hex_coord is not None and tuple(command.hex_coord) != tuple(unit.in_hex)):
                     raise _Rejected('out_of_range', 'Tactical positions must be in the current sector.')

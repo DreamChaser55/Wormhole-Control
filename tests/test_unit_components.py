@@ -510,11 +510,12 @@ def test_constructor():
         # Start construction
         unit.owner.credits = 500
         galaxy = MagicMock()
+        galaxy.systems = {"Sol": MagicMock(hexes={(0, 0): MagicMock()})}
         
-        success = constructor.start_construction("Station", Position(10, 10), galaxy)
+        success = constructor.start_construction("Station", Position(10, 10), galaxy, system_name=constructor.unit.in_system, hex_coord=constructor.unit.in_hex)
         assert success
         assert unit.owner.credits == 200
-        assert constructor.current_construction_target == ("Station", Position(10, 10))
+        assert constructor.current_construction_target == dict(template_name="Station", system_name="Sol", hex_coord=(0, 0), position=Position(10, 10))
         assert constructor.time_to_build == 3
         assert constructor.construction_progress == 0
         

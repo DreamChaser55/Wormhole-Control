@@ -41,8 +41,8 @@ class MicrojumpAbility(AbilityInstance):
             return False
 
         unit = component.unit
-        sys_name = target_system_name if target_system_name is not None else unit.in_system
-        hex_coord = target_hex_coord if target_hex_coord is not None else unit.in_hex
+        sys_name = target_system_name
+        hex_coord = target_hex_coord
 
         # Microjump is strictly intra-sector (same system and hex)
         if sys_name != unit.in_system or hex_coord != unit.in_hex:

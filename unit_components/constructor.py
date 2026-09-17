@@ -424,17 +424,24 @@ class BuildableUnit:
 
 class Constructor(UnitComponent):
     """A component that allows a unit to construct other units (stations) and refit friendly units."""
+    SCHEMA_VERSION = 2
     STATE_CONFIG = ('build_range',)
     STATE_RUNTIME = ('current_construction_target', 'construction_progress', 'time_to_build', 'construction_order_id', 'current_refit_target', 'refit_progress', 'refit_time', 'refit_order_id')
     STATE_REFS = ()
-    STATE_OPTIONAL_TYPES = {"current_construction_target": tuple, "current_refit_target": dict,
+    STATE_OPTIONAL_TYPES = {"current_construction_target": dict, "current_refit_target": dict,
                             "construction_order_id": str, "refit_order_id": str}
 
     def validate_state(self):
         from geometry import Position
         target = self.current_construction_target
-        if target is not None and (len(target) != 2 or not isinstance(target[0], str) or not isinstance(target[1], Position)):
-            raise ValueError("Invalid construction target")
+        if target is not None:
+            from location_validation import location
+            from state_codec import fields
+            fields(target, ("template_name", "system_name", "hex_coord", "position"), "construction")
+            if not isinstance(target["template_name"], str) or not target["template_name"]:
+                raise ValueError("Invalid construction template")
+            location(target["system_name"], target["hex_coord"], target["position"])
+
         if self.current_refit_target is not None:
             from state_codec import number, fields
             fields(self.current_refit_target, ("target_unit_id", "action", "component_type", "component_config", "cost_credits", "time_to_build", "payer_id", "salvage_due"), "refit")
@@ -453,7 +460,7 @@ class Constructor(UnitComponent):
     build_range: float = CONSTRUCTOR_BUILD_RANGE
     
     # Construction state
-    current_construction_target: Optional[tuple[str, Position]] = None # (unit_template_name, position)
+    current_construction_target: Optional[dict] = None # Fixed template/system/hex/position job record
     construction_progress: int = 0
     time_to_build: int = 0
 
@@ -479,7 +486,7 @@ class Constructor(UnitComponent):
         if not unit_details_are_public_in_game(self.unit, game_state):
             return data
         if self.current_construction_target:
-            target_name = self.current_construction_target[0]
+            target_name = self.current_construction_target["template_name"]
             progress = self.construction_progress
             total = self.time_to_build
             data.append({'type': 'label', 'text': f"Constructing: {target_name}", 'object_id': '#sidebar_info_label', 'height': 25})
@@ -515,7 +522,7 @@ class Constructor(UnitComponent):
         if self.is_destroyed:
             return data
         if self.current_construction_target:
-            target_name = self.current_construction_target[0]
+            target_name = self.current_construction_target["template_name"]
             pct = int((self.construction_progress / self.time_to_build) * 100) if self.time_to_build > 0 else 100
             status_str = f"Constructing {target_name} ({pct}%)"
             obj_id = '#sidebar_status_active_label'
@@ -571,15 +578,20 @@ class Constructor(UnitComponent):
         return None
 
 
-    def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy') -> bool:
+    def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy', *, system_name: str, hex_coord: HexCoord, order=None) -> bool:
         """Starts the construction of a new unit."""
         if self.is_destroyed:
             return False
 
-        if not isinstance(position, Position):
-            position = Position(*position)
-
-        if distance(self.unit.position, position) > self.build_range:
+        from location_validation import location
+        try:
+            system_name, hex_coord, position = location(system_name, hex_coord, position, galaxy)
+        except ValueError:
+            return False
+        if self.current_construction_target or self.current_refit_target:
+            return False
+        if (self.unit.in_system != system_name or self.unit.in_hex != hex_coord
+                or distance(self.unit.position, position) > self.build_range):
             logger.debug(f"Error: Construction target {position} is beyond build range ({self.build_range}).")
             return False
 
@@ -594,18 +606,57 @@ class Constructor(UnitComponent):
             return False
         owner.credits -= buildable.cost_credits
 
-        self.current_construction_target = (unit_template_name, position)
+        self.current_construction_target = dict(template_name=unit_template_name, system_name=system_name, hex_coord=hex_coord, position=position)
+        self.construction_order_id = order.public_id if order else None
+        self._construction_order_ref = order
         self.time_to_build = buildable.time_to_build
         self.construction_progress = 0
-        logger.debug(f"{self.unit.name} started constructing {unit_template_name} at {position}. Cost: {buildable.cost_credits}")
+        from location_validation import format_location
+        logger.debug(f"{self.unit.name} started constructing {unit_template_name} at {format_location(system_name, hex_coord, position)}. Cost: {buildable.cost_credits}")
         return True
+
+    def _owning_construction_order(self):
+        def find(node):
+            if node is None:
+                return None
+            if node.public_id == self.construction_order_id:
+                return node
+            return next((found for child in node.sub_orders if (found := find(child))), None)
+        commander = self.unit.commander_component
+        found = find(commander.current_order) if commander else None
+        cached = getattr(self, "_construction_order_ref", None)
+        return found or (cached if cached is not None and cached.public_id == self.construction_order_id else None)
+
+    def _check_construction_site(self, galaxy):
+        job = self.current_construction_target
+        if job is None:
+            return False
+        from location_validation import location, format_location
+        try:
+            system, coord, position = location(job["system_name"], job["hex_coord"], job["position"], galaxy)
+            valid = (self.unit.in_system == system and self.unit.in_hex == coord
+                     and distance(self.unit.position, position) <= self.build_range)
+        except ValueError:
+            valid = False
+        if valid:
+            return True
+        order = self._owning_construction_order()
+        if order is not None:
+            order.refund_charge()
+        logger.debug("Construction site lost by %s: %s", self.unit.name,
+                     format_location(job["system_name"], job["hex_coord"], job["position"]))
+        self.cancel_construction()
+        if order is not None:
+            order.fail("target_out_of_range")
+        return False
 
     def cancel_construction(self):
         """Cancels the current construction project."""
         if self.current_construction_target:
-            logger.debug(f"Construction of {self.current_construction_target[0]} cancelled.")
+            logger.debug(f"Construction of {self.current_construction_target['template_name']} cancelled.")
             # NOTE: Resource refund should be handled by the Order
             self.construction_order_id = None
+            self._construction_order_ref = None
             self.current_construction_target = None
             self.construction_progress = 0
             self.time_to_build = 0
@@ -693,6 +744,8 @@ class Constructor(UnitComponent):
         if self.is_destroyed:
             return
         if self.current_construction_target:
+            if not self._check_construction_site(galaxy):
+                return
             self.construction_progress += 1
             if self.construction_progress >= self.time_to_build:
                 self.finish_construction(galaxy)
@@ -725,19 +778,26 @@ class Constructor(UnitComponent):
         if not self.current_construction_target:
             return
 
-        unit_template_name, position = self.current_construction_target
-        logger.debug(f"Construction of {unit_template_name} finished by {self.unit.name}.")
+        if not self._check_construction_site(galaxy):
+            return
+        job = self.current_construction_target
+        unit_template_name, position = job["template_name"], job["position"]
+        from location_validation import format_location
+        logger.debug("Construction of %s finished by %s at %s", unit_template_name, self.unit.name,
+                     format_location(job["system_name"], job["hex_coord"], position))
         
         self.create_unit_from_template(
             galaxy=galaxy,
             template_name=unit_template_name,
             owner=self.unit.owner,
-            system_name=self.unit.in_system,
-            hex_coord=self.unit.in_hex,
+            system_name=job["system_name"],
+            hex_coord=job["hex_coord"],
             position=position
         )
 
         # Construction complete; reset building state variables.
+        self.construction_order_id = None
+        self._construction_order_ref = None
         self.current_construction_target = None
         self.construction_progress = 0
         self.time_to_build = 0

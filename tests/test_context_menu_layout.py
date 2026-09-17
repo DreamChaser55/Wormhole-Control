@@ -311,3 +311,28 @@ def test_open_context_menu_construct_submenu_expands_and_fits_text():
 
 
 pytestmark = pytest.mark.usefixtures("pygame_context")
+
+
+def test_location_selection_survives_submenu_and_view_change():
+    gui = MagicMock()
+    gui.display_config = DisplayConfig(1280, 720)
+    gui.manager = pygame_gui.UIManager((1280, 720))
+    gui.context_menu_panel = None
+    gui.context_menu_history = []
+    gui.game_instance = SimpleNamespace(current_system_name="Sol", current_sector_coord=[1, 0])
+    site = Position(200, 100)
+    options = [("Construct", [("Refinery", "construct_tpl_CRYSTAL_REFINERY_STATION")])]
+    open_context_menu(gui, Position(400, 300), options, site)
+    gui.game_instance.current_system_name = "Beta"
+    gui.game_instance.current_sector_coord[0] = 0
+    site.x = 999
+    handle_button_index(gui, 0)
+    result = handle_button_index(gui, 1)  # Back occupies the first submenu row.
+    assert result["location"] == ("Sol", (1, 0), Position(200, 100))
+
+    open_context_menu(gui, Position(400, 300), options, Position(300, 100))
+    assert gui.context_menu_location == ("Beta", (0, 0), Position(300, 100))
+    gui.game_instance.current_sector_coord = (1, 0)
+    open_context_menu(gui, Position(400, 300), options, Position(400, 100))
+    assert gui.context_menu_location == ("Beta", (1, 0), Position(400, 100))
+    close_context_menu(gui)

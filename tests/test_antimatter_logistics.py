@@ -337,6 +337,7 @@ def test_immediate_pulse_can_fund_later_cast_and_duplicate_rejection_is_atomic()
         type="use_ability",
         unit_ids=(recipient.id,),
         ability="ghost_fleet",
+        system_name=recipient.in_system, hex_coord=recipient.in_hex,
         position=(350, 0),
     )
     result = issue(game, cast(actor), later)
@@ -515,6 +516,7 @@ def test_queued_pulse_has_no_speculative_gains_and_releases_reservation():
         type="use_ability",
         unit_ids=(poor.id,),
         ability="ghost_fleet",
+        system_name=poor.in_system, hex_coord=poor.in_hex,
         position=(350, 0),
     )
     result = issue(game, move, cast(actor, queue=True), later)

@@ -66,13 +66,14 @@ def details_html(entry):
 
 
 class UnitCatalogWindow:
-    def __init__(self, gui, units, position):
+    def __init__(self, gui, units, position, *, system_name, hex_coord):
         self.gui, self.game = gui, gui.game_instance
         self.galaxy = self.game.galaxy
         self.player = self.game.players[self.game.current_player_index]
         self.units = [u for u in units if u.owner == self.player and u.constructor_component]
         self.anchors = [(u.in_system, u.in_hex) for u in self.units]
-        self.position = Position(position.x, position.y)
+        from location_validation import location
+        self.system_name, self.hex_coord, self.position = location(system_name, hex_coord, position, self.galaxy)
         self.selected_key = None
         self._details_html = None
         self.entries = {}
@@ -80,7 +81,7 @@ class UnitCatalogWindow:
         width = max(100, int(gui.screen_res.x) - 40)
         height = int(gui.screen_res.y * .88)
         self.window = elements.UIWindow(pygame.Rect(20,
-            int(gui.screen_res.y * .06), width, height), gui.manager, window_display_title='Unit Catalog', resizable=False)
+            int(gui.screen_res.y * .06), width, height), gui.manager, window_display_title=f'Unit Catalog — {self.system_name} ({self.hex_coord.q}, {self.hex_coord.r}) at ({self.position.x:g}, {self.position.y:g})', resizable=False)
         self.window.set_blocking(True)
         panel = self.window.get_container()
         w, h = panel.get_size()
@@ -161,6 +162,8 @@ class UnitCatalogWindow:
         self.queue_button.disable()
         self.price_label.set_text('Select a design')
         html = details_html(entry) if entry else 'Select a design to inspect its equipment.'
+        from location_validation import format_location
+        html = f"<b>Construction site:</b> {escape(format_location(self.system_name, self.hex_coord, self.position))}<br><br>" + html
         if html != self._details_html:
             scroll = self.details.scroll_bar.start_percentage if self.details.scroll_bar else 0
             self.details.set_text(html)
@@ -202,6 +205,6 @@ class UnitCatalogWindow:
                 self.refresh()
                 if self.valid_context() and self.selected_key and event.ui_element.is_enabled:
                     queue = event.ui_element == self.queue_button
-                    self.game.event_bus.publish(ConstructEvent(self.units, self.selected_key, self.position, queue))
+                    self.game.event_bus.publish(ConstructEvent(self.units, self.selected_key, self.position, queue, system_name=self.system_name, hex_coord=self.hex_coord))
                     self.kill()
         return True

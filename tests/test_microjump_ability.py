@@ -206,7 +206,7 @@ def test_microjump_succeeds_anywhere_in_sector():
         ability_type=AbilityType.MICROJUMP,
         galaxy=game.galaxy,
         target_position=target_pos,
-    )
+     target_system_name=unit.ability_component.unit.in_system, target_hex_coord=unit.ability_component.unit.in_hex)
 
     assert success is True
     assert unit.position == target_pos
@@ -238,6 +238,7 @@ def test_microjump_order_executes_immediately_long_distance():
 
 def test_microjump_order_fails_different_sector():
     unit, game = create_test_unit(position=Position(0, 0))
+    game.galaxy.systems["Sol"].hexes[(1, 0)] = DummyHex()
     target_pos = Position(200, 100)
 
     order = UseAbilityOrder(

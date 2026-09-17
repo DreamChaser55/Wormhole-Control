@@ -47,6 +47,8 @@ def test_order_formatting():
 
     # 1. ConstructOrder formatting
     construct_order = ConstructOrder(unit, {
+        "target_system_name": unit.in_system,
+        "target_hex_coord": unit.in_hex,
         "unit_template_name": "TestStation",
         "target_position": Position(15.5, 25.3)
     })
@@ -107,6 +109,8 @@ def test_order_formatting():
 
     # 6. UseAbilityOrder formatting
     ability_order = UseAbilityOrder(unit, {
+        "target_system_name": unit.in_system,
+        "target_hex_coord": unit.in_hex,
         "ability_type": "Jump",
         "target_unit_id": 456,
         "target_position": Position(12.0, 34.0)

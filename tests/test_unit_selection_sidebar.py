@@ -246,7 +246,7 @@ def test_component_overview_colored_labels():
     idle_data = constructor.get_basic_sidebar_data(mock_game)
     assert idle_data[0]['object_id'] == '#sidebar_status_idle_label'
 
-    constructor.current_construction_target = ("Scout", "Scout Ship", 10.0, 2)
+    constructor.current_construction_target = dict(template_name="Scout", system_name="Sol", hex_coord=(0, 0), position=Position(100, 0))
     active_data = constructor.get_basic_sidebar_data(mock_game)
     assert active_data[0]['object_id'] == '#sidebar_status_active_label'
 

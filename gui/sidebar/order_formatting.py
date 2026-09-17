@@ -216,7 +216,11 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
     elif order_type == "CONSTRUCT":
         unit_template_name = parameters.get("unit_template_name", "Unknown Unit")
         target_pos = parameters.get("target_position")
-        pos_str = f"({target_pos.x:.1f}, {target_pos.y:.1f})" if isinstance(target_pos, Position) else "N/A"
+        from location_validation import format_location
+        try:
+            pos_str = escape(format_location(parameters["target_system_name"], parameters["target_hex_coord"], target_pos))
+        except (KeyError, TypeError, AttributeError):
+            pos_str = "Invalid destination"
 
         construct_type_styled = f"<font color='{CONSTRUCT_COLOR}'><b>Construct:</b></font>"
         template_styled = f"<font color='{INFO_COLOR}'><i>{unit_template_name}</i></font>"

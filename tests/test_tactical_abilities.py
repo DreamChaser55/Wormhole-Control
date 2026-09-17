@@ -36,6 +36,8 @@ def equipped(game, name='caster', owner=0, hull=HullSize.HUGE):
 
 
 def issue(game, unit, kind, **kwargs):
+    if "position" in kwargs:
+        kwargs = {"system_name": unit.in_system, "hex_coord": unit.in_hex, **kwargs}
     return CommandGateway(game).apply_batch(unit.owner, CommandBatch((Command(type='use_ability', unit_ids=(unit.id,), ability=kind, **kwargs),)))
 
 
@@ -187,7 +189,7 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert not activate(caster, kind, game.galaxy, position=Position(200, 0))
     assert caster.antimatter_component.current_amount == fuel
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.9'
+    assert state['version'] == '4.10'
     assert all('lifetime' not in d for s in state['galaxy']['systems'] for h in s['hexes'] for d in h['deployables'])
     restored = campaign()
     assert deserialize_game_state(restored, state)
@@ -294,14 +296,14 @@ def test_gateway_duplicate_spending_is_atomic_and_catalog_has_all_six():
     game = campaign()
     caster = equipped(game)
     before = caster.antimatter_component.current_amount
-    cmd = Command(type='use_ability', unit_ids=(caster.id,), ability='ghost_fleet', position=(200, 0))
+    cmd = Command(type='use_ability', unit_ids=(caster.id,), ability='ghost_fleet', position=(200, 0), system_name=caster.in_system, hex_coord=caster.in_hex)
     result = CommandGateway(game).apply_batch(caster.owner, CommandBatch((cmd, cmd)))
     assert not result.accepted
     assert caster.antimatter_component.current_amount == before
     assert not deployments(game.galaxy, caster.id, 'ghost_fleet')
     assert issue(game, caster, 'ghost_fleet', position=(200, 0)).accepted
     observation = build_observation(game, caster.owner)
-    assert observation['schema_version'] == 13
+    assert observation['schema_version'] == 14
     assert set(SPECS) <= set(observation['ability_catalog'])
     assert observation['visible_deployables'][0]['persistent'] is True
 
@@ -348,7 +350,7 @@ def test_abilities_share_batch_fuel_budget(reverse):
     old = caster.ability_component.abilities[AbilityType.ADAPTIVE_FORCEFIELD]
     caster.antimatter_component.current_amount = 25 + old.definition.antimatter_cost - 1
     before = caster.antimatter_component.current_amount
-    commands = [Command(type='use_ability', unit_ids=(caster.id,), ability='ghost_fleet', position=(200, 0)),
+    commands = [Command(type='use_ability', unit_ids=(caster.id,), ability='ghost_fleet', position=(200, 0), system_name=caster.in_system, hex_coord=caster.in_hex),
                 Command(type='use_ability', unit_ids=(caster.id,), ability='adaptive_forcefield')]
     if reverse:
         commands.reverse()
@@ -507,6 +509,8 @@ def test_fake_provider_can_issue_each_tactical_ability(kind):
         caster.antimatter_component.current_amount = 100
     if kind == 'nebula_catalyst':
         kwargs['target_id'] = body.id
+    if 'position' in kwargs:
+        kwargs.update(system_name=caster.in_system, hex_coord=caster.in_hex)
     command = Command(type='use_ability', unit_ids=(caster.id,), ability=kind, **kwargs)
     plan = TurnPlan.from_dict({'plan': [], 'commands': [command.to_dict()], 'memory_patch': EMPTY_PATCH, 'end_turn': True})
     provider = FakePlanningProvider([plan])
@@ -536,7 +540,7 @@ def test_custom_design_roundtrip_construction_and_use(tmp_path):
     assert set(loaded.designs[design.display_name].components.abilities) == set(SPECS)
     yard = equipped(game, 'yard')
     yard.add_component(Constructor(yard))
-    command = Command(type='construct', unit_ids=(yard.id,), template_name=design.display_name, position=(500, 0))
+    command = Command(type='construct', unit_ids=(yard.id,), template_name=design.display_name, position=(500, 0), system_name=yard.in_system, hex_coord=yard.in_hex)
     result = CommandGateway(game).apply_batch(yard.owner, CommandBatch((command,)))
     assert result.accepted, result.errors
     yard.constructor_component.finish_construction(game.galaxy)

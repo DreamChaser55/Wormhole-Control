@@ -205,6 +205,7 @@ def close_context_menu(gui) -> None:
     gui.context_menu_buttons = []
     gui.context_menu_options = []
     gui.context_menu_target = None
+    gui.context_menu_location = None
     gui.context_menu_submenus = {}
     gui.context_menu_parent_options = None
     gui.context_menu_parent_position = None
@@ -212,7 +213,7 @@ def close_context_menu(gui) -> None:
     gui.context_menu_history = []
 
 
-def open_context_menu(gui, position: Position, options: typing.List[ContextMenuOption], target: typing.Any) -> None:
+def open_context_menu(gui, position: Position, options: typing.List[ContextMenuOption], target: typing.Any, *, location_context=None) -> None:
     """Creates and presents a right-click context menu at specified screen coordinates.
 
     Arranges options in dynamic multi-column layouts when needed and clamps position
@@ -224,10 +225,19 @@ def open_context_menu(gui, position: Position, options: typing.List[ContextMenuO
         options (typing.List[ContextMenuOption]): List of menu option definitions.
         target (typing.Any): Game entity or coordinate targeted by the context menu.
     """
+    existing_location = location_context
     if getattr(gui, 'context_menu_panel', None):
         gui.context_menu_panel.kill()
         gui.context_menu_panel = None
     gui.context_menu_buttons = []
+    game = getattr(gui, 'game_instance', None)
+    gui.context_menu_location = existing_location
+    if existing_location is None and isinstance(target, Position) and game is not None:
+        from location_validation import location
+        try:
+            gui.context_menu_location = location(game.current_system_name, game.current_sector_coord, target)
+        except ValueError:
+            pass
 
     gui.context_menu_options = options
     gui.context_menu_target = target
@@ -323,7 +333,7 @@ def handle_button_index(gui, index: int) -> typing.Optional[dict]:
         gui.context_menu_parent_options = parent_options
         gui.context_menu_parent_position = parent_pos
 
-        open_context_menu(gui, parent_pos, full_sub_options, sub_target)
+        open_context_menu(gui, parent_pos, full_sub_options, sub_target, location_context=getattr(gui, 'context_menu_location', None))
         return {'action': 'ui_handled'}
 
     elif index < len(getattr(gui, 'context_menu_options', [])):
@@ -341,12 +351,14 @@ def handle_button_index(gui, index: int) -> typing.Optional[dict]:
                 parent_pos = getattr(gui, 'context_menu_parent_position', None) or Position(0, 0)
 
             if parent_options:
-                open_context_menu(gui, parent_pos, parent_options, parent_target)
+                open_context_menu(gui, parent_pos, parent_options, parent_target, location_context=getattr(gui, 'context_menu_location', None))
             else:
                 close_context_menu(gui)
             return {'action': 'ui_handled'}
         else:
             action_result = {'action': 'context_menu_select', 'action_id': action_id, 'target': gui.context_menu_target}
+            if getattr(gui, 'context_menu_location', None) is not None:
+                action_result['location'] = gui.context_menu_location
             close_context_menu(gui)
             return action_result
 

@@ -64,10 +64,10 @@ def order_layers(unit, relation, visible_ids, body_ids):
                 resolved = resolve_component_type(component)
                 if resolved and component_is_public(resolved, enemy=True):
                     public["target_component"] = resolved.__name__
-            for key, output in (("destination_system_name", "system_name"), ("destination_hex_coord", "hex_coord"), ("destination_position", "position"), ("target_position", "position")):
+            for key, output in (("destination_system_name", "system_name"), ("destination_hex_coord", "hex_coord"), ("destination_position", "position"), ("target_system_name", "system_name"), ("target_hex_coord", "hex_coord"), ("target_position", "position")):
                 value = params.get(key)
                 if value is not None:
-                    public[output] = value if key == "destination_system_name" else point(value)
+                    public[output] = value if output == "system_name" else point(value)
             if "waypoints" in params:
                 route = params["waypoints"]
                 public["waypoints"] = [{"system_name": w.get("system_name"), "hex_coord": point(w.get("hex_coord")), "position": point(w.get("position"))} for w in route[:16]]

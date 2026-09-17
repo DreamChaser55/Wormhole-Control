@@ -199,11 +199,11 @@ def _testing_build():
     builder.add_component(Constructor(builder))
     game.players[0].credits = 10000
     publish_testing_templates(load_testing_templates())
-    order = ConstructOrder(builder, {'unit_template_name': 'SPAWN_SHIP_TINY',
+    order = ConstructOrder(builder, {'target_system_name': builder.in_system, 'target_hex_coord': builder.in_hex, 'unit_template_name': 'SPAWN_SHIP_TINY',
                                      'target_position': Position(400, 0)})
     builder.commander_component.add_order(order)
     assert order.status == OrderStatus.IN_PROGRESS
-    queued = ConstructOrder(builder, {'unit_template_name': 'SPAWN_SHIP_SMALL',
+    queued = ConstructOrder(builder, {'target_system_name': builder.in_system, 'target_hex_coord': builder.in_hex, 'unit_template_name': 'SPAWN_SHIP_SMALL',
                                       'target_position': Position(400, 0)})
     builder.commander_component.add_order(queued)
     return game, builder, order, queued
@@ -250,12 +250,10 @@ def test_unrecorded_or_orphaned_build_never_invents_refund(recorded_charge):
         runtime.pop('charged_credits')
         runtime.pop('charged_player_id')
     credits = game.players[0].credits
-    assert deserialize_game_state(game, saved) is recorded_charge
+    assert not deserialize_game_state(game, saved)
     assert game.players[0].credits == credits
-    if not recorded_charge:
-        assert builder.constructor_component.current_construction_target is not None
-        return
-    assert find_unit(game.galaxy, builder.id).constructor_component.current_construction_target is None
+    assert find_unit(game.galaxy, builder.id) is builder
+    assert builder.constructor_component.current_construction_target is not None
 
 
 

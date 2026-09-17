@@ -138,7 +138,20 @@ class OrderSystem:
                 logger.debug(f"  Unit {unit.name} stopped and stance reset via event.")
         self.game.sidebar_needs_update = True
 
+    def _event_location(self, system_name, hex_coord, position):
+        from location_validation import location
+        try:
+            return location(system_name, hex_coord, position, self.game.galaxy)
+        except ValueError as exc:
+            if getattr(self.game, 'gui', None):
+                self.game.gui.show_warning_dialog(str(exc), title="Invalid destination")
+            return None
+
     def handle_issue_move_order(self, event: IssueMoveOrderEvent):
+        site = self._event_location(event.system_name, event.sector_coord, event.destination)
+        if site is None:
+            return
+        event.system_name, event.sector_coord, event.destination = site
         for unit in event.units:
             if not self.validate_engines_for_unit(unit, "move"):
                 continue
@@ -183,6 +196,10 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
+        site = self._event_location(event.system_name, event.sector_coord, event.destination)
+        if site is None:
+            return
+        event.system_name, event.sector_coord, event.destination = site
         add_waypoint = getattr(event, 'add_waypoint', getattr(event, 'ctrl_pressed', False))
         for unit in event.units:
             if not self.validate_engines_for_unit(unit, "patrol"):
@@ -367,16 +384,32 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_construct(self, event: ConstructEvent):
+        site = self._event_location(event.target_system_name, event.target_hex_coord, event.target_position)
+        if site is None:
+            return
+        system_name, hex_coord, position = site
+        from geometry import Position, distance
+        from location_validation import format_location
         for unit in event.units:
+            constructor = unit.constructor_component
+            if not constructor:
+                continue
+            engines = unit.engines_component
+            if (not engines or not engines.is_operational) and (unit.in_system != system_name or unit.in_hex != hex_coord or distance(unit.position, position) > constructor.build_range):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog("The construction site is outside this builder's reach.", title="Target Out of Range")
+                continue
             construct_params = {
                 "unit_template_name": event.unit_template_name,
-                "target_position": event.target_position
+                "target_position": Position(position.x, position.y),
+                "target_system_name": system_name,
+                "target_hex_coord": hex_coord
             }
             construct_order = ConstructOrder(unit, construct_params)
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(construct_order)
-            logger.debug(f"  Unit {unit.name} ordered to construct {event.unit_template_name} at {event.target_position} via event.")
+            logger.debug(f"  Unit {unit.name} ordered to construct {event.unit_template_name} at {format_location(system_name, hex_coord, position)} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_repair_unit(self, event: RepairUnitEvent):
@@ -513,12 +546,20 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_use_ability(self, event: UseAbilityEvent):
+        from location_validation import ability_target_kind
+        try:
+            positional = ability_target_kind(event.ability_type_str) in {"position", "celestial_position"}
+        except ValueError:
+            return
+        if positional:
+            site = self._event_location(event.target_system_name, event.target_hex_coord, event.target_position)
+            if site is None:
+                return
+            event.target_system_name, event.target_hex_coord, event.target_position = site
         from tactical_abilities import SPECS
         if event.ability_type_str in SPECS:
             from tactical_ui import issue
             spec = SPECS[event.ability_type_str]
-            if getattr(event, 'target_system_name', None) not in (None, self.game.current_system_name) or getattr(event, 'target_hex_coord', None) not in (None, self.game.current_sector_coord):
-                return
             for unit in event.units:
                 command = {'type': 'use_ability', 'unit_ids': [unit.id], 'ability': event.ability_type_str, 'queue': event.shift_pressed}
                 if event.target_unit is not None:
@@ -526,11 +567,15 @@ class OrderSystem:
                 if spec.target_kind == 'celestial_position':
                     command['target_id'] = getattr(self.game, 'pending_catalyst_body_id', None)
                 if event.target_position is not None:
-                    command['position'] = [event.target_position.x, event.target_position.y]
+                    command.update(position=[event.target_position.x, event.target_position.y], system_name=event.target_system_name, hex_coord=list(event.target_hex_coord))
                 issue(self.game, command)
             return
         for unit in event.units:
             if not unit.ability_component:
+                continue
+            if event.ability_type_str == "microjump" and (unit.in_system != event.target_system_name or unit.in_hex != event.target_hex_coord):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog("Microjump requires a destination in the unit's current sector.", title="Target Out of Range")
                 continue
             ability_params = {
                 "ability_type": event.ability_type_str,

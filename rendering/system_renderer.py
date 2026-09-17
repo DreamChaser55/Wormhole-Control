@@ -483,8 +483,8 @@ class SystemViewRenderer:
                     )
 
                 if order.order_type == OrderType.REACH_WAYPOINT:
-                    dsys = order.parameters["destination_system_name"]
-                    dhex = order.parameters["destination_hex_coord"]
+                    dsys = order.parameters.get("destination_system_name")
+                    dhex = order.parameters.get("destination_hex_coord")
 
                     if dsys and dhex and (dhex != start_hex or dsys != start_system):
                         is_wormhole_jump = start_system != dsys
@@ -506,9 +506,9 @@ class SystemViewRenderer:
                         final_pos = start_hex
                         final_sys = start_system
                 
-                elif order.order_type == OrderType.MOVE:
-                    dsys = order.parameters["destination_system_name"]
-                    dhex = order.parameters["destination_hex_coord"]
+                elif order.order_type in [OrderType.MOVE, OrderType.DEFEND]:
+                    dsys = order.parameters.get("destination_system_name")
+                    dhex = order.parameters.get("destination_hex_coord")
 
                     start_of_final_leg_pos = end_of_sub_orders_pos
                     start_of_final_leg_sys = end_of_sub_orders_sys
@@ -554,7 +554,7 @@ class SystemViewRenderer:
                     else:
                         final_pos = end_of_sub_orders_pos
                         final_sys = end_of_sub_orders_sys
-                elif order.order_type == OrderType.USE_ABILITY:
+                elif order.order_type in [OrderType.USE_ABILITY, OrderType.CONSTRUCT]:
                     target_unit_id = order.parameters.get("target_unit_id")
                     target_position = order.parameters.get("target_position")
                     target_sys = order.parameters.get("target_system_name")

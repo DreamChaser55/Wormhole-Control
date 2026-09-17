@@ -60,8 +60,8 @@ class ClusterWarheadAbility(AbilityInstance):
         target_hex_coord: Optional[HexCoord] = None,
     ) -> None:
         """Deals splash damage to all units at the target position within SPLASH_RADIUS."""
-        sys_name = target_system_name if target_system_name is not None else component.unit.in_system
-        hex_coord = target_hex_coord if target_hex_coord is not None else component.unit.in_hex
+        sys_name = target_system_name
+        hex_coord = target_hex_coord
 
         system = galaxy.systems.get(sys_name)
         if not system:

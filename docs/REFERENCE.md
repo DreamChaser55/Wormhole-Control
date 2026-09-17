@@ -415,6 +415,17 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Interdictor | Special Operations | LARGE ship | 100.00/100 | 4000 | 30 | 1.00 | Designed for mobile jump denial. Inter-system travel. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
 <!-- END GENERATED: unit-catalog -->
 
+### Fixed construction sites
+
+Construction uses the system, sector `(q, r)`, and logical `(x, y)` position selected
+when opening the catalogue. Build and Queue retain that site even when the view
+or builder changes location. Mobile constructors approach the site; stationary
+builders must already be in its sector and within build range.
+
+After construction starts, leaving that sector or build range terminates the job
+and refunds its recorded charge once to the original payer. The site never follows
+the builder. Destruction and capture retain their existing settlement rules.
+
 ### Field refitting
 
 A Constructor can install or remove equipment on friendly/allied units within

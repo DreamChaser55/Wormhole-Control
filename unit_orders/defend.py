@@ -82,16 +82,13 @@ class DefendOrder(Order):
                 dest_hex = getattr(body, "in_hex", dest_hex)
                 dest_pos = getattr(body, "position", dest_pos)
 
-        if dest_system is None and self.unit:
-            dest_system = self.unit.in_system
-        if dest_hex is None and self.unit:
-            dest_hex = self.unit.in_hex
-        if dest_pos is None and self.unit:
-            dest_pos = Position(self.unit.position.x, self.unit.position.y)
 
         return dest_system, dest_hex, dest_pos
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        from location_validation import validate_order
+        if not validate_order(self, galaxy_ref):
+            return
         super().execute(galaxy_ref)
         dest_system, dest_hex, dest_pos = self._resolve_destination(galaxy_ref)
 

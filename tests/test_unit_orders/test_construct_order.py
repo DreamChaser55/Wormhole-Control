@@ -23,6 +23,7 @@ def test_construct_order():
         unit.add_component(constructor)
 
         galaxy = MagicMock()
+        galaxy.systems = {unit.in_system: MagicMock(hexes={unit.in_hex: MagicMock()})}
         
         # Mock player credits and matching owner ID
         player = ComponentPlayer()
@@ -33,6 +34,8 @@ def test_construct_order():
 
         # Valid order
         order = ConstructOrder(unit, {
+            "target_system_name": unit.in_system,
+            "target_hex_coord": unit.in_hex,
             "unit_template_name": "Station",
             "target_position": Position(10, 10)
         })
@@ -44,7 +47,7 @@ def test_construct_order():
 
         assert order.status == OrderStatus.IN_PROGRESS
         assert player.credits == 200
-        assert constructor.current_construction_target == ("Station", Position(10, 10))
+        assert constructor.current_construction_target == dict(template_name="Station", system_name=unit.in_system, hex_coord=unit.in_hex, position=Position(10, 10))
         assert constructor.construction_progress == 0
 
         # Progress turn
@@ -65,13 +68,15 @@ def test_construct_order():
         # Cancellation refund
         player.credits = 500
         order_cancel = ConstructOrder(unit, {
+            "target_system_name": unit.in_system,
+            "target_hex_coord": unit.in_hex,
             "unit_template_name": "Station",
             "target_position": Position(10, 10)
         })
         order_cancel.execute(galaxy)
         assert order_cancel.status == OrderStatus.IN_PROGRESS
         assert player.credits == 200
-        assert constructor.current_construction_target == ("Station", Position(10, 10))
+        assert constructor.current_construction_target == dict(template_name="Station", system_name=unit.in_system, hex_coord=unit.in_hex, position=Position(10, 10))
 
         order_cancel.cancel()
         assert order_cancel.status == OrderStatus.CANCELLED
@@ -81,6 +86,8 @@ def test_construct_order():
         # Insufficient credits case
         player.credits = 100
         order_fail = ConstructOrder(unit, {
+            "target_system_name": unit.in_system,
+            "target_hex_coord": unit.in_hex,
             "unit_template_name": "Station",
             "target_position": Position(10, 10)
         })
@@ -110,6 +117,7 @@ def test_construct_order_out_of_range_approaches():
         unit.add_component(Engines(unit, speed=200, hull_cost=10))
 
         galaxy = MagicMock()
+        galaxy.systems = {unit.in_system: MagicMock(hexes={unit.in_hex: MagicMock()})}
         player = ComponentPlayer()
         player.id = unit.owner.id
         player.credits = 1000
@@ -117,6 +125,8 @@ def test_construct_order_out_of_range_approaches():
         unit.owner = player
 
         order = ConstructOrder(unit, {
+            "target_system_name": unit.in_system,
+            "target_hex_coord": unit.in_hex,
             "unit_template_name": "Station",
             "target_position": Position(0, 0)
         })
@@ -159,6 +169,7 @@ def test_construct_order_out_of_range_stationary_fails():
         # Unit has NO engines (e.g. stationary shipyard)
 
         galaxy = MagicMock()
+        galaxy.systems = {unit.in_system: MagicMock(hexes={unit.in_hex: MagicMock()})}
         player = ComponentPlayer()
         player.id = unit.owner.id
         player.credits = 1000
@@ -166,6 +177,8 @@ def test_construct_order_out_of_range_stationary_fails():
         unit.owner = player
 
         order = ConstructOrder(unit, {
+            "target_system_name": unit.in_system,
+            "target_hex_coord": unit.in_hex,
             "unit_template_name": "Station",
             "target_position": Position(1000, 1000)
         })
@@ -194,6 +207,7 @@ def test_constructor_start_construction_direct_range_check():
         unit.add_component(constructor)
 
         galaxy = MagicMock()
+        galaxy.systems = {unit.in_system: MagicMock(hexes={unit.in_hex: MagicMock()})}
         player = ComponentPlayer()
         player.id = unit.owner.id
         player.credits = 1000
@@ -201,14 +215,14 @@ def test_constructor_start_construction_direct_range_check():
         unit.owner = player
 
         # Beyond build_range (500)
-        assert not constructor.start_construction("Station", Position(600, 0), galaxy)
+        assert not constructor.start_construction("Station", Position(600, 0), galaxy, system_name=constructor.unit.in_system, hex_coord=constructor.unit.in_hex)
         assert player.credits == 1000
         assert constructor.current_construction_target is None
 
         # Within build_range (500)
-        assert constructor.start_construction("Station", Position(400, 0), galaxy)
+        assert constructor.start_construction("Station", Position(400, 0), galaxy, system_name=constructor.unit.in_system, hex_coord=constructor.unit.in_hex)
         assert player.credits == 700
-        assert constructor.current_construction_target == ("Station", Position(400, 0))
+        assert constructor.current_construction_target == dict(template_name="Station", system_name=unit.in_system, hex_coord=unit.in_hex, position=Position(400, 0))
     finally:
         unregister_template("Station")
 
@@ -231,6 +245,7 @@ def test_construct_order_approach_completion_lifecycle():
         unit.add_component(Engines(unit, speed=200, hull_cost=10))
 
         galaxy = MagicMock()
+        galaxy.systems = {unit.in_system: MagicMock(hexes={unit.in_hex: MagicMock()})}
         player = ComponentPlayer()
         player.id = unit.owner.id
         player.credits = 1000
@@ -238,6 +253,8 @@ def test_construct_order_approach_completion_lifecycle():
         unit.owner = player
 
         order = ConstructOrder(unit, {
+            "target_system_name": unit.in_system,
+            "target_hex_coord": unit.in_hex,
             "unit_template_name": "Station",
             "target_position": Position(0, 0)
         })
@@ -257,7 +274,7 @@ def test_construct_order_approach_completion_lifecycle():
         child = order.sub_orders[0]
         assert child.status == OrderStatus.IN_PROGRESS
         assert player.credits == 700
-        assert constructor.current_construction_target == ("Station", Position(0, 0))
+        assert constructor.current_construction_target == dict(template_name="Station", system_name=unit.in_system, hex_coord=unit.in_hex, position=Position(0, 0))
 
         # Update construction progress
         constructor.update(galaxy) # progress = 1

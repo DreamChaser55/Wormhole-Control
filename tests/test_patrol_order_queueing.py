@@ -21,6 +21,7 @@ class MockGame:
     def __init__(self):
         self.sidebar_needs_update = False
         self.galaxy = MagicMock()
+        self.galaxy.systems = {"Sol": MagicMock(hexes={(0, 0): MagicMock()})}
         self.gui = MagicMock()
         self.gui.display_config = DisplayConfig()
         self.event_bus = EventBus()

@@ -16,7 +16,7 @@ def test_reach_waypoint_order_validation():
         "destination_hex_coord": None,
         "destination_position": None
     })
-    order.execute(MagicMock())
+    order.execute(MagicMock(systems={"Sol": MagicMock(hexes={(0, 0): MagicMock(), (0, 1): MagicMock()})}))
     assert order.status == OrderStatus.FAILED
 
 
@@ -32,7 +32,7 @@ def test_reach_waypoint_order_sublight():
         "destination_position": dest_pos
     })
     
-    order.execute(MagicMock())
+    order.execute(MagicMock(systems={"Sol": MagicMock(hexes={(0, 0): MagicMock(), (0, 1): MagicMock()})}))
     assert order.status == OrderStatus.IN_PROGRESS
     assert engines.move_target == dest_pos
 
@@ -49,7 +49,7 @@ def test_reach_waypoint_order_hex_jump():
         "destination_position": dest_pos
     })
     
-    order.execute(MagicMock())
+    order.execute(MagicMock(systems={"Sol": MagicMock(hexes={(0, 0): MagicMock(), (0, 1): MagicMock()})}))
     assert order.status == OrderStatus.IN_PROGRESS
     assert hd.hex_jump_target == ((0, 1), dest_pos)
 
@@ -70,7 +70,7 @@ def test_reach_waypoint_order_hyperdrive_error_fails_order():
         "destination_position": Position(100.0, 100.0),
     })
 
-    galaxy = MagicMock()
+    galaxy = MagicMock(systems={"Sol": MagicMock(hexes={(0, 0): MagicMock(), (4, 0): MagicMock()})})
     order.execute(galaxy)
     assert order.status == OrderStatus.IN_PROGRESS
 

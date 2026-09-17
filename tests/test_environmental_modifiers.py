@@ -159,7 +159,7 @@ def test_cluster_warhead_marks_falloff_splash_and_preserves_allies():
     ally.position = target.position
     hp, ally_hp = target.current_hit_points, ally.current_hit_points
     ability = ClusterWarheadAbility()
-    ability._apply_splash_damage(SimpleNamespace(unit=attacker), game.galaxy, Position(100, 0))
+    ability._apply_splash_damage(SimpleNamespace(unit=attacker), game.galaxy, Position(100, 0), target_system_name=attacker.in_system, target_hex_coord=attacker.in_hex)
     assert hp - target.current_hit_points == 46  # 80 * 0.5 falloff * 1.15
     assert ally.current_hit_points == ally_hp
 
@@ -177,4 +177,4 @@ def test_observations_add_effects_without_exposing_enemy_turrets():
     bodies = {b['id']: b for s in observation['systems'] for b in s.get('celestial_bodies', [])}
     assert bodies[ice.id]['environmental_effects']['cooldown_reduction'] == 1
     assert bodies[oxygen.id]['environmental_effects']['splash_damage_multiplier'] == 1.15
-    assert observation['schema_version'] == 13
+    assert observation['schema_version'] == 14

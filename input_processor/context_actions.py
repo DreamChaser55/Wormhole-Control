@@ -26,7 +26,7 @@ def _get_shift_pressed() -> bool:
         return False
 
 
-def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None:
+def handle_context_menu_action(game, action_id: str, target: typing.Any, *, location_context=None) -> None:
     """Executes the action selected by the user from a right-click context menu.
 
     Args:
@@ -34,6 +34,9 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
         action_id (str): Identifier of the chosen menu command (e.g., 'move', 'attack', 'patrol').
         target (typing.Any): Target object or coordinate associated with the context menu.
     """
+    site_system, site_hex = game.current_system_name, game.current_sector_coord
+    if location_context is not None and isinstance(target, Position):
+        site_system, site_hex, target = location_context
     current_player = game.players[game.current_player_index]
     shift_pressed = _get_shift_pressed()
 
@@ -114,8 +117,8 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
             if isinstance(target, Position):
                 game.event_bus.publish(IssueMoveOrderEvent(
                     selected_units,
-                    game.current_system_name,
-                    game.current_sector_coord,
+                    site_system,
+                    site_hex,
                     target,
                     shift_pressed
                 ))
@@ -124,8 +127,8 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
             if isinstance(target, Position):
                 game.event_bus.publish(IssuePatrolOrderEvent(
                     selected_units,
-                    game.current_system_name,
-                    game.current_sector_coord,
+                    site_system,
+                    site_hex,
                     target,
                     shift_pressed=shift_pressed,
                     add_waypoint=False
@@ -135,8 +138,8 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
             if isinstance(target, Position):
                 game.event_bus.publish(IssuePatrolOrderEvent(
                     selected_units,
-                    game.current_system_name,
-                    game.current_sector_coord,
+                    site_system,
+                    site_hex,
                     target,
                     shift_pressed=False,
                     add_waypoint=True
@@ -146,7 +149,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
             if isinstance(target, tuple) and len(target) == 2:
                 game.event_bus.publish(JumpInterhexEvent(
                     selected_units,
-                    game.current_system_name,
+                    site_system,
                     target,
                     shift_pressed
                 ))
@@ -303,7 +306,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                 existing = getattr(game.gui, 'unit_catalog_window', None)
                 if existing:
                     existing.kill()
-                game.gui.unit_catalog_window = UnitCatalogWindow(game.gui, selected_units, target)
+                game.gui.unit_catalog_window = UnitCatalogWindow(game.gui, selected_units, target, system_name=site_system, hex_coord=site_hex)
 
         elif extracted_action_id.startswith("construct_"):
             unit_template_name = extracted_action_id.split("construct_")[1]
@@ -312,7 +315,9 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                     selected_units,
                     unit_template_name,
                     target,
-                    shift_pressed
+                    shift_pressed,
+                    system_name=site_system,
+                    hex_coord=site_hex,
                 ))
 
         elif extracted_action_id == "open_retrofit_wizard":
@@ -363,8 +368,8 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                 ability_type_str=ability_type_str,
                 target_unit=target_unit,
                 target_position=target_position,
-                target_system_name=game.current_system_name,
-                target_hex_coord=game.current_sector_coord,
+                target_system_name=site_system,
+                target_hex_coord=site_hex,
                 shift_pressed=shift_pressed,
             ))
 
@@ -381,8 +386,8 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
                 game.event_bus.publish(InfiltratePlanetEvent(
                     units=selected_units,
                     target_body=target,
-                    target_system=game.current_system_name,
-                    target_hex=game.current_sector_coord,
+                    target_system=site_system,
+                    target_hex=site_hex,
                     shift_pressed=shift_pressed,
                 ))
 

@@ -42,7 +42,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.9"
+CURRENT_SAVE_VERSION = "4.10"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -513,6 +513,8 @@ def deserialize_order(data: dict, unit: Unit, game: Any) -> Order:
     if not isinstance(params, dict):
         raise ValueError(f"Invalid parameters for order type {order_type_str}")
 
+    from location_validation import order_locations
+    params = order_locations(order_type_str, params, getattr(game, "galaxy", None))
     order = order_cls(unit=unit, parameters=params)
     import uuid
     order.public_id = uuid.UUID(data["public_id"]).hex

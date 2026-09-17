@@ -329,12 +329,12 @@ class SectorOverlayRenderer:
                 p_curr = p_next
 
     def order_targets_sector(self, order, system_name, hex_coord):
-        if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT]:
+        if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT, OrderType.DEFEND]:
             dsys = order.parameters.get("destination_system_name")
             dhex = order.parameters.get("destination_hex_coord")
             if dsys == system_name and dhex == hex_coord:
                 return True
-        elif order.order_type == OrderType.USE_ABILITY:
+        elif order.order_type in [OrderType.USE_ABILITY, OrderType.CONSTRUCT]:
             target_unit_id = order.parameters.get("target_unit_id")
             target_position = order.parameters.get("target_position")
             if target_unit_id is not None:
@@ -342,8 +342,8 @@ class SectorOverlayRenderer:
                 if target_unit and target_unit.in_system == system_name and target_unit.in_hex == hex_coord:
                     return True
             elif target_position:
-                dsys = order.parameters.get("target_system_name") or order.unit.in_system
-                dhex = order.parameters.get("target_hex_coord") or order.unit.in_hex
+                dsys = order.parameters.get("target_system_name")
+                dhex = order.parameters.get("target_hex_coord")
                 if dsys == system_name and dhex == hex_coord:
                     return True
         elif order.order_type in [OrderType.ATTACK, OrderType.ATTACK_LONG_RANGE, OrderType.PROTECT]:
@@ -434,7 +434,7 @@ class SectorOverlayRenderer:
             return
 
         # 3. Leaf order without sub-orders
-        if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT]:
+        if order.order_type in [OrderType.MOVE, OrderType.REACH_WAYPOINT, OrderType.DEFEND]:
             dsys = order.parameters.get("destination_system_name")
             dhex = order.parameters.get("destination_hex_coord")
             dpos = order.parameters.get("destination_position")
@@ -466,7 +466,7 @@ class SectorOverlayRenderer:
                         'sequence_index': sequence_index,
                         'order_type': order.order_type
                     })
-        elif order.order_type == OrderType.USE_ABILITY:
+        elif order.order_type in [OrderType.USE_ABILITY, OrderType.CONSTRUCT]:
             target_unit_id = order.parameters.get("target_unit_id")
             target_position = order.parameters.get("target_position")
             if target_unit_id is not None:
@@ -483,8 +483,8 @@ class SectorOverlayRenderer:
                         'order_type': order.order_type
                     })
             elif target_position:
-                dsys = order.parameters.get("target_system_name") or order.unit.in_system
-                dhex = order.parameters.get("target_hex_coord") or order.unit.in_hex
+                dsys = order.parameters.get("target_system_name")
+                dhex = order.parameters.get("target_hex_coord")
                 sequence_index = len(all_waypoints_sequence)
                 all_waypoints_sequence.append({
                     'position': target_position,

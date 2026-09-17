@@ -157,7 +157,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 13,
+        "schema_version": 14,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),

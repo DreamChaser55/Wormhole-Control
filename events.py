@@ -93,10 +93,11 @@ class LoadColonistsEvent(Event):
         self.shift_pressed = shift_pressed
 
 class ConstructEvent(Event):
-    def __init__(self, units: list, unit_template_name: str, target_position: typing.Any, shift_pressed: bool):
+    def __init__(self, units: list, unit_template_name: str, target_position: typing.Any, shift_pressed: bool, *, system_name: str, hex_coord: HexCoord):
         self.units = units
         self.unit_template_name = unit_template_name
-        self.target_position = target_position
+        from location_validation import location
+        self.target_system_name, self.target_hex_coord, self.target_position = location(system_name, hex_coord, target_position)
         self.shift_pressed = shift_pressed
 
 class RepairUnitEvent(Event):

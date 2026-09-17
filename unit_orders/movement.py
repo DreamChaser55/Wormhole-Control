@@ -68,6 +68,9 @@ class ReachWaypointOrder(Order):
         super().__init__(unit, OrderType.REACH_WAYPOINT, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        from location_validation import validate_order
+        if not validate_order(self, galaxy_ref):
+            return
         super().execute(galaxy_ref)
 
         dest_system = self.parameters["destination_system_name"]
@@ -338,6 +341,9 @@ class MoveOrder(Order):
         }, parent_order=parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        from location_validation import validate_order
+        if not validate_order(self, galaxy_ref):
+            return
         super().execute(galaxy_ref)
         self.plan_route(galaxy_ref=galaxy_ref)
         if self.status == OrderStatus.FAILED:

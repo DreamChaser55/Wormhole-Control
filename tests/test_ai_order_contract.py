@@ -170,8 +170,8 @@ def test_history_identity_roundtrip_and_bounded_exactly_once_outcomes():
     from order_history import history_view
     from save_manager import serialize_order, deserialize_order, serialize_player, deserialize_player
     game, player, _, unit = world()
-    root = Order(unit, OrderType.MOVE)
-    child = Order(unit, OrderType.REACH_WAYPOINT)
+    root = Order(unit, OrderType.MOVE, {"destination_system_name": "Sol", "destination_hex_coord": (0, 0), "destination_position": Position(500, 0)})
+    child = Order(unit, OrderType.REACH_WAYPOINT, dict(root.parameters))
     root.add_sub_order(child)
     root.register_explicit_root()
     root.status = OrderStatus.IN_PROGRESS
@@ -212,7 +212,7 @@ def test_pending_job_cancellation_does_not_refund_or_stop_active_job(kind):
     component = unit.constructor_component
     player.credits = 500
     if kind == "construct":
-        order = ConstructOrder(unit, {"unit_template_name": "test", "target_position": Position(500, 0)})
+        order = ConstructOrder(unit, {'target_system_name': unit.in_system, 'target_hex_coord': unit.in_hex, "unit_template_name": "test", "target_position": Position(500, 0)})
         pending = ConstructOrder(unit, dict(order.parameters))
         component.can_build = lambda name: SimpleNamespace(cost_credits=100, time_to_build=5)
         unit.commander_component.add_order(order)
@@ -278,7 +278,7 @@ def test_restored_component_job_refunds_only_its_owner_once(kind):
     constructor.can_build = lambda name: SimpleNamespace(cost_credits=100, time_to_build=5)
     player.credits = 500
     if kind == "construct":
-        root = ConstructOrder(unit, {"unit_template_name": "test", "target_position": Position(500, 0)})
+        root = ConstructOrder(unit, {'target_system_name': unit.in_system, 'target_hex_coord': unit.in_hex, "unit_template_name": "test", "target_position": Position(500, 0)})
         unit.commander_component.add_order(root)
     else:
         root = RefitOrder(unit, {"target_unit_id": unit.id})
@@ -292,7 +292,8 @@ def test_restored_component_job_refunds_only_its_owner_once(kind):
         root._charged_player_id = player.id
     data = serialize_order(root)
     restored = deserialize_order(data, unit, None)
-    constructor.construction_order_id = constructor.refit_order_id = None
+    constructor.construction_order_id = restored.public_id if kind == "construct" else None
+    constructor.refit_order_id = None
     unit.commander_component.restore_explicit_orders(restored, [], game.galaxy)
     assert player.credits == 400 and not player.order_history
     assert issue(game, player, Command("cancel_order", (unit.id,), order_id=restored.public_id)).accepted
@@ -513,9 +514,9 @@ def test_queued_construction_cancellation_releases_reservation_without_refund():
         ship.constructor_component.can_build = lambda name: SimpleNamespace(cost_credits=100, time_to_build=5)
     player.credits = 100
     unit.commander_component.add_order(Order(unit, OrderType.TOGGLE_INHIBITOR))
-    pending = ConstructOrder(unit, {"unit_template_name": "test", "target_position": Position(500, 0)})
+    pending = ConstructOrder(unit, {'target_system_name': unit.in_system, 'target_hex_coord': unit.in_hex, "unit_template_name": "test", "target_position": Position(500, 0)})
     unit.commander_component.add_order(pending)
-    build = Command("construct", (other.id,), template_name="test", position=(500, 0))
+    build = Command("construct", (other.id,), template_name="test", position=(500, 0), system_name=other.in_system, hex_coord=other.in_hex)
     assert not issue(game, player, build).accepted
     assert issue(game, player, Command("cancel_order", (unit.id,), order_id=pending.public_id), build).accepted
     assert player.credits == 0 and other.constructor_component.current_construction_target
@@ -546,7 +547,7 @@ def test_loading_pending_order_does_not_start_or_record_until_update():
     unit.add_component(Constructor(unit))
     unit.constructor_component.can_build = lambda _: SimpleNamespace(cost_credits=100, time_to_build=5)
     player.credits = 500
-    pending = ConstructOrder(unit, {"unit_template_name": "test", "target_position": Position(500, 0)})
+    pending = ConstructOrder(unit, {'target_system_name': unit.in_system, 'target_hex_coord': unit.in_hex, "unit_template_name": "test", "target_position": Position(500, 0)})
     unit.commander_component.restore_explicit_orders(pending, [], game.galaxy)
     assert player.credits == 500 and not player.order_history
     unit.commander_component.update()
@@ -588,12 +589,12 @@ def test_stationary_constructor_rejects_out_of_range_command():
     player.credits = 500
 
     # Build at distance 600 (> 500 build_range)
-    build_far = Command("construct", (unit.id,), template_name="test", position=(600, 0))
+    build_far = Command("construct", (unit.id,), template_name="test", position=(600, 0), system_name=unit.in_system, hex_coord=unit.in_hex)
     res = issue(game, player, build_far)
     assert not res.accepted
     assert res.errors[0].code == "target_out_of_range"
 
     # Build at distance 400 (<= 500 build_range)
-    build_near = Command("construct", (unit.id,), template_name="test", position=(400, 0))
+    build_near = Command("construct", (unit.id,), template_name="test", position=(400, 0), system_name=unit.in_system, hex_coord=unit.in_hex)
     res_near = issue(game, player, build_near)
     assert res_near.accepted

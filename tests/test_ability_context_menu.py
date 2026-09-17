@@ -206,8 +206,9 @@ def test_context_menu_submenu_handle_button_index():
     gui.context_menu_panel.get_abs_rect().x = 100
     gui.context_menu_panel.get_abs_rect().y = 200
     gui.context_menu_target = "Target"
+    gui.context_menu_location = None
 
     with patch('gui.context_menu.open_context_menu') as mock_open_cm:
         res = handle_button_index(gui, 0)
         assert res == {'action': 'ui_handled'}
-        mock_open_cm.assert_called_once_with(gui, Position(100, 200), [("Back", "__submenu_back__"), ("Sub Item 1", "sub_action_1")], "Target")
+        mock_open_cm.assert_called_once_with(gui, Position(100, 200), [("Back", "__submenu_back__"), ("Sub Item 1", "sub_action_1")], "Target", location_context=None)

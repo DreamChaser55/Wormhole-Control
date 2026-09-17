@@ -427,7 +427,7 @@ def test_saved_removal_settles_exactly_once(outcome):
     actor.commander_component.add_order(order)
     salvage = actor.constructor_component.current_refit_target['salvage_due']
     state = serialize_game_state(game)
-    assert state['version'] == '4.9'
+    assert state['version'] == '4.10'
     assert deserialize_game_state(game, state)
     actor, target = find_unit(game.galaxy, actor.id), find_unit(game.galaxy, target.id)
     order = actor.commander_component.current_order

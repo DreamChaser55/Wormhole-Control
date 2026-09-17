@@ -30,6 +30,7 @@ def test_patrol_order_movement_loop():
     mock_sys = MagicMock()
     mock_sys.hexes = {(0, 0): mock_hex}
     galaxy.systems = {"Sol": mock_sys}
+    unit.game.galaxy = galaxy
 
     patrol_order.execute(galaxy)
 
@@ -99,6 +100,7 @@ def test_patrol_order_multiple_waypoints():
     mock_sys = MagicMock()
     mock_sys.hexes = {(0, 0): mock_hex}
     galaxy.systems = {"Sol": mock_sys}
+    unit.game.galaxy = galaxy
 
     patrol_order.execute(galaxy)
 
@@ -229,6 +231,7 @@ def test_patrol_order_combat_engagement_and_resumption():
     mock_sys = MagicMock()
     mock_sys.hexes = {(0, 0): mock_hex}
     galaxy.systems = {"Sol": mock_sys}
+    unit.game.galaxy = galaxy
     
     galaxy.get_unit_by_id.return_value = enemy
     unit.game.galaxy = galaxy
@@ -324,6 +327,7 @@ def test_patrol_order_combat_engagement_strikecraft():
     mock_sys = MagicMock()
     mock_sys.hexes = {(0, 0): mock_hex}
     galaxy.systems = {"Sol": mock_sys}
+    unit.game.galaxy = galaxy
     
     galaxy.get_unit_by_id.return_value = enemy
     unit.game.galaxy = galaxy

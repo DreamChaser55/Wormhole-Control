@@ -162,7 +162,7 @@ def test_enemy_constructor_activity_is_private(covert_world, job):
     game.players.append(Player('Ally', (0, 0, 200), team_id=builder.owner.team_id))
     if job == 'construction':
         assert issue(game, builder.owner, Command('construct', (builder.id,),
-                     template_name='COVERT_INTELLIGENCE_SHIP', position=(300, 100))).accepted
+                     template_name='COVERT_INTELLIGENCE_SHIP', position=(300, 100), system_name=builder.in_system, hex_coord=builder.in_hex)).accepted
     else:
         assert constructor.start_refit(covert, 'REMOVE', 'IntelligenceComponent')
     for component in (None, 'Constructor'):
@@ -178,7 +178,7 @@ def test_construction_enters_enemy_turn_with_cover_name(covert_world):
     game, _, _, observer = covert_world
     builder = create(game, 'CONSTRUCTOR_MK1')
     assert issue(game, builder.owner, Command('construct', (builder.id,),
-                 template_name='COVERT_INTELLIGENCE_SHIP', position=(300, 100))).accepted
+                 template_name='COVERT_INTELLIGENCE_SHIP', position=(300, 100), system_name=builder.in_system, hex_coord=builder.in_hex)).accepted
     before = {u.id for u in game.galaxy.systems['Sol'].hexes[(0, 0)].units}
     constructor = builder.constructor_component
     constructor.construction_progress = constructor.time_to_build - 1
@@ -266,8 +266,8 @@ def test_socket_rename_uses_shared_gateway(covert_world):
     covert.owner.controller = PlayerController.CODEX
     service = ControlService(game, port=0)
     observed = service._dispatch_or_wait({'protocol_version': PROTOCOL_VERSION, 'action': 'observe'}, Future())
-    assert observed['data']['observation']['schema_version'] == 13
-    assert observed['data']['observation']['command_catalog']['version'] == 11
+    assert observed['data']['observation']['schema_version'] == 14
+    assert observed['data']['observation']['command_catalog']['version'] == 12
     result = service._dispatch_or_wait({'protocol_version': PROTOCOL_VERSION, 'action': 'command',
         'request_id': 'rename', 'turn_token': observed['data']['turn_token'],
         'commands': [{'type': 'rename_unit', 'unit_ids': [covert.id], 'new_name': 'Resolute'}]}, Future())

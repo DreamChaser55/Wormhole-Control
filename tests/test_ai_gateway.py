@@ -158,6 +158,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
                 return unit if unit_id == 10 else None
 
         game = SimpleNamespace(galaxy=Galaxy(), sidebar_needs_update=False)
+        game.galaxy.systems = {unit.in_system: SimpleNamespace(hexes={unit.in_hex: object()})}
         game.display_config = DisplayConfig()
         batch = CommandBatch(
             commands=(
@@ -184,7 +185,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
         unit_view = observation["units"][0]
         inhibitor = unit_view["capability_details"]["inhibitor"]
-        self.assertEqual(observation["schema_version"], 13)
+        self.assertEqual(observation["schema_version"], 14)
         self.assertIn("toggle_inhibitor", unit_view["supported_commands"])
         self.assertNotIn("toggle_inhibitor", unit_view["legal_commands"])
         self.assertFalse(inhibitor["can_activate"])
@@ -421,6 +422,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
                 return unit if unit_id == unit.id else None
 
         game = SimpleNamespace(galaxy=Galaxy(), sidebar_needs_update=False)
+        game.galaxy.systems = {unit.in_system: SimpleNamespace(hexes={unit.in_hex: object()})}
         game.display_config = DisplayConfig()
         command = Command(
             type="construct",
@@ -428,7 +430,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             position=(0, 0),
             template_name="SCOUT",
             queue=True,
-        )
+         system_name=unit.in_system, hex_coord=unit.in_hex)
         result = CommandGateway(game).apply_batch(
             player, CommandBatch(commands=(command, command))
         )
@@ -522,7 +524,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
             observation = build_observation(game, player)
         unit_view = observation["units"][0]
-        self.assertEqual(observation["schema_version"], 13)
+        self.assertEqual(observation["schema_version"], 14)
         self.assertNotIn("celestial_bodies", observation)
         self.assertIn("colonize", unit_view["supported_commands"])
         self.assertNotIn("colonize", unit_view["legal_commands"])

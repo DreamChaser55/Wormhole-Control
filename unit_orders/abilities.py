@@ -28,6 +28,9 @@ class UseAbilityOrder(Order):
         super().__init__(unit, OrderType.USE_ABILITY, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        from location_validation import validate_order
+        if not validate_order(self, galaxy_ref):
+            return
         super().execute(galaxy_ref)
 
         from unit_components.enums import AbilityType
@@ -168,8 +171,8 @@ class UseAbilityOrder(Order):
         # --- Pre-validation for MICROJUMP ability ---
         if ability_type == AbilityType.MICROJUMP:
             if target_position is not None:
-                target_sys = self.parameters.get("target_system_name") or self.unit.in_system
-                target_hex = self.parameters.get("target_hex_coord") or self.unit.in_hex
+                target_sys = self.parameters["target_system_name"]
+                target_hex = self.parameters["target_hex_coord"]
 
                 # Microjump is strictly intra-sector
                 if target_sys != self.unit.in_system or target_hex != self.unit.in_hex:
@@ -235,8 +238,8 @@ class UseAbilityOrder(Order):
 
         # --- Range check for position-targeted projectile/effect abilities (e.g. Cluster Warhead) ---
         elif defn.requires_target_position and target_position is not None and ability_type != AbilityType.MICROJUMP:
-            target_sys = self.parameters.get("target_system_name") or self.unit.in_system
-            target_hex = self.parameters.get("target_hex_coord") or self.unit.in_hex
+            target_sys = self.parameters["target_system_name"]
+            target_hex = self.parameters["target_hex_coord"]
 
             in_same_hex = (self.unit.in_system == target_sys and
                            self.unit.in_hex == target_hex)

@@ -72,6 +72,8 @@ def test_construct_order_fails_for_strikecraft_wings():
     unit.owner = player
 
     order = ConstructOrder(unit, {
+        "target_system_name": unit.in_system,
+        "target_hex_coord": unit.in_hex,
         "unit_template_name": "FIGHTER_WING",
         "target_position": Position(100, 100)
     })
@@ -138,7 +140,7 @@ def test_ai_construct_command_validation_rejects_strikecraft_wings():
     unit.add_component(Constructor(unit))
     player.credits = 1000
 
-    cmd = Command("construct", (unit.id,), template_name="FIGHTER_WING", position=(100, 100))
+    cmd = Command("construct", (unit.id,), template_name="FIGHTER_WING", position=(100, 100), system_name=unit.in_system, hex_coord=unit.in_hex)
     result = issue(game, player, cmd)
 
     assert not result.accepted
@@ -217,7 +219,7 @@ def test_construct_catalog_window_excludes_strikecraft_wings(pygame_context):
     manager = build_ui_manager(DisplayConfig(1280, 720))
     gui = SimpleNamespace(game_instance=game, screen_res=Vector(1280, 720), manager=manager)
     gui.display_config = DisplayConfig(1280, 720)
-    window = UnitCatalogWindow(gui, [builder], Position(200, 200))
+    window = UnitCatalogWindow(gui, [builder], Position(200, 200), system_name=([builder])[0].in_system, hex_coord=([builder])[0].in_hex)
     try:
         kind_options = [opt[0] if isinstance(opt, tuple) else opt for opt in window.kind.options_list]
         hull_options = [opt[0] if isinstance(opt, tuple) else opt for opt in window.hull.options_list]

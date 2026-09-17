@@ -610,6 +610,7 @@ def ability_states(unit: Any) -> list[dict[str, Any]]:
         result.append(
             {
                 "ability": _enum_value(ability_type),
+                "required_location_fields": ["system_name", "hex_coord", "position"] if getattr(definition, "requires_target_position", False) else [],
                 "ready": bool(getattr(instance, "is_ready", False)),
                 "requires_target_unit": bool(
                     getattr(definition, "requires_target_unit", False)

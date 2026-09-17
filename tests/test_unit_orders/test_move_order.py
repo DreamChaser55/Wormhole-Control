@@ -40,6 +40,7 @@ def test_move_order_plan_route_same_hex():
     })
     
     galaxy = MagicMock()
+    galaxy.systems = {"Sol": MagicMock(hexes={(0, 0): _approach_hex()})}
     order.execute(galaxy)
     
     assert len(order.sub_orders) == 1
@@ -305,6 +306,7 @@ def test_unit_approach_parameters_round_trip_through_order_serialization():
     target.in_system = "Sol"
     target.in_hex = (2, 3)
     target.position = Position(125.0, -75.0)
+    unit.game.galaxy.systems = {"Sol": MagicMock(hexes={(2, 3): _approach_hex()})}
 
     pending = MoveOrder.for_unit_approach(unit, target, 45.0)
     restored_pending = deserialize_order(serialize_order(pending), unit, unit.game)
@@ -549,6 +551,7 @@ def test_inter_system_jump_drive_type_validation():
     })
     
     galaxy = MagicMock()
+    galaxy.systems = {name: MagicMock(hexes={(0, 0): _approach_hex()}) for name in ("Sol", "Vega")}
     order_reach_basic.execute(galaxy)
     assert order_reach_basic.status == OrderStatus.FAILED
 
@@ -638,6 +641,7 @@ def test_move_order_plan_route_clears_sub_orders_on_failure(caplog):
     galaxy = MagicMock()
     galaxy.systems = {"Sol": MagicMock(), "Rigel": MagicMock()}
     galaxy.systems["Sol"].hexes = {(0, 5): mock_start_hex}
+    galaxy.systems["Rigel"].hexes = {(0, 0): _approach_hex()}
     
     # Topology: Sol <-> Rigel but with MEDIUM diameter edge
     galaxy.system_graph = {

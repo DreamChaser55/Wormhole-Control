@@ -68,7 +68,7 @@ def value_snapshot(value):
 
 def component_snapshot(component):
     # These are pointers/caches reconstructed from explicit orders and ownership.
-    excluded = {"unit", "_saved_refs", "_refit_order_ref", "standing_order", "_restored_pending", "_deployed_agents",
+    excluded = {"unit", "_saved_refs", "_refit_order_ref", "_construction_order_ref", "standing_order", "_restored_pending", "_deployed_agents",
                 "move_target", "move_target_order_id", "hex_jump_target", "wormhole_jump_target", "jump_target_order_id"}
     data = {k: value_snapshot(v) for k, v in vars(component).items() if k not in excluded}
     if isinstance(component, Constructor):
@@ -120,7 +120,7 @@ def mutate(component, target):
         component.mother_carrier = target
     if isinstance(component, Constructor):
         component.build_range = 777.5
-        component.current_construction_target = ("FIGHTER_WING", Position(5, 6))
+        component.current_construction_target = dict(template_name="FIGHTER_WING", system_name=component.unit.in_system, hex_coord=component.unit.in_hex, position=Position(5, 6))
         component.current_refit_target = {"target_unit_id": target.id, "action": "ADD", "component_type": "Engines",
             "component_config": {"speed": 73.5}, "cost_credits": 100, "time_to_build": 3, "payer_id": target.owner.id, "salvage_due": 0}
         component.construction_order_id = "a" * 32
@@ -506,7 +506,7 @@ def test_paid_job_survives_load_completes_or_refunds_once(job):
     builder.add_component(Constructor(builder))
     game.players[0].credits = 100000
     if job == "construction":
-        order = ConstructOrder(builder, {"unit_template_name": "CONSTRUCTOR_MK1", "target_position": Position(400, 0)})
+        order = ConstructOrder(builder, {'target_system_name': builder.in_system, 'target_hex_coord': builder.in_hex, "unit_template_name": "CONSTRUCTOR_MK1", "target_position": Position(400, 0)})
     else:
         order = RefitOrder(builder, {"target_unit_id": target.id, "action": "ADD", "component_type": "Defenses",
             "component_config": {"armor": 50, "shields": 50, "point_defense": 0, "hull_cost": 10},

@@ -125,14 +125,14 @@ class InputProcessor:
         """
         handle_mouse_click(self.game, self.gui, button, position)
 
-    def handle_context_menu_action(self, action_id: str, target: typing.Any) -> None:
+    def handle_context_menu_action(self, action_id: str, target: typing.Any, *, location_context=None) -> None:
         """Executes the action selected by the user from a right-click context menu.
 
         Args:
             action_id (str): Identifier of the chosen menu command (e.g., 'move', 'attack', 'patrol').
             target (typing.Any): Target object or coordinate associated with the context menu.
         """
-        handle_context_menu_action(self.game, action_id, target)
+        handle_context_menu_action(self.game, action_id, target, location_context=location_context)
 
     def get_refit_context_options(self, actors: typing.List[Unit], target_unit: Unit) -> typing.List[typing.Tuple[str, typing.Any]]:
         """Builds context menu options for adding/removing components from a friendly target unit.

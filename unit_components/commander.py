@@ -371,9 +371,7 @@ class Commander(UnitComponent):
         self._restored_pending = self.current_order if self.current_order and self.current_order.status == OrderStatus.PENDING else None
         if constructor and self.current_order:
             for node in self._active_front_chain():
-                if node.order_type == OrderType.CONSTRUCT and constructor.current_construction_target:
-                    constructor.construction_order_id = node.public_id
-                elif node.order_type == OrderType.REFIT_UNIT and constructor.current_refit_target:
+                if node.order_type == OrderType.REFIT_UNIT and constructor.current_refit_target:
                     constructor.refit_order_id = node.public_id
         if galaxy_ref is None:
             galaxy_ref = getattr(self.unit, "in_galaxy", None)

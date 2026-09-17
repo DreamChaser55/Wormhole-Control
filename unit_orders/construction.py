@@ -17,6 +17,9 @@ class ConstructOrder(Order):
         super().__init__(unit, OrderType.CONSTRUCT, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        from location_validation import validate_order
+        if not validate_order(self, galaxy_ref):
+            return
         super().execute(galaxy_ref)
 
         if not self.unit.constructor_component:
@@ -44,8 +47,8 @@ class ConstructOrder(Order):
             logger.debug(f"CONSTRUCT order failed: {self.unit.name} cannot build {unit_template_name}.")
             return
 
-        target_sys = self.parameters.get("target_system_name", self.unit.in_system)
-        target_hex = self.parameters.get("target_hex_coord", self.unit.in_hex)
+        target_sys = self.parameters["target_system_name"]
+        target_hex = self.parameters["target_hex_coord"]
 
         in_same_hex = (self.unit.in_system == target_sys and self.unit.in_hex == target_hex)
         in_range = in_same_hex and (distance(self.unit.position, target_pos) <= constructor.build_range)
@@ -94,7 +97,7 @@ class ConstructOrder(Order):
                 )
             return
 
-        success = constructor.start_construction(unit_template_name, target_pos, galaxy_ref)
+        success = constructor.start_construction(unit_template_name, target_pos, galaxy_ref, system_name=target_sys, hex_coord=target_hex, order=self)
         if success:
             constructor.construction_order_id = self.public_id
             self._charged_credits = buildable.cost_credits

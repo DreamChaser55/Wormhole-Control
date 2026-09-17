@@ -57,7 +57,7 @@ def test_missing_current_fields_are_not_reconstructed(field):
     unit = ship(game)
     body = AsteroidField((0, 0), 'Sol')
     game.galaxy.systems['Sol'].add_celestial_body(body)
-    order = MoveOrder(unit, {'destination_position': unit.position})
+    order = MoveOrder(unit, {'destination_system_name': unit.in_system, 'destination_hex_coord': unit.in_hex, 'destination_position': unit.position})
     unit.commander_component.orders_queue.append(order)
     data = serialize_game_state(game)
     sector = data['galaxy']['systems'][0]['hexes'][0]
@@ -77,11 +77,11 @@ def test_missing_current_fields_are_not_reconstructed(field):
 def test_current_storage_schema_and_empty_current_slot_round_trip():
     game = campaign()
     unit = ship(game)
-    queued = MoveOrder(unit, {'destination_position': unit.position})
+    queued = MoveOrder(unit, {'destination_system_name': unit.in_system, 'destination_hex_coord': unit.in_hex, 'destination_position': unit.position})
     unit.commander_component.orders_queue.append(queued)
     data = serialize_game_state(game)
     storage = data['galaxy']['systems'][0]['hexes'][0]['units'][0]['components']['AntimatterStorage']
-    assert data['version'] == '4.9'
+    assert data['version'] == '4.10'
     assert storage['schema_version'] == 2
     assert storage['configuration'] == {'max_capacity': unit.antimatter_component.max_capacity}
     restored = prepare_campaign(data).state.galaxy.get_unit_by_id(unit.id)
@@ -156,7 +156,7 @@ def test_display_requires_an_explicit_configuration():
 def test_obsolete_saved_encodings_reject_without_committing(encoding):
     game = campaign()
     unit = ship(game)
-    unit.commander_component.orders_queue.append(MoveOrder(unit, {'destination_position': unit.position}))
+    unit.commander_component.orders_queue.append(MoveOrder(unit, {'destination_system_name': unit.in_system, 'destination_hex_coord': unit.in_hex, 'destination_position': unit.position}))
     data = serialize_game_state(game)
     components = data['galaxy']['systems'][0]['hexes'][0]['units'][0]['components']
     if encoding == 'component_schema':
