@@ -41,6 +41,8 @@ COMPONENT_SPECS = {
     'HangarComponent': ComponentSpec('has_hangar', {'max_slots': 'hangar_slots'}),
     'StrikecraftBayComponent': ComponentSpec('has_strikecraft_bay', {'max_slots': 'strikecraft_bay_slots'}),
     'HyperspaceInhibitionFieldEmitter': ComponentSpec('has_inhibitor', {'radius': 'inhibitor_radius'}),
+    'TroopTransportComponent': ComponentSpec('has_troop_transport_component', {'capacity': 'troop_capacity'}),
+    'SiegeBatteryComponent': ComponentSpec('has_siege_battery_component'),
     'MarinesComponent': ComponentSpec('has_marines_component', {'marines_count': 'marines_count'}),
     'CloakingDevice': ComponentSpec('has_cloaking_device', {'device_type': 'cloaking_type', 'area_radius': 'cloaking_radius'}),
     'AbilityComponent': ComponentSpec('has_ability_component'),
@@ -137,6 +139,9 @@ def evaluate_refit(unit, action, component_name, configuration=None):
     existing = next((c for cls, c in unit.components.items() if cls.__name__ == name), None)
     if (action == 'ADD' and existing is not None) or (action == 'REMOVE' and existing is None):
         result.errors = ['Component already installed.' if action == 'ADD' else 'Component is not installed.']
+        return result
+    if action == 'REMOVE' and name == 'TroopTransportComponent' and existing.troops:
+        result.errors = ['Cannot remove occupied troop cargo.']
         return result
     if action == 'REMOVE' and getattr(existing, 'docked_units', None):
         result.errors = ['Cannot remove a bay while craft are docked.']

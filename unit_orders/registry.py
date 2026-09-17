@@ -1,4 +1,5 @@
 """Authoritative persistence order-class registry."""
+from .planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
 from .abilities import UseAbilityOrder
 from .strikecraft import AttackRunOrder, EmergencyRecoveryOrder
 from .fuel_transport import TakeAntimatterOrder, ContinuousAntimatterTransportOrder
@@ -31,6 +32,9 @@ from .trade import ContinuousTradeOrder, TradeOrder
 
 # The single authoritative mapping used by persistence and coverage tests.
 ORDER_CLASS_REGISTRY = {
+    OrderType.RECRUIT_TROOPS: RecruitTroopsOrder,
+    OrderType.BOMBARD_PLANET: BombardPlanetOrder,
+    OrderType.INVADE_PLANET: InvadePlanetOrder,
     OrderType.ATTACK_RUN: AttackRunOrder,
     OrderType.EMERGENCY_RECOVERY: EmergencyRecoveryOrder,
     OrderType.REACH_WAYPOINT: ReachWaypointOrder,
@@ -90,6 +94,9 @@ __all__ = [
     "ToggleInhibitorOrder",
     "ColonizeOrder",
     "LoadColonistsOrder",
+    "RecruitTroopsOrder",
+    "BombardPlanetOrder",
+    "InvadePlanetOrder",
     "ConstructOrder",
     "RepairOrder",
     "RefitOrder",

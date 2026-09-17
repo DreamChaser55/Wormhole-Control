@@ -42,7 +42,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.7"
+CURRENT_SAVE_VERSION = "4.8"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -148,6 +148,9 @@ def serialize_celestial_body(body: CelestialBody) -> dict:
         data["stability"] = body.stability
         data["diameter"] = body.diameter.name
 
+    if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
+        from planetary_warfare import BODY_FIELDS
+        data.update({field: getattr(body, field) for field in BODY_FIELDS})
     data["infiltrating_agents"] = [a.to_dict() for a in getattr(body, 'infiltrating_agents', [])]
     return data
 
@@ -261,7 +264,7 @@ def serialize_components(unit: Unit) -> dict:
 
 def serialize_unit(unit: Unit) -> dict:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "id": unit.id,
         "name": unit.name,
         "owner_id": unit.owner.id if unit.owner else None,
@@ -275,6 +278,7 @@ def serialize_unit(unit: Unit) -> dict:
         "experience_points": unit.experience_points,
         "is_disabled": unit.is_disabled,
         "disabled_by_unit_ids": list(unit.disabled_by_unit_ids),
+        "last_planetary_action_round": unit.last_planetary_action_round,
         "multiply_cast_ready_round": unit.multiply_cast_ready_round,
         "multiply_receive_ready_round": unit.multiply_receive_ready_round,
         "damage_reduction": unit.damage_reduction,
@@ -342,6 +346,8 @@ def serialize_galaxy(galaxy: Galaxy) -> dict:
 def serialize_game_state(game: Any) -> dict:
     """Serializes the entire Game instance into a JSON-compatible dictionary."""
     from unit_components.intelligence import Agent
+    from planetary_warfare import invasion_rng
+    from state_codec import encode
     object_counter = GameObject.object_counter
     player_counter = Player.player_counter
 
@@ -355,6 +361,7 @@ def serialize_game_state(game: Any) -> dict:
         "version": CURRENT_SAVE_VERSION,
         "timestamp": datetime.now().isoformat(),
         "game_state": {
+            "invasion_rng_state": encode(invasion_rng(game).getstate()),
             "turn_number": game.turn_number,
             "current_player_index": game.current_player_index,
             "view_mode": game.view_mode,
@@ -470,6 +477,10 @@ def deserialize_celestial_body(data: dict, players_by_id: Dict[int, Player], gam
     else:
         body = cls(in_hex=in_hex, in_system=in_system)
 
+    if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
+        from planetary_warfare import BODY_FIELDS
+        for field in BODY_FIELDS:
+            setattr(body, field, data[field])
     body.id = data['id']
     body.position = position
     if "name" in data and data["name"]:
@@ -548,7 +559,7 @@ def _restore_saved_commander(unit: Unit, game: Any) -> None:
 
 def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) -> Unit:
     from unit_components.persistence import restore_component
-    if type(data["schema_version"]) is not int or data["schema_version"] != 2:
+    if type(data["schema_version"]) is not int or data["schema_version"] != 3:
         raise ValueError("Unsupported unit schema")
     owner = players_by_id.get(data["owner_id"])
     if data["owner_id"] is not None and owner is None:
@@ -558,7 +569,7 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
     unit.id = data["id"]
     for name in ("current_hit_points", "max_hit_points", "experience_points", "is_disabled",
                  "damage_reduction", "damage_amplification", "lifetime", "is_temporary",
-                 "multiply_cast_ready_round", "multiply_receive_ready_round"):
+                 "multiply_cast_ready_round", "multiply_receive_ready_round", "last_planetary_action_round"):
         setattr(unit, name, data[name])
     unit.disabled_by_unit_ids = set(data["disabled_by_unit_ids"])
     # A new shell has no installed equipment to decommission.

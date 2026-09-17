@@ -65,6 +65,19 @@ commands like send_message (with target_id) and message_developer (without targe
 Player-level sabotage uses agent_id and sabotage_type; relocate_agent uses agent_id and target_id.
 Infiltration, extraction, CI sweep, and elimination remain unit commands and must use only the
 agent and target options listed for the selected owned unit.
+Planetary warfare uses dedicated Troop Transport and Siege Battery equipment, not boarding Marines.
+recruit_troops and invade_planet require one unit, target_id, and positive integer amount. Recruitment costs
+2 credits and 0.2 population per troop at an owned colony, leaving at least one population. Queue an
+invasion behind required recruitment. Troops/costs are reserved in batch order; victory is never assumed.
+Each ship performs one planetary action per round, at End Turn after approach. Bombardment resolves
+before invasions, costs 10 AM per volley and reduces readiness to no less than 25%, with limited civilian
+losses. Invasion costs 20 AM and makes one roll: troops/(troops+defense). Lose ceil(25% of committed troops)
+on success or ceil(75%) on defeat; survivors return aboard. Hostile fleets do not block landing.
+upgrade_planetary_defenses is immediate, uses unit_ids=[] and an owned colony target_id, and is limited
+to one upgrade per round, levels 0-3. Levels cost 250/500/750 credits. Base defense is max(5,population*0.5),
+multiplied by (1+0.5*fortification_level) and readiness. Empty colonies have zero defense. Readiness recovers
+10 percentage points on quiet global rounds; capture lowers fortifications one level and sets readiness
+to 25%. Read colony defenses and command_options for current previews, costs and blockers.
 Use transfer_antimatter to donate and take_antimatter to approach a friendly source and load fuel.
 continuous_antimatter_transport uses source_id and target_id for a repeating depot shuttle with automatic return fuel reserves. It waits for supply/capacity and blocks queued work.
 The ability_catalog describes targeting and costs. Multiply Antimatter doubles seeded friendly tanks within 500, including self, after a 20 AM cost. Caster and recipients have 30-round cooldowns. Empty tanks gain nothing. Future pickups and queued pulses cannot finance immediate casts.

@@ -39,6 +39,7 @@ def describe_template(key, raw):
         'orbital_defense_component': ('orbital_defense_radius', 'orbital_defense_attack_bonus', 'orbital_defense_defense_bonus'),
         'trade_component': ('trade_revenue_multiplier',), 'hangar': ('hangar_slots',),
         'strikecraft_bay': ('strikecraft_bay_slots',), 'inhibitor': ('inhibitor_radius',),
+        'troop_transport_component': ('troop_capacity',), 'siege_battery_component': (),
         'minelayer_component': (), 'marines_component': ('marines_count',),
         'cloaking_device': ('cloaking_type', 'cloaking_radius'),
         'intelligence_component': ('intelligence_agents_count', 'has_counter_intelligence'),

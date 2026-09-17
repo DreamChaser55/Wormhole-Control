@@ -42,6 +42,11 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
     if is_open(gui):
         gui.turn_briefing_window.process_event(event)
         return {'action': 'ui_handled'}
+    from .planetary_window import is_open as planetary_is_open
+    if planetary_is_open(gui):
+        gui.manager.process_events(event)
+        gui.planetary_window.process_event(event)
+        return {'action': 'ui_handled'}
     transport = getattr(gui, 'antimatter_transport_window', None)
     from .antimatter_transport_window import is_open as transport_is_open
     if transport_is_open(gui):

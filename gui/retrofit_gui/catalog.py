@@ -27,6 +27,7 @@ from unit_components.trade import TradeComponent
 from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
 from unit_components.minelayer import MinelayerComponent
 from unit_components.marines import MarinesComponent
+from unit_components.planetary import TroopTransportComponent, SiegeBatteryComponent
 from unit_components.cloaking import CloakingDevice
 from unit_components.abilities import AbilityComponent
 from unit_components.constructor import Constructor
@@ -39,6 +40,8 @@ from unit_components.enums import TurretType, TurretVariant, AbilityType
 # comp_cls: UnitComponent class
 # is_dynamic: whether the component has dynamic configurable parameters
 RETROFIT_COMPONENTS: List[Dict[str, Any]] = [
+    {"comp_key": "TroopTransportComponent", "display_name": "Troop Transport", "comp_cls": TroopTransportComponent, "is_dynamic": True, "description": "Dedicated invasion cargo. Starts empty; recruit at owned colonies. Medium or larger mobile hulls with antimatter storage."},
+    {"comp_key": "SiegeBatteryComponent", "display_name": "Siege Battery", "comp_cls": SiegeBatteryComponent, "is_dynamic": False, "description": "Bombards planetary military defenses, down to 25% readiness. Medium or larger mobile hulls with antimatter storage."},
     {
         "comp_key": "Engines",
         "display_name": "Engines",

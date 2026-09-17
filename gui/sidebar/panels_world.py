@@ -238,6 +238,17 @@ def build_celestial_body_panel(game, body: CelestialBody, *, show_rules: bool = 
                 'object_id': '#sidebar_status_active_label',
                 'height': 24
             })
+        from planetary_warfare import colonizable, defense_view, blocker
+        if colonizable(body):
+            defense = defense_view(body)
+            data.append({'type': 'label', 'text': f"Planetary defense: {defense['current_defense']:.1f}/{defense['maximum_defense']:.1f}", 'height': 25})
+            data.append({'type': 'label', 'text': f"Readiness: {body.defense_readiness:.0%}; fortifications: {body.fortification_level}/3", 'height': 25})
+            data.append({'type': 'label', 'text': 'Recovers 10% readiness per quiet round; minimum 25%.', 'height': 25})
+            if body.owner == current_player and defense['next_upgrade_cost'] is not None:
+                error = blocker(game, current_player, 'upgrade_planetary_defenses', body)
+                data.append({'type': 'button', 'text': f"Upgrade fortifications ({defense['next_upgrade_cost']} credits)", 'action_id': 'upgrade_planetary_defenses', 'target_data': body.id, 'height': 32, 'enabled': error is None})
+                if error:
+                    data.append({'type': 'label', 'text': error.replace('_', ' ').capitalize(), 'height': 25})
         data.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
         if body.owner and body.population > 0:
             cap = body.get_supported_habitat_capacity() if hasattr(body, 'get_supported_habitat_capacity') else 0

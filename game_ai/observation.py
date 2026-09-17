@@ -140,7 +140,13 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         for other in getattr(game, "players", [])
         if getattr(other, "id", None) != getattr(player, "id", None)
     ]
+    from planetary_warfare import blocker, defense_view, colonizable
+    upgrades = [dict(target_id=body.id, **defense_view(body), blocker=blocker(game, player, "upgrade_planetary_defenses", body))
+                for body in exact_bodies if colonizable(body) and body.owner == player]
+    player_intelligence_options["upgrade_planetary_defenses"] = {"targets": upgrades[:32], "omitted_count": max(0, len(upgrades) - 32)}
     player_legal = ["message_developer"]
+    if any(item["blocker"] is None for item in upgrades):
+        player_legal.append("upgrade_planetary_defenses")
     if recipient_ids:
         player_legal.append("send_message")
     if player_intelligence_options["sabotage"]["agents"]:
@@ -151,7 +157,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 11,
+        "schema_version": 12,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -287,6 +293,10 @@ def _unit_view(
         data["is_hidden_in_gas_giant"] = True
         data["hidden_in_gas_giant_id"] = getattr(unit, "hidden_in_gas_giant_id", None)
     if relation in {"self", "ally"}:
+        transport = getattr(unit, "troop_transport_component", None)
+        if transport:
+            data["troop_cargo"] = {"current": transport.troops, "capacity": transport.capacity}
+        data["last_planetary_action_round"] = getattr(unit, "last_planetary_action_round", 0)
         data["multiplication_receive_cooldown"] = max(0, getattr(unit, 'multiply_receive_ready_round', 0)-game.turn_number)
         data["capability_details"] = _capability_details(unit, game)
         from .tactical import environmental_view
@@ -338,6 +348,9 @@ def _body_view(
         "owner_id": int(owner.id) if owner is not None else None,
         "owner_relation": _relation(viewer, owner) if owner is not None else "neutral",
     }
+    from planetary_warfare import colonizable, defense_view
+    if colonizable(body):
+        data["planetary_defenses"] = defense_view(body)
     if include_system:
         data["system_name"] = str(body.in_system)
     for name in (

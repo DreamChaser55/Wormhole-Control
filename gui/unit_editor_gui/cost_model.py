@@ -100,6 +100,8 @@ def sync_dynamic_costs(editor) -> None:
         "has_hangar":             c.hangar_hull_cost,
         "has_strikecraft_bay":    c.strikecraft_bay_hull_cost,
         "has_inhibitor":          c.inhibitor_hull_cost,
+        "has_troop_transport_component": c.troop_transport_hull_cost,
+        "has_siege_battery_component": c.siege_battery_hull_cost,
         "has_marines_component":  c.marines_hull_cost,
         "has_cloaking_device":    c.cloaking_device_hull_cost,
         "has_intelligence_component": c.intelligence_hull_cost,

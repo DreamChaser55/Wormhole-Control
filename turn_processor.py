@@ -118,6 +118,9 @@ class TurnProcessor:
                 self._process_unit_updates(current_player)
                 self._cleanup_dead_units()
 
+            from planetary_warfare import process_actions
+            process_actions(self.game, current_player)
+
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 
 
@@ -132,6 +135,8 @@ class TurnProcessor:
 
             with ProfileTimer("Population growth"):
                 self._process_population_growth()
+                from planetary_warfare import recover
+                recover(self.game)
 
             with ProfileTimer("Sector intel update"):
                 VisibilityService.update_all_players_intel(self.game.galaxy, self.game.players, turn_num)

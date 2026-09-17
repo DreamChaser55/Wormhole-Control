@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 9
+CONTRACT_VERSION = 10
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -33,6 +33,10 @@ def _spec(description, fields=(), required=None, **kwargs):
 
 
 COMMAND_SPECS = {
+    "recruit_troops": _spec("Approach an owned colony and recruit integer amount troops on End Turn, paying 2 credits and 0.2 population per troop; leave at least one population.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
+    "bombard_planet": _spec("Approach an enemy colony and bombard military defenses once per owner turn until readiness reaches 25%; each volley costs 10 AM.", ("target_id",), single_unit=True, capability=("siege_battery_component",)),
+    "invade_planet": _spec("Approach an enemy colony and make one assault with integer amount troops for 20 AM; survivors return aboard. Queue behind recruitment when needed.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
+    "upgrade_planetary_defenses": _spec("Buy one fortification level on an owned populated colony, at most once per round, up to level 3.", ("target_id",), queued=False, player_level=True),
     "rename_unit": _spec("Rename one owned unit with a generic name (1–30 characters after trimming; no control characters). Preserves all orders.", ("new_name",), queued=False, single_unit=True),
     "cancel_orders": _spec("Stop all work, clear navigation/fire targets, and select Do Nothing.", queued=False),
     "clear_explicit_orders": _spec("Cancel explicit work, preserving the stance; it resumes when idle.", queued=False),
@@ -126,6 +130,8 @@ def validate_command(raw):
     require(len(ids) <= MAX_UNITS and len(ids) == len(set(ids)), "unit_ids must be unique and contain at most 12 IDs.")
     require(not ids if spec.player_level else bool(ids), "Invalid unit selection for this command.")
     require(not spec.single_unit or len(ids) == 1, "This command requires exactly one unit.")
+    if kind in {"recruit_troops", "invade_planet"}:
+        require(type(raw.get("amount")) is int and raw["amount"] > 0, "Troop amount must be a positive integer.")
     queue = raw.get("queue", False)
     require(type(queue) is bool, "queue must be a boolean.")
     require(spec.queued or not queue, "Immediate commands require queue=false.")

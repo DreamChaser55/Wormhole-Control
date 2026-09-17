@@ -103,6 +103,7 @@ def prepare_new_campaign(settings):
             max((obj.id for obj, _ in iter_objects(galaxy)), default=0) + 1)
         settings.pregenerated_galaxy = None
         candidate = SimpleNamespace(
+            invasion_rng=random.Random(),
             settings=settings, galaxy=galaxy, players=[], campaign_id=generate_short_id(),
             current_player_index=0, turn_number=1, view_mode='galaxy', game_started=True,
             current_system_name=None, current_sector_coord=None, conversations={}, message_counter=0,

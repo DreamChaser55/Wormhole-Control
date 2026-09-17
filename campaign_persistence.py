@@ -63,7 +63,9 @@ def validate_document(data):
     state = data["game_state"]
     require(state, ("turn_number", "current_player_index", "view_mode", "current_system_name",
                     "current_sector_coord", "object_counter", "player_counter", "agent_counter",
-                    "message_counter", "campaign_id"), "game_state")
+                    "message_counter", "campaign_id", "invasion_rng_state"), "game_state")
+    from planetary_warfare import rng_from_state
+    rng_from_state(state["invasion_rng_state"])
     for name in ("turn_number", "current_player_index", "object_counter", "player_counter", "agent_counter", "message_counter"):
         number(state[name], f"game_state.{name}", 1 if name == "turn_number" else 0, integer=True)
     if state["view_mode"] not in ("galaxy", "system", "sector"):
@@ -182,7 +184,9 @@ def validate_document(data):
         require(raw, ("schema_version", "name", "owner_id", "hull_size", "template_name", "components", "current_hit_points",
                       "max_hit_points", "experience_points", "is_disabled", "disabled_by_unit_ids", "damage_reduction",
                       "damage_amplification", "lifetime", "is_temporary", "infiltrating_agents",
-                      "multiply_cast_ready_round", "multiply_receive_ready_round"), path)
+                      "multiply_cast_ready_round", "multiply_receive_ready_round", "last_planetary_action_round"), path)
+        if number(raw["last_planetary_action_round"], "last_planetary_action_round", 0, integer=True) > state["turn_number"]:
+            raise ValueError("Planetary action round is in the future")
         if not isinstance(raw["components"], dict):
             raise ValueError(f"{path}.components: expected object")
         if raw["owner_id"] is None:
@@ -237,6 +241,17 @@ def validate_document(data):
                     "Nebula": ("nebula_type",), "Storm": ("storm_type",),
                     "AsteroidField": ("density", "asteroid_count"), "IceField": ("density",), "DebrisField": ("density",)}
                 require(body, (*body_fields[body["class_name"]], "infiltrating_agents", "inhibition_field_radius"), "body")
+                if body["class_name"] in ("Planet", "Moon", "ColonizableAsteroid"):
+                    from planetary_warfare import BODY_FIELDS
+                    from planetary_balance import FORTIFICATION_COSTS, MIN_READINESS
+                    require(body, BODY_FIELDS, "body")
+                    if number(body["fortification_level"], "fortification_level", 0, integer=True) > len(FORTIFICATION_COSTS):
+                        raise ValueError("Invalid fortification level")
+                    if not MIN_READINESS <= number(body["defense_readiness"], "defense_readiness", 0) <= 1:
+                        raise ValueError("Invalid defense readiness")
+                    for key in ("last_hostile_action_round", "last_defense_upgrade_round"):
+                        if number(body[key], key, 0, integer=True) > state["turn_number"]:
+                            raise ValueError("Planetary deadline is in the future")
                 for name in ("population", "max_population", "population_growth_rate", "metal_yield", "crystal_yield", "inhibition_field_radius"):
                     if name in body:
                         number(body[name], f"body.{name}", 0)
@@ -463,6 +478,8 @@ def prepare_campaign(data):
         candidate = SimpleNamespace(**{name: info[name] for name in
             ("turn_number", "current_player_index", "view_mode", "current_system_name", "campaign_id", "message_counter")})
         candidate.current_sector_coord = tuple(info["current_sector_coord"]) if info["current_sector_coord"] is not None else None
+        from planetary_warfare import rng_from_state
+        candidate.invasion_rng = rng_from_state(info["invasion_rng_state"])
         candidate.galaxy = None
         candidate.game_started = True
         candidate._loading = True

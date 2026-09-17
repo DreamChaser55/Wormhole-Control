@@ -157,3 +157,10 @@ def read_intelligence_params(editor) -> None:
     except ValueError:
         pass
 
+
+
+def read_troop_params(editor):
+    try:
+        editor._comp.troop_capacity = max(1, int(editor._troop_capacity_entry.get_text()))
+    except ValueError:
+        pass

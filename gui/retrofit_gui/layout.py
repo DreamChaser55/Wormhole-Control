@@ -331,6 +331,10 @@ def _build_component_detail_groups(
     wizard._inhibitor_radius_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), "100", mgr, pan)
     wizard._details_groups["HyperspaceInhibitionFieldEmitter"].extend([lbl_inhr, wizard._inhibitor_radius_entry])
 
+    troop_label = make_label(pygame.Rect(pad, y, w, small_h), "Troop Capacity:", mgr, pan)
+    wizard._troop_capacity_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), "40", mgr, pan)
+    wizard._details_groups["TroopTransportComponent"].extend([troop_label, wizard._troop_capacity_entry])
+
     # 12. Marines
     lbl_mar = make_label(pygame.Rect(pad, y, w, small_h), "Marines Count:", mgr, pan)
     wizard._marines_count_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), "10", mgr, pan)

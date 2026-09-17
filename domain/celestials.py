@@ -90,6 +90,8 @@ class CelestialBody(GameObject):
         super().__init__(position, in_hex, in_system)
         self.inhibition_field_radius = inhibition_field_radius
         self.infiltrating_agents: typing.List[Agent] = []
+        from planetary_warfare import initialize_body
+        initialize_body(self)
 
     def has_infiltrating_agent_from(self, player: Optional['Player']) -> bool:
         """Returns True if this celestial body has an active agent belonging to the player."""
@@ -113,6 +115,9 @@ class CelestialBody(GameObject):
     def apply_sabotage(self, agent: Agent, sabotage_type: typing.Union[str, SabotageType]) -> bool:
         """Applies a sabotage operation to this celestial body through an attached agent."""
         target_type = _normalize_sabotage_type(sabotage_type)
+        from domain.players import are_enemies
+        if not are_enemies(agent.owner, getattr(self, 'owner', None)):
+            return False
         if agent in getattr(self, 'infiltrating_agents', []):
             agent.active_sabotage = target_type
             logger.debug(f"Applied sabotage {target_type.name} to {self.name} via Agent {agent.id}.")

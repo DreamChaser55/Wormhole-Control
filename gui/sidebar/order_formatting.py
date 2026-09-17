@@ -58,6 +58,11 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
     status = state_data.get("status")
     parameters = state_data.get("parameters", {})
 
+    if order_type in {"RECRUIT_TROOPS", "INVADE_PLANET", "BOMBARD_PLANET"}:
+        return [order_type.replace("_", " ").title(), f"  Colony ID: {parameters.get('target_id')}",
+                f"  Troops: {parameters['amount']}" if "amount" in parameters else "  Military bombardment to 25% readiness",
+                "  Resolves once per ship per round at End Turn"]
+
     if order_type == "STANCE":
         stance = str(parameters.get("stance", "do_nothing")).replace("_", " ").title()
         return [f"<font color='{PATROL_TYPE_COLOR}'><b>Stance:</b></font> <font color='{INFO_COLOR}'>{stance}</font>"]

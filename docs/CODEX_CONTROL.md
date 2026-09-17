@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":9}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":12}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -231,7 +231,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 9, shared field
+Read `observation.command_catalog`: it contains command contract version 10, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -344,7 +344,7 @@ matching an ordinary warship with identical visible equipment. Catalog entries e
 generic; an already safe name requires no change. Enemy observations omit all three
 order-layer fields and never expose design identity, actual hull usage, upkeep or
 construction/refit details. These rules apply to all enemy units, preserving owners'
-and allies' existing access. Observation schema is 10, command contract is 8, and the
+and allies' existing access. Observation schema is 12, command contract is 10, and the
 socket envelope remains protocol 3.
 
 ## Attack range commands
@@ -383,7 +383,7 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 11 and command contract 9 expose a deduplicated `ability_catalog`,
+Observation schema 12 and command contract 10 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
 response name is `wormhole_control_turn_v8`; unused OpenAI command fields stay null.
@@ -417,7 +417,7 @@ Catalog descriptions include roles and equipment. Carriers expose wing productio
 
 ## Turn-start event summary
 
-Every schema-10 observation ends with `turn_summary`: reporting rounds (`from_turn`
+Every schema-12 observation ends with `turn_summary`: reporting rounds (`from_turn`
 and `to_turn`), grouped event `entries`, net `economy` changes, and `omitted_count`.
 Read this briefing before choosing orders. It covers the previous End Turn's
 resolution and intervening activity through this turn's opening effects. It is
@@ -427,5 +427,38 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 9 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 10 remain unchanged; no acknowledgement
 command is required from Codex.
+
+
+## Planetary commands
+
+Current observation schema is 12 and command contract is 10; socket protocol
+remains 3. Discover target choices and blockers in per-unit `command_options` and
+fortification choices in player-level options.
+
+| Command | Fields beyond `type` |
+|---|---|
+| `recruit_troops` | One `unit_ids` entry, colony `target_id`, positive integer `amount`, `queue` |
+| `bombard_planet` | One `unit_ids` entry, colony `target_id`, `queue` |
+| `invade_planet` | One `unit_ids` entry, colony `target_id`, positive integer `amount`, `queue` |
+| `upgrade_planetary_defenses` | Empty `unit_ids`, owned colony `target_id`, `queue=false` |
+
+For example, replace the IDs with observed IDs:
+
+```json
+{"type":"recruit_troops","unit_ids":[42],"target_id":7,"amount":40,"queue":false}
+{"type":"invade_planet","unit_ids":[42],"target_id":19,"amount":40,"queue":true}
+```
+
+Approach is automatic. Only End Turn resolves recruitment, bombardment and assault;
+upgrades pay immediately, once per colony per round. The queue preserves recruited
+troops as a prerequisite. Each ship acts at most once per round. Invasion previews
+are estimates at arrival, and failed assaults require new orders. Preflight reserves
+population, credits, cargo and action fuel, without assuming victories or future
+income. Hidden and missing targets share `target_unavailable`.
+
+Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
+The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
+casualties and capture. Save 4.8 preserves cargo, approach orders and invasion RNG;
+reload does not repeat payments or rolls.

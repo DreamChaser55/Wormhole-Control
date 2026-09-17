@@ -200,6 +200,9 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
             editor._sync_dynamic_costs()
             editor._update_summary()
             return "ui_handled"
+        elif elem is getattr(editor, "_troop_capacity_entry", None):
+            from .param_readers import read_troop_params
+            read_troop_params(editor)
         elif elem is getattr(editor, '_marines_count_entry', None):
             read_marines_params(editor)
             editor._sync_dynamic_costs()

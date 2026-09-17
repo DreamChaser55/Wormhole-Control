@@ -21,6 +21,8 @@ from .abilities import AbilityComponent
 from .sensors import Sensors
 from .minelayer import MinelayerComponent
 from .marines import MarinesComponent
+from .planetary import TroopTransportComponent, SiegeBatteryComponent
+from planetary_balance import TROOP_DEFAULT_CAPACITY
 from .cloaking import CloakingDevice
 from .intelligence import IntelligenceComponent
 from .enums import (
@@ -352,6 +354,11 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
             new_unit,
             hull_cost=template.get("minelayer_hull_cost", MINELAYER_HULL_COST)
         ))
+
+    if template.get("has_troop_transport_component"):
+        new_unit.add_component(TroopTransportComponent(new_unit, template.get("troop_capacity", TROOP_DEFAULT_CAPACITY)))
+    if template.get("has_siege_battery_component"):
+        new_unit.add_component(SiegeBatteryComponent(new_unit))
 
     if template.get("has_marines_component"):
         m_count = template.get("marines_count", 10)
@@ -786,6 +793,8 @@ COMPONENT_NAME_MAP = {
     "Inhibitor": HyperspaceInhibitionFieldEmitter,
     "AbilityComponent": AbilityComponent,
     "MinelayerComponent": MinelayerComponent,
+    "TroopTransportComponent": TroopTransportComponent,
+    "SiegeBatteryComponent": SiegeBatteryComponent,
     "MarinesComponent": MarinesComponent,
     "CloakingDevice": CloakingDevice,
     "IntelligenceComponent": IntelligenceComponent,
@@ -905,6 +914,10 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
     elif comp_cls == MinelayerComponent:
         return float(MINELAYER_HULL_COST)
 
+    elif comp_cls == TroopTransportComponent:
+        return TroopTransportComponent.calc_hull_cost(config.get("capacity", TROOP_DEFAULT_CAPACITY))
+    elif comp_cls == SiegeBatteryComponent:
+        return SiegeBatteryComponent.calc_hull_cost()
     elif comp_cls == MarinesComponent:
         count = int(config.get("marines_count", 10))
         return float(MarinesComponent.calc_hull_cost(count))
@@ -1059,6 +1072,10 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
     elif comp_cls == MinelayerComponent:
         return MinelayerComponent(unit, hull_cost=cost)
 
+    elif comp_cls == TroopTransportComponent:
+        return TroopTransportComponent(unit, config.get("capacity", TROOP_DEFAULT_CAPACITY))
+    elif comp_cls == SiegeBatteryComponent:
+        return SiegeBatteryComponent(unit)
     elif comp_cls == MarinesComponent:
         count = int(config.get("marines_count", 10))
         return MarinesComponent(unit, marines_count=count, hull_cost=cost)

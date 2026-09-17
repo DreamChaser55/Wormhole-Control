@@ -94,6 +94,9 @@ def order_layers(unit, relation, visible_ids, body_ids):
             if constructor and getattr(constructor, prefix + "_order_id", None) == order.public_id:
                 progress = {"turns_completed": getattr(constructor, prefix + "_progress", 0),
                             "turns_required": getattr(constructor, "time_to_build" if kind == "construct" else "refit_time", 0)}
+        if kind in {"recruit_troops", "invade_planet", "bombard_planet"} and not hidden:
+            progress = {"phase": "approach" if order.has_active_sub_orders() else "awaiting_owner_turn_resolution",
+                        "last_action_round": unit.last_planetary_action_round}
         data["progress"] = progress
         children = list(getattr(order, "sub_orders", []))
         shown = []

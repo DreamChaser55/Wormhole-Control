@@ -34,6 +34,7 @@ from unit_components.hangar import HangarComponent
 from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
 from unit_components.intelligence import Agent, IntelligenceComponent
 from unit_components.marines import MarinesComponent
+from unit_components.planetary import TroopTransportComponent, SiegeBatteryComponent
 from unit_components.mining import (
     CrystalRefineryComponent,
     MetalRefineryComponent,
@@ -66,6 +67,7 @@ class Unit(GameObject):
                  template_name: typing.Optional[str] = None):
         super().__init__(position, in_hex, in_system)
         self.owner = owner
+        self.last_planetary_action_round = 0
         self.name: str = name
         self.game = game
         self.in_galaxy: Optional['Galaxy'] = game.galaxy if game else None
@@ -220,6 +222,14 @@ class Unit(GameObject):
     @property
     def ability_component(self) -> typing.Optional[AbilityComponent]:
         return self.get_component(AbilityComponent)
+
+    @property
+    def troop_transport_component(self):
+        return self.get_component(TroopTransportComponent)
+
+    @property
+    def siege_battery_component(self):
+        return self.get_component(SiegeBatteryComponent)
 
     @property
     def marines_component(self) -> typing.Optional[MarinesComponent]:

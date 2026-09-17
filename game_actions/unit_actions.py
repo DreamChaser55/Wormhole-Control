@@ -472,7 +472,13 @@ def handle_order_all_leave_gas_giant(game, action: dict) -> None:
     game.sidebar_needs_update = True
 
 
+def handle_planetary_upgrade(game, action):
+    from tactical_ui import issue
+    issue(game, {"type": "upgrade_planetary_defenses", "unit_ids": [], "target_id": action["target_data"], "queue": False})
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
+    'upgrade_planetary_defenses': handle_planetary_upgrade,
     'deploy_ship': handle_deploy_ship,
     'launch_all_wings': handle_launch_all_wings,
     'recall_ship': handle_recall_ship,

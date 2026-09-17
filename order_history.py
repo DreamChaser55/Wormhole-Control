@@ -5,7 +5,7 @@ MAX_EVENTS = 128
 MAX_CHARACTERS = 32_000
 PUBLIC_REASONS = frozenset({"completed", "failed", "cancelled", "execution_failed", "suborder_failed",
     "unit_destroyed", "ownership_lost", "target_unavailable", "capability_unavailable",
-    "insufficient_resources", "insufficient_population", "insufficient_capacity", "invalid_parameters",
+    "assault_repulsed", "insufficient_troops", "cooldown_active", "insufficient_resources", "insufficient_population", "insufficient_capacity", "invalid_parameters",
     "path_unavailable", "construction_unavailable", "refit_unavailable", "ability_unavailable", "ability_expired"})
 
 

@@ -94,6 +94,8 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
         editor._strikecraft_bay_slots_entry.set_text(str(int(editor._comp.strikecraft_bay_slots)))
     if getattr(editor, '_inhibitor_radius_entry', None):
         editor._inhibitor_radius_entry.set_text(str(int(editor._comp.inhibitor_radius)))
+    if getattr(editor, "_troop_capacity_entry", None):
+        editor._troop_capacity_entry.set_text(str(editor._comp.troop_capacity))
     if getattr(editor, '_marines_count_entry', None):
         editor._marines_count_entry.set_text(str(int(editor._comp.marines_count)))
     if getattr(editor, '_cloaking_radius_entry', None):
@@ -211,6 +213,8 @@ def _collect_and_validate_template(
     editor._read_strikecraft_bay_params()
     editor._read_inhibitor_params()
     editor._read_marines_params()
+    from .param_readers import read_troop_params
+    read_troop_params(editor)
     editor._read_cloaking_params()
     editor._read_intelligence_params()
     editor._comp.turrets = editor._turrets

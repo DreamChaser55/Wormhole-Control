@@ -40,8 +40,9 @@ class InputProcessor:
         # Keyboard camera panning in sector view
         from gui.turn_briefing_window import is_open
         from gui.settings_dialog import is_open as settings_is_open
+        from gui.planetary_window import is_open as planetary_is_open
         from gui.antimatter_transport_window import is_open as transport_is_open
-        if not is_open(self.gui) and not settings_is_open(self.gui) and not transport_is_open(self.gui):
+        if not is_open(self.gui) and not settings_is_open(self.gui) and not transport_is_open(self.gui) and not planetary_is_open(self.gui):
             handle_keyboard_panning(self.game, self.gui, time_delta)
 
         modal_consumed = False
@@ -50,7 +51,7 @@ class InputProcessor:
                 self.game.is_running = False
                 return
 
-            if is_open(self.gui) or settings_is_open(self.gui) or transport_is_open(self.gui):
+            if is_open(self.gui) or settings_is_open(self.gui) or transport_is_open(self.gui) or planetary_is_open(self.gui):
                 self.gui.process_event(event)
                 modal_consumed = True
                 continue

@@ -143,6 +143,7 @@ def intelligence_observation(
             "sabotage_types": sabotage_types_for_host(host),
         }
         for agent, host in owned
+        if relation(player, getattr(host, "owner", None)) == "enemy"
     ]
     relocation_agents = [
         {

@@ -325,6 +325,11 @@ def test_every_parameter_minimum_at_execution_boundary(world, field, minimum):
     empty_equipment(target)
     name, parameter = next((name, parameter) for name, spec in COMPONENT_SPECS.items()
                            for parameter, mapped in spec.fields.items() if mapped == field)
+    if name == 'TroopTransportComponent':
+        from unit_components.movement import Engines
+        from unit_components.antimatter import AntimatterStorage
+        target.add_component(Engines(target, speed=100))
+        target.add_component(AntimatterStorage(target, max_capacity=200))
     accepted = evaluate_refit(target, 'ADD', name, {parameter: minimum})
     assert not accepted.errors
     rejected = evaluate_refit(target, 'ADD', name, {parameter: minimum - 1})
@@ -422,7 +427,7 @@ def test_saved_removal_settles_exactly_once(outcome):
     actor.commander_component.add_order(order)
     salvage = actor.constructor_component.current_refit_target['salvage_due']
     state = serialize_game_state(game)
-    assert state['version'] == '4.7'
+    assert state['version'] == '4.8'
     assert deserialize_game_state(game, state)
     actor, target = find_unit(game.galaxy, actor.id), find_unit(game.galaxy, target.id)
     order = actor.commander_component.current_order

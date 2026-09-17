@@ -1,18 +1,18 @@
 # Campaign persistence
 
-The current save version is **4.7**. New saves preserve the installed component
+The current save version is **4.8**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
-Only version **4.7** is supported. Unversioned, older, unknown and future saves
+Only version **4.8** is supported. Unversioned, older, unknown and future saves
 are rejected with the expected version before hydration. Alpha schema changes
 require a new campaign; no migrations or automatic conversions are provided.
 Rejected files are never modified.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.7.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.8.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
@@ -88,7 +88,7 @@ actuators are reacquired through normal play.
 
 `ATTACK_LONG_RANGE` uses the same order envelope as `ATTACK`, retaining its distinct
 type, target/subsystem, UUID and approach descendants. Restoring it rebinds firing
-and navigation without replaying execution. The save format remains 4.7.
+and navigation without replaying execution. The save format remains 4.8.
 
 When adding a component or ability, register it, declare every persistent field,
 and extend its independent round-trip fixture. An incompatible schema change
@@ -146,7 +146,7 @@ external ability actions.
 
 ## Verification
 
-`tests/test_persistence_integrity.py` covers all 26 registered components and all
+`tests/test_persistence_integrity.py` covers all 28 registered components and all
 registered abilities, including non-default definitions and dynamically installed
 components. Its canonical snapshot inspects runtime objects independently of the
 serialization field declarations. It exercises a deliberately mutated mid-game
@@ -199,7 +199,7 @@ and prices when they start. No new retrofit AI or socket command is introduced.
 
 ## Turn briefings
 
-Save 4.7 requires each player's `briefing` state: initialization/collection flags,
+Save 4.8 requires each player's `briefing` state: initialization/collection flags,
 reporting boundary, event sequence, bounded pending entries and omission count,
 economic baseline, discovery keys, frozen current report and human acknowledgement.
 The current report contains its start/end rounds, grouped entries, net economy
@@ -215,7 +215,7 @@ Unsupported saves, including 4.4, require a new campaign.
 
 ## Antimatter state
 
-Unit schema 2 requires nonnegative integer `multiply_cast_ready_round` and
+Unit schema 3 requires nonnegative integer `multiply_cast_ready_round` and
 `multiply_receive_ready_round` fields, including for docked units and units with
 no Ability component. They survive equipment replacement and ownership changes.
 New units initialize both to zero. A successful pulse at round R sets the caster
@@ -228,3 +228,26 @@ phase, bounded waiting reason, return reserve, and its active approach subtree.
 Loading resumes that state without extra transfer ticks. Fuel-cache deployables,
 recovery orders and the old ability identifier are unsupported in this alpha
 format; save 4.5 and unit schema 1 are rejected before hydration.
+
+
+## Planetary warfare state
+
+Save 4.8 uses unit schema 3. Every unit stores the nonnegative integer
+`last_planetary_action_round`, bounded by the saved campaign round. This survives
+refits, cancellation and capture, preventing replay or an extra action after load.
+Troop Transport schema 1 stores integer `capacity` and current `troops`; destroyed
+cargo must contain zero troops. Siege Battery schema 1 uses fixed siege rules.
+
+Planets, moons and colonizable asteroids require `fortification_level` (0–3),
+`defense_readiness` (0.25–1), `last_hostile_action_round` and
+`last_defense_upgrade_round` (nonnegative integers no later than the saved round).
+The campaign stores tagged `invasion_rng_state`, restored into an independent
+`random.Random`. Invalid colony, cargo, RNG or action-marker state rejects the
+whole candidate transactionally.
+
+The three planetary orders preserve typed targets, amounts, UUIDs and approach
+subtrees through ordinary order serialization. Restore does not recruit, charge,
+bombard or roll. The next End Turn rechecks authoritative eligibility; completed
+orders and unit markers prevent repeated attacks. Identical restored state and
+action sequences produce identical invasion rolls. Older saves, including 4.7,
+are unsupported under the Alpha policy.

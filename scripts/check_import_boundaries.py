@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CORE_FILES = (
     'constants.py', 'geometry.py', 'utils.py', 'display_config.py',
     'turn_presentation.py', 'turn_processor.py', 'galaxy.py', 'game_settings.py',
+    'planetary_warfare.py', 'planetary_balance.py',
     'visibility.py', 'environmental_effects.py', 'celestial_descriptions.py', 'economy.py', 'pathfinding.py', 'sector_utils.py',
     'hexgrid_utils.py', 'order_history.py', 'turn_briefing.py',
 )

@@ -313,6 +313,8 @@ class RetrofitWizardWindow:
             param_readers.read_mining_params(self)
         elif k == "HyperspaceInhibitionFieldEmitter":
             param_readers.read_inhibitor_params(self)
+        elif k == "TroopTransportComponent":
+            param_readers.read_fields(self, [("capacity", "_troop_capacity_entry", "troop_capacity", 40, True)])
         elif k == "MarinesComponent":
             param_readers.read_marines_params(self)
         elif k == "CloakingDevice":

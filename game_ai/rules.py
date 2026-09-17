@@ -164,6 +164,10 @@ def supported_commands(unit: Any) -> list[str]:
         commands.extend(["colonize", "load_colonists"])
     if getattr(unit, "constructor_component", None):
         commands.append("construct")
+    if getattr(unit, "troop_transport_component", None):
+        commands.extend(["recruit_troops", "invade_planet"])
+    if getattr(unit, "siege_battery_component", None):
+        commands.append("bombard_planet")
     if getattr(unit, "repair_component", None):
         commands.append("repair")
     if getattr(unit, "mining_component", None):
@@ -581,6 +585,12 @@ def command_guidance(
     if cloak is not None:
         active = bool(getattr(cloak, "is_active", False))
         options["toggle_cloaking"] = {"current_state": "active" if active else "inactive", "resulting_state": "inactive" if active else "active", "available": not capability_blocker(unit, "toggle_cloaking")}
+    from planetary_warfare import command_options
+    planetary = command_options(game, player, unit, exact_bodies)
+    options.update(planetary)
+    legal.update(kind for kind, values in planetary.items() if any(v["blocker"] is None for v in values["targets"]))
+    if getattr(unit, "troop_transport_component", None):
+        conditional.append({"type": "invade_planet", "requires_prior_command": "recruit_troops", "same_unit": True, "queue": True})
     return sorted(legal), options, conditional
 
 

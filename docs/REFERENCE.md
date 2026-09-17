@@ -242,7 +242,7 @@ Antimatter Storage is equipped; it does not require every design to carry a tank
 ### Component catalogue
 
 <!-- BEGIN GENERATED: components -->
-The Unit Designer provides **24 selectable component rows**. Commander is always present.
+The Unit Designer provides **26 selectable component rows**. Commander is always present.
 
 | # | Component Key | Label | Cost Type | Default Cost |
 | --- | --- | --- | --- | --- |
@@ -267,9 +267,11 @@ The Unit Designer provides **24 selectable component rows**. Commander is always
 | 19 | `has_ability_component` | Abilities | Dynamic | 10.0 |
 | 20 | `has_sensors` | Sensors | Dynamic | 2.0 |
 | 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 |
-| 22 | `has_marines_component` | Marines | Dynamic | 10.0 |
-| 23 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 |
-| 24 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 |
+| 22 | `has_troop_transport_component` | Troop Transport | Dynamic | 20.0 |
+| 23 | `has_siege_battery_component` | Siege Battery | Fixed | 20.0 |
+| 24 | `has_marines_component` | Marines | Dynamic | 10.0 |
+| 25 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 |
+| 26 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 |
 <!-- END GENERATED: components -->
 
 Unless an exception is listed below, utility components require **Small or larger**
@@ -309,6 +311,8 @@ hulls. Dynamic costs follow configured performance; fixed costs appear in the ta
 - **Sensors:** All hulls. Cost scales with short-range radius and long-range hex
   coverage. Wings must have zero long-range coverage.
 - **Minelayer:** Deploys anti-ship or anti-strikecraft minefields.
+- **Troop Transport:** Medium or larger mobile hull with Engines and Antimatter Storage. Configurable integer capacity costs 0.5 hull per troop; default 40 troops / 20 hull. Newly built transports are empty.
+- **Siege Battery:** Same hull and equipment prerequisites; fixed 20 hull, 1,000 surface range, 10 defense damage for 10 AM per volley.
 - **Marines:** Tiny or larger; cost scales with marine count and enables boarding.
 - **Cloaking Device:** Basic requires Tiny or larger: 10 hull, 300 build credits,
   5 AM/turn to hide the ship from long-range sensors. Advanced requires Small or
@@ -354,13 +358,15 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Kinetic Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for kinetic combat. Inter-system travel. |
 | Missile Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for missile combat. Inter-system travel. |
 | Hazard Escort | Combat | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Reduces plasma, black hole, debris hazards by 75% for this unit while enabled. Costs 2 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
+| Siege Frigate | Combat | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Dedicated planetary bombardment ship. Inter-system travel. |
+| Troop Transport | Combat | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Dedicated planetary invasion ship. Inter-system travel. |
 | Flak Battery | Combat | MEDIUM station | 49.10/50 | 1973 | 20 | 0.49 | Designed for stationary air defense. Stationary installation. |
 | Flak Escort | Combat | MEDIUM ship | 49.80/50 | 1994 | 20 | 0.50 | Designed for fleet air defense. Inter-system travel. |
 | Artillery Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 29 | 0.90 | Designed for ranged fire support. Inter-system travel. |
 | Assault Cruiser | Combat | LARGE ship | 90.67/100 | 3720 | 29 | 0.91 | Designed for direct assault. Inter-system travel. |
 | Orbital Bastion | Combat | LARGE station | 92.80/100 | 3784 | 29 | 0.93 | Designed for colony defense. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
 | Battleship | Combat | HUGE ship | 183.93/200 | 7518 | 38 | 1.84 | Designed for fleet anchor. Inter-system travel. |
-| Siege Dreadnought | Combat | HUGE ship | 199.93/200 | 7998 | 40 | 2.00 | Designed for siege bombardment. Inter-system travel. |
+| Siege Dreadnought | Combat | HUGE ship | 185.49/200 | 7565 | 39 | 1.85 | Dedicated planetary bombardment with a Siege Battery and long-range fleet weapons. Inter-system travel. |
 | Interdiction Fortress | Combat | HUGE station | 200.00/200 | 8000 | 40 | 2.00 | Designed for fortified jump denial. Stationary installation. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
 | Mining Drone | Economy | TINY ship | 9.00/10 | 370 | 6 | 0.09 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Small Mining Ship | Economy | SMALL ship | 23.20/25 | 946 | 12 | 0.23 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
@@ -466,7 +472,7 @@ can block queued work until cancelled or replaced.
 ### Order types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **39 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **42 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order type | Action |
@@ -481,6 +487,9 @@ The `OrderType` enum defines **39 order types**, including the persistent `STANC
 | `PROTECT` | Escort a friendly/allied unit and intercept enemies. |
 | `TOGGLE_INHIBITOR` | Activate or deactivate an inhibition field. |
 | `COLONIZE` | Establish a colony on a habitable body. |
+| `RECRUIT_TROOPS` | Approach an owned colony and recruit a chosen troop count into transport cargo at End Turn. |
+| `BOMBARD_PLANET` | Approach an enemy colony and repeatedly suppress its defenses to 25% readiness. |
+| `INVADE_PLANET` | Approach and commit a chosen troop count to one conquest roll. |
 | `LOAD_COLONISTS` | Load population from a friendly/allied colony. |
 | `CONSTRUCT` | Build an ordinary ship or station. |
 | `REFIT_UNIT` | Install or remove equipment through a Constructor. |
@@ -548,6 +557,72 @@ absorb a positive hit, including rounding it to zero; there is no one-HP minimum
 Damage reduction is limited to 0–100% and cannot heal a ship. Shields are mitigation,
 not a regenerating health pool. See [environmental effects](#environmental-fields)
 for cover, cooling and splash modifiers.
+
+### Planetary warfare
+
+Conquest applies to colonizable planets, moons and asteroids. Marines still board
+ships; planetary troops use dedicated Troop Transport cargo. Select a transport,
+right-click a colony and choose **Recruit troops** or **Invade colony**. The dialogs
+let you choose troop counts; invasion defaults to all cargo and shows the success
+probability and both casualty outcomes. A Siege Battery enables **Bombard colony**.
+Orders approach automatically; Shift queues them behind existing work. Cancel them
+through the ordinary order controls.
+
+| Rule | Initial balance |
+|---|---|
+| Maximum defense, populated colony | `max(5, population × 0.5) × (1 + 0.5 × fortification level)` |
+| Empty colony | Zero defense, even if owned |
+| Current defense | Maximum defense × readiness (25%–100%) |
+| Fortification upgrades, levels 1 / 2 / 3 | 250 / 500 / 750 credits |
+| Recruit one troop | 2 credits and 0.2 population; leave at least 1 population |
+| Recruitment / invasion range | 150 beyond the surface |
+| Siege volley | 10 defense damage and 10 AM; 1,000 beyond the surface |
+| Invasion | 20 AM, one ship, a positive integer troop count |
+| Success chance | Troops committed / (troops committed + current defense); 100% against zero defense |
+| Casualties | 25% of committed troops on success, 75% on defeat, rounded up |
+
+Colony sidebars display defense strength, readiness, fortifications and the next
+upgrade price. Upgrade an owned populated colony immediately, at most once per
+round, without a production queue. Upgrades preserve readiness. New campaigns
+start at level 0 and full readiness.
+
+Bombardment repeats once per attacking owner turn until readiness reaches 25%,
+the order is cancelled, or the target becomes invalid. A volley deals at most the
+defense remaining above that floor and reduces readiness by actual damage divided
+by maximum defense. Collateral population losses are 0.02 per point of actual
+defense damage, never taking population below 1 or increasing a smaller population.
+Bombardment cannot change ownership. Ordinary turrets cannot bombard, and Orbital
+Defense auras affect space combat only.
+
+Each assault makes one roll using actual strength at resolution; preview odds can
+change before arrival. Survivors return aboard. A repelled assault ends its order
+without suppressing defenses; issue a new order to try again. Success preserves
+civilian population, transfers the colony, removes one fortification level and sets
+readiness to 25%. Ships, stations and treasury remain with their existing owners.
+The new owner earns colony income at their next normal income phase. Homeworlds
+follow these rules without an additional elimination condition. Hostile ships do
+not block landing, but can destroy transports through ordinary combat.
+
+Recruitment, volleys and assaults resolve only at End Turn, after unit updates and
+destruction cleanup: recruitment first, then bombardment, then invasions, each in
+stable ship-ID order. Each ship can perform one planetary action per round, even
+if orders, ownership or equipment change. Queued follow-ups wait until a later
+turn. At global round end, after population growth, colonies gain 10 percentage
+points of readiness only if they suffered neither bombardment nor assault that round.
+
+Installed capacity determines hull use, price and upkeep; casualties do not shrink
+equipment. Destroyed cargo equipment kills its passengers and repairs restore no
+troops. Refitting preserves passengers and rejects removing occupied cargo.
+Capture immediately changes income and colony support eligibility for habitats
+and Orbital Defense. Now-allied embedded agents stop sabotage and remain available
+for extraction; hostile agents keep sabotage and discovery state.
+
+Briefings privately report recruitment and upgrades. Participants and their allies
+receive bombardment, casualties, repelled assault and capture/loss reports without
+hidden attacker identities. Exact colony details include defenses; troop cargo is
+visible to owners and allies only. **Troop Transport** and **Siege Frigate** are
+48/50-hull public designs; **Siege Dreadnought** combines a Siege Battery with its
+remaining ship weapons.
 
 ### Minefields
 

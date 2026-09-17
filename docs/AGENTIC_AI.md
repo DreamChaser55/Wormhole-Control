@@ -49,7 +49,7 @@ player. It includes:
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 11 gives full body detail in systems containing friendly
+Observation schema 12 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -62,7 +62,7 @@ fabricated or remembered hidden ID cannot bypass fog of war.
 
 ## Turn-start briefing
 
-Observation schema 11 appends `turn_summary` to the observation JSON included in
+Observation schema 12 appends `turn_summary` to the observation JSON included in
 every built-in planning request and Codex observation. It contains `from_turn`,
 `to_turn`, priority-ordered `entries`, net `economy` changes, and `omitted_count`.
 Turn zero as `from_turn` means campaign setup. Each entry has an event ID, round,
@@ -112,7 +112,7 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.7 embeds:
+Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.8 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
@@ -338,7 +338,7 @@ job charges. Missing order identities and payment state are rejected. Restored a
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
 The strict response schema is `wormhole_control_turn_v8`, and prompt cache key is
-`wormhole-control-turn-v11`. No live API call is required for regression testing.
+`wormhole-control-turn-v12`. No live API call is required for regression testing.
 
 ### Gameplay invariant guidance
 
@@ -406,7 +406,7 @@ The [built-in catalogue](REFERENCE.md#built-in-unit-catalog) includes designs fo
 every ability. Automated players construct public designs or use equipped ships;
 custom design editing is a human workflow.
 
-Observation 11 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
+Observation 12 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
 `ability_links`. Authorized ability state includes actual blockers/readiness,
 cooldown/duration, active targets, ongoing AM, reserved casts, persistent deployment
 counts/caps and Guardian tuning. Speed includes Tractor; environmental values
@@ -425,13 +425,13 @@ Preflight projects AM, cooldown use, incoming-link occupancy/cycles, per-source 
 
 `transfer_antimatter` and `take_antimatter` require functional storage, friendly endpoints, and normal approach capability. Queued pickup/delivery may depend on preceding resource changes. `continuous_antimatter_transport` takes exactly one actor, `source_id`, `target_id`, and `queue`. It repeatedly loads and delivers with a buffered return reserve; temporary supply/capacity shortages wait. Both endpoint references and child approach positions are recursively redacted if either endpoint becomes unavailable. Observations expose source/destination choices and order phase, waiting reason, and return reserve.
 
-Multiplication observations include radius, projected recipient gains, net AM, caster cooldown, and friendly units' shared recipient recovery. Cast and recipient deadlines live on the unit and persist independently of components. Enemy observations do not expose these deadlines. Save 4.7 uses unit schema 2. Fuel Cache, its deployable kind, and its recovery command have been removed; no compatibility aliases are provided.
+Multiplication observations include radius, projected recipient gains, net AM, caster cooldown, and friendly units' shared recipient recovery. Cast and recipient deadlines live on the unit and persist independently of components. Enemy observations do not expose these deadlines. Save 4.8 uses unit schema 3. Fuel Cache, its deployable kind, and its recovery command have been removed; no compatibility aliases are provided.
 
 The current save stores independent ghost emitters, source provenance, identification, patch allegiance/deadlines, link tuning/deadlines and processed pull phases. Counts are rebuilt from surviving objects. Typed endpoint references and transport phase/wait/reserve state restore without replaying transfers, casts or approach execution.
 
 Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.
 
-### Celestial observation contract (schema 11)
+### Celestial observation contract (schema 12)
 
 Already-exposed bodies use readable uppercase `subtype` names (`MAGNETIC`,
 `BLACK_HOLE`, etc.). `collision_radius` and `inhibition_field_radius` describe
@@ -457,5 +457,45 @@ relation-filtered Catalyst enhancements; body values describe baseline terrain.
 Catalyst patch records describe only the enhancement relevant to their nebula.
 
 Enrichment preserves existing body visibility and remote summaries and exposes
-no additional enemy equipment. Command contract 9, socket protocol 3, response
-schema v8 and save format 4.7 apply. Prompt cache key is v11.
+no additional enemy equipment. Command contract 10, socket protocol 3, response
+schema v9 and save format 4.8 apply. Prompt cache key is v12.
+
+
+## Planetary warfare contract
+
+Observation schema 12, command contract 10, response schema v9 and prompt cache
+key v12 include planetary warfare; socket protocol 3 retains its envelope.
+`planetary_warfare.py` supplies shared eligibility, previews and resolution, with
+initial tuning in `planetary_balance.py`. Human controls commit the same commands.
+
+`recruit_troops`, `bombard_planet` and `invade_planet` each take one owned ship,
+`target_id` and `queue`; recruitment and invasion also require positive integer
+`amount`. `upgrade_planetary_defenses` takes empty `unit_ids`, an owned colony
+`target_id` and `queue=false`. Typed celestial references use surface-aware approach
+routing. Effects wait for End Turn except immediate fortification upgrades.
+
+Preflight projects recruitment population, credits and cargo in batch order.
+Queued recruitment can enable a queued invasion. Invasions reserve committed fuel
+and worst-case casualties; projected victories and future income never finance a
+later command. Replacement and cancellation release pending reservations. The whole
+batch rejects without mutation or random draws; existing partial-commit reporting
+still applies to unexpected execution exceptions.
+
+Exact colony observations include `planetary_defenses`; own/allied ships include
+`troop_cargo`. Enemy cargo remains private. Command options expose costs, ranges,
+amount limits, blockers, probabilities and casualty outcomes. Recheck these before
+issuing an order; arrival can change odds. Recruitment is private to the owner;
+combat and capture briefings disclose only authorized participants' information.
+
+After ordinary unit updates and cleanup, a snapshot resolves recruitment,
+bombardment, then invasion in unit-ID order. An enduring unit round marker prevents
+extra actions through replacement, refits or capture. Execution revalidates live
+orders, targets, allegiance, deployment, visibility, equipment, cargo and resources.
+Invalid actions neither charge nor consume invasion randomness. Quiet-round recovery
+runs once globally after growth. Colony support and income are derived from current
+ownership; capture invalidates visibility/sidebar state and stops newly allied sabotage.
+
+A dedicated campaign RNG supplies invasion rolls. Its state, colony defenses,
+unit action markers, cargo and active approach orders are saved in format 4.8.
+Loading and previews never roll or replay planetary effects. See
+[planetary warfare](REFERENCE.md#planetary-warfare) for complete balance and controls.

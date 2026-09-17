@@ -93,6 +93,10 @@ class _BatchProjection:
         self._edit_target = None
         self._cargo: dict[int, float] = {}
         self._source_population: dict[int, float] = {}
+        self._planetary_upgrade_spend = 0.0
+        self._planetary_upgrades = set()
+        self._troop_cargo = {}
+        self._planetary_reserved_am = {}
         self._credits = float(getattr(player, "credits", 0))
         self._docking_slots: dict[int, int] = {}
         self._inhibitor_states: dict[int, bool] = {}
@@ -162,16 +166,36 @@ class _BatchProjection:
     def _rebuild(self):
         self._cargo = {}
         self._source_population = {}
-        self._credits = float(getattr(self.player, "credits", 0)) + self._refunds - self._ci_credit_spend
+        self._troop_cargo = {}
+        self._planetary_reserved_am = {}
+        self._credits = float(getattr(self.player, "credits", 0)) + self._refunds - self._ci_credit_spend - self._planetary_upgrade_spend
         self._docking_slots = dict(self._settled_docks)
         for unit_id, entries in self._order_ledger.items():
             unit = self._ledger_units[unit_id]
             cargo = self._live_cargo(unit) + self._settled_cargo.get(unit_id, 0)
+            transport = getattr(unit, "troop_transport_component", None)
+            self._troop_cargo[unit_id] = transport.troops if transport else 0
             for entry in entries:
                 if entry.get("settled"):
                     continue
                 kind, params, order = entry["type"], entry["parameters"], entry["order"]
-                if kind == "load_colonists":
+                if kind == "recruit_troops" and unit.owner == self.player:
+                    from planetary_balance import TROOP_CREDIT_COST, TROOP_POPULATION_COST
+                    amount = params["amount"]
+                    self._troop_cargo[unit_id] += amount
+                    self._credits -= amount * TROOP_CREDIT_COST
+                    source = self.game.galaxy.get_celestial_body_by_id(params.get("target_id"))
+                    if source is not None:
+                        self._source_population.setdefault(source.id, float(source.population) - self._settled_population.get(source.id, 0))
+                        self._source_population[source.id] -= amount * TROOP_POPULATION_COST
+                elif kind in {"invade_planet", "bombard_planet"} and unit.owner == self.player:
+                    from planetary_balance import INVASION_AM_COST, SIEGE_AM_COST, DEFEAT_LOSSES
+                    import math
+                    cost = INVASION_AM_COST if kind == "invade_planet" else SIEGE_AM_COST
+                    self._planetary_reserved_am[unit_id] = self._planetary_reserved_am.get(unit_id, 0) + cost
+                    if kind == "invade_planet":
+                        self._troop_cargo[unit_id] -= math.ceil(params["amount"] * DEFEAT_LOSSES)
+                elif kind == "load_colonists":
                     amount = float(params.get("amount", 0))
                     cargo += amount
                     source = self.game.galaxy.get_celestial_body_by_id(params.get("target_id"))
@@ -388,6 +412,8 @@ class _BatchProjection:
 
     def project_sabotage(self, agent_id: int, sabotage_type: str) -> tuple[Any, Any]:
         agent, host = self.owned_agent(agent_id)
+        if intelligence_relation(self.player, getattr(host, "owner", None)) != "enemy":
+            raise _Rejected("target_unavailable", "The host is no longer hostile.")
         if sabotage_type not in sabotage_types_for_host(host):
             raise _Rejected("invalid_value", "That sabotage type is unavailable for this host.")
         self._agent_sabotage[agent_id] = sabotage_type
@@ -446,7 +472,7 @@ class _BatchProjection:
 
     def fuel_amount(self, unit):
         storage = unit.antimatter_component
-        return self._ci_antimatter.get(unit.id, float(storage.current_amount) if storage else 0) + self._tactical_gained.get(unit.id, 0) - self._tactical_spent.get(unit.id, 0)
+        return self._ci_antimatter.get(unit.id, float(storage.current_amount) if storage else 0) + self._tactical_gained.get(unit.id, 0) - self._tactical_spent.get(unit.id, 0) - self._planetary_reserved_am.get(unit.id, 0)
 
     def multiplication_preview(self, unit):
         from antimatter_multiplication import preview
@@ -709,6 +735,20 @@ class CommandGateway:
                 elif command.type == "message_developer":
                     operations = self._prepare_message_developer(player, command)
                     units = []
+                elif command.type == "upgrade_planetary_defenses":
+                    units = []
+                    projection._rebuild()
+                    body = self._body(command.target_id)
+                    from planetary_warfare import blocker, upgrade
+                    from planetary_balance import FORTIFICATION_COSTS
+                    error = blocker(self.game, player, command.type, body, credits=projection._credits)
+                    if body.id in projection._planetary_upgrades:
+                        error = "cooldown_active"
+                    if error:
+                        raise _Rejected(error, "Planetary defense upgrade unavailable.")
+                    projection._planetary_upgrades.add(body.id)
+                    projection._planetary_upgrade_spend += FORTIFICATION_COSTS[body.fortification_level]
+                    operations = [_Prepared(lambda body=body: upgrade(self.game, player, body), "Planetary defenses upgraded.")]
                 elif COMMAND_SPECS[command.type].player_level:
                     operations = self._prepare_player_intelligence(player, command, projection)
                     units = []
@@ -892,6 +932,11 @@ class CommandGateway:
 
     def _order_factory(self, player: Any, command: Any):
         from geometry import Position
+        if command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
+            from unit_orders.planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
+            self._body(command.target_id)
+            cls = {"recruit_troops": RecruitTroopsOrder, "bombard_planet": BombardPlanetOrder, "invade_planet": InvadePlanetOrder}[command.type]
+            return lambda unit: cls(unit, {"target_id": command.target_id, **({"amount": command.amount} if command.amount is not None else {})}), command.type
         from unit_orders.combat import AttackOrder, AttackLongRangeOrder, ProtectOrder
         from unit_orders.colony import ColonizeOrder, LoadColonistsOrder
         from unit_orders.construction import ConstructOrder
@@ -1627,7 +1672,16 @@ class CommandGateway:
         if hidden and command.type != "leave_gas_giant":
             raise _Rejected("invalid_state", "Submerged units cannot execute orders while hidden in a gas giant atmosphere.")
 
-        if command.type == "move":
+        if command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
+            from planetary_warfare import blocker
+            body = self._body(command.target_id)
+            error = blocker(self.game, unit.owner, command.type, body, unit, command.amount,
+                            troops=projection._troop_cargo.get(unit.id),
+                            population=projection._source_population.get(body.id),
+                            credits=projection._credits, fuel=projection.fuel_amount(unit))
+            if error:
+                raise _Rejected(error, "Planetary action unavailable for the selected cargo, resources or target.")
+        elif command.type == "move":
             from constants import HullSize
             from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
             dest_pos = self._destination(command)

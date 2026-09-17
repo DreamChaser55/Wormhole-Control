@@ -91,6 +91,8 @@ def update_summary(editor) -> None:
                 if editor._selected_abilities:
                     for a in sorted(editor._selected_abilities):
                         comp_lines.append(f"    • {a}")
+            elif key == "has_troop_transport_component":
+                comp_lines.append(f"    troop_capacity={c.troop_capacity}")
             elif key == "has_marines_component":
                 comp_lines.append(f"    marines_count={c.marines_count}")
             elif key == "has_cloaking_device":

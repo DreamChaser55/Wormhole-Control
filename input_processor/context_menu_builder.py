@@ -397,6 +397,11 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                 unit = game.selected_objects[0]
                 if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
                     if getattr(target_object, 'is_colonizable', True):
+                        if unit.owner == current_player:
+                            from planetary_warfare import command_options
+                            for kind, info in command_options(game, current_player, unit, [target_object]).items():
+                                if info["targets"]:
+                                    options.append(({"recruit_troops": "Recruit Troops...", "invade_planet": "Invade Colony...", "bombard_planet": "Bombard Defenses"}[kind], kind))
                         if unit.colony_component and unit.colony_component.population_cargo > 0 and not target_object.owner:
                             options.append(("Colonize", "colonize"))
                         if unit.colony_component and target_object.owner and _are_allies(unit.owner, target_object.owner) and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:

@@ -474,6 +474,7 @@ def test_save_and_load_intelligence_state(test_setup):
     game.campaign_id = "intelligence-test"
     game.message_counter = 0
     game.conversations = {}
+    game.invasion_rng = None
     save_data = serialize_game_state(game)
     assert save_data is not None
 
@@ -499,7 +500,7 @@ def test_save_and_load_intelligence_state(test_setup):
 
     from game_ai.observation import build_observation
     observation = build_observation(new_game, new_game.players[0])
-    assert observation["schema_version"] == 11
+    assert observation["schema_version"] == 12
     assert observation["intelligence"]["owned_agents"] == [
         {
             "agent_id": loaded_agent.id,

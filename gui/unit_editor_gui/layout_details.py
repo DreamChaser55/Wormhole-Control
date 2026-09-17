@@ -165,6 +165,11 @@ def build_col3_details(
     editor._inhibitor_radius_entry = make_entry(pygame.Rect(c3x, y_inh + small_h + 2, c3w, entry_h), str(int(editor._comp.inhibitor_radius)), mgr, pan)
     editor._details_groups["has_inhibitor"].extend([lbl_inhr, editor._inhibitor_radius_entry])
 
+    # Dedicated invasion cargo capacity.
+    troop_label = make_label(pygame.Rect(c3x, c3y_base, c3w, small_h), "Troop Capacity:", mgr, pan)
+    editor._troop_capacity_entry = make_entry(pygame.Rect(c3x, c3y_base + small_h + 2, c3w, entry_h), str(editor._comp.troop_capacity), mgr, pan)
+    editor._details_groups["has_troop_transport_component"].extend([troop_label, editor._troop_capacity_entry])
+
     # --- Marines ---
     y_mar = c3y_base
     lbl_mar = make_label(pygame.Rect(c3x, y_mar, c3w, small_h), "Marines Count:", mgr, pan)

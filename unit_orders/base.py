@@ -39,6 +39,9 @@ class OrderStatus(Enum):
 
 
 class OrderType(Enum):
+    RECRUIT_TROOPS = auto()
+    BOMBARD_PLANET = auto()
+    INVADE_PLANET = auto()
     ATTACK_RUN = auto()
     EMERGENCY_RECOVERY = auto()
     """Enum representing the different types of orders."""

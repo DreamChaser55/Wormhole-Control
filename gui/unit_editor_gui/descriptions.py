@@ -30,6 +30,7 @@ DYNAMIC_COST_BASIS = {
     "has_inhibitor": "field radius",
     "has_ability_component": "number of equipped abilities",
     "has_sensors": "short-range radius and long-range hex coverage",
+    "has_troop_transport_component": "troop capacity (0.5 hull per troop)",
     "has_marines_component": "marine count",
     "has_cloaking_device": "cloak type and Advanced area radius",
     "has_intelligence_component": "agent capacity and the Counter-Intelligence upgrade",

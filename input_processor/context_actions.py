@@ -52,7 +52,16 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
     if not isinstance(extracted_action_id, str):
         extracted_action_id = str(extracted_action_id)
 
-    if extracted_action_id == 'tactical_attack':
+    if extracted_action_id in ('recruit_troops', 'invade_planet', 'bombard_planet'):
+        if len(selected_units) != 1 or not isinstance(target, (Planet, Moon, ColonizableAsteroid)):
+            return
+        if extracted_action_id == 'bombard_planet':
+            from tactical_ui import issue
+            issue(game, {'type': extracted_action_id, 'unit_ids': [selected_units[0].id], 'target_id': target.id, 'queue': shift_pressed})
+        else:
+            from gui.planetary_window import PlanetaryWindow
+            game.gui.planetary_window = PlanetaryWindow(game.gui, selected_units[0], target, extracted_action_id, shift_pressed)
+    elif extracted_action_id == 'tactical_attack':
         from tactical_ui import issue
         for unit in selected_units:
             issue(game, {'type': 'attack',
