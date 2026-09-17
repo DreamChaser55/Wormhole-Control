@@ -57,7 +57,7 @@ capacity. A failed start leaves the current campaign and map preview intact.
 
 | Setting | Accepted values |
 |---|---|
-| Players / systems | 2–6 players; 5–30 systems |
+| Players / systems | 2–6 players; 2–30 systems |
 | System radii | Integer minimum and maximum in 3–12; minimum ≤ maximum |
 | Inter-system distances | Finite, positive minimum and maximum; minimum < maximum |
 | Wormhole density | 0–100% in the wizard; 0–1 in the control interface |

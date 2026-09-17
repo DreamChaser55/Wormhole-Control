@@ -19,7 +19,7 @@ def wire_players():
 
 
 @pytest.mark.parametrize('field,value', [
-    ('num_systems', 4), ('num_systems', 31), ('num_systems', True),
+    ('num_systems', 1), ('num_systems', 31), ('num_systems', True),
     ('num_systems', []), ('system_radius_min', 2), ('system_radius_max', 13),
     ('system_radius_max', 5.5), ('system_radius_min', None),
     ('min_system_distance', 0), ('max_system_distance', -1),
@@ -60,7 +60,7 @@ def test_invalid_player_values_are_not_silently_normalized(field, value, code):
     assert direct.value.issues[0].code == protocol.value.code == code
 
 
-@pytest.mark.parametrize('count,radius,density', [(5, 3, 0), (30, 12, 1)])
+@pytest.mark.parametrize('count,radius,density', [(2, 3, 0), (30, 12, 1)])
 def test_boundaries_defaults_and_normalization(count, radius, density):
     settings = _parse_new_game_settings(dict(players=wire_players(), num_systems=count,
         system_radius_min=radius, system_radius_max=radius, wormhole_density=density,
@@ -90,7 +90,7 @@ def test_preview_mode_is_explicit_and_cannot_bypass_campaign_validation():
     with pytest.raises(ValueError, match='2-6'):
         prepare_new_campaign(settings)
     with pytest.raises(ValueError, match='num_systems'):
-        GameSettings(num_systems=4, player_configs=[], preview_only=True)
+        GameSettings(num_systems=1, player_configs=[], preview_only=True)
 
 
 def wizard_input():

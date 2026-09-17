@@ -504,4 +504,29 @@ def test_wizard_stage_2_layout_and_economy_grid(wizard_env):
     ctrl_rect = wizard._player_type_buttons[0].get_relative_rect()
     assert ctrl_rect.width >= 100
 
+
+def test_wizard_allows_minimum_two_systems(wizard_env):
+    """Verify that wizard supports 2 star systems as the minimum."""
+    wizard, _, _ = wizard_env
+    assert wizard._num_systems_slider.value_range[0] == 2
+
+    # Set to 2 systems and regenerate map preview
+    wizard._num_systems_slider.set_current_value(2)
+    wizard._snapshot()
+    wizard._generate_map()
+    assert wizard._map_generation_error is None
+    assert len(wizard._generated_galaxy.systems) == 2
+    assert len(wizard._generated_galaxy.wormholes) == 2  # 1 bidirectional conduit = 2 wormholes
+
+    # In stage 2 with 2 players under Normal, validation should succeed
+    wizard._num_players = 2
+    wizard.go_to_stage(2)
+    assert wizard.get_validation_errors() == []
+
+    # With 3 players under Normal, 2 systems should fail with distinct star system error
+    wizard._num_players = 3
+    assert any("distinct star system per player" in err for err in wizard.get_validation_errors())
+
+
 pytestmark = pytest.mark.usefixtures("pygame_context")
+

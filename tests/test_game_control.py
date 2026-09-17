@@ -121,7 +121,7 @@ class ProtocolSettingsTests(unittest.TestCase):
         for values in (
             {"unknown": 1},
             {"wormhole_density": 1.1},
-            {"num_systems": 4},
+            {"num_systems": 1},
             {"starting_credits": -1},
             {"min_system_distance": 400, "max_system_distance": 300},
         ):
