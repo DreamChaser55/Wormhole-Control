@@ -29,7 +29,7 @@ def create(game, key, owner=0):
 def test_catalog_coverage_and_canonical_values():
     from scripts.generate_reference import component_rows
     from unit_components.enums import AbilityType
-    assert len(BUILTINS) == 61
+    assert len(BUILTINS) == 66
     assert validate_builtin_catalog(BUILTINS) == {}
     assert {a.value for a in AbilityType} == {a for t in BUILTINS.values() for a in t['abilities']}
     assert all(any(t[row['key']] for t in BUILTINS.values()) for row in component_rows())
@@ -321,7 +321,7 @@ def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     create(game, 'FLEET_CARRIER')
     observation = build_observation(game, game.players[0])
     catalog = observation['action_catalogs']
-    assert len(catalog['construction_templates']) == 59
+    assert len(catalog['construction_templates']) == 64
     assert len(catalog['wing_templates']) == 2
     assert all(e['description'] and e['roles'] and 'support' in e for e in catalog['construction_templates'])
     assert observation['command_catalog']['version'] == 11

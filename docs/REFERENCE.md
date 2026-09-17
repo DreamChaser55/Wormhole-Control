@@ -358,16 +358,21 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Beam Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for beam combat. Inter-system travel. |
 | Kinetic Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for kinetic combat. Inter-system travel. |
 | Missile Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for missile combat. Inter-system travel. |
+| Artillery Battery | Combat | MEDIUM station | 46.02/50 | 1881 | 19 | 0.46 | Fortified stationary long-range artillery platform for perimeter and chokepoint defense. Stationary installation. |
 | Hazard Escort | Combat | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Reduces plasma, black hole, debris hazards by 75% for this unit while enabled. Costs 2 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Siege Frigate | Combat | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Dedicated planetary bombardment ship. Inter-system travel. |
 | Troop Transport | Combat | MEDIUM ship | 48.00/50 | 1940 | 20 | 0.48 | Dedicated planetary invasion ship. Inter-system travel. |
+| Artillery Frigate | Combat | MEDIUM ship | 49.02/50 | 1971 | 20 | 0.49 | Dedicated missile artillery frigate for mobile fire support. Inter-system travel. |
 | Flak Battery | Combat | MEDIUM station | 49.10/50 | 1973 | 20 | 0.49 | Designed for stationary air defense. Stationary installation. |
 | Flak Escort | Combat | MEDIUM ship | 49.80/50 | 1994 | 20 | 0.50 | Designed for fleet air defense. Inter-system travel. |
 | Artillery Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 29 | 0.90 | Designed for ranged fire support. Inter-system travel. |
+| Lance Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 29 | 0.90 | Dedicated beam sniper cruiser with long-range energy lances. Inter-system travel. |
+| Railgun Cruiser | Combat | LARGE ship | 90.24/100 | 3707 | 29 | 0.90 | Dedicated kinetic sniper cruiser with long-range railguns. Inter-system travel. |
 | Assault Cruiser | Combat | LARGE ship | 90.67/100 | 3720 | 29 | 0.91 | Designed for direct assault. Inter-system travel. |
 | Orbital Bastion | Combat | LARGE station | 92.80/100 | 3784 | 29 | 0.93 | Designed for colony defense. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
 | Battleship | Combat | HUGE ship | 183.93/200 | 7518 | 38 | 1.84 | Designed for fleet anchor. Inter-system travel. |
 | Siege Dreadnought | Combat | HUGE ship | 185.49/200 | 7565 | 39 | 1.85 | Dedicated planetary bombardment with a Siege Battery and long-range fleet weapons. Inter-system travel. |
+| Artillery Dreadnought | Combat | HUGE ship | 194.93/200 | 7848 | 39 | 1.95 | Dedicated long-range fleet bombardment dreadnought featuring tri-weapon artillery batteries. Inter-system travel. |
 | Interdiction Fortress | Combat | HUGE station | 200.00/200 | 8000 | 40 | 2.00 | Designed for fortified jump denial. Stationary installation. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
 | Mining Drone | Economy | TINY ship | 9.00/10 | 370 | 6 | 0.09 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Small Mining Ship | Economy | SMALL ship | 23.20/25 | 946 | 12 | 0.23 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
