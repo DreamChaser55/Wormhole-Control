@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 10
+CONTRACT_VERSION = 11
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -33,6 +33,7 @@ def _spec(description, fields=(), required=None, **kwargs):
 
 
 COMMAND_SPECS = {
+    "stabilize_wormhole": _spec("Approach and continuously maintain a wormhole within 500 units for 5 AM per owner turn. Both directions become 100% stable for all ships, including enemies. Starts at End Turn; fuel shortages wait for resupply. Queued work is blocked until cancelled.", ("target_id",), single_unit=True, capability=("wormhole_stabilizer_component", "antimatter_component")),
     "recruit_troops": _spec("Approach an owned colony and recruit integer amount troops on End Turn, paying 2 credits and 0.2 population per troop; leave at least one population.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
     "bombard_planet": _spec("Approach an enemy colony and bombard military defenses once per owner turn until readiness reaches 25%; each volley costs 10 AM.", ("target_id",), single_unit=True, capability=("siege_battery_component",)),
     "invade_planet": _spec("Approach an enemy colony and make one assault with integer amount troops for 20 AM; survivors return aboard. Queue behind recruitment when needed.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),

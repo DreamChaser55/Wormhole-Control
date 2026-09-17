@@ -278,6 +278,8 @@ class StrikecraftBayComponent(UnitComponent):
         self.docked_units.append(unit)
         from environmental_resistance import deactivate
         deactivate(unit)
+        from wormhole_stabilization import interrupt
+        interrupt(unit)
         if unit.commander_component:
             unit.commander_component.clear_explicit_orders()
             unit.commander_component.suspend_stance_activity("docked")

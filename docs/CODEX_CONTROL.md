@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":12}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":13}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -383,10 +383,10 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 12 and command contract 10 expose a deduplicated `ability_catalog`,
+Observation schema 13 and command contract 11 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v8`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v10`; unused OpenAI command fields stay null.
 
 
 ```json
@@ -417,7 +417,7 @@ Catalog descriptions include roles and equipment. Carriers expose wing productio
 
 ## Turn-start event summary
 
-Every schema-12 observation ends with `turn_summary`: reporting rounds (`from_turn`
+Every schema-13 observation ends with `turn_summary`: reporting rounds (`from_turn`
 and `to_turn`), grouped event `entries`, net `economy` changes, and `omitted_count`.
 Read this briefing before choosing orders. It covers the previous End Turn's
 resolution and intervening activity through this turn's opening effects. It is
@@ -427,7 +427,7 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 10 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 11 remain unchanged; no acknowledgement
 command is required from Codex.
 
 
@@ -460,5 +460,21 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.8 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.9 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
+
+## Wormhole stabilization
+
+Use `stabilize_wormhole` with one owned unit, `target_id` naming a disclosed
+wormhole, and optional `queue` (default false). Example command:
+
+```json
+{"type":"stabilize_wormhole","unit_ids":[42],"target_id":17,"queue":false}
+```
+
+Observe command options before issuing: stations require local range; mobile
+units approach automatically. Support begins at End Turn, costs 5 AM per owner
+turn and makes both directions safe for everyone, including enemies. Fuel
+shortages wait. Cancel the continuous root to release queued work. Observations
+expose natural/effective stability and progress without hidden support identities.
+See [complete rules](REFERENCE.md#wormhole-stabilization).

@@ -287,7 +287,8 @@ def build_celestial_body_panel(game, body: CelestialBody, *, show_rules: bool = 
     elif isinstance(body, Wormhole):
         data.append({'type': 'label', 'text': f"Exit System: {body.exit_system_name or 'None'}", 'object_id': '#sidebar_info_label', 'height': 25})
         data.append({'type': 'label', 'text': f"Exit Wormhole: {body.exit_wormhole_id if body.exit_wormhole_id is not None else 'None'}", 'object_id': '#sidebar_info_label', 'height': 25})
-        data.append({'type': 'label', 'text': f"Stability: {body.stability}", 'object_id': '#sidebar_info_label', 'height': 25})
+        from wormhole_stabilization import effective_stability
+        data.append({'type': 'label', 'text': f"Stability: {body.stability}% natural / {effective_stability(game.galaxy, body)}% effective", 'object_id': '#sidebar_info_label', 'height': 25})
         data.append({'type': 'label', 'text': f"Diameter: {body.diameter.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 25})
 
     elif isinstance(body, Comet):

@@ -187,8 +187,10 @@ class SystemViewRenderer:
                 elif isinstance(body, Wormhole):
                     body_color = PURPLE
                     body_radius = int(4 * scale_val)
-                    if body.stability < 100:
-                        pygame.draw.circle(self.screen, RED, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 1)
+                    from wormhole_stabilization import is_stabilized
+                    stabilized = is_stabilized(self.game.galaxy, body)
+                    if stabilized or body.stability < 100:
+                        pygame.draw.circle(self.screen, (80, 230, 180) if stabilized else RED, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(2 * scale_val), 1)
 
                 if should_draw_circle:
                     pygame.draw.circle(self.screen, body_color, (hex_center_pixel.x, hex_center_pixel.y), body_radius)
@@ -198,7 +200,7 @@ class SystemViewRenderer:
                     selection_radius = body_radius
                     if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and body.owner:
                         selection_radius += int(3 * scale_val)
-                    elif isinstance(body, Wormhole) and body.stability < 100:
+                    elif isinstance(body, Wormhole) and (body.stability < 100 or is_stabilized(self.game.galaxy, body)):
                         selection_radius += int(2 * scale_val)
                     elif isinstance(body, (AsteroidField, IceField, DebrisField)):
                         selection_radius = 10 * scale_val + max(1, int(scale_val))

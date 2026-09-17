@@ -4,6 +4,7 @@ from typing import Optional, TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
+from .wormhole_stabilizer import WormholeStabilizerComponent
 from .antimatter import AntimatterStorage, AntimatterHarvester
 from .movement import Engines, Hyperdrive
 from .weapons import Weapons, Turret
@@ -357,6 +358,8 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
 
     if template.get("has_troop_transport_component"):
         new_unit.add_component(TroopTransportComponent(new_unit, template.get("troop_capacity", TROOP_DEFAULT_CAPACITY)))
+    if template.get("has_wormhole_stabilizer_component"):
+        new_unit.add_component(WormholeStabilizerComponent(new_unit))
     if template.get("has_siege_battery_component"):
         new_unit.add_component(SiegeBatteryComponent(new_unit))
 
@@ -770,6 +773,7 @@ class Constructor(UnitComponent):
 
 
 COMPONENT_NAME_MAP = {
+    "WormholeStabilizerComponent": WormholeStabilizerComponent,
     "Engines": Engines,
     "Hyperdrive": Hyperdrive,
     "Weapons": Weapons,
@@ -916,6 +920,8 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
 
     elif comp_cls == TroopTransportComponent:
         return TroopTransportComponent.calc_hull_cost(config.get("capacity", TROOP_DEFAULT_CAPACITY))
+    elif comp_cls == WormholeStabilizerComponent:
+        return WormholeStabilizerComponent.calc_hull_cost()
     elif comp_cls == SiegeBatteryComponent:
         return SiegeBatteryComponent.calc_hull_cost()
     elif comp_cls == MarinesComponent:
@@ -1074,6 +1080,8 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
 
     elif comp_cls == TroopTransportComponent:
         return TroopTransportComponent(unit, config.get("capacity", TROOP_DEFAULT_CAPACITY))
+    elif comp_cls == WormholeStabilizerComponent:
+        return WormholeStabilizerComponent(unit)
     elif comp_cls == SiegeBatteryComponent:
         return SiegeBatteryComponent(unit)
     elif comp_cls == MarinesComponent:

@@ -82,6 +82,7 @@ class OrderType(Enum):
     STANCE = auto()              # Persistent standing policy that owns a transient Attack subtree
     TAKE_ANTIMATTER = auto()
     CONTINUOUS_ANTIMATTER_TRANSPORT = auto()
+    STABILIZE_WORMHOLE = auto()
 
 
 class Order:

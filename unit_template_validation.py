@@ -292,6 +292,9 @@ def equipment_errors(hull_size, components):
             if not c.has_engine or c.engine_speed <= 0 or not c.has_antimatter_storage:
                 errors.append(f"{flag}: requires mobile Engines and Antimatter Storage.")
 
+    if c.has_wormhole_stabilizer_component and not c.has_antimatter_storage:
+        errors.append("Wormhole Stabilizer requires Antimatter Storage.")
+
     # Trade component engine requirement
     if c.has_trade_component and not c.has_engine:
         errors.append("Trade component requires an Engine component.")
@@ -304,7 +307,7 @@ def equipment_errors(hull_size, components):
         c.has_colony_component, c.has_civilian_habitat_component, c.has_orbital_defense_component, c.has_trade_component, c.has_mining_component,
         c.has_metal_refinery_component, c.has_crystal_refinery_component,
         c.has_hangar, c.has_strikecraft_bay, c.has_inhibitor, c.has_ability_component,
-        c.has_troop_transport_component, c.has_siege_battery_component,
+        c.has_troop_transport_component, c.has_siege_battery_component, c.has_wormhole_stabilizer_component,
         c.has_sensors, c.has_minelayer_component, c.has_marines_component,
         c.has_cloaking_device, c.has_intelligence_component,
     ])

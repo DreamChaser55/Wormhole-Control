@@ -94,7 +94,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "COLONIZER_MK1": {
     "name": "Colonizer",
@@ -191,7 +193,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "SHIPYARD_MK1": {
     "name": "Shipyard",
@@ -288,7 +292,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "REPAIR_SHIP_SMALL": {
     "name": "Small Repair Ship",
@@ -385,7 +391,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "REPAIR_STATION_SMALL": {
     "name": "Small Repair Station",
@@ -484,7 +492,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "MINING_SHIP_SMALL": {
     "name": "Small Mining Ship",
@@ -581,7 +591,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "ANTIMATTER_HARVESTER": {
     "name": "Antimatter Harvester",
@@ -678,7 +690,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "TRADE_FREIGHTER_MK1": {
     "name": "Trade Freighter",
@@ -775,7 +789,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "METAL_REFINERY_STATION": {
     "name": "Metal Refinery Station",
@@ -872,7 +888,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "CRYSTAL_REFINERY_STATION": {
     "name": "Crystal Refinery Station",
@@ -969,7 +987,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "HANGAR_SHIP_LARGE": {
     "name": "Utility Transport",
@@ -1066,7 +1086,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "MISSILE_PLATFORM": {
     "name": "Missile Platform",
@@ -1171,7 +1193,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "FIGHTER_WING": {
     "name": "Fighter Wing",
@@ -1276,7 +1300,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "BOMBER_WING": {
     "name": "Bomber Wing",
@@ -1381,7 +1407,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "PATROL_CUTTER": {
     "name": "Patrol Cutter",
@@ -1486,7 +1514,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "INTERCEPTOR": {
     "name": "Interceptor",
@@ -1591,7 +1621,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "KINETIC_FRIGATE": {
     "name": "Kinetic Frigate",
@@ -1703,7 +1735,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "BEAM_FRIGATE": {
     "name": "Beam Frigate",
@@ -1815,7 +1849,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "MISSILE_FRIGATE": {
     "name": "Missile Frigate",
@@ -1927,7 +1963,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "FLAK_ESCORT": {
     "name": "Flak Escort",
@@ -2035,7 +2073,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "ARTILLERY_CRUISER": {
     "name": "Artillery Cruiser",
@@ -2154,7 +2194,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "ASSAULT_CRUISER": {
     "name": "Assault Cruiser",
@@ -2280,7 +2322,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "BATTLESHIP": {
     "name": "Battleship",
@@ -2450,7 +2494,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "SIEGE_DREADNOUGHT": {
     "name": "Siege Dreadnought",
@@ -2593,7 +2639,9 @@
     "has_troop_transport_component": false,
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
-    "siege_battery_hull_cost": 20.0
+    "siege_battery_hull_cost": 20.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "ESCORT_CARRIER": {
     "name": "Escort Carrier",
@@ -2698,7 +2746,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "FLEET_CARRIER": {
     "name": "Fleet Carrier",
@@ -2814,7 +2864,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "SCOUT": {
     "name": "Scout",
@@ -2911,7 +2963,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "SENSOR_STATION": {
     "name": "Sensor Station",
@@ -3008,7 +3062,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "BOARDING_CRUISER": {
     "name": "Boarding Cruiser",
@@ -3117,7 +3173,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "INTERDICTOR": {
     "name": "Interdictor",
@@ -3222,7 +3280,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "MINELAYER": {
     "name": "Minelayer",
@@ -3327,7 +3387,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "MINESWEEPER": {
     "name": "Minesweeper",
@@ -3435,7 +3497,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "INTELLIGENCE_SHIP": {
     "name": "Intelligence Ship",
@@ -3532,7 +3596,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "STEALTH_TENDER": {
     "name": "Stealth Tender",
@@ -3631,7 +3697,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "COMMAND_CRUISER": {
     "name": "Command Cruiser",
@@ -3746,7 +3814,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "NEBULA_TENDER": {
     "name": "Nebula Tender",
@@ -3845,7 +3915,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "RAIDER": {
     "name": "Raider",
@@ -3960,7 +4032,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "EXPEDITION_MINER": {
     "name": "Expedition Miner",
@@ -4057,7 +4131,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "FLEET_TANKER": {
     "name": "Fleet Tanker",
@@ -4156,7 +4232,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "BLOCKADE_RUNNER": {
     "name": "Blockade Runner",
@@ -4253,7 +4331,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "FLEET_REPAIR_SHIP": {
     "name": "Fleet Repair Ship",
@@ -4352,7 +4432,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "HEAVY_SHIPYARD": {
     "name": "Heavy Shipyard",
@@ -4457,7 +4539,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "INDUSTRIAL_HUB": {
     "name": "Industrial Hub",
@@ -4554,7 +4638,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "CIVILIAN_HABITAT": {
     "name": "Civilian Habitat",
@@ -4651,7 +4737,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "FUEL_DEPOT": {
     "name": "Fuel Depot",
@@ -4748,7 +4836,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "FLAK_BATTERY": {
     "name": "Flak Battery",
@@ -4863,7 +4953,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "ORBITAL_BASTION": {
     "name": "Orbital Bastion",
@@ -4985,7 +5077,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "INTERDICTION_FORTRESS": {
     "name": "Interdiction Fortress",
@@ -5111,7 +5205,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "MINING_DRONE": {
     "name": "Mining Drone",
@@ -5208,7 +5304,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "PATROL_ESCORT": {
     "name": "Patrol Escort",
@@ -5313,7 +5411,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "COVERT_INTELLIGENCE_SHIP": {
     "name": "Covert Intelligence Ship",
@@ -5420,7 +5520,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "ANTIMATTER_TRANSPORTER": {
     "name": "Antimatter Transporter",
@@ -5519,7 +5621,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "ANTIMATTER_STORAGE_STATION": {
     "name": "Antimatter Storage Station",
@@ -5618,7 +5722,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "ANTIMATTER_CACHE_STATION": {
     "name": "Antimatter Cache Station",
@@ -5717,7 +5823,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "HAZARD_ESCORT": {
     "name": "Hazard Escort",
@@ -5826,7 +5934,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "RADIATION_SURVEYOR": {
     "name": "Radiation Surveyor",
@@ -5927,7 +6037,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "PULSAR_HARVESTER": {
     "name": "Pulsar Harvester",
@@ -6028,7 +6140,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "TROOP_TRANSPORT": {
     "name": "Troop Transport",
@@ -6125,7 +6239,9 @@
     "troop_capacity": 40,
     "troop_transport_hull_cost": 20.0,
     "has_siege_battery_component": false,
-    "siege_battery_hull_cost": 0.0
+    "siege_battery_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
   },
   "SIEGE_FRIGATE": {
     "name": "Siege Frigate",
@@ -6222,6 +6338,206 @@
     "has_troop_transport_component": false,
     "troop_capacity": 40,
     "troop_transport_hull_cost": 0.0,
-    "siege_battery_hull_cost": 20.0
+    "siege_battery_hull_cost": 20.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0
+  },
+  "WORMHOLE_STABILIZER_TENDER": {
+    "name": "Wormhole Stabilizer Tender",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "build_time": 19,
+    "build_cost": 1790,
+    "has_engine": true,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 5.0,
+    "has_antimatter_storage": true,
+    "antimatter_capacity": 150.0,
+    "antimatter_hull_cost": 7.5,
+    "has_antimatter_harvester": false,
+    "antimatter_harvester_hull_cost": 15.0,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_jump_range": 5,
+    "hyperdrive_hull_cost": 8.0,
+    "has_weapon_bays": false,
+    "weapon_bays_hull_cost": 0.0,
+    "turrets": [],
+    "has_defenses": false,
+    "defenses_hull_cost": 0.0,
+    "armor": 0,
+    "shields": 0,
+    "point_defense": 0,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 15.0,
+    "has_repair_component": false,
+    "repair_rate": 10.0,
+    "repair_range": 200.0,
+    "credit_cost_per_hp": 1.0,
+    "repair_hull_cost": 0.0,
+    "has_colony_component": false,
+    "colony_hull_cost": 10,
+    "has_civilian_habitat_component": false,
+    "civilian_habitat_bonus": 50.0,
+    "civilian_habitat_hull_cost": 15.0,
+    "has_orbital_defense_component": false,
+    "orbital_defense_radius": 500.0,
+    "orbital_defense_attack_bonus": 0.2,
+    "orbital_defense_defense_bonus": 0.2,
+    "orbital_defense_hull_cost": 20.0,
+    "has_trade_component": false,
+    "trade_hull_cost": 10.0,
+    "trade_revenue_multiplier": 1.0,
+    "has_mining_component": false,
+    "mining_rate": 10.0,
+    "mining_range": 200.0,
+    "max_mining_cargo": 100.0,
+    "mining_hull_cost": 0.0,
+    "has_metal_refinery_component": false,
+    "metal_refinery_hull_cost": 20,
+    "unload_range": 300.0,
+    "has_crystal_refinery_component": false,
+    "crystal_refinery_hull_cost": 20,
+    "has_hangar": false,
+    "hangar_slots": 2,
+    "hangar_hull_cost": 0.0,
+    "has_strikecraft_bay": false,
+    "strikecraft_bay_slots": 2,
+    "strikecraft_bay_hull_cost": 0.0,
+    "wing_type": "FIGHTER",
+    "has_inhibitor": false,
+    "inhibitor_radius": 100.0,
+    "inhibitor_hull_cost": 0.0,
+    "has_ability_component": false,
+    "ability_hull_cost": 0.0,
+    "abilities": [],
+    "has_sensors": true,
+    "sensor_short_range": 2500.0,
+    "sensor_long_range_hexes": 1,
+    "sensors_hull_cost": 7.5,
+    "has_minelayer_component": false,
+    "minelayer_hull_cost": 15.0,
+    "has_troop_transport_component": false,
+    "troop_capacity": 40,
+    "troop_transport_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": true,
+    "wormhole_stabilizer_hull_cost": 15.0,
+    "has_siege_battery_component": false,
+    "siege_battery_hull_cost": 0.0,
+    "has_marines_component": false,
+    "marines_count": 10,
+    "marines_hull_cost": 0.0,
+    "has_cloaking_device": false,
+    "cloaking_type": "BASIC",
+    "cloaking_radius": 500.0,
+    "cloaking_hull_cost": 0.0,
+    "has_intelligence_component": false,
+    "intelligence_agents_count": 1,
+    "has_counter_intelligence": false,
+    "intelligence_hull_cost": 0.0,
+    "category": "Logistics",
+    "roles": [
+      "wormhole stabilization"
+    ],
+    "description": "Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled."
+  },
+  "WORMHOLE_STABILIZER_STATION": {
+    "name": "Wormhole Stabilizer Station",
+    "hull_size": "MEDIUM",
+    "hull_points": 100,
+    "build_time": 18,
+    "build_cost": 1775,
+    "has_engine": false,
+    "engine_speed": 100.0,
+    "engine_hull_cost": 0.0,
+    "has_antimatter_storage": true,
+    "antimatter_capacity": 400.0,
+    "antimatter_hull_cost": 20.0,
+    "has_antimatter_harvester": false,
+    "antimatter_harvester_hull_cost": 15.0,
+    "has_hyperdrive": false,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_jump_range": 5,
+    "hyperdrive_hull_cost": 0.0,
+    "has_weapon_bays": false,
+    "weapon_bays_hull_cost": 0.0,
+    "turrets": [],
+    "has_defenses": false,
+    "defenses_hull_cost": 0.0,
+    "armor": 0,
+    "shields": 0,
+    "point_defense": 0,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 15.0,
+    "has_repair_component": false,
+    "repair_rate": 10.0,
+    "repair_range": 200.0,
+    "credit_cost_per_hp": 1.0,
+    "repair_hull_cost": 0.0,
+    "has_colony_component": false,
+    "colony_hull_cost": 10,
+    "has_civilian_habitat_component": false,
+    "civilian_habitat_bonus": 50.0,
+    "civilian_habitat_hull_cost": 15.0,
+    "has_orbital_defense_component": false,
+    "orbital_defense_radius": 500.0,
+    "orbital_defense_attack_bonus": 0.2,
+    "orbital_defense_defense_bonus": 0.2,
+    "orbital_defense_hull_cost": 20.0,
+    "has_trade_component": false,
+    "trade_hull_cost": 10.0,
+    "trade_revenue_multiplier": 1.0,
+    "has_mining_component": false,
+    "mining_rate": 10.0,
+    "mining_range": 200.0,
+    "max_mining_cargo": 100.0,
+    "mining_hull_cost": 0.0,
+    "has_metal_refinery_component": false,
+    "metal_refinery_hull_cost": 20,
+    "unload_range": 300.0,
+    "has_crystal_refinery_component": false,
+    "crystal_refinery_hull_cost": 20,
+    "has_hangar": false,
+    "hangar_slots": 2,
+    "hangar_hull_cost": 0.0,
+    "has_strikecraft_bay": false,
+    "strikecraft_bay_slots": 2,
+    "strikecraft_bay_hull_cost": 0.0,
+    "wing_type": "FIGHTER",
+    "has_inhibitor": false,
+    "inhibitor_radius": 100.0,
+    "inhibitor_hull_cost": 0.0,
+    "has_ability_component": false,
+    "ability_hull_cost": 0.0,
+    "abilities": [],
+    "has_sensors": true,
+    "sensor_short_range": 2500.0,
+    "sensor_long_range_hexes": 1,
+    "sensors_hull_cost": 7.5,
+    "has_minelayer_component": false,
+    "minelayer_hull_cost": 15.0,
+    "has_troop_transport_component": false,
+    "troop_capacity": 40,
+    "troop_transport_hull_cost": 0.0,
+    "has_wormhole_stabilizer_component": true,
+    "wormhole_stabilizer_hull_cost": 15.0,
+    "has_siege_battery_component": false,
+    "siege_battery_hull_cost": 0.0,
+    "has_marines_component": false,
+    "marines_count": 10,
+    "marines_hull_cost": 0.0,
+    "has_cloaking_device": false,
+    "cloaking_type": "BASIC",
+    "cloaking_radius": 500.0,
+    "cloaking_hull_cost": 0.0,
+    "has_intelligence_component": false,
+    "intelligence_agents_count": 1,
+    "has_counter_intelligence": false,
+    "intelligence_hull_cost": 0.0,
+    "category": "Logistics",
+    "roles": [
+      "wormhole stabilization"
+    ],
+    "description": "Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled."
   }
 }

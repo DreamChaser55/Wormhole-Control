@@ -242,7 +242,7 @@ Antimatter Storage is equipped; it does not require every design to carry a tank
 ### Component catalogue
 
 <!-- BEGIN GENERATED: components -->
-The Unit Designer provides **26 selectable component rows**. Commander is always present.
+The Unit Designer provides **27 selectable component rows**. Commander is always present.
 
 | # | Component Key | Label | Cost Type | Default Cost |
 | --- | --- | --- | --- | --- |
@@ -264,14 +264,15 @@ The Unit Designer provides **26 selectable component rows**. Commander is always
 | 16 | `has_hangar` | Hangar | Dynamic | 20.0 |
 | 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 |
 | 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 6.67 |
-| 19 | `has_ability_component` | Abilities | Dynamic | 10.0 |
-| 20 | `has_sensors` | Sensors | Dynamic | 2.0 |
-| 21 | `has_minelayer_component` | Minelayer | Fixed | 15.0 |
-| 22 | `has_troop_transport_component` | Troop Transport | Dynamic | 20.0 |
-| 23 | `has_siege_battery_component` | Siege Battery | Fixed | 20.0 |
-| 24 | `has_marines_component` | Marines | Dynamic | 10.0 |
-| 25 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 |
-| 26 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 |
+| 19 | `has_wormhole_stabilizer_component` | Wormhole Stabilizer | Fixed | 15.0 |
+| 20 | `has_ability_component` | Abilities | Dynamic | 10.0 |
+| 21 | `has_sensors` | Sensors | Dynamic | 2.0 |
+| 22 | `has_minelayer_component` | Minelayer | Fixed | 15.0 |
+| 23 | `has_troop_transport_component` | Troop Transport | Dynamic | 20.0 |
+| 24 | `has_siege_battery_component` | Siege Battery | Fixed | 20.0 |
+| 25 | `has_marines_component` | Marines | Dynamic | 10.0 |
+| 26 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 |
+| 27 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 |
 <!-- END GENERATED: components -->
 
 Unless an exception is listed below, utility components require **Small or larger**
@@ -381,8 +382,10 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
 | Antimatter Cache Station | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Small stationary fuel reserve with 460 AM storage. Accept deliveries and supply local friendly ships through Transfer Antimatter or Take Antimatter. |
 | Shipyard | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Designed for stationary construction. Stationary installation. |
+| Wormhole Stabilizer Station | Logistics | MEDIUM station | 42.50/50 | 1775 | 18 | 0.42 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
 | Constructor | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Designed for mobile construction and refitting. Inter-system travel. |
 | Fuel Depot | Logistics | MEDIUM station | 43.00/50 | 1790 | 19 | 0.43 | Designed for stationary fuel collection. Stationary installation. Harvest near stars or inside hydrogen nebulae. |
+| Wormhole Stabilizer Tender | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
 | Antimatter Harvester | Logistics | MEDIUM ship | 45.00/50 | 1850 | 19 | 0.45 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
 | Small Repair Station | Logistics | MEDIUM station | 47.99/50 | 1940 | 20 | 0.48 | Designed for stationary repair. Stationary installation. |
 | Antimatter Transporter | Logistics | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Dedicated antimatter transport. Inter-system travel. Take Antimatter loads from friendly units; Continuous Antimatter Transport repeats deliveries with an automatic return reserve. |
@@ -472,7 +475,7 @@ can block queued work until cancelled or replaced.
 ### Order types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **42 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **43 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order type | Action |
@@ -485,6 +488,7 @@ The `OrderType` enum defines **42 order types**, including the persistent `STANC
 | `STANCE` | Standing engagement policy, separate from explicit orders. |
 | `DEFEND` | Guard a position or friendly/allied unit. |
 | `PROTECT` | Escort a friendly/allied unit and intercept enemies. |
+| `STABILIZE_WORMHOLE` | Approach one endpoint and maintain 100% stability for the whole connection; fuel shortages wait. |
 | `TOGGLE_INHIBITOR` | Activate or deactivate an inhibition field. |
 | `COLONIZE` | Establish a colony on a habitable body. |
 | `RECRUIT_TROOPS` | Approach an owned colony and recruit a chosen troop count into transport cargo at End Turn. |
@@ -538,6 +542,43 @@ the target; Attack, Dock, Repair, Refit, Construct, trade, transfers, intelligen
 abilities use their respective ranges. Colonization and loading colonists stop
 150 units beyond the body's surface, approaching automatically if necessary.
 Microjump and carrier deployment also respect hull-blocking fields and storms.
+
+### Wormhole stabilization
+
+A **Wormhole Stabilizer** costs 15 hull and requires a Medium-or-larger ship or
+station with Antimatter Storage. Select one equipped unit and choose **Stabilize
+Wormhole** in the System or Sector context menu. Ships approach automatically;
+stations must already be within 500 units of the endpoint in the same sector.
+The boundary is included. Shift queues the order.
+
+While supported, a connection has **100% effective stability in both directions
+for everyone, including enemies**. Its natural stability remains unchanged.
+Diameter limits, Advanced Hyperdrive requirements, jump costs, recharge and
+inhibition rules still apply. Stabilizers work within the wormhole's natural
+inhibition radius; they do not generate an inhibition field.
+
+Support costs **5 AM per owner turn**. At End Turn, units already in range pay
+before their owner's ships move. Newly arrived or refuelled units can pay after
+movement and unit updates, protecting later crossings. Each unit pays at most
+once per owner turn. Paying exactly 5 AM still protects the connection until the
+next payment check. Issuing an order or loading a save never charges fuel.
+
+Insufficient fuel stops protection and leaves the order **Waiting for antimatter**;
+delivery by another unit lets support resume automatically at a payment phase.
+Cancellation, replacement, capture, destruction, docking, atmospheric hiding or
+loss of required equipment ends support. Temporary disablement pauses it;
+displacement removes protection and prompts another approach. Multiple sources
+provide redundancy without stacking benefits, and each source pays upkeep.
+After the last source stops, normal instability risk immediately returns.
+
+Maintaining support suspends stance combat and blocks queued work until cancelled.
+Naturally stable wormholes are valid targets but gain no extra benefit. The unit
+sidebar shows progress and consumption; wormhole panels show natural and effective
+stability. A green outline identifies an actively stabilized endpoint.
+
+The Logistics catalogue provides a **Wormhole Stabilizer Tender**, with Engines
+and Advanced Hyperdrive, and a stationary **Wormhole Stabilizer Station** with
+400 AM storage. Both are unarmed and start without a maintain order.
 
 ### Weapons and damage
 

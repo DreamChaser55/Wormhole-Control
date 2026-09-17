@@ -42,6 +42,7 @@ COMPONENT_SPECS = {
     'StrikecraftBayComponent': ComponentSpec('has_strikecraft_bay', {'max_slots': 'strikecraft_bay_slots'}),
     'HyperspaceInhibitionFieldEmitter': ComponentSpec('has_inhibitor', {'radius': 'inhibitor_radius'}),
     'TroopTransportComponent': ComponentSpec('has_troop_transport_component', {'capacity': 'troop_capacity'}),
+    'WormholeStabilizerComponent': ComponentSpec('has_wormhole_stabilizer_component'),
     'SiegeBatteryComponent': ComponentSpec('has_siege_battery_component'),
     'MarinesComponent': ComponentSpec('has_marines_component', {'marines_count': 'marines_count'}),
     'CloakingDevice': ComponentSpec('has_cloaking_device', {'device_type': 'cloaking_type', 'area_radius': 'cloaking_radius'}),

@@ -52,7 +52,15 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any) -> None
     if not isinstance(extracted_action_id, str):
         extracted_action_id = str(extracted_action_id)
 
-    if extracted_action_id in ('recruit_troops', 'invade_planet', 'bombard_planet'):
+    if extracted_action_id == 'stabilize_wormhole' or extracted_action_id.startswith('stabilize_wormhole_'):
+        if len(selected_units) != 1:
+            return
+        if extracted_action_id.startswith('stabilize_wormhole_'):
+            target = game.galaxy.wormholes.get(int(extracted_action_id.removeprefix('stabilize_wormhole_')))
+        if isinstance(target, Wormhole):
+            from tactical_ui import issue
+            issue(game, {'type': 'stabilize_wormhole', 'unit_ids': [selected_units[0].id], 'target_id': target.id, 'queue': shift_pressed})
+    elif extracted_action_id in ('recruit_troops', 'invade_planet', 'bombard_planet'):
         if len(selected_units) != 1 or not isinstance(target, (Planet, Moon, ColonizableAsteroid)):
             return
         if extracted_action_id == 'bombard_planet':

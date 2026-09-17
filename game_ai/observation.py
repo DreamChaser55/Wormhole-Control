@@ -104,12 +104,12 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         }
         if detailed:
             system_data["celestial_bodies"] = [
-                _body_view(body, player, include_system=False)
+                _body_view(body, player, include_system=False, galaxy=galaxy)
                 for body in exact_for_system
             ]
         else:
             system_data["notable_bodies"] = [
-                _body_view(body, player, include_system=False)
+                _body_view(body, player, include_system=False, galaxy=galaxy)
                 for body in exact_for_system
             ]
             system_data["body_summary"] = _body_summary(system_bodies, player)
@@ -157,7 +157,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 12,
+        "schema_version": 13,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -319,6 +319,9 @@ def _unit_view(
                 'weapons_suppressed': bool(root and root.order_type.name == 'EMERGENCY_RECOVERY'),
                 'recovery_launch_locked': wing.recovery_ready_round > round_now(game.galaxy),
             }
+    if relation in {"self", "ally"} and getattr(unit, "wormhole_stabilizer_component", None):
+        from wormhole_stabilization import state_view
+        data["wormhole_stabilizer"] = state_view(unit)
     if include_capabilities:
         legal, options, conditional = command_guidance(
             game,
@@ -336,7 +339,7 @@ def _unit_view(
 
 
 def _body_view(
-    body: Any, viewer: Any, *, include_system: bool = True
+    body: Any, viewer: Any, *, include_system: bool = True, galaxy: Any = None
 ) -> dict[str, Any]:
     owner = getattr(body, "owner", None)
     data = {
@@ -376,6 +379,10 @@ def _body_view(
     if hasattr(body, "density") and body.density is not None:
         data["density"] = _enum_value(body.density)
         data["max_hull_size"] = getattr(body.max_hull_size, "name", str(body.max_hull_size))
+    if hasattr(body, "stability"):
+        from wormhole_stabilization import effective_stability, is_stabilized
+        data["effective_stability"] = effective_stability(galaxy, body)
+        data["stabilized"] = is_stabilized(galaxy, body)
     if hasattr(body, "exit_system_name"):
         data["exit_system_name"] = str(body.exit_system_name)
     is_solid = getattr(body, "is_solid", True)

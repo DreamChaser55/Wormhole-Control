@@ -1,18 +1,18 @@
 # Campaign persistence
 
-The current save version is **4.8**. New saves preserve the installed component
+The current save version is **4.9**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
-Only version **4.8** is supported. Unversioned, older, unknown and future saves
+Only version **4.9** is supported. Unversioned, older, unknown and future saves
 are rejected with the expected version before hydration. Alpha schema changes
 require a new campaign; no migrations or automatic conversions are provided.
 Rejected files are never modified.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.8.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.9.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges do not generate refunds. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
@@ -88,7 +88,7 @@ actuators are reacquired through normal play.
 
 `ATTACK_LONG_RANGE` uses the same order envelope as `ATTACK`, retaining its distinct
 type, target/subsystem, UUID and approach descendants. Restoring it rebinds firing
-and navigation without replaying execution. The save format remains 4.8.
+and navigation without replaying execution. The save format remains 4.9.
 
 When adding a component or ability, register it, declare every persistent field,
 and extend its independent round-trip fixture. An incompatible schema change
@@ -199,7 +199,7 @@ and prices when they start. No new retrofit AI or socket command is introduced.
 
 ## Turn briefings
 
-Save 4.8 requires each player's `briefing` state: initialization/collection flags,
+Save 4.9 requires each player's `briefing` state: initialization/collection flags,
 reporting boundary, event sequence, bounded pending entries and omission count,
 economic baseline, discovery keys, frozen current report and human acknowledgement.
 The current report contains its start/end rounds, grouped entries, net economy
@@ -232,7 +232,7 @@ format; save 4.5 and unit schema 1 are rejected before hydration.
 
 ## Planetary warfare state
 
-Save 4.8 uses unit schema 3. Every unit stores the nonnegative integer
+Save 4.9 uses unit schema 3. Every unit stores the nonnegative integer
 `last_planetary_action_round`, bounded by the saved campaign round. This survives
 refits, cancellation and capture, preventing replay or an extra action after load.
 Troop Transport schema 1 stores integer `capacity` and current `troops`; destroyed
@@ -251,3 +251,13 @@ bombard or roll. The next End Turn rechecks authoritative eligibility; completed
 orders and unit markers prevent repeated attacks. Identical restored state and
 action sequences produce identical invasion rolls. Older saves, including 4.7,
 are unsupported under the Alpha policy.
+
+## Wormhole support state
+
+Format 4.9 registers `WormholeStabilizerComponent` and `STABILIZE_WORMHOLE`.
+The component stores its last paid round and payer ID; the order stores its typed
+wormhole target, normal UUID/approach descendants, powered flag and phase.
+Coverage is derived from live eligible maintainers after references restore.
+Loading does not charge fuel, advance orders or modify natural wormhole stability.
+Invalid payment/state values reject the candidate; ineligible support reconciles
+to unpowered. Only 4.9 is supported; older saves require a new campaign.

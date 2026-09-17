@@ -417,6 +417,8 @@ def reconcile(candidate):
     # Carrier effects depend on restored explicit wing roots as well as the object graph.
     for obj, _ in list(iter_units(galaxy)):
         sm._restore_saved_commander(obj, candidate)
+    from wormhole_stabilization import reconcile as reconcile_stabilizers
+    reconcile_stabilizers(candidate)
     reconcile_links(galaxy)
     from tactical_abilities import start_owner_turn
     for index, player in enumerate(candidate.players):

@@ -373,9 +373,11 @@ class SectorCelestialRenderer:
         elif isinstance(obj, Wormhole):
             obj_radius_logical = WORMHOLE_RADIUS
             obj_color = PURPLE
-            if obj.stability < 100:
+            from wormhole_stabilization import is_stabilized
+            stabilized = is_stabilized(self.game.galaxy, obj)
+            if stabilized or obj.stability < 100:
                 pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                pygame.draw.circle(self.screen, RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
+                pygame.draw.circle(self.screen, (80, 230, 180) if stabilized else RED, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 2, 1)
 
         if should_draw_circle:
             pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)

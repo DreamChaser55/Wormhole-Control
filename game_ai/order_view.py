@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from order_history import public_reason
 
-CONTINUOUS = {"patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade", "continuous_antimatter_transport"}
+CONTINUOUS = {"stabilize_wormhole", "patrol", "protect", "defend", "continuous_mine", "continuous_resupply", "continuous_trade", "continuous_antimatter_transport"}
 
 
 def enum_name(value):
@@ -76,6 +76,9 @@ def order_layers(unit, relation, visible_ids, body_ids):
                 public.update(source_id=params.get('source_unit_id'), target_id=params.get('target_unit_id'))
             data["parameters"] = public
         progress = {}
+        if kind == "stabilize_wormhole" and not hidden:
+            from wormhole_stabilization import state_view
+            progress = state_view(unit, order=order)
         if kind == 'continuous_antimatter_transport' and not hidden:
             progress = {'phase': order.phase, 'waiting_reason': order.waiting_reason, 'return_reserve': order.return_reserve}
         if kind in {'attack_run', 'emergency_recovery'}:

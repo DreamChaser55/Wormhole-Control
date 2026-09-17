@@ -932,6 +932,10 @@ class CommandGateway:
 
     def _order_factory(self, player: Any, command: Any):
         from geometry import Position
+        if command.type == "stabilize_wormhole":
+            from unit_orders.wormhole_stabilizer import StabilizeWormholeOrder
+            self._body(command.target_id)
+            return lambda unit: StabilizeWormholeOrder(unit, {"target_id": command.target_id}), command.type
         if command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
             from unit_orders.planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
             self._body(command.target_id)
@@ -1672,7 +1676,12 @@ class CommandGateway:
         if hidden and command.type != "leave_gas_giant":
             raise _Rejected("invalid_state", "Submerged units cannot execute orders while hidden in a gas giant atmosphere.")
 
-        if command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
+        if command.type == "stabilize_wormhole":
+            from wormhole_stabilization import blocker
+            error = blocker(self.game, unit.owner, unit, self._body(command.target_id))
+            if error:
+                raise _Rejected(error, "Wormhole stabilization unavailable for this unit or route.")
+        elif command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
             from planetary_warfare import blocker
             body = self._body(command.target_id)
             error = blocker(self.game, unit.owner, command.type, body, unit, command.amount,

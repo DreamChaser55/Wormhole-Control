@@ -69,6 +69,13 @@ def build_system_context_menu_options(game, target_hex_coord: HexCoord) -> typin
                     options.append(("Jump Into This Sector", "jump_interhex"))
                     break
 
+    player = game.players[game.current_player_index]
+    owned = [u for u in actors if isinstance(u, Unit) and u.owner == player]
+    if len(owned) == 1 and owned[0].wormhole_stabilizer_component:
+        from wormhole_stabilization import blocker
+        for body in getattr(current_system.hexes.get(target_hex_coord), 'celestial_bodies', ()):
+            if isinstance(body, Wormhole) and blocker(game, player, owned[0], body) is None:
+                options.append((f"Stabilize Wormhole to {body.exit_system_name}", f"stabilize_wormhole_{body.id}"))
     return options
 
 
@@ -376,6 +383,10 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                     options.append(("Use Ability", ability_options))
 
             elif isinstance(target_object, Wormhole):
+                from wormhole_stabilization import blocker
+                owned = [a for a in actors if a.owner == current_player]
+                if len(owned) == 1 and owned[0].wormhole_stabilizer_component and blocker(game, current_player, owned[0], target_object) is None:
+                    options.append(("Stabilize Wormhole", "stabilize_wormhole"))
                 if any(a.hyperdrive_component and a.hyperdrive_component.drive_type == HyperdriveType.ADVANCED and a.in_system == target_object.in_system for a in actors):
                     options.append(("Jump Wormhole", "jump_wormhole"))
 

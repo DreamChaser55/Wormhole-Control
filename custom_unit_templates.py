@@ -105,7 +105,7 @@ ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.SMALL
 ADVANCED_CLOAKING_MIN_HULL = HullSize.SMALL
 
 for _hull in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL):
-    HULL_RESTRICTIONS.setdefault(_hull, set()).update({"has_troop_transport_component", "has_siege_battery_component"})
+    HULL_RESTRICTIONS.setdefault(_hull, set()).update({"has_troop_transport_component", "has_siege_battery_component", "has_wormhole_stabilizer_component"})
 
 # Helper to fetch component requirements for abilities dynamically from single-source ABILITY_DEFINITIONS
 def get_ability_required_components(ability_key: str) -> List[str]:
@@ -439,6 +439,7 @@ class ComponentConfig:
 
     has_troop_transport_component: bool = False
     troop_capacity: int = TROOP_DEFAULT_CAPACITY
+    has_wormhole_stabilizer_component: bool = False
     has_siege_battery_component: bool = False
 
     # Marines
@@ -563,6 +564,11 @@ class ComponentConfig:
         return TroopTransportComponent.calc_hull_cost(self.troop_capacity) if self.has_troop_transport_component else 0.0
 
     @property
+    def wormhole_stabilizer_hull_cost(self) -> float:
+        from wormhole_stabilization import STABILIZER_HULL_COST
+        return STABILIZER_HULL_COST if self.has_wormhole_stabilizer_component else 0.0
+
+    @property
     def siege_battery_hull_cost(self) -> float:
         from planetary_balance import SIEGE_HULL_COST
         return SIEGE_HULL_COST if self.has_siege_battery_component else 0.0
@@ -647,7 +653,7 @@ class CustomUnitTemplate:
         if c.has_ability_component:             total += c.ability_hull_cost
         if c.has_sensors:                       total += c.sensors_hull_cost
         if c.has_minelayer_component:           total += c.minelayer_hull_cost
-        total += c.troop_transport_hull_cost + c.siege_battery_hull_cost
+        total += c.troop_transport_hull_cost + c.siege_battery_hull_cost + c.wormhole_stabilizer_hull_cost
         if c.has_marines_component:             total += c.marines_hull_cost
         if c.has_cloaking_device:              total += c.cloaking_device_hull_cost
         if c.has_intelligence_component:       total += c.intelligence_hull_cost
@@ -971,6 +977,7 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
 
         has_troop_transport_component=d.get("has_troop_transport_component", False),
         troop_capacity=int(d.get("troop_capacity", TROOP_DEFAULT_CAPACITY)),
+        has_wormhole_stabilizer_component=d.get("has_wormhole_stabilizer_component", False),
         has_siege_battery_component=d.get("has_siege_battery_component", False),
         has_marines_component=d.get("has_marines_component", False),
         marines_count=int(d.get("marines_count", 10)),
@@ -1112,6 +1119,8 @@ def template_to_dict(template: CustomUnitTemplate, *, is_custom: bool = True) ->
         "has_troop_transport_component": c.has_troop_transport_component,
         "troop_capacity": c.troop_capacity,
         "troop_transport_hull_cost": c.troop_transport_hull_cost,
+        "has_wormhole_stabilizer_component": c.has_wormhole_stabilizer_component,
+        "wormhole_stabilizer_hull_cost": c.wormhole_stabilizer_hull_cost,
         "has_siege_battery_component": c.has_siege_battery_component,
         "siege_battery_hull_cost": c.siege_battery_hull_cost,
         "has_marines_component": c.has_marines_component,

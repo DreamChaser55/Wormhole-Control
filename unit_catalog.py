@@ -40,6 +40,7 @@ def describe_template(key, raw):
         'trade_component': ('trade_revenue_multiplier',), 'hangar': ('hangar_slots',),
         'strikecraft_bay': ('strikecraft_bay_slots',), 'inhibitor': ('inhibitor_radius',),
         'troop_transport_component': ('troop_capacity',), 'siege_battery_component': (),
+        'wormhole_stabilizer_component': (),
         'minelayer_component': (), 'marines_component': ('marines_count',),
         'cloaking_device': ('cloaking_type', 'cloaking_radius'),
         'intelligence_component': ('intelligence_agents_count', 'has_counter_intelligence'),
@@ -52,6 +53,9 @@ def describe_template(key, raw):
         support['cloaking_device']['antimatter_cost_per_turn'] = (
             CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN if data['cloaking_type'] == 'BASIC'
             else data['cloaking_radius'] * CLOAKING_ADVANCED_ANTIMATTER_COST_PER_RADIUS)
+    if 'wormhole_stabilizer_component' in support:
+        from wormhole_stabilization import STABILIZER_RANGE, STABILIZER_UPKEEP
+        support['wormhole_stabilizer_component'].update(range=STABILIZER_RANGE, antimatter_cost_per_turn=STABILIZER_UPKEEP, benefits='all_ships_both_directions')
     if 'inhibitor' in support:
         support['inhibitor']['antimatter_cost_per_turn'] = data['inhibitor_radius'] / 50 * INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS
     if data['has_antimatter_harvester']:

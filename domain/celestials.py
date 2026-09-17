@@ -252,6 +252,8 @@ class Planet(CelestialBody):
         unit.is_hidden_in_gas_giant = True
         from environmental_resistance import deactivate
         deactivate(unit)
+        from wormhole_stabilization import interrupt
+        interrupt(unit)
         unit.hidden_in_gas_giant_id = self.id
 
         if getattr(unit, 'commander_component', None):

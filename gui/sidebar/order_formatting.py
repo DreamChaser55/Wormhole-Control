@@ -63,6 +63,12 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
                 f"  Troops: {parameters['amount']}" if "amount" in parameters else "  Military bombardment to 25% readiness",
                 "  Resolves once per ship per round at End Turn"]
 
+    if order_type == "STABILIZE_WORMHOLE":
+        return ["Stabilize Wormhole", f"  Wormhole ID: {parameters.get('target_id')}",
+                "  " + str(state_data.get('phase', 'approach')).replace('_', ' ').title(),
+                "  500 range; 5 AM/owner turn; protects all ships in both directions",
+                "  Continuous: queued work waits until cancelled"]
+
     if order_type == "STANCE":
         stance = str(parameters.get("stance", "do_nothing")).replace("_", " ").title()
         return [f"<font color='{PATROL_TYPE_COLOR}'><b>Stance:</b></font> <font color='{INFO_COLOR}'>{stance}</font>"]

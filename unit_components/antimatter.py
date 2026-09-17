@@ -30,6 +30,8 @@ class AntimatterStorage(UnitComponent):
     def on_destroyed(self):
         from environmental_resistance import deactivate
         deactivate(self.unit)
+        from wormhole_stabilization import interrupt
+        interrupt(self.unit)
 
     def validate_state(self):
         if self.current_amount > self.max_capacity:

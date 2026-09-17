@@ -106,7 +106,7 @@ class JourneyEstimate:
     position: Position
 
 
-def estimate_approach(unit, galaxy, target, origin=None):
+def estimate_approach(unit, galaxy, target, origin=None, *, approach_range=ANTIMATTER_TRANSFER_RANGE):
     """Estimate a deterministic feasible approach without orders, IDs or mutations.
 
     Uses navigation's topology, jump waypoints, collision avoidance and fuel costs.
@@ -206,7 +206,7 @@ def estimate_approach(unit, galaxy, target, origin=None):
         if (
             system == target.in_system
             and coord == target.in_hex
-            and distance(point, target.position) <= ANTIMATTER_TRANSFER_RANGE
+            and distance(point, target.position) <= approach_range
         ):
             return JourneyEstimate(0.0, 0, system, coord, point)
         if system != target.in_system:
@@ -242,7 +242,7 @@ def estimate_approach(unit, galaxy, target, origin=None):
                 )
                 escape()
         endpoint = position_at_distance_from_target(
-            point, target.position, ANTIMATTER_TRANSFER_RANGE - 5
+            point, target.position, approach_range - 5
         )
         local(target.in_hex, endpoint)
         return JourneyEstimate(fuel, turns, system, coord, point)

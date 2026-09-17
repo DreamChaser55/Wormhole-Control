@@ -88,6 +88,8 @@ class TurnProcessor:
             # 3. Generate resource credits for the active player based on population and habitats.
             # 4. Deduct upkeep for the active player's units.
             # 5. Run unit state updates (engines, weapons, order resolution) with updated context.
+            from wormhole_stabilization import process_support
+            process_support(self.game, current_player)
             from tactical_abilities import reconcile_links
             reconcile_links(self.game.galaxy)
             with ProfileTimer("Movement processing"):
@@ -120,6 +122,7 @@ class TurnProcessor:
 
             from planetary_warfare import process_actions
             process_actions(self.game, current_player)
+            process_support(self.game, current_player)
 
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 
@@ -395,7 +398,8 @@ class TurnProcessor:
                             logger.debug(f"   {unit.name} completed wormhole jump from {origin_system.name} to {target_sys_name}, into hex {arrival_hex}")
                             
                             # Apply probabilistic damage for unstable wormholes (< 100 stability)
-                            stability = entry_wormhole.stability
+                            from wormhole_stabilization import effective_stability
+                            stability = effective_stability(self.game.galaxy, entry_wormhole)
                             if stability < 100:
                                 damage_chance = (100 - stability) / 100.0
                                 if random.random() < damage_chance:

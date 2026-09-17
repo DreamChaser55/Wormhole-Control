@@ -166,6 +166,8 @@ def supported_commands(unit: Any) -> list[str]:
         commands.append("construct")
     if getattr(unit, "troop_transport_component", None):
         commands.extend(["recruit_troops", "invade_planet"])
+    if getattr(unit, "wormhole_stabilizer_component", None):
+        commands.append("stabilize_wormhole")
     if getattr(unit, "siege_battery_component", None):
         commands.append("bombard_planet")
     if getattr(unit, "repair_component", None):
@@ -585,6 +587,12 @@ def command_guidance(
     if cloak is not None:
         active = bool(getattr(cloak, "is_active", False))
         options["toggle_cloaking"] = {"current_state": "active" if active else "inactive", "resulting_state": "inactive" if active else "active", "available": not capability_blocker(unit, "toggle_cloaking")}
+    from wormhole_stabilization import command_options as stabilizer_options
+    stabilization = stabilizer_options(game, player, unit, exact_bodies)
+    if stabilization is not None:
+        options["stabilize_wormhole"] = stabilization
+        if any(item["blocker"] is None for item in stabilization["targets"]):
+            legal.add("stabilize_wormhole")
     from planetary_warfare import command_options
     planetary = command_options(game, player, unit, exact_bodies)
     options.update(planetary)

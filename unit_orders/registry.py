@@ -1,4 +1,5 @@
 """Authoritative persistence order-class registry."""
+from .wormhole_stabilizer import StabilizeWormholeOrder
 from .planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
 from .abilities import UseAbilityOrder
 from .strikecraft import AttackRunOrder, EmergencyRecoveryOrder
@@ -32,6 +33,7 @@ from .trade import ContinuousTradeOrder, TradeOrder
 
 # The single authoritative mapping used by persistence and coverage tests.
 ORDER_CLASS_REGISTRY = {
+    OrderType.STABILIZE_WORMHOLE: StabilizeWormholeOrder,
     OrderType.RECRUIT_TROOPS: RecruitTroopsOrder,
     OrderType.BOMBARD_PLANET: BombardPlanetOrder,
     OrderType.INVADE_PLANET: InvadePlanetOrder,
@@ -77,6 +79,7 @@ ORDER_CLASS_REGISTRY = {
 }
 
 __all__ = [
+    "StabilizeWormholeOrder",
     "OrderStatus",
     "OrderType",
     "Order",
