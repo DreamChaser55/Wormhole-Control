@@ -27,22 +27,22 @@ class Defenses(UnitComponent):
     STATE_REAL_FIELDS = ("armor", "shields", "point_defense")
     DISPLAY_NAME: str = "Defenses"
     SIDEBAR_ORDER: int = 4
-    armor: int = 0
-    shields: int = 0
-    point_defense: int = 0
+    armor: float = 0.0
+    shields: float = 0.0
+    point_defense: float = 0.0
 
-    def __init__(self, unit: 'Unit', armor: int = 0, shields: int = 0, point_defense: int = 0, hull_cost: float = 0.0):
+    def __init__(self, unit: 'Unit', armor: float = 0.0, shields: float = 0.0, point_defense: float = 0.0, hull_cost: float = 0.0):
         super().__init__(unit, hull_cost=hull_cost)
-        self.armor = armor
-        self.shields = shields
-        self.point_defense = point_defense
+        self.armor = float(armor)
+        self.shields = float(shields)
+        self.point_defense = float(point_defense)
 
     def on_destroyed(self) -> None:
         from tactical_abilities import cancel
         cancel(self.unit, "guardian_link")
 
     @staticmethod
-    def calc_hull_cost(armor: int, shields: int, point_defense: int) -> float:
+    def calc_hull_cost(armor: float, shields: float, point_defense: float) -> float:
         """Compute the hull cost of a Defenses component from its stats."""
         total = armor + shields + point_defense
         if total <= 0:
@@ -64,11 +64,11 @@ class Defenses(UnitComponent):
         
         if bonus_tags:
             tag_str = f" ({', '.join(bonus_tags)})"
-            def fmt(val: int) -> str:
-                return f"{val}{tag_str}"
+            def fmt(val: float) -> str:
+                return f"{val:g}{tag_str}"
         else:
-            def fmt(val: int) -> str:
-                return str(val)
+            def fmt(val: float) -> str:
+                return f"{val:g}"
         data.append({'type': 'label', 'text': f"Armor: {fmt(self.armor)}", 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': f"Shields: {fmt(self.shields)}", 'object_id': '#sidebar_info_label', 'height': 20})
         data.append({'type': 'label', 'text': f"Point Defense: {fmt(self.point_defense)}", 'object_id': '#sidebar_info_label', 'height': 20})
@@ -80,7 +80,7 @@ class Defenses(UnitComponent):
             return data
         data.append({
             'type': 'label',
-            'text': f"• Armor {self.armor} | Shields {self.shields} | PD {self.point_defense}",
+            'text': f"• Armor {self.armor:g} | Shields {self.shields:g} | PD {self.point_defense:g}",
             'object_id': '#sidebar_value_label',
             'height': 18,
             'indent_level': 1
@@ -92,27 +92,32 @@ class Defenses(UnitComponent):
         if self.is_destroyed or damage_type is None:
             return 0
 
-        mitigation = 0
+        def _roll(val: float) -> float:
+            if val <= 0.0:
+                return 0.0
+            return random.uniform(0.0, val)
+
+        mitigation = 0.0
         if damage_type == TurretType.MASS_DRIVER:
-            mitigation += random.randint(0, self.armor)
-            mitigation += random.randint(0, int(math.sqrt(self.shields)))
-            mitigation += random.randint(0, int(math.sqrt(self.point_defense)))
+            mitigation += _roll(self.armor)
+            mitigation += _roll(math.sqrt(max(0.0, self.shields)))
+            mitigation += _roll(math.sqrt(max(0.0, self.point_defense)))
         elif damage_type == TurretType.BEAM:
-            mitigation += random.randint(0, self.shields)
-            mitigation += random.randint(0, int(math.sqrt(self.armor)))
-            mitigation += random.randint(0, int(math.sqrt(self.point_defense)))
+            mitigation += _roll(self.shields)
+            mitigation += _roll(math.sqrt(max(0.0, self.armor)))
+            mitigation += _roll(math.sqrt(max(0.0, self.point_defense)))
         elif damage_type == TurretType.MISSILE:
-            mitigation += random.randint(0, self.point_defense)
-            mitigation += random.randint(0, int(math.sqrt(self.armor)))
-            mitigation += random.randint(0, int(math.sqrt(self.shields)))
+            mitigation += _roll(self.point_defense)
+            mitigation += _roll(math.sqrt(max(0.0, self.armor)))
+            mitigation += _roll(math.sqrt(max(0.0, self.shields)))
 
         # Apply XP defense bonus: veteran units are more effective at blocking damage
-        mitigation = int(mitigation * self.unit.xp_multiplier(XP_DEFENSE_BONUS))
+        mitigation = mitigation * self.unit.xp_multiplier(XP_DEFENSE_BONUS)
 
         # Apply Orbital Defense defense bonus: units in active friendly orbital defense fields mitigate more damage
         if hasattr(self.unit, 'get_orbital_defense_buffs'):
             _, od_def_bonus = self.unit.get_orbital_defense_buffs()
             if od_def_bonus > 0.0:
-                mitigation = int(mitigation * (1.0 + od_def_bonus))
+                mitigation = mitigation * (1.0 + od_def_bonus)
 
-        return min(incoming_damage, mitigation)
+        return min(incoming_damage, int(round(mitigation)))

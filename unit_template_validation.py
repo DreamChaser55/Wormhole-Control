@@ -15,7 +15,7 @@ from unit_components.enums import (
 # Minimums used by both the Designer input readers and design validation.
 PARAMETER_MINIMUMS = {
     'engine_speed': 0.0, 'hyperdrive_jump_range': 1,
-    'armor': 0, 'shields': 0, 'point_defense': 0,
+    'armor': 0.0, 'shields': 0.0, 'point_defense': 0.0,
     'sensor_short_range': 0.0, 'sensor_long_range_hexes': 0,
     'repair_rate': 0.0, 'repair_range': 0.0,
     'mining_rate': 0.0, 'mining_range': 0.0, 'max_mining_cargo': 0.0,

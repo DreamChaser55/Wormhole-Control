@@ -810,7 +810,7 @@ def test_defenses():
     unit.current_hit_points = 100
     # Mocking random to return max values
     import unittest.mock as mock
-    with mock.patch("random.randint", side_effect=lambda a, b: b):
+    with mock.patch("random.uniform", side_effect=lambda a, b: b):
         unit.take_damage(50, TurretType.MASS_DRIVER)
         # Expected mitigation:
         # armor = 20
@@ -820,6 +820,21 @@ def test_defenses():
         # Damage taken = 50 - 30 = 20
         # Remaining HP = 100 - 20 = 80
         assert unit.current_hit_points == 80
+
+    # Test fractional defenses
+    frac_unit = ComponentUnit()
+    frac_defenses = Defenses(frac_unit, armor=2.5, shields=4.5, point_defense=1.5)
+    frac_unit.add_component(frac_defenses)
+    assert frac_defenses.armor == 2.5
+    assert frac_defenses.shields == 4.5
+    assert frac_defenses.point_defense == 1.5
+    with mock.patch("random.uniform", side_effect=lambda a, b: b):
+        # MASS_DRIVER:
+        # armor matching: 2.5
+        # shields non-matching: sqrt(4.5) -> isqrt(4) = 2.0
+        # point_defense non-matching: sqrt(1.5) -> isqrt(1) = 1.0
+        # total mitigation = round(2.5 + 2.0 + 1.0) = 6
+        assert frac_defenses.calculate_mitigation(50, TurretType.MASS_DRIVER) == 6
 
 
 def test_turret_variants():

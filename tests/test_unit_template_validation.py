@@ -64,6 +64,16 @@ def test_parameter_boundaries_match_editor(field, minimum):
     assert field in messages(record(**{field: minimum - 1}))
 
 
+@pytest.mark.parametrize('field,value', [
+    ('armor', 12.5),
+    ('shields', 7.25),
+    ('point_defense', 3.75),
+])
+def test_float_defense_parameters_accepted(field, value):
+    assert messages(record(has_defenses=True, **{field: value})) == ''
+    assert field in messages(record(has_defenses=True, **{field: -0.5}))
+
+
 @pytest.mark.parametrize('hull', list(HullSize))
 def test_antimatter_minimum_is_hull_specific(hull):
     minimum = get_min_antimatter_capacity(hull)

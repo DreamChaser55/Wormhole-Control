@@ -209,7 +209,7 @@ def calc_weapons_hull_cost(turrets: List['TurretConfig']) -> float:
     return Weapons.calc_hull_cost(turrets)
 
 
-def calc_defenses_hull_cost(armor: int, shields: int, point_defense: int) -> float:
+def calc_defenses_hull_cost(armor: float, shields: float, point_defense: float) -> float:
     """Compute the hull cost of a Defenses component from its stats."""
     return Defenses.calc_hull_cost(armor, shields, point_defense)
 
@@ -354,9 +354,9 @@ class ComponentConfig:
 
     # Defenses
     has_defenses: bool = False
-    armor: int = 0
-    shields: int = 0
-    point_defense: int = 0
+    armor: float = 0.0
+    shields: float = 0.0
+    point_defense: float = 0.0
     # hull cost is computed: see defenses_hull_cost property
 
     # Constructor
@@ -914,9 +914,9 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
         turrets=turrets,
 
         has_defenses=d.get("has_defenses", False),
-        armor=d.get("armor", 0),
-        shields=d.get("shields", 0),
-        point_defense=d.get("point_defense", 0),
+        armor=float(d.get("armor", 0.0)),
+        shields=float(d.get("shields", 0.0)),
+        point_defense=float(d.get("point_defense", 0.0)),
 
         # --- Fixed-cost components ---
         has_constructor_component=d.get("has_constructor_component", False),

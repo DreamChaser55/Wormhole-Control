@@ -229,7 +229,7 @@ def apply_hull_restrictions(editor) -> None:
     if editor._comp.has_antimatter_storage and editor._comp.antimatter_capacity < min_am_cap:
         editor._comp.antimatter_capacity = min_am_cap
         if editor._am_capacity_entry:
-            editor._am_capacity_entry.set_text(str(int(min_am_cap)))
+            editor._am_capacity_entry.set_text(f"{min_am_cap:g}")
 
     update_component_toggle_labels(editor)
     editor._sync_dynamic_costs()

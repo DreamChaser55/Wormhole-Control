@@ -63,43 +63,43 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
 
     # Restore dynamic sub-option entry fields
     if editor._engine_speed_entry:
-        editor._engine_speed_entry.set_text(str(int(editor._comp.engine_speed)))
+        editor._engine_speed_entry.set_text(f"{editor._comp.engine_speed:g}")
     if editor._am_capacity_entry:
-        editor._am_capacity_entry.set_text(str(int(editor._comp.antimatter_capacity)))
+        editor._am_capacity_entry.set_text(f"{editor._comp.antimatter_capacity:g}")
     if editor._hd_jump_range_entry:
         editor._hd_jump_range_entry.set_text(str(editor._comp.hyperdrive_jump_range))
     if editor._armor_entry:
-        editor._armor_entry.set_text(str(editor._comp.armor))
+        editor._armor_entry.set_text(f"{editor._comp.armor:g}")
     if editor._shields_entry:
-        editor._shields_entry.set_text(str(editor._comp.shields))
+        editor._shields_entry.set_text(f"{editor._comp.shields:g}")
     if editor._pd_entry:
-        editor._pd_entry.set_text(str(editor._comp.point_defense))
+        editor._pd_entry.set_text(f"{editor._comp.point_defense:g}")
     if getattr(editor, '_sensor_short_range_entry', None):
-        editor._sensor_short_range_entry.set_text(str(int(editor._comp.sensor_short_range)))
+        editor._sensor_short_range_entry.set_text(f"{editor._comp.sensor_short_range:g}")
     if getattr(editor, '_sensor_long_range_entry', None):
         editor._sensor_long_range_entry.set_text(str(int(editor._comp.sensor_long_range_hexes)))
     if getattr(editor, '_repair_rate_entry', None):
-        editor._repair_rate_entry.set_text(str(int(editor._comp.repair_rate)))
+        editor._repair_rate_entry.set_text(f"{editor._comp.repair_rate:g}")
     if getattr(editor, '_repair_range_entry', None):
-        editor._repair_range_entry.set_text(str(int(editor._comp.repair_range)))
+        editor._repair_range_entry.set_text(f"{editor._comp.repair_range:g}")
     if getattr(editor, '_mining_rate_entry', None):
-        editor._mining_rate_entry.set_text(str(int(editor._comp.mining_rate)))
+        editor._mining_rate_entry.set_text(f"{editor._comp.mining_rate:g}")
     if getattr(editor, '_mining_range_entry', None):
-        editor._mining_range_entry.set_text(str(int(editor._comp.mining_range)))
+        editor._mining_range_entry.set_text(f"{editor._comp.mining_range:g}")
     if getattr(editor, '_mining_max_cargo_entry', None):
-        editor._mining_max_cargo_entry.set_text(str(int(editor._comp.max_mining_cargo)))
+        editor._mining_max_cargo_entry.set_text(f"{editor._comp.max_mining_cargo:g}")
     if getattr(editor, '_hangar_slots_entry', None):
         editor._hangar_slots_entry.set_text(str(int(editor._comp.hangar_slots)))
     if getattr(editor, '_strikecraft_bay_slots_entry', None):
         editor._strikecraft_bay_slots_entry.set_text(str(int(editor._comp.strikecraft_bay_slots)))
     if getattr(editor, '_inhibitor_radius_entry', None):
-        editor._inhibitor_radius_entry.set_text(str(int(editor._comp.inhibitor_radius)))
+        editor._inhibitor_radius_entry.set_text(f"{editor._comp.inhibitor_radius:g}")
     if getattr(editor, "_troop_capacity_entry", None):
         editor._troop_capacity_entry.set_text(str(editor._comp.troop_capacity))
     if getattr(editor, '_marines_count_entry', None):
         editor._marines_count_entry.set_text(str(int(editor._comp.marines_count)))
     if getattr(editor, '_cloaking_radius_entry', None):
-        editor._cloaking_radius_entry.set_text(str(int(getattr(editor._comp, "cloaking_radius", 500))))
+        editor._cloaking_radius_entry.set_text(f"{getattr(editor._comp, 'cloaking_radius', 500.0):g}")
     if getattr(editor, '_intel_agents_entry', None):
         editor._intel_agents_entry.set_text(str(int(getattr(editor._comp, "intelligence_agents_count", 1))))
     if getattr(editor, '_intel_ci_btn', None):

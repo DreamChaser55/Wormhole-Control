@@ -624,6 +624,48 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
         win.kill()
 
+    def test_float_defenses_in_editor(self):
+        """Verifies that float defense parameters are displayed and parsed properly without truncation."""
+        import pygame
+        import pygame_gui
+        from gui.unit_editor_gui import UnitEditorWindow
+        from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate
+
+        mgr = pygame_gui.UIManager((1280, 720))
+        tmp_mgr = CustomTemplateManager()
+        win = UnitEditorWindow(mgr, DisplayConfig(1280, 720), tmp_mgr)
+        win.show()
+
+        # Enable defenses and set defense entries with float strings
+        win._comp.has_defenses = True
+        win._armor_entry.set_text("25.5")
+        win._shields_entry.set_text("30.25")
+        win._pd_entry.set_text("5.75")
+        from gui.unit_editor_gui.param_readers import read_defense_params
+        read_defense_params(win)
+
+        self.assertEqual(win._comp.armor, 25.5)
+        self.assertEqual(win._comp.shields, 30.25)
+        self.assertEqual(win._comp.point_defense, 5.75)
+
+        win._update_summary()
+        summary_text = win._summary_box.html_text
+        self.assertIn("armor=25.5  shields=30.25  PD=5.75", summary_text)
+
+        # Loading template with floats populates text entries formatted with :g
+        t = CustomUnitTemplate("Float Def Ship", HullSize.MEDIUM)
+        t.components.has_defenses = True
+        t.components.armor = 10.5
+        t.components.shields = 20.0
+        t.components.point_defense = 0.5
+        from gui.unit_editor_gui.template_io import sync_widgets_from_template
+        sync_widgets_from_template(win, t)
+
+        self.assertEqual(win._armor_entry.get_text(), "10.5")
+        self.assertEqual(win._shields_entry.get_text(), "20")
+        self.assertEqual(win._pd_entry.get_text(), "0.5")
+
+        win.kill()
 
     def test_save_as_new_creates_independent_template(self):
         """Verifies that _do_save_as_new saves a new template without modifying loaded template."""

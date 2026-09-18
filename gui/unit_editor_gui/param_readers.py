@@ -39,15 +39,15 @@ def read_hyperdrive_params(editor) -> None:
 def read_defense_params(editor) -> None:
     """Reads armor, shields, and point defense from UI input fields and updates component configuration."""
     try:
-        editor._comp.armor = max(parameter_minimum("armor", editor._hull_size), int(editor._armor_entry.get_text())) if editor._armor_entry else 0
+        editor._comp.armor = max(parameter_minimum("armor", editor._hull_size), float(editor._armor_entry.get_text())) if editor._armor_entry else 0.0
     except ValueError:
         pass
     try:
-        editor._comp.shields = max(parameter_minimum("shields", editor._hull_size), int(editor._shields_entry.get_text())) if editor._shields_entry else 0
+        editor._comp.shields = max(parameter_minimum("shields", editor._hull_size), float(editor._shields_entry.get_text())) if editor._shields_entry else 0.0
     except ValueError:
         pass
     try:
-        editor._comp.point_defense = max(parameter_minimum("point_defense", editor._hull_size), int(editor._pd_entry.get_text())) if editor._pd_entry else 0
+        editor._comp.point_defense = max(parameter_minimum("point_defense", editor._hull_size), float(editor._pd_entry.get_text())) if editor._pd_entry else 0.0
     except ValueError:
         pass
 

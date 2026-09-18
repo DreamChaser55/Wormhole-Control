@@ -228,7 +228,7 @@ def _build_component_detail_groups(
 
     # 2. Antimatter Storage
     lbl_am = make_label(pygame.Rect(pad, y, w, small_h), "Antimatter Capacity:", mgr, pan)
-    wizard._am_capacity_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), str(int(DEFAULT_ANTIMATTER_CAPACITY)), mgr, pan)
+    wizard._am_capacity_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), f"{DEFAULT_ANTIMATTER_CAPACITY:g}", mgr, pan)
     wizard._details_groups["AntimatterStorage"].extend([lbl_am, wizard._am_capacity_entry])
 
     from refit_validation import allowed_turret_variants, installed_configuration
@@ -286,7 +286,7 @@ def _build_component_detail_groups(
 
     # 6. Sensors
     lbl_sr = make_label(pygame.Rect(pad, y, w, small_h), "Short-Range Radius (logical):", mgr, pan)
-    wizard._sensor_short_range_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), str(int(DEFAULT_SENSOR_SHORT_RANGE)), mgr, pan)
+    wizard._sensor_short_range_entry = make_entry(pygame.Rect(pad, y + small_h + 2, w, entry_h), f"{DEFAULT_SENSOR_SHORT_RANGE:g}", mgr, pan)
     y_s = y + small_h + 2 + entry_h + pad
     lbl_lr = make_label(pygame.Rect(pad, y_s, w, small_h), "Long-Range (hexes):", mgr, pan)
     wizard._sensor_long_range_entry = make_entry(pygame.Rect(pad, y_s + small_h + 2, w, entry_h), "1", mgr, pan)
@@ -456,7 +456,7 @@ def rebuild_wizard_turret_list(wizard: RetrofitWizardWindow) -> None:
     for i, tc in enumerate(turrets):
         disp_range = tc["range"] * 3.0 if tc.get("variant") == "LONG_RANGE" else tc["range"]
         disp_cooldown = tc["cooldown"] * 3 if tc.get("variant") == "LONG_RANGE" else tc["cooldown"]
-        text = f"{tc['type']} ({tc.get('variant', 'STANDARD').lower()}) dmg:{tc['damage']:.0f} rng:{disp_range:.0f} cd:{disp_cooldown}"
+        text = f"{tc['type']} ({tc.get('variant', 'STANDARD').lower()}) dmg:{tc['damage']:g} rng:{disp_range:g} cd:{disp_cooldown}"
 
         from gui.text_layout import wrap_text_to_lines
         font = wizard.manager.ui_theme.get_font(['text_box', '#turret_item_label'])

@@ -35,7 +35,7 @@ def read_hyperdrive_params(wizard):
 
 
 def read_defense_params(wizard):
-    read_fields(wizard, [(f, w, f, 0, True) for f, w in
+    read_fields(wizard, [(f, w, f, 0.0, False) for f, w in
                         [('armor', '_armor_entry'), ('shields', '_shields_entry'), ('point_defense', '_pd_entry')]])
 
 

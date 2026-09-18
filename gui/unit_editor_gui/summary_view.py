@@ -61,9 +61,9 @@ def update_summary(editor) -> None:
 
             # Component parameter details
             if key == "has_engine":
-                comp_lines.append(f"    speed={c.engine_speed:.0f}")
+                comp_lines.append(f"    speed={c.engine_speed:g}")
             elif key == "has_antimatter_storage":
-                comp_lines.append(f"    antimatter_capacity={c.antimatter_capacity:.0f}")
+                comp_lines.append(f"    antimatter_capacity={c.antimatter_capacity:g}")
             elif key == "has_hyperdrive":
                 comp_lines.append(f"    type={c.hyperdrive_type}  jump_range={c.hyperdrive_jump_range}")
             elif key == "has_weapon_bays":
@@ -71,22 +71,22 @@ def update_summary(editor) -> None:
                     for t in editor._turrets:
                         disp_range = t.range * 3.0 if t.variant == "LONG_RANGE" else t.range
                         disp_cooldown = t.cooldown * 3 if t.variant == "LONG_RANGE" else t.cooldown
-                        comp_lines.append(f"    • {t.turret_type} ({t.variant.lower()})  dmg:{t.damage:.0f}  rng:{disp_range:.0f}  cd:{disp_cooldown}")
+                        comp_lines.append(f"    • {t.turret_type} ({t.variant.lower()})  dmg:{t.damage:g}  rng:{disp_range:g}  cd:{disp_cooldown}")
             elif key == "has_defenses":
-                comp_lines.append(f"    armor={c.armor}  shields={c.shields}  PD={c.point_defense}")
+                comp_lines.append(f"    armor={c.armor:g}  shields={c.shields:g}  PD={c.point_defense:g}")
             elif key == "has_sensors":
-                comp_lines.append(f"    short_range={c.sensor_short_range:.0f}  long_range={c.sensor_long_range_hexes}")
+                comp_lines.append(f"    short_range={c.sensor_short_range:g}  long_range={c.sensor_long_range_hexes}")
             elif key == "has_strikecraft_bay":
                 wing = getattr(c, "wing_type", "FIGHTER")
                 comp_lines.append(f"    wing={wing}  slots={c.strikecraft_bay_slots}")
             elif key == "has_repair_component":
-                comp_lines.append(f"    rate={c.repair_rate:.0f}  range={c.repair_range:.0f}")
+                comp_lines.append(f"    rate={c.repair_rate:g}  range={c.repair_range:g}")
             elif key == "has_mining_component":
-                comp_lines.append(f"    rate={c.mining_rate:.0f}  range={c.mining_range:.0f}  cargo={c.max_mining_cargo:.0f}")
+                comp_lines.append(f"    rate={c.mining_rate:g}  range={c.mining_range:g}  cargo={c.max_mining_cargo:g}")
             elif key == "has_hangar":
                 comp_lines.append(f"    slots={c.hangar_slots}")
             elif key == "has_inhibitor":
-                comp_lines.append(f"    radius={c.inhibitor_radius:.0f}")
+                comp_lines.append(f"    radius={c.inhibitor_radius:g}")
             elif key == "has_ability_component":
                 if editor._selected_abilities:
                     for a in sorted(editor._selected_abilities):
@@ -97,7 +97,7 @@ def update_summary(editor) -> None:
                 comp_lines.append(f"    marines_count={c.marines_count}")
             elif key == "has_cloaking_device":
                 if getattr(c, "cloaking_type", "BASIC") == "ADVANCED":
-                    comp_lines.append(f"    type={c.cloaking_type}  radius={c.cloaking_radius:.0f}")
+                    comp_lines.append(f"    type={c.cloaking_type}  radius={c.cloaking_radius:g}")
                 else:
                     comp_lines.append(f"    type={c.cloaking_type}")
 

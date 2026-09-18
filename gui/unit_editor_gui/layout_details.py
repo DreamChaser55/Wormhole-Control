@@ -39,12 +39,12 @@ def build_col3_details(
 
     # --- 1. Engines ---
     lbl_eng = make_label(pygame.Rect(c3x, y, c3w, small_h), "Engine Speed:", mgr, pan)
-    editor._engine_speed_entry = make_entry(pygame.Rect(c3x, y + small_h + 2, c3w, entry_h), str(int(editor._comp.engine_speed)), mgr, pan)
+    editor._engine_speed_entry = make_entry(pygame.Rect(c3x, y + small_h + 2, c3w, entry_h), f"{editor._comp.engine_speed:g}", mgr, pan)
     editor._details_groups["has_engine"].extend([lbl_eng, editor._engine_speed_entry])
 
     # --- 2. Antimatter Storage ---
     lbl_am = make_label(pygame.Rect(c3x, y, c3w, small_h), "Antimatter Capacity:", mgr, pan)
-    editor._am_capacity_entry = make_entry(pygame.Rect(c3x, y + small_h + 2, c3w, entry_h), str(int(editor._comp.antimatter_capacity)), mgr, pan)
+    editor._am_capacity_entry = make_entry(pygame.Rect(c3x, y + small_h + 2, c3w, entry_h), f"{editor._comp.antimatter_capacity:g}", mgr, pan)
     editor._details_groups["has_antimatter_storage"].extend([lbl_am, editor._am_capacity_entry])
 
     # --- 3. Hyperdrive ---
@@ -85,19 +85,19 @@ def build_col3_details(
     # --- 5. Defenses ---
     y_def = c3y_base
     lbl_arm = make_label(pygame.Rect(c3x, y_def, c3w, small_h), "Armor HP:", mgr, pan)
-    editor._armor_entry = make_entry(pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), str(editor._comp.armor), mgr, pan)
+    editor._armor_entry = make_entry(pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), f"{editor._comp.armor:g}", mgr, pan)
     y_def += small_h + 2 + entry_h + pad
     lbl_sh = make_label(pygame.Rect(c3x, y_def, c3w, small_h), "Shield HP:", mgr, pan)
-    editor._shields_entry = make_entry(pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), str(editor._comp.shields), mgr, pan)
+    editor._shields_entry = make_entry(pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), f"{editor._comp.shields:g}", mgr, pan)
     y_def += small_h + 2 + entry_h + pad
     lbl_pd = make_label(pygame.Rect(c3x, y_def, c3w, small_h), "Point Defense Rating:", mgr, pan)
-    editor._pd_entry = make_entry(pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), str(editor._comp.point_defense), mgr, pan)
+    editor._pd_entry = make_entry(pygame.Rect(c3x, y_def + small_h + 2, c3w, entry_h), f"{editor._comp.point_defense:g}", mgr, pan)
     editor._details_groups["has_defenses"].extend([lbl_arm, editor._armor_entry, lbl_sh, editor._shields_entry, lbl_pd, editor._pd_entry])
 
     # --- 6. Sensors ---
     y_sen = c3y_base
     lbl_sr = make_label(pygame.Rect(c3x, y_sen, c3w, small_h), "Short-Range Radius (logical):", mgr, pan)
-    editor._sensor_short_range_entry = make_entry(pygame.Rect(c3x, y_sen + small_h + 2, c3w, entry_h), str(int(editor._comp.sensor_short_range)), mgr, pan)
+    editor._sensor_short_range_entry = make_entry(pygame.Rect(c3x, y_sen + small_h + 2, c3w, entry_h), f"{editor._comp.sensor_short_range:g}", mgr, pan)
     y_sen += small_h + 2 + entry_h + pad
     lbl_lr = make_label(pygame.Rect(c3x, y_sen, c3w, small_h), "Long-Range (hexes):", mgr, pan)
     editor._sensor_long_range_label = lbl_lr
@@ -124,11 +124,11 @@ def build_col3_details(
     # --- 8. Repair Component ---
     y_rep = c3y_base
     lbl_rr = make_label(pygame.Rect(c3x, y_rep, c3w, small_h), "Repair Rate:", mgr, pan)
-    editor._repair_rate_entry = make_entry(pygame.Rect(c3x, y_rep + small_h + 2, c3w, entry_h), str(int(editor._comp.repair_rate)), mgr, pan)
+    editor._repair_rate_entry = make_entry(pygame.Rect(c3x, y_rep + small_h + 2, c3w, entry_h), f"{editor._comp.repair_rate:g}", mgr, pan)
 
     y_rep += small_h + entry_h + pad
     lbl_rrange = make_label(pygame.Rect(c3x, y_rep, c3w, small_h), "Repair Range:", mgr, pan)
-    editor._repair_range_entry = make_entry(pygame.Rect(c3x, y_rep + small_h + 2, c3w, entry_h), str(int(editor._comp.repair_range)), mgr, pan)
+    editor._repair_range_entry = make_entry(pygame.Rect(c3x, y_rep + small_h + 2, c3w, entry_h), f"{editor._comp.repair_range:g}", mgr, pan)
 
     editor._details_groups["has_repair_component"].extend([
         lbl_rr, editor._repair_rate_entry,
@@ -138,15 +138,15 @@ def build_col3_details(
     # --- 9. Mining Component ---
     y_min = c3y_base
     lbl_mr = make_label(pygame.Rect(c3x, y_min, c3w, small_h), "Mining Rate:", mgr, pan)
-    editor._mining_rate_entry = make_entry(pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h), str(int(editor._comp.mining_rate)), mgr, pan)
+    editor._mining_rate_entry = make_entry(pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h), f"{editor._comp.mining_rate:g}", mgr, pan)
 
     y_min += small_h + entry_h + pad
     lbl_mrange = make_label(pygame.Rect(c3x, y_min, c3w, small_h), "Mining Range:", mgr, pan)
-    editor._mining_range_entry = make_entry(pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h), str(int(editor._comp.mining_range)), mgr, pan)
+    editor._mining_range_entry = make_entry(pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h), f"{editor._comp.mining_range:g}", mgr, pan)
 
     y_min += small_h + entry_h + pad
     lbl_mcargo = make_label(pygame.Rect(c3x, y_min, c3w, small_h), "Max Cargo:", mgr, pan)
-    editor._mining_max_cargo_entry = make_entry(pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h), str(int(editor._comp.max_mining_cargo)), mgr, pan)
+    editor._mining_max_cargo_entry = make_entry(pygame.Rect(c3x, y_min + small_h + 2, c3w, entry_h), f"{editor._comp.max_mining_cargo:g}", mgr, pan)
     editor._details_groups["has_mining_component"].extend([
         lbl_mr, editor._mining_rate_entry,
         lbl_mrange, editor._mining_range_entry,
@@ -162,7 +162,7 @@ def build_col3_details(
     # --- 11. Inhibitor Field ---
     y_inh = c3y_base
     lbl_inhr = make_label(pygame.Rect(c3x, y_inh, c3w, small_h), "Inhibitor Radius:", mgr, pan)
-    editor._inhibitor_radius_entry = make_entry(pygame.Rect(c3x, y_inh + small_h + 2, c3w, entry_h), str(int(editor._comp.inhibitor_radius)), mgr, pan)
+    editor._inhibitor_radius_entry = make_entry(pygame.Rect(c3x, y_inh + small_h + 2, c3w, entry_h), f"{editor._comp.inhibitor_radius:g}", mgr, pan)
     editor._details_groups["has_inhibitor"].extend([lbl_inhr, editor._inhibitor_radius_entry])
 
     # Dedicated invasion cargo capacity.
@@ -220,7 +220,7 @@ def build_col3_details(
     editor._lbl_clk_r = make_label(pygame.Rect(c3x, y_clk, c3w, small_h), "Area Radius (Advanced):", mgr, pan)
     editor._cloaking_radius_entry = make_entry(
         pygame.Rect(c3x, y_clk + small_h + 2, c3w, entry_h),
-        str(int(getattr(editor._comp, "cloaking_radius", 500))),
+        f"{getattr(editor._comp, 'cloaking_radius', 500.0):g}",
         mgr, pan
     )
     editor._details_groups["has_cloaking_device"].extend([

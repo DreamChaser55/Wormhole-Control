@@ -177,6 +177,17 @@ def test_retrofit_wizard_defenses_customization(wizard_setup):
     assert wizard._comp_config["shields"] == 120
     assert wizard._comp_config["point_defense"] == 15
     assert wizard.calculated_hull_cost == Defenses.calc_hull_cost(100, 120, 15)
+
+    # Test float defense values
+    wizard._armor_entry.set_text("100.5")
+    wizard._shields_entry.set_text("120.25")
+    wizard._pd_entry.set_text("15.75")
+    wizard._sync_cost_and_summary()
+
+    assert wizard._comp_config["armor"] == 100.5
+    assert wizard._comp_config["shields"] == 120.25
+    assert wizard._comp_config["point_defense"] == 15.75
+    assert wizard.calculated_hull_cost == Defenses.calc_hull_cost(100.5, 120.25, 15.75)
     wizard.kill()
 
 

@@ -184,9 +184,9 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
     if template.get("has_defenses"):
         new_unit.add_component(Defenses(
             new_unit,
-            armor=template.get("armor", 0),
-            shields=template.get("shields", 0),
-            point_defense=template.get("point_defense", 0),
+            armor=float(template.get("armor", 0.0)),
+            shields=float(template.get("shields", 0.0)),
+            point_defense=float(template.get("point_defense", 0.0)),
             hull_cost=template.get("defenses_hull_cost", 0)
         ))
 
@@ -941,9 +941,9 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
         return float(Weapons.calc_hull_cost(turrets))
 
     elif comp_cls == Defenses:
-        armor = int(config.get("armor", 50))
-        shields = int(config.get("shields", 50))
-        pd = int(config.get("point_defense", 0))
+        armor = float(config.get("armor", 50.0))
+        shields = float(config.get("shields", 50.0))
+        pd = float(config.get("point_defense", 0.0))
         return float(Defenses.calc_hull_cost(armor, shields, pd))
 
     elif comp_cls == AntimatterHarvester:
@@ -1092,9 +1092,9 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
         return weapons_comp
 
     elif comp_cls == Defenses:
-        armor = int(config.get("armor", 50))
-        shields = int(config.get("shields", 50))
-        pd = int(config.get("point_defense", 0))
+        armor = float(config.get("armor", 50.0))
+        shields = float(config.get("shields", 50.0))
+        pd = float(config.get("point_defense", 0.0))
         return Defenses(unit, armor=armor, shields=shields, point_defense=pd, hull_cost=cost)
 
     elif comp_cls == AntimatterHarvester:
