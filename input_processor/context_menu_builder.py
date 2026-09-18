@@ -469,11 +469,11 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                 options.append(("Mine (continuously)", "continuous_mine"))
         elif isinstance(target_object, Star):
             if any(getattr(a, 'harvester_component', None) for a in actors):
-                options.append(("Resupply (continuously)", "continuous_resupply"))
+                options.append(("Resupply (continuously)...", "continuous_resupply"))
         elif isinstance(target_object, Nebula):
             if getattr(target_object, 'nebula_type', None) == NebulaType.HYDROGEN:
                 if any(getattr(a, 'harvester_component', None) for a in actors):
-                    options.append(("Resupply (continuously)", "continuous_resupply"))
+                    options.append(("Resupply (continuously)...", "continuous_resupply"))
 
     return options, target
 

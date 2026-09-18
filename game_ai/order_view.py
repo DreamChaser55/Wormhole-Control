@@ -42,8 +42,13 @@ def order_layers(unit, relation, visible_ids, body_ids):
         known_targets = (body_ids if target_kind == "celestial" else visible_ids
                          if target_kind == "unit" else visible_ids | body_ids)
         hidden = redacted or (target_id is not None and target_id not in known_targets)
-        if kind == 'continuous_antimatter_transport':
-            hidden = hidden or any(params.get(key) not in visible_ids for key in ('source_unit_id', 'target_unit_id'))
+        fuel_order = kind in {'continuous_antimatter_transport', 'continuous_resupply'}
+        if fuel_order:
+            source_field = 'source_body_id' if kind == 'continuous_resupply' else 'source_unit_id'
+            source_ids = body_ids if kind == 'continuous_resupply' else visible_ids
+            hidden = hidden or params.get(source_field) not in source_ids
+            hidden = hidden or any(value is not None and value not in visible_ids for value in
+                                   (params.get('target_unit_id'), order.active_destination_unit_id))
         data.update(order_id=getattr(order, "public_id", None), active=active and actionable,
                     cancellable=own and origin == "explicit" and root and actionable,
                     editable=own and origin == "explicit" and root and actionable and kind == "patrol",
@@ -72,15 +77,18 @@ def order_layers(unit, relation, visible_ids, body_ids):
                 route = params["waypoints"]
                 public["waypoints"] = [{"system_name": w.get("system_name"), "hex_coord": point(w.get("hex_coord")), "position": point(w.get("position"))} for w in route[:16]]
                 public["omitted_waypoints"] = max(0, len(route) - 16)
-            if kind == 'continuous_antimatter_transport':
-                public.update(source_id=params.get('source_unit_id'), target_id=params.get('target_unit_id'))
+            if fuel_order:
+                public.update(source_id=params.get(source_field), target_id=params.get('target_unit_id'),
+                              destination_mode='automatic' if order.automatic else 'manual')
             data["parameters"] = public
         progress = {}
         if kind == "stabilize_wormhole" and not hidden:
             from wormhole_stabilization import state_view
             progress = state_view(unit, order=order)
-        if kind == 'continuous_antimatter_transport' and not hidden:
-            progress = {'phase': order.phase, 'waiting_reason': order.waiting_reason, 'return_reserve': order.return_reserve}
+        if fuel_order and not hidden:
+            progress = {'phase': order.phase, 'waiting_reason': order.waiting_reason,
+                        'return_reserve': order.return_reserve,
+                        'active_destination_id': order.active_destination_unit_id}
         if kind in {'attack_run', 'emergency_recovery'}:
             progress = {'phase': order.phase, 'expires_on_owner_round': params['expires_round']}
             if kind == 'attack_run':

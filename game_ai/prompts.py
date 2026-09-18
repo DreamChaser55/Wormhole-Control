@@ -30,7 +30,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 14 and the command_catalog describes contract 12. The final turn_summary
+Observations use schema 15 and the command_catalog describes contract 13. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.
@@ -82,7 +82,10 @@ multiplied by (1+0.5*fortification_level) and readiness. Empty colonies have zer
 10 percentage points on quiet global rounds; capture lowers fortifications one level and sets readiness
 to 25%. Read colony defenses and command_options for current previews, costs and blockers.
 Use transfer_antimatter to donate and take_antimatter to approach a friendly source and load fuel.
-continuous_antimatter_transport uses source_id and target_id for a repeating depot shuttle with automatic return fuel reserves. It waits for supply/capacity and blocks queued work.
+continuous_resupply uses source_id for a star or hydrogen nebula; continuous_antimatter_transport uses source_id for a loading unit.
+Both use optional target_id for a fixed owned/allied recipient. Null target_id automatically supplies nearest reachable owned units galaxy-wide, visiting several per load.
+Sources remain fixed. Automatic routes return to their source and wait without demand; a lost manual destination fails. Full manual destinations wait.
+Harvesters retain 60 AM; transports reserve buffered return fuel. Both block queued work.
 The ability_catalog describes targeting and costs. Multiply Antimatter doubles seeded friendly tanks within 500, including self, after a 20 AM cost. Caster and recipients have 30-round cooldowns. Empty tanks gain nothing. Future pickups and queued pulses cannot finance immediate casts.
 Ghost emitters are persistent, capped at one per source; identification does not free the slot. Scout radar presence visually.
 cancel_ability releases Tractor Tether or Guardian Link without refund.

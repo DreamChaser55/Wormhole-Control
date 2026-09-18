@@ -1003,7 +1003,6 @@ class CommandGateway:
             "dock_in_strikecraft_bay",
             "transfer_antimatter",
             "take_antimatter",
-            "continuous_antimatter_transport",
             "trade",
         } or (command.type == "use_ability" and command.target_id is not None):
             target_unit = self._visible_combat_target(player, command.target_id) if command.type in {"attack", "attack_long_range"} else self._visible_unit(player, command.target_id)
@@ -1012,7 +1011,6 @@ class CommandGateway:
             "load_colonists",
             "mine",
             "continuous_mine",
-            "continuous_resupply",
             "enter_gas_giant",
         }:
             target_body = self._body(command.target_id)
@@ -1284,16 +1282,21 @@ class CommandGateway:
             from unit_orders.fuel_transport import ContinuousAntimatterTransportOrder
             source = self._visible_unit(player, command.source_id)
             self._require_friendly(player, source)
-            self._require_friendly(player, target_unit)
+            if command.target_id is not None:
+                target_unit = self._visible_unit(player, command.target_id)
+                self._require_friendly(player, target_unit)
             return (lambda unit: ContinuousAntimatterTransportOrder(unit,
-                {'source_unit_id': source.id, 'target_unit_id': target_unit.id}), 'Transport antimatter')
+                {'source_unit_id': source.id, 'target_unit_id': command.target_id}), 'Transport antimatter')
         if command.type == "continuous_resupply":
+            target_body = self._body(command.source_id)
             if not is_antimatter_source(target_body):
                 raise _Rejected("invalid_target", "The resupply target is not a star or hydrogen nebula.")
+            if command.target_id is not None:
+                self._require_friendly(player, self._visible_unit(player, command.target_id))
             return (
                 lambda unit: ContinuousResupplyOrder(
                     unit,
-                    {"target_id": target_body.id, "target_name": target_body.name},
+                    {"source_body_id": target_body.id, "target_unit_id": command.target_id},
                 ),
                 f"Resupply from {target_body.name}",
             )
@@ -1835,32 +1838,24 @@ class CommandGateway:
         elif command.type == "leave_gas_giant":
             if not hidden:
                 raise _Rejected("invalid_state", "Unit is not submerged in a gas giant atmosphere.")
-        elif command.type in {'transfer_antimatter', 'take_antimatter', 'continuous_antimatter_transport'}:
-            from antimatter_logistics import exchange_blocker, route_budget
+        elif command.type in {'continuous_resupply', 'continuous_antimatter_transport'}:
+            from antimatter_logistics import continuous_route_blocker
+            harvesting = command.type == 'continuous_resupply'
+            source = self._body(command.source_id) if harvesting else self._visible_unit(unit.owner, command.source_id)
+            target = self._visible_unit(unit.owner, command.target_id) if command.target_id is not None else None
+            error = continuous_route_blocker(unit, source, target, self.game.galaxy, harvesting=harvesting)
+            if error:
+                raise _Rejected(error, 'Antimatter route unavailable: ' + error.replace('_', ' ') + '.')
+        elif command.type in {'transfer_antimatter', 'take_antimatter'}:
+            from antimatter_logistics import exchange_blocker
             target = self._visible_unit(unit.owner, command.target_id)
             error = exchange_blocker(unit, target, self.game.galaxy)
             if error:
                 raise _Rejected(error, 'Antimatter endpoint unavailable.')
-            if command.type == 'continuous_antimatter_transport':
-                source = self._visible_unit(unit.owner, command.source_id)
-                error = exchange_blocker(unit, source, self.game.galaxy)
-                if error or source is target:
-                    raise _Rejected(error or 'invalid_target', 'Choose two distinct friendly depots.')
-                budget = route_budget(unit, source, target, self.game.galaxy)
-                if budget is None:
-                    raise _Rejected('path_unavailable', 'The depot route is unreachable.')
-                if budget >= unit.antimatter_component.max_capacity:
-                    raise _Rejected('insufficient_capacity', 'This tank cannot carry fuel beyond the route reserve.')
-            elif not command.queue:
+            if not command.queue:
                 source, recipient = (target, unit) if command.type == 'take_antimatter' else (unit, target)
                 if projection.fuel_amount(source) <= 0 or projection.fuel_amount(recipient) >= recipient.antimatter_component.max_capacity:
                     raise _Rejected('capability_unavailable', 'No antimatter can be exchanged now.')
-        elif command.type == "continuous_resupply":
-            if getattr(unit, "antimatter_component", None) is None:
-                raise _Rejected(
-                    "capability_unavailable",
-                    f"Unit {unit.id} has no antimatter storage for resupply.",
-                )
         elif command.type == "use_ability":
             from tactical_abilities import SPECS, validate
             if command.position is not None:

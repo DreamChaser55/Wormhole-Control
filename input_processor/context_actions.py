@@ -9,7 +9,7 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
-    ContinuousMineEvent, TransferAntimatterEvent, ContinuousResupplyEvent, LayMinefieldEvent,
+    ContinuousMineEvent, TransferAntimatterEvent, LayMinefieldEvent,
     RefitUnitEvent, TradeEvent, ContinuousTradeEvent,
     InfiltrateUnitEvent, InfiltratePlanetEvent, RelocateAgentEvent,
     SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent,
@@ -282,13 +282,14 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
                 ))
 
         elif extracted_action_id == "continuous_resupply":
-            from domain.celestials import Star as StarEntity
-            if isinstance(target, StarEntity):
-                game.event_bus.publish(ContinuousResupplyEvent(
-                    selected_units,
-                    target,
-                    shift_pressed
-                ))
+            from game_ai.rules import is_antimatter_source
+            from gui.antimatter_transport_window import AntimatterTransportWindow
+            harvesters = [unit for unit in selected_units
+                          if getattr(unit, 'harvester_component', None)
+                          and getattr(unit, 'antimatter_component', None)]
+            if is_antimatter_source(target) and harvesters:
+                game.gui.antimatter_transport_window = AntimatterTransportWindow(
+                    game.gui, harvesters[0], target, harvesters=harvesters)
 
         elif extracted_action_id == "unload_resources":
             if isinstance(target, Unit):

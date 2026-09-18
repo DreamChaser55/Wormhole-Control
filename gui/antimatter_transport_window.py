@@ -1,4 +1,4 @@
-"""A modal for configuring a fixed antimatter delivery route."""
+"""Shared manual/automatic destination configuration for antimatter logistics."""
 
 from dataclasses import dataclass
 
@@ -101,8 +101,15 @@ class _EndpointPicker:
         choices.update({f"{u.name} #{u.id} — {u.in_system} {u.in_hex}": u.id
                         for u in matches})
         self._dropdown('unit', choices, state.unit_id, enabled=bool(matches))
+        if self.title == 'Destination' and self.dialog.automatic:
+            for widget in (self.system, self.hex, self.search, self.unit):
+                widget.disable()
+        else:
+            self.search.enable()
 
     def process_event(self, event):
+        if self.title == 'Destination' and self.dialog.automatic:
+            return False
         if event.type == pygame_gui.UI_TEXT_ENTRY_CHANGED and event.ui_element == self.search:
             self.state.query = event.text
         elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
@@ -124,8 +131,12 @@ class _EndpointPicker:
 
 
 class AntimatterTransportWindow:
-    def __init__(self, gui, unit, source):
+    def __init__(self, gui, unit, source, *, harvesters=None):
         self.gui, self.unit = gui, unit
+        self.harvesting = harvesters is not None
+        self.units = list(harvesters) if self.harvesting else [unit]
+        self.harvest_source = source if self.harvesting else None
+        self.automatic = self.harvesting
         self.game = gui.game_instance
         screen = gui.manager.get_root_container().get_rect()
         self.scale = scale = display_config_for(gui).text_scale
@@ -136,13 +147,20 @@ class AntimatterTransportWindow:
         self.window = UIWindow(
             pygame.Rect((screen.width - width) // 2, (screen.height - height) // 2,
                         width, height),
-            gui.manager, window_display_title="Continuous Antimatter Transport",
+            gui.manager, window_display_title=("Continuous Resupply" if self.harvesting else "Continuous Antimatter Transport"),
         )
         self.window.set_blocking(True)
         content_width, content_height = self.window.get_container().get_size()
         field_width = content_width - 2 * pad
-        UILabel(pygame.Rect(pad, pad, field_width, row), f"Transporter: {unit.name}",
+        half = (field_width - gap) // 2
+        actor_label = f"Harvesters: {len(self.units)}" if self.harvesting else f"Transporter: {unit.name}"
+        UILabel(pygame.Rect(pad, pad, half, row), actor_label,
                 gui.manager, container=self.window)
+        self.mode = UIDropDownMenu(
+            ['Destination: Automatic', 'Destination: Manual'],
+            'Destination: Automatic' if self.automatic else 'Destination: Manual',
+            pygame.Rect(pad + half + gap, pad, field_width - half - gap, row),
+            gui.manager, container=self.window)
 
         button_y = content_height - pad - row
         status_y = button_y - gap - row
@@ -154,21 +172,27 @@ class AntimatterTransportWindow:
         )
         section_height = 4 * row + 3 * gap
         swap_y = section_height + gap
-        destination_y = swap_y + row + gap
+        destination_y = row + gap if self.harvesting else swap_y + row + gap
         self.body.set_scrollable_area_dimensions(
             (field_width, destination_y + section_height + gap))
         self.body_width = self.body.get_container().get_size()[0]
         self._refresh_candidates()
-        self.source = _EndpointPicker(self, "Source", 0, _EndpointState(
-            unit_id=source.id, system=source.in_system, hex_coord=tuple(source.in_hex)))
+        self.source = None
+        if self.harvesting:
+            UILabel(pygame.Rect(0, 0, self.body_width, row),
+                    f"Harvest source: {source.name} #{source.id}", gui.manager, container=self.body)
+        else:
+            self.source = _EndpointPicker(self, "Source", 0, _EndpointState(
+                unit_id=source.id, system=source.in_system, hex_coord=tuple(source.in_hex)))
         self.destination = _EndpointPicker(self, "Destination", destination_y, _EndpointState())
         self.swap = UIButton(
             pygame.Rect(0, swap_y, self.body_width, row), "Swap source and destination",
             gui.manager, container=self.body,
         )
-        UILabel(pygame.Rect(pad, explanation_y, field_width, row),
-                "Partial loads • Automatic return fuel reserve",
-                gui.manager, container=self.window)
+        if self.harvesting:
+            self.swap.hide()
+        self.explanation = UILabel(pygame.Rect(pad, explanation_y, field_width, row),
+                                   "", gui.manager, container=self.window)
         self.status = UILabel(pygame.Rect(pad, status_y, field_width, row), "",
                               gui.manager, container=self.window)
         button_width = (field_width - 2 * gap) // 3
@@ -183,24 +207,35 @@ class AntimatterTransportWindow:
     def _refresh_candidates(self):
         candidates = [u for system in self.game.galaxy.systems.values()
                       for sector in system.hexes.values() for u in sector.units
-                      if exchange_blocker(self.unit, u, self.game.galaxy) is None]
+                      if all(exchange_blocker(actor, u, self.game.galaxy) is None for actor in self.units)]
         self.candidates = {u.id: u for u in sorted(candidates, key=lambda u: (u.name.casefold(), u.id))}
 
     def _update_actions(self):
-        source, destination = self.source.state, self.destination.state
-        if source.unavailable or destination.unavailable:
+        from antimatter_logistics import harvest_source_ready
+        scope = 'Automatic: owned units galaxy-wide' if self.automatic else 'Manual: one owned/allied depot'
+        reserve = 'Retain 60 AM' if self.harvesting else 'Return fuel reserved'
+        self.explanation.set_text(f'{scope} • {reserve}')
+        source = (self.source.state if self.source else _EndpointState(
+            unit_id=self.harvest_source.id,
+            unavailable=not harvest_source_ready(self.harvest_source, self.game.galaxy)))
+        destination = self.destination.state
+        if source.unavailable or not self.automatic and destination.unavailable:
             missing = 'Source' if source.unavailable else 'Destination'
             message = f"{missing} unit unavailable. Select another unit."
-        elif source.unit_id is None or destination.unit_id is None:
+        elif source.unit_id is None or not self.automatic and destination.unit_id is None:
             message = "Select a source and a destination."
-        elif source.unit_id == destination.unit_id:
+        elif not self.automatic and source.unit_id == destination.unit_id:
             message = "Source and destination must be different units."
         else:
             message = ""
         self.status.set_text(message)
-        for button in (self.start, self.queue, self.swap):
+        for button in (self.start, self.queue):
             button.disable() if message else button.enable()
+        self.swap.disable() if message or self.automatic or self.harvesting else self.swap.enable()
         return not message
+
+    def _pickers(self):
+        return [picker for picker in (self.source, self.destination) if picker is not None]
 
     def close(self):
         self.window.kill()
@@ -211,7 +246,11 @@ class AntimatterTransportWindow:
             self.close()
         elif event.type == pygame_gui.UI_WINDOW_CLOSE and event.ui_element == self.window:
             self.close()
-        elif self.source.process_event(event) or self.destination.process_event(event):
+        elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == self.mode:
+            self.automatic = event.text == 'Destination: Automatic'
+            self.destination.refresh()
+            self._update_actions()
+        elif any(picker.process_event(event) for picker in self._pickers()):
             self._update_actions()
         elif event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.cancel:
@@ -219,13 +258,15 @@ class AntimatterTransportWindow:
             elif event.ui_element in (self.start, self.queue, self.swap):
                 # Endpoints may have been destroyed, moved, or changed allegiance since opening.
                 self._refresh_candidates()
-                for picker in (self.source, self.destination):
+                for picker in self._pickers():
                     picker.refresh()
                 if not self._update_actions():
                     return True
                 if event.ui_element == self.swap:
+                    if self.automatic or self.harvesting:
+                        return True
                     self.source.state, self.destination.state = self.destination.state, self.source.state
-                    for picker in (self.source, self.destination):
+                    for picker in self._pickers():
                         picker.search.set_text(picker.state.query)
                         picker.refresh()
                     self._update_actions()
@@ -233,10 +274,10 @@ class AntimatterTransportWindow:
                 from tactical_ui import issue
 
                 command = {
-                    "type": "continuous_antimatter_transport",
-                    "unit_ids": [self.unit.id],
-                    "source_id": self.source.state.unit_id,
-                    "target_id": self.destination.state.unit_id,
+                    "type": "continuous_resupply" if self.harvesting else "continuous_antimatter_transport",
+                    "unit_ids": [unit.id for unit in self.units],
+                    "source_id": self.harvest_source.id if self.harvesting else self.source.state.unit_id,
+                    "target_id": None if self.automatic else self.destination.state.unit_id,
                     "queue": event.ui_element == self.queue,
                 }
                 if issue(self.game, command):

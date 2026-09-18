@@ -414,10 +414,13 @@ def test_route_public_view_redacts_both_endpoints_and_children():
     assert str(target.id) not in json.dumps(hidden["parameters"])
 
 
-def test_wormhole_route_estimate_and_actual_delivery():
+@pytest.mark.parametrize('automatic', [False, True])
+def test_wormhole_route_estimate_and_actual_delivery(automatic):
     from domain.celestials import Wormhole
 
     game, actor, source, target, command = route_scenario()
+    if automatic:
+        command['target_id'] = None
     game.galaxy.systems["Sol"].hexes[(0, 0)].units.remove(target)
     target.in_system = "Beta"
     game.galaxy.systems["Beta"].hexes[(0, 0)].units.append(target)

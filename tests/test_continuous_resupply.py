@@ -1,236 +1,124 @@
-from display_config import DisplayConfig
-from unittest.mock import MagicMock
+"""End-to-end harvesting and continuous destination selection."""
+import json
+
+import pytest
+
+from constants import StarType, NebulaType
+from domain.celestials import Star, Nebula
 from geometry import Position
 from unit_components.antimatter import AntimatterHarvester
-from unit_components.commander import Commander
-from unit_orders.base import OrderStatus, OrderType
 from unit_orders.antimatter import ContinuousResupplyOrder
-from domain.celestials import Star
-from events import ContinuousResupplyEvent, EventBus
-from order_system import OrderSystem
-from constants import HullSize, StarType
-from tests.support.units import ComponentUnit, ComponentPlayer
+from unit_orders.base import OrderStatus
+from tests.support.campaigns import campaign
+from tests.test_antimatter_logistics import vessel, issue, tick
 
 
-def _make_star(in_system="Sol", in_hex=(0, 0), position=None):
-    star = Star(in_system=in_system, star_type=StarType.G_TYPE)
-    star.position = position or Position(0, 0)
-    star.in_hex = in_hex
-    star.id = 42
-    star.name = "Sol Star"
-    return star
+def harvesting_scenario(nebula=False, manual=False, amount=0, position=(1000, 0)):
+    game = campaign()
+    source = (Nebula((0, 0), "Sol", NebulaType.HYDROGEN) if nebula
+              else Star(in_system="Sol", star_type=StarType.G_TYPE))
+    source.in_hex, source.position = (0, 0), Position(0, 0)
+    source.name = "Harvest source"
+    system = game.galaxy.systems['Sol']
+    system.hexes[(0, 0)].celestial_bodies.append(source)
+    system.celestial_bodies_by_id[source.id] = source
+    system.hexes[(0, 0)].update_static_inhibition_zones()
+    actor = vessel(game, 'harvester', amount=amount, capacity=150, moving=True, position=position)
+    actor.add_component(AntimatterHarvester(actor))
+    target = vessel(game, 'depot', amount=0, capacity=600, position=(3500, 0))
+    command = dict(type='continuous_resupply', unit_ids=(actor.id,), source_id=source.id,
+                   target_id=target.id if manual else None)
+    return game, actor, source, target, command
 
 
-def _make_harvester_unit(player, position=None, in_hex=(0, 0), in_system="Sol",
-                         am_capacity=100.0, am_current=None):
-    unit = ComponentUnit()
-    unit.owner = player
-    unit.in_system = in_system
-    unit.in_hex = in_hex
-    unit.position = position or Position(0, 0)
-    unit.hull_size = HullSize.MEDIUM
-    commander = Commander(unit)
-    unit.add_component(commander)
-    am = unit.antimatter_component
-    am.max_capacity = am_capacity
-    am.current_amount = am_current if am_current is not None else am_capacity
-    harvester = AntimatterHarvester(unit)
-    unit.add_component(harvester)
-    return unit
+@pytest.mark.parametrize('nebula', [False, True])
+@pytest.mark.parametrize('manual', [False, True])
+def test_harvest_deliver_return_and_repeat(nebula, manual):
+    game, actor, source, target, command = harvesting_scenario(nebula, manual)
+    result = issue(game, command)
+    assert result.accepted, result.errors
+    order = actor.commander_component.current_order
+    seen_delivery = False
+    seen_return = False
+    for _ in range(400):
+        tick(game, actor)
+        assert order.status == OrderStatus.IN_PROGRESS, order.failure_reason
+        seen_delivery |= order.phase == 'delivering'
+        seen_return |= seen_delivery and order.phase == 'harvesting'
+        if target.antimatter_component.current_amount > 200 and seen_return:
+            break
+    assert seen_return
+    assert target.antimatter_component.current_amount > 200
+    assert order.return_reserve == 60
 
 
-def _make_needy_unit(player, position=None, in_hex=(0, 0), in_system="Sol",
-                     am_capacity=100.0, am_current=0.0):
-    unit = ComponentUnit()
-    unit.id = id(unit)
-    unit.owner = player
-    unit.in_system = in_system
-    unit.in_hex = in_hex
-    unit.position = position or Position(500, 0)
-    unit.hull_size = HullSize.SMALL
-    commander = Commander(unit)
-    unit.add_component(commander)
-    am = unit.antimatter_component
-    am.max_capacity = am_capacity
-    am.current_amount = am_current
-    return unit
+def test_harvester_returns_inside_harvest_range_from_outside_source_sector():
+    game, actor, source, target, command = harvesting_scenario(amount=100, position=(4500, 0))
+    target.antimatter_component.current_amount = 600
+    assert issue(game, command).accepted
+    for _ in range(50):
+        tick(game, actor)
+    assert actor.harvester_component.find_nearby_harvest_source(game.galaxy) is source
+    assert actor.antimatter_component.current_amount == 150
+    assert actor.commander_component.current_order.waiting_reason == 'no_destination'
 
 
-def _make_galaxy(units_in_hex, star=None):
-    star = star or _make_star()
-    galaxy = MagicMock()
-    all_units = list(units_in_hex)
-    mock_hex = MagicMock()
-    mock_hex.units = all_units
-    mock_hex.celestial_bodies = [star]
-    mock_system = MagicMock()
-    mock_system.hexes = {(0, 0): mock_hex}
-    galaxy.systems = {"Sol": mock_system}
-    galaxy.get_celestial_body_by_id.side_effect = lambda bid: star if bid == star.id else None
-    galaxy.get_unit_by_id.side_effect = lambda uid: next((u for u in all_units if u.id == uid), None)
-    galaxy.system_graph = {}
-    return galaxy
+def test_manual_harvester_waits_at_source_when_depot_full_then_resumes():
+    game, actor, source, target, command = harvesting_scenario(manual=True, amount=150)
+    target.antimatter_component.current_amount = 600
+    assert issue(game, command).accepted
+    order = actor.commander_component.current_order
+    tick(game, actor)
+    assert order.phase == 'harvesting' and order.waiting_reason == 'destination_full'
+    target.antimatter_component.current_amount = 0
+    tick(game, actor)
+    assert order.phase == 'delivering' and order.active_destination_unit_id == target.id
+    target.antimatter_component.current_amount = 600
+    tick(game, actor)
+    assert order.phase == 'harvesting' and order.active_destination_unit_id is None
 
 
-def test_continuous_resupply_flow():
-    player = ComponentPlayer()
-    harvester = _make_harvester_unit(player, am_current=0.0)
-    needy = _make_needy_unit(player)
-    star = _make_star()
-    galaxy = _make_galaxy([harvester, needy], star=star)
-    harvester.game.galaxy = galaxy
+@pytest.mark.parametrize('parameters,reason', [({}, 'invalid_parameters'), ({'source_body_id': 99999}, 'target_unavailable')])
+def test_missing_or_unknown_harvest_source(parameters, reason):
+    game, actor, _, _, _ = harvesting_scenario()
+    order = ContinuousResupplyOrder(actor, parameters)
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.FAILED and order.failure_reason == reason
 
-    order = ContinuousResupplyOrder(harvester, {"target_id": star.id, "target_name": star.name})
-    order.execute(galaxy)
+
+def test_source_id_zero_and_human_event_use_gateway():
+    from events import ContinuousResupplyEvent, EventBus
+    from order_system import OrderSystem
+    game, actor, source, target, command = harvesting_scenario()
+    system = game.galaxy.systems['Sol']
+    del system.celestial_bodies_by_id[source.id]
+    source.id = 0
+    system.celestial_bodies_by_id[0] = source
+    bus = EventBus()
+    OrderSystem(game, bus)
+    bus.publish(ContinuousResupplyEvent([actor], source, False, target))
+    order = actor.commander_component.current_order
+    assert order.parameters == {'source_body_id': 0, 'target_unit_id': target.id}
     assert order.status == OrderStatus.IN_PROGRESS
 
-    # Simulate passive harvesting filling the storage
-    harvester.antimatter_component.current_amount = harvester.antimatter_component.max_capacity
-    order.check_completion_conditions()
 
-    assert len(order.sub_orders) == 1
-    assert order.sub_orders[0].order_type == OrderType.TRANSFER_ANTIMATTER
-    assert order.sub_orders[0].parameters["target_unit_id"] == needy.id
-
-    # Simulate transfer completing
-    needy.antimatter_component.current_amount = needy.antimatter_component.max_capacity
-    harvester.antimatter_component.current_amount = 0.0
-    order.sub_orders[0].status = OrderStatus.COMPLETED
-    order.update(galaxy)
-
-    assert order.status == OrderStatus.IN_PROGRESS
-
-
-def test_continuous_resupply_no_needy_units():
-    player = ComponentPlayer()
-    harvester = _make_harvester_unit(player, am_current=100.0)
-    star = _make_star()
-    galaxy = _make_galaxy([harvester], star=star)
-    harvester.game.galaxy = galaxy
-
-    order = ContinuousResupplyOrder(harvester, {"target_id": star.id, "target_name": star.name})
-    order.execute(galaxy)
-
-    assert order.status == OrderStatus.IN_PROGRESS
-    assert len(order.sub_orders) == 0
-
-
-def test_continuous_resupply_returns_to_star_when_reserve_hits_60():
-    player = ComponentPlayer()
-    star = _make_star(in_hex=(0, 0))
-    # Harvester is away from star hex (e.g. in hex (2, 2)) after completing transfer, reserve = 60.0
-    harvester = _make_harvester_unit(player, in_hex=(2, 2), am_current=60.0)
-    galaxy = _make_galaxy([harvester], star=star)
-    harvester.game.galaxy = galaxy
-
-    order = ContinuousResupplyOrder(harvester, {"target_id": star.id, "target_name": star.name})
-    order.execute(galaxy)
-
-    assert order.status == OrderStatus.IN_PROGRESS
-    assert len(order.sub_orders) == 1
-    assert order.sub_orders[0].order_type == OrderType.MOVE
-
-
-def test_continuous_resupply_requires_harvester():
-    player = ComponentPlayer()
-    unit = ComponentUnit()
-    unit.owner = player
-    unit.in_system = "Sol"
-    unit.in_hex = (0, 0)
-    unit.position = Position(0, 0)
-    unit.hull_size = HullSize.MEDIUM
-    commander = Commander(unit)
-    unit.add_component(commander)
-    # No AntimatterHarvester added
-
-    star = _make_star()
-    galaxy = _make_galaxy([unit], star=star)
-    unit.game.galaxy = galaxy
-
-    order = ContinuousResupplyOrder(unit, {"target_id": star.id})
-    order.execute(galaxy)
-
-    assert order.status == OrderStatus.FAILED
-
-
-def test_continuous_resupply_picks_closest_needy_unit():
-    player = ComponentPlayer()
-    harvester = _make_harvester_unit(player, position=Position(0, 0), am_current=100.0)
-    needy_close = _make_needy_unit(player, position=Position(100, 0), am_current=0.0)
-    needy_far = _make_needy_unit(player, position=Position(2000, 0), am_current=0.0)
-    star = _make_star()
-
-    mock_hex = MagicMock()
-    mock_hex.units = [harvester, needy_close, needy_far]
-    mock_hex.celestial_bodies = [star]
-    mock_system = MagicMock()
-    mock_system.hexes = {(0, 0): mock_hex}
-    galaxy = MagicMock()
-    galaxy.systems = {"Sol": mock_system}
-    galaxy.get_celestial_body_by_id.side_effect = lambda bid: star if bid == star.id else None
-    all_units = [harvester, needy_close, needy_far]
-    galaxy.get_unit_by_id.side_effect = lambda uid: next((u for u in all_units if u.id == uid), None)
-    galaxy.system_graph = {}
-    harvester.game.galaxy = galaxy
-
-    order = ContinuousResupplyOrder(harvester, {"target_id": star.id, "target_name": star.name})
-    order.execute(galaxy)
-
-    assert order.status == OrderStatus.IN_PROGRESS
-    assert len(order.sub_orders) == 1
-    sub = order.sub_orders[0]
-    assert sub.order_type == OrderType.TRANSFER_ANTIMATTER
-    assert sub.parameters["target_unit_id"] == needy_close.id
-
-
-def test_continuous_resupply_fails_with_unknown_star():
-    player = ComponentPlayer()
-    harvester = _make_harvester_unit(player, am_current=100.0)
-    galaxy = MagicMock()
-    galaxy.get_celestial_body_by_id.return_value = None
-    galaxy.systems = {}
-    harvester.game.galaxy = galaxy
-
-    order = ContinuousResupplyOrder(harvester, {"target_id": 9999})
-    order.execute(galaxy)
-
-    assert order.status == OrderStatus.FAILED
-    assert order.failure_reason == "target_unavailable"
-
-
-def test_continuous_resupply_fails_with_missing_target_id():
-    player = ComponentPlayer()
-    harvester = _make_harvester_unit(player, am_current=100.0)
-    galaxy = _make_galaxy([harvester])
-    harvester.game.galaxy = galaxy
-
-    order = ContinuousResupplyOrder(harvester, {})
-    order.execute(galaxy)
-
-    assert order.status == OrderStatus.FAILED
-    assert order.failure_reason == "invalid_parameters"
-
-
-def test_player_event_continuous_resupply_accepts_legacy_star_id_zero():
-    player = ComponentPlayer()
-    harvester = _make_harvester_unit(player, am_current=0.0)
-    star = _make_star()
-    star.id = 0
-    galaxy = _make_galaxy([harvester], star=star)
-    game = MagicMock()
-    game.display_config = DisplayConfig()
-    game.galaxy = galaxy
-    game.gui = None
-    harvester.game = game
-    harvester.in_galaxy = galaxy
-
-    event_bus = EventBus()
-    OrderSystem(game, event_bus)
-    event_bus.publish(ContinuousResupplyEvent([harvester], star, False))
-
-    order = harvester.commander_component.current_order
-    assert order is not None
-    assert order.parameters["target_id"] == 0
-    assert order.status == OrderStatus.IN_PROGRESS
-    assert order.failure_reason is None
-    galaxy.get_celestial_body_by_id.assert_called_with(0)
+@pytest.mark.parametrize('phase', ['harvesting', 'delivering'])
+@pytest.mark.parametrize('manual', [False, True])
+def test_harvester_save_restore_without_replay(phase, manual):
+    from save_manager import serialize_game_state, deserialize_game_state
+    game, actor, source, target, command = harvesting_scenario(manual=manual, amount=150 if phase == 'delivering' else 0)
+    assert issue(game, command).accepted
+    if phase == 'delivering':
+        tick(game, actor)
+    order = actor.commander_component.current_order
+    assert order.phase == phase
+    before = serialize_game_state(game)
+    amount = actor.antimatter_component.current_amount
+    runtime = order.get_persistence_state()
+    assert deserialize_game_state(game, json.loads(json.dumps(before)))
+    loaded = game.galaxy.get_unit_by_id(actor.id)
+    assert loaded.antimatter_component.current_amount == amount
+    assert loaded.commander_component.current_order.get_persistence_state() == runtime
+    for _ in range(100):
+        tick(game, loaded)
+    assert game.galaxy.get_unit_by_id(target.id).antimatter_component.current_amount > 0

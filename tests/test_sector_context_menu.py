@@ -87,7 +87,7 @@ def test_sector_context_menu_star_no_view_star_placeholder(sector_setup):
     assert "view_star" not in action_ids
     assert options == []
 
-    # 2. Harvester unit selected -> offers "Resupply (continuously)", but no "View Star"
+    # 2. Harvester unit selected -> offers "Resupply (continuously)...", but no "View Star"
     harvester = Unit(p1, Position(10, 10), (0, 0), "Sol", "Harvester", HullSize.MEDIUM, game)
     harvester.add_component(Commander(harvester))
     harvester.add_component(AntimatterHarvester(harvester))
@@ -101,7 +101,7 @@ def test_sector_context_menu_star_no_view_star_placeholder(sector_setup):
     action_ids = [opt[1] for opt in options if isinstance(opt[1], str)]
     assert "View Star" not in labels
     assert "view_star" not in action_ids
-    assert "Resupply (continuously)" in labels
+    assert "Resupply (continuously)..." in labels
     assert "continuous_resupply" in action_ids
 
 
@@ -191,7 +191,7 @@ def test_sector_context_menu_nebula_no_view_nebula_placeholder(sector_setup):
     assert "view_nebula" not in action_ids
     assert options == []
 
-    # 2. Harvester unit selected -> offers "Resupply (continuously)", but no "View Nebula"
+    # 2. Harvester unit selected -> offers "Resupply (continuously)...", but no "View Nebula"
     harvester = Unit(p1, Position(10, 10), (0, 0), "Sol", "Harvester", HullSize.MEDIUM, game)
     harvester.add_component(Commander(harvester))
     harvester.add_component(AntimatterHarvester(harvester))
@@ -202,7 +202,7 @@ def test_sector_context_menu_nebula_no_view_nebula_placeholder(sector_setup):
     action_ids = [opt[1] for opt in options if isinstance(opt[1], str)]
     assert "View Nebula" not in labels
     assert "view_nebula" not in action_ids
-    assert "Resupply (continuously)" in labels
+    assert "Resupply (continuously)..." in labels
     assert "continuous_resupply" in action_ids
 
 

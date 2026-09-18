@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 import math
 
-CONTRACT_VERSION = 12
+CONTRACT_VERSION = 13
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -63,8 +63,8 @@ COMMAND_SPECS = {
     "deploy_all_wings": _spec("Deploy all docked wings.", capability=("strikecraft_bay_component",)),
     "transfer_antimatter": _spec("Transfer antimatter to a friendly unit.", ("target_id",), capability=("antimatter_component",)),
     "take_antimatter": _spec("Approach a friendly source and take antimatter without changing its orders.", ("target_id",), capability=("antimatter_component",)),
-    "continuous_antimatter_transport": _spec("Repeat pickups from source_id and deliveries to target_id with automatic return fuel reserves.", ("source_id", "target_id"), capability=("antimatter_component", "engines_component"), single_unit=True),
-    "continuous_resupply": _spec("Repeat harvesting and friendly refuelling indefinitely.", ("target_id",), capability=("harvester_component", "antimatter_component")),
+    "continuous_antimatter_transport": _spec("Load at source_id (unit). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply nearest reachable owned units galaxy-wide, visiting multiple recipients per load with return fuel reserved. No demand waits; manual destination loss fails.", ("source_id", "target_id"), ("source_id",), capability=("antimatter_component", "engines_component"), single_unit=True),
+    "continuous_resupply": _spec("Harvest at source_id (star or hydrogen nebula). Deliver to target_id (owned/allied unit), or omit/null target_id to automatically supply nearest reachable owned units galaxy-wide. Retains 60 AM; no demand waits; manual destination loss fails.", ("source_id", "target_id"), ("source_id",), capability=("harvester_component", "antimatter_component")),
     "lay_minefield": _spec("Lay anti_ship (default) or anti_strikecraft mines.", ("minefield_type",), ()),
     "trade": _spec("Trade with a friendly active habitat.", ("target_id",), capability=("trade_component",)),
     "continuous_trade": _spec("Repeat trade routes indefinitely.", capability=("trade_component",)),

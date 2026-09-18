@@ -175,13 +175,6 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         target_styled = f"<font color='{INFO_COLOR}'><i>Target ID: {target_id}</i></font>"
         return [f"{continuous_mine_type_styled} {target_styled}"]
 
-    elif order_type == "CONTINUOUS_RESUPPLY":
-        target_id = parameters.get("target_id", "Unknown")
-        target_name = parameters.get("target_name", f"Star ID: {target_id}")
-        continuous_resupply_type_styled = f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>🔁 Resupply (continuously):</b></font>"
-        target_styled = f"<font color='{INFO_COLOR}'><i>{target_name}</i></font>"
-        return [f"{continuous_resupply_type_styled} {target_styled}"]
-
     elif order_type == "TRADE":
         target_unit_id = parameters.get("target_unit_id", "Unknown")
         trade_type_styled = f"<font color='{TRADE_COLOR}'><b>Trade:</b></font>"
@@ -202,11 +195,17 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         label = "Take Antimatter" if order_type == "TAKE_ANTIMATTER" else "Transfer Antimatter"
         return [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>{label}:</b></font> {_target_name_html(state_data)}"]
 
-    elif order_type == "CONTINUOUS_ANTIMATTER_TRANSPORT":
-        source = escape(str(state_data.get('source_name') or parameters.get('source_unit_id')))
-        target = escape(str(state_data.get('target_name') or parameters.get('target_unit_id')))
+    elif order_type in ("CONTINUOUS_ANTIMATTER_TRANSPORT", "CONTINUOUS_RESUPPLY"):
+        source = escape(str(state_data.get('source_name') or state_data.get('source_id')))
+        automatic = state_data.get('destination_mode') == 'automatic'
+        target = ('Automatic' if automatic else
+                  'Manual: ' + escape(str(state_data.get('target_name') or parameters.get('target_unit_id'))))
+        active = state_data.get('active_destination_name')
+        if automatic and active:
+            target += ' — ' + escape(str(active))
         phase = escape(str(state_data.get('phase', 'loading')).title())
-        lines = [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>Continuous Antimatter Transport:</b></font>",
+        label = 'Continuous Resupply' if order_type == 'CONTINUOUS_RESUPPLY' else 'Continuous Antimatter Transport'
+        lines = [f"<font color='{TRANSFER_ANTIMATTER_COLOR}'><b>{label}:</b></font>",
                  f"  {source} → {target}", f"  Phase: {phase}",
                  f"  Return reserve: {state_data.get('return_reserve', 0):.1f} AM"]
         if state_data.get('waiting_reason'):

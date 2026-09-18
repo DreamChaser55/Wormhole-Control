@@ -170,18 +170,54 @@ combat before advancing to the next player.
 
 Every unit with functional Antimatter Storage can donate or receive fuel. **Transfer Antimatter** moves the donor toward the recipient; **Take Antimatter** moves the recipient toward the donor without changing the donor's orders or stance. Both work with owned/allied ships and stations, within 200 units in the same sector, at up to 25 AM per acting unit's owner turn. They conserve fuel and finish when the recipient fills or the donor empties. Shift queues either order. Manual transfers may empty harvesters; Continuous Resupply alone retains its 60 AM reserve. Harvesters remain necessary for stellar and hydrogen-nebula collection.
 
-For unattended deliveries, select one mobile transporter and open **Continuous Antimatter Transport...** on a friendly depot. Choose source and destination, then Start or Queue. The repeating root follows those unit IDs and their current positions. It loads to capacity, or departs with a partial load after the source empties if it can pay for the round trip and deliver positive cargo. It waits for insufficient supply or a full destination, and reserves the return trip's fuel before each donation. Stop it with Cancel Orders; work queued after it waits indefinitely.
+For unattended deliveries, harvesters and transports both offer **Automatic** and
+**Manual** destinations. Sources always remain explicitly selected:
 
-The clicked depot starts selected as Source, filtered to its system and hex;
-Destination starts unselected with all eligible units available. Each endpoint
-has independent System and Hex filters and a live search by name or unit ID
-(with or without `#`). Choose a system to enable its Hex filter. Search ignores
-case and matches partial names or IDs within the selected location. Changing
-filters clears a selection if it no longer matches. **Swap source and destination**
-exchanges both units and their filters. Start, Queue, and Swap require two distinct
-eligible units. Filters reset each time the window opens.
+- Select harvesters, right-click a star or hydrogen nebula, and open **Resupply
+  (continuously)...**. The clicked body is the fixed harvest source; destination
+  defaults to Automatic. Harvesters fill their tanks at the source and retain
+  **60 AM** when donating. When a manual depot fills, they return to harvest and
+  wait at their source until that depot needs fuel again.
+- Select one mobile transporter and open **Continuous Antimatter Transport...**
+  on a friendly depot. The clicked unit starts selected as Source; destination
+  defaults to Manual and starts unselected. Transports load to capacity, or depart
+  partially loaded after their source empties when they can cover travel, reserve
+  their return fuel, and deliver positive cargo. A full manual depot causes waiting
+  in the current phase until space becomes available.
 
-Journey estimates account for operational engines/hyperdrive, wormhole topology, collision detours, terrain drag, and active equipment consumption. Each leg reserves `ceil(1.25 × estimated AM) + 10` when travel costs fuel, otherwise zero. Future harvesting and multiplication do not finance the estimate. Unreachable routes, insufficient tank capacity for a productive round trip, or invalid endpoints fail; temporary shortages wait. Damage or changing routes can still interrupt delivery. The sidebar reports phase, waiting reason, and return reserve.
+**Automatic** chooses the nearest eligible **owned** unit galaxy-wide, excluding
+the actor and the transport source. Proximity uses local distance, sector distance,
+and wormhole distance, with unit ID breaking ties. Unreachable or unaffordable
+recipients are skipped. Recipients must be alive, deployed, outside gas-giant
+atmospheres, and have functional storage with spare capacity. The chosen recipient
+is retained until it fills or becomes unavailable/unreachable, then another is
+selected. Routes can serve several recipients per load, returning to their source
+when no productive delivery remains and retrying each owner turn. Automatic routes
+can be started even when nobody currently needs fuel.
+
+**Manual** pins one owned or allied recipient by unit ID and follows its current
+position. Destroyed, hostile, docked, submerged, or storage-inoperable destinations
+fail the order with a reason; they are never silently replaced. Source loss and
+actor capability failures also fail the order. Stop either mode with Cancel Orders;
+work queued behind these continuous orders waits until they end.
+
+Use **Start route**, **Queue route**, or **Cancel** in the dialog. Manual unit
+pickers have independent System and Hex filters and a live case-insensitive search
+by partial name or ID (with or without `#`). Choose a system to enable its Hex
+filter. Changing filters clears a selection that no longer matches. Automatic mode
+disables destination pickers; their filters do not limit the automatic search.
+**Swap source and destination** exchanges units and filters only for manual
+transports with two distinct eligible endpoints. Filters reset when the window opens.
+
+Journey estimates account for operational engines/hyperdrive, wormhole topology,
+collision detours, terrain drag, and active equipment consumption. Transport legs
+reserve `ceil(1.25 × estimated AM) + 10` when travel costs fuel, otherwise zero;
+equipment upkeep is also retained for the delivery turn. Each new automatic delivery
+is checked from the ship's current position. Future harvesting and multiplication
+never finance an estimate. Invalid manual routes or insufficient tank capacity fail;
+temporary shortages wait. The sidebar shows source, destination mode, configured or
+active recipient, phase, waiting reason, and reserve. Harvesters retain their fixed
+60 AM reserve; they do not use the transporter's calculated return reserve.
 
 | Logistics design | Hull | AM capacity | Hull used | Credits | Build turns |
 |---|---|---:|---:|---:|---:|
@@ -192,8 +228,8 @@ Journey estimates account for operational engines/hyperdrive, wormhole topology,
 The transporter has speed 100 and Advanced Hyperdrive range 5. Both stations are stationary. These designs have storage, sensors and defenses, with no harvester or special ability, and start with full tanks under the normal construction rules.
 
 **Continuous Mine** fills cargo, unloads at a compatible refinery and repeats.
-**Continuous Resupply** alternates harvesting at a star and refueling friendly or
-allied ships. **Continuous Trade** travels between active Civilian Habitats in
+**Continuous Resupply** alternates harvesting at a star or hydrogen nebula and
+refueling automatically chosen owned ships or one manually chosen owned/allied depot. **Continuous Trade** travels between active Civilian Habitats in
 different sectors; payout scales with distance. A Trade Module requires Engines.
 
 Colony ships settle habitable planets, moons and colonizable asteroids, or load

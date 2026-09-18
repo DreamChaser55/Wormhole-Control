@@ -723,7 +723,7 @@ def test_gas_giant_antimatter_removal_integration():
     mock_game.galaxy.get_celestial_body_by_id = MagicMock(return_value=gas_giant)
     mock_game.galaxy.get_unit_by_id = MagicMock(return_value=unit)
     gateway = CommandGateway(mock_game)
-    batch = CommandBatch((Command("continuous_resupply", (unit.id,), target_id=gas_giant.id),))
+    batch = CommandBatch((Command("continuous_resupply", (unit.id,), source_id=gas_giant.id),))
     result = gateway.apply_batch(p1, batch)
     assert not result.accepted
     assert any("The resupply target is not a star or hydrogen nebula." in err.message for err in result.errors)

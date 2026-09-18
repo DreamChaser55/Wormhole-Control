@@ -65,7 +65,7 @@ class OrderType(Enum):
     USE_ABILITY = auto()  # Use a special ability (with optional target unit or position)
     CONTINUOUS_MINE = auto() # Cycles between mining and unloading at closest refinery
     TRANSFER_ANTIMATTER = auto() # Transfer antimatter from this unit's storage to a friendly target unit
-    CONTINUOUS_RESUPPLY = auto() # Harvester cycles between charging at a star and resupplying the closest friendly unit that needs antimatter
+    CONTINUOUS_RESUPPLY = auto() # Harvest at a star/nebula; deliver to a fixed depot or automatic recipients
     LAY_MINEFIELD = auto()       # Lay a minefield at the unit's current position
     REFIT_UNIT = auto()          # Refit a friendly unit (add/remove components) using a Constructor unit
     TRADE = auto()               # Travel to an active Civilian Habitat and execute trade

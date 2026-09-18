@@ -19,7 +19,7 @@ from unit_orders.mining import MineOrder, UnloadResourcesOrder, ContinuousMineOr
 from unit_orders.hangar import DockOrder
 from unit_orders.patrol import PatrolOrder
 from unit_orders.abilities import UseAbilityOrder
-from unit_orders.antimatter import TransferAntimatterOrder, ContinuousResupplyOrder
+from unit_orders.antimatter import TransferAntimatterOrder
 from unit_orders.minelayer import LayMinefieldOrder
 from unit_orders.refit import RefitOrder
 from unit_orders.trade import TradeOrder, ContinuousTradeOrder
@@ -603,26 +603,15 @@ class OrderSystem:
             issue(self.game, {'type': 'transfer_antimatter', 'unit_ids': units, 'target_id': event.target_unit.id, 'queue': event.shift_pressed})
 
     def handle_continuous_resupply(self, event: ContinuousResupplyEvent):
-        """Creates ContinuousResupplyOrders for selected units that have an
-        AntimatterHarvester component, targeting the given star body."""
-        for unit in event.units:
-            if not getattr(unit, 'harvester_component', None):
-                if getattr(self.game, 'gui', None):
-                    self.game.gui.show_warning_dialog(
-                        f"Unit <b>{unit.name}</b> lacks an Antimatter Harvester and cannot harvest antimatter from stars.",
-                        title="No Harvester Module"
-                    )
-                continue
-            resupply_params = {
-                "target_id": event.target_body.id,
-                "target_name": getattr(event.target_body, 'name', f"Star {event.target_body.id}"),
-            }
-            resupply_order = ContinuousResupplyOrder(unit, resupply_params)
-            if not event.shift_pressed:
-                unit.commander_component.clear_explicit_orders()
-            unit.commander_component.add_order(resupply_order)
-            logger.debug(f"  Unit {unit.name} ordered to continuously resupply from star {event.target_body.name} via event.")
-        self.game.sidebar_needs_update = True
+        """Issue continuous harvesting through the shared command gateway."""
+        from tactical_ui import issue
+        units = [u.id for u in event.units if getattr(u, 'harvester_component', None)
+                 and getattr(u, 'antimatter_component', None)]
+        if units:
+            issue(self.game, {'type': 'continuous_resupply', 'unit_ids': units,
+                             'source_id': event.target_body.id,
+                             'target_id': event.target_unit.id if event.target_unit else None,
+                             'queue': event.shift_pressed})
 
     def handle_lay_minefield(self, event: LayMinefieldEvent):
         """Creates LayMinefieldOrders for selected units with MinelayerComponent."""

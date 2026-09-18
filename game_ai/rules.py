@@ -373,15 +373,17 @@ def command_guidance(
             if getattr(candidate, "civilian_habitat_component", None)
         ],
     }
-    from antimatter_logistics import exchange_blocker
+    from antimatter_logistics import exchange_blocker, continuous_route_blocker
     fuel_targets = [candidate for candidate in friendly_units if exchange_blocker(unit, candidate, game.galaxy) is None]
     target_options['transfer_antimatter'] = [candidate.id for candidate in fuel_targets if unit.antimatter_component.current_amount > 0 and candidate.antimatter_component.current_amount < candidate.antimatter_component.max_capacity]
     target_options['take_antimatter'] = [candidate.id for candidate in fuel_targets if candidate.antimatter_component.current_amount > 0]
     if getattr(unit, 'antimatter_component', None) and unit.antimatter_component.current_amount >= unit.antimatter_component.max_capacity:
         target_options['take_antimatter'] = []
     if 'continuous_antimatter_transport' in supported:
-        options['continuous_antimatter_transport'] = {'source_ids': [candidate.id for candidate in fuel_targets], 'target_ids': [candidate.id for candidate in fuel_targets], 'distinct_endpoints': True, 'automatic_return_reserve': True}
-        if len(fuel_targets) >= 2:
+        sources = [candidate.id for candidate in fuel_targets
+                   if continuous_route_blocker(unit, candidate, None, game.galaxy) is None]
+        options['continuous_antimatter_transport'] = {'source_ids': sources, 'target_ids': [candidate.id for candidate in fuel_targets], 'distinct_endpoints': True, 'automatic_return_reserve': True, 'destination_modes': ['automatic', 'manual'], 'automatic_when_target_null': True, 'automatic_recipient_scope': 'owned_galaxy_wide'}
+        if sources:
             legal.add('continuous_antimatter_transport')
     for command_type, target_ids in target_options.items():
         if command_type in supported:
@@ -452,9 +454,11 @@ def command_guidance(
             if mining_targets:
                 legal.add(command_type)
 
-    stars = [body.id for body in exact_bodies if is_antimatter_source(body)]
     if "continuous_resupply" in supported:
-        options["continuous_resupply"] = {"target_ids": stars}
+        from constants import ANTIMATTER_HARVESTER_RETURN_THRESHOLD
+        stars = [body.id for body in exact_bodies if is_antimatter_source(body)
+                 and continuous_route_blocker(unit, body, None, game.galaxy, harvesting=True) is None]
+        options["continuous_resupply"] = {"source_ids": stars, "target_ids": [candidate.id for candidate in fuel_targets], "destination_modes": ["automatic", "manual"], "automatic_when_target_null": True, "automatic_recipient_scope": "owned_galaxy_wide", "return_reserve": ANTIMATTER_HARVESTER_RETURN_THRESHOLD}
         if stars:
             legal.add("continuous_resupply")
 

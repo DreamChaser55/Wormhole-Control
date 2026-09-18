@@ -1,5 +1,5 @@
 """Domain representation of an active construction job marker."""
-from typing import Optional, Any
+from typing import Any
 from geometry import Position
 from constants import HullSize, HULL_BASE_ICON_SCALES, SECTOR_VIEW_BASE_ICON_SIZE
 from unit_templates import UNIT_TEMPLATES, get_all_templates_for_player

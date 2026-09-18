@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":14}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":15}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -231,7 +231,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 10, shared field
+Read `observation.command_catalog`: it contains command contract version 13, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -383,7 +383,7 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 14 and command contract 12 expose a deduplicated `ability_catalog`,
+Observation schema 15 and command contract 13 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
 response name is `wormhole_control_turn_v11`; unused OpenAI command fields stay null.
@@ -399,6 +399,9 @@ response name is `wormhole_control_turn_v11`; unused OpenAI command fields stay 
 {"type":"transfer_antimatter","unit_ids":[101],"target_id":102}
 {"type":"take_antimatter","unit_ids":[101],"target_id":102,"queue":true}
 {"type":"continuous_antimatter_transport","unit_ids":[101],"source_id":102,"target_id":103,"queue":false}
+{"type":"continuous_antimatter_transport","unit_ids":[101],"source_id":102,"target_id":null}
+{"type":"continuous_resupply","unit_ids":[101],"source_id":201,"target_id":103}
+{"type":"continuous_resupply","unit_ids":[101],"source_id":201,"target_id":null}
 {"type":"cancel_ability","unit_ids":[101],"ability":"guardian_link","queue":false}
 ```
 
@@ -406,7 +409,22 @@ These are separate command examples, not an executable batch; substitute IDs fro
 a fresh observation. Position casts require local range, while unit-targeted
 casts and antimatter exchange approach automatically. Nebula Catalyst's `target_id` is a known nebula. Only active Tractor/Guardian links are cancellable. Ghost emitters persist indefinitely with one surviving emitter per deploying ship across the galaxy.
 
-Transfer and Take need functional storage and a friendly/allied target. Take moves the recipient; Transfer moves the donor. Exchange is limited to 25 AM per owner turn within 200 units and ends on empty supply or full capacity. The repeating transport command takes one mobile actor and two distinct friendly unit endpoints. It waits for supply/space and protects a buffered return reserve. Its phase, waiting reason, and reserve appear in the current order. See [antimatter logistics](REFERENCE.md#antimatter-logistics) for route rules and the three public Logistics designs.
+Transfer and Take need functional storage and a friendly/allied target. Take moves
+the recipient; Transfer moves the donor. Exchange is limited to 25 AM per owner
+turn within 200 units and ends on empty supply or full capacity.
+
+Both continuous commands require `source_id`: a star/hydrogen nebula for
+`continuous_resupply`, or a loading unit for `continuous_antimatter_transport`.
+The transport command takes one mobile actor. Optional `target_id` pins an
+owned/allied recipient; null or omission enables automatic delivery to nearest
+reachable owned units galaxy-wide. Automatic routes visit multiple recipients per
+load and return to their source to wait when no productive delivery remains.
+They exclude their actor and loading source. A lost manual recipient fails; full
+manual recipients cause waiting. Harvesters retain 60 AM, while transports reserve
+buffered return fuel. Current orders expose configured mode/target separately from
+`progress.active_destination_id`, plus phase, waiting reason and reserve. Source,
+recipient and approach geometry are redacted when unavailable. See
+[antimatter logistics](REFERENCE.md#antimatter-logistics) for route rules.
 
 Multiply Antimatter pays 20 AM, then doubles friendly current fuel within 500 units, capped by storage. Empty tanks gain nothing. The caster and every recipient that gains fuel have independent 30-round deadlines; the recipient deadline is shared across casters. Pulses with no positive net generation are rejected. Read the projected gains and net AM in ability state. Immediate pulse gains can fund later commands in the same batch; queued pulses reserve only their cost, and future pickups/travel cannot finance an immediate cast. Unused strict-response fields, including `source_id`, remain null.
 
@@ -417,7 +435,7 @@ Catalog descriptions include roles and equipment. Carriers expose wing productio
 
 ## Turn-start event summary
 
-Every schema-13 observation ends with `turn_summary`: reporting rounds (`from_turn`
+Every schema-15 observation ends with `turn_summary`: reporting rounds (`from_turn`
 and `to_turn`), grouped event `entries`, net `economy` changes, and `omitted_count`.
 Read this briefing before choosing orders. It covers the previous End Turn's
 resolution and intervening activity through this turn's opening effects. It is
@@ -427,7 +445,7 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 12 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 13 remain unchanged; no acknowledgement
 command is required from Codex.
 
 
@@ -460,7 +478,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.10 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.11 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization

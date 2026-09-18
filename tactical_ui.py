@@ -14,7 +14,15 @@ def button(text, action, data):
 def issue(game, command):
     from game_ai.commands import CommandGateway
     from game_ai.contracts import Command, CommandBatch
-    result = CommandGateway(game).apply_batch(game.players[game.current_player_index], CommandBatch((Command.from_dict(command),)))
+    from game_ai.command_spec import MAX_UNITS
+    # Human harvester selections can exceed a command's group limit. Keep the
+    # complete selection in one preflight batch so rejection changes no orders.
+    if command['type'] == 'continuous_resupply' and len(command['unit_ids']) > MAX_UNITS:
+        commands = tuple(Command.from_dict(dict(command, unit_ids=command['unit_ids'][i:i + MAX_UNITS]))
+                         for i in range(0, len(command['unit_ids']), MAX_UNITS))
+    else:
+        commands = (Command.from_dict(command),)
+    result = CommandGateway(game).apply_batch(game.players[game.current_player_index], CommandBatch(commands))
     if not result.accepted and getattr(game, 'gui', None):
         game.gui.show_warning_dialog('<br>'.join(e.message for e in result.errors), title='Tactical order unavailable')
     return result.accepted

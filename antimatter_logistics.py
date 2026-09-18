@@ -265,3 +265,115 @@ def route_budget(unit, source, destination, galaxy):
     if returning is None:
         return None
     return buffered_fuel(outward.fuel) + buffered_fuel(returning.fuel)
+
+
+def harvest_source_ready(source, galaxy):
+    from domain.celestials import Star, Nebula
+    from constants import NebulaType
+
+    if not (isinstance(source, Star) or
+            isinstance(source, Nebula) and source.nebula_type == NebulaType.HYDROGEN):
+        return False
+    system = galaxy.systems.get(source.in_system)
+    sector = system.hexes.get(source.in_hex) if system else None
+    return bool(sector and source in sector.celestial_bodies)
+
+
+def source_range(unit, harvesting=False):
+    return unit.harvester_component.harvest_range if harvesting else ANTIMATTER_TRANSFER_RANGE
+
+
+def at_source(unit, source, harvesting=False):
+    return (unit.in_system == source.in_system and unit.in_hex == source.in_hex
+            and distance(unit.position, source.position) <= source_range(unit, harvesting))
+
+
+def continuous_source_blocker(unit, source, galaxy, *, harvesting=False):
+    if not endpoint_ready(unit, galaxy) or unit.is_disabled:
+        return "capability_unavailable"
+    if harvesting:
+        harvester = unit.harvester_component
+        if not harvester or harvester.is_destroyed:
+            return "capability_unavailable"
+        return None if harvest_source_ready(source, galaxy) else "target_unavailable"
+    if not unit.engines_component or not unit.engines_component.is_operational:
+        return "capability_unavailable"
+    return exchange_blocker(unit, source, galaxy)
+
+
+def continuous_route_blocker(unit, source, destination, galaxy, *, harvesting=False):
+    """Shared issuance rules; absence of an automatic recipient is legal."""
+    blocker = continuous_source_blocker(unit, source, galaxy, harvesting=harvesting)
+    if blocker:
+        return blocker
+    if estimate_approach(unit, galaxy, source, approach_range=source_range(unit, harvesting)) is None:
+        return "path_unavailable"
+    if destination is not None:
+        blocker = exchange_blocker(unit, destination, galaxy)
+        if blocker:
+            return blocker
+        if destination is source:
+            return "invalid_target"
+        budget = delivery_budget(unit, source, destination, galaxy,
+                                 harvesting=harvesting, from_source=True)
+        if budget is None:
+            return "path_unavailable"
+        if budget >= unit.antimatter_component.max_capacity:
+            return "insufficient_capacity"
+    return None
+
+
+def delivery_budget(unit, source, destination, galaxy, *, harvesting=False, from_source=False):
+    """Fuel needed before a productive delivery; never assumes future income."""
+    from constants import ANTIMATTER_HARVESTER_RETURN_THRESHOLD
+
+    origin = None
+    if from_source and not at_source(unit, source, harvesting):
+        arrival = estimate_approach(unit, galaxy, source,
+                                    approach_range=source_range(unit, harvesting))
+        if arrival is None:
+            return None
+        origin = (arrival.system, arrival.hex_coord, arrival.position)
+    outward = estimate_approach(unit, galaxy, destination, origin)
+    if outward is None:
+        return None
+    returning = estimate_approach(unit, galaxy, source,
+        (outward.system, outward.hex_coord, outward.position),
+        approach_range=source_range(unit, harvesting))
+    if returning is None:
+        return None
+    reserve = (ANTIMATTER_HARVESTER_RETURN_THRESHOLD if harvesting
+               else buffered_fuel(returning.fuel) + equipment_upkeep(unit))
+    return buffered_fuel(outward.fuel) + reserve
+
+
+def automatic_recipient(unit, source, galaxy, *, harvesting=False, excluded=()):
+    """Nearest affordable owned recipient, with deterministic proximity ordering."""
+    from geometry import hex_distance
+    from pathfinding import find_intersystem_path
+
+    def proximity(candidate):
+        if unit.in_system == candidate.in_system:
+            value = (distance(unit.position, candidate.position)
+                     if unit.in_hex == candidate.in_hex else
+                     hex_distance(unit.in_hex, candidate.in_hex) * 10000.0)
+        else:
+            path = find_intersystem_path(galaxy.system_graph, unit.in_system,
+                                        candidate.in_system, unit.hull_size)
+            value = (float('inf') if not path else
+                     (len(path) - 1) * 1_000_000.0
+                     + hex_distance(unit.in_hex, candidate.in_hex) * 10000.0)
+        return value, candidate.id
+
+    candidates = [candidate for system in galaxy.systems.values()
+                  for sector in system.hexes.values() for candidate in sector.units
+                  if candidate is not source and candidate.id not in excluded
+                  and candidate.owner is unit.owner
+                  and exchange_blocker(unit, candidate, galaxy) is None
+                  and candidate.antimatter_component.current_amount
+                  < candidate.antimatter_component.max_capacity]
+    for candidate in sorted(candidates, key=proximity):
+        budget = delivery_budget(unit, source, candidate, galaxy, harvesting=harvesting)
+        if budget is not None and unit.antimatter_component.current_amount > budget:
+            return candidate
+    return None
