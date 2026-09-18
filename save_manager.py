@@ -42,7 +42,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.11"
+CURRENT_SAVE_VERSION = "4.12"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -515,6 +515,11 @@ def deserialize_order(data: dict, unit: Unit, game: Any) -> Order:
 
     from location_validation import order_locations
     params = order_locations(order_type_str, params, getattr(game, "galaxy", None))
+    if order_type_str == "CONSTRUCT":
+        from construction_customization import validate_override_values, OVERRIDE_FIELDS
+        if any(field not in params for field in OVERRIDE_FIELDS):
+            raise ValueError("Missing construction overrides")
+        validate_override_values(*(params[field] for field in OVERRIDE_FIELDS))
     order = order_cls(unit=unit, parameters=params)
     import uuid
     order.public_id = uuid.UUID(data["public_id"]).hex

@@ -81,7 +81,7 @@ def test_current_storage_schema_and_empty_current_slot_round_trip():
     unit.commander_component.orders_queue.append(queued)
     data = serialize_game_state(game)
     storage = data['galaxy']['systems'][0]['hexes'][0]['units'][0]['components']['AntimatterStorage']
-    assert data['version'] == '4.11'
+    assert data['version'] == '4.12'
     assert storage['schema_version'] == 2
     assert storage['configuration'] == {'max_capacity': unit.antimatter_component.max_capacity}
     restored = prepare_campaign(data).state.galaxy.get_unit_by_id(unit.id)

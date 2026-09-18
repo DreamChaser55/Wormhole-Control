@@ -157,7 +157,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 15,
+        "schema_version": 16,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -319,6 +319,8 @@ def _unit_view(
                 'weapons_suppressed': bool(root and root.order_type.name == 'EMERGENCY_RECOVERY'),
                 'recovery_launch_locked': wing.recovery_ready_round > round_now(game.galaxy),
             }
+    if relation == "enemy":
+        data["capability_details"] = _combat_equipment_details(unit)
     if relation in {"self", "ally"} and getattr(unit, "wormhole_stabilizer_component", None):
         from wormhole_stabilization import state_view
         data["wormhole_stabilizer"] = state_view(unit)
@@ -418,6 +420,27 @@ def _minefield_view(minefield: Any, viewer: Any) -> dict[str, Any]:
     }
 
 
+def _combat_equipment_details(unit: Any) -> dict[str, Any]:
+    """Only human-inspectable combat equipment; no provenance, targets or orders."""
+    from constants import HullSize
+    details = {}
+    weapons = getattr(unit, "weapons_component", None)
+    if weapons is not None:
+        details["weapons"] = {"operational": not bool(weapons.is_destroyed), "turrets": [
+            {"type": enum_name(t.turret_type), "variant": enum_name(t.variant), "damage": t.damage, "range": t.range,
+             "cooldown": t.cooldown, "cooldown_remaining": t.current_cooldown,
+             "effective_cooldown": t.effective_cooldown,
+             "eligible_target_classes": [enum_name(h) for h in HullSize if weapons.turret_accepts_hull(t, h)]}
+            for t in weapons.turrets]}
+    from unit_components.defenses import Defenses
+    defenses = next((c for c in public_components(unit, enemy=True) if isinstance(c, Defenses)), None)
+    if defenses is not None:
+        details["defenses"] = {"operational": not bool(defenses.is_destroyed),
+                               "armor": defenses.armor, "shields": defenses.shields,
+                               "point_defense": defenses.point_defense}
+    return details
+
+
 def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     commander = getattr(unit, "commander_component", None)
     details: dict[str, Any] = {
@@ -449,7 +472,7 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
             "status": _enum_value(getattr(hyperdrive, "jump_status", None)),
         }
     from unit_orders.defend import DEFAULT_DEFEND_GUARD_RADIUS
-    from constants import HullSize, TRADE_ARRIVAL_RANGE, ANTIMATTER_TRANSFER_RANGE, DEFAULT_STANDOFF_DISTANCE
+    from constants import TRADE_ARRIVAL_RANGE, ANTIMATTER_TRANSFER_RANGE, DEFAULT_STANDOFF_DISTANCE
     from unit_orders.hangar import DOCKING_RANGE
     details["defend_radius"] = DEFAULT_DEFEND_GUARD_RADIUS
     sensors = getattr(unit, "sensors_component", None)
@@ -460,14 +483,7 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
         from environmental_effects import sensor_radius
         details["sensors"]["effective_short_range_radius"] = sensor_radius(unit)
         details["sensors"]["effective_long_range_hexes"] = long_range_sensor_hexes(unit)
-    weapons = getattr(unit, "weapons_component", None)
-    if weapons is not None:
-        details["weapons"] = {"operational": not bool(weapons.is_destroyed), "turrets": [
-            {"type": enum_name(t.turret_type), "variant": enum_name(t.variant), "range": t.range,
-             "cooldown": t.cooldown, "cooldown_remaining": t.current_cooldown,
-             "effective_cooldown": t.effective_cooldown,
-             "eligible_target_classes": [enum_name(h) for h in HullSize if weapons.turret_accepts_hull(t, h)]}
-            for t in weapons.turrets]}
+    details.update(_combat_equipment_details(unit))
     cloak = getattr(unit, "cloaking_component", None)
     if cloak is not None:
         details["cloaking"] = {"type": enum_name(cloak.device_type), "active": cloak.is_active,

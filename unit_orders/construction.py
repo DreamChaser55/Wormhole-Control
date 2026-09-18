@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 class ConstructOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.CONSTRUCT, parameters, parent_order)
+        from construction_customization import OVERRIDE_FIELDS
+        for field in OVERRIDE_FIELDS:
+            self.parameters.setdefault(field, None)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         from location_validation import validate_order
@@ -40,6 +43,14 @@ class ConstructOrder(Order):
             self.parameters["target_position"] = target_pos
 
         constructor = self.unit.constructor_component
+        from construction_customization import validate_template_overrides
+        from unit_templates import get_template
+        try:
+            validate_template_overrides(get_template(unit_template_name, self.unit.owner),
+                                        self.parameters["turret_type_override"], self.parameters["defense_type_override"])
+        except ValueError:
+            self.fail("invalid_parameters")
+            return
         buildable = constructor.can_build(unit_template_name)
 
         if not buildable:
@@ -97,7 +108,9 @@ class ConstructOrder(Order):
                 )
             return
 
-        success = constructor.start_construction(unit_template_name, target_pos, galaxy_ref, system_name=target_sys, hex_coord=target_hex, order=self)
+        success = constructor.start_construction(unit_template_name, target_pos, galaxy_ref, system_name=target_sys, hex_coord=target_hex, order=self,
+                                                 turret_type_override=self.parameters["turret_type_override"],
+                                                 defense_type_override=self.parameters["defense_type_override"])
         if success:
             constructor.construction_order_id = self.public_id
             self._charged_credits = buildable.cost_credits

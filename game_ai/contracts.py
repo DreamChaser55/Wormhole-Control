@@ -26,6 +26,8 @@ class Command:
     hex_coord: tuple[int, int] | None = None
     position: tuple[float, float] | None = None
     template_name: str | None = None
+    turret_type_override: str | None = None
+    defense_type_override: str | None = None
     new_name: str | None = None
     amount: float | None = None
     stance: str | None = None
@@ -62,6 +64,8 @@ class Command:
             "hex_coord": list(self.hex_coord) if self.hex_coord is not None else None,
             "position": list(self.position) if self.position is not None else None,
             "template_name": self.template_name,
+            "turret_type_override": self.turret_type_override,
+            "defense_type_override": self.defense_type_override,
             "new_name": self.new_name,
             "amount": self.amount,
             "stance": self.stance,

@@ -451,6 +451,31 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 | Interdictor | Special Operations | LARGE ship | 100.00/100 | 4000 | 30 | 1.00 | Designed for mobile jump denial. Inter-system travel. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
 <!-- END GENERATED: unit-catalog -->
 
+### Automated construction customization
+
+Built-in AI and Codex players can customize each Construct order with independent
+`turret_type_override` (`mass_driver`, `beam`, `missile`) and
+`defense_type_override` (`armor`, `shields`, `point_defense`) choices.
+Omitting a choice or passing null preserves that part of the template.
+
+A turret override changes every installed turret's type, keeping its damage,
+range, cooldown and Standard, Long Range or Anti-Strikecraft variant. A defense
+override pools Armor + Shields + Point Defense into the chosen defense and sets
+the other two to zero: 10 Armor / 20 Shields / 5 Point Defense becomes 35 Shields.
+This changes combat matchups and sacrifices mixed defense coverage, while hull use,
+component HP, build cost, build time, upkeep and other equipment stay the same.
+
+Overrides require existing turrets or a positive total defense strength;
+inapplicable overrides reject the command before orders or credits change.
+Every constructor selected in one command uses the same choices. Choices persist
+through queues, approach and saves. Catalogue templates and default unit names
+remain unchanged. This does not customize carrier wings, ability-created units,
+existing ships or human construction controls.
+
+Automated observations now include actual weapon and defense equipment on enemies
+in detailed sensor view, matching human inspection. Hidden enemies, covert
+Intelligence equipment, enemy orders and template/accounting details stay private.
+
 ### Fixed construction sites
 
 Construction uses the system, sector `(q, r)`, and logical `(x, y)` position selected

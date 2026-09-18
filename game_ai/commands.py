@@ -564,6 +564,7 @@ class _BatchProjection:
         elif COMMAND_SPECS[command.type].queued:
             params = {"target_id": command.target_id, "agent_id": command.agent_id, "amount": command.amount,
                       "unit_template_name": command.template_name, "target_carrier_id": command.target_id,
+                      "turret_type_override": command.turret_type_override, "defense_type_override": command.defense_type_override,
                       "waypoints": list(command.waypoints or []), "ability_type": command.ability, "target_unit_id": command.target_id, "target_position": command.position,
                       "target_system_name": command.system_name, "target_hex_coord": command.hex_coord}
             for unit in units:
@@ -1186,6 +1187,8 @@ class CommandGateway:
                     unit,
                     {
                         "unit_template_name": command.template_name,
+                        "turret_type_override": command.turret_type_override,
+                        "defense_type_override": command.defense_type_override,
                         "target_position": Position(position.x, position.y),
                         "target_system_name": command.system_name,
                         "target_hex_coord": command.hex_coord,
@@ -1756,6 +1759,13 @@ class CommandGateway:
                 raise _Rejected(
                     "invalid_value", f"Unit {unit.id} cannot build that template."
                 )
+            from construction_customization import validate_template_overrides
+            from unit_templates import get_template
+            try:
+                validate_template_overrides(get_template(command.template_name, unit.owner),
+                                            command.turret_type_override, command.defense_type_override)
+            except ValueError as exc:
+                raise _Rejected("invalid_value", str(exc)) from exc
             target_pos = self._destination(command)
             if not has_operational_engines(unit):
                 from geometry import Position, distance

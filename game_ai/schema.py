@@ -72,7 +72,7 @@ def responses_text_config() -> dict:
     return {
         "format": {
             "type": "json_schema",
-            "name": "wormhole_control_turn_v11",
+            "name": "wormhole_control_turn_v12",
             "strict": True,
             "schema": TURN_PLAN_SCHEMA,
         },

@@ -189,7 +189,7 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert not activate(caster, kind, game.galaxy, position=Position(200, 0))
     assert caster.antimatter_component.current_amount == fuel
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.11'
+    assert state['version'] == '4.12'
     assert all('lifetime' not in d for s in state['galaxy']['systems'] for h in s['hexes'] for d in h['deployables'])
     restored = campaign()
     assert deserialize_game_state(restored, state)
@@ -303,7 +303,7 @@ def test_gateway_duplicate_spending_is_atomic_and_catalog_has_all_six():
     assert not deployments(game.galaxy, caster.id, 'ghost_fleet')
     assert issue(game, caster, 'ghost_fleet', position=(200, 0)).accepted
     observation = build_observation(game, caster.owner)
-    assert observation['schema_version'] == 15
+    assert observation['schema_version'] == 16
     assert set(SPECS) <= set(observation['ability_catalog'])
     assert observation['visible_deployables'][0]['persistent'] is True
 

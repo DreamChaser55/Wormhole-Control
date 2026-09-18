@@ -42,6 +42,7 @@ from constants import (
 
 
 from unit_templates import UNIT_TEMPLATES, get_all_templates_for_player
+from construction_customization import customize_template, validate_template_overrides, validate_override_values, OVERRIDE_FIELDS
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -62,6 +63,8 @@ def instantiate_unit_from_template(
     game: 'Game',
     *,
     templates: Optional[dict] = None,
+    turret_type_override: Optional[str] = None,
+    defense_type_override: Optional[str] = None,
 ) -> Optional['Unit']:
     """Module-level helper that builds a :class:`~domain.units.Unit` from a
     template entry in :data:`~unit_templates.UNIT_TEMPLATES` (or private templates
@@ -84,6 +87,7 @@ def instantiate_unit_from_template(
         logger.debug(f"Error: System '{system_name}' not found for unit creation.")
         return
 
+    template = customize_template(template, turret_type_override, defense_type_override)
     new_unit = assemble_unit_from_template(template_name, template, owner, system_name, hex_coord, position, game)
     system.add_unit(new_unit)
     return new_unit
@@ -424,7 +428,7 @@ class BuildableUnit:
 
 class Constructor(UnitComponent):
     """A component that allows a unit to construct other units (stations) and refit friendly units."""
-    SCHEMA_VERSION = 2
+    SCHEMA_VERSION = 3
     STATE_CONFIG = ('build_range',)
     STATE_RUNTIME = ('current_construction_target', 'construction_progress', 'time_to_build', 'construction_order_id', 'current_refit_target', 'refit_progress', 'refit_time', 'refit_order_id')
     STATE_REFS = ()
@@ -437,7 +441,8 @@ class Constructor(UnitComponent):
         if target is not None:
             from location_validation import location
             from state_codec import fields
-            fields(target, ("template_name", "system_name", "hex_coord", "position"), "construction")
+            fields(target, ("template_name", "system_name", "hex_coord", "position", *OVERRIDE_FIELDS), "construction")
+            validate_override_values(*(target[field] for field in OVERRIDE_FIELDS))
             if not isinstance(target["template_name"], str) or not target["template_name"]:
                 raise ValueError("Invalid construction template")
             location(target["system_name"], target["hex_coord"], target["position"])
@@ -578,7 +583,8 @@ class Constructor(UnitComponent):
         return None
 
 
-    def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy', *, system_name: str, hex_coord: HexCoord, order=None) -> bool:
+    def start_construction(self, unit_template_name: str, position: Position, galaxy: 'Galaxy', *, system_name: str, hex_coord: HexCoord, order=None,
+                           turret_type_override=None, defense_type_override=None) -> bool:
         """Starts the construction of a new unit."""
         if self.is_destroyed:
             return False
@@ -600,13 +606,20 @@ class Constructor(UnitComponent):
             logger.debug(f"Error: {self.unit.name} cannot build {unit_template_name}.")
             return False
 
+        template = get_all_templates_for_player(self.unit.owner, base_templates=UNIT_TEMPLATES).get(unit_template_name)
+        try:
+            validate_template_overrides(template, turret_type_override, defense_type_override)
+        except ValueError:
+            return False
+
         owner = self.unit.owner
         if owner.credits < buildable.cost_credits:
             logger.debug(f"Error: Not enough credits to build {unit_template_name}.")
             return False
         owner.credits -= buildable.cost_credits
 
-        self.current_construction_target = dict(template_name=unit_template_name, system_name=system_name, hex_coord=hex_coord, position=position)
+        self.current_construction_target = dict(template_name=unit_template_name, system_name=system_name, hex_coord=hex_coord, position=position,
+                                                turret_type_override=turret_type_override, defense_type_override=defense_type_override)
         self.construction_order_id = order.public_id if order else None
         self._construction_order_ref = order
         self.time_to_build = buildable.time_to_build
@@ -754,7 +767,8 @@ class Constructor(UnitComponent):
             if self.refit_progress >= self.refit_time:
                 self.finish_refit(galaxy)
 
-    def create_unit_from_template(self, galaxy: 'Galaxy', template_name: str, owner: 'Player', system_name: str, hex_coord: 'HexCoord', position: 'Position'):
+    def create_unit_from_template(self, galaxy: 'Galaxy', template_name: str, owner: 'Player', system_name: str, hex_coord: 'HexCoord', position: 'Position', *,
+                                  turret_type_override=None, defense_type_override=None):
         """Creates a new unit based on the template.
 
         Delegates to the module-level :func:`instantiate_unit_from_template`
@@ -768,10 +782,13 @@ class Constructor(UnitComponent):
             position=position,
             galaxy=galaxy,
             game=self.unit.game,
+            turret_type_override=turret_type_override,
+            defense_type_override=defense_type_override,
         )
         if built is not None:
             from turn_briefing import unit_event
             unit_event(built, "development", "Construction completed", private=True)
+        return built
 
     def finish_construction(self, galaxy: 'Galaxy'):
         """Finalizes the construction and creates the new unit."""
@@ -786,14 +803,31 @@ class Constructor(UnitComponent):
         logger.debug("Construction of %s finished by %s at %s", unit_template_name, self.unit.name,
                      format_location(job["system_name"], job["hex_coord"], position))
         
-        self.create_unit_from_template(
-            galaxy=galaxy,
-            template_name=unit_template_name,
-            owner=self.unit.owner,
-            system_name=job["system_name"],
-            hex_coord=job["hex_coord"],
-            position=position
-        )
+        template = get_all_templates_for_player(self.unit.owner, base_templates=UNIT_TEMPLATES).get(unit_template_name)
+        valid = template is not None
+        try:
+            validate_template_overrides(template, job["turret_type_override"], job["defense_type_override"])
+        except ValueError:
+            valid = False
+        built = None
+        if valid:
+            built = self.create_unit_from_template(
+                galaxy=galaxy,
+                template_name=unit_template_name,
+                owner=self.unit.owner,
+                system_name=job["system_name"],
+                hex_coord=job["hex_coord"],
+                position=position,
+                turret_type_override=job["turret_type_override"],
+                defense_type_override=job["defense_type_override"],
+            )
+        if built is None:
+            order = self._owning_construction_order()
+            if order is not None:
+                order.refund_charge()
+                order.fail("construction_unavailable")
+            self.cancel_construction()
+            return
 
         # Construction complete; reset building state variables.
         self.construction_order_id = None

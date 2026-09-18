@@ -63,6 +63,8 @@ Click **Unit Editor** beside **Comms** in the bottom panel to open the **Unit De
 
 Select a Constructor and choose **Construct...** from its location context menu to
 search the [built-in unit catalogue](docs/REFERENCE.md#built-in-unit-catalog).
+Automated players can [override weapon and defense types](docs/REFERENCE.md#automated-construction-customization)
+for individual builds to counter observed opponents, preserving template costs and equipment budgets.
 Carriers produce Fighter or Bomber Wings through their strikecraft bays. Equipment
 supports [combat, deployment and carrier abilities](docs/REFERENCE.md#abilities),
 including [toggleable environmental resistances](docs/REFERENCE.md#environmental-resistance-abilities)

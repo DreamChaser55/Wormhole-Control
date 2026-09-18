@@ -432,6 +432,8 @@ def reconcile(candidate):
                     or params.get("target_system_name") != job["system_name"]
                     or params.get("target_hex_coord") != job["hex_coord"]
                     or params.get("target_position") != job["position"]
+                    or params.get("turret_type_override") != job["turret_type_override"]
+                    or params.get("defense_type_override") != job["defense_type_override"]
                     or order._charged_player_id is None):
                 raise ValueError("Construction job does not match its owning order")
     from wormhole_stabilization import reconcile as reconcile_stabilizers

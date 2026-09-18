@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":15}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":16}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -231,7 +231,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 13, shared field
+Read `observation.command_catalog`: it contains command contract version 14, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -383,10 +383,10 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 15 and command contract 13 expose a deduplicated `ability_catalog`,
+Observation schema 16 and command contract 14 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v11`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v12`; unused OpenAI command fields stay null.
 
 
 ```json
@@ -445,7 +445,7 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 13 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 14 remain unchanged; no acknowledgement
 command is required from Codex.
 
 
@@ -478,7 +478,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.11 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.12 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
@@ -497,6 +497,30 @@ shortages wait. Cancel the continuous root to release queued work. Observations
 expose natural/effective stability and progress without hidden support identities.
 See [complete rules](REFERENCE.md#wormhole-stabilization).
 
+
+### Construct equipment overrides
+
+Command contract 14 supports optional nullable `turret_type_override` and
+`defense_type_override` on `construct`, independently. Turret choices are
+`mass_driver`, `beam`, `missile`; defense choices are `armor`, `shields`,
+`point_defense`. Omission/null retains the template preset.
+
+```json
+{"type":"construct","unit_ids":[101],"template_name":"ARTILLERY_DREADNOUGHT","system_name":"Sol","hex_coord":[0,0],"position":[200,0],"turret_type_override":"beam","defense_type_override":"shields","queue":true}
+```
+
+All turrets keep their stats and variants. All defense strength moves into the
+chosen defense, zeroing the others. Costs, hull usage, build time and upkeep stay
+unchanged. Missing equipment rejects the override; a defense override requires
+positive total strength. Non-null overrides on other commands are rejected.
+Group commands use the same choices per builder. Choices survive queues and saves
+and appear in owner/allied order parameters. Catalogue entries and names are unchanged.
+
+Observation 16 includes public enemy `capability_details.weapons` and `.defenses`
+only for detailed visible contacts. Use their actual equipment to choose counters:
+Armor counters Mass Drivers, Shields counter Beams, and Point Defense counters
+Missiles. Enemy orders, template identity, accounting and covert components remain
+private. These choices do not affect `set_wing_production` or existing units.
 
 ### Complete positional destinations
 

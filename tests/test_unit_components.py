@@ -515,7 +515,7 @@ def test_constructor():
         success = constructor.start_construction("Station", Position(10, 10), galaxy, system_name=constructor.unit.in_system, hex_coord=constructor.unit.in_hex)
         assert success
         assert unit.owner.credits == 200
-        assert constructor.current_construction_target == dict(template_name="Station", system_name="Sol", hex_coord=(0, 0), position=Position(10, 10))
+        assert constructor.current_construction_target == dict(turret_type_override=None, defense_type_override=None, template_name="Station", system_name="Sol", hex_coord=(0, 0), position=Position(10, 10))
         assert constructor.time_to_build == 3
         assert constructor.construction_progress == 0
         

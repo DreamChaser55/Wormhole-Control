@@ -4,8 +4,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from copy import deepcopy
 import math
+from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 13
+CONTRACT_VERSION = 14
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -51,7 +52,7 @@ COMMAND_SPECS = {
     "protect": _spec("Escort a friendly unit and engage nearby enemies.", ("target_id",), capability=("engines_component",)),
     "colonize": _spec("Colonize an unowned body; queue behind a required colonist load.", ("target_id",), capability=("colony_component",)),
     "load_colonists": _spec("Load a positive amount of colonists from a self-owned colony.", ("target_id", "amount"), capability=("colony_component",)),
-    "construct": _spec("Construct a template at an explicit system, sector and position.", ("template_name", *DESTINATION), capability=("constructor_component",)),
+    "construct": _spec("Construct a template at an explicit system, sector and position. Optional turret_type_override changes all installed turrets; defense_type_override consolidates total defense strength into one type. Null preserves presets. Requires matching equipment; costs and other stats are unchanged.", ("template_name", *DESTINATION, "turret_type_override", "defense_type_override"), ("template_name", *DESTINATION), capability=("constructor_component",)),
     "set_wing_production": _spec("Select fighter or bomber production when the bay is not constructing.", ("template_name",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
     "repair": _spec("Repair a friendly unit.", ("target_id",), capability=("repair_component",)),
     "mine": _spec("Mine a body once.", ("target_id",), capability=("mining_component",)),
@@ -102,6 +103,8 @@ COMMAND_PROPERTIES = {
     "target_id": {"type": ["integer", "null"]}, "system_name": NULLABLE_STRING,
     "hex_coord": _pair_schema("integer"), "position": _pair_schema("number"),
     "template_name": NULLABLE_STRING, "new_name": NULLABLE_STRING, "amount": {"type": ["number", "null"]},
+    "turret_type_override": {"type": ["string", "null"], "enum": [None, *TURRET_TYPES]},
+    "defense_type_override": {"type": ["string", "null"], "enum": [None, *DEFENSE_TYPES]},
     "stance": {"type": ["string", "null"], "enum": [None, *STANCE_VALUES]},
     "queue": {"type": "boolean"}, "ability": NULLABLE_STRING,
     "minefield_type": {"type": ["string", "null"], "enum": [None, "anti_ship", "anti_strikecraft"]},
@@ -165,6 +168,10 @@ def validate_command(raw):
         except ValueError as exc:
             raise ContractError(str(exc)) from exc
     require(raw.get("stance") is None or raw["stance"] in STANCE_VALUES, "Unknown stance.")
+    try:
+        validate_override_values(raw.get("turret_type_override"), raw.get("defense_type_override"))
+    except ValueError as exc:
+        raise ContractError(str(exc)) from exc
     require(raw.get("minefield_type") in (None, "anti_ship", "anti_strikecraft"), "Unknown minefield_type.")
     require(raw.get("sabotage_type") in (None, "engines", "weapons", "defenses", "hyperdrive", "sensors", "antimatter", "economy", "growth"), "Unknown sabotage_type.")
     if kind == "use_ability":

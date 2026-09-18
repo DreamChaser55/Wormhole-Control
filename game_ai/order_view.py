@@ -58,7 +58,7 @@ def order_layers(unit, relation, visible_ids, body_ids):
             data["parameters"] = {}
         else:
             public = {}
-            for key in ("amount", "unit_template_name", "ability_type", "minefield_type", "standoff_distance", "guard_radius"):
+            for key in ("amount", "unit_template_name", "turret_type_override", "defense_type_override", "ability_type", "minefield_type", "standoff_distance", "guard_radius"):
                 value = params.get(key)
                 if type(value) in (str, int, float, bool):
                     public[key] = value

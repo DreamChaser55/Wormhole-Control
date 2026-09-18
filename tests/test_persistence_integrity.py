@@ -120,7 +120,7 @@ def mutate(component, target):
         component.mother_carrier = target
     if isinstance(component, Constructor):
         component.build_range = 777.5
-        component.current_construction_target = dict(template_name="FIGHTER_WING", system_name=component.unit.in_system, hex_coord=component.unit.in_hex, position=Position(5, 6))
+        component.current_construction_target = dict(turret_type_override=None, defense_type_override=None, template_name="FIGHTER_WING", system_name=component.unit.in_system, hex_coord=component.unit.in_hex, position=Position(5, 6))
         component.current_refit_target = {"target_unit_id": target.id, "action": "ADD", "component_type": "Engines",
             "component_config": {"speed": 73.5}, "cost_credits": 100, "time_to_build": 3, "payer_id": target.owner.id, "salvage_due": 0}
         component.construction_order_id = "a" * 32

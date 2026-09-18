@@ -330,21 +330,22 @@ def test_catalyst_describes_only_its_nebula(kind, key, value, relation):
     assert all(rule in panel for rule in view['rules'])
 
 
-def test_remote_terrain_and_enemy_equipment_stay_private():
+def test_remote_terrain_and_enemy_noncombat_details_stay_private():
     game = campaign()
     own = ship(game)
     enemy = ship(game, 'enemy', owner=1)
     hidden_body = install(game, Storm((1, 0), 'Beta', StormType.RADIATION))
     known_body = install(game, Storm((0, 0), 'Sol', StormType.PLASMA))
     observed = build_observation(game, own.owner)
-    assert observed['schema_version'] == 15
+    assert observed['schema_version'] == 16
     beta = next(s for s in observed['systems'] if s['name'] == 'Beta')
     assert beta['detail_level'] == 'summary'
     assert hidden_body.id not in [b['id'] for b in beta['notable_bodies']]
     sol = next(s for s in observed['systems'] if s['name'] == 'Sol')
     assert next(b for b in sol['celestial_bodies'] if b['id'] == known_body.id)['environmental_effects']['hazards']
     enemy_view = next(u for u in observed['units'] if u['id'] == enemy.id)
-    assert 'capability_details' not in enemy_view and 'environmental_modifiers' not in enemy_view
+    assert set(enemy_view['capability_details']) <= {'weapons', 'defenses'}
+    assert 'environmental_modifiers' not in enemy_view
 
 
 @pytest.mark.filterwarnings('error:Label Rect is too small:UserWarning')

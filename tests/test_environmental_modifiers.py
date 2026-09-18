@@ -164,7 +164,7 @@ def test_cluster_warhead_marks_falloff_splash_and_preserves_allies():
     assert ally.current_hit_points == ally_hp
 
 
-def test_observations_add_effects_without_exposing_enemy_turrets():
+def test_observations_add_effects_and_limit_enemy_details_to_combat_equipment():
     game, attacker, target, turret = combatants()
     ice = field(game, 'ice')
     oxygen = field(game, 'oxygen')
@@ -173,8 +173,8 @@ def test_observations_add_effects_without_exposing_enemy_turrets():
     info = own['capability_details']['weapons']['turrets'][0]
     assert info['cooldown'] == 3 and info['effective_cooldown'] == 2
     for enemy in (u for u in observation['units'] if u['owner_id'] == target.owner.id):
-        assert 'capability_details' not in enemy
+        assert set(enemy['capability_details']) <= {'weapons', 'defenses'}
     bodies = {b['id']: b for s in observation['systems'] for b in s.get('celestial_bodies', [])}
     assert bodies[ice.id]['environmental_effects']['cooldown_reduction'] == 1
     assert bodies[oxygen.id]['environmental_effects']['splash_damage_multiplier'] == 1.15
-    assert observation['schema_version'] == 15
+    assert observation['schema_version'] == 16
