@@ -77,7 +77,12 @@ Set `WORMHOLE_FULLSCREEN=true` to force full-screen mode.
 Resources resolve relative to the application module or PyInstaller bundle,
 independently of the working directory. Each UI manager gets an in-memory scaled
 theme, absolute bundled font paths and idempotent rich-text font preloading.
-System and Sector views keep independent transient cameras.
+Galaxy, System and Sector views keep independent transient cameras. Galaxy transforms
+zoom about the gameplay viewport center with pixel-based panning; default transform
+arguments preserve the New Game preview. Galaxy picking and rendering share this
+transform, and both drawing surfaces are clipped to the viewport. A successful
+campaign commit resets the galaxy camera and active drag gesture; rejected setup or
+load attempts leave them intact. No camera state is serialized.
 
 ## Campaign setup contracts
 

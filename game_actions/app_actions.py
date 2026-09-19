@@ -93,6 +93,8 @@ def handle_quit_to_main_menu(game, action: dict) -> None:
 
 
 def handle_navigate_back(game, action: dict) -> None:
+    from game_camera import cancel_camera_drag
+    cancel_camera_drag(game)
     if game.view_mode == 'sector':
         game.view_mode = 'system'
         game.current_sector_coord = None

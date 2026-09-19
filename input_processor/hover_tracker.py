@@ -21,6 +21,24 @@ from galaxy_utils import logical_to_screen_galaxy
 logger = logging.getLogger(__name__)
 
 
+def get_galaxy_system_at(game, gui, mouse_pos: Position):
+    """Pick a system using the same camera and scaled radius as the map."""
+    viewport = gui.galaxy_generation_rect
+    if (not game.galaxy or not game.galaxy.systems or viewport is None
+            or not viewport.collidepoint(mouse_pos.to_tuple())
+            or gui.is_mouse_over_gui_panels(mouse_pos)
+            or gui.is_mouse_over_context_menu(mouse_pos)):
+        return None
+    hover_dist_sq = (22 * game.galaxy_zoom) ** 2
+    for sys_name, system in game.galaxy.systems.items():
+        screen_pos = logical_to_screen_galaxy(
+            system.position, viewport, game.galaxy_zoom, game.galaxy_pan_offset,
+        )
+        if distance_sq(mouse_pos, screen_pos) < hover_dist_sq:
+            return sys_name
+    return None
+
+
 def update_hover_states(game, gui, mouse_pos: Position) -> None:
     """Updates entity hover state tracking across galaxy, system, and sector views.
 
@@ -38,14 +56,7 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
         return
 
     if game.view_mode == 'galaxy':
-        if not game.galaxy or not game.galaxy.systems:
-            return
-        hover_dist_sq = 22**2
-        for sys_name, system in game.galaxy.systems.items():
-            screen_pos = logical_to_screen_galaxy(system.position, gui.galaxy_generation_rect)
-            if distance_sq(mouse_pos, screen_pos) < hover_dist_sq:
-                game.galaxy_view_mouse_hover_system_name = sys_name
-                break
+        game.galaxy_view_mouse_hover_system_name = get_galaxy_system_at(game, gui, mouse_pos)
 
     elif game.view_mode == 'system':
         if not game.current_system_name:

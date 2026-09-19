@@ -164,7 +164,10 @@ class Game:
         self.system_zoom_anchor_logical = None
         self.system_camera_system_name: typing.Optional[str] = None
 
-        # Shared mouse-drag gesture state for the tactical cameras
+        # Galaxy camera is independent from the system and sector cameras.
+        game_camera.reset_galaxy_camera(self)
+
+        # Shared mouse-drag gesture state for the map cameras
         self.is_dragging_camera = False
         self.camera_drag_start_pos = None
         self.camera_drag_last_pos = None
@@ -177,6 +180,10 @@ class Game:
         if self.players and 0 <= self.current_player_index < len(self.players):
             return self.players[self.current_player_index]
         return None
+
+    def reset_galaxy_camera(self):
+        """Restores the fitted galaxy overview."""
+        game_camera.reset_galaxy_camera(self)
 
     def reset_sector_camera(self):
         """Resets the sector camera zoom and pan offset."""
@@ -245,6 +252,10 @@ class Game:
             )
         )
 
+    def update_galaxy_camera(self, dt: float):
+        """Smoothly interpolates galaxy zoom and its cursor anchor."""
+        game_camera.update_galaxy_camera(self, dt)
+
     def update_sector_camera(self, dt: float):
         """Smoothly interpolates the sector camera zoom and pan offset."""
         game_camera.update_sector_camera(self, dt)
@@ -303,11 +314,14 @@ class Game:
         if self.game_started and (self.visibility_dirty or self.visibility is None):
             self.recompute_visibility()
 
-        # Smooth tactical camera zoom
+        # Smooth map camera zoom
         from gui.turn_briefing_window import is_open
         if not is_open(self.gui):
             self.update_sector_camera(time_delta)
             self.update_system_camera(time_delta)
+            self.update_galaxy_camera(time_delta)
+            if self.game_started and self.view_mode == 'galaxy':
+                self.input_processor.update_hover_states(Position(*pygame.mouse.get_pos()))
 
         # Update the GUI Handler
         self.gui.update(time_delta)
@@ -420,7 +434,7 @@ class Game:
         self.renderer.draw()
 
     def handle_mouse_wheel(self, scroll_y: int):
-        """Processes mouse scroll wheel input for tactical camera zooming."""
+        """Processes mouse scroll wheel input for map camera zooming."""
         game_camera.handle_mouse_wheel(self, scroll_y)
 
     def run(self, max_frames: typing.Optional[int] = None, *, exit_on_finish: bool = True):

@@ -106,9 +106,12 @@ class DummyGame:
         self.zoom_anchor_logical = None
         self.is_dragging_camera = False
         self.camera_drag_last_pos = Position(0, 0)
+        self.current_system_name = None
+        self.current_sector_coord = None
         self.gui = MagicMock()
         self.gui.display_config = DisplayConfig()
         self.gui.is_mouse_over_gui_panels.return_value = False
+        self.gui.is_mouse_over_context_menu.return_value = False
 
     def handle_gui_action(self, gui_action):
         pass

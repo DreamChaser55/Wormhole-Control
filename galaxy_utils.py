@@ -3,10 +3,11 @@ import pygame
 from geometry import Vector, Position
 from constants import LOGICAL_GALAXY_SIZE
 
-def logical_to_screen_galaxy(logical_pos: Vector, render_rect: pygame.Rect) -> Vector:
+def logical_to_screen_galaxy(logical_pos: Vector, render_rect: pygame.Rect,
+                             zoom: float = 1.0, pan_offset: Position = None) -> Vector:
     """
     Maps a logical galaxy coordinate to a screen pixel coordinate within the given render_rect.
-    Maintains aspect ratio and centers the logical space within the rect.
+    Fit the logical space, then zoom around the viewport center and pan in pixels.
     """
     if render_rect is None:
         # Fallback if no rect is provided
@@ -24,9 +25,15 @@ def logical_to_screen_galaxy(logical_pos: Vector, render_rect: pygame.Rect) -> V
 
     screen_x = offset_x + logical_pos.x * scale
     screen_y = offset_y + logical_pos.y * scale
-    return Vector(screen_x, screen_y)
+    center_x = render_rect.left + render_rect.width / 2
+    center_y = render_rect.top + render_rect.height / 2
+    return Vector(
+        center_x + (screen_x - center_x) * zoom + (pan_offset.x if pan_offset is not None else 0),
+        center_y + (screen_y - center_y) * zoom + (pan_offset.y if pan_offset is not None else 0),
+    )
 
-def screen_to_logical_galaxy(screen_pos: Position, render_rect: pygame.Rect) -> Vector:
+def screen_to_logical_galaxy(screen_pos: Position, render_rect: pygame.Rect,
+                             zoom: float = 1.0, pan_offset: Position = None) -> Vector:
     """
     Maps a screen pixel coordinate within the render_rect back to a logical galaxy coordinate.
     """
@@ -43,8 +50,12 @@ def screen_to_logical_galaxy(screen_pos: Position, render_rect: pygame.Rect) -> 
     offset_x = render_rect.left + (render_rect.width - scaled_width) / 2
     offset_y = render_rect.top + (render_rect.height - scaled_height) / 2
 
-    logical_x = (screen_pos.x - offset_x) / scale
-    logical_y = (screen_pos.y - offset_y) / scale
+    center_x = render_rect.left + render_rect.width / 2
+    center_y = render_rect.top + render_rect.height / 2
+    base_x = center_x + (screen_pos.x - center_x - (pan_offset.x if pan_offset is not None else 0)) / zoom
+    base_y = center_y + (screen_pos.y - center_y - (pan_offset.y if pan_offset is not None else 0)) / zoom
+    logical_x = (base_x - offset_x) / scale
+    logical_y = (base_y - offset_y) / scale
     return Vector(logical_x, logical_y)
 
 

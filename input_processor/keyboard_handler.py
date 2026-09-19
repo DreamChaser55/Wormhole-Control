@@ -3,39 +3,28 @@ import logging
 import pygame
 import pygame_gui
 from geometry import Position
+from game_camera import camera_input_blocked, cancel_camera_drag
 
 logger = logging.getLogger(__name__)
 
 
 def handle_keyboard_panning(game, gui, time_delta: float) -> None:
-    """Pan the active system or sector camera from directional arrow keys.
+    """Pan the active map camera from directional arrow keys.
 
     Args:
         game: Target Game instance.
         gui: Target GUI_Handler instance.
         time_delta (float): Elapsed frame time in seconds.
     """
-    editor = getattr(gui, 'unit_editor_window', None)
-    if editor and editor.is_visible is True and getattr(editor, '_description_dialog', None):
-        return
-    catalog = getattr(gui, 'unit_catalog_window', None)
-    if catalog and catalog.window.alive() is True:
-        return
-    from gui.planetary_window import is_open as planetary_is_open
-    if planetary_is_open(gui):
-        return
-    from gui.antimatter_transport_window import is_open as transport_is_open
-    if transport_is_open(gui):
+    if camera_input_blocked(game, gui):
         return
     keys = pygame.key.get_pressed()
-    is_typing = False
-    if hasattr(gui, 'is_any_text_entry_focused'):
-        val = gui.is_any_text_entry_focused()
-        if isinstance(val, bool):
-            is_typing = val
 
-    if game.view_mode in ('system', 'sector') and game.game_started and not is_typing:
-        if game.view_mode == 'system':
+    if game.view_mode in ('galaxy', 'system', 'sector') and game.game_started:
+        if game.view_mode == 'galaxy':
+            pan_offset = game.galaxy_pan_offset
+            anchor_pixel_attr = 'galaxy_zoom_anchor_pixel'
+        elif game.view_mode == 'system':
             if hasattr(game, 'ensure_system_camera'):
                 game.ensure_system_camera()
             pan_offset = game.system_pan_offset
@@ -145,9 +134,11 @@ def handle_key_down(game, gui, event: pygame.event.Event) -> bool:
         elif game.view_mode in ['galaxy', 'system', 'sector']:
             gui.toggle_ingame_menu()
     elif event.key == pygame.K_g and game.game_started:
+        cancel_camera_drag(game)
         game.view_mode = 'galaxy'
         game.update_view_specific_labels()
     elif event.key == pygame.K_s and game.game_started and game.current_system_name:
+        cancel_camera_drag(game)
         game.view_mode = 'system'
         if hasattr(game, 'ensure_system_camera'):
             game.ensure_system_camera()

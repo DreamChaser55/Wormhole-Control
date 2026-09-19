@@ -80,8 +80,8 @@ These limits apply to new campaigns. Loading uses the separate
 | Left drag | Box-select units |
 | Right click | Open contextual actions or issue a direct command |
 | Shift + order | Queue behind existing explicit orders |
-| Middle drag / arrow keys | Pan the System or Sector camera |
-| Mouse wheel | Zoom the System or Sector camera |
+| Middle drag / arrow keys | Pan the Galaxy, System or Sector camera |
+| Mouse wheel | Zoom the Galaxy, System or Sector camera toward the cursor |
 | G / S | Switch to Galaxy / System View |
 | E | End Turn |
 | Esc | Open the in-game menu, cancel targeting, or deselect |
@@ -90,7 +90,13 @@ These limits apply to new campaigns. Loading uses the separate
 Shared homes have concentric markers. **System View** shows sector hexes, bodies,
 routes and fog of war; newly opened systems fit the available map area.
 **Sector View** shows individual units, weapon ranges, minefields, hyperspace inhibition fields and tactical movement.
-System and Sector views have independent zoom and pan controls. Selected objects
+All three views have independent zoom and pan controls. In Galaxy View, middle-click
+a system to enter it; dragging the middle button pans without entering a system.
+Galaxy markers, rings and lines scale with zoom while text labels stay the same size.
+The galaxy camera is retained across view switches and turns, and resets to the
+fitted overview when starting or loading a campaign. Camera positions are not saved.
+These controls apply during play; the New Game map preview remains fitted and static.
+Selected objects
 have corner brackets using their owner's faction color.
 
 Inspect non-solid bodies—fields, nebulae and storms—through their hex sidebar.

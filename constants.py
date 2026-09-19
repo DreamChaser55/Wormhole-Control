@@ -13,6 +13,8 @@ SQRT3 = 1.7320508075688772
 
 # Logical Galaxy Constants
 LOGICAL_GALAXY_SIZE = Vector(2560.0, 1440.0)
+GALAXY_ZOOM_MIN = 0.8
+GALAXY_ZOOM_MAX = 15.0
 
 # System view parameters
 SYSTEM_ZOOM_MIN = 0.8

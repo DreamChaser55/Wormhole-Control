@@ -7,6 +7,7 @@ import uuid
 from campaign_graph import iter_objects, iter_units
 from persistence_context import isolated_allocations
 from state_codec import number
+from geometry import Position
 
 
 @dataclass
@@ -545,6 +546,10 @@ def commit_campaign(game, prepared):
                   galaxy_view_mouse_hover_system_name=None, system_view_mouse_hover_hex=None,
                   selected_component_name=None, selected_unit_tab="basic_info", pending_ai_turn_end_time=0,
                   is_dragging_selection_box=False, selection_box_start_pos=None,
+                  galaxy_zoom=1.0, galaxy_target_zoom=1.0, galaxy_pan_offset=Position(0, 0),
+                  galaxy_zoom_anchor_pixel=None, galaxy_zoom_anchor_logical=None,
+                  is_dragging_camera=False, camera_drag_start_pos=None, camera_drag_last_pos=None,
+                  camera_drag_view=None, camera_drag_exceeded_threshold=False,
                   pending_ability=None, load_warnings=prepared.warnings)
     game.__dict__.update(fields)
     publish_testing_templates(prepared.testing_templates)

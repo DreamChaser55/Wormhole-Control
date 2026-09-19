@@ -1,13 +1,72 @@
-"""System and sector view camera math and smooth zoom/pan controllers."""
+"""Independent galaxy, system and sector camera controllers."""
 from display_config import display_config_for
 import math
 import pygame
 
-from constants import SECTOR_ZOOM_MIN, SECTOR_ZOOM_MAX, SYSTEM_ZOOM_MIN, SYSTEM_ZOOM_MAX
+from constants import (
+    GALAXY_ZOOM_MIN, GALAXY_ZOOM_MAX,
+    SECTOR_ZOOM_MIN, SECTOR_ZOOM_MAX, SYSTEM_ZOOM_MIN, SYSTEM_ZOOM_MAX,
+)
 from geometry import Position
 from hexgrid_utils import get_hex_vertices
 
 CAMERA_SMOOTH_SPEED = 12.0  # Exponential decay speed for zoom smoothing (~95% at 0.25s)
+
+
+def camera_input_blocked(game, gui) -> bool:
+    """Keep camera gestures out of modal, typing and automated-player input."""
+    from gui.turn_briefing_window import is_open as briefing_is_open
+    from gui.settings_dialog import is_open as settings_is_open
+    from gui.planetary_window import is_open as planetary_is_open
+    from gui.antimatter_transport_window import is_open as transport_is_open
+
+    if any(check(gui) for check in (
+        briefing_is_open, settings_is_open, planetary_is_open, transport_is_open,
+    )):
+        return True
+    for name in (
+        'is_ingame_menu_open', 'is_unit_editor_open', 'is_retrofit_wizard_open',
+        'is_communications_window_open', 'is_new_game_wizard_open',
+        'is_any_text_entry_focused',
+    ):
+        check = getattr(gui, name, None)
+        if check is not None and check() is True:
+            return True
+    editor = getattr(gui, 'unit_editor_window', None)
+    if editor is not None and editor.is_visible is True:
+        return True
+    ai_settings = getattr(gui, 'ai_settings_dialog', None)
+    if ai_settings is not None and ai_settings.is_alive is True:
+        return True
+    for name in ('unit_catalog_window', 'load_save_window'):
+        window = getattr(gui, name, None)
+        if name == 'unit_catalog_window' and window is not None:
+            window = window.window
+        if window is not None and window.alive() is True:
+            return True
+    for dialog in getattr(gui, 'active_dialogs', []):
+        if dialog.alive() is True:
+            return True
+    check = getattr(game, 'is_ai_input_locked', None)
+    return check is not None and check() is True
+
+
+def cancel_camera_drag(game) -> None:
+    """Discard the whole gesture, including any deferred navigation click."""
+    game.is_dragging_camera = False
+    game.camera_drag_start_pos = None
+    game.camera_drag_last_pos = None
+    game.camera_drag_view = None
+    game.camera_drag_exceeded_threshold = False
+
+
+def reset_galaxy_camera(game) -> None:
+    """Restore the fitted galaxy overview without touching the other cameras."""
+    game.galaxy_zoom = 1.0
+    game.galaxy_target_zoom = 1.0
+    game.galaxy_pan_offset = Position(0, 0)
+    game.galaxy_zoom_anchor_pixel = None
+    game.galaxy_zoom_anchor_logical = None
 
 
 def _update_camera(game, dt: float, zoom_attr: str, target_attr: str,
@@ -17,6 +76,9 @@ def _update_camera(game, dt: float, zoom_attr: str, target_attr: str,
     target_zoom = getattr(game, target_attr)
     t = 1.0 - math.exp(-CAMERA_SMOOTH_SPEED * dt)
     zoom += (target_zoom - zoom) * t
+    settled = abs(zoom - target_zoom) < 1e-4
+    if settled:
+        zoom = target_zoom
     setattr(game, zoom_attr, zoom)
 
     anchor_pixel = getattr(game, anchor_pixel_attr)
@@ -28,8 +90,7 @@ def _update_camera(game, dt: float, zoom_attr: str, target_attr: str,
     pan_offset.x = anchor_pixel.x - anchor_logical.x * zoom
     pan_offset.y = anchor_pixel.y - anchor_logical.y * zoom
 
-    if abs(zoom - target_zoom) < 1e-4:
-        setattr(game, zoom_attr, target_zoom)
+    if settled:
         setattr(game, anchor_pixel_attr, None)
         setattr(game, anchor_logical_attr, None)
 
@@ -106,6 +167,18 @@ def ensure_system_camera(game) -> None:
         reset_system_camera(game, current_name)
 
 
+def update_galaxy_camera(game, dt: float) -> None:
+    """Smooth galaxy zoom using viewport-relative pixel anchors."""
+    if not getattr(game, 'game_started', False) or getattr(game, 'view_mode', None) != 'galaxy':
+        return
+    if camera_input_blocked(game, game.gui):
+        return
+    _update_camera(
+        game, dt, 'galaxy_zoom', 'galaxy_target_zoom', 'galaxy_pan_offset',
+        'galaxy_zoom_anchor_pixel', 'galaxy_zoom_anchor_logical',
+    )
+
+
 def update_sector_camera(game, dt: float) -> None:
     """Smoothly interpolates the sector camera zoom and pan offset.
 
@@ -137,14 +210,16 @@ def update_system_camera(game, dt: float) -> None:
 
 
 def handle_mouse_wheel(game, scroll_y: int) -> None:
-    """Process mouse wheel input for smooth system or sector camera zooming.
+    """Process mouse wheel input for smooth zooming in the active map.
 
     Args:
         game: Target game instance.
         scroll_y (int): Mouse wheel scroll delta (+1 for zoom in, -1 for zoom out).
     """
     view_mode = getattr(game, 'view_mode', None)
-    if view_mode not in ('system', 'sector') or not getattr(game, 'game_started', False) or scroll_y == 0:
+    if view_mode not in ('galaxy', 'system', 'sector') or not getattr(game, 'game_started', False) or scroll_y == 0:
+        return
+    if camera_input_blocked(game, game.gui):
         return
 
     mouse_pos_tuple = pygame.mouse.get_pos()
@@ -152,7 +227,18 @@ def handle_mouse_wheel(game, scroll_y: int) -> None:
     if hasattr(game, 'gui') and game.gui and game.gui.is_mouse_over_gui_panels(mouse_pos):
         return
 
-    if view_mode == 'system':
+    if view_mode == 'galaxy':
+        viewport = game.gui.galaxy_generation_rect
+        if viewport is None or not viewport.collidepoint(mouse_pos_tuple):
+            return
+        zoom_attr = 'galaxy_zoom'
+        target_attr = 'galaxy_target_zoom'
+        pan_attr = 'galaxy_pan_offset'
+        anchor_pixel_attr = 'galaxy_zoom_anchor_pixel'
+        anchor_logical_attr = 'galaxy_zoom_anchor_logical'
+        center = Position(viewport.left + viewport.width / 2, viewport.top + viewport.height / 2)
+        min_zoom, max_zoom = GALAXY_ZOOM_MIN, GALAXY_ZOOM_MAX
+    elif view_mode == 'system':
         ensure_system_camera(game)
         zoom_attr = 'system_zoom'
         target_attr = 'system_target_zoom'

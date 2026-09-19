@@ -35,6 +35,8 @@ class MockGame:
         self.visibility_dirty = False
         self.selected_objects = []
         self.galaxy_view_mouse_hover_system_name = None
+        self.galaxy_zoom = 1.0
+        self.galaxy_pan_offset = Position(0, 0)
         self.screen = MagicMock()
         self.overlay_surface = MagicMock()
 
@@ -282,7 +284,8 @@ def test_galaxy_renderer_unowned_system():
         assert unowned_drawn, "Expected unowned system drawn in GRAY with radius 5"
 
 
-def test_galaxy_renderer_hover_and_selection_scaling():
+@pytest.mark.parametrize('zoom', [0.8, 1.0, 3.0, 15.0])
+def test_galaxy_renderer_hover_and_selection_scaling(zoom):
     """Hover ring and selection ring are drawn on overlay_surface and scale with max_radius."""
     p1 = Player("P1", (30, 120, 255))
     p2 = Player("P2", (220, 40, 40))
@@ -308,6 +311,7 @@ def test_galaxy_renderer_hover_and_selection_scaling():
     game.galaxy = galaxy
     game.selected_objects = [system]
     game.galaxy_view_mouse_hover_system_name = "Sol"
+    game.galaxy_zoom = zoom
 
     renderer = GalaxyViewRenderer(game)
     renderer.screen = MagicMock()
@@ -325,9 +329,9 @@ def test_galaxy_renderer_hover_and_selection_scaling():
         for call in mock_draw_circle.call_args_list:
             args, kwargs = call
             if len(args) >= 4 and args[0] == renderer.overlay_surface:
-                if args[1] == HOVER_HIGHLIGHT_COLOR and args[3] == 10:
+                if args[1] == HOVER_HIGHLIGHT_COLOR and args[3:] == (max(1, round(10 * zoom)), max(1, round(2 * zoom))):
                     hover_ring_drawn = True
-                elif args[1] == SELECTION_HIGHLIGHT_COLOR and args[3] == 12:
+                elif args[1] == SELECTION_HIGHLIGHT_COLOR and args[3:] == (max(1, round(12 * zoom)), max(1, round(2 * zoom))):
                     selection_ring_drawn = True
 
         assert hover_ring_drawn, "Expected hover ring with radius 10 on overlay_surface"

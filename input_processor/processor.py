@@ -3,6 +3,7 @@ import typing
 import logging
 import pygame
 from geometry import Position
+from game_camera import camera_input_blocked, cancel_camera_drag
 from domain.units import Unit
 from input_processor.hover_tracker import update_hover_states
 from input_processor.keyboard_handler import handle_keyboard_panning, handle_key_down
@@ -28,6 +29,13 @@ class InputProcessor:
         self.game = game_instance
         self.gui = game_instance.gui
 
+    def _cancel_interrupted_camera_drag(self):
+        if getattr(self.game, 'is_dragging_camera', False) and (
+            self.game.view_mode != self.game.camera_drag_view
+            or camera_input_blocked(self.game, self.gui)
+        ):
+            cancel_camera_drag(self.game)
+
     def handle_input(self, time_delta: float = 0.016) -> None:
         """Processes user input (keyboard, mouse, UI events).
 
@@ -37,7 +45,8 @@ class InputProcessor:
         mouse_pos_tuple = pygame.mouse.get_pos()
         mouse_pos = Position(mouse_pos_tuple[0], mouse_pos_tuple[1])
 
-        # Keyboard camera panning in sector view
+        self._cancel_interrupted_camera_drag()
+        # Keyboard camera panning in the active map
         from gui.turn_briefing_window import is_open
         from gui.settings_dialog import is_open as settings_is_open
         from gui.planetary_window import is_open as planetary_is_open
@@ -47,6 +56,8 @@ class InputProcessor:
 
         modal_consumed = False
         for event in pygame.event.get():
+            self._cancel_interrupted_camera_drag()
+            event_mouse_pos = Position(*event.pos) if hasattr(event, 'pos') else mouse_pos
             if event.type == pygame.QUIT:
                 self.game.is_running = False
                 return
@@ -63,13 +74,14 @@ class InputProcessor:
 
             if gui_action:
                 self.game.handle_gui_action(gui_action)
+                self._cancel_interrupted_camera_drag()
                 if (
                     event.type == pygame.MOUSEBUTTONUP
                     and getattr(event, 'button', None) == 2
                     and getattr(self.game, 'is_dragging_camera', False)
                 ):
                     handle_mouse_button_up(
-                        self.game, self.gui, mouse_pos, event,
+                        self.game, self.gui, event_mouse_pos, event,
                         self.handle_mouse_click, allow_click=False,
                     )
                 if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION, pygame.MOUSEWHEEL]:
@@ -90,22 +102,23 @@ class InputProcessor:
                     self.game,
                     self.gui,
                     event,
-                    mouse_pos,
+                    event_mouse_pos,
                     gui_action,
                     self.handle_mouse_click
                 )
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 handle_mouse_button_up(
-                    self.game, self.gui, mouse_pos, event, self.handle_mouse_click
+                    self.game, self.gui, event_mouse_pos, event, self.handle_mouse_click
                 )
 
             elif event.type == pygame.MOUSEMOTION:
-                handle_mouse_motion(self.game, mouse_pos)
+                handle_mouse_motion(self.game, event_mouse_pos)
 
             elif event.type == pygame.MOUSEWHEEL:
                 self.game.handle_mouse_wheel(event.y)
 
+        self._cancel_interrupted_camera_drag()
         self.update_hover_states(mouse_pos)
 
     def update_hover_states(self, mouse_pos: Position) -> None:

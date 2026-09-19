@@ -18,8 +18,31 @@ class GalaxyViewRenderer:
         self.overlay_surface = game_instance.overlay_surface
 
     def draw_galaxy_view(self):
-        """Draws the galaxy map."""
+        """Draw the map and its overlays within the unobstructed viewport."""
         if not self.game.galaxy: return
+        viewport = self.game.gui.galaxy_generation_rect
+        if viewport is None or viewport.width <= 0 or viewport.height <= 0:
+            return
+        screen_clip = self.screen.get_clip()
+        overlay_clip = self.overlay_surface.get_clip()
+        try:
+            self.screen.set_clip(screen_clip.clip(viewport))
+            self.overlay_surface.set_clip(overlay_clip.clip(viewport))
+            self._draw_galaxy_map()
+        finally:
+            self.screen.set_clip(screen_clip)
+            self.overlay_surface.set_clip(overlay_clip)
+
+    def _system_screen_position(self, system):
+        return logical_to_screen_galaxy(
+            system.position, self.game.gui.galaxy_generation_rect,
+            self.game.galaxy_zoom, self.game.galaxy_pan_offset,
+        )
+
+    def _scaled(self, pixels):
+        return max(1, round(pixels * self.game.galaxy_zoom))
+
+    def _draw_galaxy_map(self):
 
         # 1. Draw Wormhole Connections (draw first so they are behind stars)
         for wh_id, wormhole in self.game.galaxy.wormholes.items():
@@ -29,10 +52,10 @@ class GalaxyViewRenderer:
                        start_system = self.game.galaxy.systems[wormhole.in_system]
                        end_system = self.game.galaxy.systems[exit_wormhole.in_system]
                        if start_system and end_system:
-                            start_screen_pos = logical_to_screen_galaxy(start_system.position, self.game.gui.galaxy_generation_rect)
-                            end_screen_pos = logical_to_screen_galaxy(end_system.position, self.game.gui.galaxy_generation_rect)
+                            start_screen_pos = self._system_screen_position(start_system)
+                            end_screen_pos = self._system_screen_position(end_system)
                             pygame.draw.line(self.screen, WORMHOLE_LINE_COLOR,
-                                              start_screen_pos.to_tuple(), end_screen_pos.to_tuple(), 1)
+                                              start_screen_pos.to_tuple(), end_screen_pos.to_tuple(), self._scaled(1))
     
         # 2. Draw Order Lines
         self.draw_galaxy_view_order_lines()
@@ -41,9 +64,10 @@ class GalaxyViewRenderer:
         home_systems_map = get_home_systems_mapping(self.game)
 
         for sys_name, system in self.game.galaxy.systems.items():
-            screen_pos = logical_to_screen_galaxy(system.position, self.game.gui.galaxy_generation_rect)
+            screen_pos = self._system_screen_position(system)
             pos_tuple = screen_pos.to_tuple()
             is_hovered = (self.game.galaxy_view_mouse_hover_system_name == sys_name)
+            is_selected = any(isinstance(obj, StarSystem) and obj.name == sys_name for obj in self.game.selected_objects)
             home_players = home_systems_map.get(sys_name, [])
 
             if not home_players:
@@ -55,7 +79,7 @@ class GalaxyViewRenderer:
                     color = GRAY
                     radius = 5
                 max_radius = radius
-                pygame.draw.circle(self.screen, color, pos_tuple, radius)
+                pygame.draw.circle(self.screen, color, pos_tuple, self._scaled(radius))
                 label_color = color
 
             elif len(home_players) == 1:
@@ -63,10 +87,10 @@ class GalaxyViewRenderer:
                 player = home_players[0]
                 player_color = player.color
                 max_radius = 7
-                pygame.draw.circle(self.screen, player_color, pos_tuple, max_radius)
+                pygame.draw.circle(self.screen, player_color, pos_tuple, self._scaled(max_radius))
                 label_color = HOVER_HIGHLIGHT_COLOR if is_hovered else player_color
                 if is_hovered:
-                    pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, max_radius + 2, 2)
+                    pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, self._scaled(max_radius + 2), self._scaled(2))
 
             else:
                 # Multiple players have homeworld in the same system:
@@ -79,11 +103,11 @@ class GalaxyViewRenderer:
 
                 for i in range(num_players - 1, -1, -1):
                     r = inner_radius + i * ring_thickness
-                    pygame.draw.circle(self.screen, home_players[i].color, pos_tuple, r)
+                    pygame.draw.circle(self.screen, home_players[i].color, pos_tuple, self._scaled(r))
 
                 label_color = HOVER_HIGHLIGHT_COLOR if is_hovered else (230, 230, 230)
                 if is_hovered:
-                    pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, max_radius + 2, 2)
+                    pygame.draw.circle(self.overlay_surface, HOVER_HIGHLIGHT_COLOR, pos_tuple, self._scaled(max_radius + 2), self._scaled(2))
 
             # Draw system name
             if not pygame.font.get_init():
@@ -92,12 +116,17 @@ class GalaxyViewRenderer:
             font = pygame.font.Font(None, font_size)
             text_surface = font.render(system.name, True, label_color)
             text_rect = text_surface.get_rect()
-            text_rect.midleft = (pos_tuple[0] + max_radius + 5, pos_tuple[1])
+            label_radius = max_radius
+            if is_selected:
+                label_radius += 4
+            elif is_hovered and home_players:
+                label_radius += 2
+            text_rect.midleft = (pos_tuple[0] + self._scaled(label_radius) + 5, pos_tuple[1])
             self.screen.blit(text_surface, text_rect)
 
             # Highlight selected system
-            if any(isinstance(obj, StarSystem) and obj.name == sys_name for obj in self.game.selected_objects):
-                 pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, pos_tuple, max_radius + 4, 2)
+            if is_selected:
+                 pygame.draw.circle(self.overlay_surface, SELECTION_HIGHLIGHT_COLOR, pos_tuple, self._scaled(max_radius + 4), self._scaled(2))
 
     def collect_all_system_waypoints_recursive(self,
                                                order,
@@ -194,8 +223,9 @@ class GalaxyViewRenderer:
                                  max(WORMHOLE_JUMP_ORDER_COLOR[1] - 40, 0),
                                  max(WORMHOLE_JUMP_ORDER_COLOR[2] - 40, 0))
                 
-                start_screen_pos = logical_to_screen_galaxy(start_system.position, self.game.gui.galaxy_generation_rect)
-                end_screen_pos = logical_to_screen_galaxy(end_system.position, self.game.gui.galaxy_generation_rect)
+                line_width = self._scaled(line_width)
+                start_screen_pos = self._system_screen_position(start_system)
+                end_screen_pos = self._system_screen_position(end_system)
                 start_pos_tuple = start_screen_pos.to_tuple()
                 end_pos_tuple = end_screen_pos.to_tuple()
                 pygame.draw.line(self.overlay_surface, line_color, start_pos_tuple, end_pos_tuple, line_width)
@@ -204,7 +234,7 @@ class GalaxyViewRenderer:
                 dy = end_pos_tuple[1] - start_pos_tuple[1]
                 end_angle = math.atan2(dy, dx)
                 
-                arrow_size = 7
+                arrow_size = self._scaled(7)
                 arrow_angle1 = end_angle + math.pi * 3/4
                 arrow_angle2 = end_angle - math.pi * 3/4
                 
@@ -377,4 +407,3 @@ def get_system_at_preview_point(
             closest_sys = name
 
     return closest_sys
-

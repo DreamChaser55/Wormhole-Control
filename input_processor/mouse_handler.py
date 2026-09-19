@@ -5,6 +5,7 @@ import typing
 import logging
 import pygame
 from geometry import Position, distance_sq
+from game_camera import camera_input_blocked, cancel_camera_drag
 from domain.units import Unit
 from events import UseAbilityEvent
 from input_processor.context_menu_builder import (
@@ -12,7 +13,7 @@ from input_processor.context_menu_builder import (
     build_sector_context_menu_options,
     build_sector_unit_disambiguation_menu,
 )
-from input_processor.hover_tracker import get_units_under_mouse
+from input_processor.hover_tracker import get_units_under_mouse, get_galaxy_system_at
 
 logger = logging.getLogger(__name__)
 
@@ -32,22 +33,31 @@ def handle_mouse_button_down(game, gui, event: pygame.event.Event, mouse_pos: Po
     """
     clicked_point = mouse_pos
     pointer_over_gui = gui.is_mouse_over_gui_panels(clicked_point)
+    if event.button == 2 and camera_input_blocked(game, gui):
+        cancel_camera_drag(game)
+        return
+    if game.view_mode == 'galaxy':
+        viewport = gui.galaxy_generation_rect
+        if viewport is None or not viewport.collidepoint(clicked_point.to_tuple()):
+            return
     defer_click = False
     if event.button == 1 and game.view_mode == 'sector' and not gui_action and not pointer_over_gui:
         game.is_dragging_selection_box = True
         game.selection_box_start_pos = clicked_point
     elif (
         event.button == 2
-        and game.view_mode in ('system', 'sector')
+        and game.view_mode in ('galaxy', 'system', 'sector')
+        and game.game_started
         and not gui_action
         and not pointer_over_gui
+        and not gui.is_mouse_over_context_menu(clicked_point)
     ):
         game.is_dragging_camera = True
         game.camera_drag_start_pos = clicked_point
         game.camera_drag_last_pos = clicked_point
         game.camera_drag_view = game.view_mode
         game.camera_drag_exceeded_threshold = game.view_mode == 'sector'
-        defer_click = game.view_mode == 'system'
+        defer_click = game.view_mode in ('galaxy', 'system')
 
     if not gui_action and not pointer_over_gui and not defer_click:
         if not gui.is_mouse_over_context_menu(clicked_point):
@@ -56,7 +66,7 @@ def handle_mouse_button_down(game, gui, event: pygame.event.Event, mouse_pos: Po
                 gui.close_context_menu()
     else:
         if event.button == 1:
-            action_type = gui_action.get('action')
+            action_type = (gui_action or {}).get('action')
             if action_type not in ['ui_handled', 'context_menu_select'] and not gui.is_mouse_over_context_menu(clicked_point):
                 gui.close_context_menu()
 
@@ -71,23 +81,26 @@ def handle_mouse_button_up(game, gui, mouse_pos: Position, event: pygame.event.E
         gui: Target GUI handler.
         mouse_pos (Position): Current mouse screen coordinates.
         event (pygame.event.Event): Pygame mouse event.
-        click_handler_fn (callable): Callback used for a deferred system-view middle click.
+        click_handler_fn (callable): Callback used for deferred map navigation.
         allow_click (bool): Whether a stationary release may dispatch that click.
     """
     if event.button == 2 and getattr(game, 'is_dragging_camera', False):
         drag_view = getattr(game, 'camera_drag_view', None)
-        was_drag = getattr(game, 'camera_drag_exceeded_threshold', False)
-        game.is_dragging_camera = False
-        game.camera_drag_start_pos = None
-        game.camera_drag_last_pos = None
-        game.camera_drag_view = None
-        game.camera_drag_exceeded_threshold = False
+        # Account for the release position even if no final motion event arrived.
+        was_drag = (
+            getattr(game, 'camera_drag_exceeded_threshold', False)
+            or distance_sq(game.camera_drag_start_pos, mouse_pos) >= CAMERA_DRAG_THRESHOLD_PX ** 2
+        )
+        cancel_camera_drag(game)
         if (
             allow_click
-            and drag_view == 'system'
+            and drag_view in ('galaxy', 'system')
             and not was_drag
-            and game.view_mode == 'system'
+            and game.view_mode == drag_view
+            and not camera_input_blocked(game, gui)
             and not gui.is_mouse_over_gui_panels(mouse_pos)
+            and not gui.is_mouse_over_context_menu(mouse_pos)
+            and (drag_view != 'galaxy' or gui.galaxy_generation_rect.collidepoint(mouse_pos.to_tuple()))
         ):
             click_handler_fn(2, mouse_pos)
     elif event.button == 1 and game.is_dragging_selection_box:
@@ -138,19 +151,24 @@ def handle_mouse_button_up(game, gui, mouse_pos: Position, event: pygame.event.E
 
 
 def handle_mouse_motion(game, mouse_pos: Position) -> None:
-    """Update the active tactical camera during a middle-click drag.
+    """Update the active map camera during a middle-click drag.
 
     Args:
         game: Target Game instance.
         mouse_pos (Position): Current mouse screen coordinates.
     """
     drag_view = getattr(game, 'camera_drag_view', None)
+    if getattr(game, 'is_dragging_camera', False) and (
+        game.view_mode != drag_view or camera_input_blocked(game, game.gui)
+    ):
+        cancel_camera_drag(game)
+        return
     if (
         getattr(game, 'is_dragging_camera', False)
-        and drag_view in ('system', 'sector')
+        and drag_view in ('galaxy', 'system', 'sector')
         and game.view_mode == drag_view
     ):
-        if drag_view == 'system' and not getattr(game, 'camera_drag_exceeded_threshold', False):
+        if drag_view in ('galaxy', 'system') and not getattr(game, 'camera_drag_exceeded_threshold', False):
             start_pos = game.camera_drag_start_pos
             if distance_sq(start_pos, mouse_pos) < CAMERA_DRAG_THRESHOLD_PX ** 2:
                 return
@@ -161,7 +179,10 @@ def handle_mouse_motion(game, mouse_pos: Position) -> None:
             dx = mouse_pos.x - game.camera_drag_last_pos.x
             dy = mouse_pos.y - game.camera_drag_last_pos.y
 
-        if drag_view == 'system':
+        if drag_view == 'galaxy':
+            pan_offset = game.galaxy_pan_offset
+            anchor_pixel = game.galaxy_zoom_anchor_pixel
+        elif drag_view == 'system':
             pan_offset = game.system_pan_offset
             anchor_pixel = getattr(game, 'system_zoom_anchor_pixel', None)
         else:
@@ -252,7 +273,8 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
                 return  # Consume the click to prevent deselecting or changing selection
 
     if game.view_mode == 'galaxy':
-        clicked_system_name = game.galaxy_view_mouse_hover_system_name
+        clicked_system_name = get_galaxy_system_at(game, gui, position)
+        game.galaxy_view_mouse_hover_system_name = clicked_system_name
         system_obj = game.galaxy.systems.get(clicked_system_name, None) if game.galaxy else None
         if system_obj:
             if is_left_click:

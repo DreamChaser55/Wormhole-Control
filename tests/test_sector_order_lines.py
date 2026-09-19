@@ -149,6 +149,8 @@ def test_system_view_order_lines_only_for_active_player():
 
 def test_galaxy_view_order_lines_only_for_active_player():
     game = MagicMock()
+    game.galaxy_zoom = 1.0
+    game.galaxy_pan_offset = Position(0, 0)
     game.display_config = DisplayConfig()
     player1 = Player("Player 1", BLUE, controller=PlayerController.HUMAN)
     player2 = Player("Player 2", (255, 0, 0), controller=PlayerController.HUMAN)
@@ -198,7 +200,7 @@ def test_galaxy_view_order_lines_only_for_active_player():
 
     # Patch galaxy_renderer drawing functions
     with patch("rendering.galaxy_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.galaxy_renderer.logical_to_screen_galaxy", side_effect=lambda pos, rect: pos):
+         patch("rendering.galaxy_renderer.logical_to_screen_galaxy", side_effect=lambda pos, rect, zoom, pan: pos):
 
          renderer.draw_galaxy_view_order_lines()
 
