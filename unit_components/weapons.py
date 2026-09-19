@@ -22,6 +22,12 @@ BASE_TURRET_COST: float = 1.0          # flat per turret
 DMG_PER_POINT: float = 5.0             # hull points per unit of damage
 RANGE_PER_POINT: float = 100.0         # hull points per unit of range
 COOLDOWN_BONUS: float = 2.0            # hull points granted by short cooldown
+COMPONENT_TARGET_RANGE_MULTIPLIER: float = 0.5
+
+
+def targeting_range(turret_range: float, target_component_type: Optional[type] = None) -> float:
+    """Range for the selected target, using already variant-scaled turret range."""
+    return turret_range * COMPONENT_TARGET_RANGE_MULTIPLIER if target_component_type is not None else turret_range
 
 
 @dataclasses.dataclass
@@ -384,7 +390,8 @@ class Weapons(UnitComponent):
 
                 target_in_same_system = self.unit.in_system == turret.target.in_system
                 target_in_same_hex = self.unit.in_hex == turret.target.in_hex
-                target_in_range = distance(self.unit.position, turret.target.position) < turret.range
+                target_in_range = distance(self.unit.position, turret.target.position) < targeting_range(
+                    turret.range, turret.target_component_type)
 
                 if target_in_same_system and target_in_same_hex and target_in_range:
                     if turret.current_cooldown <= 0:

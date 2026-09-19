@@ -5,6 +5,7 @@ from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
 from constants import HullSize, DEFAULT_STANDOFF_DISTANCE
+from unit_components.weapons import targeting_range
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 
@@ -103,7 +104,8 @@ class AttackOrder(Order):
             from unit_components.enums import TurretVariant
             turrets = [t for t in getattr(weapons, 'turrets', [])
                        if not self.long_range_only or t.variant == TurretVariant.LONG_RANGE]
-        return min((turret.range for turret in turrets), default=None)
+        component_type = resolve_component_type(self.parameters.get("target_component_type"))
+        return min((targeting_range(turret.range, component_type) for turret in turrets), default=None)
 
     def get_state_data(self) -> Dict[str, Any]:
         state_data = super().get_state_data()

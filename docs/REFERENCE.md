@@ -539,6 +539,14 @@ within its own range, including standard turrets if the enemy comes closer.
 Neither order retreats to regain distance. Pursuit resumes if the target moves out
 of the required range; losing all eligible long-range turrets fails the long-range order.
 
+Selecting a specific component halves each turret's hull-attack range for both
+approach and firing, including Long Range turrets after their variant scaling.
+Each turret holds fire until the target is strictly inside its own component range;
+it does not shoot the hull instead while approaching. For example, a turret with
+1,000 hull range can attack a component only at distances below 500. The normal
+five-unit approach margin applies after halving the range. Equipment range values
+and weapon range rings show hull range; component attack menus indicate **50% range**.
+
 Right-click an enemy and use **Attack (long-range only)** to choose Hull or a public
 subsystem. The option appears for eligible selected units; in a mixed selection,
 ineligible units keep their existing orders. Shift queues the attack. Visible enemy

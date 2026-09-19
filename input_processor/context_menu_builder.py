@@ -274,7 +274,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                         for component in public_components(target_object, enemy=True):
                             component_type = type(component).__name__
                             label = getattr(component, "DISPLAY_NAME", component_type)
-                            options.append((f"Attack {label}", f"attack_unit_{component_type}"))
+                            options.append((f"Attack {label} (50% range)", f"attack_unit_{component_type}"))
 
                     if game.is_unit_visible(target_object) and any(
                             a.owner == current_player and not a.is_disabled and not a.is_hidden_in_gas_giant
@@ -286,7 +286,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                         for component in public_components(target_object, enemy=True):
                             component_type = type(component).__name__
                             label = getattr(component, "DISPLAY_NAME", component_type)
-                            ranged_options.append((label, f"attack_long_range_{component_type}"))
+                            ranged_options.append((f"{label} (50% range)", f"attack_long_range_{component_type}"))
                         options.append(("Attack (long-range only)", ranged_options))
 
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)

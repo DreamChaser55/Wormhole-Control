@@ -222,6 +222,13 @@ are unused. Discovery exposes eligible unit and deployable targets. Missing capa
 rejects the entire batch before replacement or cancellation; later capability loss
 fails the order without changing it to normal Attack. See [attack rules](REFERENCE.md#queues-and-stances).
 
+For both attacks, a non-null `target_component` halves every turret's listed hull
+range for approach and firing, after variant scaling. Each turret holds fire until
+strictly inside its own component range, without substituting hull fire while
+approaching. Observation turret `range` values remain hull ranges; command catalog
+descriptions and built-in planning instructions explain the modifier. Command,
+observation and save schemas are unchanged.
+
 ## Failure behavior
 
 - SDK retries transient transport failures up to two times.

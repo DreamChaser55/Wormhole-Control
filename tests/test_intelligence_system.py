@@ -748,10 +748,10 @@ def test_enemy_unit_intelligence_hidden_from_attack_context_menu(test_setup):
 
     # Verifying standard attack options are available
     assert "Attack Hull" in menu_labels
-    assert "Attack Engines" in menu_labels
-    assert "Attack Hyperdrive" in menu_labels
-    assert "Attack Weapons" in menu_labels
-    assert "Attack Inhibitor" in menu_labels
+    assert "Attack Engines (50% range)" in menu_labels
+    assert "Attack Hyperdrive (50% range)" in menu_labels
+    assert "Attack Weapons (50% range)" in menu_labels
+    assert "Attack Inhibitor (50% range)" in menu_labels
 
     # Verifying Intelligence component is NOT exposed in the attack context menu
     assert not any("Attack Intelligence" in lbl for lbl in menu_labels)

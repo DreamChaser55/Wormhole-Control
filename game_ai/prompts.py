@@ -57,6 +57,9 @@ Internal suborders and stance engagements cannot be edited individually.
 attack closes until all target-eligible turrets are in range. attack_long_range requires an
 eligible Long Range variant turret and closes only until all eligible Long Range turrets
 are in range. Both allow every eligible turret to fire within its own range; neither retreats.
+For either attack, selecting target_component halves each turret's listed hull range for
+approach and firing, after variant scaling. Each turret holds fire until the target is
+strictly inside its own component range; it does not fire at the hull while approaching.
 Enemy units omit standing_order, current_order and queued_orders entirely. Their design
 identity, actual hull usage, upkeep and construction/refit details are private too.
 

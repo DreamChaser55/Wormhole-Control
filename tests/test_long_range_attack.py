@@ -20,6 +20,7 @@ from tests.support.combat import create_combat_ship
 from tests.support.commands import world, issue, waypoint
 from unit_components.enums import TurretType, TurretVariant, UnitStance
 from unit_components.weapons import Turret, Weapons
+from unit_components.movement import Engines
 from unit_orders.base import OrderStatus
 from unit_orders.combat import AttackOrder, AttackLongRangeOrder
 from unit_orders.movement import MoveOrder
@@ -45,11 +46,14 @@ def battle():
 
 
 @pytest.mark.parametrize('order_class,limit', [(AttackOrder, 300), (AttackLongRangeOrder, 600)])
-@pytest.mark.parametrize('target_distance', [200, 300, 400, 600, 750, 1000])
-def test_approach_uses_shortest_relevant_effective_range(battle, order_class, limit, target_distance):
+@pytest.mark.parametrize('component', [None, 'Engines'])
+@pytest.mark.parametrize('target_distance', [149, 150, 151, 200, 299, 300, 301, 400, 600, 750, 1000])
+def test_approach_uses_shortest_relevant_effective_range(battle, order_class, limit, component, target_distance):
     game, _, unit, target = battle
+    if component:
+        limit *= 0.5
     target.position = Position(target_distance, 0)
-    order = order_class(unit, {'target_unit_id': target.id})
+    order = order_class(unit, {'target_unit_id': target.id, 'target_component_type': component})
     unit.commander_component.add_order(order)
     assert order.status == OrderStatus.IN_PROGRESS
     assert bool(order.sub_orders) == (target_distance >= limit)
@@ -61,12 +65,15 @@ def test_approach_uses_shortest_relevant_effective_range(battle, order_class, li
 
 
 @pytest.mark.parametrize('order_class,limit', [(AttackOrder, 300), (AttackLongRangeOrder, 600)])
-def test_pursuit_stops_and_restarts_without_retreat(battle, order_class, limit):
+@pytest.mark.parametrize('component', [None, 'Engines'])
+def test_pursuit_stops_and_restarts_without_retreat(battle, order_class, limit, component):
     game, _, unit, target = battle
-    order = order_class(unit, {'target_unit_id': target.id})
+    if component:
+        limit *= 0.5
+    order = order_class(unit, {'target_unit_id': target.id, 'target_component_type': component})
     unit.commander_component.add_order(order)
     approach = order.sub_orders[0]
-    target.position = Position(200, 0)
+    target.position = Position(limit - 10, 0)
     order.update(game.galaxy)
     assert approach.status == OrderStatus.CANCELLED
     assert not order.sub_orders
@@ -80,21 +87,137 @@ def test_pursuit_stops_and_restarts_without_retreat(battle, order_class, limit):
     assert order.sub_orders[0].parameters['destination_hex_coord'] == (0, 1)
 
 
-def test_range_policy_uses_variant_and_ignores_cooldowns(battle):
+@pytest.mark.parametrize('component,standoff', [(None, 595), ('Engines', 295)])
+def test_range_policy_uses_variant_and_ignores_cooldowns(battle, component, standoff):
     game, _, unit, target = battle
     unit.weapons_component.turrets[0].range = 2000
     for turret in unit.weapons_component.turrets:
         turret.current_cooldown = 20
     target.position = Position(750, 0)
-    order = AttackLongRangeOrder(unit, {'target_unit_id': target.id})
+    order = AttackLongRangeOrder(unit, {'target_unit_id': target.id, 'target_component_type': component})
     unit.commander_component.add_order(order)
-    assert order.sub_orders[0].parameters['standoff_distance'] == 595
+    assert order.sub_orders[0].parameters['standoff_distance'] == standoff
+
+
+@pytest.mark.parametrize('turret_type', list(TurretType))
+@pytest.mark.parametrize('variant', list(TurretVariant))
+@pytest.mark.parametrize('component', [None, 'Engines'])
+@pytest.mark.parametrize('offset', [-0.01, 0, 0.01])
+def test_firing_range_boundary(battle, turret_type, variant, component, offset):
+    game, _, unit, target = battle
+    turret = Turret(turret_type, damage=8, range=301, cooldown=2,
+                    parent_unit=unit, variant=variant)
+    unit.weapons_component.turrets = [turret]
+    hull_range = 903 if variant == TurretVariant.LONG_RANGE else 301
+    limit = hull_range * 0.5 if component else hull_range
+    target.position = Position(limit + offset, 0)
+    target.engines_component.current_hit_points = target.engines_component.max_hit_points = 100
+    unit.commander_component.add_order(AttackOrder(unit, {
+        'target_unit_id': target.id, 'target_component_type': component}))
+    hull_hp = target.current_hit_points
+    engine_hp = target.engines_component.current_hit_points
+    unit.weapons_component.update(game.galaxy)
+    fired = offset < 0
+    assert (turret.current_cooldown > 0) == fired
+    assert (target.current_hit_points < hull_hp) == (fired and component is None)
+    assert (target.engines_component.current_hit_points < engine_hp) == (fired and component is not None)
+    assert turret.range == hull_range
+    assert turret.target is target
+    assert turret.target_component_type is (Engines if component else None)
+
+
+@pytest.mark.parametrize('order_class', [AttackOrder, AttackLongRangeOrder])
+def test_component_attack_holds_fire_and_fires_turrets_independently(battle, order_class):
+    game, _, unit, target = battle
+    weapons = unit.weapons_component
+    target.engines_component.current_hit_points = target.engines_component.max_hit_points = 100
+    target.position = Position(500, 0)
+    order = order_class(unit, {'target_unit_id': target.id, 'target_component_type': 'Engines'})
+    unit.commander_component.add_order(order)
+    for turret in weapons.turrets:
+        turret.current_cooldown = 2
+    hull_hp = target.current_hit_points
+    for remaining in (1, 0, 0):
+        weapons.update(game.galaxy)
+        assert [t.current_cooldown for t in weapons.turrets] == [remaining] * 3
+        assert target.current_hit_points == hull_hp
+        assert target.engines_component.current_hit_points == 100
+        assert all(t.target is target and t.target_component_type is Engines for t in weapons.turrets)
+
+    target.position = Position(375, 0)
+    order.update(game.galaxy)
+    weapons.update(game.galaxy)
+    assert order.sub_orders  # The longest turret can fire while the ship still approaches.
+    assert [t.current_cooldown > 0 for t in weapons.turrets] == [False, False, True]
+    assert target.engines_component.current_hit_points == 97
+    assert target.current_hit_points == hull_hp
+
+    target.position = Position(100, 0)
+    order.update(game.galaxy)
+    for turret in weapons.turrets:
+        turret.current_cooldown = 0
+    weapons.update(game.galaxy)
+    assert not order.sub_orders
+    assert all(t.current_cooldown > 0 for t in weapons.turrets)
+    assert target.engines_component.current_hit_points == 71
+    assert target.current_hit_points == hull_hp
+
+
+@pytest.mark.parametrize('order_class', [AttackOrder, AttackLongRangeOrder])
+@pytest.mark.parametrize('phase', ['queued', 'cancelled'])
+def test_inactive_component_attack_cannot_fire(battle, order_class, phase):
+    game, _, unit, target = battle
+    target.position = Position(100, 0)
+    commander = unit.commander_component
+    if phase == 'queued':
+        commander.add_order(MoveOrder(unit, {'destination_system_name': 'Sol',
+            'destination_hex_coord': (0, 0), 'destination_position': Position(500, 0)}))
+    commander.add_order(order_class(unit, {'target_unit_id': target.id, 'target_component_type': 'Engines'}))
+    if phase == 'cancelled':
+        commander.clear_explicit_orders()
+    unit.weapons_component.set_target(target, Engines)  # Simulate a stale cached lock.
+    hull_hp, engine_hp = target.current_hit_points, target.engines_component.current_hit_points
+    unit.weapons_component.update(game.galaxy)
+    assert (target.current_hit_points, target.engines_component.current_hit_points) == (hull_hp, engine_hp)
+    assert all(t.target is None for t in unit.weapons_component.turrets)
+
+
+@pytest.mark.parametrize('kind,action,label,limit', [
+    ('attack', 'attack_unit_Engines', 'Attack Engines (50% range)', 150),
+    ('attack_long_range', 'attack_long_range_Engines', 'Engines (50% range)', 300),
+])
+def test_human_and_automated_component_attacks_share_range(battle, kind, action, label, limit):
+    game, player, unit, target = battle
+    options, _ = build_sector_context_menu_options(game, target, target.position)
+    attack_options = dict(options)['Attack (long-range only)'] if kind == 'attack_long_range' else options
+    assert (label, action) in attack_options
+    with patch('input_processor.context_actions._get_shift_pressed', return_value=False):
+        handle_context_menu_action(game, action, target)
+    OrderSystem(game, game.event_bus).handle_attack_unit(game.event_bus.publish.call_args.args[0])
+    human = unit.commander_component.current_order
+    assert human.approach_range(target) == limit
+    assert human.sub_orders[0].parameters['standoff_distance'] == limit - 5
+    assert issue(game, player, Command(kind, (unit.id,), target_id=target.id, target_component='Engines')).accepted
+    automated = unit.commander_component.current_order
+    assert automated.parameters == human.parameters
+    assert automated.approach_range(target) == limit
+    assert automated.sub_orders[0].parameters['standoff_distance'] == limit - 5
+    view = next(u for u in build_observation(game, player)['units'] if u['id'] == unit.id)
+    assert [t['range'] for t in view['capability_details']['weapons']['turrets']] == [300, 600, 900]
+    target.engines_component.current_hit_points = 0
+    target.position = Position(100, 0)
+    automated.update(game.galaxy)
+    assert automated.status == OrderStatus.COMPLETED
+    assert all(t.target is None for t in unit.weapons_component.turrets)
 
 
 @pytest.mark.parametrize('order_class,arrival', [(AttackOrder, 705), (AttackLongRangeOrder, 405)])
-def test_owner_turn_movement_stops_at_the_relevant_range(battle, order_class, arrival):
+@pytest.mark.parametrize('component', [None, 'Engines'])
+def test_owner_turn_movement_stops_at_the_relevant_range(battle, order_class, arrival, component):
     game, player, unit, target = battle
-    unit.commander_component.add_order(order_class(unit, {'target_unit_id': target.id}))
+    if component:
+        arrival = 855 if order_class is AttackOrder else 705
+    unit.commander_component.add_order(order_class(unit, {'target_unit_id': target.id, 'target_component_type': component}))
     processor = TurnProcessor(game)
     for _ in range(12):
         processor._process_movement(player)
@@ -197,7 +320,7 @@ def test_human_menu_and_dispatch_preserve_ineligible_units(battle, queue):
     options, _ = build_sector_context_menu_options(game, target, target.position)
     submenu = dict(options)['Attack (long-range only)']
     assert ('Hull', 'attack_long_range') in submenu
-    assert ('Weapons', 'attack_long_range_Weapons') in submenu
+    assert ('Weapons (50% range)', 'attack_long_range_Weapons') in submenu
     with patch('input_processor.context_actions._get_shift_pressed', return_value=queue):
         handle_context_menu_action(game, 'attack_long_range_Weapons', target)
     event = game.event_bus.publish.call_args.args[0]
@@ -295,12 +418,24 @@ def test_save_load_preserves_active_approach_queue_identity_and_subsystem(battle
     assert active.public_id == order.public_id
     assert active.sub_orders[0].public_id == order.sub_orders[0].public_id
     assert active.parameters['target_component_type'] == 'Weapons'
+    assert active.approach_range(target) == 300
+    assert active.sub_orders[0].parameters['standoff_distance'] == 295
+    assert [t.range for t in restored.weapons_component.turrets] == [300, 600, 900]
+    assert all(t.target_component_type is Weapons for t in restored.weapons_component.turrets)
     assert restored.commander_component.orders_queue[0].public_id == queued.public_id
     assert restored.commander_component.orders_queue[0].status == OrderStatus.PENDING
     assert all(t.target is target for t in restored.weapons_component.turrets)
     assert restored.engines_component.move_target == unit.engines_component.move_target
     assert player.order_history == history
     assert 'Attack (long-range only)' in format_order_state_data(active.get_state_data())[0]
+    # Loading keeps the component lock and cannot grant hull-range fire.
+    target.position = Position(500, 0)
+    hull_hp = target.current_hit_points
+    component_hp = target.weapons_component.current_hit_points
+    restored.weapons_component.update(game.galaxy)
+    assert target.current_hit_points == hull_hp
+    assert target.weapons_component.current_hit_points == component_hp
+    assert all(t.current_cooldown == 0 for t in restored.weapons_component.turrets)
     target.weapons_component.current_hit_points = 0
     target.position = Position(200, 0)
     active.update(game.galaxy)
