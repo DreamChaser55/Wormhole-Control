@@ -36,6 +36,22 @@ python scripts/generate_reference.py --check
 It runs the full suite on Linux with Python 3.10 and 3.14 and Windows with Python
 3.14. Check that workflow for the authoritative matrix and command arguments.
 
+CI prints each test name and the 20 slowest durations and uploads JUnit results
+as `test-diagnostics-<os>-py<version>` artifacts retained for seven days. Linux
+also prints current/peak process RSS and available system memory, in KiB, at
+each test-module boundary and session completion. The same lines are saved in
+`resources.log`. Reports live under the runner's temporary directory. Uploads
+run after test failures, but cannot be guaranteed if the runner itself shuts down.
+
+To reproduce the diagnostic run on Linux:
+
+```bash
+CI=true WORMHOLE_CI_REPORT_DIR=/tmp/wormhole-ci-reports python -m pytest -v --durations=20 --junitxml=/tmp/wormhole-ci-reports/junit.xml
+```
+
+Memory reporting is opt-in through both environment variables and has no effect
+on pytest's exit status. Missing kernel metrics are reported as unavailable.
+
 ## Architecture
 
 | Area | Responsibility and entry points |
@@ -172,6 +188,14 @@ or location. Socket binding and command failure contracts belong to the
 Shared scenarios live in `tests/support`; test modules do not import each other.
 `tests/conftest.py` sets headless SDL before application imports, isolates user
 storage/process state and owns Pygame/full-game lifecycle fixtures.
+
+Discard queued test events with `tests.support.pygame_runtime.drain_events()`.
+With pinned pygame-ce 2.5.7, `pygame.event.clear()` can retain Python event
+payloads, including widgets and their entire UI managers. The GUI fixtures drain
+events after application shutdown, release pygame_gui's default manager, and
+collect resource cycles while keeping SDL initialized for the test session.
+Use these fixtures for GUI tests and keep teardown in `finally` blocks so failing
+tests also release their resources.
 
 Use real entities for game rules and doubles for collaborators. Prefer observable
 outcomes and distinct boundaries over literal tuning values or implementation call

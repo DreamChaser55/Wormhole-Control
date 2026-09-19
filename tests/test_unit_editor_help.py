@@ -5,6 +5,7 @@ from dataclasses import replace
 from unittest.mock import Mock
 
 import pygame
+from tests.support.pygame_runtime import drain_events
 import pygame_gui
 import pytest
 
@@ -140,7 +141,7 @@ def test_modal_captures_real_input_pipeline(game_factory, monkeypatch):
     scroll = editor._comp_scroll_container.vert_scroll_bar
     scroll.hovered = True
     scroll_before = scroll.start_percentage
-    pygame.event.clear()
+    drain_events()
     for event in [
         press(editor._comp_toggles["has_engine"]), press(editor._comp_select_btns["has_hangar"]),
         press(editor._save_button), press(editor._close_button),
@@ -168,7 +169,7 @@ def test_modal_captures_real_input_pipeline(game_factory, monkeypatch):
     assert game.system_pan_offset == Position(0, 0)
     game.handle_mouse_wheel.assert_not_called()
     # Escape takes priority even if an editor field previously had focus.
-    pygame.event.clear()
+    drain_events()
     pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
     game.input_processor.handle_input()
     assert editor._description_dialog is None

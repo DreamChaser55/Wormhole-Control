@@ -6,6 +6,7 @@ from app_preferences import AppPreferences, TurnSummaryMode, load_preferences, s
 from display_config import DisplayConfig
 from gui.settings_dialog import MODE_LABELS, is_open
 from tests.test_turn_briefing_ui import game_with_report
+from tests.support.pygame_runtime import drain_events
 
 
 def press(gui, element):
@@ -41,7 +42,7 @@ def test_cancel_and_input_isolation(game_factory, monkeypatch, dismiss):
     ended = []
     monkeypatch.setattr(game, "end_turn", lambda: ended.append(True))
     game.handle_gui_action({"action": "end_turn"})
-    pygame.event.clear()
+    drain_events()
     pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_e))
     pygame.event.post(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=gui.end_turn_button))
     dialog = gui.settings_dialog
