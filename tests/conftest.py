@@ -1,11 +1,19 @@
 """Keep tests and their child processes away from the real custom-design library."""
 import atexit
+from contextlib import ExitStack
 from itertools import count
 import os
 from pathlib import Path
 import tempfile
 
 import pytest
+
+from tests.support.pygame_runtime import drain_events, release_gui_resources
+from tests.support.ci_diagnostics import configure_diagnostics
+
+
+def pytest_configure(config):
+    configure_diagnostics(config)
 
 
 
@@ -61,8 +69,13 @@ def isolated_process_state(monkeypatch):
 def _pygame_runtime():
     import pygame
     pygame.init()
-    yield pygame
-    pygame.quit()
+    try:
+        yield pygame
+    finally:
+        try:
+            release_gui_resources()
+        finally:
+            pygame.quit()
 
 
 @pytest.fixture
@@ -71,9 +84,11 @@ def pygame_context(_pygame_runtime):
     pygame = _pygame_runtime
     screen = pygame.display.set_mode((1280, 720))
     screen.fill((0, 0, 0))
-    pygame.event.clear()
-    yield pygame
-    pygame.event.clear()
+    drain_events()
+    try:
+        yield pygame
+    finally:
+        release_gui_resources()
 
 
 @pytest.fixture
@@ -90,15 +105,20 @@ def game_factory(pygame_context, tmp_path, monkeypatch, request):
 
     if request.instance is not None:
         request.instance.make_game = create
-    yield create
-    for game in reversed(games):
+    try:
+        yield create
+    finally:
         try:
-            game.control_service.shutdown()
+            # ExitStack attempts every shutdown even if another one raises.
+            with ExitStack() as cleanup:
+                for game in games:
+                    cleanup.callback(game.gui.clear_and_reset)
+                    cleanup.callback(game.ai_coordinator.shutdown)
+                    cleanup.callback(game.control_service.shutdown)
         finally:
-            try:
-                game.ai_coordinator.shutdown()
-            finally:
-                game.gui.clear_and_reset()
+            games.clear()
+            if request.instance is not None:
+                del request.instance.make_game
 
 
 # Shared fixtures are registered explicitly, independent of test module imports.

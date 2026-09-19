@@ -58,4 +58,15 @@ jobs:
         pip install -r requirements-dev.txt
 
     - name: Run test suite
-      run: python -m pytest
+      env:
+        WORMHOLE_CI_REPORT_DIR: ${{ runner.temp }}/wormhole-ci-reports
+      run: python -m pytest -v --durations=20 --junitxml="${{ runner.temp }}/wormhole-ci-reports/junit.xml"
+
+    - name: Upload test diagnostics
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: test-diagnostics-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: ${{ runner.temp }}/wormhole-ci-reports/
+        retention-days: 7
+        if-no-files-found: warn
