@@ -154,6 +154,7 @@ DEFAULT_SUBLIGHT_SHIP_SPEED = 100.0
 
 # UI Constants
 SECTOR_GRID_SPACING = 1000.0 # Logical distance between tactical grid lines
+GALAXY_GRID_SPACING = 160.0 # Logical distance between tactical grid lines in galaxy view
 
 # Colors
 WHITE = (255, 255, 255)
@@ -186,6 +187,8 @@ SYSTEM_BG_COLOR = (4, 4, 8)
 SECTOR_BG_COLOR = (6, 6, 12)
 SECTOR_BORDER_COLOR = (60, 60, 80)
 SECTOR_GRID_COLOR = (30, 35, 45) # Faint grey grid color for sector view
+GALAXY_BORDER_COLOR = (60, 60, 80) # Subtle border color for galaxy view bounds
+GALAXY_GRID_COLOR = (30, 35, 45) # Faint grey tactical grid color for galaxy view
 
 # Enum Definitions
 class HullSize(Enum):

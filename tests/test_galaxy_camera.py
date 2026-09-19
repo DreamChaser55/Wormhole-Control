@@ -293,11 +293,12 @@ def test_render_scales_geometry_but_not_labels_and_aligns_links(zoom):
     renderer.screen = Mock(wraps=game.screen)
     with patch('pygame.draw.circle') as circle, patch('pygame.draw.line') as line, patch('pygame.font.Font', return_value=font) as font_factory:
         renderer.draw_galaxy_view()
-    sol = screen_position(game).to_tuple()
-    assert circle.call_args_list[0].args[2:] == (sol, max(1, round(7 * zoom)))
-    assert circle.call_args_list[1].args[2:] == (sol, max(1, round(11 * zoom)), max(1, round(2 * zoom)))
-    assert line.call_args_list[0].args[1:] == (WORMHOLE_LINE_COLOR, sol, screen_position(game, 'Beta').to_tuple(), max(1, round(zoom)))
-    assert all(call.args == (None, max(1, int(12 * game.display_config.text_scale))) for call in font_factory.call_args_list)
+        sol = screen_position(game).to_tuple()
+        assert circle.call_args_list[0].args[2:] == (sol, max(1, round(7 * zoom)))
+        assert circle.call_args_list[1].args[2:] == (sol, max(1, round(11 * zoom)), max(1, round(2 * zoom)))
+        wh_line_calls = [c for c in line.call_args_list if len(c.args) > 1 and c.args[1] == WORMHOLE_LINE_COLOR]
+        assert wh_line_calls[0].args[1:] == (WORMHOLE_LINE_COLOR, sol, screen_position(game, 'Beta').to_tuple(), max(1, round(zoom)))
+        assert all(call.args == (None, max(1, int(12 * game.display_config.text_scale))) for call in font_factory.call_args_list)
     label_rect = renderer.screen.blit.call_args_list[0].args[1]
     assert label_rect.left > sol[0] + max(1, round(11 * zoom))
     assert label_rect.size == (30, 10)
@@ -353,7 +354,8 @@ def test_order_lines_and_arrowheads_follow_camera(zoom):
     game.selected_objects = [unit]
     with patch('pygame.draw.line') as line:
         GalaxyViewRenderer(game).draw_galaxy_view()
-    route, arrow1, arrow2 = [call.args for call in line.call_args_list]
+    order_line_calls = [call for call in line.call_args_list if len(call.args) > 0 and call.args[0] is game.overlay_surface]
+    route, arrow1, arrow2 = [call.args for call in order_line_calls]
     assert route[2:4] == (screen_position(game).to_tuple(), screen_position(game, 'Beta').to_tuple())
     for args in (route, arrow1, arrow2):
         assert args[-1] == max(1, round(3 * zoom))

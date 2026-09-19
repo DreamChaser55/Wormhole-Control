@@ -6,9 +6,20 @@ import math
 import typing
 from typing import TYPE_CHECKING
 from galaxy import StarSystem
-from constants import HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR, WORMHOLE_JUMP_ORDER_COLOR, WORMHOLE_LINE_COLOR, GRAY
+from constants import (
+    HOVER_HIGHLIGHT_COLOR,
+    SELECTION_HIGHLIGHT_COLOR,
+    WORMHOLE_JUMP_ORDER_COLOR,
+    WORMHOLE_LINE_COLOR,
+    GRAY,
+    LOGICAL_GALAXY_SIZE,
+    GALAXY_GRID_COLOR,
+    GALAXY_BORDER_COLOR,
+    GALAXY_GRID_SPACING,
+)
 from domain.units import Unit
 from unit_orders.base import OrderType
+from geometry import Position
 from galaxy_utils import logical_to_screen_galaxy, get_home_systems_mapping
 
 class GalaxyViewRenderer:
@@ -42,7 +53,19 @@ class GalaxyViewRenderer:
     def _scaled(self, pixels):
         return max(1, round(pixels * self.game.galaxy_zoom))
 
+    def draw_tactical_grid(self):
+        """Draws a faint grey tactical grid with subtle boundary rectangle on the galaxy map."""
+        draw_galaxy_tactical_grid(
+            surface=self.screen,
+            render_rect=self.game.gui.galaxy_generation_rect,
+            zoom=self.game.galaxy_zoom,
+            pan_offset=self.game.galaxy_pan_offset,
+        )
+
     def _draw_galaxy_map(self):
+
+        # 0. Draw Tactical Grid
+        self.draw_tactical_grid()
 
         # 1. Draw Wormhole Connections (draw first so they are behind stars)
         for wh_id, wormhole in self.game.galaxy.wormholes.items():
@@ -248,8 +271,55 @@ class GalaxyViewRenderer:
 
 
 # ---------------------------------------------------------------------------
-# Standalone Galaxy Preview Rendering (for New Game Wizard & Dialogs)
+# Standalone Galaxy Tactical Grid & Preview Rendering
 # ---------------------------------------------------------------------------
+
+def draw_galaxy_tactical_grid(
+    surface: pygame.Surface,
+    render_rect: pygame.Rect,
+    zoom: float = 1.0,
+    pan_offset: typing.Optional[Position] = None,
+) -> None:
+    """Draws a faint tactical grid and subtle boundary rectangle for galaxy view or preview."""
+    if render_rect is None or render_rect.width <= 0 or render_rect.height <= 0:
+        return
+    spacing = GALAXY_GRID_SPACING
+    if spacing <= 0:
+        return
+
+    width = LOGICAL_GALAXY_SIZE.x
+    height = LOGICAL_GALAXY_SIZE.y
+
+    # Vertical grid lines
+    x = 0.0
+    while x <= width + 1e-4:
+        p1 = logical_to_screen_galaxy(Position(x, 0), render_rect, zoom, pan_offset)
+        p2 = logical_to_screen_galaxy(Position(x, height), render_rect, zoom, pan_offset)
+        is_edge = (x < 1e-4 or abs(x - width) < 1e-4)
+        color = GALAXY_BORDER_COLOR if is_edge else GALAXY_GRID_COLOR
+        try:
+            pygame.draw.line(surface, color, (p1.x, p1.y), (p2.x, p2.y), 1)
+        except TypeError:
+            return
+        x += spacing
+        if x > width and x - spacing < width - 1e-4:
+            x = width
+
+    # Horizontal grid lines
+    y = 0.0
+    while y <= height + 1e-4:
+        p1 = logical_to_screen_galaxy(Position(0, y), render_rect, zoom, pan_offset)
+        p2 = logical_to_screen_galaxy(Position(width, y), render_rect, zoom, pan_offset)
+        is_edge = (y < 1e-4 or abs(y - height) < 1e-4)
+        color = GALAXY_BORDER_COLOR if is_edge else GALAXY_GRID_COLOR
+        try:
+            pygame.draw.line(surface, color, (p1.x, p1.y), (p2.x, p2.y), 1)
+        except TypeError:
+            return
+        y += spacing
+        if y > height and y - spacing < height - 1e-4:
+            y = height
+
 
 def draw_galaxy_preview(
     surface: pygame.Surface,
@@ -259,6 +329,7 @@ def draw_galaxy_preview(
     hovered_system_name: typing.Optional[str] = None,
     selected_system_name: typing.Optional[str] = None,
     scale: float = 1.0,
+    show_grid: bool = True,
 ) -> None:
     """Renders a visual preview of a Galaxy into a target preview rectangle.
 
@@ -290,6 +361,15 @@ def draw_galaxy_preview(
         msg_rect = msg_surf.get_rect(center=preview_rect.center)
         surface.blit(msg_surf, msg_rect)
         return
+
+    # 0. Draw Tactical Grid
+    if show_grid:
+        draw_galaxy_tactical_grid(
+            surface=surface,
+            render_rect=preview_rect,
+            zoom=1.0,
+            pan_offset=None,
+        )
 
     # 1. Draw Wormhole Connections
     for wh_id, wormhole in getattr(galaxy, "wormholes", {}).items():

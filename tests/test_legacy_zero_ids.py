@@ -128,7 +128,9 @@ def test_wormhole_exit_zero_executes_and_renders(monkeypatch):
     monkeypatch.setattr(pygame.draw, 'line', lines)
     # Each endpoint contributes one connection. Without zero support only one renders.
     draw_galaxy_preview(pygame.Surface((800, 600)), game.galaxy, pygame.Rect(0, 0, 800, 600))
-    assert lines.call_count == 2
+    from constants import WORMHOLE_LINE_COLOR
+    wormhole_lines = [c for c in lines.call_args_list if len(c.args) > 1 and c.args[1] == WORMHOLE_LINE_COLOR]
+    assert len(wormhole_lines) == 2
 
 
 @pytest.mark.parametrize('order_type', [AttackOrder, ProtectOrder, UseAbilityOrder])
