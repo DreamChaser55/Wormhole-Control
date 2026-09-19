@@ -74,6 +74,7 @@ class GUI_Handler:
         self.top_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.bottom_bar_panel: typing.Optional[pygame_gui.elements.UIPanel] = None
         self.back_button: typing.Optional[pygame_gui.elements.UIButton] = None
+        self.reset_view_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.comms_button: typing.Optional[pygame_gui.elements.UIButton] = None
         self.communications_window: typing.Optional[CommunicationsWindow] = None
         self.view_mode_label: typing.Optional[pygame_gui.elements.UILabel] = None
@@ -190,7 +191,7 @@ class GUI_Handler:
         self.about_title = self.about_text = self.about_screen_back_button = None
         self.load_save_selection_list = self.load_save_confirm_button = self.load_save_cancel_button = None
         self.save_file_paths = {}
-        self.back_button = self.comms_button = self.view_mode_label = self.end_turn_button = self.player_turn_label = self.player_color_indicator = None
+        self.back_button = self.reset_view_button = self.comms_button = self.view_mode_label = self.end_turn_button = self.player_turn_label = self.player_color_indicator = None
         self.credits_label = self.metal_label = self.crystal_label = None
         self.context_menu_buttons = []
         self.context_menu_target = None
@@ -286,12 +287,14 @@ class GUI_Handler:
         if self.ingame_menu_panel: self.ingame_menu_panel.show()
         if self.end_turn_button: self.end_turn_button.disable()
         if self.back_button: self.back_button.disable()
+        if self.reset_view_button: self.reset_view_button.disable()
 
     def hide_ingame_menu(self):
         """Hides the in-game pause menu and re-enables HUD buttons."""
         if self.ingame_menu_panel: self.ingame_menu_panel.hide()
         if self.end_turn_button: self.end_turn_button.enable()
         if self.back_button: self.back_button.enable()
+        if self.reset_view_button: self.reset_view_button.enable()
 
     def is_ingame_menu_open(self) -> bool:
         """Determines whether the in-game menu is currently open.

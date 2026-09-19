@@ -137,6 +137,9 @@ def handle_key_down(game, gui, event: pygame.event.Event) -> bool:
         cancel_camera_drag(game)
         game.view_mode = 'galaxy'
         game.update_view_specific_labels()
+    elif event.key == pygame.K_r and game.game_started and game.view_mode == 'galaxy':
+        cancel_camera_drag(game)
+        game.reset_galaxy_camera()
     elif event.key == pygame.K_s and game.game_started and game.current_system_name:
         cancel_camera_drag(game)
         game.view_mode = 'system'

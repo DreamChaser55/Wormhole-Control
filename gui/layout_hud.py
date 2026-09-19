@@ -65,19 +65,27 @@ def setup_game_ui(gui) -> None:
     )
 
     # --- Left Section of Top Bar ---
-    back_button_width = int(60 * gui.scale_x)
-    back_button_rect = pygame.Rect(padding, padding, back_button_width, -1)
+    nav_button_width = int(90 * gui.scale_x)
+    nav_button_rect = pygame.Rect(padding, padding, nav_button_width, -1)
     gui.back_button = pygame_gui.elements.UIButton(
-        relative_rect=back_button_rect,
+        relative_rect=nav_button_rect,
         text='Back',
         manager=gui.manager,
         container=gui.top_bar_panel,
         visible=False,
         object_id='#back_button'
     )
+    gui.reset_view_button = pygame_gui.elements.UIButton(
+        relative_rect=nav_button_rect,
+        text='Reset View',
+        manager=gui.manager,
+        container=gui.top_bar_panel,
+        visible=False,
+        object_id='#reset_view_button'
+    )
 
     view_label_width = int(350 * gui.scale_x)
-    view_label_rect = pygame.Rect(back_button_rect.right + padding, padding, view_label_width, -1)
+    view_label_rect = pygame.Rect(nav_button_rect.right + padding, padding, view_label_width, -1)
     gui.view_mode_label = pygame_gui.elements.UILabel(
         relative_rect=view_label_rect,
         text=f"View: {gui.game_instance.view_mode.capitalize()}",
@@ -234,16 +242,24 @@ def setup_game_ui(gui) -> None:
 
 
 def update_back_button_visibility(gui) -> None:
-    """Toggles back button visibility depending on active view mode (hidden on galaxy view).
+    """Toggles top bar navigation button visibility depending on active view mode.
+
+    Shows 'Reset View' in galaxy view and 'Back' in system and sector views.
 
     Args:
         gui: Target GUI_Handler instance.
     """
+    view_mode = getattr(gui.game_instance, 'view_mode', None)
     if gui.back_button:
-        if gui.game_instance.view_mode in ['system', 'sector']:
+        if view_mode in ['system', 'sector']:
             gui.back_button.show()
         else:
             gui.back_button.hide()
+    if getattr(gui, 'reset_view_button', None):
+        if view_mode == 'galaxy':
+            gui.reset_view_button.show()
+        else:
+            gui.reset_view_button.hide()
 
 
 def update_view_mode_label(gui, text: str) -> None:

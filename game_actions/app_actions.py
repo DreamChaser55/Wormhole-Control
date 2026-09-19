@@ -126,6 +126,13 @@ def handle_show_turn_summary(game, action: dict) -> None:
     show_briefing(game.gui, game.current_player, automatic=False)
 
 
+def handle_reset_galaxy_camera(game, action: dict) -> None:
+    """Restores the fitted galaxy overview camera."""
+    from game_camera import cancel_camera_drag
+    cancel_camera_drag(game)
+    game.reset_galaxy_camera()
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'new_game': handle_new_game,
     'start_new_game_with_settings': handle_start_new_game_with_settings,
@@ -142,6 +149,7 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'load_game_file': handle_load_game_file,
     'quit_to_main_menu': handle_quit_to_main_menu,
     'navigate_back': handle_navigate_back,
+    'reset_galaxy_camera': handle_reset_galaxy_camera,
     'toggle_comms': handle_toggle_comms,
     'ui_handled': handle_ui_handled,
     'show_turn_summary': handle_show_turn_summary,

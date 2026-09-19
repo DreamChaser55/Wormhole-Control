@@ -151,6 +151,9 @@ def process_event(gui, event: pygame.event.Event) -> typing.Optional[dict]:
         elif gui.back_button and event.ui_element == gui.back_button:
             logger.debug("Back button pressed (GUI)")
             action_result = {'action': 'navigate_back'}
+        elif getattr(gui, 'reset_view_button', None) and event.ui_element == gui.reset_view_button:
+            logger.debug("Reset View button pressed (GUI)")
+            action_result = {'action': 'reset_galaxy_camera'}
 
         # 5. Inhibitor Toggle Button
         elif event.ui_element and event.ui_element.object_ids and event.ui_element.object_ids[-1] == '#toggle_inhibitor_button':

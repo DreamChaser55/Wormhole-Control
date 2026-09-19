@@ -27,7 +27,7 @@ The [campaign setup reference](docs/REFERENCE.md#campaign-setup) explains map se
 
 Explore star systems, establish colonies, build ships, and keep your fleets supplied while deciding where to engage opponents. Credits, metal, and crystal support your empire; ships carry antimatter for movement and equipment. Sensors reveal nearby space, so reconnaissance helps you choose routes and targets.
 
-Use **Galaxy View** (`G`) to see systems and wormhole connections, **System View** (`S`) to inspect a system's sectors, and **Sector View** for individual ships, celestial objects, and tactical positioning. All three views have independent zoom and pan controls. In Galaxy View, middle-click a system to enter it; middle-drag to pan.
+Use **Galaxy View** (`G`) to see systems and wormhole connections, **System View** (`S`) to inspect a system's sectors, and **Sector View** for individual ships, celestial objects, and tactical positioning. All three views have independent zoom and pan controls. In Galaxy View, middle-click a system to enter it; middle-drag to pan; click **Reset View** or press `R` to restore the fitted overview.
 
 Storage-equipped ships and stations can **Transfer Antimatter** or **Take Antimatter** from friendly units. Both **Continuous Resupply** (harvesters) and **Continuous Antimatter Transport** offer Automatic or Manual destinations. Automatic routes supply nearby eligible owned units across the galaxy; Manual routes supply one chosen owned/allied depot. Transports load at a chosen source and reserve return fuel. Dedicated transporter, storage station, and Small cache station designs are available in the Logistics catalogue. Harvesters collect fuel from stars and hydrogen nebulae; **Multiply Antimatter** doubles nearby friendly tanks with a 30-round cooldown and a shared recipient recovery period.
 
@@ -44,6 +44,7 @@ Select a unit and use its contextual actions to issue orders. Hold **Shift** whe
 | Middle drag / arrow keys | Pan the Galaxy, System or Sector camera |
 | Mouse wheel | Zoom the Galaxy, System or Sector camera toward the cursor |
 | G / S | Switch to Galaxy / System View |
+| R | Reset Galaxy camera to fitted overview (Galaxy View) |
 | E | End Turn |
 | Esc | Open the in-game menu, cancel targeting, or deselect |
 
