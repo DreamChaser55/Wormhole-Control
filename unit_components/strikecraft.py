@@ -82,10 +82,10 @@ class StrikecraftWingComponent(UnitComponent):
 
 class StrikecraftBayComponent(UnitComponent):
     """A component that allows a unit to store, transport, and automatically construct/replenish strikecraft wings."""
-    SCHEMA_VERSION = 2
+    SCHEMA_VERSION = 3
     STATE_CONFIG = ('max_slots',)
     STATE_RUNTIME = ('constructing', 'construction_progress', 'replenish_progress',
-                     'production_template_name', 'turret_type_override', 'defense_type_override')
+                     'production_template_name', 'turret_type_override', 'defense_type_override', 'production_enabled')
     STATE_OPTIONAL_TYPES = {'turret_type_override': str, 'defense_type_override': str}
     STATE_REFS = ('replenishing_unit',)
     STATE_CHILDREN = ("docked_units",)
@@ -121,6 +121,7 @@ class StrikecraftBayComponent(UnitComponent):
         self.replenishing_unit = None
         self.replenish_progress = 0
         self.production_template_name = "FIGHTER_WING"
+        self.production_enabled = True
         self.turret_type_override = None
         self.defense_type_override = None
 
@@ -151,7 +152,8 @@ class StrikecraftBayComponent(UnitComponent):
         self.validate_state()
 
     def can_set_production(self, template_name, turret_type_override=None, defense_type_override=None):
-        if self.is_destroyed or self.constructing:
+        from dismantling import offline
+        if self.is_destroyed or self.constructing or offline(self.unit):
             return False
         try:
             self.validate_production(template_name, turret_type_override, defense_type_override)
@@ -189,8 +191,13 @@ class StrikecraftBayComponent(UnitComponent):
             data.append({'type': 'label', 'text': f"Replenishing Wing: {self.replenishing_unit.name}", 'object_id': '#sidebar_info_label', 'height': 20})
         
         is_owner = self.unit.owner == game_state.players[game_state.current_player_index]
+        from dismantling import offline, evaluate
+        if is_owner and not self.is_destroyed and not offline(self.unit):
+            data.append({'type': 'button', 'text': 'Pause new wings' if self.production_enabled else 'Resume new wings',
+                         'object_id': '#sidebar_expand_button', 'action_id': 'set_wing_production_enabled',
+                         'target_data': (self.unit.id, not self.production_enabled), 'height': 25})
 
-        if is_owner and not self.constructing and not self.is_destroyed:
+        if is_owner and not self.constructing and not self.is_destroyed and not offline(self.unit):
             data.append({
                 'type': 'button',
                 'text': "Select Wing Production…",
@@ -209,7 +216,7 @@ class StrikecraftBayComponent(UnitComponent):
         if in_magnetic_storm:
             data.append({'type': 'label', 'text': "  ⚠ Magnetic Storm: Wings cannot launch", 'object_id': '#sidebar_status_charging_label', 'height': 20})
 
-        if self.docked_units and is_owner and not in_magnetic_storm:
+        if self.docked_units and is_owner and not in_magnetic_storm and not offline(self.unit):
             data.append({
                 'type': 'button',
                 'text': "Launch All Wings",
@@ -227,6 +234,10 @@ class StrikecraftBayComponent(UnitComponent):
                 role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
                 wing_label = f"  - {docked_ship.name} ({role_str}, {f_count}/4 craft, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
                 data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
+                if is_owner and evaluate(self.unit, docked_ship, galaxy_ref).blocker is None:
+                    data.append({'type': 'button', 'text': f'Dismantle {docked_ship.name}…',
+                                 'object_id': '#sidebar_expand_button', 'action_id': 'dismantle_wing',
+                                 'target_data': (self.unit.id, docked_ship.id), 'height': 25})
                 if is_owner and not in_magnetic_storm and self.can_deploy(docked_ship, galaxy_ref):
                     data.append({
                         'type': 'button',
@@ -280,6 +291,9 @@ class StrikecraftBayComponent(UnitComponent):
         return len(self.docked_units) + len(self.launched_units)
 
     def can_dock(self, unit: 'Unit') -> bool:
+        from dismantling import offline
+        if offline(self.unit) or offline(unit):
+            return False
         if unit.hull_size != HullSize.STRIKECRAFT_WING:
             return False
         if unit in self.launched_units:
@@ -320,6 +334,9 @@ class StrikecraftBayComponent(UnitComponent):
         return True
 
     def can_deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+        from dismantling import offline
+        if offline(self.unit) or offline(unit):
+            return False
         if unit not in self.docked_units:
             return False
         from strikecraft_abilities import round_now
@@ -390,7 +407,8 @@ class StrikecraftBayComponent(UnitComponent):
 
     def update(self, galaxy: 'Galaxy'):
         """Automatically constructs or replenishes wings. Called each turn."""
-        if self.is_destroyed:
+        from dismantling import offline
+        if self.is_destroyed or offline(self.unit):
             return
 
         # Prune destroyed launched units
@@ -415,7 +433,7 @@ class StrikecraftBayComponent(UnitComponent):
                     if self.replenishing_unit.current_hit_points >= self.replenishing_unit.max_hit_points:
                         self.replenishing_unit = None
                         self.replenish_progress = 0
-                    else:
+                    elif not getattr(self, '_dismantle_job', None):
                         # Start next replenishment step immediately if we have credits
                         cost = 35
                         if owner.credits >= cost:
@@ -424,6 +442,9 @@ class StrikecraftBayComponent(UnitComponent):
                         else:
                             self.replenishing_unit = None
                             self.replenish_progress = 0
+                    else:
+                        self.replenishing_unit = None
+                        self.replenish_progress = 0
                 return
 
         # 2. Update ongoing construction
@@ -433,6 +454,9 @@ class StrikecraftBayComponent(UnitComponent):
                 self.finish_auto_construction(galaxy)
                 self.constructing = False
                 self.construction_progress = 0
+            return
+
+        if getattr(self, '_dismantle_job', None):
             return
 
         # 3. If not busy, check if we need to replenish a damaged wing
@@ -452,7 +476,7 @@ class StrikecraftBayComponent(UnitComponent):
                 return
 
         # 4. If not busy and we have free slots, start constructing a new wing
-        if self.get_used_slots() < self.max_slots:
+        if self.production_enabled and self.get_used_slots() < self.max_slots:
             self.validate_production(self.production_template_name, self.turret_type_override, self.defense_type_override)
             cost = self.production_template["build_cost"]
             if owner.credits >= cost:

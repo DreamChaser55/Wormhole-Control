@@ -504,7 +504,25 @@ def handle_cancel_construction_job(game, action: dict) -> None:
             game.sidebar_needs_update = True
 
 
+def handle_dismantling(game, action):
+    from campaign_graph import find_unit
+    from tactical_ui import issue
+    if action['action'] == 'dismantle_wing':
+        actor_id, target_id = action['target_data']
+        actor, target = find_unit(game.galaxy, actor_id), find_unit(game.galaxy, target_id)
+        if actor and target and actor.owner == game.players[game.current_player_index]:
+            from gui.dismantling_window import DismantlingWindow
+            game.gui.dismantling_window = DismantlingWindow(game.gui, actor, target, action.get('shift_pressed', False))
+    elif action['action'] == 'cancel_dismantling':
+        actor_id, order_id = action['target_data']
+        issue(game, {'type': 'cancel_order', 'unit_ids': [actor_id], 'order_id': order_id})
+    else:
+        actor_id, enabled = action['target_data']
+        issue(game, {'type': 'set_wing_production_enabled', 'unit_ids': [actor_id], 'enabled': enabled})
+
+
 HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
+    **{name: handle_dismantling for name in ('dismantle_wing', 'set_wing_production_enabled', 'cancel_dismantling')},
     'upgrade_planetary_defenses': handle_planetary_upgrade,
     'deploy_ship': handle_deploy_ship,
     'launch_all_wings': handle_launch_all_wings,

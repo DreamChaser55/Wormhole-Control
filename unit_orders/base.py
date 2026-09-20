@@ -39,6 +39,7 @@ class OrderStatus(Enum):
 
 
 class OrderType(Enum):
+    DISMANTLE_UNIT = auto()
     RECRUIT_TROOPS = auto()
     BOMBARD_PLANET = auto()
     INVADE_PLANET = auto()

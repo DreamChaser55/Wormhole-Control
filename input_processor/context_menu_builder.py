@@ -365,6 +365,10 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                     if can_dock_in_bay:
                         options.append(("Dock in Strikecraft Bay", "dock_in_strikecraft_bay"))
 
+                    if len(actors) == 1 and target_object.owner == actors[0].owner:
+                        from dismantling import evaluate
+                        if evaluate(actors[0], target_object, game.galaxy).blocker is None:
+                            options.append(("Dismantle…", "dismantle_unit"))
                     refit_options = get_refit_context_options(game, actors, target_object)
                     if refit_options:
                         options.append(("Refit Unit", refit_options))

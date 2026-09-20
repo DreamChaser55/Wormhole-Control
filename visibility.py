@@ -93,7 +93,8 @@ class VisibilityService:
 
                     if is_friendly or is_infiltrated:
                         sensors = getattr(unit, 'sensors_component', None)
-                        if sensors and not sensors.is_destroyed:
+                        from dismantling import offline
+                        if sensors and not sensors.is_destroyed and not offline(unit):
                             from environmental_effects import sensor_radius
                             sr_radius = sensor_radius(unit)
                             from environmental_effects import long_range_sensor_hexes

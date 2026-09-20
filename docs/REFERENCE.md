@@ -542,6 +542,50 @@ Failed or cancelled removals pay no salvage. A pending job cannot cancel or refu
 another active job. For loading existing equipment and unfinished work, see
 [retrofit persistence](SAVE_FORMAT.md#retrofit-settlement).
 
+### Unit dismantling
+
+Select one owned Constructor, then use **Dismantle…** on another owned ship or
+station. Mobile constructors approach normally; stationary constructors need the
+target in the same sector within their construction range (normally 500 units).
+For a strikecraft wing, use **Dismantle…** beside the docked wing in its owning
+carrier's bay. Recall deployed wings separately first.
+
+The preview lists included units, estimated credits, owner turns, discarded cargo
+and any paid bay work that must finish. **Dismantle** replaces the executor's orders;
+**Queue** appends the job. Temporary, destroyed, foreign-owned and self targets are
+ineligible. Ordinary docked ships can only be dismantled with their carrier.
+
+Carrier jobs include all recursively docked craft, owned by the same player.
+Each included wing requires its own functioning bay. Launched wings survive the
+carrier's removal and become orphaned. A claimed bay finishes an already-paid wing
+build or one paid replenishment step, then prioritizes dismantling. New docked
+wings completed during this wait join the job before work starts.
+
+At work start, installed equipment determines each unit's current Designer build
+cost and time; the original template is not required. Duration is the sum of
+`max(1, ceil(build_time / 2))` owner turns. Successful completion pays the sum of
+`0.5 × build_cost × remaining_hull_HP / maximum_hull_HP`. Costs are frozen at start;
+HP is measured at completion. Component damage does not reduce this refund again,
+and fractional credits are retained. Fuel, mined cargo, colonists and troops are
+discarded without salvage.
+
+Targets go offline during work: explicit orders are cancelled normally, stances
+are suspended and movement, weapons, sensors, production, income and support
+stop. Passive defenses, upkeep and cooldown expiration continue; enemies can
+still damage or destroy the targets. Sidebars show the phase and progress and
+provide cancellation. Cancellation restores operation and the preserved stance,
+but does not recreate cancelled orders or re-enable toggles.
+
+Destruction, capture, loss of required components, changed containment or leaving
+construction range abort the entire job. Temporary worker disablement pauses it.
+Cancellation or failure pays no partial salvage and causes no dismantling damage.
+Only successful completion removes all members and pays the combined refund.
+
+New wing construction is automatically paused when the bay is claimed and stays
+paused after completion or cancellation. Use **Resume new wings** in
+the bay sidebar to resume it. Selecting a design does not resume construction.
+Replenishment is independent and becomes available again after dismantling ends.
+
 ## Orders and combat
 
 ### Queues and stances
@@ -596,7 +640,7 @@ can block queued work until cancelled or replaced.
 ### Order types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **43 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **44 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order type | Action |
@@ -617,6 +661,7 @@ The `OrderType` enum defines **43 order types**, including the persistent `STANC
 | `INVADE_PLANET` | Approach and commit a chosen troop count to one conquest roll. |
 | `LOAD_COLONISTS` | Load population from a friendly/allied colony. |
 | `CONSTRUCT` | Build an ordinary ship or station. |
+| `DISMANTLE_UNIT` | Dismantle an owned unit and its docked contents for damage-adjusted salvage. |
 | `REFIT_UNIT` | Install or remove equipment through a Constructor. |
 | `REPAIR` | Approach and repair a friendly/allied ship. |
 | `MINE` | Extract metal from an asteroid or crystal from a comet. |

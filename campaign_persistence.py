@@ -418,6 +418,8 @@ def reconcile(candidate):
     # Carrier effects depend on restored explicit wing roots as well as the object graph.
     for obj, _ in list(iter_units(galaxy)):
         sm._restore_saved_commander(obj, candidate)
+    from dismantling import restore as restore_dismantling
+    restore_dismantling(galaxy)
     from location_validation import location
     for unit, _ in iter_units(galaxy):
         constructor = unit.constructor_component

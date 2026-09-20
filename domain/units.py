@@ -486,6 +486,12 @@ class Unit(GameObject):
         return healed_total
 
     def destroy(self) -> None:
+        self._remove('destroyed')
+
+    def remove_for_dismantling(self) -> None:
+        self._remove('dismantled')
+
+    def _remove(self, reason) -> None:
         """Permanently detach this unit and destroy its stored craft, once.
 
         Releases component effects, interrupts orders, severs carrier/target links,
@@ -494,10 +500,22 @@ class Unit(GameObject):
         """
         if getattr(self, "_destroyed", False):
             return
-        if self.lifetime is None or self.lifetime > 0:
+        from dismantling import interrupt
+        interrupt(self)
+        if reason == 'destroyed' and (self.lifetime is None or self.lifetime > 0):
             from turn_briefing import unit_event
             unit_event(self, "loss", "Destroyed", once=True)
         self._destroyed = True
+        for agent in self.infiltrating_agents:
+            source = agent.source_unit
+            if source and source.intelligence_component:
+                source.intelligence_component.remove_agent_reference(agent)
+            agent.attached_to = None
+        self.infiltrating_agents.clear()
+        if self.intelligence_component:
+            for agent in self.intelligence_component._deployed_agents:
+                agent._source_unit = None
+            self.intelligence_component._deployed_agents.clear()
         from campaign_graph import detach_unit, iter_units
         galaxy = self.in_galaxy or getattr(self.game, "galaxy", None)
         for component in list(self.components.values()):
@@ -515,7 +533,7 @@ class Unit(GameObject):
                         if self.id in effect.spawned_unit_ids:
                             effect.spawned_unit_ids.remove(self.id)
         from order_history import interrupt_unit_orders
-        interrupt_unit_orders(self, "unit_destroyed")
+        interrupt_unit_orders(self, "unit_destroyed" if reason == 'destroyed' else 'unit_dismantled')
         logger.debug(f"Unit '{self.name}' has been destroyed.")
         if self.hangar_component:
             for docked_unit in list(self.hangar_component.docked_units):
@@ -554,6 +572,18 @@ class Unit(GameObject):
         
         This method should be called on each turn processing cycle.
         """
+        from dismantling import offline
+        if offline(self):
+            if self.ability_component and self.in_galaxy:
+                self.ability_component.update(self.in_galaxy, apply_ongoing=False)
+            if self.hyperdrive_component:
+                self.hyperdrive_component.update_recharge()
+            if self.intelligence_component:
+                self.intelligence_component.update()
+            if self.weapons_component:
+                for turret in self.weapons_component.turrets:
+                    turret.update()
+            return
         if getattr(self, 'is_hidden_in_gas_giant', False):
             # Units hidden in a gas giant cannot harvest from stars, tick external fields, or attack
             if self.commander_component:

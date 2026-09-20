@@ -55,7 +55,11 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
     if not isinstance(extracted_action_id, str):
         extracted_action_id = str(extracted_action_id)
 
-    if extracted_action_id == 'stabilize_wormhole' or extracted_action_id.startswith('stabilize_wormhole_'):
+    if extracted_action_id == 'dismantle_unit':
+        if len(selected_units) == 1 and isinstance(target, Unit):
+            from gui.dismantling_window import DismantlingWindow
+            game.gui.dismantling_window = DismantlingWindow(game.gui, selected_units[0], target, shift_pressed)
+    elif extracted_action_id == 'stabilize_wormhole' or extracted_action_id.startswith('stabilize_wormhole_'):
         if len(selected_units) != 1:
             return
         if extracted_action_id.startswith('stabilize_wormhole_'):

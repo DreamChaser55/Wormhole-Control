@@ -14,7 +14,8 @@ def round_now(galaxy):
 
 
 def source_valid(source, kind, galaxy, owner_id=None):
-    return bool(source and deployed(source, galaxy)
+    from dismantling import offline
+    return bool(source and not offline(source) and deployed(source, galaxy)
         and not getattr(source, 'is_hidden_in_gas_giant', False)
         and not source.is_disabled and source.ability_component
         and not source.ability_component.is_destroyed

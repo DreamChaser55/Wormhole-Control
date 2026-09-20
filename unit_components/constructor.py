@@ -490,7 +490,10 @@ class Constructor(UnitComponent):
         from component_visibility import unit_details_are_public_in_game
         if not unit_details_are_public_in_game(self.unit, game_state):
             return data
-        if self.current_construction_target:
+        if getattr(self.unit, '_dismantle_executor', None):
+            data.append({'type': 'label', 'text': 'Constructor busy: dismantling',
+                         'object_id': '#sidebar_info_label', 'height': 25})
+        elif self.current_construction_target:
             target_name = self.current_construction_target["template_name"]
             progress = self.construction_progress
             total = self.time_to_build
@@ -526,7 +529,10 @@ class Constructor(UnitComponent):
             return data
         if self.is_destroyed:
             return data
-        if self.current_construction_target:
+        if getattr(self.unit, '_dismantle_executor', None):
+            status_str = 'Dismantling'
+            obj_id = '#sidebar_status_active_label'
+        elif self.current_construction_target:
             target_name = self.current_construction_target["template_name"]
             pct = int((self.construction_progress / self.time_to_build) * 100) if self.time_to_build > 0 else 100
             status_str = f"Constructing {target_name} ({pct}%)"
@@ -594,7 +600,8 @@ class Constructor(UnitComponent):
             system_name, hex_coord, position = location(system_name, hex_coord, position, galaxy)
         except ValueError:
             return False
-        if self.current_construction_target or self.current_refit_target:
+        from dismantling import offline
+        if offline(self.unit) or getattr(self.unit, '_dismantle_executor', None) or self.current_construction_target or self.current_refit_target:
             return False
         if (self.unit.in_system != system_name or self.unit.in_hex != hex_coord
                 or distance(self.unit.position, position) > self.build_range):
@@ -681,7 +688,9 @@ class Constructor(UnitComponent):
         from refit_validation import evaluate_refit
         from domain.players import are_allies
         from geometry import distance
-        if (self.is_destroyed or self.current_refit_target or self.current_construction_target
+        from dismantling import offline
+        if (offline(self.unit) or offline(target_unit) or getattr(self.unit, '_dismantle_executor', None)
+                or self.is_destroyed or self.current_refit_target or self.current_construction_target
                 or target_unit.current_hit_points <= 0
                 or not are_allies(self.unit.owner, target_unit.owner)
                 or self.unit.in_system != target_unit.in_system or self.unit.in_hex != target_unit.in_hex
@@ -844,7 +853,9 @@ class Constructor(UnitComponent):
         if not job:
             return
         target = galaxy.get_unit_by_id(job['target_unit_id'])
-        if (self.is_destroyed or self.unit.owner.id != job['payer_id'] or not target
+        from dismantling import offline
+        if (offline(self.unit) or (target is not None and offline(target))
+                or self.is_destroyed or self.unit.owner.id != job['payer_id'] or not target
                 or target.current_hit_points <= 0 or not are_allies(self.unit.owner, target.owner)):
             self._settle_refit()
             return

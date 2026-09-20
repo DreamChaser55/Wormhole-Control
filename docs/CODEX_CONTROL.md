@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":17}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":18}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -383,10 +383,10 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 17 and command contract 15 expose a deduplicated `ability_catalog`,
+Observation schema 18 and command contract 16 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v12`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v13`; unused OpenAI command fields stay null.
 
 
 ```json
@@ -455,7 +455,7 @@ commit rechecks availability. Multiple selections apply in array order.
 Owner/allied `capability_details.strikecraft_bay` includes `production_template`,
 `turret_type_override`, `defense_type_override`, progress, costs and production choices.
 Owned command options list templates and nullable override choices. Enemy views gain
-no production details. Save 4.13 / Strikecraft Bay schema 2 preserve selections and
+no production details. Save 4.14 / Strikecraft Bay schema 3 preserve selections and
 in-progress builds without replaying payments. New bays select `FIGHTER_WING` presets.
 
 ```json
@@ -475,7 +475,7 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 15 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 16 remain unchanged; no acknowledgement
 command is required from Codex.
 
 
@@ -508,7 +508,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.13 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.14 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
@@ -530,7 +530,7 @@ See [complete rules](REFERENCE.md#wormhole-stabilization).
 
 ### Construction equipment overrides
 
-Command contract 15 supports optional nullable `turret_type_override` and
+Command contract 16 supports optional nullable `turret_type_override` and
 `defense_type_override` on `construct` and `set_wing_production`, independently. Turret choices are
 `mass_driver`, `beam`, `missile`; defense choices are `armor`, `shields`,
 `point_defense`. Omission/null retains the template preset.
@@ -546,7 +546,7 @@ positive total strength. Non-null overrides on other commands are rejected.
 Group commands use the same choices per builder. Construct choices survive queues and saves
 and appear in owner/allied order parameters. Catalogue entries and names are unchanged.
 
-Observation 17 includes public enemy `capability_details.weapons` and `.defenses`
+Observation 18 includes public enemy `capability_details.weapons` and `.defenses`
 only for detailed visible contacts. Use their actual equipment to choose counters:
 Armor counters Mass Drivers, Shields counter Beams, and Point Defense counters
 Missiles. Enemy orders, template identity, accounting and covert components remain
@@ -566,3 +566,29 @@ Local-only abilities still require the caster to be in the specified sector.
 
 Destinations stay fixed across queues, approach, and saves. Once a build starts,
 displacement out of sector or build range fails it and refunds its charge once.
+
+## Unit dismantling
+
+Contract 16 / observation 18 exposes the shared `dismantle_unit` order:
+
+```json
+{"type":"dismantle_unit","unit_ids":[101],"target_id":202,"queue":false}
+{"type":"set_wing_production_enabled","unit_ids":[303],"enabled":true,"queue":false}
+```
+
+Use exactly one owned executor: a separate Constructor for ships/stations, or the
+owning carrier for an already-docked wing. The production toggle is immediate and
+requires a strict boolean. Design selection leaves the production toggle unchanged.
+`command_options.dismantle_unit.targets` provides blockers, recursive members,
+current refund estimates, total duration, discarded cargo and paid-work waits.
+Owned/allied details expose dismantling phase/progress and bay production state;
+enemy-private component and order information remains hidden.
+
+Membership and Designer valuations freeze when work begins. Refunds depend on HP
+at completion and cannot finance subsequent commands in the issuing batch.
+Preflight projects order replacement, cancellations, claims and offline targets;
+overlapping jobs, worker/target cycles and conflicting operations reject the batch
+without effects. Issue dismantling after observing prior docking/deployment results.
+Cancel via the executor's ordinary `cancel_order`. Work progresses once per owner
+End Turn; observation, command issuance and loading never advance it or pay salvage.
+See [gameplay rules](REFERENCE.md#unit-dismantling) for eligibility and interruptions.

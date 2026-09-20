@@ -28,8 +28,10 @@ def storage_ready(unit):
 
 
 def endpoint_ready(unit, galaxy):
+    from dismantling import offline
     if (
         unit is None
+        or offline(unit)
         or not storage_ready(unit)
         or unit.current_hit_points <= 0
         or unit.is_hidden_in_gas_giant

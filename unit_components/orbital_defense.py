@@ -208,6 +208,9 @@ class OrbitalDefenseComponent(UnitComponent):
         """Returns whether this orbital defense component is currently active and
         projecting its enhancement aura based on sector colony support capacity.
         """
+        from dismantling import offline
+        if offline(self.unit):
+            return False
         return self.get_sector_orbital_defense_status(galaxy).get('active', False)
 
     def get_sidebar_data(self, game_state: 'Game') -> List[Dict]:

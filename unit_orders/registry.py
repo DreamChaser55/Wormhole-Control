@@ -9,6 +9,7 @@ from .base import Order, OrderStatus, OrderType
 from .colony import ColonizeOrder, LoadColonistsOrder
 from .combat import AttackOrder, AttackLongRangeOrder, ProtectOrder
 from .construction import ConstructOrder
+from .dismantling import DismantleOrder
 from .defend import DefendOrder
 from .gas_giant import EnterGasGiantOrder, LeaveGasGiantOrder
 from .hangar import DeployAllWingsOrder, DeployUnitOrder, DockOrder
@@ -33,6 +34,7 @@ from .trade import ContinuousTradeOrder, TradeOrder
 
 # The single authoritative mapping used by persistence and coverage tests.
 ORDER_CLASS_REGISTRY = {
+    OrderType.DISMANTLE_UNIT: DismantleOrder,
     OrderType.STABILIZE_WORMHOLE: StabilizeWormholeOrder,
     OrderType.RECRUIT_TROOPS: RecruitTroopsOrder,
     OrderType.BOMBARD_PLANET: BombardPlanetOrder,

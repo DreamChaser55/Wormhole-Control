@@ -120,6 +120,8 @@ class TurnProcessor:
                 self._process_unit_updates(current_player)
                 self._cleanup_dead_units()
 
+            from dismantling import process as process_dismantling
+            process_dismantling(self.game, current_player)
             from planetary_warfare import process_actions
             process_actions(self.game, current_player)
             process_support(self.game, current_player)
@@ -167,6 +169,10 @@ class TurnProcessor:
                         if not deployed(unit, self.game.galaxy):
                             continue
                     commander.prepare_for_movement()
+
+                from dismantling import offline
+                if offline(unit):
+                    continue
 
                 # Units disabled by Ion Bolt cannot move
                 if unit.is_disabled:
@@ -678,6 +684,10 @@ class TurnProcessor:
                 continue
             if getattr(unit, 'is_hidden_in_gas_giant', False) and unit.commander_component:
                 unit.commander_component.update()
+            from dismantling import offline
+            if offline(unit):
+                unit.update()
+                continue
             # Stored units cannot project effects, but their timers still elapse.
             if unit.ability_component:
                 unit.ability_component.update(self.game.galaxy, apply_ongoing=False)

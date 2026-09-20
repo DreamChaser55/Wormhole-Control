@@ -57,6 +57,10 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
     order_type = state_data.get("order_type")
     status = state_data.get("status")
     parameters = state_data.get("parameters", {})
+    if order_type == 'DISMANTLE_UNIT':
+        return ['Dismantle unit', f"  Target ID: {parameters.get('target_unit_id')}",
+                '  ' + state_data.get('phase', 'pending').replace('_', ' ').title(),
+                f"  Progress: {state_data.get('progress', 0)}/{state_data.get('duration', 0)} owner turns"]
 
     if order_type in {"RECRUIT_TROOPS", "INVADE_PLANET", "BOMBARD_PLANET"}:
         return [order_type.replace("_", " ").title(), f"  Colony ID: {parameters.get('target_id')}",

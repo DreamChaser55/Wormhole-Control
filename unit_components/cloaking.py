@@ -102,7 +102,8 @@ class CloakingDevice(UnitComponent):
 
     def activate(self) -> None:
         """Activate the cloaking field. No-ops if destroyed."""
-        if self.is_destroyed:
+        from dismantling import offline
+        if self.is_destroyed or offline(self.unit):
             return
         self.is_active = True
         logger.debug(f"[{self.unit.name}] Cloaking Device ({self.device_type.value}) activated.")
@@ -119,7 +120,8 @@ class CloakingDevice(UnitComponent):
             bool: True if the toggle was applied successfully.
                   False if the toggle failed (e.g. component is destroyed).
         """
-        if self.is_destroyed:
+        from dismantling import offline
+        if self.is_destroyed or offline(self.unit):
             logger.debug(f"[{self.unit.name}] Cloaking Device toggle failed: component is destroyed.")
             return False
         if self.is_active:

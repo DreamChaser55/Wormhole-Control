@@ -77,7 +77,8 @@ class Commander(UnitComponent):
 
     def process_stance(self) -> None:
         """Update the standing policy while no explicit order is active."""
-        if self.current_order or self.orders_queue:
+        from dismantling import offline
+        if offline(self.unit) or self.current_order or self.orders_queue:
             return
         galaxy_ref: Optional['Galaxy'] = (
             getattr(self.unit, 'in_galaxy', None)
@@ -94,6 +95,17 @@ class Commander(UnitComponent):
             return data
         if self.is_destroyed:
             return data
+        from dismantling import state_view
+        dismantling = state_view(self.unit)
+        if dismantling:
+            data.append({'type': 'label', 'text': 'Dismantling: ' + (dismantling['waiting_reason'] or dismantling['phase']).replace('_', ' '),
+                         'object_id': '#sidebar_info_label', 'height': 25})
+            data.append({'type': 'progress_bar', 'progress': dismantling['turns_completed'],
+                         'total': dismantling['turns_required'], 'height': 25})
+            if self.unit.owner == game_state.players[game_state.current_player_index]:
+                data.append({'type': 'button', 'text': 'Cancel dismantling', 'object_id': '#sidebar_expand_button',
+                             'action_id': 'cancel_dismantling',
+                             'target_data': (dismantling['executor_id'], dismantling['order_id']), 'height': 25})
         orders_count = self.get_active_orders_count()
         if self.current_order:
             curr_name = self.current_order.order_type.name.replace('_', ' ').title()
@@ -257,6 +269,10 @@ class Commander(UnitComponent):
         the world before return. Existing foreground work is preserved. Callers
         validate issuance first and use clear_explicit_orders for replacement.
         """
+        from dismantling import offline
+        if offline(self.unit):
+            order.fail('dismantling_conflict')
+            return
         self.suspend_stance_activity("explicit order started")
         order.register_explicit_root()
         self.orders_queue.append(order)
@@ -266,6 +282,9 @@ class Commander(UnitComponent):
 
     def set_stance(self, stance: UnitStance) -> None:
         """Replace the standing policy without interrupting explicit work."""
+        from dismantling import offline
+        if offline(self.unit):
+            return
         if not isinstance(stance, UnitStance):
             raise TypeError("stance must be a UnitStance")
         old_stance = getattr(self, "_stance", UnitStance.DO_NOTHING)
@@ -540,6 +559,9 @@ class Commander(UnitComponent):
 
         This method should be called on each game update cycle.
         """
+        from dismantling import offline
+        if offline(self.unit):
+            return
         if getattr(self.unit, 'is_hidden_in_gas_giant', False):
             self._update_hidden_orders()
             return

@@ -33,6 +33,8 @@ Storage-equipped ships and stations can **Transfer Antimatter** or **Take Antima
 
 Recruit troops into dedicated transports, bombard enemy fortifications with Siege Batteries, and invade colonies through [planetary warfare](docs/REFERENCE.md#planetary-warfare). Colony sidebars provide immediate fortification upgrades; invasion dialogs show the odds and troop losses before you commit.
 
+Retire owned ships and stations with a Constructor using **Dismantle…**, or dismantle a docked wing from its owning bay. Work takes half the current design build time per included hull and returns 50% of its build cost, reduced by hull damage. Docked craft are included; cargo is lost. See [dismantling](docs/REFERENCE.md#unit-dismantling) for interruptions and bay production controls.
+
 Select a unit and use its contextual actions to issue orders. Hold **Shift** when issuing an order to queue it behind existing work. When finished, press **E** or click **End Turn** to resolve your player's actions and advance to the next player.
 
 | Input | Action |

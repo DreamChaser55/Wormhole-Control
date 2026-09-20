@@ -89,6 +89,8 @@ class CaptureUnitAbility(AbilityInstance):
         unit_event(target_unit, "capture", "Captured", once=True, new_owner=component.unit.owner)
         from order_history import interrupt_unit_orders
         interrupt_unit_orders(target_unit, "ownership_lost")
+        from dismantling import interrupt
+        interrupt(target_unit)
         old_owner = target_unit.owner
         from environmental_resistance import deactivate
         deactivate(target_unit)

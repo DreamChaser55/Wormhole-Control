@@ -189,7 +189,7 @@ def test_active_ability_save_round_trip(kind):
               'emergency_recovery': bomber}.get(kind)
     assert issue(game, carrier, kind, target).accepted
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.13'
+    assert state['version'] == '4.14'
     assert deserialize_game_state(game, state)
     restored = game.galaxy.get_unit_by_id(carrier.id)
     assert restored.antimatter_component.current_amount == carrier.antimatter_component.current_amount

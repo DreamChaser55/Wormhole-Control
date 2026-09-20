@@ -166,6 +166,9 @@ class AbilityComponent(UnitComponent):
 
     def can_use(self, ability_type: AbilityType, *, ignore_reservations=False, resources=True) -> bool:
         """Returns True if the ability exists, the component is intact, it is off cooldown, and has enough antimatter."""
+        from dismantling import offline
+        if offline(self.unit):
+            return False
         from tactical_abilities import SPECS, availability
         if ability_type.value in SPECS:
             galaxy = self.unit.in_galaxy or getattr(self.unit.game, "galaxy", None)
@@ -200,7 +203,14 @@ class AbilityComponent(UnitComponent):
         Performs validation, applies immediate effects, and sets the active
         state. Returns True on success, False on failure.
         """
+        from dismantling import offline
+        if offline(self.unit):
+            return False
         from location_validation import ability_target_kind, location
+        from domain.players import are_allies
+        target = galaxy.get_unit_by_id(target_unit_id) if target_unit_id is not None else None
+        if target is not None and offline(target) and are_allies(self.unit.owner, target.owner):
+            return False
         if ability_target_kind(ability_type.value) in {"position", "celestial_position"}:
             try:
                 target_system_name, target_hex_coord, target_position = location(target_system_name, target_hex_coord, target_position, galaxy)

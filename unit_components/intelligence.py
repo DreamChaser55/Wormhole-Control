@@ -165,7 +165,8 @@ class IntelligenceComponent(UnitComponent):
     @property
     def is_ci_ready(self) -> bool:
         """Returns True if the Counter-Intelligence suite is functional and off cooldown."""
-        return self.has_counter_intelligence and not self.is_destroyed and self.ci_cooldown_remaining <= 0
+        from dismantling import offline
+        return not offline(self.unit) and self.has_counter_intelligence and not self.is_destroyed and self.ci_cooldown_remaining <= 0
 
     def update(self) -> None:
         """Called each turn to decrement active cooldowns."""
@@ -183,7 +184,8 @@ class IntelligenceComponent(UnitComponent):
     @property
     def can_deploy_agent(self) -> bool:
         """Return True if component is functional and has at least one ready agent."""
-        return not self.is_destroyed and self.agents_count > 0
+        from dismantling import offline
+        return not offline(self.unit) and not self.is_destroyed and self.agents_count > 0
 
     def deploy_agent(self, target_obj: typing.Union['Unit', 'CelestialBody']) -> Optional[Agent]:
         """Deploys an operative onto an enemy unit or celestial body."""
@@ -219,6 +221,9 @@ class IntelligenceComponent(UnitComponent):
 
     def retrieve_agent(self, agent: Agent, target_obj: Optional[typing.Union['Unit', 'CelestialBody']] = None) -> bool:
         """Extracts an operative from a target back to this ship."""
+        from dismantling import offline
+        if offline(self.unit):
+            return False
         if agent is None or agent.owner != self.unit.owner:
             return False
         if self.is_destroyed or self.agents_count >= self.agents_capacity:

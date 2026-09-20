@@ -28,6 +28,9 @@ def active_kinds(unit):
 
 
 def operational(unit):
+    from dismantling import offline
+    if offline(unit):
+        return False
     if (getattr(unit, 'current_hit_points', 0) <= 0 or getattr(unit, 'is_disabled', False)
             or getattr(unit, 'is_hidden_in_gas_giant', False)):
         return False

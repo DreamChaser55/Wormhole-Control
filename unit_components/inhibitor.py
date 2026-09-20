@@ -137,6 +137,9 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         existing_zones: Optional[Iterable[Circle]] = None,
     ) -> InhibitorStateCheck:
         """Validate a requested state without changing authoritative game state."""
+        from dismantling import offline
+        if turn_on and offline(self.unit):
+            return InhibitorStateCheck(False, 'dismantling_conflict', 'Unit is offline for dismantling.')
         if self.is_destroyed:
             return InhibitorStateCheck(
                 False,

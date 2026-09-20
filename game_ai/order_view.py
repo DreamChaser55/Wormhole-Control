@@ -82,6 +82,9 @@ def order_layers(unit, relation, visible_ids, body_ids):
                               destination_mode='automatic' if order.automatic else 'manual')
             data["parameters"] = public
         progress = {}
+        if kind == 'dismantle_unit' and not hidden:
+            progress = dict(phase=order.phase, turns_completed=order.progress, turns_required=order.duration,
+                            included_unit_ids=[m['unit_id'] for m in order.members])
         if kind == "stabilize_wormhole" and not hidden:
             from wormhole_stabilization import state_view
             progress = state_view(unit, order=order)

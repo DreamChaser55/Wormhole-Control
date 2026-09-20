@@ -381,6 +381,7 @@ def test_ai_rules_and_preflight_rejection():
     wing = create_test_ship("Fighter Wing Alpha", HullSize.STRIKECRAFT_WING, game=game)
     bay.docked_units.append(wing)
     wing.docked_in = carrier
+    hex_obj.units.remove(wing)
 
     # AI rules should NOT list deploy_unit or deploy_all_wings as legal
     legal_commands, options, _ = command_guidance(

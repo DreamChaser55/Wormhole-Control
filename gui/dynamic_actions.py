@@ -22,6 +22,8 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
     """
     if action_id in ('select_deployable', 'choose_catalyst_nebula', 'cancel_tactical_ability', 'toggle_resistance_ability', 'recover_tactical_cache', 'attack_deployable'):
         return {'action': action_id, 'target_data': target_data, 'shift_pressed': _shift_pressed()}
+    if action_id in {'dismantle_wing', 'set_wing_production_enabled', 'cancel_dismantling'}:
+        return {'action': action_id, 'target_data': target_data, 'shift_pressed': _shift_pressed()}
     if action_id == 'upgrade_planetary_defenses':
         return {'action': action_id, 'target_data': target_data}
     if action_id == 'unload_resources_nearest':

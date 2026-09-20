@@ -324,7 +324,7 @@ def test_socket_and_strict_provider_share_override_contract():
     output = dict(plan=[], commands=[command(builder).to_dict()], memory_patch=EMPTY_PATCH, end_turn=True)
     def create(**kwargs):
         schema = kwargs['text']['format']
-        assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v12'
+        assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v13'
         fields = schema['schema']['properties']['commands']['items']
         assert 'defense_type_override' in fields['required']
         assert fields['properties']['turret_type_override']['enum'] == [None, *TURRET_TYPES]

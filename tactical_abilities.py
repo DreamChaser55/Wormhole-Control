@@ -89,7 +89,8 @@ def availability(unit, kind, galaxy, *, ignore_reservations=False, resources=Tru
     from tactical_balance import STRIKECRAFT_ABILITIES
     if kind in STRIKECRAFT_ABILITIES and unit.hull_size in (HullSize.STRIKECRAFT_WING, HullSize.TINY):
         return 'capability_unavailable'
-    if not deployed(unit, galaxy) or not inst or unit.ability_component.is_destroyed or unit.is_disabled or getattr(unit, 'is_hidden_in_gas_giant', False):
+    from dismantling import offline
+    if offline(unit) or not deployed(unit, galaxy) or not inst or unit.ability_component.is_destroyed or unit.is_disabled or getattr(unit, 'is_hidden_in_gas_giant', False):
         return 'capability_unavailable'
     if kind == 'multiply_antimatter' and unit.multiply_cast_ready_round > getattr(unit.game, 'turn_number', 1):
         return 'capability_unavailable'
@@ -170,9 +171,12 @@ def incoming_link(target, kind, galaxy):
 def link_valid(source, inst, galaxy):
     kind = inst.definition.ability_type.value
     target = galaxy.get_unit_by_id(inst.target_unit_id)
-    if not deployed(source, galaxy) or source.is_disabled or source.ability_component.is_destroyed or not equipment_ready(source, SPECS[kind]):
+    from dismantling import offline
+    if offline(source) or not deployed(source, galaxy) or source.is_disabled or source.ability_component.is_destroyed or not equipment_ready(source, SPECS[kind]):
         return False
     if target is None or not deployed(target, galaxy) or sector_for(source, galaxy) is not sector_for(target, galaxy):
+        return False
+    if offline(target) and are_allies(source.owner, target.owner):
         return False
     if inst.source_owner_id != source.owner.id:
         return False
@@ -201,6 +205,9 @@ def validate(unit, kind, galaxy, target_id=None, position=None, *, approach=Fals
     if spec.target_kind == 'unit':
         from visibility import VisibilityService, is_unit_visible
         target = galaxy.get_unit_by_id(target_id)
+        from dismantling import offline
+        if target is not None and offline(target) and are_allies(unit.owner, target.owner):
+            return 'target_unavailable'
         snapshot = VisibilityService.compute(galaxy, unit.owner, record_intel=False)
         if target is None or target is unit or not deployed(target, galaxy) or not is_unit_visible(snapshot, target):
             return 'target_unavailable'

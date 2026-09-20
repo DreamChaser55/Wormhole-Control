@@ -29,6 +29,12 @@ wing_templates catalog with set_wing_production while the bay is not constructin
 Each selection replaces the full production configuration; omitted/null overrides reset to
 the selected template's presets. Selection is free, preserves orders, and changes future
 builds only. It is allowed during replenishment or when full or short of credits.
+dismantle_unit uses one Constructor and an owned non-wing target, or one carrier and its already docked wing.
+It includes docked craft, disables targets during work, discards cargo, and refunds half current-design cost
+scaled by hull HP at completion. Durations add each unit's half build time rounded up. Future salvage cannot
+fund this command batch. Bays finish prepaid work first and pause new wing construction; explicitly use
+set_wing_production_enabled with enabled=true to resume. Selecting a wing design does not resume production.
+Use command previews and cancel the executor's order to stop dismantling without salvage.
 Wing roles are separate from template names: fighters intercept wings; bombers attack ships
 and stations. Attack Run requires your carrier's deployed bombers, including long-range bombers.
 Budget for fuel, repair, refinery and habitat dependencies as described by the catalog.
@@ -44,7 +50,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 17 and the command_catalog describes contract 15. The final turn_summary
+Observations use schema 18 and the command_catalog describes contract 16. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.

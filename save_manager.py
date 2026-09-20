@@ -42,7 +42,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.13"
+CURRENT_SAVE_VERSION = "4.14"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 

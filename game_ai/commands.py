@@ -88,6 +88,8 @@ class _BatchProjection:
         self._settled_cargo = {}
         self._settled_population = {}
         self._settled_docks = {}
+        self._containment_changes = set()
+        self._wing_production_enabled = {}
         self._settled_hidden = {}
         self._unavailable_units = set()
         self._edit_target = None
@@ -162,6 +164,36 @@ class _BatchProjection:
             if command.type == "cancel_order":
                 self._settle_front(unit)
         self._rebuild()
+
+    def dismantling_claims(self):
+        from campaign_graph import find_unit
+        from dismantling import tree
+        claims = []
+        for uid, entries in self._order_ledger.items():
+            for entry in entries:
+                if entry['type'] != 'dismantle_unit' or entry.get('settled'):
+                    continue
+                target = find_unit(self.game.galaxy, entry['parameters'].get('target_unit_id'))
+                members = {u.id for u in tree(target)} if target else set()
+                order = entry['order']
+                working = entry.get('dismantling_working', order is not None and order.phase == 'working')
+                claims.append((uid, members, working))
+        return claims
+
+    def validate_dismantling_interactions(self, command, units):
+        safe = {'rename_unit', 'cancel_order', 'clear_explicit_orders', 'cancel_orders'}
+        locked = set().union(*(members for _, members, working in self.dismantling_claims() if working))
+        if command.type not in safe and any(u.id in locked for u in units):
+            raise _Rejected('dismantling_conflict', 'Unit is offline for dismantling; cancel the executor order first.')
+        if command.type == 'use_ability' and command.target_id in locked:
+            from campaign_graph import find_unit
+            from domain.players import are_enemies
+            target = find_unit(self.game.galaxy, command.target_id)
+            if target is not None and are_enemies(self.player, target.owner):
+                return
+        if command.type not in {'attack', 'attack_long_range', *safe}:
+            if command.target_id in locked or command.source_id in locked:
+                raise _Rejected('dismantling_conflict', 'Target is offline for dismantling.')
 
     def _rebuild(self):
         self._cargo = {}
@@ -558,6 +590,12 @@ class _BatchProjection:
             self._group_links[(command.ability, command.target_id)] = unit.id
 
     def record(self, command, units):
+        if command.type == 'set_wing_production_enabled':
+            self._wing_production_enabled[units[0].id] = command.enabled
+        if command.type in {'deploy_unit', 'deploy_all_wings', 'dock', 'dock_in_hangar', 'dock_in_strikecraft_bay'}:
+            self._containment_changes.update(u.id for u in units)
+            if command.target_id is not None:
+                self._containment_changes.add(command.target_id)
         if command.type == "append_patrol_waypoints":
             entry = self.target_order(command, units[0])
             entry["parameters"]["waypoints"] = [*entry["parameters"].get("waypoints", []), *command.waypoints]
@@ -584,6 +622,21 @@ class _BatchProjection:
         entry = entries[0]
         entry["started"] = True
         params, kind = entry["parameters"], entry["type"]
+        if kind == 'dismantle_unit':
+            from campaign_graph import find_unit
+            from dismantling import evaluate, in_range, tree, bays_for
+            target = find_unit(self.game.galaxy, params.get('target_unit_id'))
+            preview = evaluate(unit, target, self.game.galaxy, check_claims=False)
+            if (not preview.blocker and in_range(unit, target) and not preview.waiting and not unit.is_disabled
+                    and not any(b.unit.is_disabled for b in bays_for(unit, target))):
+                entry['dismantling_working'] = True
+                for member in tree(target):
+                    self._ensure_orders(member)
+                    for prior in self._order_ledger[member.id]:
+                        if prior['order'] is not None:
+                            self._refunds += prior['order'].refundable_credits(self.player.id)
+                    self._order_ledger[member.id] = []
+            return
         if kind == 'use_ability':
             from tactical_abilities import SPECS, validate
             from geometry import Position
@@ -759,16 +812,19 @@ class CommandGateway:
                     units = []
                 else:
                     try:
-                        units = self._owned_units(player, command.unit_ids)
+                        units = self._owned_units(player, command.unit_ids, include_stored=command.type == 'rename_unit')
                     except _Rejected:
                         if command.type in {"cancel_order", "append_patrol_waypoints"}:
                             raise _Rejected("order_unavailable", "The order is unavailable.")
                         raise
                     self._selected_units = units
                     projection.before(command, units)
-                    operations = self._prepare(player, command, units, projection)
-                    if not (command.type == 'use_ability' and command.ability == 'multiply_antimatter'):
-                        projection.record(command, units)
+                    from dismantling import projected_offline
+                    locked = set().union(*(members for _, members, working in projection.dismantling_claims() if working))
+                    with projected_offline(locked):
+                        operations = self._prepare(player, command, units, projection)
+                        if not (command.type == 'use_ability' and command.ability == 'multiply_antimatter'):
+                            projection.record(command, units)
                 for offset, operation in enumerate(operations):
                     operation.command_index = index
                     operation.command_type = command.type
@@ -824,6 +880,28 @@ class CommandGateway:
         units: list[Any],
         projection: _BatchProjection,
     ) -> list[_Prepared]:
+        projection.validate_dismantling_interactions(command, units)
+        if command.type == 'set_wing_production_enabled':
+            unit = units[0]
+            self._require_capability(unit, command.type)
+            def set_enabled():
+                self._require_capability(unit, command.type)
+                unit.strikecraft_bay_component.production_enabled = command.enabled
+            return [_Prepared(set_enabled, 'Updated automatic wing production.')]
+        if command.type == 'dismantle_unit':
+            from campaign_graph import find_unit
+            from dismantling import evaluate
+            unit = units[0]
+            target = find_unit(self.game.galaxy, command.target_id)
+            preview = evaluate(unit, target, self.game.galaxy, check_claims=False)
+            if preview.blocker:
+                raise _Rejected(preview.blocker, 'Dismantling is unavailable: ' + preview.blocker.replace('_', ' '))
+            ids = {m['unit_id'] for m in preview.members}
+            if (ids | {unit.id}) & projection._containment_changes:
+                raise _Rejected('dismantling_conflict', 'Issue dismantling after observing the docking or deployment result.')
+            for worker_id, members, _ in projection.dismantling_claims():
+                if ids & members or unit.id in members or worker_id in ids:
+                    raise _Rejected('dismantling_conflict', 'Dismantling claims overlap or form a cycle.')
         if command.type == "rename_unit":
             from unit_naming import normalize_unit_name, rename_unit
             unit = units[0]
@@ -933,6 +1011,15 @@ class CommandGateway:
             public_order_id = uuid.uuid4().hex
 
             def apply(unit=unit, factory=order_factory, public_order_id=public_order_id, queue=command.queue):
+                self._require_capability(unit, command.type)
+                if command.type == 'dismantle_unit':
+                    from campaign_graph import find_unit
+                    from dismantling import evaluate
+                    ignored = () if queue else tuple(o.public_id for o in
+                        [unit.commander_component.current_order, *unit.commander_component.orders_queue] if o)
+                    preview = evaluate(unit, find_unit(self.game.galaxy, command.target_id), self.game.galaxy, ignore_orders=ignored)
+                    if preview.blocker:
+                        raise _Rejected(preview.blocker, 'Dismantling is no longer available.')
                 order = factory(unit)
                 order.public_id = public_order_id
                 if not queue:
@@ -952,6 +1039,9 @@ class CommandGateway:
 
     def _order_factory(self, player: Any, command: Any):
         from geometry import Position
+        if command.type == 'dismantle_unit':
+            from unit_orders.dismantling import DismantleOrder
+            return lambda unit: DismantleOrder(unit, {'target_unit_id': command.target_id}), command.type
         if command.type == "stabilize_wormhole":
             from unit_orders.wormhole_stabilizer import StabilizeWormholeOrder
             self._body(command.target_id)
@@ -1567,7 +1657,7 @@ class CommandGateway:
             )
         ]
 
-    def _owned_units(self, player: Any, unit_ids: tuple[int, ...]) -> list[Any]:
+    def _owned_units(self, player: Any, unit_ids: tuple[int, ...], *, include_stored=False) -> list[Any]:
         units = []
         seen = set()
         for unit_id in unit_ids:
@@ -1575,6 +1665,9 @@ class CommandGateway:
                 continue
             seen.add(unit_id)
             unit = self.game.galaxy.get_unit_by_id(unit_id)
+            if unit is None and include_stored:
+                from campaign_graph import find_unit
+                unit = find_unit(self.game.galaxy, unit_id)
             if unit is None or getattr(unit, "owner", None) is not player:
                 raise _Rejected("unit_unavailable", "A selected unit is unavailable.")
             if getattr(unit, "commander_component", None) is None:

@@ -88,6 +88,11 @@ class UnloadResourcesOrder(Order):
         target_unit_id = self.parameters.get("target_unit_id")
         target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
 
+        from dismantling import offline
+        if offline(self.unit) or offline(target_unit):
+            self.fail('dismantling_conflict')
+            return
+
         if not target_unit:
             self.fail("target_unavailable")
             logger.debug(f"UNLOAD_RESOURCES order failed: Target unit {target_unit_id} not found.")

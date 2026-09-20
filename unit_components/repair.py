@@ -78,7 +78,8 @@ class RepairComponent(UnitComponent):
         if self.is_destroyed:
             return
 
-        if not self.target:
+        from dismantling import offline
+        if not self.target or offline(self.unit) or offline(self.target):
             return
 
         target_valid = (

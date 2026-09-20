@@ -124,6 +124,9 @@ def body_is_public(game, player, body, selected_units=()):
 
 
 def capability_blocker(unit, command_type):
+    from dismantling import offline
+    if offline(unit) and command_type not in {'rename_unit', 'cancel_orders', 'clear_explicit_orders', 'cancel_order'}:
+        return 'dismantling_conflict'
     if command_type == "attack_long_range":
         from unit_components.enums import TurretVariant
         if getattr(unit, 'is_disabled', False) is True or not any(t.variant == TurretVariant.LONG_RANGE
@@ -163,7 +166,7 @@ def supported_commands(unit: Any) -> list[str]:
     if getattr(unit, "colony_component", None):
         commands.extend(["colonize", "load_colonists"])
     if getattr(unit, "constructor_component", None):
-        commands.append("construct")
+        commands.extend(["construct", "dismantle_unit"])
     if getattr(unit, "troop_transport_component", None):
         commands.extend(["recruit_troops", "invade_planet"])
     if getattr(unit, "wormhole_stabilizer_component", None):
@@ -189,7 +192,9 @@ def supported_commands(unit: Any) -> list[str]:
     if getattr(unit, "hangar_component", None):
         commands.append("deploy_unit")
     if getattr(unit, "strikecraft_bay_component", None):
-        commands.extend(["deploy_unit", "deploy_all_wings", "set_wing_production"])
+        commands.extend(["deploy_unit", "deploy_all_wings", "set_wing_production", "set_wing_production_enabled"])
+        if 'dismantle_unit' not in commands:
+            commands.append('dismantle_unit')
     if getattr(unit, "trade_component", None):
         commands.extend(["trade", "continuous_trade"])
     if getattr(unit, "inhibitor_component", None):
@@ -608,6 +613,25 @@ def command_guidance(
     legal.update(kind for kind, values in planetary.items() if any(v["blocker"] is None for v in values["targets"]))
     if getattr(unit, "troop_transport_component", None):
         conditional.append({"type": "invade_planet", "requires_prior_command": "recruit_troops", "same_unit": True, "queue": True})
+    from dismantling import evaluate, offline
+    from campaign_graph import iter_units
+    if 'dismantle_unit' in supported:
+        targets = []
+        for target, _ in iter_units(game.galaxy):
+            if target is unit or target.owner != player:
+                continue
+            preview = evaluate(unit, target, game.galaxy)
+            targets.append(dict(target_id=target.id, **preview.public()))
+        options['dismantle_unit'] = {'targets': targets}
+        if any(item['blocker'] is None for item in targets):
+            legal.add('dismantle_unit')
+    if 'set_wing_production_enabled' in supported:
+        options['set_wing_production_enabled'] = {'enabled': unit.strikecraft_bay_component.production_enabled}
+        if not capability_blocker(unit, 'set_wing_production_enabled'):
+            legal.add('set_wing_production_enabled')
+    if offline(unit):
+        legal &= {'rename_unit', 'cancel_orders', 'clear_explicit_orders', 'cancel_order'}
+        conditional = []
     return sorted(legal), options, conditional
 
 

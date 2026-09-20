@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 15
+CONTRACT_VERSION = 16
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -34,6 +34,8 @@ def _spec(description, fields=(), required=None, **kwargs):
 
 
 COMMAND_SPECS = {
+    "dismantle_unit": _spec("Dismantle an owned unit with a separate Constructor, or an already docked wing using its owning carrier. Includes docked craft, takes their summed half-build times, takes targets offline, discards cargo and pays half current-design value scaled by hull HP at completion. Bays finish prepaid work, then pause new production until resumed.", ("target_id",), single_unit=True),
+    "set_wing_production_enabled": _spec("Enable or pause automatic new-wing construction. Paid work finishes; replenishment and selected equipment are preserved. Dismantling reserves its bay until finished or cancelled.", ("enabled",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
     "stabilize_wormhole": _spec("Approach and continuously maintain a wormhole within 500 units for 5 AM per owner turn. Both directions become 100% stable for all ships, including enemies. Starts at End Turn; fuel shortages wait for resupply. Queued work is blocked until cancelled.", ("target_id",), single_unit=True, capability=("wormhole_stabilizer_component", "antimatter_component")),
     "recruit_troops": _spec("Approach an owned colony and recruit integer amount troops on End Turn, paying 2 credits and 0.2 population per troop; leave at least one population.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
     "bombard_planet": _spec("Approach an enemy colony and bombard military defenses once per owner turn until readiness reaches 25%; each volley costs 10 AM.", ("target_id",), single_unit=True, capability=("siege_battery_component",)),
@@ -98,6 +100,7 @@ WAYPOINT_SCHEMA = {"type": "object", "additionalProperties": False,
                    "position": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}},
     "required": list(DESTINATION)}
 COMMAND_PROPERTIES = {
+    "enabled": {"type": ["boolean", "null"]},
     "type": {"type": "string", "enum": sorted(COMMAND_SPECS)},
     "unit_ids": {"type": "array", "items": {"type": "integer"}, "maxItems": MAX_UNITS},
     "target_id": {"type": ["integer", "null"]}, "system_name": NULLABLE_STRING,
@@ -145,7 +148,9 @@ def validate_command(raw):
         if value is None:
             require(field not in spec.required, f"{kind} requires {field}.")
             continue
-        if field in {"target_id", "agent_id", "source_id"}:
+        if field == 'enabled':
+            require(type(value) is bool, 'enabled must be a boolean.')
+        elif field in {"target_id", "agent_id", "source_id"}:
             require(type(value) is int and value >= 0, f"{field} must be a nonnegative integer.")
         elif field == "amount":
             require(type(value) in (int, float) and _finite(value) and value > 0, "amount must be finite and positive.")

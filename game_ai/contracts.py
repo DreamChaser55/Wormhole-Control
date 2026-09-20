@@ -19,6 +19,7 @@ class Command:
     """One requested game command using a strict, schema-friendly shape."""
 
     type: str
+    enabled: bool | None = field(default=None, kw_only=True)
     unit_ids: tuple[int, ...] = ()
     target_id: int | None = None
     source_id: int | None = None
@@ -57,6 +58,7 @@ class Command:
     def to_dict(self) -> dict[str, Any]:
         return {
             "type": self.type,
+            "enabled": self.enabled,
             "unit_ids": list(self.unit_ids),
             "target_id": self.target_id,
             "source_id": self.source_id,

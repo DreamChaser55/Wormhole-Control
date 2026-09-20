@@ -85,6 +85,9 @@ class HangarComponent(UnitComponent):
         return slots
 
     def can_dock(self, unit: 'Unit') -> bool:
+        from dismantling import offline
+        if offline(self.unit) or offline(unit):
+            return False
         if unit.hull_size != HullSize.TINY:
             return False
         needed = 1
@@ -117,6 +120,9 @@ class HangarComponent(UnitComponent):
         return True
 
     def deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+        from dismantling import offline
+        if offline(self.unit) or offline(unit):
+            return False
         if unit not in self.docked_units:
             return False
         

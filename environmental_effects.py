@@ -72,6 +72,9 @@ def sublight_speed(unit):
 
 def long_range_sensor_hexes(unit):
     """Current long-range projection, including magnetic suppression."""
+    from dismantling import offline
+    if offline(unit):
+        return 0
     sensors = getattr(unit, 'sensors_component', None)
     if sensors is None or sensors.is_destroyed or modifiers_for_unit(unit).blocks_long_range_sensors:
         return 0
@@ -88,6 +91,9 @@ def splash_damage(amount, unit):
 
 def sensor_radius(unit):
     """Actual short-range radius, shared by visibility, overlays, UI and agents."""
+    from dismantling import offline
+    if offline(unit):
+        return 0.0
     sensors = getattr(unit, 'sensors_component', None)
     if sensors is None or sensors.is_destroyed:
         return 0.0

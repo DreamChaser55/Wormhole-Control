@@ -330,7 +330,7 @@ def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     assert len(catalog['construction_templates']) == 64
     assert len(catalog['wing_templates']) == 4
     assert all(e['description'] and e['roles'] and 'support' in e for e in catalog['construction_templates'])
-    assert observation['command_catalog']['version'] == 15
+    assert observation['command_catalog']['version'] == 16
 
 
 def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context):

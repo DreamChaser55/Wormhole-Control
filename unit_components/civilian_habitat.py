@@ -183,6 +183,9 @@ class CivilianHabitatComponent(UnitComponent):
         """Returns whether this civilian habitat component is currently active and
         generating credits based on sector colony support capacity.
         """
+        from dismantling import offline
+        if offline(self.unit):
+            return False
         return self.get_sector_habitat_status(galaxy).get('active', False)
 
     def get_sidebar_data(self, game_state: 'Game') -> List[Dict]:

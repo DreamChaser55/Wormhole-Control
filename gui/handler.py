@@ -122,6 +122,7 @@ class GUI_Handler:
 
         self.unit_catalog_window = None
         self.wing_production_window = None
+        self.dismantling_window = None
 
         # Unit Editor
         self.unit_editor_window: typing.Optional['UnitEditorWindow'] = None
@@ -140,6 +141,8 @@ class GUI_Handler:
     def clear_and_reset(self):
         """Clears all UI elements managed by this class."""
         self.close_settings_dialog()
+        if self.dismantling_window:
+            self.dismantling_window.close()
         if self.wing_production_window:
             self.wing_production_window.close()
         self.settings_button = self.ingame_settings_button = None
