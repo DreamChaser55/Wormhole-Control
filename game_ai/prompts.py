@@ -15,7 +15,7 @@ Defend orders move to and hold strategic coordinates or bodies, engaging intrude
 
 The construction_templates catalog explains roles, equipment, prices and support dependencies.
 Choose suitable designs from this catalog; no unit design command is available.
-Construct supports independent nullable turret_type_override
+Construct and set_wing_production support independent nullable turret_type_override
 (mass_driver, beam, missile) and defense_type_override (armor, shields, point_defense).
 The turret override changes every installed turret's type, preserving variants and stats.
 The defense override pools all three strengths into the selected defense, losing mixed coverage.
@@ -24,9 +24,13 @@ and change neither hull use, prices, build time nor upkeep. Null preserves that 
 Visible enemies' capability_details includes their inspectable weapons and defenses. Armor counters
 mass drivers, Shields counter beams, and Point Defense counters missiles. Use observed threats and
 weak defenses to inform new builds; keep presets or mixed defenses when evidence is insufficient.
-Wings use preset equipment and are built by strikecraft bays, not Constructors.
-Use set_wing_production with FIGHTER_WING or BOMBER_WING
-while the bay is not constructing; Attack Run requires your carrier's deployed bombers.
+Wings are built by strikecraft bays, not Constructors. Choose template_name from the
+wing_templates catalog with set_wing_production while the bay is not constructing.
+Each selection replaces the full production configuration; omitted/null overrides reset to
+the selected template's presets. Selection is free, preserves orders, and changes future
+builds only. It is allowed during replenishment or when full or short of credits.
+Wing roles are separate from template names: fighters intercept wings; bombers attack ships
+and stations. Attack Run requires your carrier's deployed bombers, including long-range bombers.
 Budget for fuel, repair, refinery and habitat dependencies as described by the catalog.
 The Covert Intelligence Ship is constructed as Patrol Escort, matching its ordinary warship
 twin. rename_unit takes exactly one owned unit and new_name (1–30 characters after trimming,
@@ -40,7 +44,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 16 and the command_catalog describes contract 14. The final turn_summary
+Observations use schema 17 and the command_catalog describes contract 15. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.

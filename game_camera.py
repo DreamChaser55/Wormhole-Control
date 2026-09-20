@@ -19,9 +19,10 @@ def camera_input_blocked(game, gui) -> bool:
     from gui.settings_dialog import is_open as settings_is_open
     from gui.planetary_window import is_open as planetary_is_open
     from gui.antimatter_transport_window import is_open as transport_is_open
+    from gui.wing_production_window import is_open as wing_is_open
 
     if any(check(gui) for check in (
-        briefing_is_open, settings_is_open, planetary_is_open, transport_is_open,
+        briefing_is_open, settings_is_open, planetary_is_open, transport_is_open, wing_is_open,
     )):
         return True
     for name in (

@@ -1,4 +1,4 @@
-"""Pure construction-only equipment overrides; never publish modified designs."""
+"""Pure constructor and strikecraft production overrides; never publish modified designs."""
 from copy import deepcopy
 
 TURRET_TYPES = ("mass_driver", "beam", "missile")

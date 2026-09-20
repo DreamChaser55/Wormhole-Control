@@ -884,9 +884,18 @@ class CommandGateway:
             unit = units[0]
             self._require_capability(unit, command.type)
             bay = unit.strikecraft_bay_component
-            if not bay.can_set_production(command.template_name):
-                raise _Rejected("capability_unavailable", "Choose a fighter or bomber template while the bay is not constructing.")
-            return [_Prepared(lambda: bay.set_production(command.template_name),
+            choices = (command.template_name, command.turret_type_override, command.defense_type_override)
+            try:
+                bay.validate_production(*choices)
+            except ValueError as exc:
+                raise _Rejected("invalid_parameters", str(exc)) from exc
+            if not bay.can_set_production(*choices):
+                raise _Rejected("capability_unavailable", "Select wing production while the bay is operational and not constructing.")
+            def apply_production():
+                self._require_capability(unit, command.type)
+                if not bay.set_production(*choices):
+                    raise _Rejected("capability_unavailable", "Wing production selection is no longer available.")
+            return [_Prepared(apply_production,
                               f"Selected {command.template_name} production for unit {unit.id}.")]
         if command.type == "set_stance":
             return self._prepare_stance(units, command.stance)

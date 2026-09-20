@@ -15,6 +15,9 @@ class ApplicationTurnPresentation:
         if gui:
             from gui.turn_briefing_window import close_briefing, show_briefing
             close_briefing(gui)
+            wing_picker = getattr(gui, 'wing_production_window', None)
+            if wing_picker:
+                wing_picker.close()
             transport = getattr(gui, 'antimatter_transport_window', None)
             if transport:
                 transport.close()

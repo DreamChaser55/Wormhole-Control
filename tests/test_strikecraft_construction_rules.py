@@ -153,7 +153,7 @@ def test_strikecraft_bay_sole_construction_intact():
     carrier.owner.credits = 500
     bay = StrikecraftBayComponent(carrier, max_slots=2)
     carrier.add_component(bay)
-    bay.build_wing_type = WingType.FIGHTER
+    bay.production_template_name = "FIGHTER_WING"
 
     galaxy = MagicMock()
     mock_system = MagicMock()

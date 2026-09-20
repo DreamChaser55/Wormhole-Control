@@ -377,7 +377,7 @@ def test_new_wing_stats_for_both_carrier_roles():
     bay = StrikecraftBayComponent(carrier, max_slots=2)
     carrier.add_component(bay)
     for role in WingType:
-        bay.build_wing_type = role
+        bay.production_template_name = f"{role.name}_WING"
         bay.finish_auto_construction(MagicMock())
         wing = bay.docked_units[-1]
         assert wing.max_hit_points == wing.current_hit_points == 30

@@ -8,7 +8,13 @@ from constants import (
 )
 
 CATEGORIES = ('Combat', 'Carriers', 'Economy', 'Logistics', 'Reconnaissance', 'Special Operations')
-WING_TEMPLATES = ('FIGHTER_WING', 'BOMBER_WING')
+
+def wing_template_names():
+    """Discover public wing designs; private player designs are a separate registry."""
+    from constants import HullSize
+    from unit_templates import UNIT_TEMPLATES
+    return sorted(key for key, template in UNIT_TEMPLATES.items()
+                  if template.get('hull_size') in (HullSize.STRIKECRAFT_WING, 'STRIKECRAFT_WING'))
 
 
 def describe_template(key, raw):
@@ -66,6 +72,7 @@ def describe_template(key, raw):
         'roles': raw.get('roles', list(support) or [kind]),
         'description': raw.get('description', 'Player design.' if raw.get('is_custom') else 'Testing design.'),
         'kind': kind, 'hull_size': design.hull_size.name,
+        **({'wing_type': data['wing_type']} if kind == 'wing' else {}),
         'hull_used': design.total_hull_cost, 'hull_capacity': design.hull_capacity,
         'hit_points': data['hull_points'], 'credit_cost': raw.get('build_cost', design.build_cost),
         'turns': raw.get('build_time', design.build_time), 'upkeep': design.predicted_upkeep,

@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":16}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":17}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -231,7 +231,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 14, shared field
+Read `observation.command_catalog`: it contains command contract version 15, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -383,7 +383,7 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 16 and command contract 14 expose a deduplicated `ability_catalog`,
+Observation schema 17 and command contract 15 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
 response name is `wormhole_control_turn_v12`; unused OpenAI command fields stay null.
@@ -430,7 +430,37 @@ Multiply Antimatter pays 20 AM, then doubles friendly current fuel within 500 un
 
 Preflight reserves queued cast costs and slots. Observe newly deployed emitter IDs before targeting them. See the [tactical ability overview](REFERENCE.md#deployment-and-link-abilities) for the other ability rules.
 
-Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.
+### Strikecraft production
+
+`action_catalogs.wing_templates` discovers built-in wing designs by hull, including
+Fighter, Bomber, Interceptor and Long Range Bomber Wings. Each entry exposes its
+`wing_type` (`FIGHTER` or `BOMBER`), equipment, prices and effective weapon statistics.
+Private player designs are excluded. Fighter-role wings target wings; bomber-role
+wings target ships/stations and qualify for carrier Attack Run.
+
+Use `set_wing_production` with exactly one owned carrier, a required `template_name`
+from the catalogue, and `queue=false`. Optional `turret_type_override` and
+`defense_type_override` use the same choices and pure customization as Construct.
+Each command replaces the complete production configuration: omitted/null overrides
+reset to the selected template's presets. Overrides change types without changing
+variants, statistics, hull use, component HP, price, duration or names.
+
+Selection is free, preserves orders and stance, and is allowed while idle or
+replenishing, including when full or short of credits. It is blocked while building
+or when the bay is destroyed. Automatic construction pays when it starts; settings
+persist for subsequent builds. Existing wings and their replenishment are unchanged.
+Invalid templates/equipment/overrides reject the complete batch before mutation;
+commit rechecks availability. Multiple selections apply in array order.
+
+Owner/allied `capability_details.strikecraft_bay` includes `production_template`,
+`turret_type_override`, `defense_type_override`, progress, costs and production choices.
+Owned command options list templates and nullable override choices. Enemy views gain
+no production details. Save 4.13 / Strikecraft Bay schema 2 preserve selections and
+in-progress builds without replaying payments. New bays select `FIGHTER_WING` presets.
+
+```json
+{"type":"set_wing_production","unit_ids":[101],"template_name":"LONG_RANGE_BOMBER_WING","turret_type_override":"beam","defense_type_override":"armor","queue":false}
+```
 
 
 ## Turn-start event summary
@@ -445,7 +475,7 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 14 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 15 remain unchanged; no acknowledgement
 command is required from Codex.
 
 
@@ -478,7 +508,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.12 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.13 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
@@ -498,10 +528,10 @@ expose natural/effective stability and progress without hidden support identitie
 See [complete rules](REFERENCE.md#wormhole-stabilization).
 
 
-### Construct equipment overrides
+### Construction equipment overrides
 
-Command contract 14 supports optional nullable `turret_type_override` and
-`defense_type_override` on `construct`, independently. Turret choices are
+Command contract 15 supports optional nullable `turret_type_override` and
+`defense_type_override` on `construct` and `set_wing_production`, independently. Turret choices are
 `mass_driver`, `beam`, `missile`; defense choices are `armor`, `shields`,
 `point_defense`. Omission/null retains the template preset.
 
@@ -513,14 +543,14 @@ All turrets keep their stats and variants. All defense strength moves into the
 chosen defense, zeroing the others. Costs, hull usage, build time and upkeep stay
 unchanged. Missing equipment rejects the override; a defense override requires
 positive total strength. Non-null overrides on other commands are rejected.
-Group commands use the same choices per builder. Choices survive queues and saves
+Group commands use the same choices per builder. Construct choices survive queues and saves
 and appear in owner/allied order parameters. Catalogue entries and names are unchanged.
 
-Observation 16 includes public enemy `capability_details.weapons` and `.defenses`
+Observation 17 includes public enemy `capability_details.weapons` and `.defenses`
 only for detailed visible contacts. Use their actual equipment to choose counters:
 Armor counters Mass Drivers, Shields counter Beams, and Point Defense counters
 Missiles. Enemy orders, template identity, accounting and covert components remain
-private. These choices do not affect `set_wing_production` or existing units.
+private. Wing production uses the same override choices for future builds; existing units are unchanged.
 
 ### Complete positional destinations
 

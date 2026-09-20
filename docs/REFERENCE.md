@@ -349,7 +349,7 @@ hulls. Dynamic costs follow configured performance; fixed costs appear in the ta
 - **Hangar:** Large or Huge only; cost scales with slots. Carries Tiny vessels,
   not strikecraft wings.
 - **Strikecraft Bay:** Medium or larger; cost scales with wing slots. Builds,
-  carries and replenishes Fighter or Bomber Wings.
+  carries and replenishes built-in Fighter-role and Bomber-role wing designs.
 - **Inhibitor Field:** Medium or larger. Cost is `radius / 15` hull; active fuel
   consumption is `radius × 0.1` AM/turn. The field must fit inside the sector and
   cannot overlap any natural or artificial inhibition zone. Insufficient fuel
@@ -384,19 +384,31 @@ buttons work independently of Shift. Queued builds pay when they start; idle bui
 start immediately. Multiple builders show their combined price.
 
 Wings are produced in Strikecraft Bays aboard carriers and are not listed in
-the Constructor catalogue. Select Fighter or Bomber production in the bay's panel
-while it is operational and not building; selection is allowed while idle or
-replenishing. New carriers produce Fighters. Choose Bombers for Attack Run.
-Fighters specialize in intercepting wings; Bombers attack larger ships. Built-in
-wings need no antimatter tank and travel between sectors aboard their carrier.
+the Constructor catalogue. In an owned bay's panel, choose **Select Wing Production…**
+to inspect designs and select future production. The picker shows combat role, speed,
+effective weapons, fractional defenses, hull use, price and duration. **Select Production**
+applies that design's presets; Cancel, Esc or closing the window discards changes.
+Selection is free and allowed while idle or replenishing, even if full or short of credits.
+It is blocked while constructing. The bay charges for construction when it starts.
+New carriers produce Fighter Wings; selected settings persist for subsequent builds.
+
+Fighter and Interceptor Wings target enemy wings. Bomber and Long Range Bomber Wings
+attack ships/stations and qualify for Attack Run. Interceptors trade firepower and
+protection for speed 380. Long Range Bombers have speed 145, 292.5 effective weapon
+range and a nine-turn cooldown. All four have 30 HP, two-turn construction, 300 short-range
+sensors, fractional defenses and zero upkeep. They have no antimatter tank or hyperdrive
+and travel between sectors aboard their carrier. Production selection and replenishment
+never change existing wings' equipment.
 
 <!-- BEGIN GENERATED: unit-catalog -->
 | Design | Category | Hull / kind | Hull used | Credits | Turns | Upkeep | Role and operation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Bomber Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | Designed for bomber strike. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
-| Fighter Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Designed for fighter screen. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
-| Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Build fighter or bomber wings using the production selector. |
-| Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Build fighter or bomber wings using the production selector. |
+| Bomber Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | Close-range bomber wing for sustained attacks on ships and stations; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
+| Interceptor Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | Fast fighter wing trading firepower and protection for interception speed. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
+| Fighter Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Balanced fighter wing for intercepting enemy strikecraft. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
+| Long Range Bomber Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Lightly protected bomber wing with 292.5 effective weapon range and a nine-turn cooldown; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
+| Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
+| Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
 | Missile Platform | Combat | TINY station | 10.00/10 | 400 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
 | Patrol Cutter | Combat | TINY ship | 10.00/10 | 400 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
 | Interceptor | Combat | SMALL ship | 24.20/25 | 976 | 12 | 0.24 | Designed for strikecraft interception. Inter-system travel. |
@@ -463,7 +475,8 @@ wings need no antimatter tank and travel between sectors aboard their carrier.
 
 ### Automated construction customization
 
-Built-in AI and Codex players can customize each Construct order with independent
+Built-in AI and Codex players can customize each Construct order or wing production
+selection with independent
 `turret_type_override` (`mass_driver`, `beam`, `missile`) and
 `defense_type_override` (`armor`, `shields`, `point_defense`) choices.
 Omitting a choice or passing null preserves that part of the template.
@@ -477,10 +490,12 @@ component HP, build cost, build time, upkeep and other equipment stay the same.
 
 Overrides require existing turrets or a positive total defense strength;
 inapplicable overrides reject the command before orders or credits change.
-Every constructor selected in one command uses the same choices. Choices persist
-through queues, approach and saves. Catalogue templates and default unit names
-remain unchanged. This does not customize carrier wings, ability-created units,
-existing ships or human construction controls.
+Every constructor selected in one command uses the same choices. Construct choices
+persist through queues, approach and saves. Wing selection requires one owned carrier
+and `queue=false`; each selection replaces its settings, so omitted/null overrides
+reset to template presets. Settings persist through builds and saves. Catalogue templates
+and default unit names remain unchanged. Ability-created units, existing wings/ships
+and human construction controls are unchanged; the human bay picker selects presets.
 
 Automated observations now include actual weapon and defense equipment on enemies
 in detailed sensor view, matching human inspection. Hidden enemies, covert

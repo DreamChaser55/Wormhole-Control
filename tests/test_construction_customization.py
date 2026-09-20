@@ -122,10 +122,9 @@ def test_invalid_values_are_atomic_even_after_cancellation(field, value):
     assert builder.owner.credits == credits and builder.commander_component.current_order is root
 
 
-@pytest.mark.parametrize('kind', ['move', 'set_wing_production', 'rename_unit'])
-def test_overrides_are_construct_only(kind):
+@pytest.mark.parametrize('kind', ['move', 'rename_unit'])
+def test_overrides_reject_unrelated_commands(kind):
     raw = dict(type=kind, unit_ids=[1], turret_type_override='beam',
-               template_name='FIGHTER_WING' if kind == 'set_wing_production' else None,
                new_name='Ship' if kind == 'rename_unit' else None)
     if kind == 'move':
         raw.update(system_name='Sol', hex_coord=[0, 0], position=[0, 0])

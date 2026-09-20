@@ -118,6 +118,11 @@ def mutate(component, target):
         setattr(component, "mining_target" if isinstance(component, MiningComponent) else "target", target)
     if isinstance(component, StrikecraftWingComponent):
         component.mother_carrier = target
+    if isinstance(component, StrikecraftBayComponent):
+        component.production_template_name = 'LONG_RANGE_BOMBER_WING'
+        component.turret_type_override = 'beam'
+        component.defense_type_override = 'armor'
+        component.construction_progress = 1
     if isinstance(component, Constructor):
         component.build_range = 777.5
         component.current_construction_target = dict(turret_type_override=None, defense_type_override=None, template_name="FIGHTER_WING", system_name=component.unit.in_system, hex_coord=component.unit.in_hex, position=Position(5, 6))

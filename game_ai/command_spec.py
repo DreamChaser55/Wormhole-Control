@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 14
+CONTRACT_VERSION = 15
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -53,7 +53,7 @@ COMMAND_SPECS = {
     "colonize": _spec("Colonize an unowned body; queue behind a required colonist load.", ("target_id",), capability=("colony_component",)),
     "load_colonists": _spec("Load a positive amount of colonists from a self-owned colony.", ("target_id", "amount"), capability=("colony_component",)),
     "construct": _spec("Construct a template at an explicit system, sector and position. Optional turret_type_override changes all installed turrets; defense_type_override consolidates total defense strength into one type. Null preserves presets. Requires matching equipment; costs and other stats are unchanged.", ("template_name", *DESTINATION, "turret_type_override", "defense_type_override"), ("template_name", *DESTINATION), capability=("constructor_component",)),
-    "set_wing_production": _spec("Select fighter or bomber production when the bay is not constructing.", ("template_name",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
+    "set_wing_production": _spec("Select a built-in wing template and optional turret/defense type overrides while the bay is not constructing. Each selection replaces all production settings; null preserves template presets. Overrides preserve statistics, variants and costs. Selection is free and affects future wings only.", ("template_name", "turret_type_override", "defense_type_override"), ("template_name",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
     "repair": _spec("Repair a friendly unit.", ("target_id",), capability=("repair_component",)),
     "mine": _spec("Mine a body once.", ("target_id",), capability=("mining_component",)),
     "continuous_mine": _spec("Repeat mining and unloading indefinitely.", ("target_id",), capability=("mining_component",)),

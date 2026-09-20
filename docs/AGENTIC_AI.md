@@ -49,7 +49,7 @@ player. It includes:
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 16 gives full body detail in systems containing friendly
+Observation schema 17 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -62,7 +62,7 @@ fabricated or remembered hidden ID cannot bypass fog of war.
 
 ## Turn-start briefing
 
-Observation schema 16 appends `turn_summary` to the observation JSON included in
+Observation schema 17 appends `turn_summary` to the observation JSON included in
 every built-in planning request and Codex observation. It contains `from_turn`,
 `to_turn`, priority-ordered `entries`, net `economy` changes, and `omitted_count`.
 Turn zero as `from_turn` means campaign setup. Each entry has an event ID, round,
@@ -112,7 +112,7 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.12 embeds:
+Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.13 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
@@ -135,22 +135,24 @@ Save JSON and memory sidecars use atomic replacement.
 
 ### Construct customization and combat inspection
 
-Command contract 14 adds optional nullable `turret_type_override` (`mass_driver`,
+Command contract 15 adds optional nullable `turret_type_override` (`mass_driver`,
 `beam`, `missile`) and `defense_type_override` (`armor`, `shields`, `point_defense`)
-to `construct`. Each applies independently; null preserves its preset. All turrets
+to `construct` and `set_wing_production`. Each applies independently; null preserves
+its preset. All turrets
 change type without changing stats or variants. All defense strength is summed
 into the chosen type with the other two zeroed. Costs, build time, hull use,
 component HP, upkeep and default names are preserved; no catalogue entry is added.
 A turret override without turrets, or a defense override without positive defense
 strength, is rejected.
-Non-null overrides on other commands are invalid. Grouped builders share choices.
+Non-null overrides on other commands are invalid. Grouped constructors share
+choices; wing selection requires one carrier.
 
 The shared pure customization rules run in preflight and execution. Preflight
-remains atomic and uses original prices for reservations. Choices travel through
+remains atomic and uses original prices for reservations. Construct choices travel through
 approach suborders and paid Constructor jobs; invalid completion fails and refunds
 only the owning job. Owner/allied order views include selected overrides.
 
-Observation 16 gives visible enemies only the public `weapons` and `defenses`
+Observation 17 gives visible enemies only the public `weapons` and `defenses`
 sections of `capability_details`, using actual installed equipment. Weapons include
 type, variant, damage, range, cooldown/reset/remaining values, target classes and
 operating state. Defenses include operating state and Armor/Shields/Point Defense
@@ -159,9 +161,11 @@ capabilities. Detailed visibility is still required; enemy provenance, orders,
 fire targets, hidden components and accounting are not exposed. The model receives
 matchup guidance to select counters from observed equipment, not inferred templates.
 
-Response schema v12 and prompt cache v16 apply; socket protocol remains 3.
-Save 4.12 / Constructor schema 3 preserve choices with no older-save migration.
-Full design editing, refits, human build controls and wing production are unchanged.
+Response schema v12 and prompt cache v17 apply; socket protocol remains 3.
+Save 4.13 / Constructor schema 3 preserve choices with no older-save migration.
+Full design editing, refits and human constructor controls are unchanged. Human
+bays select preset wing designs through a production picker; automated controllers
+can also override equipment types.
 
 ### Other commands
 
@@ -281,7 +285,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 16 / commands 14 / socket 3)
+## Shared order contract (observation 17 / commands 15 / socket 3)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -377,7 +381,7 @@ job charges. Missing order identities and payment state are rejected. Restored a
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
 The strict response schema is `wormhole_control_turn_v12`, and prompt cache key is
-`wormhole-control-turn-v16`. No live API call is required for regression testing.
+`wormhole-control-turn-v17`. No live API call is required for regression testing.
 
 ### Gameplay invariant guidance
 
@@ -445,7 +449,7 @@ The [built-in catalogue](REFERENCE.md#built-in-unit-catalog) includes designs fo
 every ability. Automated players construct public designs or use equipped ships;
 custom design editing is a human workflow.
 
-Observation 16 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
+Observation 17 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
 `ability_links`. Authorized ability state includes actual blockers/readiness,
 cooldown/duration, active targets, ongoing AM, reserved casts, persistent deployment
 counts/caps and Guardian tuning. Speed includes Tractor; environmental values
@@ -486,13 +490,43 @@ configured target, including across saves. All source, manual target, active
 recipient and child approach geometry use recursive disclosure rules. A null
 automatic recipient is valid state and does not trigger redaction.
 
-Multiplication observations include radius, projected recipient gains, net AM, caster cooldown, and friendly units' shared recipient recovery. Cast and recipient deadlines live on the unit and persist independently of components. Enemy observations do not expose these deadlines. Save 4.12 uses unit schema 3. Fuel Cache, its deployable kind, and its recovery command have been removed; no compatibility aliases are provided.
+Multiplication observations include radius, projected recipient gains, net AM, caster cooldown, and friendly units' shared recipient recovery. Cast and recipient deadlines live on the unit and persist independently of components. Enemy observations do not expose these deadlines. Save 4.13 uses unit schema 3. Fuel Cache, its deployable kind, and its recovery command have been removed; no compatibility aliases are provided.
 
 The current save stores independent ghost emitters, source provenance, identification, patch allegiance/deadlines, link tuning/deadlines and processed pull phases. Counts are rebuilt from surviving objects. Typed endpoint references and transport phase/wait/reserve state restore without replaying transfers, casts or approach execution.
 
-Catalog descriptions include roles and equipment. Carriers expose wing production choices; use `set_wing_production` with one owned carrier, `template_name="FIGHTER_WING"` or `"BOMBER_WING"`, and `queue=false` while the bay is not constructing.
+### Strikecraft production
 
-### Celestial observation contract (schema 16)
+`action_catalogs.wing_templates` discovers built-in wing designs by hull, including
+Fighter, Bomber, Interceptor and Long Range Bomber Wings. Each entry exposes its
+`wing_type` (`FIGHTER` or `BOMBER`), equipment, prices and effective weapon statistics.
+Private player designs are excluded. Fighter-role wings target wings; bomber-role
+wings target ships/stations and qualify for carrier Attack Run.
+
+Use `set_wing_production` with exactly one owned carrier, a required `template_name`
+from the catalogue, and `queue=false`. Optional `turret_type_override` and
+`defense_type_override` use the same choices and pure customization as Construct.
+Each command replaces the complete production configuration: omitted/null overrides
+reset to the selected template's presets. Overrides change types without changing
+variants, statistics, hull use, component HP, price, duration or names.
+
+Selection is free, preserves orders and stance, and is allowed while idle or
+replenishing, including when full or short of credits. It is blocked while building
+or when the bay is destroyed. Automatic construction pays when it starts; settings
+persist for subsequent builds. Existing wings and their replenishment are unchanged.
+Invalid templates/equipment/overrides reject the complete batch before mutation;
+commit rechecks availability. Multiple selections apply in array order.
+
+Owner/allied `capability_details.strikecraft_bay` includes `production_template`,
+`turret_type_override`, `defense_type_override`, progress, costs and production choices.
+Owned command options list templates and nullable override choices. Enemy views gain
+no production details. Save 4.13 / Strikecraft Bay schema 2 preserve selections and
+in-progress builds without replaying payments. New bays select `FIGHTER_WING` presets.
+
+```json
+{"type":"set_wing_production","unit_ids":[101],"template_name":"LONG_RANGE_BOMBER_WING","turret_type_override":"beam","defense_type_override":"armor","queue":false}
+```
+
+### Celestial observation contract (schema 17)
 
 Already-exposed bodies use readable uppercase `subtype` names (`MAGNETIC`,
 `BLACK_HOLE`, etc.). `collision_radius` and `inhibition_field_radius` describe
@@ -518,14 +552,14 @@ relation-filtered Catalyst enhancements; body values describe baseline terrain.
 Catalyst patch records describe only the enhancement relevant to their nebula.
 
 Enrichment preserves existing body visibility and remote summaries and exposes
-no additional enemy equipment. Command contract 14, socket protocol 3, response
-schema v12 and save format 4.12 apply. Prompt cache key is v16.
+no additional enemy equipment. Command contract 15, socket protocol 3, response
+schema v12 and save format 4.13 apply. Prompt cache key is v17.
 
 
 ## Planetary warfare contract
 
-Observation schema 16, command contract 14, response schema v12 and prompt cache
-key v16 include planetary warfare; socket protocol 3 retains its envelope.
+Observation schema 17, command contract 15, response schema v12 and prompt cache
+key v17 include planetary warfare; socket protocol 3 retains its envelope.
 `planetary_warfare.py` supplies shared eligibility, previews and resolution, with
 initial tuning in `planetary_balance.py`. Human controls commit the same commands.
 
@@ -557,15 +591,15 @@ runs once globally after growth. Colony support and income are derived from curr
 ownership; capture invalidates visibility/sidebar state and stops newly allied sabotage.
 
 A dedicated campaign RNG supplies invasion rolls. Its state, colony defenses,
-unit action markers, cargo and active approach orders are saved in format 4.12.
+unit action markers, cargo and active approach orders are saved in format 4.13.
 Loading and previews never roll or replay planetary effects. See
 [planetary warfare](REFERENCE.md#planetary-warfare) for complete balance and controls.
 
 ## Wormhole stabilization contract
 
-Observation 16 and command contract 14 expose `stabilize_wormhole`, taking one
+Observation 17 and command contract 15 expose `stabilize_wormhole`, taking one
 owned `unit_ids` entry, a disclosed wormhole `target_id`, and `queue`. Coordinates
-are unused. Response schema v12 and prompt cache v16 apply; socket protocol 3 is
+are unused. Response schema v12 and prompt cache v17 apply; socket protocol 3 is
 unchanged. Human controls commit through the same gateway.
 
 Shared read-only rules validate equipment, disclosure and approach feasibility
@@ -586,14 +620,14 @@ all-player benefits, interruptions and automatic fuel recovery.
 
 ## Fixed positional destinations
 
-Command contract 14 requires `system_name`, `hex_coord`, and `position` for Construct
+Command contract 15 requires `system_name`, `hex_coord`, and `position` for Construct
 and position-targeted abilities, as for Move and positional Defend/Patrol. Ability
 requirements are conditional on target kind; entity and self targets keep their
 existing forms. Shared location validation rejects partial locations before any
 batch effects; UI adapters apply the same validation before replacing orders.
 Factories preserve the supplied site rather than binding it to the acting unit.
-Observation 16 exposes complete authorized order destinations and ability location
+Observation 17 exposes complete authorized order destinations and ability location
 requirements. Local-only abilities revalidate sector identity when they execute.
 Active construction retains its fixed site and charge owner; displacement outside
-build range or sector fails and refunds only that job once. Save 4.12 and Constructor
+build range or sector fails and refunds only that job once. Save 4.13 and Constructor
 schema 3 require complete job locations and matching active order ownership.

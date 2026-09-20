@@ -121,6 +121,7 @@ class GUI_Handler:
         self.quit_to_menu_button: typing.Optional[pygame_gui.elements.UIButton] = None
 
         self.unit_catalog_window = None
+        self.wing_production_window = None
 
         # Unit Editor
         self.unit_editor_window: typing.Optional['UnitEditorWindow'] = None
@@ -139,6 +140,8 @@ class GUI_Handler:
     def clear_and_reset(self):
         """Clears all UI elements managed by this class."""
         self.close_settings_dialog()
+        if self.wing_production_window:
+            self.wing_production_window.close()
         self.settings_button = self.ingame_settings_button = None
         if self.unit_catalog_window:
             self.unit_catalog_window.kill()
@@ -362,6 +365,8 @@ class GUI_Handler:
         """
         if self.unit_catalog_window:
             self.unit_catalog_window.update()
+        if self.wing_production_window:
+            self.wing_production_window.update()
         self.manager.update(time_delta)
         # Forward update to unit editor so its internal widgets animate/update
         if self.unit_editor_window and self.unit_editor_window.is_visible:

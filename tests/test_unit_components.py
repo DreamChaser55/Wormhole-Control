@@ -1056,7 +1056,7 @@ def test_unit_template_name_assignment():
         carrier_unit.game = owner_unit.game
         bay = StrikecraftBayComponent(carrier_unit, max_slots=2)
         carrier_unit.add_component(bay)
-        bay.build_wing_type = WingType.FIGHTER
+        bay.production_template_name = "FIGHTER_WING"
         
         # Call auto-construction
         bay.finish_auto_construction(galaxy)

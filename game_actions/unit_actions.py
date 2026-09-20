@@ -8,7 +8,7 @@ from domain.units import Unit
 from events import CancelOrdersEvent, LayMinefieldEvent, UseAbilityEvent, EnterGasGiantEvent, LeaveGasGiantEvent
 from geometry import distance, hex_distance
 from pathfinding import find_intersystem_path
-from unit_components.enums import UnitStance, WingType
+from unit_components.enums import UnitStance
 from unit_orders.hangar import DeployAllWingsOrder, DeployUnitOrder, DockOrder
 from unit_orders.mining import UnloadResourcesOrder
 from unit_orders.inhibitor import ToggleInhibitorOrder
@@ -95,16 +95,19 @@ def handle_recall_ship(game, action: dict) -> None:
     game.sidebar_needs_update = True
 
 
-def handle_toggle_build_wing_type(game, action: dict) -> None:
+def handle_select_wing_production(game, action: dict) -> None:
     carrier_id = action.get('carrier_id')
     carrier = game.galaxy.get_unit_by_id(carrier_id) if game.galaxy else None
     if carrier and carrier.strikecraft_bay_component:
         current_player = game.players[game.current_player_index] if game.players else None
         if carrier.owner == current_player:
             bay = carrier.strikecraft_bay_component
-            template = "BOMBER_WING" if bay.build_wing_type == WingType.FIGHTER else "FIGHTER_WING"
-            bay.set_production(template)
-            logger.debug(f"Carrier {carrier.name} build wing type toggled to {bay.build_wing_type.name}.")
+            if not bay.is_destroyed and not bay.constructing:
+                from gui.wing_production_window import WingProductionWindow
+                existing = getattr(game.gui, 'wing_production_window', None)
+                if existing:
+                    existing.close()
+                game.gui.wing_production_window = WingProductionWindow(game.gui, carrier)
     game.sidebar_needs_update = True
 
 
@@ -506,7 +509,7 @@ HANDLERS: typing.Dict[str, typing.Callable[[typing.Any, dict], None]] = {
     'deploy_ship': handle_deploy_ship,
     'launch_all_wings': handle_launch_all_wings,
     'recall_ship': handle_recall_ship,
-    'toggle_build_wing_type': handle_toggle_build_wing_type,
+    'select_wing_production': handle_select_wing_production,
     'unload_resources_nearest': handle_unload_resources_nearest,
     'lay_minefield': handle_lay_minefield,
     'lay_minefield_anti_ship': handle_lay_minefield,

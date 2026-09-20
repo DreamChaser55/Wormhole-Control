@@ -477,9 +477,14 @@ def command_guidance(
 
     bay = getattr(unit, "strikecraft_bay_component", None)
     if bay is not None:
-        from unit_catalog import WING_TEMPLATES
-        choices = [name for name in WING_TEMPLATES if bay.can_set_production(name)]
-        options["set_wing_production"] = {"template_names": choices}
+        from unit_catalog import wing_template_names
+        from construction_customization import TURRET_TYPES, DEFENSE_TYPES
+        choices = [name for name in wing_template_names() if bay.can_set_production(name)]
+        options["set_wing_production"] = {
+            "template_names": choices,
+            "turret_type_override": [None, *TURRET_TYPES],
+            "defense_type_override": [None, *DEFENSE_TYPES],
+        }
         if choices:
             legal.add("set_wing_production")
 

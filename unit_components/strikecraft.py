@@ -82,8 +82,11 @@ class StrikecraftWingComponent(UnitComponent):
 
 class StrikecraftBayComponent(UnitComponent):
     """A component that allows a unit to store, transport, and automatically construct/replenish strikecraft wings."""
+    SCHEMA_VERSION = 2
     STATE_CONFIG = ('max_slots',)
-    STATE_RUNTIME = ('constructing', 'construction_progress', 'replenish_progress', 'build_wing_type')
+    STATE_RUNTIME = ('constructing', 'construction_progress', 'replenish_progress',
+                     'production_template_name', 'turret_type_override', 'defense_type_override')
+    STATE_OPTIONAL_TYPES = {'turret_type_override': str, 'defense_type_override': str}
     STATE_REFS = ('replenishing_unit',)
     STATE_CHILDREN = ("docked_units",)
 
@@ -107,7 +110,6 @@ class StrikecraftBayComponent(UnitComponent):
     construction_progress: int = 0
     replenishing_unit: typing.Optional['Unit'] = None
     replenish_progress: int = 0
-    build_wing_type: WingType = WingType.FIGHTER
 
     def __init__(self, unit: 'Unit', max_slots: int = 0, hull_cost: float = 0.0):
         super().__init__(unit, hull_cost=hull_cost)
@@ -118,24 +120,51 @@ class StrikecraftBayComponent(UnitComponent):
         self.construction_progress = 0
         self.replenishing_unit = None
         self.replenish_progress = 0
-        self.build_wing_type = WingType.FIGHTER
-
-    @property
-    def production_template_name(self):
-        return "FIGHTER_WING" if self.build_wing_type == WingType.FIGHTER else "BOMBER_WING"
+        self.production_template_name = "FIGHTER_WING"
+        self.turret_type_override = None
+        self.defense_type_override = None
 
     @property
     def production_template(self):
         from unit_templates import UNIT_TEMPLATES
         return UNIT_TEMPLATES[self.production_template_name]
 
-    def can_set_production(self, template_name):
-        return not self.is_destroyed and not self.constructing and template_name in ("FIGHTER_WING", "BOMBER_WING")
+    @staticmethod
+    def validate_production(template_name, turret_type_override=None, defense_type_override=None):
+        from unit_catalog import wing_template_names
+        from unit_templates import UNIT_TEMPLATES
+        from construction_customization import validate_template_overrides
+        if not isinstance(template_name, str) or template_name not in wing_template_names():
+            raise ValueError("Choose a built-in strikecraft wing template.")
+        validate_template_overrides(UNIT_TEMPLATES[template_name], turret_type_override, defense_type_override)
 
-    def set_production(self, template_name):
-        if not self.can_set_production(template_name):
+    def validate_state(self):
+        self.validate_production(self.production_template_name, self.turret_type_override, self.defense_type_override)
+        if self.constructing:
+            if self.construction_progress >= self.production_template['build_time'] or self.replenishing_unit is not None:
+                raise ValueError("Invalid strikecraft construction progress or concurrent replenishment.")
+        elif self.construction_progress != 0:
+            raise ValueError("Idle strikecraft construction must have zero progress.")
+
+    def resolve_state(self, objects):
+        super().resolve_state(objects)
+        self.validate_state()
+
+    def can_set_production(self, template_name, turret_type_override=None, defense_type_override=None):
+        if self.is_destroyed or self.constructing:
             return False
-        self.build_wing_type = WingType.FIGHTER if template_name == "FIGHTER_WING" else WingType.BOMBER
+        try:
+            self.validate_production(template_name, turret_type_override, defense_type_override)
+        except ValueError:
+            return False
+        return True
+
+    def set_production(self, template_name, turret_type_override=None, defense_type_override=None):
+        if not self.can_set_production(template_name, turret_type_override, defense_type_override):
+            return False
+        self.production_template_name = template_name
+        self.turret_type_override = turret_type_override
+        self.defense_type_override = defense_type_override
         return True
 
     @staticmethod
@@ -149,21 +178,24 @@ class StrikecraftBayComponent(UnitComponent):
         data = super().get_sidebar_data(game_state)
         used_slots = self.get_used_slots()
         data.append({'type': 'label', 'text': f"Capacity: {used_slots} / {self.max_slots} wings", 'object_id': '#sidebar_info_label', 'height': 20})
+        template_label = self.production_template['name']
+        data.append({'type': 'label', 'text': f"Production: {template_label}", 'object_id': '#sidebar_info_label', 'height': 20})
+        for label, value in (("Turrets", self.turret_type_override), ("Defenses", self.defense_type_override)):
+            if value is not None:
+                data.append({'type': 'label', 'text': f"{label}: {value.replace('_', ' ').title()}", 'object_id': '#sidebar_info_label', 'height': 20})
         if self.constructing:
-            role_text = "Fighter" if self.build_wing_type == WingType.FIGHTER else "Bomber"
-            data.append({'type': 'label', 'text': f"Constructing {role_text} Wing ({self.construction_progress + 1}/{self.production_template['build_time']} turns)", 'object_id': '#sidebar_info_label', 'height': 20})
+            data.append({'type': 'label', 'text': f"Constructing {template_label} ({self.construction_progress + 1}/{self.production_template['build_time']} turns)", 'object_id': '#sidebar_info_label', 'height': 20})
         elif self.replenishing_unit:
             data.append({'type': 'label', 'text': f"Replenishing Wing: {self.replenishing_unit.name}", 'object_id': '#sidebar_info_label', 'height': 20})
         
         is_owner = self.unit.owner == game_state.players[game_state.current_player_index]
 
         if is_owner and not self.constructing and not self.is_destroyed:
-            role_text = "Fighter" if self.build_wing_type == WingType.FIGHTER else "Bomber"
             data.append({
                 'type': 'button',
-                'text': f"Target Wing Build: {role_text}",
+                'text': "Select Wing Production…",
                 'object_id': '#sidebar_expand_button',
-                'action_id': 'toggle_build_wing_type',
+                'action_id': 'select_wing_production',
                 'target_data': self.unit.id,
                 'height': 25
             })
@@ -338,13 +370,10 @@ class StrikecraftBayComponent(UnitComponent):
 
     def finish_auto_construction(self, galaxy: 'Galaxy'):
         """Creates the new Strikecraft Wing and docks it."""
-        from unit_templates import UNIT_TEMPLATES
-        
-        template_name = "FIGHTER_WING" if self.build_wing_type == WingType.FIGHTER else "BOMBER_WING"
-        template = UNIT_TEMPLATES.get(template_name)
-        if not template:
-            logger.debug(f"Error: Unit template '{template_name}' not found for auto-construction.")
-            return
+        from construction_customization import customize_template
+        self.validate_production(self.production_template_name, self.turret_type_override, self.defense_type_override)
+        template_name = self.production_template_name
+        template = customize_template(self.production_template, self.turret_type_override, self.defense_type_override)
  
         from .constructor import assemble_unit_from_template
         new_unit = assemble_unit_from_template(
@@ -424,11 +453,11 @@ class StrikecraftBayComponent(UnitComponent):
 
         # 4. If not busy and we have free slots, start constructing a new wing
         if self.get_used_slots() < self.max_slots:
+            self.validate_production(self.production_template_name, self.turret_type_override, self.defense_type_override)
             cost = self.production_template["build_cost"]
             if owner.credits >= cost:
                 owner.credits -= cost
                 self.constructing = True
                 self.construction_progress = 0
-                role_text = "Fighter" if self.build_wing_type == WingType.FIGHTER else "Bomber"
-                logger.debug(f"Strikecraft bay on {self.unit.name} started constructing new {role_text} Wing for {cost} credits.")
+                logger.debug(f"Strikecraft bay on {self.unit.name} started constructing {self.production_template['name']} for {cost} credits.")
                 return

@@ -157,7 +157,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 16,
+        "schema_version": 17,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -585,13 +585,15 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
             }
     bay = getattr(unit, "strikecraft_bay_component", None)
     if bay is not None:
-        from unit_catalog import WING_TEMPLATES
+        from unit_catalog import wing_template_names
         details["strikecraft_bay"].update(
             production_template=bay.production_template_name,
+            turret_type_override=bay.turret_type_override,
+            defense_type_override=bay.defense_type_override,
             constructing=bay.constructing, construction_progress=bay.construction_progress,
             production_turns=bay.production_template["build_time"],
             production_credit_cost=bay.production_template["build_cost"],
-            production_choices=[name for name in WING_TEMPLATES if bay.can_set_production(name)])
+            production_choices=[name for name in wing_template_names() if bay.can_set_production(name)])
     return details
 
 
@@ -685,10 +687,10 @@ def _construction_catalog(units: list[Any], player: Any) -> list[dict[str, Any]]
 
 def _wing_catalog(units, player):
     from unit_templates import UNIT_TEMPLATES
-    from unit_catalog import describe_template, WING_TEMPLATES
+    from unit_catalog import describe_template, wing_template_names
     if not any(is_self_owned(player, getattr(unit, "owner", None)) and getattr(unit, "strikecraft_bay_component", None) for unit in units):
         return []
-    return [describe_template(key, UNIT_TEMPLATES[key]) for key in WING_TEMPLATES]
+    return [describe_template(key, UNIT_TEMPLATES[key]) for key in wing_template_names()]
 
 
 def _component_amount(component: Any) -> dict[str, float] | None:
