@@ -318,11 +318,135 @@ def test_picker_preselects_and_applies_presets_without_affordability_gate(picker
     assert carrier.owner.credits == 0
 
 
+def choose_override(window, dropdown, label):
+    import pygame
+    import pygame_gui
+    window.process_event(pygame.event.Event(pygame_gui.UI_DROP_DOWN_MENU_CHANGED,
+                                           ui_element=dropdown, text=label))
+
+
+def apply_picker(window):
+    import pygame
+    import pygame_gui
+    window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
+                                           ui_element=window.select_button))
+
+
+def test_picker_restores_existing_command_configuration(picker):
+    from gui.wing_production_window import WingProductionWindow
+    game, carrier, bay, window = picker
+    assert issue(game, carrier.owner, command(carrier, 'LONG_RANGE_BOMBER_WING',
+                 turret_type_override='beam', defense_type_override='armor')).accepted
+    window.close()
+    game.gui.wing_production_window = reopened = WingProductionWindow(game.gui, carrier)
+    try:
+        assert reopened.selected_key == 'LONG_RANGE_BOMBER_WING'
+        assert reopened.turret_dropdown.selected_option[0] == 'Beam'
+        assert reopened.defense_dropdown.selected_option[0] == 'Armor'
+        assert 'Beam (Long Range)' in reopened._details_html
+        assert 'Armor: 0.3' in reopened._details_html
+        apply_picker(reopened)
+        assert not reopened.window.alive()
+        assert bay.turret_type_override == 'beam' and bay.defense_type_override == 'armor'
+    finally:
+        reopened.close()
+
+
+@pytest.mark.parametrize('turret', [None, *TURRET_TYPES])
+@pytest.mark.parametrize('defense', [None, *DEFENSE_TYPES])
+def test_picker_preview_and_production_match_after_switching_design(picker, turret, defense):
+    import pygame
+    import pygame_gui
+    game, carrier, bay, window = picker
+    templates = deepcopy(UNIT_TEMPLATES)
+    before = bay.to_state(), carrier.owner.credits
+    choose_override(window, window.turret_dropdown,
+                    turret.replace('_', ' ').title() if turret else 'Template Default')
+    choose_override(window, window.defense_dropdown,
+                    defense.replace('_', ' ').title() if defense else 'Template Default')
+    label = next(label for label, key in window.labels.items() if key == 'LONG_RANGE_BOMBER_WING')
+    window.process_event(pygame.event.Event(pygame_gui.UI_SELECTION_LIST_NEW_SELECTION,
+                                           ui_element=window.list, text=label))
+    assert (bay.to_state(), carrier.owner.credits) == before
+    assert window.turret_type_override == turret and window.defense_type_override == defense
+    preview = window._details_html
+    assert '292.5 range, 9 turns' in preview
+    assert '260 credits' in preview and '2 turns' in preview and 'Hull: 7.00/7' in preview
+    apply_picker(window)
+    assert not window.window.alive()
+    assert bay.turret_type_override == turret and bay.defense_type_override == defense
+    assert carrier.owner.credits == before[1]
+    sidebar = [item.get('text', '') for item in bay.get_sidebar_data(game)]
+    for name, value in [('Turrets', turret), ('Defenses', defense)]:
+        if value:
+            assert f"{name}: {value.replace('_', ' ').title()}" in sidebar
+    wing = produce(game, bay)
+    for weapon in wing.weapons_component.turrets:
+        assert f"{weapon.turret_type.value.replace('_', ' ').title()} (Long Range)" in preview
+        assert weapon.range == 292.5 and weapon.cooldown == 9
+    for field in DEFENSE_TYPES:
+        strength = getattr(wing.get_component(Defenses), field)
+        assert f"{field.replace('_', ' ').title()}: {strength}" in preview
+    assert UNIT_TEMPLATES == templates
+
+
+@pytest.mark.parametrize('reset', ['turret', 'defense'])
+def test_picker_resets_each_override_independently(picker, reset):
+    _, _, bay, window = picker
+    choose_override(window, window.turret_dropdown, 'Missile')
+    choose_override(window, window.defense_dropdown, 'Point Defense')
+    choose_override(window, getattr(window, f'{reset}_dropdown'), 'Template Default')
+    apply_picker(window)
+    assert bay.turret_type_override == (None if reset == 'turret' else 'missile')
+    assert bay.defense_type_override == (None if reset == 'defense' else 'point_defense')
+
+
+@pytest.mark.parametrize('kind,label,fields,message', [
+    ('turret', 'Beam', {'has_weapon_bays': False, 'turrets': []}, 'installed turrets'),
+    ('defense', 'Armor', {'armor': 0, 'shields': 0, 'point_defense': 0}, 'positive defense strength'),
+])
+def test_picker_invalid_override_can_be_corrected_without_mutation(picker, monkeypatch, kind, label, fields, message):
+    _, _, bay, window = picker
+    before = bay.to_state()
+    raw = deepcopy(UNIT_TEMPLATES['FIGHTER_WING'])
+    raw.update(fields)
+    monkeypatch.setitem(UNIT_TEMPLATES, 'FIGHTER_WING', raw)
+    dropdown = getattr(window, f'{kind}_dropdown')
+    choose_override(window, dropdown, label)
+    assert not window.select_button.is_enabled
+    assert message in window._details_html
+    apply_picker(window)
+    assert window.window.alive() and bay.to_state() == before
+    choose_override(window, dropdown, 'Template Default')
+    assert window.select_button.is_enabled
+    assert message not in window._details_html
+
+
+def test_picker_rejection_preserves_draft_and_allows_retry(picker, monkeypatch):
+    _, _, bay, window = picker
+    before = bay.to_state()
+    choose_override(window, window.turret_dropdown, 'Beam')
+    choose_override(window, window.defense_dropdown, 'Armor')
+    with monkeypatch.context() as patch:
+        patch.setattr(bay, 'set_production', lambda *args: False)
+        apply_picker(window)
+    assert window.window.alive() and bay.to_state() == before
+    assert window.turret_type_override == 'beam' and window.defense_type_override == 'armor'
+    assert 'Execution failed' in window._details_html
+    choose_override(window, window.turret_dropdown, 'Beam')
+    assert 'Execution failed' not in window._details_html
+    apply_picker(window)
+    assert not window.window.alive() and bay.turret_type_override == 'beam'
+
+
 @pytest.mark.parametrize('reason', ['cancel', 'escape', 'close', 'turn', 'owner', 'destroyed', 'busy', 'campaign'])
 def test_picker_cancellation_and_stale_context_preserve_selection(picker, reason):
     import pygame
     import pygame_gui
     game, carrier, bay, window = picker
+    assert bay.set_production('FIGHTER_WING', 'mass_driver', 'shields')
+    choose_override(window, window.turret_dropdown, 'Beam')
+    choose_override(window, window.defense_dropdown, 'Armor')
     window.selected_key = 'INTERCEPTOR_WING'
     if reason == 'cancel':
         window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.cancel_button))
@@ -338,6 +462,7 @@ def test_picker_cancellation_and_stale_context_preserve_selection(picker, reason
         elif reason == 'campaign': game.galaxy = campaign().galaxy
         window.update()
     assert not window.window.alive() and bay.production_template_name == 'FIGHTER_WING'
+    assert bay.turret_type_override == 'mass_driver' and bay.defense_type_override == 'shields'
 
 
 def test_picker_blocks_hotkeys_camera_and_events_after_close(picker, monkeypatch):

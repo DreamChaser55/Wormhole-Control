@@ -80,6 +80,61 @@ def test_turn_processor_alias_has_one_owner(game_factory):
 
 
 @pytest.mark.parametrize('size', [(1280, 720), (1920, 1080), (2560, 1440)])
+def test_wing_production_layout_at_explicit_display_sizes(pygame_context, tmp_path, size):
+    from gui.wing_production_window import WingProductionWindow
+    screen = pygame.display.set_mode(size)
+    config = DisplayConfig(*size)
+    manager = build_ui_manager(config)
+    world = campaign()
+    carrier = instantiate_unit_from_template('FLEET_CARRIER', world.players[0],
+        'Sol', (0, 0), Position(100, 100), world.galaxy, world)
+    carrier.strikecraft_bay_component.set_production('LONG_RANGE_BOMBER_WING')
+    gui = SimpleNamespace(game_instance=world, screen_res=Vector(*size), manager=manager,
+                          display_config=config)
+    picker = WingProductionWindow(gui, carrier)
+
+    def capture(name):
+        manager.update(0.1)
+        screen.fill((5, 10, 20))
+        manager.draw_ui(screen)
+        pygame.image.save(screen, str(tmp_path / f'wing-production-{name}.png'))
+
+    try:
+        panel = picker.window.get_container().get_rect()
+        assert screen.get_rect().contains(picker.window.get_abs_rect())
+        widgets = [picker.list, picker.turret_dropdown, picker.defense_dropdown,
+                   picker.details, picker.select_button, picker.cancel_button]
+        for index, widget in enumerate(widgets):
+            rect = widget.get_abs_rect()
+            assert rect.width > 0 and rect.height > 0 and panel.contains(rect)
+            assert all(not rect.colliderect(other.get_abs_rect()) for other in widgets[index+1:])
+        capture('presets')
+        assert picker.details.scroll_bar is not None
+        picker.details.scroll_bar.set_scroll_from_start_percentage(1.0)
+        capture('scrolled')
+        assert picker.details.scroll_bar.start_percentage > 0
+        for name, dropdown in [('turrets', picker.turret_dropdown), ('defenses', picker.defense_dropdown)]:
+            button = dropdown.current_state.selected_option_button
+            assert button.font.get_rect(button.text).width < button.get_abs_rect().width - 10
+            dropdown.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
+                ui_element=dropdown.current_state.open_button))
+            capture(name)
+            assert dropdown.current_state is dropdown.menu_states['expanded']
+            options = dropdown.current_state.options_selection_list
+            assert panel.contains(options.get_abs_rect())
+            for item in options.item_list:
+                button = item['button_element']
+                if button is not None:
+                    assert button.font.get_rect(item['text']).width < button.get_abs_rect().width - 10
+            dropdown.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
+                ui_element=dropdown.current_state.close_button))
+            manager.update(0.1)
+    finally:
+        picker.close()
+        manager.clear_and_reset()
+
+
+@pytest.mark.parametrize('size', [(1280, 720), (1920, 1080), (2560, 1440)])
 def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size):
     screen = pygame.display.set_mode(size)
     manager = build_ui_manager(DisplayConfig(*size))

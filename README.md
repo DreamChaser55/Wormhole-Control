@@ -67,8 +67,10 @@ search the [built-in unit catalogue](docs/REFERENCE.md#built-in-unit-catalog).
 Automated players can [override weapon and defense types](docs/REFERENCE.md#automated-construction-customization)
 for individual builds to counter observed opponents, preserving template costs and equipment budgets.
 Carriers select Fighter, Bomber, Interceptor or Long Range Bomber Wings through their
-strikecraft bay production picker. Automated players can also override wing weapon
-and defense types for future builds. Equipment
+strikecraft bay production picker. Human and automated players can independently
+override wing turret types (Mass Driver, Beam or Missile) and defense types (Armor,
+Shields or Point Defense) for future builds. The picker previews the equipment;
+**Template Default** restores that part of the selected design's presets. Equipment
 supports [combat, deployment and carrier abilities](docs/REFERENCE.md#abilities),
 including [toggleable environmental resistances](docs/REFERENCE.md#environmental-resistance-abilities)
 that reduce matching hazards by 75% while consuming antimatter each owner turn,

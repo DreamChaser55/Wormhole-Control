@@ -386,8 +386,18 @@ start immediately. Multiple builders show their combined price.
 Wings are produced in Strikecraft Bays aboard carriers and are not listed in
 the Constructor catalogue. In an owned bay's panel, choose **Select Wing Production…**
 to inspect designs and select future production. The picker shows combat role, speed,
-effective weapons, fractional defenses, hull use, price and duration. **Select Production**
-applies that design's presets; Cancel, Esc or closing the window discards changes.
+effective weapons, fractional defenses, hull use, price and duration. Use **Turret type**
+to choose Mass Driver, Beam or Missile, and **Defense type** to choose Armor, Shields
+or Point Defense. Each control also offers **Template Default**, which restores that
+part of the selected design's presets. The equipment preview updates immediately.
+Turret overrides affect every turret; defense overrides pool total strength into
+the chosen defense, setting the other two to zero. Statistics, turret variants,
+wing role, hull use, costs and build duration are preserved.
+
+The picker opens with the bay's current settings. Switching designs retains pending
+override choices; Template Default follows the newly selected design. **Select Production**
+applies the design and both choices together; Cancel, Esc or closing the window
+discards pending changes.
 Selection is free and allowed while idle or replenishing, even if full or short of credits.
 It is blocked while constructing. The bay charges for construction when it starts.
 New carriers produce Fighter Wings; selected settings persist for subsequent builds.
@@ -495,7 +505,8 @@ persist through queues, approach and saves. Wing selection requires one owned ca
 and `queue=false`; each selection replaces its settings, so omitted/null overrides
 reset to template presets. Settings persist through builds and saves. Catalogue templates
 and default unit names remain unchanged. Ability-created units, existing wings/ships
-and human construction controls are unchanged; the human bay picker selects presets.
+and human Constructor controls are unchanged. The human bay picker supports the same
+wing overrides through its Turret type and Defense type controls.
 
 Automated observations now include actual weapon and defense equipment on enemies
 in detailed sensor view, matching human inspection. Hidden enemies, covert

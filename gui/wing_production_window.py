@@ -5,10 +5,14 @@ import pygame
 import pygame_gui
 from pygame_gui import elements
 
+from construction_customization import TURRET_TYPES, DEFENSE_TYPES, customize_template
 from display_config import display_config_for
 from unit_catalog import describe_template, wing_template_names
 from unit_templates import UNIT_TEMPLATES
 from .unit_catalog_window import details_html
+
+TURRET_CHOICES = {'Template Default': None, **{value.replace('_', ' ').title(): value for value in TURRET_TYPES}}
+DEFENSE_CHOICES = {'Template Default': None, **{value.replace('_', ' ').title(): value for value in DEFENSE_TYPES}}
 
 
 def is_open(gui):
@@ -24,6 +28,8 @@ class WingProductionWindow:
         self.turn = self.game.turn_number
         self.bay = carrier.strikecraft_bay_component
         self.selected_key = self.bay.production_template_name
+        self.turret_type_override = self.bay.turret_type_override
+        self.defense_type_override = self.bay.defense_type_override
         self.entries = {}
         self._stamp = None
         self._details_html = None
@@ -40,7 +46,19 @@ class WingProductionWindow:
         right_x = 2*pad + left_w
         self.list = elements.UISelectionList(pygame.Rect(pad, pad, left_w, h-row-3*pad), [],
                                              gui.manager, container=panel, object_id='#unit_catalog_list')
-        self.details = elements.UITextBox('', pygame.Rect(right_x, pad, w-right_x-pad, h-row-3*pad),
+        control_w = (w-right_x-2*pad)//2
+        for x, label in ((right_x, 'Turret type'), (right_x+control_w+pad, 'Defense type')):
+            elements.UILabel(pygame.Rect(x, pad, control_w, row), label, gui.manager, container=panel)
+        self.turret_dropdown = elements.UIDropDownMenu(
+            list(TURRET_CHOICES), next(label for label, value in TURRET_CHOICES.items()
+                                       if value == self.turret_type_override),
+            pygame.Rect(right_x, pad+row, control_w, row), gui.manager, container=panel)
+        self.defense_dropdown = elements.UIDropDownMenu(
+            list(DEFENSE_CHOICES), next(label for label, value in DEFENSE_CHOICES.items()
+                                        if value == self.defense_type_override),
+            pygame.Rect(right_x+control_w+pad, pad+row, control_w, row), gui.manager, container=panel)
+        details_y = 2*pad+2*row
+        self.details = elements.UITextBox('', pygame.Rect(right_x, details_y, w-right_x-pad, h-row-2*pad-details_y),
                                          gui.manager, container=panel)
         self.select_button = elements.UIButton(pygame.Rect(pad, h-row-pad, (w-3*pad)//2, row),
                                               'Select Production', gui.manager, container=panel)
@@ -84,12 +102,23 @@ class WingProductionWindow:
         self.select_button.disable()
         html = 'Select a wing design.'
         if entry:
-            html = (f"<b>Combat role: {escape(entry['wing_type'].title())}</b><br><br>"
-                    + details_html(entry)
-                    + '<br><br>Selection is free and applies template presets to future builds. '
-                      'The bay pays when construction starts; existing wings are unchanged.')
-            if self.valid_context() and self.bay.can_set_production(self.selected_key):
-                self.select_button.enable()
+            try:
+                template = customize_template(UNIT_TEMPLATES[self.selected_key],
+                                              self.turret_type_override, self.defense_type_override)
+                entry = describe_template(self.selected_key, template)
+            except ValueError as error:
+                html = escape(str(error))
+            else:
+                html = (f"<b>Combat role: {escape(entry['wing_type'].title())}</b><br><br>"
+                        'Turret type applies to all turrets. Defense type combines total defense strength '
+                        'into the chosen type. Template Default uses the selected design\'s presets.<br><br>'
+                        + details_html(entry)
+                        + '<br><br>Selection is free and applies to future builds. '
+                          'Types change; statistics, variants, costs and build time stay the same. '
+                          'The bay pays when construction starts; existing wings are unchanged.')
+                if self.valid_context() and self.bay.can_set_production(
+                        self.selected_key, self.turret_type_override, self.defense_type_override):
+                    self.select_button.enable()
         if html != self._details_html:
             self._details_html = html
             self.details.set_text(html)
@@ -111,15 +140,25 @@ class WingProductionWindow:
         elif event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION and event.ui_element == self.list:
             self.selected_key = self.labels.get(event.text)
             self.show_selection()
+        elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+            if event.ui_element == self.turret_dropdown:
+                self.turret_type_override = TURRET_CHOICES[event.text]
+                self.show_selection()
+            elif event.ui_element == self.defense_dropdown:
+                self.defense_type_override = DEFENSE_CHOICES[event.text]
+                self.show_selection()
         elif event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.cancel_button:
                 self.close()
-            elif event.ui_element == self.select_button and self.selected_key:
+            elif event.ui_element == self.select_button and self.selected_key and self.select_button.is_enabled:
                 from game_ai.commands import CommandGateway
                 from game_ai.contracts import Command, CommandBatch
                 result = CommandGateway(self.game).apply_batch(self.player, CommandBatch((
-                    Command('set_wing_production', (self.carrier.id,), template_name=self.selected_key),)))
+                    Command('set_wing_production', (self.carrier.id,), template_name=self.selected_key,
+                            turret_type_override=self.turret_type_override,
+                            defense_type_override=self.defense_type_override, queue=False),)))
                 if result.accepted:
                     self.close()
                 else:
-                    self.details.set_text('<br>'.join(escape(error.message) for error in result.errors))
+                    self._details_html = '<br>'.join(escape(error.message) for error in result.errors)
+                    self.details.set_text(self._details_html)

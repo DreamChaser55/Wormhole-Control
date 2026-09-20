@@ -164,8 +164,8 @@ matchup guidance to select counters from observed equipment, not inferred templa
 Response schema v12 and prompt cache v17 apply; socket protocol remains 3.
 Save 4.13 / Constructor schema 3 preserve choices with no older-save migration.
 Full design editing, refits and human constructor controls are unchanged. Human
-bays select preset wing designs through a production picker; automated controllers
-can also override equipment types.
+bays select wing designs and the same independent turret/defense type overrides
+through a production picker that submits `set_wing_production` via the shared gateway.
 
 ### Other commands
 
@@ -515,6 +515,12 @@ or when the bay is destroyed. Automatic construction pays when it starts; settin
 persist for subsequent builds. Existing wings and their replenishment are unchanged.
 Invalid templates/equipment/overrides reject the complete batch before mutation;
 commit rechecks availability. Multiple selections apply in array order.
+
+The human bay picker uses the same command and nullable choices. It opens with the
+current bay configuration and previews equipment through the shared pure customization
+rules. Template Default maps to null independently for each override; switching designs
+retains pending choices. Select Production commits all three settings together, while
+Cancel, Esc or closing the picker discards pending changes.
 
 Owner/allied `capability_details.strikecraft_bay` includes `production_template`,
 `turret_type_override`, `defense_type_override`, progress, costs and production choices.
