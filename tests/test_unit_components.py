@@ -1160,6 +1160,7 @@ def test_commander_get_sidebar_data_stance_dropdown():
     assert dropdown['action_id'] == 'set_stance'
     assert dropdown['starting_option'] == UnitStance.ATTACK_SAME_SECTOR.display_name
     assert dropdown['target_data'] == friendly_unit.id
+    assert dropdown['height'] == 25
     assert UnitStance.DO_NOTHING.display_name in dropdown['options_list']
 
     # Get sidebar data for enemy unit (unowned)

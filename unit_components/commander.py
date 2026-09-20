@@ -159,7 +159,7 @@ class Commander(UnitComponent):
                 'starting_option': self.stance.display_name,
                 'action_id': 'set_stance',
                 'target_data': self.unit.id,
-                'height': 30,
+                'height': 25,
                 'indent_level': 0
             })
         else:
