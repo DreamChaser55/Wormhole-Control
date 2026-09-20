@@ -349,7 +349,7 @@ def build_construction_job_panel(game, job) -> list[dict]:
         {'type': 'label', 'text': f"Builder: {job.constructor_unit.name}", 'object_id': '#sidebar_info_label', 'height': 22},
         {
             'type': 'button',
-            'text': f"Focus Builder ({job.constructor_unit.name})",
+            'text': f"Select Builder ({job.constructor_unit.name})",
             'object_id': '#sidebar_expand_button',
             'action_id': 'select_constructor_unit',
             'target_data': job.constructor_unit.id,

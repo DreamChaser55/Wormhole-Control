@@ -223,7 +223,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
     from domain.construction_job import ConstructionJob
     if isinstance(target, ConstructionJob):
         if target.owner == current_player:
-            options.append(("Focus Builder", "select_constructor_unit"))
+            options.append(("Select Builder", "select_constructor_unit"))
             options.append(("Cancel Construction", "cancel_construction_job"))
         if any(actors) and any(a.engines_component and a.engines_component.is_operational for a in actors):
             options.append(("Move Here", "issue_move_order"))

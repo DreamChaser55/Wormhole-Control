@@ -214,7 +214,7 @@ def test_context_menu_for_construction_job():
     options, target = build_sector_context_menu_options(mock_game, job, job.position)
     assert target == job
     opt_dict = dict(options)
-    assert "Focus Builder" in opt_dict
+    assert "Select Builder" in opt_dict
     assert "Cancel Construction" in opt_dict
 
 
