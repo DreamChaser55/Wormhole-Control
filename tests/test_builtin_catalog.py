@@ -29,7 +29,7 @@ def create(game, key, owner=0):
 def test_catalog_coverage_and_canonical_values():
     from scripts.generate_reference import component_rows
     from unit_components.enums import AbilityType
-    assert len(BUILTINS) == 68
+    assert len(BUILTINS) == 69
     assert validate_builtin_catalog(BUILTINS) == {}
     assert {a.value for a in AbilityType} == {a for t in BUILTINS.values() for a in t['abilities']}
     assert all(any(t[row['key']] for t in BUILTINS.values()) for row in component_rows())
@@ -133,6 +133,7 @@ def test_inhibitor_catalog_budget_field_fuel_and_persistence(
     ('BOMBER_WING', 200, 2.0, 259, 6.966666666666667, 150),
     ('INTERCEPTOR_WING', 380, 3.8, 259, 6.966666666666666, 50),
     ('LONG_RANGE_BOMBER_WING', 145, 1.45, 260, 6.997222222222222, 292.5),
+    ('RECON_WING', 330, 3.3, 259, 6.966666666666667, 50),
 ])
 def test_production_prices_progress_complete_equipment_and_persistence(key, speed, engine_hull, price, total_hull, weapon_range):
     from save_manager import serialize_game_state, deserialize_game_state
@@ -161,7 +162,7 @@ def test_production_prices_progress_complete_equipment_and_persistence(key, spee
     assert wing.current_hull_usage == pytest.approx(total_hull)
     assert wing.antimatter_component is None
     assert wing.current_hull_usage <= 7
-    assert wing.sensors_component.short_range_radius == 300
+    assert wing.sensors_component.short_range_radius == (1000 if key == 'RECON_WING' else 300)
     assert wing.strikecraft_wing_component.mother_carrier is saved.unit
     assert wing not in restored.galaxy.systems['Sol'].hexes[(0, 0)].units
     assert saved.deploy(wing, restored.galaxy)
@@ -175,7 +176,8 @@ def test_production_prices_progress_complete_equipment_and_persistence(key, spee
 
 
 @pytest.mark.parametrize('key,speed', [('FIGHTER_WING', 300), ('BOMBER_WING', 200),
-                                      ('INTERCEPTOR_WING', 380), ('LONG_RANGE_BOMBER_WING', 145)])
+                                      ('INTERCEPTOR_WING', 380), ('LONG_RANGE_BOMBER_WING', 145),
+                                      ('RECON_WING', 330)])
 def test_wing_movement_uses_base_speed_and_clamps_arrival(key, speed):
     from turn_processor import TurnProcessor
 
@@ -219,6 +221,7 @@ def test_existing_wing_save_retains_installed_speed_and_hull_cost(key, speed):
     ('INTERCEPTOR_WING', 'emergency_recovery', 760),
     ('LONG_RANGE_BOMBER_WING', 'attack_run', 217.5),
     ('LONG_RANGE_BOMBER_WING', 'emergency_recovery', 290),
+    ('RECON_WING', 'emergency_recovery', 660),
 ])
 def test_catalog_wing_speed_composes_with_carrier_bonuses(key, ability, boosted_speed):
     from constants import MAX_UNIT_XP, XP_SPEED_BONUS
@@ -332,7 +335,7 @@ def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     observation = build_observation(game, game.players[0])
     catalog = observation['action_catalogs']
     assert len(catalog['construction_templates']) == 64
-    assert len(catalog['wing_templates']) == 4
+    assert len(catalog['wing_templates']) == 5
     assert all(e['description'] and e['roles'] and 'support' in e for e in catalog['construction_templates'])
     assert observation['command_catalog']['version'] == 16
 

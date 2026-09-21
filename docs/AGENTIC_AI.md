@@ -497,7 +497,7 @@ The current save stores independent ghost emitters, source provenance, identific
 ### Strikecraft production
 
 `action_catalogs.wing_templates` discovers built-in wing designs by hull, including
-Fighter, Bomber, Interceptor and Long Range Bomber Wings. Each entry exposes its
+Fighter, Bomber, Interceptor, Long Range Bomber and Recon Wings. Each entry exposes its
 `wing_type` (`FIGHTER` or `BOMBER`), equipment, prices and effective weapon statistics.
 Private player designs are excluded. Fighter-role wings target wings; bomber-role
 wings target ships/stations and qualify for carrier Attack Run.

@@ -423,19 +423,21 @@ Selected settings persist for subsequent builds. None is only the initial state;
 use Pause/Resume new wings to control later production. Resuming without a selected
 design does not start construction. Docking and replenishment remain available.
 
-Fighter and Interceptor Wings target enemy wings. Bomber and Long Range Bomber Wings
+Fighter, Interceptor and Recon Wings target enemy wings. Bomber and Long Range Bomber Wings
 attack ships/stations and qualify for Attack Run. Interceptors trade firepower and
 protection for speed 380. Long Range Bombers have speed 145, 292.5 effective weapon
-range and a nine-turn cooldown. All four have 30 HP, two-turn construction, 300 short-range
-sensors, fractional defenses and zero upkeep. They have no antimatter tank or hyperdrive
-and travel between sectors aboard their carrier. Production selection and replenishment
-never change existing wings' equipment.
+range and a nine-turn cooldown. Recon Wings feature speed 330 and extended 1000 short-range
+sensors for sector scouting. All five have 30 HP, two-turn construction, fractional
+defenses and zero upkeep (Fighter, Interceptor, and Bomber Wings have 300 short-range sensors).
+They have no antimatter tank or hyperdrive and travel between sectors aboard their carrier.
+Production selection and replenishment never change existing wings' equipment.
 
 <!-- BEGIN GENERATED: unit-catalog -->
 | Design | Category | Hull / kind | Hull used | Credits | Turns | Upkeep | Role and operation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Bomber Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | Close-range bomber wing for sustained attacks on ships and stations; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Interceptor Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | Fast fighter wing trading firepower and protection for interception speed. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
+| Recon Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | High-speed reconnaissance fighter wing with extended tactical sensors for scouting sectors and screening friendly carriers. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Fighter Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Balanced fighter wing for intercepting enemy strikecraft. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Long Range Bomber Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Lightly protected bomber wing with 292.5 effective weapon range and a nine-turn cooldown; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |

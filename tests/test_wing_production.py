@@ -21,7 +21,7 @@ from unit_components.defenses import Defenses
 from unit_templates import UNIT_TEMPLATES, PRIVATE_TEMPLATES
 
 
-WINGS = ('FIGHTER_WING', 'BOMBER_WING', 'INTERCEPTOR_WING', 'LONG_RANGE_BOMBER_WING')
+WINGS = ('FIGHTER_WING', 'BOMBER_WING', 'INTERCEPTOR_WING', 'LONG_RANGE_BOMBER_WING', 'RECON_WING')
 
 
 def create(game, key, owner=0):
