@@ -119,9 +119,9 @@ def mutate(component, target):
     if isinstance(component, StrikecraftWingComponent):
         component.mother_carrier = target
     if isinstance(component, StrikecraftBayComponent):
-        component.production_template_name = 'LONG_RANGE_BOMBER_WING'
-        component.turret_type_override = 'beam'
-        component.defense_type_override = 'armor'
+        component.slots = [dict(production_template_name=None, turret_type_override=None, defense_type_override=None, wing_id=None) for _ in range(component.max_slots)]
+        component.set_production(0, 'LONG_RANGE_BOMBER_WING', 'beam', 'armor')
+        component.construction_slot_index = 0
         component.construction_progress = 1
     if isinstance(component, Constructor):
         component.build_range = 777.5
@@ -202,9 +202,10 @@ def mutated_campaign():
     child.add_component(HangarComponent(child, max_slots=2))
     nested = ship(game, "nested", hull=HullSize.TINY)
     assert child.hangar_component.dock(nested, game.galaxy)
-    wing = ship(game, "wing")
+    wing = ship(game, "wing", hull=HullSize.STRIKECRAFT_WING)
     wing.add_component(StrikecraftWingComponent(wing))
     wing.strikecraft_wing_component.mother_carrier = carrier
+    carrier.strikecraft_bay_component.assign_wing(wing, carrier.strikecraft_bay_component.free_slot_indices()[0])
     carrier.strikecraft_bay_component.launched_units.append(wing)
     giant = Planet((1, 0), "Beta", PlanetType.GAS_GIANT)
     game.galaxy.systems["Beta"].hexes[(1, 0)].celestial_bodies.append(giant)
@@ -486,10 +487,11 @@ def test_queue_without_current_order_is_preserved_until_next_tick():
 @pytest.mark.parametrize("end", ["unit_destroy", "bay_remove"])
 def test_destroyed_carrier_detaches_surviving_wings_before_save(end):
     game = campaign()
-    carrier, wing = ship(game, "carrier"), ship(game, "wing")
-    carrier.add_component(StrikecraftBayComponent(carrier))
+    carrier, wing = ship(game, "carrier"), ship(game, "wing", hull=HullSize.STRIKECRAFT_WING)
+    carrier.add_component(StrikecraftBayComponent(carrier, max_slots=1))
     wing.add_component(StrikecraftWingComponent(wing))
     wing.strikecraft_wing_component.mother_carrier = carrier
+    carrier.strikecraft_bay_component.assign_wing(wing, carrier.strikecraft_bay_component.free_slot_indices()[0])
     carrier.strikecraft_bay_component.launched_units.append(wing)
     if end == "unit_destroy":
         carrier.destroy()

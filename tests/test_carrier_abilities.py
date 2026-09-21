@@ -57,6 +57,7 @@ def make_wing(game, carrier, fighter=False, owner=0):
     wing.add_component(comp)
     arm(wing, anti=fighter)
     if carrier:
+        carrier.strikecraft_bay_component.assign_wing(wing, carrier.strikecraft_bay_component.free_slot_indices()[0])
         carrier.strikecraft_bay_component.launched_units.append(wing)
     return wing
 
@@ -189,7 +190,7 @@ def test_active_ability_save_round_trip(kind):
               'emergency_recovery': bomber}.get(kind)
     assert issue(game, carrier, kind, target).accepted
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.15'
+    assert state['version'] == '4.16'
     assert deserialize_game_state(game, state)
     restored = game.galaxy.get_unit_by_id(carrier.id)
     assert restored.antimatter_component.current_amount == carrier.antimatter_component.current_amount

@@ -46,7 +46,8 @@ def bay_with_wing(game, carrier=None):
     carrier = carrier or ship(game, 'Carrier')
     carrier.add_component(StrikecraftBayComponent(carrier, max_slots=3, hull_cost=22.5))
     bay = carrier.strikecraft_bay_component
-    assert bay.set_production('FIGHTER_WING')
+    assert bay.set_production(0, 'FIGHTER_WING')
+    bay.construction_slot_index = 0
     bay.finish_auto_construction(game.galaxy)
     return carrier, bay, bay.docked_units[0]
 
@@ -170,10 +171,11 @@ def test_combined_job_includes_paid_new_wing_and_orphans_launched(world):
     game, actor, carrier = world
     _, bay, launched = bay_with_wing(game, carrier)
     assert bay.deploy(launched, game.galaxy)
-    bay.constructing = True
+    assert bay.set_production(1, 'FIGHTER_WING')
+    bay.update(game.galaxy)
     order = start(game, actor, carrier)
     assert order.phase == 'waiting_for_paid_bay_work'
-    for _ in range(bay.production_template['build_time']): bay.update(game.galaxy)
+    for _ in range(bay.production_template(0)['build_time']): bay.update(game.galaxy)
     wing = bay.docked_units[0]
     order.prepare(game.galaxy)
     assert [m['unit_id'] for m in order.members] == [carrier.id, wing.id]
@@ -235,7 +237,8 @@ def test_save_round_trip_no_replay(world, phase):
         target.position = Position(1000, 0)
     if phase == 'waiting':
         _, bay, _ = bay_with_wing(game, target)
-        bay.constructing = True
+        assert bay.set_production(1, 'FIGHTER_WING')
+        bay.update(game.galaxy)
     if phase == 'queued':
         actor.commander_component.add_order(Order(actor, OrderType.TOGGLE_INHIBITOR))
         result = issue(game, Command('dismantle_unit', (actor.id,), target_id=target.id, queue=True))
@@ -412,7 +415,7 @@ def test_batch_cancel_unblocks_component_validators_without_mutation(world):
     _, bay, _ = bay_with_wing(game, carrier)
     order = start(game, actor, carrier)
     result = issue(game, Command('cancel_order', (actor.id,), order_id=order.public_id),
-                   Command('set_wing_production', (carrier.id,), template_name='FIGHTER_WING'),
+                   Command('set_wing_production', (carrier.id,), slot_index=0, template_name='FIGHTER_WING'),
                    Command('set_wing_production_enabled', (carrier.id,), enabled=True))
     assert result.accepted, result.errors
     assert bay.production_enabled and not offline(carrier)

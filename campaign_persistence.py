@@ -349,7 +349,7 @@ def reconcile(candidate):
                 component.resolve_state(objects)
             wing = obj.strikecraft_wing_component
             if wing and isinstance(container, StrikecraftBayComponent):
-                if wing.mother_carrier not in (None, container.unit):
+                if wing.mother_carrier is not container.unit:
                     raise ValueError("Inconsistent wing carrier")
                 wing.mother_carrier = container.unit
             if wing and wing.mother_carrier:
@@ -358,6 +358,9 @@ def reconcile(candidate):
                     raise ValueError("Mother carrier has no strikecraft bay")
                 if obj not in bay.docked_units:
                     bay.launched_units.append(obj)
+    for obj, _ in owned:
+        if isinstance(obj, Unit) and obj.strikecraft_bay_component:
+            obj.strikecraft_bay_component.validate_assignments()
     for agent in agents.values():
         source = objects.get(agent.source_unit_id)
         agent._source_unit = source if isinstance(source, Unit) else None

@@ -56,8 +56,4 @@ def detach_unit(unit, galaxy):
     for carrier, _ in iter_units(galaxy):
         bay = carrier.strikecraft_bay_component
         if bay:
-            if unit in bay.launched_units:
-                bay.launched_units.remove(unit)
-            if bay.replenishing_unit is unit:
-                bay.replenishing_unit = None
-                bay.replenish_progress = 0
+            bay.release_wing(unit)

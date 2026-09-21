@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":19}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":20}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -383,10 +383,10 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 19 and command contract 16 expose a deduplicated `ability_catalog`,
+Observation schema 20 and command contract 17 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v13`; unused OpenAI command fields stay null.
+response name is `wormhole_control_turn_v14`; unused OpenAI command fields stay null.
 
 
 ```json
@@ -432,42 +432,59 @@ Preflight reserves queued cast costs and slots. Observe newly deployed emitter I
 
 ### Strikecraft production
 
-`action_catalogs.wing_templates` discovers built-in wing designs by hull, including
-Fighter, Bomber, Interceptor, Long Range Bomber and Recon Wings. Each entry exposes its
-`wing_type` (`FIGHTER` or `BOMBER`), equipment, prices and effective weapon statistics.
-Private player designs are excluded. Fighter-role wings target wings; bomber-role
-wings target ships/stations and qualify for carrier Attack Run.
+`action_catalogs.wing_templates` lists built-in Fighter, Bomber, Interceptor,
+Long Range Bomber and Recon Wings, with roles, equipment, prices and effective
+weapon statistics. Private designs are excluded. Fighter-role wings target wings;
+bomber-role wings target ships/stations and qualify for Attack Run.
 
-Use `set_wing_production` with exactly one owned carrier, a required `template_name`
-from the catalogue, and `queue=false`. Optional `turret_type_override` and
-`defense_type_override` use the same choices and pure customization as Construct.
-Each command replaces the complete production configuration: omitted/null overrides
-reset to the selected template's presets. Overrides change types without changing
-variants, statistics, hull use, component HP, price, duration or names.
+Use `set_wing_production` with exactly one owned carrier, required zero-based
+`slot_index`, explicitly supplied `template_name`, and `queue=false`. Each command
+replaces only that slot's template and independent `turret_type_override` and
+`defense_type_override`. Null/omitted overrides restore the template presets.
+Explicit `template_name: null` clears the slot and requires null/omitted overrides;
+omitting `template_name` is invalid. Overrides retain existing customization rules,
+statistics, variants, prices and construction duration.
 
-Selection is free, preserves orders and stance, and is allowed while idle or
-replenishing, including when full or short of credits. It is blocked while building
-or when the bay is destroyed. Automatic construction pays when it starts; settings
-persist for subsequent builds. Existing wings and their replenishment are unchanged.
-Invalid templates/equipment/overrides reject the complete batch before mutation;
-commit rechecks availability. Multiple selections apply in array order.
+Selection is free, preserves orders and stance, and works while occupied,
+replenishing, paused or short of credits. Only the slot under construction is
+locked. Existing wings retain their equipment; changes configure future replacements.
+Invalid indices, templates, overrides and unavailable slots reject the complete
+batch before mutation. Commit rechecks availability; selections apply in array order.
 
-Owner/allied `capability_details.strikecraft_bay` includes `production_template`,
-`turret_type_override`, `defense_type_override`, progress, costs and production choices.
-Owned command options list templates and nullable override choices. Enemy views gain
-no production details. Save 4.15 / Strikecraft Bay schema 4 preserve selections and
-in-progress builds without replaying payments. New bays start unselected:
-`production_template`, `production_turns` and `production_credit_cost` are null.
-Explicitly select a built-in design to permit construction on a subsequent bay
-update. Enabling production alone cannot select a design; selection preserves the
-independent pause state. Null `template_name` commands are rejected, so use the
-production toggle to pause after selection. Docking and replenishment do not require
-a production selection.
+Every new slot is unselected and builds nothing until configured. The bay has one
+shared worker: replenishment keeps priority, followed by the first affordable empty
+selected slot in ascending index order. Payment occurs when construction starts.
+That slot is reserved until completion. Launch and return retain the same slot;
+loss, dismantling and transfer free it without changing its replacement settings.
+Incoming wings use the first free unreserved slot regardless of selected design,
+and docking never selects or changes production. Docking and replenishment work
+without production selections.
+
+`set_wing_production_enabled` remains bay-wide. Selecting or clearing a slot never
+changes the pause state; enabling alone never selects designs. Paid work finishes
+while paused, and dismantling retains its existing paid-work wait and pause rules.
+
+Owner/allied `capability_details.strikecraft_bay.slots` exposes each `slot_index`,
+`production_template`, nullable overrides, `wing_id`, `wing_name`, `status`
+(`empty`, `docked`, `launched`, `building`), `production_turns`,
+`production_credit_cost` and `edit_blocker`. Unselected costs/durations are null.
+The bay exposes `production_enabled`, `constructing`, `construction_slot_index`,
+`construction_progress`, `replenishing_unit_id` and `replenish_progress`.
+Owned command options expose editable `slot_indices`, `can_clear`, template names,
+and override choices. Enemy views receive no production details.
+
+The human component panel labels slots starting at 1 and opens a slot-specific
+picker with the same configuration and equipment previews. **No production** clears
+the slot on **Select Production**; Cancel, Esc and closing discard edits.
+Save 4.16 / Strikecraft Bay schema 5 preserve selections, stable assignments and
+paid work without replaying payment or assembly. Command contract 17, observation
+20, response schema v14 and prompt cache v20 apply; socket protocol remains 3.
 
 ```json
-{"type":"set_wing_production","unit_ids":[101],"template_name":"LONG_RANGE_BOMBER_WING","turret_type_override":"beam","defense_type_override":"armor","queue":false}
+{"type":"set_wing_production","unit_ids":[101],"slot_index":0,"template_name":"FIGHTER_WING","queue":false}
+{"type":"set_wing_production","unit_ids":[101],"slot_index":1,"template_name":"LONG_RANGE_BOMBER_WING","turret_type_override":"beam","defense_type_override":"armor","queue":false}
+{"type":"set_wing_production","unit_ids":[101],"slot_index":2,"template_name":null,"queue":false}
 ```
-
 
 ## Turn-start event summary
 
@@ -481,7 +498,7 @@ IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
 history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 16 remain unchanged; no acknowledgement
+socket protocol 3 and command contract 17 remain unchanged; no acknowledgement
 command is required from Codex.
 
 
@@ -514,7 +531,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.15 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.16 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
@@ -536,7 +553,7 @@ See [complete rules](REFERENCE.md#wormhole-stabilization).
 
 ### Construction equipment overrides
 
-Command contract 16 supports optional nullable `turret_type_override` and
+Command contract 17 supports optional nullable `turret_type_override` and
 `defense_type_override` on `construct` and `set_wing_production`, independently. Turret choices are
 `mass_driver`, `beam`, `missile`; defense choices are `armor`, `shields`,
 `point_defense`. Omission/null retains the template preset.
@@ -552,7 +569,7 @@ positive total strength. Non-null overrides on other commands are rejected.
 Group commands use the same choices per builder. Construct choices survive queues and saves
 and appear in owner/allied order parameters. Catalogue entries and names are unchanged.
 
-Observation 19 includes public enemy `capability_details.weapons` and `.defenses`
+Observation 20 includes public enemy `capability_details.weapons` and `.defenses`
 only for detailed visible contacts. Use their actual equipment to choose counters:
 Armor counters Mass Drivers, Shields counter Beams, and Point Defense counters
 Missiles. Enemy orders, template identity, accounting and covert components remain
@@ -575,7 +592,7 @@ displacement out of sector or build range fails it and refunds its charge once.
 
 ## Unit dismantling
 
-Contract 16 / observation 19 exposes the shared `dismantle_unit` order:
+Contract 17 / observation 20 exposes the shared `dismantle_unit` order:
 
 ```json
 {"type":"dismantle_unit","unit_ids":[101],"target_id":202,"queue":false}

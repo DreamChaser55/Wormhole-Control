@@ -332,7 +332,7 @@ def test_strikecraft_cannot_launch_in_magnetic_storm():
 
     carrier = create_test_ship("Carrier 1", HullSize.LARGE, game=game)
     carrier.position = Position(0.0, 0.0)
-    bay = StrikecraftBayComponent(carrier)
+    bay = StrikecraftBayComponent(carrier, max_slots=1)
     carrier.add_component(bay)
 
     wing = create_test_ship("Fighter Wing Alpha", HullSize.STRIKECRAFT_WING, game=game)
@@ -340,6 +340,7 @@ def test_strikecraft_cannot_launch_in_magnetic_storm():
     wing.add_component(wing_comp)
 
     # Dock wing
+    bay.assign_wing(wing, bay.free_slot_indices()[0])
     bay.docked_units.append(wing)
     wing.docked_in = carrier
 
@@ -375,10 +376,11 @@ def test_ai_rules_and_preflight_rejection():
 
     carrier = create_test_ship("Carrier 1", HullSize.LARGE, game=game)
     carrier.position = Position(0.0, 0.0)
-    bay = StrikecraftBayComponent(carrier)
+    bay = StrikecraftBayComponent(carrier, max_slots=1)
     carrier.add_component(bay)
 
     wing = create_test_ship("Fighter Wing Alpha", HullSize.STRIKECRAFT_WING, game=game)
+    bay.assign_wing(wing, bay.free_slot_indices()[0])
     bay.docked_units.append(wing)
     wing.docked_in = carrier
     hex_obj.units.remove(wing)

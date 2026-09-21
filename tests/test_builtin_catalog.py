@@ -142,7 +142,7 @@ def test_production_prices_progress_complete_equipment_and_persistence(key, spee
     player = carrier.owner
     player.credits = 10000
     bay = carrier.strikecraft_bay_component
-    selection = Command('set_wing_production', (carrier.id,), template_name=key)
+    selection = Command('set_wing_production', (carrier.id,), slot_index=0, template_name=key)
     assert issue(game, player, selection).accepted
     bay.update(game.galaxy)
     assert player.credits == 10000 - price
@@ -152,7 +152,7 @@ def test_production_prices_progress_complete_equipment_and_persistence(key, spee
     restored = campaign()
     deserialize_game_state(restored, serialize_game_state(game))
     saved = restored.galaxy.get_unit_by_id(carrier.id).strikecraft_bay_component
-    assert saved.production_template_name == key and saved.construction_progress == 1
+    assert saved.slots[0]['production_template_name'] == key and saved.construction_progress == 1
     saved.update(restored.galaxy)
     assert not saved.constructing and len(saved.docked_units) == 1
     wing = saved.docked_units[0]
@@ -233,6 +233,7 @@ def test_catalog_wing_speed_composes_with_carrier_bonuses(key, ability, boosted_
     wing = create(game, key)
     wing.position = Position(400, 100)
     wing.strikecraft_wing_component.mother_carrier = carrier
+    carrier.strikecraft_bay_component.assign_wing(wing, carrier.strikecraft_bay_component.free_slot_indices()[0])
     carrier.strikecraft_bay_component.launched_units.append(wing)
     target = create(game, 'PATROL_CUTTER', owner=1) if ability == 'attack_run' else wing
     assert issue(game, carrier.owner, Command('use_ability', (carrier.id,), ability=ability, target_id=target.id)).accepted
@@ -250,11 +251,11 @@ def test_production_gateway_rejections_are_atomic():
     game = campaign()
     carrier = create(game, 'ESCORT_CARRIER')
     bay = carrier.strikecraft_bay_component
-    valid = Command('set_wing_production', (carrier.id,), template_name='BOMBER_WING')
-    for invalid in [Command('set_wing_production', (carrier.id,), template_name='SCOUT'),
-                    Command('set_wing_production', (carrier.id,), template_name='BOMBER_WING', queue=True)]:
+    valid = Command('set_wing_production', (carrier.id,), slot_index=0, template_name='BOMBER_WING')
+    for invalid in [Command('set_wing_production', (carrier.id,), slot_index=0, template_name='SCOUT'),
+                    Command('set_wing_production', (carrier.id,), slot_index=0, template_name='BOMBER_WING', queue=True)]:
         assert not issue(game, carrier.owner, valid, invalid).accepted
-        assert bay.production_template_name is None
+        assert bay.slots[0]['production_template_name'] is None
     assert not issue(game, game.players[1], valid).accepted
     bay.current_hit_points = 0
     assert not issue(game, carrier.owner, valid).accepted
@@ -286,11 +287,11 @@ def test_normal_start_builds_economy_escort_and_bomber_carrier():
         builder.commander_component.update()
     carrier = constructed['FLEET_CARRIER']
     bay = carrier.strikecraft_bay_component
-    assert bay.production_template_name is None
+    assert bay.slots[0]['production_template_name'] is None
     credits = player.credits
     bay.update(game.galaxy)
     assert not bay.constructing and player.credits == credits
-    assert issue(game, player, Command('set_wing_production', (carrier.id,), template_name='BOMBER_WING')).accepted
+    assert issue(game, player, Command('set_wing_production', (carrier.id,), slot_index=0, template_name='BOMBER_WING')).accepted
     for _ in range(1 + BUILTINS['BOMBER_WING']['build_time']):
         bay.update(game.galaxy)
     bomber = bay.docked_units[0]
@@ -337,7 +338,7 @@ def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     assert len(catalog['construction_templates']) == 64
     assert len(catalog['wing_templates']) == 5
     assert all(e['description'] and e['roles'] and 'support' in e for e in catalog['construction_templates'])
-    assert observation['command_catalog']['version'] == 16
+    assert observation['command_catalog']['version'] == 17
 
 
 def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context):

@@ -122,7 +122,8 @@ def test_capture_and_carrier_cargo_losses_and_temporary_expiry():
     carrier = ship(game)
     bay = StrikecraftBayComponent(carrier, max_slots=2)
     carrier.add_component(bay)
-    bay.production_template_name = "FIGHTER_WING"
+    bay.slots[0]['production_template_name'] = "FIGHTER_WING"
+    bay.construction_slot_index = 0
     bay.finish_auto_construction(game.galaxy)
     wing = bay.docked_units[0]
     captor = ship(game, owner=1)
@@ -245,10 +246,11 @@ def test_production_colony_and_mines_record_authoritative_results():
     game.galaxy.systems["Sol"].add_celestial_body(body)
     bay = StrikecraftBayComponent(unit, max_slots=2)
     unit.add_component(bay)
-    bay.production_template_name = "FIGHTER_WING"
+    bay.slots[0]['production_template_name'] = "FIGHTER_WING"
     initialize_campaign(game)
     begin_window(game, unit.owner)
     constructor.create_unit_from_template(game.galaxy, "SCOUT", unit.owner, "Sol", (0, 0), Position(1000, 0))
+    bay.construction_slot_index = 0
     bay.finish_auto_construction(game.galaxy)
     assert colony.unload_population(body, 10)
     details = [e.detail for e in unit.owner.briefing.pending]

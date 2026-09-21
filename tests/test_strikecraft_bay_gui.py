@@ -53,6 +53,7 @@ def test_strikecraft_bay_gui_data_generation(docked_hp, launched_hp):
     docked_wing_comp = StrikecraftWingComponent(docked_wing)
     docked_wing.add_component(docked_wing_comp)
     docked_wing.current_hit_points = docked_hp
+    strikecraft_bay.assign_wing(docked_wing, strikecraft_bay.free_slot_indices()[0])
     strikecraft_bay.docked_units.append(docked_wing)
     
     # Add a launched wing
@@ -68,6 +69,7 @@ def test_strikecraft_bay_gui_data_generation(docked_hp, launched_hp):
     launched_wing_comp = StrikecraftWingComponent(launched_wing, wing_type=WingType.BOMBER)
     launched_wing.add_component(launched_wing_comp)
     launched_wing.current_hit_points = launched_hp
+    strikecraft_bay.assign_wing(launched_wing, strikecraft_bay.free_slot_indices()[0])
     strikecraft_bay.launched_units.append(launched_wing)
     
     # Setup selection
@@ -156,6 +158,7 @@ def test_strikecraft_bay_gui_data_generation_non_owner():
     )
     docked_wing_comp = StrikecraftWingComponent(docked_wing)
     docked_wing.add_component(docked_wing_comp)
+    strikecraft_bay.assign_wing(docked_wing, strikecraft_bay.free_slot_indices()[0])
     strikecraft_bay.docked_units.append(docked_wing)
     
     # Setup selection
@@ -211,6 +214,7 @@ def test_recall_ship_action_handling():
     )
     launched_wing_comp = StrikecraftWingComponent(launched_wing)
     launched_wing.add_component(launched_wing_comp)
+    strikecraft_bay.assign_wing(launched_wing, strikecraft_bay.free_slot_indices()[0])
     strikecraft_bay.launched_units.append(launched_wing)
     
     # Mock galaxy.get_unit_by_id

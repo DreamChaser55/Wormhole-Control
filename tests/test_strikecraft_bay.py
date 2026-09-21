@@ -99,7 +99,7 @@ def test_strikecraft_bay_auto_construction():
     }
 
     # First turn: start construction
-    assert strikecraft_bay.set_production('FIGHTER_WING')
+    assert strikecraft_bay.set_production(0, 'FIGHTER_WING')
     strikecraft_bay.update(galaxy)
     assert strikecraft_bay.constructing
     assert strikecraft_bay.construction_progress == 0
@@ -133,6 +133,7 @@ def test_strikecraft_bay_auto_replenishment():
     wing.add_component(wing_comp)
 
     # Dock wing directly
+    strikecraft_bay.assign_wing(wing, strikecraft_bay.free_slot_indices()[0])
     strikecraft_bay.docked_units.append(wing)
 
     galaxy = MagicMock()
@@ -350,8 +351,9 @@ def test_new_wing_stats_for_both_carrier_roles():
                    hull_size=HullSize.MEDIUM, in_hex=(0, 0), in_system='Sol', name='Carrier', game=None)
     bay = StrikecraftBayComponent(carrier, max_slots=2)
     carrier.add_component(bay)
-    for role in WingType:
-        bay.production_template_name = f"{role.name}_WING"
+    for index, role in enumerate(WingType):
+        bay.slots[index]['production_template_name'] = f"{role.name}_WING"
+        bay.construction_slot_index = index
         bay.finish_auto_construction(MagicMock())
         wing = bay.docked_units[-1]
         assert wing.max_hit_points == wing.current_hit_points == 30

@@ -88,10 +88,10 @@ def test_wing_production_layout_at_explicit_display_sizes(pygame_context, tmp_pa
     world = campaign()
     carrier = instantiate_unit_from_template('FLEET_CARRIER', world.players[0],
         'Sol', (0, 0), Position(100, 100), world.galaxy, world)
-    carrier.strikecraft_bay_component.set_production('LONG_RANGE_BOMBER_WING')
+    carrier.strikecraft_bay_component.set_production(0, 'LONG_RANGE_BOMBER_WING')
     gui = SimpleNamespace(game_instance=world, screen_res=Vector(*size), manager=manager,
                           display_config=config)
-    picker = WingProductionWindow(gui, carrier)
+    picker = WingProductionWindow(gui, carrier, 0)
 
     def capture(name):
         manager.update(0.1)

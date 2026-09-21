@@ -246,8 +246,8 @@ class _BatchProjection:
                         comp = compatible_docking_component(unit, target)
                         if comp:
                             key = id(comp)
-                            self._docking_slots.setdefault(key, comp.max_slots - comp.get_used_slots())
-                            self._docking_slots[key] -= 1
+                            self._docking_slots.setdefault(key, self._free_docking_slots(comp))
+                            self._docking_slots[key] -= self._docking_cost(comp, unit)
             self._cargo[unit_id] = cargo
 
     def cargo_for(self, unit):
@@ -315,6 +315,20 @@ class _BatchProjection:
                 f"{self._credits:g} remain in this batch.",
             )
 
+    @staticmethod
+    def _free_docking_slots(component):
+        from unit_components.strikecraft import StrikecraftBayComponent
+        if isinstance(component, StrikecraftBayComponent):
+            return len(component.free_slot_indices())
+        return int(component.max_slots) - int(component.get_used_slots())
+
+    @staticmethod
+    def _docking_cost(component, unit):
+        from unit_components.strikecraft import StrikecraftBayComponent
+        if isinstance(component, StrikecraftBayComponent) and component.slot_for_wing(unit) is not None:
+            return 0
+        return 1
+
     def validate_dock_in_hangar(self, command: Any, units: list[Any], target: Any) -> None:
         components = [compatible_hangar_component(unit, target) for unit in units]
         if any(component is None for component in components):
@@ -326,10 +340,9 @@ class _BatchProjection:
         key = id(component)
         available = self._docking_slots.setdefault(
             key,
-            int(getattr(component, "max_slots", 0))
-            - int(component.get_used_slots()),
+            self._free_docking_slots(component),
         )
-        if len(units) > available:
+        if sum(self._docking_cost(component, unit) for unit in units) > available:
             raise _Rejected(
                 "insufficient_capacity",
                 f"The target carrier has only {available} compatible hangar slots available.",
@@ -346,10 +359,9 @@ class _BatchProjection:
         key = id(component)
         available = self._docking_slots.setdefault(
             key,
-            int(getattr(component, "max_slots", 0))
-            - int(component.get_used_slots()),
+            self._free_docking_slots(component),
         )
-        if len(units) > available:
+        if sum(self._docking_cost(component, unit) for unit in units) > available:
             raise _Rejected(
                 "insufficient_capacity",
                 f"The target carrier has only {available} compatible strikecraft bay slots available.",
@@ -370,10 +382,9 @@ class _BatchProjection:
         key = id(component)
         available = self._docking_slots.setdefault(
             key,
-            int(getattr(component, "max_slots", 0))
-            - int(component.get_used_slots()),
+            self._free_docking_slots(component),
         )
-        if len(units) > available:
+        if sum(self._docking_cost(component, unit) for unit in units) > available:
             raise _Rejected(
                 "insufficient_capacity",
                 f"The docking target has only {available} compatible slots available.",
@@ -718,8 +729,8 @@ class _BatchProjection:
                 component = compatible_docking_component(unit, target)
                 if component:
                     key = id(component)
-                    self._settled_docks.setdefault(key, component.max_slots - component.get_used_slots())
-                    self._settled_docks[key] -= 1
+                    self._settled_docks.setdefault(key, self._free_docking_slots(component))
+                    self._settled_docks[key] -= self._docking_cost(component, unit)
                     self._unavailable_units.add(unit.id)
                     entry["settled"] = True
 
@@ -964,17 +975,18 @@ class CommandGateway:
             bay = unit.strikecraft_bay_component
             choices = (command.template_name, command.turret_type_override, command.defense_type_override)
             try:
+                bay.validate_slot_index(command.slot_index)
                 bay.validate_production(*choices)
             except ValueError as exc:
                 raise _Rejected("invalid_parameters", str(exc)) from exc
-            if not bay.can_set_production(*choices):
-                raise _Rejected("capability_unavailable", "Select wing production while the bay is operational and not constructing.")
+            if not bay.can_set_production(command.slot_index, *choices):
+                raise _Rejected("capability_unavailable", "Select production on an operational bay slot that is not constructing.")
             def apply_production():
                 self._require_capability(unit, command.type)
-                if not bay.set_production(*choices):
+                if not bay.set_production(command.slot_index, *choices):
                     raise _Rejected("capability_unavailable", "Wing production selection is no longer available.")
             return [_Prepared(apply_production,
-                              f"Selected {command.template_name} production for unit {unit.id}.")]
+                              f"Selected {command.template_name} production for unit {unit.id}, slot {command.slot_index}.")]
         if command.type == "set_stance":
             return self._prepare_stance(units, command.stance)
         if command.type == "toggle_inhibitor":

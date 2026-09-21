@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 16
+CONTRACT_VERSION = 17
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -55,7 +55,7 @@ COMMAND_SPECS = {
     "colonize": _spec("Colonize an unowned body; queue behind a required colonist load.", ("target_id",), capability=("colony_component",)),
     "load_colonists": _spec("Load a positive amount of colonists from a self-owned colony.", ("target_id", "amount"), capability=("colony_component",)),
     "construct": _spec("Construct a template at an explicit system, sector and position. Optional turret_type_override changes all installed turrets; defense_type_override consolidates total defense strength into one type. Null preserves presets. Requires matching equipment; costs and other stats are unchanged.", ("template_name", *DESTINATION, "turret_type_override", "defense_type_override"), ("template_name", *DESTINATION), capability=("constructor_component",)),
-    "set_wing_production": _spec("Select a built-in wing template and optional turret/defense type overrides while the bay is not constructing. New bays start unselected and build no wings until a design is selected; template_name cannot be null. Each selection replaces all production settings; null overrides preserve template presets. Overrides preserve statistics, variants and costs. Selection is free and affects future wings only.", ("template_name", "turret_type_override", "defense_type_override"), ("template_name",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
+    "set_wing_production": _spec("Configure one stable zero-based bay slot's future wing template and nullable turret/defense overrides. Explicit template_name=null clears production and requires null overrides. New slots start unselected. Existing wings are unchanged; only the slot under construction is locked. Selection is free, preserves orders and the bay-wide pause state. Each selection replaces this slot's complete configuration.", ("slot_index", "template_name", "turret_type_override", "defense_type_override"), ("slot_index",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
     "repair": _spec("Repair a friendly unit.", ("target_id",), capability=("repair_component",)),
     "mine": _spec("Mine a body once.", ("target_id",), capability=("mining_component",)),
     "continuous_mine": _spec("Repeat mining and unloading indefinitely.", ("target_id",), capability=("mining_component",)),
@@ -101,6 +101,7 @@ WAYPOINT_SCHEMA = {"type": "object", "additionalProperties": False,
     "required": list(DESTINATION)}
 COMMAND_PROPERTIES = {
     "enabled": {"type": ["boolean", "null"]},
+    "slot_index": {"type": ["integer", "null"], "minimum": 0},
     "type": {"type": "string", "enum": sorted(COMMAND_SPECS)},
     "unit_ids": {"type": "array", "items": {"type": "integer"}, "maxItems": MAX_UNITS},
     "target_id": {"type": ["integer", "null"]}, "system_name": NULLABLE_STRING,
@@ -139,6 +140,11 @@ def validate_command(raw):
     require(not spec.single_unit or len(ids) == 1, "This command requires exactly one unit.")
     if kind in {"recruit_troops", "invade_planet"}:
         require(type(raw.get("amount")) is int and raw["amount"] > 0, "Troop amount must be a positive integer.")
+    if kind == "set_wing_production":
+        require("template_name" in raw, "set_wing_production requires explicit template_name; use null to clear.")
+        if raw.get("template_name") is None:
+            require(raw.get("turret_type_override") is None and raw.get("defense_type_override") is None,
+                    "Clearing a slot requires null equipment overrides.")
     queue = raw.get("queue", False)
     require(type(queue) is bool, "queue must be a boolean.")
     require(spec.queued or not queue, "Immediate commands require queue=false.")
@@ -150,7 +156,7 @@ def validate_command(raw):
             continue
         if field == 'enabled':
             require(type(value) is bool, 'enabled must be a boolean.')
-        elif field in {"target_id", "agent_id", "source_id"}:
+        elif field in {"target_id", "agent_id", "source_id", "slot_index"}:
             require(type(value) is int and value >= 0, f"{field} must be a nonnegative integer.")
         elif field == "amount":
             require(type(value) in (int, float) and _finite(value) and value > 0, "amount must be finite and positive.")
@@ -208,6 +214,7 @@ def command_catalog():
                             "queue": "append_or_replace" if s.queued else "must_be_false",
                             "unit_selection": "none" if s.player_level else "one" if s.single_unit else "owned",
                             "capabilities": list(s.capability), "message_max_length": s.text_limit} for kind, s in COMMAND_SPECS.items()},
+        "required_nullable_fields": {"set_wing_production": ["template_name"]},
         "defaults": {"queue": False, "unit_ids": [], "optional_fields": None},
         "command_defaults": {"lay_minefield": {"minefield_type": "anti_ship"}},
         "destination_forms": {"patrol": [list(DESTINATION), ["waypoints"]], "defend": [list(DESTINATION), ["target_id"]]}}

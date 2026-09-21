@@ -400,28 +400,38 @@ buttons work independently of Shift. Queued builds pay when they start; idle bui
 start immediately. Multiple builders show their combined price.
 
 Wings are produced in Strikecraft Bays aboard carriers and are not listed in
-the Constructor catalogue. In an owned bay's panel, choose **Select Wing Production…**
-to inspect designs and select future production. The picker shows combat role, speed,
-effective weapons, fractional defenses, hull use, price and duration. Use **Turret type**
-to choose Mass Driver, Beam or Missile, and **Defense type** to choose Armor, Shields
-or Point Defense. Each control also offers **Template Default**, which restores that
-part of the selected design's presets. The equipment preview updates immediately.
-Turret overrides affect every turret; defense overrides pool total strength into
-the chosen defense, setting the other two to zero. Statistics, turret variants,
-wing role, hull use, costs and build duration are preserved.
+the Constructor catalogue. Each bay slot has its own future wing design and optional
+**Turret type** and **Defense type** overrides. In the component panel, choose
+**Slot N: Select Production…** to inspect and configure that slot. Its status shows
+whether it is empty, building, docked or launched, alongside the current wing and
+its separately configured future production.
 
-The picker opens with the bay's current settings. Switching designs retains pending
-override choices; Template Default follows the newly selected design. **Select Production**
-applies the design and both choices together; Cancel, Esc or closing the window
-discards pending changes.
-Selection is free and allowed while idle or replenishing, even if full or short of credits.
-It is blocked while constructing. The bay charges for construction when it starts.
-New Strikecraft Bays start with **Production: None** and do not build or charge for
-new wings until a player explicitly selects a design. The picker starts with no
-design selected and enables **Select Production** only after a valid choice.
-Selected settings persist for subsequent builds. None is only the initial state;
-use Pause/Resume new wings to control later production. Resuming without a selected
-design does not start construction. Docking and replenishment remain available.
+The picker shows combat role, speed, effective weapons, fractional defenses, hull
+use, price and duration. Turret choices are Mass Driver, Beam or Missile; defense
+choices are Armor, Shields or Point Defense. **Template Default** restores that
+part of the design's presets. Turret overrides affect every turret; defense overrides
+pool total strength into one type. Statistics, variants, role, hull use, costs and
+build duration are preserved. The equipment preview updates immediately.
+
+The picker opens with the selected slot's settings. Switching designs retains
+pending override choices. **Select Production** commits the complete configuration;
+Cancel, Esc or closing discards pending edits. Choose **No production** and apply
+to clear that slot's design and overrides. Any existing wing remains unchanged and
+can still dock, launch and replenish. Occupied-slot edits configure its replacement.
+Only the slot currently building is locked; other slots remain editable.
+
+New slots start with **Future production: None** and build nothing until explicitly
+configured. Selection is free even when full, paused or short of credits. The bay
+retains one shared worker and existing replenishment priority, then builds the first
+affordable empty selected slot in ascending slot order. Unselected and unaffordable
+slots are skipped. The bay pays when construction starts and reserves that slot
+until completion. Launch and return retain the same assignment; loss, dismantling
+or transfer frees it for the configured replacement. Incoming wings occupy the first
+free unreserved slot regardless of its selected design, without changing that design.
+
+**Pause/Resume new wings** controls the entire bay. Selecting or clearing a slot
+never changes this pause state, and resuming does not select any designs. Paid work
+finishes while paused. Docking and replenishment do not require a production selection.
 
 Fighter, Interceptor and Recon Wings target enemy wings. Bomber and Long Range Bomber Wings
 attack ships/stations and qualify for Attack Run. Interceptors trade firepower and
@@ -527,8 +537,8 @@ component HP, build cost, build time, upkeep and other equipment stay the same.
 Overrides require existing turrets or a positive total defense strength;
 inapplicable overrides reject the command before orders or credits change.
 Every constructor selected in one command uses the same choices. Construct choices
-persist through queues, approach and saves. Wing selection requires one owned carrier
-and `queue=false`; each selection replaces its settings, so omitted/null overrides
+persist through queues, approach and saves. Wing selection requires one owned carrier, a slot index
+and `queue=false`; each selection replaces that slot's settings, so omitted/null overrides
 reset to template presets. Settings persist through builds and saves. Catalogue templates
 and default unit names remain unchanged. Ability-created units, existing wings/ships
 and human Constructor controls are unchanged. The human bay picker supports the same

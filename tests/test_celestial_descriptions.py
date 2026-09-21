@@ -337,7 +337,7 @@ def test_remote_terrain_and_enemy_noncombat_details_stay_private():
     hidden_body = install(game, Storm((1, 0), 'Beta', StormType.RADIATION))
     known_body = install(game, Storm((0, 0), 'Sol', StormType.PLASMA))
     observed = build_observation(game, own.owner)
-    assert observed['schema_version'] == 19
+    assert observed['schema_version'] == 20
     beta = next(s for s in observed['systems'] if s['name'] == 'Beta')
     assert beta['detail_level'] == 'summary'
     assert hidden_body.id not in [b['id'] for b in beta['notable_bodies']]

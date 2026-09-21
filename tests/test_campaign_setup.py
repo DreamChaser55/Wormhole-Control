@@ -79,7 +79,7 @@ def test_testing_allows_shared_systems_and_normal_mixed_starts():
     bays = [unit.strikecraft_bay_component for unit, _ in iter_units(prepared.state.galaxy)
             if unit.strikecraft_bay_component is not None]
     assert bays
-    assert all(bay.production_template_name is None and not bay.constructing for bay in bays)
+    assert all(bay.slots[0]['production_template_name'] is None and not bay.constructing for bay in bays)
     settings = settings_for(game.galaxy)
     settings.player_configs[1].home_system_name = None
     prepared = prepare_new_campaign(settings)

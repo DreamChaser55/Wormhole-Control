@@ -25,12 +25,16 @@ Visible enemies' capability_details includes their inspectable weapons and defen
 mass drivers, Shields counter beams, and Point Defense counters missiles. Use observed threats and
 weak defenses to inform new builds; keep presets or mixed defenses when evidence is insufficient.
 Wings are built by strikecraft bays, not Constructors. Choose template_name from the
-wing_templates catalog with set_wing_production while the bay is not constructing.
-New bays have production_template=null and build no wings until you explicitly select a design.
-Enabling production alone does not select a design. Production costs and turns are null until selected.
-Each selection replaces the full production configuration; omitted/null overrides reset to
-the selected template's presets. Selection is free, preserves orders, and changes future
-builds only. It is allowed during replenishment or when full or short of credits.
+wing_templates catalog with set_wing_production, required zero-based slot_index and explicit template_name.
+Each bay slot has independent production settings. New slots have production_template=null and build nothing.
+Explicit template_name=null clears that slot; both overrides must then be null. Existing wings are unchanged.
+Launch and return preserve slots. Loss or transfer frees a slot for its configured replacement.
+Only the slot currently constructing is locked; other slots can change while the shared worker is busy.
+The bay builds or replenishes one wing at a time, prioritizing replenishment, then the first affordable
+empty selected slot in index order. Build payments occur only when work starts, never during selection.
+Each selection replaces only that slot's full configuration; null overrides restore template presets.
+Selection is free, preserves orders and the bay-wide pause state, and is allowed when full or short of credits.
+Enabling production alone does not select any designs. Costs and turns are null for unselected slots.
 dismantle_unit uses one Constructor and an owned non-wing target, or one carrier and its already docked wing.
 It includes docked craft, disables targets during work, discards cargo, and refunds half current-design cost
 scaled by hull HP at completion. Durations add each unit's half build time rounded up. Future salvage cannot
@@ -52,7 +56,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 19 and the command_catalog describes contract 16. The final turn_summary
+Observations use schema 20 and the command_catalog describes contract 17. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.

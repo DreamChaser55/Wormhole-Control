@@ -102,12 +102,13 @@ def handle_select_wing_production(game, action: dict) -> None:
         current_player = game.players[game.current_player_index] if game.players else None
         if carrier.owner == current_player:
             bay = carrier.strikecraft_bay_component
-            if not bay.is_destroyed and not bay.constructing:
+            slot_index = action.get('slot_index')
+            if type(slot_index) is int and 0 <= slot_index < bay.max_slots and bay.production_blocker(slot_index) is None:
                 from gui.wing_production_window import WingProductionWindow
                 existing = getattr(game.gui, 'wing_production_window', None)
                 if existing:
                     existing.close()
-                game.gui.wing_production_window = WingProductionWindow(game.gui, carrier)
+                game.gui.wing_production_window = WingProductionWindow(game.gui, carrier, slot_index)
     game.sidebar_needs_update = True
 
 

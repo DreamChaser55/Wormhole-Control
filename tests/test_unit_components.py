@@ -1056,9 +1056,10 @@ def test_unit_template_name_assignment():
         carrier_unit.game = owner_unit.game
         bay = StrikecraftBayComponent(carrier_unit, max_slots=2)
         carrier_unit.add_component(bay)
-        bay.production_template_name = "FIGHTER_WING"
+        bay.slots[0]['production_template_name'] = "FIGHTER_WING"
         
         # Call auto-construction
+        bay.construction_slot_index = 0
         bay.finish_auto_construction(galaxy)
         assert len(bay.docked_units) == 1
         wing = bay.docked_units[0]

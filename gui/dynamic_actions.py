@@ -88,9 +88,11 @@ def build_button_payload(gui, action_id: str, target_data: typing.Any) -> typing
             'docked_unit_id': docked_unit_id
         }
     elif action_id == 'select_wing_production':
+        carrier_id, slot_index = target_data
         return {
             'action': 'select_wing_production',
-            'carrier_id': target_data
+            'slot_index': slot_index,
+            'carrier_id': carrier_id
         }
     elif action_id == 'launch_all_wings':
         return {

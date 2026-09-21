@@ -1,18 +1,18 @@
 # Campaign persistence
 
-The current save version is **4.15**. New saves preserve the installed component
+The current save version is **4.16**. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
-Only version **4.15** is supported. Unversioned, older, unknown and future saves
+Only version **4.16** is supported. Unversioned, older, unknown and future saves
 are rejected with the expected version before hydration. Alpha schema changes
 require a new campaign; no migrations or automatic conversions are provided.
 Rejected files are never modified.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.15.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.16.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges are rejected during validation. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
@@ -37,16 +37,23 @@ restore before carrier effects reconcile. Loading never replays activation costs
 salvos, docking or Flak damage. Antimatter Storage uses component schema 2 and
 stores capacity and current fuel; passive regeneration is not part of the model.
 
-Strikecraft Bay schema **4** stores nullable `production_template_name`, nullable
-`turret_type_override` and `defense_type_override`, construction/replenishment progress,
-the independent `production_enabled` toggle, and carried wings. New bays start
-with no production selection. A null selection requires null overrides, no active
-construction, and zero construction progress; replenishment remains valid.
-A non-null production selection must reference a built-in strikecraft wing;
-overrides must be recognized and applicable to its equipment. Invalid selection or
-progress rejects the load transactionally. Loading does not replay payment or assembly,
-and installed wings retain their actual equipment. The old `build_wing_type` field is
-removed with no migration.
+Strikecraft Bay schema **5** stores exactly `max_slots` ordered slot records,
+each containing nullable `production_template_name`, `turret_type_override`,
+`defense_type_override`, and occupant `wing_id`. Slots start unselected; null designs
+require null overrides. Non-null designs must be built-in wings with valid overrides.
+Slot indices stay stable when wings launch, return, transfer or disappear.
+
+The bay stores nullable `construction_slot_index`, construction/replenishment
+progress, the replenishing-wing reference, the independent `production_enabled`
+toggle, and docked child units. Slot wing IDs reference the existing ownership graph;
+launched wings remain sector-owned. Active construction reserves an empty selected
+slot and excludes concurrent replenishment. Idle construction requires zero progress.
+
+Loading validates exact slot count, unique assignments, valid wing references,
+matching carrier associations and consistent paid-work progress. Invalid state
+rejects the load transactionally. Loading never replays payment, assembly or repair,
+and installed wings retain their actual equipment. Previous bay-wide fields and
+save versions are unsupported; there is no migration.
 
 Every registered component owns its persistence through `UnitComponent.to_state()`
 and `restore_state()`. Each component declares its configuration, runtime fields,
@@ -99,7 +106,7 @@ actuators are reacquired through normal play.
 
 `ATTACK_LONG_RANGE` uses the same order envelope as `ATTACK`, retaining its distinct
 type, target/subsystem, UUID and approach descendants. Restoring it rebinds firing
-and navigation without replaying execution. The save format remains 4.15.
+and navigation without replaying execution. The save format remains 4.16.
 
 When adding a component or ability, register it, declare every persistent field,
 and extend its independent round-trip fixture. An incompatible schema change
@@ -210,7 +217,7 @@ and prices when they start. No new retrofit AI or socket command is introduced.
 
 ## Turn briefings
 
-Save 4.15 requires each player's `briefing` state: initialization/collection flags,
+Save 4.16 requires each player's `briefing` state: initialization/collection flags,
 reporting boundary, event sequence, bounded pending entries and omission count,
 economic baseline, discovery keys, frozen current report and human acknowledgement.
 The current report contains its start/end rounds, grouped entries, net economy
@@ -246,14 +253,14 @@ retain a private location anchor to follow moving depots after restoration.
 
 Loading resumes without extra transfer ticks, recipient selection, or harvesting.
 Invalid IDs, phases, reserves, and inconsistent manual active recipients reject
-transactionally. Save 4.15 is required; older saves and legacy resupply source
+transactionally. Save 4.16 is required; older saves and legacy resupply source
 fields have no migration or aliases. Fuel-cache deployables, recovery orders and
 the old ability identifier remain unsupported.
 
 
 ## Planetary warfare state
 
-Save 4.15 uses unit schema 3. Every unit stores the nonnegative integer
+Save 4.16 uses unit schema 3. Every unit stores the nonnegative integer
 `last_planetary_action_round`, bounded by the saved campaign round. This survives
 refits, cancellation and capture, preventing replay or an extra action after load.
 Troop Transport schema 1 stores integer `capacity` and current `troops`; destroyed
@@ -275,18 +282,18 @@ are unsupported under the Alpha policy.
 
 ## Wormhole support state
 
-Format 4.15 registers `WormholeStabilizerComponent` and `STABILIZE_WORMHOLE`.
+Format 4.16 registers `WormholeStabilizerComponent` and `STABILIZE_WORMHOLE`.
 The component stores its last paid round and payer ID; the order stores its typed
 wormhole target, normal UUID/approach descendants, powered flag and phase.
 Coverage is derived from live eligible maintainers after references restore.
 Loading does not charge fuel, advance orders or modify natural wormhole stability.
 Invalid payment/state values reject the candidate; ineligible support reconciles
-to unpowered. Only 4.15 is supported; older saves require a new campaign.
+to unpowered. Only 4.16 is supported; older saves require a new campaign.
 
 
 ## Fixed destination validation
 
-Save 4.15 requires complete fixed destinations recursively in positional orders
+Save 4.16 requires complete fixed destinations recursively in positional orders
 and patrol waypoints. System names must resolve, hexes must exist and use integer
 coordinates, and positions must contain finite numbers. Missing coordinates are
 never replaced with a unit's location. Constructor component schema 3 stores its
@@ -305,7 +312,7 @@ Defenses component state, without reconstructing it from the catalogue.
 
 ## Dismantling persistence
 
-Version 4.15 stores queued, approaching, waiting and active `DISMANTLE_UNIT` roots,
+Version 4.16 stores queued, approaching, waiting and active `DISMANTLE_UNIT` roots,
 including owner, phase, member IDs, frozen design values, duration, progress,
 last processed round and settlement state. Bay component schema 4 stores
 `production_enabled`, independent of design selection and replenishment.
@@ -317,5 +324,5 @@ order cancellation, payments, progress or completion briefings. Inconsistent sav
 relationships reject the candidate campaign. Production pause persists across
 cancellation and loading until explicitly resumed. Older saves are not migrated.
 
-The AI command contract is 16, observation schema 19, response schema v13 and prompt
-cache v19. The local socket protocol remains 3.
+The AI command contract is 17, observation schema 20, response schema v14 and prompt
+cache v20. The local socket protocol remains 3.

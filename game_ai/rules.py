@@ -484,8 +484,10 @@ def command_guidance(
     if bay is not None:
         from unit_catalog import wing_template_names
         from construction_customization import TURRET_TYPES, DEFENSE_TYPES
-        choices = [name for name in wing_template_names() if bay.can_set_production(name)]
+        editable = [i for i in range(bay.max_slots) if bay.production_blocker(i) is None]
+        choices = list(wing_template_names()) if editable else []
         options["set_wing_production"] = {
+            "slot_indices": editable, "can_clear": bool(editable),
             "template_names": choices,
             "turret_type_override": [None, *TURRET_TYPES],
             "defense_type_override": [None, *DEFENSE_TYPES],

@@ -21,15 +21,18 @@ def is_open(gui):
 
 
 class WingProductionWindow:
-    def __init__(self, gui, carrier):
+    def __init__(self, gui, carrier, slot_index):
         self.gui, self.game, self.carrier = gui, gui.game_instance, carrier
         self.galaxy = self.game.galaxy
         self.player = self.game.players[self.game.current_player_index]
         self.turn = self.game.turn_number
         self.bay = carrier.strikecraft_bay_component
-        self.selected_key = self.bay.production_template_name
-        self.turret_type_override = self.bay.turret_type_override
-        self.defense_type_override = self.bay.defense_type_override
+        self.bay.validate_slot_index(slot_index)
+        self.slot_index = slot_index
+        slot = self.bay.slots[slot_index]
+        self.selected_key = slot['production_template_name']
+        self.turret_type_override = slot['turret_type_override']
+        self.defense_type_override = slot['defense_type_override']
         self.entries = {}
         self._stamp = None
         self._details_html = None
@@ -37,7 +40,7 @@ class WingProductionWindow:
         width, height = int(gui.screen_res.x * .85), int(gui.screen_res.y * .85)
         self.window = elements.UIWindow(
             pygame.Rect((int(gui.screen_res.x)-width)//2, (int(gui.screen_res.y)-height)//2, width, height),
-            gui.manager, window_display_title='Select Wing Production', resizable=False)
+            gui.manager, window_display_title=f'Slot {slot_index + 1}: Select Wing Production', resizable=False)
         self.window.set_blocking(True)
         panel = self.window.get_container()
         w, h = panel.get_size()
@@ -72,7 +75,8 @@ class WingProductionWindow:
                 and self.galaxy.get_unit_by_id(self.carrier.id) is self.carrier
                 and self.carrier.owner is self.player and self.carrier.current_hit_points > 0
                 and self.carrier.strikecraft_bay_component is self.bay
-                and not self.bay.is_destroyed and not self.bay.constructing)
+                and self.slot_index < self.bay.max_slots
+                and self.bay.production_blocker(self.slot_index) is None)
 
     def close(self):
         self.window.kill()
@@ -94,6 +98,7 @@ class WingProductionWindow:
         self.entries = {key: describe_template(key, UNIT_TEMPLATES[key]) for key in wing_template_names()}
         self.labels = {f"{entry['name']} ({entry['credit_cost']} credits)": key
                        for key, entry in self.entries.items()}
+        self.labels = {'No production': None, **self.labels}
         self.list.set_item_list(list(self.labels))
         self.show_selection()
 
@@ -101,6 +106,11 @@ class WingProductionWindow:
         entry = self.entries.get(self.selected_key)
         self.select_button.disable()
         html = 'Select a wing design.'
+        if self.selected_key is None:
+            html = ('No production: this slot will build no new wings. Applying clears its design and equipment overrides; '
+                    'any existing wing remains and can still be replenished. The bay-wide pause setting is preserved.')
+            if self.valid_context():
+                self.select_button.enable()
         if entry:
             try:
                 template = customize_template(UNIT_TEMPLATES[self.selected_key],
@@ -117,7 +127,7 @@ class WingProductionWindow:
                           'Types change; statistics, variants, costs and build time stay the same. '
                           'The bay pays when construction starts; existing wings are unchanged.')
                 if self.valid_context() and self.bay.can_set_production(
-                        self.selected_key, self.turret_type_override, self.defense_type_override):
+                        self.slot_index, self.selected_key, self.turret_type_override, self.defense_type_override):
                     self.select_button.enable()
         if html != self._details_html:
             self._details_html = html
@@ -150,13 +160,13 @@ class WingProductionWindow:
         elif event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.cancel_button:
                 self.close()
-            elif event.ui_element == self.select_button and self.selected_key and self.select_button.is_enabled:
+            elif event.ui_element == self.select_button and self.select_button.is_enabled:
                 from game_ai.commands import CommandGateway
                 from game_ai.contracts import Command, CommandBatch
                 result = CommandGateway(self.game).apply_batch(self.player, CommandBatch((
-                    Command('set_wing_production', (self.carrier.id,), template_name=self.selected_key,
-                            turret_type_override=self.turret_type_override,
-                            defense_type_override=self.defense_type_override, queue=False),)))
+                    Command('set_wing_production', (self.carrier.id,), slot_index=self.slot_index, template_name=self.selected_key,
+                            turret_type_override=self.turret_type_override if self.selected_key is not None else None,
+                            defense_type_override=self.defense_type_override if self.selected_key is not None else None, queue=False),)))
                 if result.accepted:
                     self.close()
                 else:
