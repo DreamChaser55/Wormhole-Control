@@ -49,7 +49,7 @@ player. It includes:
 - one deduplicated construction-template catalog;
 - diplomatic message history grouped by partner faction in chronological order (`conversations`).
 
-Observation schema 18 gives full body detail in systems containing friendly
+Observation schema 19 gives full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
 retain exact stars and colonized bodies while neutral objects are summarized.
 The model can move toward a system navigation anchor to receive exact target IDs
@@ -62,7 +62,7 @@ fabricated or remembered hidden ID cannot bypass fog of war.
 
 ## Turn-start briefing
 
-Observation schema 18 appends `turn_summary` to the observation JSON included in
+Observation schema 19 appends `turn_summary` to the observation JSON included in
 every built-in planning request and Codex observation. It contains `from_turn`,
 `to_turn`, priority-ordered `entries`, net `economy` changes, and `omitted_count`.
 Turn zero as `from_turn` means campaign setup. Each entry has an event ID, round,
@@ -112,7 +112,7 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.14 embeds:
+Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.15 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
@@ -152,7 +152,7 @@ remains atomic and uses original prices for reservations. Construct choices trav
 approach suborders and paid Constructor jobs; invalid completion fails and refunds
 only the owning job. Owner/allied order views include selected overrides.
 
-Observation 18 gives visible enemies only the public `weapons` and `defenses`
+Observation 19 gives visible enemies only the public `weapons` and `defenses`
 sections of `capability_details`, using actual installed equipment. Weapons include
 type, variant, damage, range, cooldown/reset/remaining values, target classes and
 operating state. Defenses include operating state and Armor/Shields/Point Defense
@@ -161,8 +161,8 @@ capabilities. Detailed visibility is still required; enemy provenance, orders,
 fire targets, hidden components and accounting are not exposed. The model receives
 matchup guidance to select counters from observed equipment, not inferred templates.
 
-Response schema v13 and prompt cache v18 apply; socket protocol remains 3.
-Save 4.14 / Constructor schema 3 preserve choices with no older-save migration.
+Response schema v13 and prompt cache v19 apply; socket protocol remains 3.
+Save 4.15 / Constructor schema 3 preserve choices with no older-save migration.
 Full design editing, refits and human constructor controls are unchanged. Human
 bays select wing designs and the same independent turret/defense type overrides
 through a production picker that submits `set_wing_production` via the shared gateway.
@@ -285,7 +285,7 @@ not retried by this harness, matching production behavior.
 Keep fixed observations, seeds, model snapshots, and game balance constants
 with any published result so regressions can be reproduced.
 
-## Shared order contract (observation 18 / commands 16 / socket 3)
+## Shared order contract (observation 19 / commands 16 / socket 3)
 
 `game_ai.command_spec.COMMAND_SPECS` defines fields, constraints, queue behavior,
 capabilities and descriptions. It generates the strict OpenAI command schema and the
@@ -381,7 +381,7 @@ job charges. Missing order identities and payment state are rejected. Restored a
 actuators/job ownership without replaying startup or refunds; pending orders start on a
 subsequent update. Recursively docked units restore too; stance engagements are reacquired.
 The strict response schema is `wormhole_control_turn_v13`, and prompt cache key is
-`wormhole-control-turn-v18`. No live API call is required for regression testing.
+`wormhole-control-turn-v19`. No live API call is required for regression testing.
 
 ### Gameplay invariant guidance
 
@@ -449,7 +449,7 @@ The [built-in catalogue](REFERENCE.md#built-in-unit-catalog) includes designs fo
 every ability. Automated players construct public designs or use equipped ships;
 custom design editing is a human workflow.
 
-Observation 18 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
+Observation 19 includes `ability_catalog`, `visible_deployables`, `catalyst_patches` and
 `ability_links`. Authorized ability state includes actual blockers/readiness,
 cooldown/duration, active targets, ongoing AM, reserved casts, persistent deployment
 counts/caps and Guardian tuning. Speed includes Tractor; environmental values
@@ -490,7 +490,7 @@ configured target, including across saves. All source, manual target, active
 recipient and child approach geometry use recursive disclosure rules. A null
 automatic recipient is valid state and does not trigger redaction.
 
-Multiplication observations include radius, projected recipient gains, net AM, caster cooldown, and friendly units' shared recipient recovery. Cast and recipient deadlines live on the unit and persist independently of components. Enemy observations do not expose these deadlines. Save 4.14 uses unit schema 3. Fuel Cache, its deployable kind, and its recovery command have been removed; no compatibility aliases are provided.
+Multiplication observations include radius, projected recipient gains, net AM, caster cooldown, and friendly units' shared recipient recovery. Cast and recipient deadlines live on the unit and persist independently of components. Enemy observations do not expose these deadlines. Save 4.15 uses unit schema 3. Fuel Cache, its deployable kind, and its recovery command have been removed; no compatibility aliases are provided.
 
 The current save stores independent ghost emitters, source provenance, identification, patch allegiance/deadlines, link tuning/deadlines and processed pull phases. Counts are rebuilt from surviving objects. Typed endpoint references and transport phase/wait/reserve state restore without replaying transfers, casts or approach execution.
 
@@ -525,14 +525,20 @@ Cancel, Esc or closing the picker discards pending changes.
 Owner/allied `capability_details.strikecraft_bay` includes `production_template`,
 `turret_type_override`, `defense_type_override`, progress, costs and production choices.
 Owned command options list templates and nullable override choices. Enemy views gain
-no production details. Save 4.14 / Strikecraft Bay schema 3 preserve selections and
-in-progress builds without replaying payments. New bays select `FIGHTER_WING` presets.
+no production details. Save 4.15 / Strikecraft Bay schema 4 preserve selections and
+in-progress builds without replaying payments. New bays start unselected:
+`production_template`, `production_turns` and `production_credit_cost` are null.
+Explicitly select a built-in design to permit construction on a subsequent bay
+update. Enabling production alone cannot select a design; selection preserves the
+independent pause state. Null `template_name` commands are rejected, so use the
+production toggle to pause after selection. Docking and replenishment do not require
+a production selection.
 
 ```json
 {"type":"set_wing_production","unit_ids":[101],"template_name":"LONG_RANGE_BOMBER_WING","turret_type_override":"beam","defense_type_override":"armor","queue":false}
 ```
 
-### Celestial observation contract (schema 18)
+### Celestial observation contract (schema 19)
 
 Already-exposed bodies use readable uppercase `subtype` names (`MAGNETIC`,
 `BLACK_HOLE`, etc.). `collision_radius` and `inhibition_field_radius` describe
@@ -559,13 +565,13 @@ Catalyst patch records describe only the enhancement relevant to their nebula.
 
 Enrichment preserves existing body visibility and remote summaries and exposes
 no additional enemy equipment. Command contract 16, socket protocol 3, response
-schema v13 and save format 4.14 apply. Prompt cache key is v18.
+schema v13 and save format 4.15 apply. Prompt cache key is v19.
 
 
 ## Planetary warfare contract
 
-Observation schema 18, command contract 16, response schema v13 and prompt cache
-key v18 include planetary warfare; socket protocol 3 retains its envelope.
+Observation schema 19, command contract 16, response schema v13 and prompt cache
+key v19 include planetary warfare; socket protocol 3 retains its envelope.
 `planetary_warfare.py` supplies shared eligibility, previews and resolution, with
 initial tuning in `planetary_balance.py`. Human controls commit the same commands.
 
@@ -597,15 +603,15 @@ runs once globally after growth. Colony support and income are derived from curr
 ownership; capture invalidates visibility/sidebar state and stops newly allied sabotage.
 
 A dedicated campaign RNG supplies invasion rolls. Its state, colony defenses,
-unit action markers, cargo and active approach orders are saved in format 4.14.
+unit action markers, cargo and active approach orders are saved in format 4.15.
 Loading and previews never roll or replay planetary effects. See
 [planetary warfare](REFERENCE.md#planetary-warfare) for complete balance and controls.
 
 ## Wormhole stabilization contract
 
-Observation 18 and command contract 16 expose `stabilize_wormhole`, taking one
+Observation 19 and command contract 16 expose `stabilize_wormhole`, taking one
 owned `unit_ids` entry, a disclosed wormhole `target_id`, and `queue`. Coordinates
-are unused. Response schema v13 and prompt cache v18 apply; socket protocol 3 is
+are unused. Response schema v13 and prompt cache v19 apply; socket protocol 3 is
 unchanged. Human controls commit through the same gateway.
 
 Shared read-only rules validate equipment, disclosure and approach feasibility
@@ -632,15 +638,15 @@ requirements are conditional on target kind; entity and self targets keep their
 existing forms. Shared location validation rejects partial locations before any
 batch effects; UI adapters apply the same validation before replacing orders.
 Factories preserve the supplied site rather than binding it to the acting unit.
-Observation 18 exposes complete authorized order destinations and ability location
+Observation 19 exposes complete authorized order destinations and ability location
 requirements. Local-only abilities revalidate sector identity when they execute.
 Active construction retains its fixed site and charge owner; displacement outside
-build range or sector fails and refunds only that job once. Save 4.14 and Constructor
+build range or sector fails and refunds only that job once. Save 4.15 and Constructor
 schema 3 require complete job locations and matching active order ownership.
 
 ## Unit dismantling
 
-Contract 16 / observation 18 exposes the shared `dismantle_unit` order:
+Contract 16 / observation 19 exposes the shared `dismantle_unit` order:
 
 ```json
 {"type":"dismantle_unit","unit_ids":[101],"target_id":202,"queue":false}

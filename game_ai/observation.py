@@ -157,7 +157,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 18,
+        "schema_version": 19,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -586,14 +586,15 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
     bay = getattr(unit, "strikecraft_bay_component", None)
     if bay is not None:
         from unit_catalog import wing_template_names
+        template = bay.production_template
         details["strikecraft_bay"].update(
             production_enabled=bay.production_enabled,
             production_template=bay.production_template_name,
             turret_type_override=bay.turret_type_override,
             defense_type_override=bay.defense_type_override,
             constructing=bay.constructing, construction_progress=bay.construction_progress,
-            production_turns=bay.production_template["build_time"],
-            production_credit_cost=bay.production_template["build_cost"],
+            production_turns=template["build_time"] if template is not None else None,
+            production_credit_cost=template["build_cost"] if template is not None else None,
             production_choices=[name for name in wing_template_names() if bay.can_set_production(name)])
     from dismantling import state_view
     details['dismantling'] = state_view(unit)

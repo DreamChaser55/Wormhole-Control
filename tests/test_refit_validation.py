@@ -64,6 +64,19 @@ def finish(world):
     world[3].constructor_component.finish_refit(world[0].galaxy)
 
 
+def test_newly_installed_bay_requires_production_selection(world):
+    game, payer, _, _, target = world
+    order = issue(world, 'StrikecraftBayComponent', {'max_slots': 1})
+    assert order.status == OrderStatus.IN_PROGRESS
+    finish(world)
+    bay = target.strikecraft_bay_component
+    assert bay is not None and bay.production_template_name is None
+    credits = payer.credits
+    for _ in range(4):
+        bay.update(game.galaxy)
+    assert not bay.constructing and not bay.docked_units and payer.credits == credits
+
+
 @pytest.mark.parametrize('hull', list(HullSize))
 @pytest.mark.parametrize('name', list(COMPONENT_SPECS))
 def test_every_component_and_hull_matches_designer(world, hull, name):
@@ -427,7 +440,7 @@ def test_saved_removal_settles_exactly_once(outcome):
     actor.commander_component.add_order(order)
     salvage = actor.constructor_component.current_refit_target['salvage_due']
     state = serialize_game_state(game)
-    assert state['version'] == '4.14'
+    assert state['version'] == '4.15'
     assert deserialize_game_state(game, state)
     actor, target = find_unit(game.galaxy, actor.id), find_unit(game.galaxy, target.id)
     order = actor.commander_component.current_order

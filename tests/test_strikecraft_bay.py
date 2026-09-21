@@ -126,6 +126,7 @@ def test_strikecraft_bay_auto_construction():
     }
 
     # First turn: start construction
+    assert strikecraft_bay.set_production('FIGHTER_WING')
     strikecraft_bay.update(galaxy)
     assert strikecraft_bay.constructing
     assert strikecraft_bay.construction_progress == 0

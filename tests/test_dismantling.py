@@ -46,6 +46,7 @@ def bay_with_wing(game, carrier=None):
     carrier = carrier or ship(game, 'Carrier')
     carrier.add_component(StrikecraftBayComponent(carrier, max_slots=3, hull_cost=22.5))
     bay = carrier.strikecraft_bay_component
+    assert bay.set_production('FIGHTER_WING')
     bay.finish_auto_construction(game.galaxy)
     return carrier, bay, bay.docked_units[0]
 

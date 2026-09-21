@@ -26,6 +26,8 @@ mass drivers, Shields counter beams, and Point Defense counters missiles. Use ob
 weak defenses to inform new builds; keep presets or mixed defenses when evidence is insufficient.
 Wings are built by strikecraft bays, not Constructors. Choose template_name from the
 wing_templates catalog with set_wing_production while the bay is not constructing.
+New bays have production_template=null and build no wings until you explicitly select a design.
+Enabling production alone does not select a design. Production costs and turns are null until selected.
 Each selection replaces the full production configuration; omitted/null overrides reset to
 the selected template's presets. Selection is free, preserves orders, and changes future
 builds only. It is allowed during replenishment or when full or short of credits.
@@ -50,7 +52,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 18 and the command_catalog describes contract 16. The final turn_summary
+Observations use schema 19 and the command_catalog describes contract 16. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.

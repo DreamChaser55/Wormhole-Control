@@ -82,11 +82,11 @@ class StrikecraftWingComponent(UnitComponent):
 
 class StrikecraftBayComponent(UnitComponent):
     """A component that allows a unit to store, transport, and automatically construct/replenish strikecraft wings."""
-    SCHEMA_VERSION = 3
+    SCHEMA_VERSION = 4
     STATE_CONFIG = ('max_slots',)
     STATE_RUNTIME = ('constructing', 'construction_progress', 'replenish_progress',
                      'production_template_name', 'turret_type_override', 'defense_type_override', 'production_enabled')
-    STATE_OPTIONAL_TYPES = {'turret_type_override': str, 'defense_type_override': str}
+    STATE_OPTIONAL_TYPES = {'production_template_name': str, 'turret_type_override': str, 'defense_type_override': str}
     STATE_REFS = ('replenishing_unit',)
     STATE_CHILDREN = ("docked_units",)
 
@@ -120,7 +120,7 @@ class StrikecraftBayComponent(UnitComponent):
         self.construction_progress = 0
         self.replenishing_unit = None
         self.replenish_progress = 0
-        self.production_template_name = "FIGHTER_WING"
+        self.production_template_name: str | None = None
         self.production_enabled = True
         self.turret_type_override = None
         self.defense_type_override = None
@@ -128,6 +128,8 @@ class StrikecraftBayComponent(UnitComponent):
     @property
     def production_template(self):
         from unit_templates import UNIT_TEMPLATES
+        if self.production_template_name is None:
+            return None
         return UNIT_TEMPLATES[self.production_template_name]
 
     @staticmethod
@@ -140,6 +142,11 @@ class StrikecraftBayComponent(UnitComponent):
         validate_template_overrides(UNIT_TEMPLATES[template_name], turret_type_override, defense_type_override)
 
     def validate_state(self):
+        if self.production_template_name is None:
+            if (self.turret_type_override is not None or self.defense_type_override is not None
+                    or self.constructing or self.construction_progress != 0):
+                raise ValueError("Unselected strikecraft production cannot have overrides or construction progress.")
+            return
         self.validate_production(self.production_template_name, self.turret_type_override, self.defense_type_override)
         if self.constructing:
             if self.construction_progress >= self.production_template['build_time'] or self.replenishing_unit is not None:
@@ -180,8 +187,12 @@ class StrikecraftBayComponent(UnitComponent):
         data = super().get_sidebar_data(game_state)
         used_slots = self.get_used_slots()
         data.append({'type': 'label', 'text': f"Capacity: {used_slots} / {self.max_slots} wings", 'object_id': '#sidebar_info_label', 'height': 20})
-        template_label = self.production_template['name']
+        template = self.production_template
+        template_label = template['name'] if template is not None else 'None'
         data.append({'type': 'label', 'text': f"Production: {template_label}", 'object_id': '#sidebar_info_label', 'height': 20})
+        if template is None:
+            data.append({'type': 'label', 'text': 'Select a wing design to start production.',
+                         'object_id': '#sidebar_info_label', 'height': 20})
         for label, value in (("Turrets", self.turret_type_override), ("Defenses", self.defense_type_override)):
             if value is not None:
                 data.append({'type': 'label', 'text': f"{label}: {value.replace('_', ' ').title()}", 'object_id': '#sidebar_info_label', 'height': 20})
@@ -476,7 +487,7 @@ class StrikecraftBayComponent(UnitComponent):
                 return
 
         # 4. If not busy and we have free slots, start constructing a new wing
-        if self.production_enabled and self.get_used_slots() < self.max_slots:
+        if self.production_enabled and self.production_template_name is not None and self.get_used_slots() < self.max_slots:
             self.validate_production(self.production_template_name, self.turret_type_override, self.defense_type_override)
             cost = self.production_template["build_cost"]
             if owner.credits >= cost:

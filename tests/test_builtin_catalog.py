@@ -251,7 +251,7 @@ def test_production_gateway_rejections_are_atomic():
     for invalid in [Command('set_wing_production', (carrier.id,), template_name='SCOUT'),
                     Command('set_wing_production', (carrier.id,), template_name='BOMBER_WING', queue=True)]:
         assert not issue(game, carrier.owner, valid, invalid).accepted
-        assert bay.production_template_name == 'FIGHTER_WING'
+        assert bay.production_template_name is None
     assert not issue(game, game.players[1], valid).accepted
     bay.current_hit_points = 0
     assert not issue(game, carrier.owner, valid).accepted
@@ -283,6 +283,10 @@ def test_normal_start_builds_economy_escort_and_bomber_carrier():
         builder.commander_component.update()
     carrier = constructed['FLEET_CARRIER']
     bay = carrier.strikecraft_bay_component
+    assert bay.production_template_name is None
+    credits = player.credits
+    bay.update(game.galaxy)
+    assert not bay.constructing and player.credits == credits
     assert issue(game, player, Command('set_wing_production', (carrier.id,), template_name='BOMBER_WING')).accepted
     for _ in range(1 + BUILTINS['BOMBER_WING']['build_time']):
         bay.update(game.galaxy)

@@ -46,6 +46,77 @@ def produce(game, bay):
     return bay.docked_units[-1]
 
 
+@pytest.mark.parametrize('key', ['FLEET_CARRIER', 'ESCORT_CARRIER'])
+def test_new_bay_waits_for_explicit_selection_even_after_resume(key):
+    game = campaign()
+    carrier = create(game, key)
+    bay = carrier.strikecraft_bay_component
+    carrier.owner.credits = 10000
+    assert bay.production_template_name is None and bay.production_template is None
+    assert bay.turret_type_override is None and bay.defense_type_override is None
+    assert bay.production_enabled
+    for enabled in (True, False, True):
+        assert issue(game, carrier.owner, Command('set_wing_production_enabled',
+                                                 (carrier.id,), enabled=enabled)).accepted
+        for _ in range(4):
+            bay.update(game.galaxy)
+        assert not bay.constructing and bay.construction_progress == 0
+        assert not bay.docked_units and carrier.owner.credits == 10000
+        assert bay.production_template_name is None
+    labels = [item.get('text') for item in bay.get_sidebar_data(game)]
+    assert 'Production: None' in labels
+    assert 'Select a wing design to start production.' in labels
+    assert issue(game, carrier.owner, command(carrier, 'BOMBER_WING')).accepted
+    assert carrier.owner.credits == 10000 and not bay.constructing
+    wing = produce(game, bay)
+    assert wing.strikecraft_wing_component.wing_type.name == 'BOMBER'
+    assert carrier.owner.credits == 10000 - UNIT_TEMPLATES['BOMBER_WING']['build_cost']
+
+
+def test_first_selection_preserves_pause_and_cannot_be_cleared():
+    game, carrier, bay = world()
+    assert issue(game, carrier.owner, Command('set_wing_production_enabled',
+                                             (carrier.id,), enabled=False)).accepted
+    assert issue(game, carrier.owner, command(carrier)).accepted
+    bay.update(game.galaxy)
+    assert not bay.production_enabled and not bay.constructing
+    before = bay.to_state(), carrier.owner.credits
+    assert not issue(game, carrier.owner, command(carrier, None)).accepted
+    assert (bay.to_state(), carrier.owner.credits) == before
+    assert issue(game, carrier.owner, Command('set_wing_production_enabled',
+                                             (carrier.id,), enabled=True)).accepted
+    bay.update(game.galaxy)
+    assert bay.constructing
+
+
+@pytest.mark.parametrize('enabled', [True, False])
+@pytest.mark.parametrize('replenishing', [False, True])
+def test_unselected_bay_roundtrip_and_replenishment(enabled, replenishing):
+    game, carrier, bay = world()
+    bay.production_enabled = enabled
+    if replenishing:
+        wing = create(game, 'INTERCEPTOR_WING')
+        assert bay.dock(wing, game.galaxy)
+        wing.current_hit_points -= 10
+        credits = carrier.owner.credits
+        bay.update(game.galaxy)
+        assert bay.replenishing_unit is wing and carrier.owner.credits == credits - 35
+    before = bay.to_state(), carrier.owner.credits
+    restored = campaign()
+    assert deserialize_game_state(restored, serialize_game_state(game))
+    saved = restored.galaxy.get_unit_by_id(carrier.id).strikecraft_bay_component
+    assert (saved.to_state(), saved.unit.owner.credits) == before
+    for _ in range(4):
+        saved.update(restored.galaxy)
+    assert saved.production_template is None and not saved.constructing
+    assert saved.unit.owner.credits == before[1]
+    if replenishing:
+        assert saved.docked_units[0].current_hit_points == saved.docked_units[0].max_hit_points
+        assert saved.replenishing_unit is None
+    else:
+        assert not saved.docked_units
+
+
 @pytest.mark.parametrize('key', WINGS)
 @pytest.mark.parametrize('turret', [None, *TURRET_TYPES])
 @pytest.mark.parametrize('defense', [None, *DEFENSE_TYPES])
@@ -148,6 +219,7 @@ def test_busy_destroyed_foreign_grouped_and_missing_equipment_rejections(monkeyp
     bay.current_hit_points = 0
     assert not issue(game, carrier.owner, command(carrier)).accepted
     bay.current_hit_points = bay.max_hit_points
+    assert bay.set_production('FIGHTER_WING')
     bay.update(game.galaxy)
     before = bay.to_state(), carrier.owner.credits
     assert not issue(game, carrier.owner, command(carrier)).accepted
@@ -212,12 +284,14 @@ def test_runtime_rechecks_template_before_charging_or_assembling(monkeypatch):
     assert not bay.docked_units
 
 
-@pytest.mark.parametrize('phase', ['idle', 'constructing', 'replenishing', 'completed'])
+@pytest.mark.parametrize('phase', ['idle', 'paused', 'constructing', 'replenishing', 'completed'])
 def test_production_and_fractional_equipment_roundtrip(phase):
     game, carrier, bay = world()
     assert issue(game, carrier.owner, command(carrier, 'LONG_RANGE_BOMBER_WING',
                                              turret_type_override='beam', defense_type_override='armor')).accepted
-    if phase == 'constructing':
+    if phase == 'paused':
+        bay.production_enabled = False
+    elif phase == 'constructing':
         bay.update(game.galaxy)
         bay.update(game.galaxy)
     elif phase in ('replenishing', 'completed'):
@@ -249,8 +323,10 @@ def test_production_and_fractional_equipment_roundtrip(phase):
 
 @pytest.mark.parametrize('field,value', [
     ('production_template_name', 'SCOUT'), ('production_template_name', 'PRIVATE_WING'),
+    ('production_template_name', True), ('production_template_name', []),
     ('turret_type_override', 'laser'), ('defense_type_override', 1.5),
-    ('construction_progress', 99),
+    ('turret_type_override', 'beam'), ('defense_type_override', 'armor'),
+    ('construction_progress', 99), ('constructing', True),
 ])
 def test_corrupt_production_save_is_transactionally_rejected(field, value):
     game, carrier, bay = world()
@@ -266,15 +342,22 @@ def test_corrupt_production_save_is_transactionally_rejected(field, value):
     assert (bay.to_state(), carrier.owner.credits, game.galaxy) == before
 
 
-def test_observations_show_selections_to_owner_and_allies_only():
+@pytest.mark.parametrize('selected', [False, True])
+def test_observations_show_selections_to_owner_and_allies_only(selected):
     game, carrier, bay = world()
     other = create(game, 'SCOUT', owner=1)
-    assert issue(game, carrier.owner, command(carrier, turret_type_override='missile', defense_type_override='armor')).accepted
+    if selected:
+        assert issue(game, carrier.owner, command(carrier, turret_type_override='missile', defense_type_override='armor')).accepted
     def view(player):
         return next(u for u in build_observation(game, player)['units'] if u['id'] == carrier.id)
     own = view(carrier.owner)['capability_details']['strikecraft_bay']
-    assert own['production_template'] == 'INTERCEPTOR_WING'
-    assert own['turret_type_override'] == 'missile' and own['defense_type_override'] == 'armor'
+    assert own['production_template'] == ('INTERCEPTOR_WING' if selected else None)
+    assert own['turret_type_override'] == ('missile' if selected else None)
+    assert own['defense_type_override'] == ('armor' if selected else None)
+    assert own['production_turns'] == (UNIT_TEMPLATES['INTERCEPTOR_WING']['build_time'] if selected else None)
+    assert own['production_credit_cost'] == (UNIT_TEMPLATES['INTERCEPTOR_WING']['build_cost'] if selected else None)
+    assert set(own['production_choices']) == set(WINGS)
+    assert 'set_wing_production' in view(carrier.owner)['legal_commands']
     assert 'strikecraft_bay' not in view(other.owner)['capability_details']
     other.owner.team_id = carrier.owner.team_id
     assert view(other.owner)['capability_details']['strikecraft_bay'] == own
@@ -299,12 +382,16 @@ def picker(pygame_context, request):
     manager.clear_and_reset()
 
 
-def test_picker_preselects_and_applies_presets_without_affordability_gate(picker):
+def test_picker_starts_unselected_and_applies_presets_without_affordability_gate(picker):
     import pygame
     import pygame_gui
     game, carrier, bay, window = picker
-    assert window.selected_key == 'FIGHTER_WING' and set(window.entries) == set(WINGS)
-    assert any(item['selected'] for item in window.list.item_list)
+    assert window.selected_key is None and set(window.entries) == set(WINGS)
+    assert not any(item['selected'] for item in window.list.item_list)
+    assert not window.select_button.is_enabled
+    assert window._details_html == 'Select a wing design.'
+    apply_picker(window)
+    assert window.window.alive() and bay.production_template_name is None
     assert window.list.list_item_height == max(20, int(30 * game.gui.display_config.text_scale))
     carrier.owner.credits = 0
     assert bay.set_production('FIGHTER_WING', 'beam', 'armor')
@@ -325,11 +412,44 @@ def choose_override(window, dropdown, label):
                                            ui_element=dropdown, text=label))
 
 
+def choose_design(window, key='FIGHTER_WING'):
+    import pygame
+    import pygame_gui
+    label = next(label for label, name in window.labels.items() if name == key)
+    window.process_event(pygame.event.Event(pygame_gui.UI_SELECTION_LIST_NEW_SELECTION,
+                                           ui_element=window.list, text=label))
+
+
 def apply_picker(window):
     import pygame
     import pygame_gui
     window.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED,
                                            ui_element=window.select_button))
+
+
+@pytest.mark.parametrize('reason', ['cancel', 'escape', 'close'])
+def test_picker_cancellation_preserves_unselected_bay(picker, reason):
+    import pygame
+    import pygame_gui
+    from gui.wing_production_window import WingProductionWindow
+    game, carrier, bay, window = picker
+    before = bay.to_state(), carrier.owner.credits
+    choose_design(window)
+    choose_override(window, window.turret_dropdown, 'Beam')
+    if reason == 'cancel':
+        event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=window.cancel_button)
+    elif reason == 'escape':
+        event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+    else:
+        event = pygame.event.Event(pygame_gui.UI_WINDOW_CLOSE, ui_element=window.window)
+    window.process_event(event)
+    assert not window.window.alive() and (bay.to_state(), carrier.owner.credits) == before
+    reopened = WingProductionWindow(game.gui, carrier)
+    try:
+        assert reopened.selected_key is None and not reopened.select_button.is_enabled
+        assert not any(item['selected'] for item in reopened.list.item_list)
+    finally:
+        reopened.close()
 
 
 def test_picker_restores_existing_command_configuration(picker):
@@ -393,6 +513,7 @@ def test_picker_preview_and_production_match_after_switching_design(picker, turr
 @pytest.mark.parametrize('reset', ['turret', 'defense'])
 def test_picker_resets_each_override_independently(picker, reset):
     _, _, bay, window = picker
+    choose_design(window)
     choose_override(window, window.turret_dropdown, 'Missile')
     choose_override(window, window.defense_dropdown, 'Point Defense')
     choose_override(window, getattr(window, f'{reset}_dropdown'), 'Template Default')
@@ -407,6 +528,7 @@ def test_picker_resets_each_override_independently(picker, reset):
 ])
 def test_picker_invalid_override_can_be_corrected_without_mutation(picker, monkeypatch, kind, label, fields, message):
     _, _, bay, window = picker
+    choose_design(window)
     before = bay.to_state()
     raw = deepcopy(UNIT_TEMPLATES['FIGHTER_WING'])
     raw.update(fields)
@@ -424,6 +546,7 @@ def test_picker_invalid_override_can_be_corrected_without_mutation(picker, monke
 
 def test_picker_rejection_preserves_draft_and_allows_retry(picker, monkeypatch):
     _, _, bay, window = picker
+    choose_design(window)
     before = bay.to_state()
     choose_override(window, window.turret_dropdown, 'Beam')
     choose_override(window, window.defense_dropdown, 'Armor')

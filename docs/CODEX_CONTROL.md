@@ -150,7 +150,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":18}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":19}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -383,7 +383,7 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 18 and command contract 16 expose a deduplicated `ability_catalog`,
+Observation schema 19 and command contract 16 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
 response name is `wormhole_control_turn_v13`; unused OpenAI command fields stay null.
@@ -455,8 +455,14 @@ commit rechecks availability. Multiple selections apply in array order.
 Owner/allied `capability_details.strikecraft_bay` includes `production_template`,
 `turret_type_override`, `defense_type_override`, progress, costs and production choices.
 Owned command options list templates and nullable override choices. Enemy views gain
-no production details. Save 4.14 / Strikecraft Bay schema 3 preserve selections and
-in-progress builds without replaying payments. New bays select `FIGHTER_WING` presets.
+no production details. Save 4.15 / Strikecraft Bay schema 4 preserve selections and
+in-progress builds without replaying payments. New bays start unselected:
+`production_template`, `production_turns` and `production_credit_cost` are null.
+Explicitly select a built-in design to permit construction on a subsequent bay
+update. Enabling production alone cannot select a design; selection preserves the
+independent pause state. Null `template_name` commands are rejected, so use the
+production toggle to pause after selection. Docking and replenishment do not require
+a production selection.
 
 ```json
 {"type":"set_wing_production","unit_ids":[101],"template_name":"LONG_RANGE_BOMBER_WING","turret_type_override":"beam","defense_type_override":"armor","queue":false}
@@ -508,7 +514,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.14 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.15 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
@@ -546,7 +552,7 @@ positive total strength. Non-null overrides on other commands are rejected.
 Group commands use the same choices per builder. Construct choices survive queues and saves
 and appear in owner/allied order parameters. Catalogue entries and names are unchanged.
 
-Observation 18 includes public enemy `capability_details.weapons` and `.defenses`
+Observation 19 includes public enemy `capability_details.weapons` and `.defenses`
 only for detailed visible contacts. Use their actual equipment to choose counters:
 Armor counters Mass Drivers, Shields counter Beams, and Point Defense counters
 Missiles. Enemy orders, template identity, accounting and covert components remain
@@ -569,7 +575,7 @@ displacement out of sector or build range fails it and refunds its charge once.
 
 ## Unit dismantling
 
-Contract 16 / observation 18 exposes the shared `dismantle_unit` order:
+Contract 16 / observation 19 exposes the shared `dismantle_unit` order:
 
 ```json
 {"type":"dismantle_unit","unit_ids":[101],"target_id":202,"queue":false}

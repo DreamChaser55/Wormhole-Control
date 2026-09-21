@@ -68,6 +68,7 @@ def test_normal_count_and_negative_population_rejected():
 
 
 def test_testing_allows_shared_systems_and_normal_mixed_starts():
+    from campaign_graph import iter_units
     from galaxy import Hex
     game = campaign()
     game.galaxy.systems['Sol'].hexes[(0, 1)] = Hex(0, 1, 'Sol')
@@ -75,6 +76,10 @@ def test_testing_allows_shared_systems_and_normal_mixed_starts():
     settings.player_configs[1].home_system_name = 'Sol'
     prepared = prepare_new_campaign(settings)
     assert {home[0] for home in prepared.state.player_homeworlds.values()} == {'Sol'}
+    bays = [unit.strikecraft_bay_component for unit, _ in iter_units(prepared.state.galaxy)
+            if unit.strikecraft_bay_component is not None]
+    assert bays
+    assert all(bay.production_template_name is None and not bay.constructing for bay in bays)
     settings = settings_for(game.galaxy)
     settings.player_configs[1].home_system_name = None
     prepared = prepare_new_campaign(settings)

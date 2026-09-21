@@ -400,7 +400,12 @@ applies the design and both choices together; Cancel, Esc or closing the window
 discards pending changes.
 Selection is free and allowed while idle or replenishing, even if full or short of credits.
 It is blocked while constructing. The bay charges for construction when it starts.
-New carriers produce Fighter Wings; selected settings persist for subsequent builds.
+New Strikecraft Bays start with **Production: None** and do not build or charge for
+new wings until a player explicitly selects a design. The picker starts with no
+design selected and enables **Select Production** only after a valid choice.
+Selected settings persist for subsequent builds. None is only the initial state;
+use Pause/Resume new wings to control later production. Resuming without a selected
+design does not start construction. Docking and replenishment remain available.
 
 Fighter and Interceptor Wings target enemy wings. Bomber and Long Range Bomber Wings
 attack ships/stations and qualify for Attack Run. Interceptors trade firepower and
