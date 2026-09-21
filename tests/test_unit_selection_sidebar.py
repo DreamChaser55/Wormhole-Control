@@ -1,3 +1,4 @@
+import pytest
 from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from domain.units import Unit
@@ -403,3 +404,159 @@ def test_stop_selected_units_multi_selection():
     from events import CancelOrdersEvent
     assert isinstance(published_event, CancelOrdersEvent)
     assert published_event.units == [unit1]
+
+
+def test_unit_sidebar_identity():
+    """Verify that build_unit_panel assigns distinct identities for units, tabs, and components."""
+    from gui.sidebar.panels_unit import build_unit_panel
+    mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
+    mock_game.galaxy = MagicMock()
+    mock_game.selected_unit_tab = 'basic_info'
+    mock_game.selected_component_name = None
+
+    player = MagicMock()
+    player.name = "Player 1"
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
+
+    unit1 = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol",
+                 name="Unit 1", hull_size=HullSize.MEDIUM, game=mock_game)
+    unit1.id = 501
+    unit2 = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol",
+                 name="Unit 2", hull_size=HullSize.SMALL, game=mock_game)
+    unit2.id = 502
+
+    # Owned unit in basic_info tab
+    p1 = build_unit_panel(mock_game, unit1)
+    assert p1[0]['sidebar_identity'] == 'unit:501:basic_info'
+
+    p2 = build_unit_panel(mock_game, unit2)
+    assert p2[0]['sidebar_identity'] == 'unit:502:basic_info'
+    assert p1[0]['sidebar_identity'] != p2[0]['sidebar_identity']
+
+    # Non-owned unit
+    other_player = MagicMock()
+    other_player.name = "Player 2"
+    enemy_unit = Unit(owner=other_player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol",
+                      name="Enemy 1", hull_size=HullSize.MEDIUM, game=mock_game)
+    enemy_unit.id = 503
+    p3 = build_unit_panel(mock_game, enemy_unit)
+    assert p3[0]['sidebar_identity'] == 'unit:503:basic_info'
+
+    # Components tab
+    mock_game.selected_unit_tab = 'components'
+    mock_game.selected_component_name = 'Commander'
+    p1_comp = build_unit_panel(mock_game, unit1)
+    assert p1_comp[0]['sidebar_identity'] == 'unit:501:components:Commander'
+
+
+def test_sidebar_scroll_resets_on_new_unit_selection():
+    """Verify that scrolling down a tall unit sidebar and selecting a shorter unit resets scroll to top."""
+    import os
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+    import pygame
+    pygame.init()
+    game = Game(display_config=DisplayConfig(1280, 720, fullscreen=False))
+    game.start_new_game()
+    gui = game.gui
+    scroll = gui.side_bar_scroll_container
+
+    tall_data = [{'type': 'text_entry_line', 'initial_text': 'Ship 1', 'object_id': '#unit_name_entry',
+                  'height': 30, 'sidebar_identity': 'unit:101:basic_info'}]
+    for i in range(80):
+        tall_data.append({'type': 'label', 'text': f'Row {i} detailed description text', 'object_id': '#sidebar_info_label', 'height': 25})
+
+    gui.update_side_bar_content(tall_data)
+    gui.manager.update(0.1)
+    assert scroll.vert_scroll_bar_active
+
+    # Scroll down halfway
+    scroll.vert_scroll_bar.set_scroll_from_start_percentage(0.5)
+    gui.manager.update(0.1)
+    assert scroll.vert_scroll_bar.start_percentage == 0.5
+    assert scroll.get_container().get_relative_rect().y < 0
+
+    # Select short unit
+    short_data = [{'type': 'text_entry_line', 'initial_text': 'Ship 2', 'object_id': '#unit_name_entry',
+                   'height': 30, 'sidebar_identity': 'unit:102:basic_info'}]
+    for i in range(5):
+        short_data.append({'type': 'label', 'text': f'Short Row {i}', 'object_id': '#sidebar_info_label', 'height': 25})
+
+    gui.update_side_bar_content(short_data)
+    gui.manager.update(0.1)
+
+    # Content should start at the top (0, 0), scroll percentage 0.0
+    assert scroll.vert_scroll_bar.start_percentage == 0.0
+    assert scroll.get_container().get_relative_rect().y == 0
+    assert not scroll.vert_scroll_bar_active
+
+
+def test_sidebar_scroll_preserved_on_same_unit_refresh():
+    """Verify that refreshing content for the same unit preserves the vertical scroll position."""
+    import os
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+    import pygame
+    pygame.init()
+    game = Game(display_config=DisplayConfig(1280, 720, fullscreen=False))
+    game.start_new_game()
+    gui = game.gui
+    scroll = gui.side_bar_scroll_container
+
+    tall_data = [{'type': 'text_entry_line', 'initial_text': 'Ship 1', 'object_id': '#unit_name_entry',
+                  'height': 30, 'sidebar_identity': 'unit:101:basic_info'}]
+    for i in range(80):
+        tall_data.append({'type': 'label', 'text': f'Row {i} detailed description text', 'object_id': '#sidebar_info_label', 'height': 25})
+
+    gui.update_side_bar_content(tall_data)
+    gui.manager.update(0.1)
+
+    scroll.vert_scroll_bar.set_scroll_from_start_percentage(0.5)
+    gui.manager.update(0.1)
+    initial_scroll = scroll.vert_scroll_bar.start_percentage
+    initial_y = scroll.get_container().get_relative_rect().y
+    assert initial_scroll == 0.5
+    assert initial_y < 0
+
+    # Refresh the same unit with identical identity and height
+    gui.update_side_bar_content(tall_data)
+    gui.manager.update(0.1)
+
+    assert scroll.vert_scroll_bar.start_percentage == pytest.approx(initial_scroll, abs=0.01)
+    assert scroll.get_container().get_relative_rect().y == pytest.approx(initial_y, abs=2)
+
+
+def test_sidebar_scroll_resets_on_tall_to_tall_unit_switch():
+    """Verify that switching between two tall units resets the scroll position to 0.0."""
+    import os
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+    import pygame
+    pygame.init()
+    game = Game(display_config=DisplayConfig(1280, 720, fullscreen=False))
+    game.start_new_game()
+    gui = game.gui
+    scroll = gui.side_bar_scroll_container
+
+    tall_data_1 = [{'type': 'text_entry_line', 'initial_text': 'Ship 1', 'object_id': '#unit_name_entry',
+                    'height': 30, 'sidebar_identity': 'unit:101:basic_info'}]
+    for i in range(80):
+        tall_data_1.append({'type': 'label', 'text': f'Ship 1 Row {i}', 'object_id': '#sidebar_info_label', 'height': 25})
+
+    gui.update_side_bar_content(tall_data_1)
+    gui.manager.update(0.1)
+
+    scroll.vert_scroll_bar.set_scroll_from_start_percentage(0.6)
+    gui.manager.update(0.1)
+    assert scroll.vert_scroll_bar.start_percentage > 0.4
+
+    tall_data_2 = [{'type': 'text_entry_line', 'initial_text': 'Ship 2', 'object_id': '#unit_name_entry',
+                    'height': 30, 'sidebar_identity': 'unit:102:basic_info'}]
+    for i in range(80):
+        tall_data_2.append({'type': 'label', 'text': f'Ship 2 Row {i}', 'object_id': '#sidebar_info_label', 'height': 25})
+
+    gui.update_side_bar_content(tall_data_2)
+    gui.manager.update(0.1)
+
+    assert scroll.vert_scroll_bar.start_percentage == 0.0
+    assert scroll.get_container().get_relative_rect().y == 0
+    assert scroll.vert_scroll_bar_active

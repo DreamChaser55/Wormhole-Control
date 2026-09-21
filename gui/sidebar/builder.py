@@ -53,17 +53,20 @@ def _build_empty_panel() -> list[dict]:
         'type': 'label',
         'text': 'Nothing Selected',
         'object_id': '#sidebar_title_label',
-        'height': 30
+        'height': 30,
+        'sidebar_identity': 'empty'
     }]
 
 
 def _build_multi_selection_panel(game) -> list[dict]:
     """Constructs sidebar data payload when multiple objects are selected."""
+    uids = ','.join(str(getattr(u, 'id', id(u))) for u in sorted(game.selected_objects, key=lambda x: str(getattr(x, 'id', id(x)))))
     data = [{
         'type': 'label',
         'text': f"{len(game.selected_objects)} units selected",
         'object_id': '#sidebar_title_label',
-        'height': 30
+        'height': 30,
+        'sidebar_identity': f'multi:{uids}'
     }]
     current_player = game.players[game.current_player_index] if game.players else None
     has_orders_to_stop = any(

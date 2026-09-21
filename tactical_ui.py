@@ -104,7 +104,9 @@ def ability_panel(unit, game):
 
 
 def deployable_panel(game, obj):
-    data = [label(obj.name), label(f'HP: {obj.current_hit_points}/{obj.max_hit_points}'), label('Persistent')]
+    first = label(obj.name)
+    first['sidebar_identity'] = f'deployable:{getattr(obj, "id", id(obj))}'
+    data = [first, label(f'HP: {obj.current_hit_points}/{obj.max_hit_points}'), label('Persistent')]
     from game_ai.tactical import deployable_view
     view = deployable_view(obj, game.players[game.current_player_index])
     if 'deploying_ship_id' in view:

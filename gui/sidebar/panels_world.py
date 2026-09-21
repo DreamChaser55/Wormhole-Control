@@ -16,7 +16,8 @@ def object_button_style(owner) -> str:
 def build_system_panel(game, sys_obj: StarSystem) -> list[dict]:
     """Constructs sidebar data payload for a selected StarSystem."""
     data = [
-        {'type': 'label', 'text': f"System: {sys_obj.name}", 'object_id': '#sidebar_title_label', 'height': 30},
+        {'type': 'label', 'text': f"System: {sys_obj.name}", 'object_id': '#sidebar_title_label', 'height': 30,
+         'sidebar_identity': f"system:{sys_obj.name}"},
         {'type': 'label', 'text': f"Position: {sys_obj.position}", 'object_id': '#sidebar_info_label', 'height': 25}
     ]
     num_units = sum(len(hex_data.units) for hex_data in sys_obj.hexes.values())
@@ -39,7 +40,8 @@ def build_hex_panel(game, hex_obj: Hex) -> list[dict]:
     data = []
     coords = hex_obj.coordinates()
     system_name = game.galaxy.systems[hex_obj.in_system].name
-    data.append({'type': 'label', 'text': f"Hex ({coords[0]}, {coords[1]}) in {system_name}", 'object_id': '#sidebar_title_label', 'height': 30})
+    data.append({'type': 'label', 'text': f"Hex ({coords[0]}, {coords[1]}) in {system_name}", 'object_id': '#sidebar_title_label', 'height': 30,
+                 'sidebar_identity': f"hex:{hex_obj.in_system}:{coords}"})
 
     current_player = game.players[game.current_player_index] if game.players else None
     if current_player and hasattr(current_player, 'get_sector_last_intel_turn'):
@@ -302,7 +304,8 @@ def build_minefield_panel(game, mf: Minefield) -> list[dict]:
     owner_name = mf.owner.name if mf.owner else "Unknown"
     owner_style = f'#player_{owner_name.lower().replace(" ", "_")}_label'
     data = [
-        {'type': 'label', 'text': f"Minefield: {mf.name}", 'object_id': '#sidebar_title_label', 'height': 30},
+        {'type': 'label', 'text': f"Minefield: {mf.name}", 'object_id': '#sidebar_title_label', 'height': 30,
+         'sidebar_identity': f"minefield:{getattr(mf, 'id', id(mf))}"},
         {'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_style, 'height': 25},
         {'type': 'label', 'text': f"Type: {mf.minefield_type.display_name}", 'object_id': '#sidebar_info_label', 'height': 25},
         {'type': 'label', 'text': f"Mines Remaining: {mf.mines_remaining}", 'object_id': '#sidebar_info_label', 'height': 25},
@@ -333,8 +336,10 @@ def build_construction_job_panel(game, job) -> list[dict]:
     hull_label = job.hull_size.name.replace('_', ' ').title() if hasattr(job.hull_size, 'name') else 'Medium'
     kind_label = 'Station' if job.is_station else 'Ship'
 
+    job_identity_id = getattr(job, 'site_id', getattr(getattr(job, 'constructor_unit', None), 'id', id(job)))
     data = [
-        {'type': 'label', 'text': f"Site: {display_title}", 'object_id': '#sidebar_title_label', 'height': 30},
+        {'type': 'label', 'text': f"Site: {display_title}", 'object_id': '#sidebar_title_label', 'height': 30,
+         'sidebar_identity': f"construction_job:{job_identity_id}"},
         {'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_style, 'height': 22},
         {'type': 'label', 'text': f"Hull: {hull_label} ({kind_label})", 'object_id': '#sidebar_info_label', 'height': 22},
         {'type': 'label', 'text': f"Location: ({job.position.x:.0f}, {job.position.y:.0f})", 'object_id': '#sidebar_info_label', 'height': 22},

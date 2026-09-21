@@ -32,16 +32,27 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
     is_enemy = are_enemies(current_player, unit.owner)
     show_private_details = unit_details_are_public(unit, current_player)
 
+    active_tab = getattr(game, 'selected_unit_tab', 'basic_info')
+    comp_suffix = f":{getattr(game, 'selected_component_name', '')}" if active_tab == 'components' else ""
+    unit_identity = f"unit:{getattr(unit, 'id', id(unit))}:{active_tab}{comp_suffix}"
+
     if is_owned:
         data.append({
             'type': 'text_entry_line',
             'initial_text': unit.name,
             'object_id': '#unit_name_entry',
             'max_length': MAX_UNIT_NAME_LENGTH,
-            'height': 30
+            'height': 30,
+            'sidebar_identity': unit_identity,
         })
     else:
-        data.append({'type': 'label', 'text': f"Unit: {unit.name}", 'object_id': '#sidebar_title_label', 'height': 30})
+        data.append({
+            'type': 'label',
+            'text': f"Unit: {unit.name}",
+            'object_id': '#sidebar_title_label',
+            'height': 30,
+            'sidebar_identity': unit_identity,
+        })
 
     data.append({'type': 'label', 'text': f"Type: {unit.__class__.__name__}", 'object_id': '#sidebar_info_label', 'height': 20})
     data.append({'type': 'label', 'text': f"Hull Size: {unit.hull_size.name.capitalize()}", 'object_id': '#sidebar_info_label', 'height': 20})
