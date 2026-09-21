@@ -31,7 +31,23 @@ Click **New Game** to open the two-stage wizard:
    buttons or select a system in the preview.
 4. Click **Start Game** to begin turn 1. **◀ Back to Map** preserves player choices.
 
-See [automated player setup](../README.md#automated-players) for controller configuration.
+See [automated player setup](#automated-player-setup) for controller configuration.
+
+### Automated player setup
+
+**Built-in OpenAI players:** Choose an AI controller in the New Game Wizard.
+Set `OPENAI_API_KEY`, or place the raw key in the ignored `API_keys/OpenAI.key`
+file; the environment variable takes precedence. Choose **Low** reasoning for
+faster turns, **Medium** for the default, or **High** for more strategic reasoning.
+The in-game **AI Settings** menu controls repair retries. See the
+[OpenAI adapter](AGENTIC_AI.md#openai-adapter) for model configuration and runtime
+limits, and [failure behavior](AGENTIC_AI.md#failure-behavior) for retries and recovery.
+
+**Codex-controlled players:** Choose the **Codex** controller. Codex can launch
+the visible game, create a campaign, observe its player's state, issue orders,
+and end turns through the local control bridge. No API key is required for this
+controller. Follow the [Codex Control guide](CODEX_CONTROL.md#quick-start) for
+bridge setup and the play loop.
 
 ### Spawn profiles
 
