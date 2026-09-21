@@ -1,15 +1,18 @@
 from display_config import DisplayConfig
 from unittest.mock import MagicMock
+import pytest
 from domain.units import Unit
 from geometry import Position
 from constants import HullSize
+from unit_components.enums import WingType
 from unit_components.strikecraft import StrikecraftBayComponent, StrikecraftWingComponent
 from unit_orders.hangar import DockOrder, DeployAllWingsOrder
 from game import Game
 from tests.support.units import ComponentPlayer
 
 
-def test_strikecraft_bay_gui_data_generation():
+@pytest.mark.parametrize("docked_hp,launched_hp", [(30, 17), (17, 30)])
+def test_strikecraft_bay_gui_data_generation(docked_hp, launched_hp):
     # Mock game
     game = MagicMock()
     game.display_config = DisplayConfig()
@@ -49,6 +52,7 @@ def test_strikecraft_bay_gui_data_generation():
     )
     docked_wing_comp = StrikecraftWingComponent(docked_wing)
     docked_wing.add_component(docked_wing_comp)
+    docked_wing.current_hit_points = docked_hp
     strikecraft_bay.docked_units.append(docked_wing)
     
     # Add a launched wing
@@ -61,13 +65,15 @@ def test_strikecraft_bay_gui_data_generation():
         hull_size=HullSize.STRIKECRAFT_WING,
         game=game
     )
-    launched_wing_comp = StrikecraftWingComponent(launched_wing)
+    launched_wing_comp = StrikecraftWingComponent(launched_wing, wing_type=WingType.BOMBER)
     launched_wing.add_component(launched_wing_comp)
+    launched_wing.current_hit_points = launched_hp
     strikecraft_bay.launched_units.append(launched_wing)
     
     # Setup selection
     game.selected_objects = [carrier]
     game.selected_component_name = "Strikecraft Bay"
+    game.selected_unit_tab = "components"
     
     # Run update_side_bar_content
     import game as game_module
@@ -88,6 +94,8 @@ def test_strikecraft_bay_gui_data_generation():
         
         assert "Docked Strikecraft Wings:" in labels
         assert "Launched Strikecraft Wings:" in labels
+        assert f"  - Docked Wing (Fighter, HP: {docked_hp}/30)" in labels
+        assert f"  - Launched Wing (Bomber, HP: {launched_hp}/30)" in labels
         
         # Find Deploy button
         deploy_btn = next((b for b in buttons if b["action_id"] == "deploy_ship"), None)
@@ -266,7 +274,10 @@ def test_launch_all_wings_action_handling():
     assert isinstance(order, DeployAllWingsOrder)
 
 
-def test_fighter_wing_gui_data_generation():
+@pytest.mark.parametrize("wing_type", [WingType.FIGHTER, WingType.BOMBER])
+@pytest.mark.parametrize("hull_hp", [30, 17])
+@pytest.mark.parametrize("tab", ["basic_info", "components"])
+def test_wing_gui_data_generation(wing_type, hull_hp, tab):
     # Mock game
     game = MagicMock()
     game.display_config = DisplayConfig()
@@ -286,12 +297,14 @@ def test_fighter_wing_gui_data_generation():
         game=game
     )
     # Add StrikecraftWingComponent
-    wing_comp = StrikecraftWingComponent(wing)
+    wing_comp = StrikecraftWingComponent(wing, wing_type=wing_type)
     wing.add_component(wing_comp)
+    wing.current_hit_points = hull_hp
     
     # Setup selection
     game.selected_objects = [wing]
     game.selected_component_name = "Strikecraft Wing"
+    game.selected_unit_tab = tab
     
     # Run update_side_bar_content
     import game as game_module
@@ -306,11 +319,17 @@ def test_fighter_wing_gui_data_generation():
         game.gui.update_side_bar_content.assert_called_once()
         data_list = game.gui.update_side_bar_content.call_args[0][0]
         
-        # Check that "Strikecraft Wing" related labels are present
+        # Hull condition is shown once, alongside role and component details.
         labels = [d.get("text") for d in data_list if d.get("type") == "label"]
-        
-        assert any("Strikecraft Wing" in l for l in labels)
-        assert any("Active Craft: 4 / 4" in l for l in labels)
-        assert any("Mother Carrier: None" in l for l in labels)
+        assert labels.count(f"Hit Points: {hull_hp}/30") == 1
+        assert not any("Active Craft" in label or "/4" in label or "/ 4" in label for label in labels)
+        role = wing_type.value.capitalize()
+        if tab == "components":
+            assert "Strikecraft Wing [HP: 10/10]" in labels
+            assert f"Role: {role}" in labels
+            assert "Mother Carrier: None" in labels
+        else:
+            summary = next(d for d in data_list if d.get("text") == f"• Strikecraft ({role})")
+            assert summary["object_id"] == "#sidebar_info_label"
     finally:
         game_module.PROFILE = original_profile

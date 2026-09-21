@@ -431,6 +431,9 @@ sensors for sector scouting. All five have 30 HP, two-turn construction, fractio
 defenses and zero upkeep (Fighter, Interceptor, and Bomber Wings have 300 short-range sensors).
 They have no antimatter tank or hyperdrive and travel between sectors aboard their carrier.
 Production selection and replenishment never change existing wings' equipment.
+Each wing uses one shared hull-HP pool to represent its condition. Bay replenishment
+restores up to 10 hull HP per paid step for 35 credits, completing one turn after
+the step starts.
 
 <!-- BEGIN GENERATED: unit-catalog -->
 | Design | Category | Hull / kind | Hull used | Credits | Turns | Upkeep | Role and operation |

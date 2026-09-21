@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 class StrikecraftWingComponent(UnitComponent):
-    """A component specifically for STRIKECRAFT_WING (strikecraft wings) to track individual fighter counts."""
+    """Tracks a strikecraft wing's role, carrier association, and tactical state."""
     STATE_CONFIG = ('wing_type',)
     STATE_RUNTIME = ('recovery_ready_round', 'last_flak_round', 'last_flak_owner_id')
     STATE_REFS = ('mother_carrier',)
@@ -36,17 +36,10 @@ class StrikecraftWingComponent(UnitComponent):
         self.last_flak_round = 0
         self.last_flak_owner_id = None
 
-    @property
-    def active_fighters(self) -> int:
-        if self.unit.current_hit_points <= 0:
-            return 0
-        return math.ceil((self.unit.current_hit_points / self.unit.max_hit_points) * 4)
-
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
         role_str = "Fighter" if self.wing_type == WingType.FIGHTER else "Bomber"
         data.append({'type': 'label', 'text': f"Role: {role_str}", 'object_id': '#sidebar_info_label', 'height': 20})
-        data.append({'type': 'label', 'text': f"Active Craft: {self.active_fighters} / 4", 'object_id': '#sidebar_info_label', 'height': 20})
         mother_name = self.mother_carrier.name if self.mother_carrier else "None"
         data.append({'type': 'label', 'text': f"Mother Carrier: {mother_name}", 'object_id': '#sidebar_info_label', 'height': 20})
         from strikecraft_abilities import wing_order, evasion, round_now
@@ -69,11 +62,10 @@ class StrikecraftWingComponent(UnitComponent):
         if self.is_destroyed:
             return data
         role_str = "Fighter" if self.wing_type == WingType.FIGHTER else "Bomber"
-        obj_id = '#sidebar_status_active_label' if self.active_fighters > 0 else '#sidebar_status_idle_label'
         data.append({
             'type': 'label',
-            'text': f"• Strikecraft ({role_str}): {self.active_fighters}/4 active",
-            'object_id': obj_id,
+            'text': f"• Strikecraft ({role_str})",
+            'object_id': '#sidebar_info_label',
             'height': 18,
             'indent_level': 1
         })
@@ -241,9 +233,8 @@ class StrikecraftBayComponent(UnitComponent):
         else:
             for docked_ship in self.docked_units:
                 f_comp = docked_ship.strikecraft_wing_component
-                f_count = f_comp.active_fighters if f_comp else 4
                 role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
-                wing_label = f"  - {docked_ship.name} ({role_str}, {f_count}/4 craft, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
+                wing_label = f"  - {docked_ship.name} ({role_str}, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
                 data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
                 if is_owner and evaluate(self.unit, docked_ship, galaxy_ref).blocker is None:
                     data.append({'type': 'button', 'text': f'Dismantle {docked_ship.name}…',
@@ -266,9 +257,8 @@ class StrikecraftBayComponent(UnitComponent):
         else:
             for launched_ship in self.launched_units:
                 f_comp = launched_ship.strikecraft_wing_component
-                f_count = f_comp.active_fighters if f_comp else 4
                 role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
-                wing_label = f"  - {launched_ship.name} ({role_str}, {f_count}/4 craft, HP: {launched_ship.current_hit_points}/{launched_ship.max_hit_points})"
+                wing_label = f"  - {launched_ship.name} ({role_str}, HP: {launched_ship.current_hit_points}/{launched_ship.max_hit_points})"
                 data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
                 if is_owner:
                     data.append({
@@ -437,9 +427,9 @@ class StrikecraftBayComponent(UnitComponent):
                 self.replenish_progress = 0
             else:
                 self.replenish_progress += 1
-                if self.replenish_progress >= 1: # 1 turn to replenish 1 fighter (10 HP)
+                if self.replenish_progress >= 1: # 1 turn to restore up to 10 hull HP
                     self.replenishing_unit.heal_hull(10)
-                    logger.debug(f"Strikecraft bay on {self.unit.name} replenished 1 craft in wing {self.replenishing_unit.name}. HP: {self.replenishing_unit.current_hit_points}/{self.replenishing_unit.max_hit_points}")
+                    logger.debug(f"Strikecraft bay on {self.unit.name} restored hull HP to wing {self.replenishing_unit.name}. HP: {self.replenishing_unit.current_hit_points}/{self.replenishing_unit.max_hit_points}")
                     # If fully healed, clear. Otherwise keep replenishing on next turn
                     if self.replenishing_unit.current_hit_points >= self.replenishing_unit.max_hit_points:
                         self.replenishing_unit = None

@@ -21,33 +21,6 @@ class MockUnit(BaseMockUnit):
     def strikecraft_wing_component(self):
         return self.get_component(StrikecraftWingComponent)
 
-def test_strikecraft_wing_active_fighters():
-    wing = MockUnit()
-    wing.max_hit_points = 40
-    wing.current_hit_points = 40
-    
-    wing_comp = StrikecraftWingComponent(wing)
-    wing.add_component(wing_comp)
-
-    # 40 HP = 4 fighters
-    assert wing_comp.active_fighters == 4
-
-    # 30 HP = 3 fighters
-    wing.current_hit_points = 30
-    assert wing_comp.active_fighters == 3
-
-    # 25 HP = 3 fighters (ceil(25/40 * 4) = ceil(2.5) = 3)
-    wing.current_hit_points = 25
-    assert wing_comp.active_fighters == 3
-
-    # 1 HP = 1 fighter
-    wing.current_hit_points = 1
-    assert wing_comp.active_fighters == 1
-
-    # 0 HP = 0 fighters
-    wing.current_hit_points = 0
-    assert wing_comp.active_fighters == 0
-
 def test_strikecraft_bay_capacity():
     carrier = MockUnit()
     strikecraft_bay = StrikecraftBayComponent(carrier, max_slots=2)
@@ -155,7 +128,7 @@ def test_strikecraft_bay_auto_replenishment():
     wing = MockUnit()
     wing.hull_size = HullSize.STRIKECRAFT_WING
     wing.max_hit_points = 40
-    wing.current_hit_points = 20  # needs replenishment (2 fighters lost)
+    wing.current_hit_points = 20  # needs 20 hull HP restored
     wing_comp = StrikecraftWingComponent(wing)
     wing.add_component(wing_comp)
 
