@@ -1,7 +1,6 @@
 """Game settings data model populated by the New Game Wizard."""
 import typing
 import math
-import unicodedata
 from dataclasses import InitVar, dataclass, field
 
 from enum import Enum
@@ -9,11 +8,9 @@ from enum import Enum
 from game_ai.runtime import (
     DEFAULT_REASONING_EFFORT,
     DEFAULT_REPAIR_RETRIES,
-    SUPPORTED_REASONING_EFFORTS,
-    MIN_REPAIR_RETRIES,
-    MAX_REPAIR_RETRIES,
 )
 from player_controller import PlayerController
+from player_validation import is_integer as _integer, player_value_issues
 
 
 # ---------------------------------------------------------------------------
@@ -52,10 +49,6 @@ class SettingsValidationError(ValueError):
         super().__init__('; '.join(issue.message for issue in self.issues))
 
 
-def _integer(value):
-    return isinstance(value, int) and not isinstance(value, bool)
-
-
 def _finite(value):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False
@@ -67,26 +60,10 @@ def _finite(value):
 
 def player_config_issues(config, prefix='player'):
     """Validate without coercing malformed input or mutating a player configuration."""
-    issues = []
+    issues = [ValidationIssue(f'{prefix}.{field}', code, message)
+              for field, code, message in player_value_issues(vars(config))]
     def add(field, code, message):
         issues.append(ValidationIssue(f'{prefix}.{field}', code, message))
-    name = config.name
-    if (not isinstance(name, str) or not 1 <= len(name.strip()) <= 80
-            or any(unicodedata.category(c).startswith('C') for c in name)):
-        add('name', 'invalid_player_name', 'Player name must contain 1-80 characters without control characters.')
-    if (not isinstance(config.color, (tuple, list)) or len(config.color) != 3
-            or any(not _integer(c) or not 0 <= c <= 255 for c in config.color)):
-        add('color', 'invalid_color', 'Player color must be three integers from 0 to 255.')
-    if not _integer(config.team_id) or config.team_id < 1:
-        add('team_id', 'invalid_team', 'Player team_id must be a positive integer.')
-    try:
-        PlayerController(config.controller)
-    except (TypeError, ValueError):
-        add('controller', 'invalid_controller', 'Player controller must be human, openai, or codex.')
-    if config.ai_reasoning_effort not in SUPPORTED_REASONING_EFFORTS:
-        add('ai_reasoning_effort', 'invalid_reasoning_effort', 'AI reasoning effort must be low, medium, or high.')
-    if not _integer(config.ai_repair_retries) or not MIN_REPAIR_RETRIES <= config.ai_repair_retries <= MAX_REPAIR_RETRIES:
-        add('ai_repair_retries', 'invalid_repair_retries', f'AI repair retries must be between {MIN_REPAIR_RETRIES} and {MAX_REPAIR_RETRIES}.')
     if config.home_system_name is not None and not isinstance(config.home_system_name, str):
         add('home_system_name', 'invalid_settings', 'Home system name must be a string or None.')
     return issues

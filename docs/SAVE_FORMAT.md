@@ -143,6 +143,31 @@ Constructors use context-local counters while staging. Outside staging, the game
 still uses process-global allocators; this implementation does not introduce
 independent concurrently running campaigns.
 
+### Player identities and configuration
+
+Campaign, persistent-player and AI-agent string IDs must be nonempty and contain
+only ASCII letters, digits, underscores and hyphens. Windows device names such as
+`CON`, `NUL`, `COM1` and `LPT1` are rejected ignoring case. Generated IDs remain
+8-character hexadecimal strings; readable IDs such as `integrity` remain valid.
+Saving and loading preserve identities exactly and never coerce, sanitize or
+regenerate them. Memory and communication exports apply the same checks and verify
+resolved directory, destination and temporary-file containment before creating or
+writing anything, including when existing symlinks or junctions are present.
+
+Saved player names must already be trimmed, contain 1–80 characters without control
+characters, and be unique ignoring case. Numeric player IDs are unique non-negative
+integers; zero is valid. Persistent-player IDs and AI-agent IDs are unique ignoring
+case in separate namespaces, preventing sidecar collisions across platforms.
+
+Teams require positive integer IDs; controllers must be `human`, `openai` or
+`codex`; reasoning must be exactly `low`, `medium` or `high`; repair retries must
+be integers from 1–5. Homeworld references are null or non-negative integer object
+IDs and must resolve when present. Booleans are not integers for these rules.
+Validation runs before player construction and reports the offending field.
+Restoration does not supply new-game defaults or normalize corrupted configuration.
+The existing load rules for player count, map and ownership remain separate from
+new-game setup restrictions. These validation fixes retain save version **4.17**.
+
 ## References, indexes, and timers
 
 `campaign_graph.iter_objects()` follows ownership edges across celestial bodies,

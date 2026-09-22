@@ -79,7 +79,7 @@ def test_process_movement_sublight():
     engines.effective_speed = 10.0
     engines.is_destroyed = False
     engines.move_target = Position(100.0, 0.0)
-    unit.components = {Engines: engines}
+    unit.components[Engines] = engines
     unit.position = Position(0.0, 0.0)
     
     system = MagicMock()

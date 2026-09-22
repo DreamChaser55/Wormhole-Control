@@ -112,7 +112,9 @@ The API key loader checks `OPENAI_API_KEY` first, then
 
 ## Memory and persistence
 
-Every campaign, player, and agent has a stable 8-character hexadecimal short ID. Save version 4.17 embeds:
+New campaigns, players, and AI agents receive stable 8-character hexadecimal short
+IDs. Persistence also accepts readable IDs containing only ASCII letters, digits,
+underscores and hyphens, excluding Windows reserved device names. Save version 4.17 embeds:
 
 - `campaign_id`;
 - `persistent_id` and `agent_id`;
@@ -124,6 +126,16 @@ Every campaign, player, and agent has a stable 8-character hexadecimal short ID.
 Saved identities are required and the save is authoritative. The `memory.md`
 sidecar is generated for inspection and is not read back into the campaign.
 Only the current save version is supported; unsupported saves are rejected.
+Malformed identities and noncanonical player configuration are rejected before
+hydration, without generating replacement IDs or normalizing saved settings.
+Persistent-player IDs and AI-agent IDs are each unique ignoring case within their respective
+string-identity namespaces. See [player validation](SAVE_FORMAT.md#player-identities-and-configuration).
+
+Memory and communication exports independently validate IDs and check resolved
+destination and temporary-file containment before writing. Existing filesystem
+links cannot redirect exports outside the save root or appropriate sidecar tree.
+Sidecar export failures are reported without invalidating an already committed
+save or AI turn; sidecars remain derived inspection files.
 
 Memory contains strategy, objectives, commitments, beliefs, lessons, misc,
 and recent execution receipts bounded to 8,000 total characters. Individual turn

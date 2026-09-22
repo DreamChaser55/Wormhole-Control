@@ -292,50 +292,34 @@ class TestMemory(unittest.TestCase):
         self.assertEqual(serialized["ai_repair_retries"], 4)
         self.assertNotIn("ai_profile", serialized)
 
-    def test_player_deserialization_reasoning_effort_normalization(self):
+    def test_player_deserialization_preserves_only_canonical_reasoning_effort(self):
 
         from save_manager import deserialize_player, serialize_player
 
-        for raw_effort, expected_effort in (
-            ("low", "low"),
-            ("LOW", "low"),
-            ("medium", "medium"),
-            ("high", "high"),
-            ("HIGH", "high"),
-            ("fast", "medium"),
-            ("balanced", "medium"),
-            ("strategic", "medium"),
-            ("unknown", "medium"),
-            ("max", "medium"),
-            (None, "medium"),
-        ):
+        for raw_effort in ("low", "medium", "high"):
             data = serialize_player(Player("AI Player", (1, 2, 3), controller=PlayerController.OPENAI))
-            if raw_effort is not None:
-                data["ai_reasoning_effort"] = raw_effort
+            data["ai_reasoning_effort"] = raw_effort
             restored = deserialize_player(data)
-            self.assertEqual(
-                restored.ai_reasoning_effort,
-                expected_effort,
-            )
+            self.assertEqual(restored.ai_reasoning_effort, raw_effort)
+        for raw_effort in ("LOW", "HIGH", "fast", "balanced", "strategic", "unknown", "max", None):
+            data = serialize_player(Player("AI", (1, 2, 3)))
+            data["ai_reasoning_effort"] = raw_effort
+            with self.assertRaisesRegex(ValueError, "ai_reasoning_effort"):
+                deserialize_player(data)
 
-    def test_new_save_schema_requires_controller_and_normalizes_repair_retries(self):
+    def test_new_save_schema_rejects_missing_controller_and_invalid_repair_retries(self):
 
         from save_manager import deserialize_player, serialize_player
 
-        with self.assertRaises(KeyError):
-            deserialize_player({"name": "Old schema"})
-        self.assertEqual(
-            deserialize_player({**serialize_player(Player("AI", (1, 2, 3))), "controller": "openai", "ai_repair_retries": 0}).ai_repair_retries,
-            MIN_REPAIR_RETRIES,
-        )
-        self.assertEqual(
-            deserialize_player({**serialize_player(Player("AI", (1, 2, 3))), "controller": "openai", "ai_repair_retries": 100}).ai_repair_retries,
-            MAX_REPAIR_RETRIES,
-        )
-        self.assertEqual(
-            deserialize_player({**serialize_player(Player("AI", (1, 2, 3))), "controller": "openai", "ai_repair_retries": "bad"}).ai_repair_retries,
-            DEFAULT_REPAIR_RETRIES,
-        )
+        data = serialize_player(Player("AI", (1, 2, 3)))
+        del data['controller']
+        with self.assertRaisesRegex(ValueError, 'controller'):
+            deserialize_player(data)
+        for retries in (0, 100, "bad", False):
+            data = serialize_player(Player("AI", (1, 2, 3)))
+            data['ai_repair_retries'] = retries
+            with self.assertRaisesRegex(ValueError, 'ai_repair_retries'):
+                deserialize_player(data)
 
     def test_game_state_uses_save_version_4(self):
 

@@ -3,15 +3,15 @@
 Review date: **2026-09-22**  
 Base revision: **`5c6fe34f2d1902f9cf2a8a5e50ec35a880edaefd`**
 
-Resolved findings have been removed; remaining findings retain their original IDs. Code metrics and original audit results refer to the base revision above.
+Resolved findings have been removed; remaining findings retain their original IDs. **F4, F5 and F7 are resolved**, with passing regressions for strict player/identity validation, contained sidecar writes, and paid movement with relocation refunds. Code metrics and original audit results refer to the base revision above.
 
 ## Assessment
 
-The project has useful foundations: explicit order ownership, separate campaign preparation and commit, allowlisted persistence, player-scoped observations, shared command definitions, bounded histories, and substantial offline tests. These are worth preserving. The remaining correctness problems concern saved player and path validation, launch placement, movement payment, command discovery, and AI request lifecycle. Several large modules also repeat related rules.
+The project has useful foundations: explicit order ownership, separate campaign preparation and commit, allowlisted persistence, player-scoped observations, shared command definitions, bounded histories, and substantial offline tests. These are worth preserving. The remaining correctness problems concern launch placement, command discovery, and AI request lifecycle. Several large modules also repeat related rules.
 
 The best next step is a sequence of small correctness fixes followed by focused extraction and documentation cleanup. A new entity framework, generic transaction engine, wholesale UI rewrite, or repository-wide typing conversion would add risk without addressing the demonstrated problems directly.
 
-**Latest verification: 3,529 tests passed, plus 10 subtests, in 211.01 seconds.** One font-preload warning remains. The findings below remain open; original audit results are retained in the testing section.
+**Latest verification: the full offline suite passes on all three CI OS/Python combinations, executed locally.** See the post-fix verification below for runtime versions and counts. One existing font-preload warning remains. The findings below remain open; original audit results are retained in the testing section.
 
 ### Scope and method
 
@@ -19,7 +19,7 @@ The best next step is a sequence of small correctness fixes followed by focused 
 - Inventoried all tracked Python files with the AST: **228 production/tooling files, 55,721 lines; 175 test/support files, 48,791 lines** at the base revision. Empty package files and scripts are included; dependencies, ignored caches, and generated runtime data are excluded.
 - Reviewed important application, domain, order, component, persistence, AI/control, UI, rendering, configuration, and testing files. Followed risky paths across modules and reproduced the findings identified as reproduced below. The file review records the principal conclusions; the AST inventory is broader than the detailed manual review.
 - Ran the full offline suite, configured quality checks, additional lint, local Markdown link/heading checks, and isolated behavioral probes. Live provider calls, real API credentials, and the user's saved campaigns were not used.
-- This is a source review and targeted behavioral audit, not a proof that every possible campaign, UI interaction, or malformed input is correct. Runtime coverage percentages were not measured, and the CI operating-system/Python matrix was not executed locally.
+- This is a source review and targeted behavioral audit, not a proof that every possible campaign, UI interaction, or malformed input is correct. Runtime coverage percentages were not measured. The original audit did not execute the CI operating-system/Python matrix; post-fix runtime verification is recorded separately below.
 
 The remaining fixes, general cleanup, and documentation rewrites below are recommendations, not completed changes.
 
@@ -29,40 +29,9 @@ The remaining findings are P2: reproducible correctness or lifecycle issues wort
 
 | ID | Priority | Finding | Evidence |
 |---|---|---|---|
-| F4 | P2 | Save identifiers can escape sidecar directories. | Accepted path-bearing ID and escaped write reproduced inside a temporary directory. |
-| F5 | P2 | Malformed saved player fields survive preparation and break later use. | Invalid team accepted; observation then raises `TypeError`. |
 | F6 | P2 | Carrier launch can place craft outside the sector. | A normal deployment completed at radius 5,040 in a radius-5,000 sector. |
-| F7 | P2 | Movement ignores failed antimatter consumption. | Destroyed storage allowed movement without a fuel debit. |
 | F8 | P2 | A legal player command is omitted from the supported-command list. | `upgrade_planetary_defenses` present in legal/options, absent from supported. |
 | F9 | P2 | Resetting AI planning leaves new work queued behind the old request. | Reproduced with a blocking fake provider; no network involved. |
-
-### F4 — Saved IDs are used as unchecked filesystem path segments
-
-Sources: [campaign_persistence.py:74](D:/Programming/Github_repos/Wormhole-Control/campaign_persistence.py:74), [game_ai/memory.py:123](D:/Programming/Github_repos/Wormhole-Control/game_ai/memory.py:123), [save_manager.py:778](D:/Programming/Github_repos/Wormhole-Control/save_manager.py:778).
-
-`campaign_id` is checked only for a nonempty string; `agent_id` is not constrained to a safe path segment. Memory and communication exporters concatenate these values into paths and create directories/write files.
-
-**Reproduction:** `prepare_campaign()` accepted `campaign_id="../../escape"` and a path-bearing `agent_id`. A subsequent memory export resolved outside its configured saves directory. The probe was contained entirely within a disposable temporary directory.
-
-The concrete risk is unintended creation/overwriting of sidecar files such as `memory.md` or `comms.md` when importing a crafted save and later exporting/saving. This finding does not demonstrate code execution or automatic writes merely from reading JSON.
-
-**Fix:** Validate IDs as safe single path segments and verify resolved output containment before writing. Reject absolute paths, separators, traversal, and relevant Windows path forms. If production IDs are required to be exactly the generated format, document and enforce that contract; fixtures currently also use readable IDs such as `integrity`. Do not silently regenerate persisted identities to recover from invalid values.
-
-### F5 — Saved player state bypasses the stricter new-game invariants
-
-Sources: [campaign_persistence.py:83](D:/Programming/Github_repos/Wormhole-Control/campaign_persistence.py:83), [save_manager.py:384](D:/Programming/Github_repos/Wormhole-Control/save_manager.py:384), [domain/players.py:41](D:/Programming/Github_repos/Wormhole-Control/domain/players.py:41), [game_ai/observation.py:165](D:/Programming/Github_repos/Wormhole-Control/game_ai/observation.py:165).
-
-The document validator requires player fields to exist but does not validate several of their types/values. Hydration passes them through a constructor that supplies defaults and normalizes configuration.
-
-**Reproductions:**
-
-- `team_id={"bad": true}` is accepted; building the next observation raises `TypeError` at `int(player.team_id)`.
-- `persistent_id=null` is accepted and becomes a newly generated ID.
-- `ai_repair_retries=false` is accepted and becomes the default retry count.
-
-The first case permits unusable state past the preparation boundary. The others contradict strict current-format restoration and can conceal corruption or change identity.
-
-**Fix:** Validate saved names, team IDs, persistent/agent IDs, controller/configuration fields, and relevant identity uniqueness before constructors run. Reuse small value validators from setup where the contracts actually match, while keeping new-game defaulting separate from strict saved-state restoration. Rejected loads must leave the live campaign and allocators unchanged.
 
 ### F6 — Launch placement skips sector bounds for real campaigns
 
@@ -75,16 +44,6 @@ Both launch implementations apply their radius test only when `self.unit.in_syst
 The existing offset test uses `in_system=None` with a comment equating that to “sector view,” and places the carrier at 990. Neither reflects the live location model or the current boundary, so it misses the bug.
 
 **Fix:** Validate every candidate against the actual sector boundary and relevant obstacles/hazards. Use bounded attempts and return failure without changing containment when no candidate is safe. Share a small placement predicate where behavior is common; retain wing-specific magnetic-storm rules. Replace the misleading fixture with a real carrier near the current boundary and add blocked-placement coverage.
-
-### F7 — Movement proceeds after a failed fuel debit
-
-Sources: [turn_processor.py:248](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py:248), [system-jump debit:413](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py:413), [hex-jump debit:542](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py:542).
-
-Movement checks the tank's quantity, then ignores the boolean returned by `consume()` and proceeds when consumption refuses payment. Both jump branches repeat the pattern.
-
-**Reproduction:** A real ship with a valid MoveOrder, speed 100, and a tank holding 100 AM moves 100 units. With a healthy tank it finishes at 98 AM; with destroyed storage it still moves 100 units and retains 100 AM. The jump cases were identified by inspection, not separately executed.
-
-**Fix:** Require the appropriate functional fuel source and successful debit before committing displacement. Preserve any deliberate fuel-exempt craft rules explicitly. Add sublight and jump tests for destroyed storage and verify that a failed relocation does not consume fuel either.
 
 ### F8 — Player-level command discovery contradicts itself
 
@@ -116,7 +75,7 @@ The following records individual important files and the main conclusions from t
 |---|---|
 | [game.py](D:/Programming/Github_repos/Wormhole-Control/game.py) | Correctly distinguishes successful load commit from later presentation failure. At 842 lines it still combines application lifecycle, selection, AI scheduling, conversations, and persistence entry points. Extract one cohesive responsibility at a time; do not replace it with a service container. |
 | [game_setup.py](D:/Programming/Github_repos/Wormhole-Control/game_setup.py) | Candidate construction, explicit template input, and post-setup reconciliation are useful. Document preview ownership and failure behavior at the preparation entry point. Keep startup defaults separate from saved-state validation. |
-| [game_settings.py](D:/Programming/Github_repos/Wormhole-Control/game_settings.py) | Stronger input checks than saved players, including rejecting booleans as integers. Reuse the relevant checks for F5 without importing wizard logic into persistence. |
+| [game_settings.py](D:/Programming/Github_repos/Wormhole-Control/game_settings.py) | Setup and save restoration now share player value checks, including rejecting booleans as integers. Keep setup defaults separate from strict saved-state restoration. |
 | [application_bootstrap.py](D:/Programming/Github_repos/Wormhole-Control/application_bootstrap.py) | Display discovery has clear ownership and cleanup. Preserve explicit startup discovery instead of restoring import-time SDL behavior. |
 | [display_config.py](D:/Programming/Github_repos/Wormhole-Control/display_config.py) | Explicit display metrics and typed boundaries are a good separation. Prefer passing this object over adding more display globals. |
 | [app_preferences.py](D:/Programming/Github_repos/Wormhole-Control/app_preferences.py) | Atomic replacement and UI-visible failure propagation are appropriate for a small preferences file. No need for a configuration framework. |
@@ -142,7 +101,7 @@ The following records individual important files and the main conclusions from t
 
 | File | Review conclusion |
 |---|---|
-| [turn_processor.py](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py) | Phase sequencing is important and currently difficult to read beside the 396-line movement method. Extract sublight, hex jump, and wormhole jump resolution; fix F7 first. Describe owner-turn versus global-round timing at the orchestration point. |
+| [turn_processor.py](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py) | Phase sequencing is important and currently difficult to read beside the 396-line movement method. Future extraction of sublight, hex jump, and wormhole jump resolution must preserve successful-debit checks and rejected-relocation refunds. Describe owner-turn versus global-round timing at the orchestration point. |
 | [economy.py](D:/Programming/Github_repos/Wormhole-Control/economy.py) | Income estimation repeats resolution rules from `_process_resource_generation`, including slightly different sabotage relationship checks. Return a shared pure income breakdown and let resolution apply it. Preserve the explicitly documented upkeep exclusions. |
 | [events.py](D:/Programming/Github_repos/Wormhole-Control/events.py) | Typed UI events are useful. Avoid adding an additional parallel command representation for every new feature when an existing gateway operation already fits. |
 | [order_system.py](D:/Programming/Github_repos/Wormhole-Control/order_system.py) | Human-event translation and validation overlap with gateway/order logic. Reuse domain predicates and command preparation where practical; keep UI event translation thin. |
@@ -186,7 +145,7 @@ The following records individual important files and the main conclusions from t
 | [timed_effects.py](D:/Programming/Github_repos/Wormhole-Control/timed_effects.py) | Source-owned contributions are a compact solution to overlapping effects. Document key identity and idempotent removal; avoid replacing this with a generic effect framework. |
 | [order_history.py](D:/Programming/Github_repos/Wormhole-Control/order_history.py) | Bounded, saved outcomes are useful. `hazard_blocked` is emitted by orders but absent from `PUBLIC_REASONS`, so history normalizes it to `execution_failed`; unify the intentional public vocabulary. |
 | [turn_briefing.py](D:/Programming/Github_repos/Wormhole-Control/turn_briefing.py) | Frozen reports and recipient-scoped recording are good. Document begin/finish collection windows and omitted-count accounting at the important entry points. |
-| [save_manager.py](D:/Programming/Github_repos/Wormhole-Control/save_manager.py) | File I/O, JSON serialization, object hydration, and sidecar exports share 875 lines. Separate sidecars first, fix F4/F5, and keep file replacement behavior explicit. |
+| [save_manager.py](D:/Programming/Github_repos/Wormhole-Control/save_manager.py) | File I/O, JSON serialization, object hydration, and sidecar exports share 875 lines. Preserve strict identity serialization and shared sidecar containment when separating I/O responsibilities; keep file replacement behavior explicit. |
 | [campaign_persistence.py](D:/Programming/Github_repos/Wormhole-Control/campaign_persistence.py) | Prepare/reconcile/commit is worth preserving. Large validators can be split by document section while retaining one strict entry point. Presence checks alone do not establish usable state. |
 | [persistence_context.py](D:/Programming/Github_repos/Wormhole-Control/persistence_context.py) | A small scoped allocation mechanism solves a real transactional problem. Keep restoration in `finally`; document main-thread preparation expectations. |
 | [state_codec.py](D:/Programming/Github_repos/Wormhole-Control/state_codec.py) | Explicit tags and enum allowlisting are preferable to arbitrary object deserialization. There is overlapping value encoding in `save_manager`; consolidate common primitives at a deliberate format change, not via compatibility layers. |
@@ -205,7 +164,7 @@ The following records individual important files and the main conclusions from t
 | [game_ai/coordinator.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/coordinator.py) | Main-thread mutation, stale-result checks, and bounded semantic repair are useful. Worker cancellation/lifecycle remains incomplete; see F9. |
 | [game_ai/adapters/openai_responses.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/adapters/openai_responses.py) | Provider details are correctly isolated. Document/own client closure, request cancellation, timeout, and transport retries together. No live model availability or provider behavior was tested in this review. |
 | [game_ai/runtime.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/runtime.py), [game_ai/config.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/config.py) | Central runtime limits and credential-loading isolation are useful. Keep permissive user configuration normalization out of strict campaign restoration. |
-| [game_ai/memory.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/memory.py) | Bounded sections and atomic sidecar replacement are appropriate. Fix path containment. The 8,000-character bound applies to receipts, not all memory sections combined; make wording precise. |
+| [game_ai/memory.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/memory.py) | Bounded sections and atomic sidecar replacement are appropriate. Preserve shared identity and resolved-path containment checks. The 8,000-character bound applies to receipts, not all memory sections combined; make wording precise. |
 | [game_ai/evaluation.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/evaluation.py) | Provider-independent cases and gateway acceptance scoring are useful. Keep offline contract tests separate from model quality/cost evaluations. |
 | [game_control_protocol.py](D:/Programming/Github_repos/Wormhole-Control/game_control_protocol.py) | Loopback-only binding, size limits, turn tokens, response caching, and main-thread pumping form a sensible local boundary. Document cache lifetime and uncertain outcomes; do not describe preflight atomicity as rollback of every possible commit failure. |
 | [game_control.py](D:/Programming/Github_repos/Wormhole-Control/game_control.py) | Small CLI is appropriate. Keep transport recovery tied to request IDs and observation refresh rather than blind command retries. |
@@ -229,7 +188,7 @@ The following records individual important files and the main conclusions from t
 
 ### Changes with a clear payoff
 
-1. **Share narrow invariants first.** Movement fuel/payment checks, player identity validation, and candidate placement remain inconsistent. Fix these in small helpers close to their domain, with one authoritative result used by UI, AI, and execution where applicable.
+1. **Share narrow invariants first.** Candidate placement remains inconsistent. Preserve the new shared movement payment and player identity checks while extending common placement predicates where appropriate.
 2. **Split `game_ai/commands.py` by responsibility.** Keep `CommandGateway` as the facade. Move projection state and replay into a focused module; separate preparation by a few gameplay domains. Use small records for cohesive projected state if they replace parallel dictionaries. Preserve ordering, payer identity, replacement/queue semantics, and partial-commit receipts.
 3. **Extract movement resolution and assembly.** Pull sublight/hex/wormhole resolution from `TurnProcessor`, and pure template assembly from `Constructor`. Keep orchestration and state transitions visible in their current owners.
 4. **Reduce repeated presentation knowledge.** Share order traversal and tiny widget helpers. Do not force player-redacted AI output and rich GUI formatting into one universal serializer.
@@ -355,6 +314,22 @@ Suggested sequence:
 
 ## Testing infrastructure and results
 
+### Post-fix verification for F4, F5 and F7
+
+The focused regressions passed before the findings were marked resolved. They cover unsafe IDs, outside-file sentinels, temporary-file redirects, Windows junctions, Linux symbolic links, malformed player fields and identity collisions, transactional load rejection, exact identity/configuration round trips including numeric player ID zero, and payment/refund behavior in all three movement modes.
+
+| Local runtime | Full offline suite |
+|---|---|
+| Ubuntu under WSL, Python 3.10.21 (CI matrix version) | 3,823 passed, 5 skipped, 10 subtests passed; 242.41 seconds. |
+| Ubuntu under WSL, Python 3.14.7 (CI matrix version) | 3,823 passed, 5 skipped, 10 subtests passed; 196.96 seconds. |
+| Windows, Python 3.14.7 (CI matrix version) | 3,820 passed, 8 skipped, 10 subtests passed; 239.41 seconds. |
+| Windows, Python 3.12.14 | 3,820 passed, 8 skipped, 10 subtests passed; 203.86 seconds. |
+| Ubuntu under WSL, Python 3.12.3 | 3,823 passed, 5 skipped, 10 subtests passed; 202.70 seconds. |
+
+The CI quality commands also pass under Ubuntu Python 3.10.21: default and scoped Ruff checks, import boundaries, both mypy platform configurations, and generated-reference consistency. Additional `F,E9` lint passes for the new helper modules and regression files.
+
+The Windows skips are symbolic-link tests requiring unavailable privileges; Windows junction tests pass. Linux skips the four Windows junction cases and one existing Windows-only check. Each run reports the same existing font-preload warning. Save version remains **4.17**; command and observation payloads are unchanged.
+
 ### Original audit checks
 
 Environment: **Windows, Python 3.12.14**, project `.venv`; pygame-ce **2.5.7**, pygame_gui **0.6.14**, pytest **9.1.1**, Ruff **0.12.12**, mypy **1.15.0**. The installed OpenAI SDK is **2.54.0**, but no live provider request was made.
@@ -374,7 +349,7 @@ Environment: **Windows, Python 3.12.14**, project `.venv`; pygame-ce **2.5.7**, 
 
 The remaining warning is `noto_sans_bold_aa_14` not preloaded in `test_dismantling.py::test_preview_dialog_routes_to_shared_gateway`. It is non-fatal and should be fixed locally rather than globally suppressed.
 
-CI additionally executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. Passing mypy with two `--platform` values is static analysis, not evidence that those runtime matrix jobs passed during this review.
+CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit did not run those jobs. Post-fix checks above distinguish actual local runtime tests from the two static mypy platform configurations; local Ubuntu runs use WSL rather than GitHub-hosted runners.
 
 ### Keep these parts of the infrastructure
 
@@ -399,8 +374,6 @@ CI additionally executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. Passin
 
 | Boundary | Meaningful assertion |
 |---|---|
-| Movement → fuel payment | Destroyed storage prevents paid motion; successful motion pays exactly once; failed relocation does not debit. |
-| Save preparation → identity and filesystem | Invalid player values reject without commit; sidecars cannot escape their roots on Windows or POSIX path inputs. |
 | Carrier launch → sector membership | Candidate is in bounds and safe; failed placement retains docked membership and position. |
 | Observation → command specification | Legal commands are a subset of supported commands; supported player commands match the registry. |
 | AI reset → active worker | New work has defined bounded behavior while an old request runs; shutdown releases owned resources. |
@@ -410,9 +383,9 @@ CI additionally executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. Passin
 
 ### First: correctness with small diffs
 
-1. Fix strict player/ID validation and sidecar containment together (F4/F5).
-2. Fix carrier placement and movement payment (F6/F7).
-3. Fix command discovery (F8), then resolve the AI request lifecycle policy (F9).
+1. Fix carrier placement (F6).
+2. Fix command discovery (F8).
+3. Resolve the AI request lifecycle policy (F9).
 4. Correct inaccurate docs and public reason-code drift alongside the affected behavior.
 
 ### Next: reduce maintenance cost
@@ -437,7 +410,9 @@ The desired outcome is fewer independent implementations of the same rule, clear
 
 The most useful local diagnostic artifacts are:
 
-- [Latest full-suite JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/p1/full-junit.xml).
+- [Windows Python 3.14 full-suite JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/windows314-junit.xml).
+- Linux full-suite JUnit results: [Python 3.10](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/linux310-junit.xml) and [Python 3.14](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/linux314-junit.xml).
+- Additional Python 3.12 full-suite JUnit results: [Windows](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/full-junit.xml) and [Linux](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/linux-junit.xml).
 - [Original audit full-suite output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-pytest.log) and [JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-junit.xml).
 - [Persistence, path, and observation probes](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/reproductions.json).
 - [Placement and movement results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay-probes.json), with [probe source](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay_probes.py).

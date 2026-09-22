@@ -269,6 +269,7 @@ def test_system_jump_consumes_antimatter():
     
     vega_system = MagicMock()
     vega_system.name = "Vega"
+    vega_system.hexes = {(-1, -1): MagicMock()}
     
     game.galaxy.systems = {"Sol": sol_system, "Vega": vega_system}
     game.galaxy.wormholes = {2: wh_vega}
@@ -324,6 +325,7 @@ def test_system_jump_fails_without_antimatter():
     
     vega_system = MagicMock()
     vega_system.name = "Vega"
+    vega_system.hexes = {(-1, -1): MagicMock()}
     
     game.galaxy.systems = {"Sol": sol_system, "Vega": vega_system}
     game.galaxy.wormholes = {2: wh_vega}

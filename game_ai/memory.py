@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from persistence_paths import validate_identity, sidecar_paths
 
 
 MEMORY_VERSION = 1
@@ -120,10 +121,10 @@ def write_memory_sidecar(
     memory: AgentMemory,
 ) -> Path:
     """Atomically write the derived memory.md sidecar below the save directory."""
-    target_dir = root / "agent_memory" / campaign_id / agent_id
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / "memory.md"
-    temporary = target.with_suffix(".md.tmp")
+    validate_identity(campaign_id, "campaign_id")
+    validate_identity(agent_id, "agent_id")
+    target, temporary = sidecar_paths(root, "agent_memory", (campaign_id, agent_id), "memory.md")
+    target.parent.mkdir(parents=True, exist_ok=True)
     temporary.write_text(
         memory.to_markdown(
             player_name=player_name,

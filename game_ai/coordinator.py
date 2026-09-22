@@ -285,8 +285,8 @@ class AgentTurnCoordinator:
 
             write_memory_sidecar(
                 Path(save_manager.SAVES_DIR),
-                campaign_id=str(self.game.campaign_id),
-                agent_id=str(player.agent_id),
+                campaign_id=self.game.campaign_id,
+                agent_id=player.agent_id,
                 player_name=str(player.name),
                 memory=memory,
             )

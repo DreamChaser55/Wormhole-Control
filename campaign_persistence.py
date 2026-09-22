@@ -8,6 +8,8 @@ from campaign_graph import iter_objects, iter_units
 from persistence_context import isolated_allocations
 from state_codec import number
 from geometry import Position
+from persistence_paths import validate_identity
+from player_validation import validate_saved_player_values
 
 
 @dataclass
@@ -71,8 +73,7 @@ def validate_document(data):
         number(state[name], f"game_state.{name}", 1 if name == "turn_number" else 0, integer=True)
     if state["view_mode"] not in ("galaxy", "system", "sector"):
         raise ValueError("game_state.view_mode: unknown view")
-    if not isinstance(state["campaign_id"], str) or not state["campaign_id"]:
-        raise ValueError("game_state.campaign_id: expected nonempty string")
+    validate_identity(state["campaign_id"], "game_state.campaign_id")
     if state["current_sector_coord"] is not None:
         coordinates(state["current_sector_coord"], "game_state.current_sector_coord", True)
     if not isinstance(data["players"], list) or not data["players"]:
@@ -80,14 +81,21 @@ def validate_document(data):
     if state["current_player_index"] >= len(data["players"]):
         raise ValueError("game_state.current_player_index: out of range")
     player_ids = set()
-    for p in data["players"]:
+    player_namespaces = {field: set() for field in ("name", "persistent_id", "agent_id")}
+    for index, p in enumerate(data["players"]):
+        path = f"players[{index}]"
         require(p, ("id", "name", "color", "controller", "team_id", "credits", "metal", "crystal",
                     "sector_intel", "order_history", "order_event_sequence", "briefing", "persistent_id", "agent_id",
-                    "ai_memory", "ai_reasoning_effort", "ai_repair_retries", "homeworld_id"), "player")
-        number(p["id"], "player.id", 0, integer=True)
+                    "ai_memory", "ai_reasoning_effort", "ai_repair_retries", "homeworld_id"), path)
+        validate_saved_player_values(p, path)
         if p["id"] in player_ids:
-            raise ValueError("Duplicate player ID")
+            raise ValueError(f"{path}.id: duplicate player ID")
         player_ids.add(p["id"])
+        for field, seen in player_namespaces.items():
+            key = p[field].casefold()
+            if key in seen:
+                raise ValueError(f"{path}.{field}: duplicate value ignoring case")
+            seen.add(key)
         from turn_briefing import state_from_dict
         briefing = state_from_dict(p["briefing"])
         if briefing.from_turn > state["turn_number"] or briefing.current.to_turn > state["turn_number"]:

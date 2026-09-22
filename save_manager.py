@@ -15,16 +15,11 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from enum import Enum
 
-from utils import generate_short_id
+from persistence_paths import validate_identity, sidecar_paths
+from player_validation import validate_saved_player_values
 from player_controller import PlayerController
 
 from geometry import Position, Vector
-from game_ai.runtime import (
-    DEFAULT_REASONING_EFFORT,
-    DEFAULT_REPAIR_RETRIES,
-    normalize_reasoning_effort,
-    normalize_repair_retries,
-)
 from constants import (
     HullSize, StarType, PlanetType, NebulaType, StormType, FieldDensity
 )
@@ -73,6 +68,7 @@ def _ensure_saves_dir():
 # --- Serialization Functions ---
 
 def serialize_player(player: Player) -> dict:
+    validate_saved_player_values(vars(player))
     sector_intel_data = {
         f"{sys}:{q}:{r}": turn
         for (sys, (q, r)), turn in getattr(player, 'sector_intel', {}).items()
@@ -82,15 +78,11 @@ def serialize_player(player: Player) -> dict:
         "name": player.name,
         "color": list(player.color),
         "controller": player.controller.value,
-        "team_id": getattr(player, "team_id", player.id + 1),
-        "persistent_id": getattr(player, "persistent_id", None) or generate_short_id(),
-        "agent_id": getattr(player, "agent_id", None) or generate_short_id(),
-        "ai_reasoning_effort": normalize_reasoning_effort(
-            getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT)
-        ),
-        "ai_repair_retries": normalize_repair_retries(
-            getattr(player, "ai_repair_retries", DEFAULT_REPAIR_RETRIES)
-        ),
+        "team_id": player.team_id,
+        "persistent_id": player.persistent_id,
+        "agent_id": player.agent_id,
+        "ai_reasoning_effort": player.ai_reasoning_effort,
+        "ai_repair_retries": player.ai_repair_retries,
         "ai_memory": getattr(player, "ai_memory", {}),
         "order_history": bounded_history(getattr(player, "order_history", [])),
         "order_event_sequence": getattr(player, "order_event_sequence", 0),
@@ -345,6 +337,7 @@ def serialize_galaxy(galaxy: Galaxy) -> dict:
 
 def serialize_game_state(game: Any) -> dict:
     """Serializes the entire Game instance into a JSON-compatible dictionary."""
+    campaign_id = validate_identity(getattr(game, "campaign_id", None), "game_state.campaign_id")
     from unit_components.intelligence import Agent
     from planetary_warfare import invasion_rng
     from state_codec import encode
@@ -371,7 +364,7 @@ def serialize_game_state(game: Any) -> dict:
             "player_counter": player_counter,
             "agent_counter": Agent.agent_counter,
             "message_counter": getattr(game, "message_counter", 0),
-            "campaign_id": getattr(game, "campaign_id", None) or generate_short_id(),
+            "campaign_id": campaign_id,
         },
         "players": players_data,
         "galaxy": galaxy_data,
@@ -382,9 +375,7 @@ def serialize_game_state(game: Any) -> dict:
 # --- Deserialization Functions ---
 
 def deserialize_player(data: dict) -> Player:
-    ai_reasoning_effort = normalize_reasoning_effort(
-        data['ai_reasoning_effort']
-    )
+    validate_saved_player_values(data)
     player = Player(
         name=data['name'],
         color=tuple(data['color']),
@@ -392,10 +383,8 @@ def deserialize_player(data: dict) -> Player:
         team_id=data['team_id'],
         persistent_id=data['persistent_id'],
         agent_id=data['agent_id'],
-        ai_reasoning_effort=ai_reasoning_effort,
-        ai_repair_retries=normalize_repair_retries(
-            data['ai_repair_retries']
-        ),
+        ai_reasoning_effort=data['ai_reasoning_effort'],
+        ai_repair_retries=data['ai_repair_retries'],
         ai_memory=data['ai_memory'],
         homeworld_id=data['homeworld_id'],
     )
@@ -404,8 +393,6 @@ def deserialize_player(data: dict) -> Player:
     player.id = data['id']
     from turn_briefing import state_from_dict
     player.briefing = state_from_dict(data['briefing'])
-    if "team_id" in data:
-        player.team_id = data["team_id"]
     player.credits = data['credits']
     player.metal = data['metal']
     player.crystal = data['crystal']
@@ -716,6 +703,7 @@ def deserialize_game_state(game: Any, data: dict, *, on_error=None) -> bool:
 
 def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
     """Saves the current game state to a JSON file in the saves directory."""
+    state_dict = serialize_game_state(game)
     _ensure_saves_dir()
 
     if not filename:
@@ -728,7 +716,6 @@ def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
 
     filepath = os.path.join(SAVES_DIR, filename)
 
-    state_dict = serialize_game_state(game)
     temporary_path = filepath + ".tmp"
     with open(temporary_path, "w", encoding="utf-8") as f:
         json.dump(state_dict, f, indent=2, allow_nan=False)
@@ -744,8 +731,8 @@ def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
             if player.controller == PlayerController.OPENAI:
                 write_memory_sidecar(
                     Path(SAVES_DIR),
-                    campaign_id=str(game.campaign_id),
-                    agent_id=str(player.agent_id),
+                    campaign_id=game.campaign_id,
+                    agent_id=player.agent_id,
                     player_name=str(player.name),
                     memory=AgentMemory.from_dict(getattr(player, "ai_memory", None)),
                 )
@@ -754,7 +741,7 @@ def save_game_to_file(game: Any, filename: Optional[str] = None) -> str:
         conv_list = list(getattr(game, "conversations", {}).values())
         write_comms_sidecar(
             Path(SAVES_DIR),
-            campaign_id=str(getattr(game, "campaign_id", "unknown")),
+            campaign_id=game.campaign_id,
             conversations=conv_list,
             players=getattr(game, "players", []),
         )
@@ -774,11 +761,9 @@ def write_comms_sidecar(
 ) -> Any:
     """Atomically write the campaign comms.md sidecar below the save directory."""
     from pathlib import Path
-    root_path = Path(root)
-    target_dir = root_path / "comms" / campaign_id
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / "comms.md"
-    temporary = target.with_suffix(".md.tmp")
+    validate_identity(campaign_id, "campaign_id")
+    target, temporary = sidecar_paths(Path(root), "comms", (campaign_id,), "comms.md")
+    target.parent.mkdir(parents=True, exist_ok=True)
 
     players_by_id = {p.id: p for p in players}
     all_messages: List[Message] = []

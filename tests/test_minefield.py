@@ -26,6 +26,7 @@ from tests.support.campaigns import campaign, ship
 class MockGame:
     display_config = DisplayConfig()
     def __init__(self):
+        self.campaign_id = "minefield-test"
         self.system_zoom = 1.0
         self.system_pan_offset = Position(0, 0)
         self.players = [

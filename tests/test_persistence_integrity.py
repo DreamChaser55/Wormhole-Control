@@ -301,6 +301,103 @@ def test_injected_failure_is_transactional(monkeypatch, stage):
     assert Order.order_counter == order_counter
 
 
+INVALID_PLAYER_VALUES = [
+    (field, value)
+    for field, values in {
+        'name': [None, False, 5, '', ' ', ' One', 'One ', 'a' * 81, 'a\n', 'a\u200b'],
+        'team_id': [None, False, True, 0, -1, 1.0, '1', {'bad': True}],
+        'controller': [None, False, {}, 'unknown', 'Human'],
+        'persistent_id': [None, False, '', '../escape', 'NUL'],
+        'agent_id': [None, 5, '', '..\\escape', 'COM1'],
+        'ai_reasoning_effort': [None, False, [], ' Medium ', 'HIGH', 'unsupported'],
+        'ai_repair_retries': [None, False, True, 0, 6, 2.0, '2', {}],
+        'homeworld_id': [False, True, -1, 1.0, '1', {}],
+        'id': [False, True, -1, 1.0, '1'],
+    }.items() for value in values
+]
+
+
+@pytest.mark.parametrize('field,value', INVALID_PLAYER_VALUES)
+def test_malformed_saved_player_rejects_before_hydration(field, value, monkeypatch):
+    import save_manager
+    game = campaign()
+    unit = ship(game)
+    game.selected_objects = [unit]
+    game.ai_coordinator = Mock()
+    payload = serialize_game_state(game)
+    before, identities, rng = canonical(game), dict(vars(game)), random.getstate()
+    order_counter = Order.order_counter
+    payload['players'][0][field] = value
+    hydrate = Mock(wraps=save_manager.deserialize_player)
+    monkeypatch.setattr(save_manager, 'deserialize_player', hydrate)
+    errors = []
+    assert not deserialize_game_state(game, payload, on_error=errors.append)
+    assert f'players[0].{field}' in errors[0]
+    hydrate.assert_not_called()
+    assert canonical(game) == before
+    assert all(vars(game)[k] is v for k, v in identities.items())
+    assert random.getstate() == rng and Order.order_counter == order_counter
+    assert not game.ai_coordinator.mock_calls
+
+
+@pytest.mark.parametrize('field,value', INVALID_PLAYER_VALUES)
+def test_direct_player_hydration_cannot_normalize_invalid_values(field, value):
+    from save_manager import serialize_player, deserialize_player
+    data = serialize_player(campaign().players[0])
+    data[field] = value
+    before = Player.player_counter
+    with pytest.raises(ValueError, match=f'player.{field}'):
+        deserialize_player(data)
+    assert Player.player_counter == before
+
+
+@pytest.mark.parametrize('field', ['id', 'name', 'persistent_id', 'agent_id'])
+@pytest.mark.parametrize('different_case', [False, True])
+def test_saved_player_namespaces_reject_duplicates(field, different_case):
+    game = campaign()
+    payload = serialize_game_state(game)
+    value = payload['players'][0][field]
+    if different_case and isinstance(value, str):
+        value = value.upper()
+    payload['players'][1][field] = value
+    before = canonical(game)
+    errors = []
+    assert not deserialize_game_state(game, payload, on_error=errors.append)
+    assert f'players[1].{field}' in errors[0]
+    assert canonical(game) == before
+
+
+@pytest.mark.parametrize('field', ['campaign_id', 'persistent_id', 'agent_id'])
+@pytest.mark.parametrize('value', ['../../escape', '..\\escape', '/absolute', 'C:\\escape', 'C:escape', '\\\\server\\share', 'NUL', None])
+def test_save_rejects_unsafe_identities_transactionally(field, value):
+    game = campaign()
+    payload = serialize_game_state(game)
+    raw = payload['game_state'] if field == 'campaign_id' else payload['players'][0]
+    raw[field] = value
+    before = canonical(game)
+    assert not deserialize_game_state(game, payload)
+    assert canonical(game) == before
+
+
+def test_saved_player_identity_and_configuration_round_trip_exactly():
+    from game_ai.observation import build_observation
+    from player_controller import PlayerController
+    game = campaign()
+    game.players = game.players[:1]  # Loading does not impose new-game player/team counts.
+    player = game.players[0]
+    player.id = 0
+    player.persistent_id, player.agent_id = 'Player-Stable', 'Agent_Stable'
+    player.team_id, player.controller = 9, PlayerController.CODEX
+    player.ai_reasoning_effort, player.ai_repair_retries = 'high', 5
+    game.current_player_index = 0
+    payload = serialize_game_state(game)
+    assert deserialize_game_state(game, payload)
+    restored = serialize_game_state(game)
+    assert restored['players'] == payload['players']
+    assert restored['game_state']['campaign_id'] == 'integrity'
+    assert build_observation(game, game.players[0])['active_player']['id'] == 0
+
+
 @pytest.mark.parametrize("end", ["expiry", "component_damage", "remove", "replace", "source_destroy", "target_destroy", "load_expired"])
 def test_effect_cleanup_is_owned_and_idempotent(end):
     game = campaign()

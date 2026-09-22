@@ -153,7 +153,40 @@ class TurnProcessor:
 
             logger.debug(f"Finished End of Round {turn_num} processing.")
 
+    def _pay_movement_fuel(self, unit, cost, *, sublight=False):
+        """Pay one movement attempt before displacement; return whether it may proceed.
+
+        Tankless wings deliberately fly without fuel. Other positive-cost travel
+        requires working storage and a successful debit, not just a tank quantity.
+        Rejected payment records a private problem and leaves navigation unchanged.
+        """
+        storage = unit.antimatter_component
+        if sublight and unit.hull_size == HullSize.STRIKECRAFT_WING and storage is None:
+            return True
+        if cost <= 0:
+            return True
+        if storage is None or storage.is_destroyed:
+            reason = "antimatter storage unavailable"
+        elif storage.current_amount < cost:
+            reason = "insufficient antimatter"
+        elif storage.consume(cost):
+            return True
+        else:
+            reason = "antimatter payment failed"
+        action = "Movement" if sublight else "Jump"
+        unit_event(unit, "problem", f"{action} blocked: {reason}", private=True, once=True)
+        logger.debug("%s %s blocked: %s", unit.name, action.lower(), reason)
+        return False
+
     def _process_movement(self, current_player) -> dict[int, float]:
+        """Resolve owned navigation actuators, paying before each displacement.
+
+        Sublight hazards clip a tentative position before payment and commit.
+        Jump relocation's False result leaves containment unchanged and refunds
+        the debit. Only committed jumps start recharge or roll instability damage.
+        Return positive sublight movements mapped to post-drag speed for hazards;
+        failed payment never produces a movement record.
+        """
         # A record exists only for positive sublight displacement this phase.
         sublight_movements: dict[int, float] = {}
         for system_name, system in self.game.galaxy.systems.items():
@@ -243,18 +276,9 @@ class TurnProcessor:
                     sublight_cost = get_sublight_antimatter_cost_per_turn(unit.hull_size, effective_speed)
                     sublight_cost *= modifiers_for_unit(unit).fuel_multiplier
 
-                    # Engines consume antimatter per turn while moving
-                    am_comp = unit.antimatter_component
-                    if am_comp and am_comp.current_amount < sublight_cost:
-                        unit_event(unit, "problem", "Movement blocked: insufficient antimatter", private=True, once=True)
-                        logger.debug(f"   {unit.name} cannot move sub-light: Insufficient antimatter ({am_comp.current_amount:.1f}/{sublight_cost:.1f}).")
-                        continue
-
-                    if am_comp:
-                        am_comp.consume(sublight_cost)
-
                     target_pos_in_sector = unit.engines_component.move_target
                     new_pos = move_towards_position(unit.position, target_pos_in_sector, effective_speed)
+                    hazard_blocked = False
                     if unit.hull_size == HullSize.STRIKECRAFT_WING and current_hex_obj:
                         from domain.celestials import Storm
                         for body in current_hex_obj.celestial_bodies:
@@ -266,11 +290,7 @@ class TurnProcessor:
                                     if dist_current > storm_radius:
                                         dir_vec = diff.normalize()
                                         new_pos = body.position + dir_vec * (storm_radius + 1.0)
-                                    unit.engines_component.clear_move_target()
-                                    curr_order = getattr(getattr(unit, 'commander_component', None), 'current_order', None)
-                                    if curr_order and hasattr(curr_order, 'fail'):
-                                        curr_order.fail("hazard_blocked")
-                                    logger.debug(f"   {unit.name} (strikecraft wing) halted at boundary of magnetic storm.")
+                                    hazard_blocked = True
                                     break
                     if current_hex_obj:
                         from domain.celestials import AsteroidField, DebrisField, IceField
@@ -284,15 +304,18 @@ class TurnProcessor:
                                         if dist_current > field_radius:
                                             dir_vec = diff.normalize()
                                             new_pos = body.position + dir_vec * (field_radius + 1.0)
-                                        unit.engines_component.clear_move_target()
-                                        curr_order = getattr(getattr(unit, 'commander_component', None), 'current_order', None)
-                                        if curr_order and hasattr(curr_order, 'fail'):
-                                            curr_order.fail("hazard_blocked")
-                                        logger.debug(f"   {unit.name} ({unit.hull_size.name}) halted at boundary of dense {body.name}.")
+                                        hazard_blocked = True
                                         break
                     if distance(unit.position, new_pos) > 0:
+                        if not self._pay_movement_fuel(unit, sublight_cost, sublight=True):
+                            continue
                         sublight_movements[unit.id] = effective_speed
                     unit.position = new_pos
+                    if hazard_blocked:
+                        unit.engines_component.clear_move_target(target_order_id)
+                        curr_order = getattr(commander, 'current_order', None)
+                        if curr_order:
+                            curr_order.fail("hazard_blocked")
                     logger.debug(f"   {unit.name} moved to {unit.position} (sub-light, speed={effective_speed:.1f})")
                     
                     # Sync the active inhibitor field's location with the unit's new sub-light position.
@@ -376,7 +399,7 @@ class TurnProcessor:
                             hd_comp.jump_status = JumpStatus.ERROR
                             hd_comp.clear_jump_target(expected_order_id)
                         else:
-                            exit_wormhole_obj_for_exec = self.game.galaxy.wormholes[exit_wh_id]
+                            exit_wormhole_obj_for_exec = self.game.galaxy.wormholes.get(exit_wh_id)
                             if not exit_wormhole_obj_for_exec:
                                 logger.debug(f"   Error: Exit wormhole object with ID {exit_wh_id} not found in galaxy. Aborting jump for {unit.name}.")
                                 hd_comp.jump_status = JumpStatus.ERROR
@@ -387,16 +410,15 @@ class TurnProcessor:
                                 hd_comp.clear_jump_target(expected_order_id)
                             else:
                                 arrival_hex = exit_wormhole_obj_for_exec.in_hex
-                                can_jump = True
+                                can_jump = arrival_hex in target_system.hexes
                     
                     if can_jump and arrival_hex and target_system and exit_wormhole_obj_for_exec:
-                        # Check/consume antimatter for system jump
+                        # A rejected relocation is mutation-free; restore its exact debit.
                         from custom_unit_templates import get_hyperdrive_system_jump_cost
                         sys_jump_cost = get_hyperdrive_system_jump_cost(unit.hull_size)
                         am_comp = unit.antimatter_component
-                        if am_comp and am_comp.current_amount < sys_jump_cost:
-                            unit_event(unit, "problem", "Jump blocked: insufficient antimatter", private=True, once=True)
-                            logger.debug(f"   {unit.name} system jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{sys_jump_cost:.1f}).")
+                        fuel_before = am_comp.current_amount if am_comp is not None else None
+                        if not self._pay_movement_fuel(unit, sys_jump_cost):
                             hd_comp.jump_status = JumpStatus.ERROR
                             hd_comp.clear_jump_target(expected_order_id)
                             continue
@@ -409,8 +431,6 @@ class TurnProcessor:
                         )
                         if moved:
                             unit.position = exit_wormhole_obj_for_exec.position 
-                            if am_comp:
-                                am_comp.consume(sys_jump_cost)
                             logger.debug(f"   {unit.name} completed wormhole jump from {origin_system.name} to {target_sys_name}, into hex {arrival_hex}")
                             
                             # Apply probabilistic damage for unstable wormholes (< 100 stability)
@@ -449,6 +469,8 @@ class TurnProcessor:
 
                             hd_comp.start_recharge(expected_order_id) # Clears this jump's target and sets status to CHARGING
                         else:
+                            if fuel_before is not None:
+                                am_comp.current_amount = fuel_before
                             logger.debug(f"   Error during final wormhole jump execution for {unit.name}. Jump aborted.")
                             hd_comp.jump_status = JumpStatus.ERROR
                             if hd_comp.wormhole_jump_target: # Ensure target is cleared on failure
@@ -524,13 +546,12 @@ class TurnProcessor:
                         hd_comp.clear_jump_target(expected_order_id)
                         continue
                         
-                    # Check/consume antimatter for hex jump
+                    # Pay before changing sector membership, refunding rejected relocation.
                     from custom_unit_templates import get_hyperdrive_hex_jump_cost
                     hex_jump_cost = get_hyperdrive_hex_jump_cost(unit.hull_size)
                     am_comp = unit.antimatter_component
-                    if am_comp and am_comp.current_amount < hex_jump_cost:
-                        unit_event(unit, "problem", "Jump blocked: insufficient antimatter", private=True, once=True)
-                        logger.debug(f"   {unit.name} hex jump failed: Insufficient antimatter ({am_comp.current_amount:.1f}/{hex_jump_cost:.1f}).")
+                    fuel_before = am_comp.current_amount if am_comp is not None else None
+                    if not self._pay_movement_fuel(unit, hex_jump_cost):
                         hd_comp.jump_status = JumpStatus.ERROR
                         hd_comp.clear_jump_target(expected_order_id)
                         continue
@@ -538,11 +559,11 @@ class TurnProcessor:
                     moved = origin_system.move_unit_between_hexes(unit=unit, destination_hex=target_hex)
                     if moved:
                         unit.position = target_pos
-                        if am_comp:
-                            am_comp.consume(hex_jump_cost)
                         logger.debug(f"   {unit.name}(id:{unit.id}) completed hex jump to {target_hex}:{target_pos} in {origin_system.name} system.")
                         hd_comp.start_recharge(expected_order_id) # Clears this jump's target and sets status to CHARGING
                     else:
+                        if fuel_before is not None:
+                            am_comp.current_amount = fuel_before
                         logger.debug(f"   Error during hex jump processing for {unit.name} to {target_hex}. Jump aborted.")
                         hd_comp.jump_status = JumpStatus.ERROR
                         if hd_comp.hex_jump_target: # Ensure target is cleared on failure

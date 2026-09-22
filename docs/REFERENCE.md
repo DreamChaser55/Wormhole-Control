@@ -766,6 +766,15 @@ drives also using wormholes between systems. Natural and artificial inhibition
 fields block jump entry and exit; plan approach legs outside their boundaries.
 In Sector View, their jump-denial perimeters are drawn as red outlined circles.
 
+Positive-cost movement requires functioning Antimatter Storage and successful
+payment before displacement. Ordinary ships without storage cannot move for free;
+tankless strikecraft wings retain their fuel-free sublight flight. Sublight fuel
+is charged once per turn with positive displacement, including a shortened final
+step, using the normal speed and terrain modifiers. Fuel shortages leave sublight
+orders waiting. Failed jumps follow the normal order-failure behavior. Rejected
+relocation refunds its fuel payment and starts neither recharge nor wormhole
+instability damage.
+
 Ships automatically route around solid bodies and fields that exclude their hull
 size. Navigation keeps 50 units of clearance and stays inside the sector. A route
 that cannot be completed fails with `path_unavailable`; it does not pass through
