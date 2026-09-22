@@ -3,7 +3,7 @@
 Review date: **2026-09-22**  
 Base revision: **`5c6fe34f2d1902f9cf2a8a5e50ec35a880edaefd`**
 
-Resolved findings have been removed; remaining findings retain their original IDs. **F4, F5 and F7 are resolved**, with passing regressions for strict player/identity validation, contained sidecar writes, and paid movement with relocation refunds. Code metrics and original audit results refer to the base revision above.
+Remaining findings retain their original IDs. Code metrics and original audit results refer to the base revision above.
 
 ## Assessment
 
@@ -11,7 +11,7 @@ The project has useful foundations: explicit order ownership, separate campaign 
 
 The best next step is a sequence of small correctness fixes followed by focused extraction and documentation cleanup. A new entity framework, generic transaction engine, wholesale UI rewrite, or repository-wide typing conversion would add risk without addressing the demonstrated problems directly.
 
-**Latest verification: the full offline suite passes on all three CI OS/Python combinations, executed locally.** See the post-fix verification below for runtime versions and counts. One existing font-preload warning remains. The findings below remain open; original audit results are retained in the testing section.
+**Latest recorded verification: the full offline suite passed on all three CI OS/Python combinations, executed locally.** See the latest recorded verification below for runtime versions and counts. One existing font-preload warning remains. The findings below remain open; original audit results are retained in the testing section.
 
 ### Scope and method
 
@@ -19,7 +19,7 @@ The best next step is a sequence of small correctness fixes followed by focused 
 - Inventoried all tracked Python files with the AST: **228 production/tooling files, 55,721 lines; 175 test/support files, 48,791 lines** at the base revision. Empty package files and scripts are included; dependencies, ignored caches, and generated runtime data are excluded.
 - Reviewed important application, domain, order, component, persistence, AI/control, UI, rendering, configuration, and testing files. Followed risky paths across modules and reproduced the findings identified as reproduced below. The file review records the principal conclusions; the AST inventory is broader than the detailed manual review.
 - Ran the full offline suite, configured quality checks, additional lint, local Markdown link/heading checks, and isolated behavioral probes. Live provider calls, real API credentials, and the user's saved campaigns were not used.
-- This is a source review and targeted behavioral audit, not a proof that every possible campaign, UI interaction, or malformed input is correct. Runtime coverage percentages were not measured. The original audit did not execute the CI operating-system/Python matrix; post-fix runtime verification is recorded separately below.
+- This is a source review and targeted behavioral audit, not a proof that every possible campaign, UI interaction, or malformed input is correct. Runtime coverage percentages were not measured. The original audit did not execute the CI operating-system/Python matrix; the latest recorded runtime verification is listed separately below.
 
 The remaining fixes, general cleanup, and documentation rewrites below are recommendations, not completed changes.
 
@@ -75,7 +75,7 @@ The following records individual important files and the main conclusions from t
 |---|---|
 | [game.py](D:/Programming/Github_repos/Wormhole-Control/game.py) | Correctly distinguishes successful load commit from later presentation failure. At 842 lines it still combines application lifecycle, selection, AI scheduling, conversations, and persistence entry points. Extract one cohesive responsibility at a time; do not replace it with a service container. |
 | [game_setup.py](D:/Programming/Github_repos/Wormhole-Control/game_setup.py) | Candidate construction, explicit template input, and post-setup reconciliation are useful. Document preview ownership and failure behavior at the preparation entry point. Keep startup defaults separate from saved-state validation. |
-| [game_settings.py](D:/Programming/Github_repos/Wormhole-Control/game_settings.py) | Setup and save restoration now share player value checks, including rejecting booleans as integers. Keep setup defaults separate from strict saved-state restoration. |
+| [game_settings.py](D:/Programming/Github_repos/Wormhole-Control/game_settings.py) | Setup and save restoration share player value checks, including rejecting booleans as integers. Preserve these checks and keep setup defaults separate from strict saved-state restoration. |
 | [application_bootstrap.py](D:/Programming/Github_repos/Wormhole-Control/application_bootstrap.py) | Display discovery has clear ownership and cleanup. Preserve explicit startup discovery instead of restoring import-time SDL behavior. |
 | [display_config.py](D:/Programming/Github_repos/Wormhole-Control/display_config.py) | Explicit display metrics and typed boundaries are a good separation. Prefer passing this object over adding more display globals. |
 | [app_preferences.py](D:/Programming/Github_repos/Wormhole-Control/app_preferences.py) | Atomic replacement and UI-visible failure propagation are appropriate for a small preferences file. No need for a configuration framework. |
@@ -84,11 +84,11 @@ The following records individual important files and the main conclusions from t
 | [constants.py](D:/Programming/Github_repos/Wormhole-Control/constants.py) | Keep stable shared rules here; newer tactical/planetary balance modules already provide useful topic separation. Avoid scattering renamed duplicates across catalogs and GUI helpers. |
 | [domain/identity.py](D:/Programming/Github_repos/Wormhole-Control/domain/identity.py) | Allocation isolation is a useful invariant. Keep tests for zero IDs, high restored IDs, and rejected-load allocator preservation. |
 | [domain/coordinates.py](D:/Programming/Github_repos/Wormhole-Control/domain/coordinates.py) | A small typed coordinate boundary is preferable to another geometry hierarchy. Gradually reduce tuple/attribute compatibility branching where callers have a known type. |
-| [domain/players.py](D:/Programming/Github_repos/Wormhole-Control/domain/players.py) | Central ownership/team helpers already exist. Use them instead of copied `_are_allies` implementations. Constructor defaulting is inappropriate for strict hydration unless inputs are validated first. |
+| [domain/players.py](D:/Programming/Github_repos/Wormhole-Control/domain/players.py) | Central ownership/team helpers already exist. Use them instead of copied `_are_allies` implementations. Preserve strict input validation before constructor defaulting during hydration. |
 | [domain/units.py](D:/Programming/Github_repos/Wormhole-Control/domain/units.py) | Component replacement/destruction cleanup has useful intent documentation. The class remains broad; preserve cleanup ordering and distinguish installed, operational, and deployed state in callers. |
 | [domain/celestials.py](D:/Programming/Github_repos/Wormhole-Control/domain/celestials.py) | Gas-giant release already uses bounded candidates, common safety checks, and commit-after-placement. This provides a simpler model for correcting carrier deployment. Sabotage implementation disagrees with the manual. |
 | [domain/construction_job.py](D:/Programming/Github_repos/Wormhole-Control/domain/construction_job.py) | This is a presentation/selection view of a live job, not another persisted entity. Name/document that distinction and avoid expanding it into authoritative construction state. |
-| [domain/communications.py](D:/Programming/Github_repos/Wormhole-Control/domain/communications.py) | Keep conversation persistence distinct from filesystem export. Player identity/path validation belongs before export. |
+| [domain/communications.py](D:/Programming/Github_repos/Wormhole-Control/domain/communications.py) | Keep conversation persistence distinct from filesystem export. Preserve player identity/path validation before export. |
 | [domain/deployables.py](D:/Programming/Github_repos/Wormhole-Control/domain/deployables.py), [domain/minefields.py](D:/Programming/Github_repos/Wormhole-Control/domain/minefields.py) | Distinct tactical entities are justified. Keep their ownership, visibility, and removal semantics explicit rather than treating every object as a ship through duck typing. |
 | [galaxy.py](D:/Programming/Github_repos/Wormhole-Control/galaxy.py) | Generation, topology, lookups, and relocation share a large file. Separate generation from live graph operations if touched next. Preserve reciprocal wormhole and containment invariants. |
 | [geometry.py](D:/Programming/Github_repos/Wormhole-Control/geometry.py) | Pure geometric helpers are a good test boundary. Some comments narrate elementary arithmetic; retain tolerance, fallback, tangency, and safety explanations. |
@@ -115,7 +115,7 @@ The following records individual important files and the main conclusions from t
 | [unit_orders/fuel_transport.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/fuel_transport.py), [unit_orders/antimatter.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/antimatter.py) | Long-lived transport phases are justified by waiting, sourcing, and delivery. Document phase transitions and reserve semantics rather than repeating branches in comments. |
 | [unit_orders/intelligence.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/intelligence.py) | Relocation, extraction, sabotage, discovery, and ownership are a substantial subsystem. Prefer shared target predicates and a clearly documented public failure vocabulary. |
 | [unit_components/constructor.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/constructor.py) | At 1,216 lines, combines assembly, eligibility, job state, settlement, and presentation. Extract pure assembly from the stateful constructor; preserve explicit template injection used in preparation. |
-| [unit_components/antimatter.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/antimatter.py) | `consume()` signals failure correctly for destroyed storage, but callers do not consistently honor it. Make the positive finite amount contract explicit at this reusable boundary. |
+| [unit_components/antimatter.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/antimatter.py) | `consume()` signals failure correctly for destroyed storage, and movement requires a successful debit. Preserve that safeguard and make the positive finite amount contract explicit at this reusable boundary. |
 | [unit_components/movement.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/movement.py) | Ownership tokens on targets are useful. Per-instance `RECHARGE_DURATION` looks like a module constant; rename only with deliberate persistence handling. |
 | [unit_components/weapons.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/weapons.py) | Persisting effective turret values avoids double-applying variants. |
 | [unit_components/hangar.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/hangar.py) | F6 and a misleading `in_system is None` branch. The SMALL-slot accounting branch also predates the current TINY-only docking rule; verify saved-state expectations before removing it. |
@@ -188,7 +188,7 @@ The following records individual important files and the main conclusions from t
 
 ### Changes with a clear payoff
 
-1. **Share narrow invariants first.** Candidate placement remains inconsistent. Preserve the new shared movement payment and player identity checks while extending common placement predicates where appropriate.
+1. **Share narrow invariants first.** Candidate placement remains inconsistent. Preserve shared movement payment and player identity checks while extending common placement predicates where appropriate.
 2. **Split `game_ai/commands.py` by responsibility.** Keep `CommandGateway` as the facade. Move projection state and replay into a focused module; separate preparation by a few gameplay domains. Use small records for cohesive projected state if they replace parallel dictionaries. Preserve ordering, payer identity, replacement/queue semantics, and partial-commit receipts.
 3. **Extract movement resolution and assembly.** Pull sublight/hex/wormhole resolution from `TurnProcessor`, and pure template assembly from `Constructor`. Keep orchestration and state transitions visible in their current owners.
 4. **Reduce repeated presentation knowledge.** Share order traversal and tiny widget helpers. Do not force player-redacted AI output and rich GUI formatting into one universal serializer.
@@ -314,9 +314,9 @@ Suggested sequence:
 
 ## Testing infrastructure and results
 
-### Post-fix verification for F4, F5 and F7
+### Latest recorded verification
 
-The focused regressions passed before the findings were marked resolved. They cover unsafe IDs, outside-file sentinels, temporary-file redirects, Windows junctions, Linux symbolic links, malformed player fields and identity collisions, transactional load rejection, exact identity/configuration round trips including numeric player ID zero, and payment/refund behavior in all three movement modes.
+The recorded focused regression runs passed. They cover unsafe IDs, outside-file sentinels, temporary-file redirects, Windows junctions, Linux symbolic links, malformed player fields and identity collisions, transactional load rejection, exact identity/configuration round trips including numeric player ID zero, and payment/refund behavior in all three movement modes.
 
 | Local runtime | Full offline suite |
 |---|---|
@@ -349,7 +349,7 @@ Environment: **Windows, Python 3.12.14**, project `.venv`; pygame-ce **2.5.7**, 
 
 The remaining warning is `noto_sans_bold_aa_14` not preloaded in `test_dismantling.py::test_preview_dialog_routes_to_shared_gateway`. It is non-fatal and should be fixed locally rather than globally suppressed.
 
-CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit did not run those jobs. Post-fix checks above distinguish actual local runtime tests from the two static mypy platform configurations; local Ubuntu runs use WSL rather than GitHub-hosted runners.
+CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit did not run those jobs. The latest recorded verification above distinguishes actual local runtime tests from the two static mypy platform configurations; local Ubuntu runs use WSL rather than GitHub-hosted runners.
 
 ### Keep these parts of the infrastructure
 
