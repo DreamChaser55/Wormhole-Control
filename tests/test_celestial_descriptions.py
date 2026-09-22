@@ -387,7 +387,8 @@ def test_celestial_panels_wrap_scroll_and_keep_actions(game_factory, tmp_path, s
         game.screen.fill((5, 10, 20))
         gui.manager.draw_ui(game.screen)
         pygame.image.save(game.screen, str(tmp_path / f'body-{index}-top.png'))
-        scroll.vert_scroll_bar.set_scroll_from_start_percentage(1)
+        if scroll.vert_scroll_bar.is_enabled:
+            scroll.vert_scroll_bar.set_scroll_from_start_percentage(1)
         gui.manager.update(.1)
         game.screen.fill((5, 10, 20))
         gui.manager.draw_ui(game.screen)

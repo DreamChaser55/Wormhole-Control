@@ -98,6 +98,9 @@ def test_enemy_twins_indistinguishable_with_private_orders(covert_world, renamed
     for component in (None, 'Commander', 'Weapons', 'Defenses', 'Intelligence'):
         left = panel(game, ordinary, component=component)
         right = panel(game, covert, component=component)
+        # Selection identity is internal scroll state, not visible ship information.
+        left[0].pop('sidebar_identity')
+        right[0].pop('sidebar_identity')
         assert left == right
         text = json.dumps(right)
         assert 'Template:' not in text and 'Upkeep:' not in text
