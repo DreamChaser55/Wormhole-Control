@@ -563,3 +563,4 @@ def get_min_antimatter_capacity(hull_size: Optional[HullSize] = None) -> float:
     if hull_size is None:
         return MIN_ANTIMATTER_CAPACITY
     return MIN_ANTIMATTER_CAPACITY_BY_HULL.get(hull_size, MIN_ANTIMATTER_CAPACITY)
+STRIKECRAFT_ENDURANCE_TURNS = 80

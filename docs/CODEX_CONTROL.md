@@ -2,6 +2,19 @@
 
 Wormhole Control exposes a loopback-only JSON service so Codex can play one visible GUI campaign without calling the OpenAI API. The game remains authoritative: socket workers parse and queue requests, while `Game.update()` performs every read and mutation on the Pygame thread.
 
+## Strikecraft servicing
+
+Strikecraft automatically return after 80 owner turns outside their carrier. Inspect
+owned/allied `wing_service` for endurance, return availability and launch readiness;
+docked wings expose it in the carrier's bay details. Mandatory `return_for_service`
+orders are system-controlled and cannot be cancelled or replaced. Only renaming
+remains legal while returning; conflicting commands return `wing_service_required`.
+Recover wings before moving carriers between sectors: at 80 or more turns, an
+unavailable carrier or return route (including temporary disablement) causes loss.
+Docking resets endurance and prevents relaunch until the next wing-owner turn.
+See the [servicing rules](REFERENCE.md#strikecraft-endurance-and-servicing) and
+[observation contract](AGENTIC_AI.md#strikecraft-endurance-contract).
+
 ## Quick start
 
 Run commands from the repository root. `game_control.py` connects to an existing game or launches `game.py` with the same Python interpreter, waits up to 15 seconds, and retries the request.
@@ -150,7 +163,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":20}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":21}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -383,7 +396,7 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 20 and command contract 17 expose a deduplicated `ability_catalog`,
+Observation schema 21 and command contract 17 expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
 targets and persistent deployment counts. Protocol version is 3. The strict
 response name is `wormhole_control_turn_v14`; unused OpenAI command fields stay null.
@@ -476,9 +489,9 @@ and override choices. Enemy views receive no production details.
 The human component panel labels slots starting at 1 and opens a slot-specific
 picker with the same configuration and equipment previews. **No production** clears
 the slot on **Select Production**; Cancel, Esc and closing discard edits.
-Save 4.16 / Strikecraft Bay schema 5 preserve selections, stable assignments and
+Save 4.17 / Strikecraft Bay schema 5 preserve selections, stable assignments and
 paid work without replaying payment or assembly. Command contract 17, observation
-20, response schema v14 and prompt cache v20 apply; socket protocol remains 3.
+21, response schema v14 and prompt cache v21 apply; socket protocol remains 3.
 
 ```json
 {"type":"set_wing_production","unit_ids":[101],"slot_index":0,"template_name":"FIGHTER_WING","queue":false}
@@ -531,7 +544,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.16 preserves cargo, approach orders and invasion RNG;
+casualties and capture. Save 4.17 preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
@@ -569,7 +582,7 @@ positive total strength. Non-null overrides on other commands are rejected.
 Group commands use the same choices per builder. Construct choices survive queues and saves
 and appear in owner/allied order parameters. Catalogue entries and names are unchanged.
 
-Observation 20 includes public enemy `capability_details.weapons` and `.defenses`
+Observation 21 includes public enemy `capability_details.weapons` and `.defenses`
 only for detailed visible contacts. Use their actual equipment to choose counters:
 Armor counters Mass Drivers, Shields counter Beams, and Point Defense counters
 Missiles. Enemy orders, template identity, accounting and covert components remain
@@ -592,7 +605,7 @@ displacement out of sector or build range fails it and refunds its charge once.
 
 ## Unit dismantling
 
-Contract 17 / observation 20 exposes the shared `dismantle_unit` order:
+Contract 17 / observation 21 exposes the shared `dismantle_unit` order:
 
 ```json
 {"type":"dismantle_unit","unit_ids":[101],"target_id":202,"queue":false}

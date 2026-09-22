@@ -90,6 +90,7 @@ class _BatchProjection:
         self._settled_docks = {}
         self._containment_changes = set()
         self._wing_production_enabled = {}
+        self._servicing_wings = {}
         self._settled_hidden = {}
         self._unavailable_units = set()
         self._edit_target = None
@@ -145,6 +146,19 @@ class _BatchProjection:
     def before(self, command, units):
         self._group_links = {}
         for unit in units:
+            from strikecraft_service import command_blocker
+            if command_blocker(unit, command.type):
+                raise _Rejected('wing_service_required', 'Wing must return to its carrier for servicing.')
+            if command.type == 'deploy_unit' and command.target_id in self._servicing_wings:
+                raise _Rejected('wing_service_required', 'Serviced wing cannot launch until next owner turn.')
+            if command.type == 'deploy_all_wings' and self._servicing_wings:
+                bay = unit.strikecraft_bay_component
+                if bay and unit.id in self._servicing_wings.values():
+                    from strikecraft_abilities import round_now
+                    if not any(w.id not in self._servicing_wings and
+                               (not w.strikecraft_wing_component or w.strikecraft_wing_component.recovery_ready_round <= round_now(self.game.galaxy))
+                               for w in bay.docked_units):
+                        raise _Rejected('wing_service_required', 'Serviced wings cannot launch until next owner turn.')
             if unit.id in self._unavailable_units:
                 raise _Rejected("unit_unavailable", "A selected unit is unavailable after preceding operations.")
             self._ensure_orders(unit)
@@ -684,6 +698,7 @@ class _BatchProjection:
                                 from unit_orders.hangar import DOCKING_RANGE
                                 if distance(unit.position, wing.position) <= DOCKING_RANGE:
                                     self._unavailable_units.add(wing.id)
+                                    self._servicing_wings[wing.id] = unit.id
                     entry['settled'] = True
             else:
                 from unit_components.abilities.registry import ABILITY_DEFINITIONS
@@ -732,6 +747,8 @@ class _BatchProjection:
                     self._settled_docks.setdefault(key, self._free_docking_slots(component))
                     self._settled_docks[key] -= self._docking_cost(component, unit)
                     self._unavailable_units.add(unit.id)
+                    if unit.strikecraft_wing_component:
+                        self._servicing_wings[unit.id] = target.id
                     entry["settled"] = True
 
     @staticmethod
@@ -854,6 +871,12 @@ class CommandGateway:
         results, receipts = [], []
         for offset, operation in enumerate(prepared):
             try:
+                if operation.unit_id is not None:
+                    from campaign_graph import find_unit
+                    from strikecraft_service import command_blocker
+                    actor = find_unit(self.game.galaxy, operation.unit_id)
+                    if actor is not None and command_blocker(actor, operation.command_type):
+                        raise _Rejected('wing_service_required', 'Wing must return for servicing.')
                 operation.apply()
             except Exception as exc:
                 _log_command_failure("commit", operation.command_index, operation.command_type, exc)

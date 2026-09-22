@@ -445,6 +445,33 @@ Each wing uses one shared hull-HP pool to represent its condition. Bay replenish
 restores up to 10 hull HP per paid step for 35 credits, completing one turn after
 the step starts.
 
+### Strikecraft endurance and servicing
+
+All wings have **80 owner turns outside a carrier**. The first End Turn resolution
+that begins with the wing deployed counts as turn 1; other players' turns and time
+spent docked do not count. At resolution 80, the wing cancels its current and queued
+orders and automatically returns to its mother carrier **before movement and combat**.
+It follows the carrier's current position at normal speed, holds fire, and ignores
+new orders, Stop, stance changes, Attack Run and Emergency Recovery. Its selected
+stance is preserved. Returning wings may still be renamed.
+
+The return can take additional turns beyond 80 while the carrier remains reachable.
+At 80 or more turns outside, a wing disappears if it cannot return: the mother
+carrier is missing, destroyed, hostile, in another sector, or unavailable for docking;
+the route is blocked; or disablement/equipment loss prevents return. Temporary
+disablement also counts. These conditions are checked during the wing owner's turn
+resolution. Orphaning never grants another 80 turns. There is no automatic adoption
+or alternate-carrier selection; dock manually with another friendly carrier before
+the limit to adopt it as the new mother carrier.
+
+Every successful docking resets the counter and locks launch until the **next wing-owner
+turn**. Newly built wings are already serviced and ready to launch. Servicing adds
+no resource charge, ammunition inventory, hull healing or weapon-cooldown reset;
+ordinary paid bay replenishment continues separately. Launch/return retain the same
+slot. Wing and carrier sidebars show endurance, return availability and launch readiness.
+Human, built-in AI and Codex players follow exactly the same engine rules. Briefings
+report mandatory returns and endurance losses.
+
 <!-- BEGIN GENERATED: unit-catalog -->
 | Design | Category | Hull / kind | Hull used | Credits | Turns | Upkeep | Role and operation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -676,7 +703,7 @@ can block queued work until cancelled or replaced.
 ### Order types
 
 <!-- BEGIN GENERATED: order-count -->
-The `OrderType` enum defines **44 order types**, including the persistent `STANCE` root.
+The `OrderType` enum defines **45 order types**, including the persistent `STANCE` root.
 <!-- END GENERATED: order-count -->
 
 | Order type | Action |
@@ -725,6 +752,7 @@ The `OrderType` enum defines **44 order types**, including the persistent `STANC
 | `LEAVE_GAS_GIANT` | Emerge when a safe departure position is available. |
 | `ATTACK_RUN` | Bomber approach and salvo created by the carrier ability. |
 | `EMERGENCY_RECOVERY` | Wing return created by the carrier ability. |
+| `RETURN_FOR_SERVICE` | Mandatory, non-cancellable wing return after 80 turns outside. |
 
 ### Movement and collision avoidance
 

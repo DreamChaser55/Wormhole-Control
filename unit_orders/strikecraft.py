@@ -1,9 +1,63 @@
-"""Explicit wing orders issued by a carrier's abilities."""
+"""Wing orders for mandatory servicing and carrier abilities."""
 from geometry import distance
 from .base import Order, OrderStatus, OrderType, OrderTargetField
 from .combat import AttackOrder
 from .movement import MoveOrder
 from .hangar import DOCKING_RANGE
+
+
+class ReturnForServiceOrder(Order):
+    """Engine-owned return; independent of carrier abilities and their deadlines."""
+    target_fields = (OrderTargetField('target_carrier_id', 'unit'),)
+
+    def __init__(self, unit, parameters=None, parent_order=None):
+        super().__init__(unit, OrderType.RETURN_FOR_SERVICE, parameters, parent_order)
+
+    def execute(self, galaxy_ref):
+        super().execute(galaxy_ref)
+        self.update(galaxy_ref)
+
+    def clear_children(self):
+        for child in self.sub_orders:
+            child.cancel()
+        self.sub_orders.clear()
+
+    def update(self, galaxy_ref):
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        from strikecraft_service import required, return_blocker, expire
+        if not required(self.unit):
+            return
+        if return_blocker(self.unit, galaxy_ref):
+            self.clear_children()
+            expire(self.unit)
+            return
+        carrier = self.unit.strikecraft_wing_component.mother_carrier
+        self.parameters['target_carrier_id'] = carrier.id
+        if distance(self.unit.position, carrier.position) <= DOCKING_RANGE:
+            self.clear_children()
+            self.status = OrderStatus.COMPLETED
+            carrier.strikecraft_bay_component.dock(self.unit, galaxy_ref)
+            return
+        location = [carrier.in_system, list(carrier.in_hex), carrier.position.x, carrier.position.y]
+        if self.sub_orders and (self.parameters.get('last_carrier_location') != location
+                                or self.sub_orders[0].status in {OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED}):
+            self.clear_children()
+        if not self.sub_orders:
+            self.parameters['last_carrier_location'] = location
+            self.add_sub_order(MoveOrder.for_unit_approach(self.unit, carrier, DOCKING_RANGE - 5, parent_order=self))
+        move = self.sub_orders[0]
+        if move.status == OrderStatus.PENDING:
+            move.execute(galaxy_ref)
+        move.update(galaxy_ref)
+        if move.status == OrderStatus.FAILED:
+            self.clear_children()
+            expire(self.unit)
+
+    def restore_persistence_state(self, state):
+        super().restore_persistence_state(state)
+        from state_codec import number
+        number(self.parameters.get('target_carrier_id'), 'return_for_service.target_carrier_id', 0, integer=True)
 
 
 class CarrierWingOrder(Order):

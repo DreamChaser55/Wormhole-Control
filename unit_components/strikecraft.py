@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 class StrikecraftWingComponent(UnitComponent):
     """Tracks a strikecraft wing's role, carrier association, and tactical state."""
     STATE_CONFIG = ('wing_type',)
-    STATE_RUNTIME = ('recovery_ready_round', 'last_flak_round', 'last_flak_owner_id')
+    SCHEMA_VERSION = 2
+    STATE_RUNTIME = ('recovery_ready_round', 'last_flak_round', 'last_flak_owner_id',
+                     'turns_outside', 'last_endurance_round')
     STATE_REFS = ('mother_carrier',)
     DISPLAY_NAME: str = "Strikecraft Wing"
     SIDEBAR_ORDER: int = 13
@@ -35,6 +37,8 @@ class StrikecraftWingComponent(UnitComponent):
         self.recovery_ready_round = 0
         self.last_flak_round = 0
         self.last_flak_owner_id = None
+        self.turns_outside = 0
+        self.last_endurance_round = 0
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
@@ -42,6 +46,9 @@ class StrikecraftWingComponent(UnitComponent):
         data.append({'type': 'label', 'text': f"Role: {role_str}", 'object_id': '#sidebar_info_label', 'height': 20})
         mother_name = self.mother_carrier.name if self.mother_carrier else "None"
         data.append({'type': 'label', 'text': f"Mother Carrier: {mother_name}", 'object_id': '#sidebar_info_label', 'height': 20})
+        from strikecraft_service import sidebar_labels
+        data.extend({'type': 'label', 'text': label, 'object_id': '#sidebar_info_label', 'height': 20}
+                    for label in sidebar_labels(self.unit, game_state.galaxy))
         from strikecraft_abilities import wing_order, evasion, round_now
         root = wing_order(self.unit)
         if root:
@@ -54,6 +61,11 @@ class StrikecraftWingComponent(UnitComponent):
 
     def validate_state(self):
         from state_codec import number
+        from constants import STRIKECRAFT_ENDURANCE_TURNS
+        number(self.turns_outside, 'turns_outside', 0, integer=True)
+        number(self.last_endurance_round, 'last_endurance_round', 0, integer=True)
+        if self.turns_outside > STRIKECRAFT_ENDURANCE_TURNS:
+            raise ValueError('Wing endurance counter exceeds limit')
         if self.last_flak_owner_id is not None:
             number(self.last_flak_owner_id, 'last_flak_owner_id', 0, integer=True)
 
@@ -319,7 +331,7 @@ class StrikecraftBayComponent(UnitComponent):
         if in_magnetic_storm:
             data.append({'type': 'label', 'text': "  ⚠ Magnetic Storm: Wings cannot launch", 'object_id': '#sidebar_status_charging_label', 'height': 20})
 
-        if self.docked_units and is_owner and not in_magnetic_storm and not offline(self.unit):
+        if self.docked_units and is_owner and any(self.can_deploy(w, galaxy_ref) for w in self.docked_units):
             data.append({
                 'type': 'button',
                 'text': "Launch All Wings",
@@ -336,6 +348,10 @@ class StrikecraftBayComponent(UnitComponent):
                 role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
                 wing_label = f"  - {docked_ship.name} ({role_str}, HP: {docked_ship.current_hit_points}/{docked_ship.max_hit_points})"
                 data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
+                if f_comp:
+                    from strikecraft_service import sidebar_labels
+                    data.extend({'type': 'label', 'text': label, 'object_id': '#sidebar_info_label', 'height': 20}
+                                for label in sidebar_labels(docked_ship, galaxy_ref))
                 if is_owner and evaluate(self.unit, docked_ship, galaxy_ref).blocker is None:
                     data.append({'type': 'button', 'text': f'Dismantle {docked_ship.name}…',
                                  'object_id': '#sidebar_expand_button', 'action_id': 'dismantle_wing',
@@ -360,7 +376,11 @@ class StrikecraftBayComponent(UnitComponent):
                 role_str = f_comp.wing_type.value.capitalize() if f_comp else "Fighter"
                 wing_label = f"  - {launched_ship.name} ({role_str}, HP: {launched_ship.current_hit_points}/{launched_ship.max_hit_points})"
                 data.append({'type': 'label', 'text': wing_label, 'object_id': '#sidebar_info_label', 'height': 20})
-                if is_owner:
+                from strikecraft_service import sidebar_labels, required
+                if f_comp:
+                    data.extend({'type': 'label', 'text': label, 'object_id': '#sidebar_info_label', 'height': 20}
+                                for label in sidebar_labels(launched_ship, galaxy_ref))
+                if is_owner and not required(launched_ship):
                     data.append({
                         'type': 'button',
                         'text': f"Recall {launched_ship.name}",
@@ -393,6 +413,9 @@ class StrikecraftBayComponent(UnitComponent):
 
     def can_dock(self, unit: 'Unit') -> bool:
         from dismantling import offline
+        from strikecraft_service import required
+        if required(unit) and unit.strikecraft_wing_component.mother_carrier is not self.unit:
+            return False
         if self.is_destroyed or offline(self.unit) or offline(unit):
             return False
         if unit.hull_size != HullSize.STRIKECRAFT_WING:
@@ -428,6 +451,9 @@ class StrikecraftBayComponent(UnitComponent):
         # Orphaned wings are adopted
         if unit.strikecraft_wing_component:
             unit.strikecraft_wing_component.mother_carrier = self.unit
+            from strikecraft_abilities import round_now
+            unit.strikecraft_wing_component.turns_outside = 0
+            unit.strikecraft_wing_component.recovery_ready_round = round_now(galaxy_ref) + 1
         
         self.docked_units.append(unit)
         from environmental_resistance import deactivate

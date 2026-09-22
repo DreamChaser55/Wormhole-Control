@@ -39,6 +39,10 @@ class OrderSystem:
         self.event_bus = event_bus
         self._subscribe_all()
 
+    def _controllable_units(self, units):
+        from strikecraft_service import required
+        return [unit for unit in units if not required(unit)]
+
     def _subscribe_all(self):
         def subscribe(event_type, callback):
             def committed(event):
@@ -132,7 +136,7 @@ class OrderSystem:
         return True
 
     def handle_cancel_orders(self, event: CancelOrdersEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if unit.commander_component:
                 unit.commander_component.stop_and_idle()
                 logger.debug(f"  Unit {unit.name} stopped and stance reset via event.")
@@ -152,7 +156,7 @@ class OrderSystem:
         if site is None:
             return
         event.system_name, event.sector_coord, event.destination = site
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not self.validate_engines_for_unit(unit, "move"):
                 continue
             from constants import HullSize
@@ -201,7 +205,7 @@ class OrderSystem:
             return
         event.system_name, event.sector_coord, event.destination = site
         add_waypoint = getattr(event, 'add_waypoint', getattr(event, 'ctrl_pressed', False))
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not self.validate_engines_for_unit(unit, "patrol"):
                 continue
             from constants import HullSize
@@ -249,7 +253,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_jump_interhex(self, event: JumpInterhexEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not unit.hyperdrive_component:
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -285,7 +289,7 @@ class OrderSystem:
         if not exit_wormhole:
             return
 
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if unit.hyperdrive_component:
                 if (unit.in_system == target_wormhole.in_system and
                         target_wormhole.stability > 0 and
@@ -313,7 +317,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_attack_unit(self, event: AttackUnitEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if event.long_range_only:
                 from domain.players import are_enemies
                 if (unit.owner != self.game.players[self.game.current_player_index]
@@ -335,7 +339,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_colonize(self, event: ColonizeEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             col_comp = getattr(unit, 'colony_component', None)
             if not col_comp:
                 if getattr(self.game, 'gui', None):
@@ -363,7 +367,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_load_colonists(self, event: LoadColonistsEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not getattr(unit, 'colony_component', None):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -390,7 +394,7 @@ class OrderSystem:
         system_name, hex_coord, position = site
         from geometry import Position, distance
         from location_validation import format_location
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             constructor = unit.constructor_component
             if not constructor:
                 continue
@@ -413,7 +417,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_repair_unit(self, event: RepairUnitEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not getattr(unit, 'repair_component', None):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -430,7 +434,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_refit_unit(self, event: RefitUnitEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not getattr(unit, 'constructor_component', None):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -454,7 +458,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_issue_protect_order(self, event: IssueProtectOrderEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             protect_params = {"target_unit_id": event.target_unit.id}
             protect_order = ProtectOrder(unit, protect_params)
             if not event.shift_pressed:
@@ -464,7 +468,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_mine(self, event: MineEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not getattr(unit, 'mining_component', None):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -481,7 +485,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_continuous_mine(self, event: ContinuousMineEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not getattr(unit, 'mining_component', None):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -500,7 +504,7 @@ class OrderSystem:
     def handle_unload_resources(self, event: UnloadResourcesEvent):
         is_metal_refinery = bool(getattr(event.target_unit, 'metal_refinery_component', None))
         is_crystal_refinery = bool(getattr(event.target_unit, 'crystal_refinery_component', None))
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             mining_comp = getattr(unit, 'mining_component', None)
             if not mining_comp:
                 if getattr(self.game, 'gui', None):
@@ -529,7 +533,7 @@ class OrderSystem:
         self.game.sidebar_needs_update = True
 
     def handle_dock(self, event: DockEvent):
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if unit.hull_size not in (HullSize.TINY, HullSize.SMALL, HullSize.STRIKECRAFT_WING):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -560,7 +564,7 @@ class OrderSystem:
         if event.ability_type_str in SPECS:
             from tactical_ui import issue
             spec = SPECS[event.ability_type_str]
-            for unit in event.units:
+            for unit in self._controllable_units(event.units):
                 command = {'type': 'use_ability', 'unit_ids': [unit.id], 'ability': event.ability_type_str, 'queue': event.shift_pressed}
                 if event.target_unit is not None:
                     command['target_id'] = event.target_unit.id
@@ -570,7 +574,7 @@ class OrderSystem:
                     command.update(position=[event.target_position.x, event.target_position.y], system_name=event.target_system_name, hex_coord=list(event.target_hex_coord))
                 issue(self.game, command)
             return
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not unit.ability_component:
                 continue
             if event.ability_type_str == "microjump" and (unit.in_system != event.target_system_name or unit.in_hex != event.target_hex_coord):
@@ -616,7 +620,7 @@ class OrderSystem:
     def handle_lay_minefield(self, event: LayMinefieldEvent):
         """Creates LayMinefieldOrders for selected units with MinelayerComponent."""
         mtype = getattr(event, 'minefield_type', 'anti_ship')
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             has_minelayer = getattr(unit, 'minelayer_component', None) is not None or (hasattr(unit, 'components') and any(c.__class__.__name__ == 'MinelayerComponent' for c in unit.components.values()))
             if not has_minelayer:
                 if getattr(self.game, 'gui', None):
@@ -634,7 +638,7 @@ class OrderSystem:
 
     def handle_trade(self, event: TradeEvent):
         """Creates TradeOrders for selected units with TradeComponent, targeting an active Civilian Habitat."""
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not getattr(unit, 'trade_component', None):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -652,7 +656,7 @@ class OrderSystem:
 
     def handle_continuous_trade(self, event: ContinuousTradeEvent):
         """Creates ContinuousTradeOrders for selected units with TradeComponent."""
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if not getattr(unit, 'trade_component', None):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -669,7 +673,7 @@ class OrderSystem:
 
     def handle_infiltrate_unit(self, event: InfiltrateUnitEvent):
         """Creates InfiltrateUnitOrders for selected units with IntelligenceComponent."""
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             intel_comp = getattr(unit, 'intelligence_component', None)
             if not intel_comp:
                 if getattr(self.game, 'gui', None):
@@ -702,7 +706,7 @@ class OrderSystem:
 
     def handle_infiltrate_planet(self, event: InfiltratePlanetEvent):
         """Creates InfiltratePlanetOrders for selected units with IntelligenceComponent."""
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             intel_comp = getattr(unit, 'intelligence_component', None)
             if not intel_comp:
                 if getattr(self.game, 'gui', None):
@@ -776,7 +780,7 @@ class OrderSystem:
     def handle_ci_sweep(self, event: CISweepEvent):
         """Dispatches CISweepOrder to selected Counter-Intelligence units."""
         from constants import CI_SWEEP_CREDIT_COST, CI_SWEEP_ANTIMATTER_COST
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             intel_comp = getattr(unit, 'intelligence_component', None)
             if not intel_comp or not intel_comp.has_counter_intelligence:
                 if getattr(self.game, 'gui', None):
@@ -828,7 +832,7 @@ class OrderSystem:
 
     def handle_eliminate_agent(self, event: EliminateAgentEvent):
         """Dispatches EliminateAgentOrder to selected Counter-Intelligence units."""
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             intel_comp = getattr(unit, 'intelligence_component', None)
             if not intel_comp or not intel_comp.has_counter_intelligence:
                 if getattr(self.game, 'gui', None):
@@ -849,7 +853,7 @@ class OrderSystem:
 
     def handle_extract_agent(self, event: ExtractAgentEvent):
         """Dispatches ExtractAgentOrder to extract an agent back into an intelligence vessel."""
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             intel_comp = getattr(unit, 'intelligence_component', None)
             if not intel_comp:
                 continue
@@ -865,7 +869,7 @@ class OrderSystem:
 
     def handle_enter_gas_giant(self, event: EnterGasGiantEvent):
         """Dispatches EnterGasGiantOrder to selected ships."""
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             if getattr(unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING:
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -887,7 +891,7 @@ class OrderSystem:
 
     def handle_leave_gas_giant(self, event: LeaveGasGiantEvent):
         """Dispatches LeaveGasGiantOrder to selected hidden ships."""
-        for unit in event.units:
+        for unit in self._controllable_units(event.units):
             order = LeaveGasGiantOrder(unit, {})
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()

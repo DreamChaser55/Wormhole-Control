@@ -9,6 +9,7 @@ from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAste
 from constants import NebulaType, PlanetType
 from unit_components.enums import HyperdriveType
 from unit_orders.base import OrderType
+from strikecraft_service import required as service_required
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ def build_system_context_menu_options(game, target_hex_coord: HexCoord) -> typin
         return options
 
 
-    actors = game.selected_objects
+    actors = [a for a in game.selected_objects if not service_required(a)]
     if any(isinstance(actor, Unit) for actor in actors):
         for actor in actors:
             if isinstance(actor, Unit) and actor.hyperdrive_component is not None:
@@ -212,7 +213,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
     target_object = target if isinstance(target, GameObject) else None
     target_coords = target if isinstance(target, Position) else None
 
-    actors = [a for a in game.selected_objects if isinstance(a, Unit)]
+    actors = [a for a in game.selected_objects if isinstance(a, Unit) and not service_required(a)]
     current_player = (
         game.players[game.current_player_index]
         if getattr(game, 'players', None) and 0 <= getattr(game, 'current_player_index', 0) < len(game.players)

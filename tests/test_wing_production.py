@@ -31,6 +31,7 @@ def create(game, key, owner=0):
 
 def world():
     game = campaign()
+    game.galaxy.game = game
     carrier = create(game, 'FLEET_CARRIER')
     carrier.owner.credits = 10000
     return game, carrier, carrier.strikecraft_bay_component

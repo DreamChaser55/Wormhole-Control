@@ -491,6 +491,9 @@ class Unit(GameObject):
     def remove_for_dismantling(self) -> None:
         self._remove('dismantled')
 
+    def remove_for_endurance(self) -> None:
+        self._remove('endurance_expired')
+
     def _remove(self, reason) -> None:
         """Permanently detach this unit and destroy its stored craft, once.
 
@@ -505,6 +508,9 @@ class Unit(GameObject):
         if reason == 'destroyed' and (self.lifetime is None or self.lifetime > 0):
             from turn_briefing import unit_event
             unit_event(self, "loss", "Destroyed", once=True)
+        elif reason == 'endurance_expired':
+            from turn_briefing import unit_event
+            unit_event(self, 'loss', 'Wing lost: unable to return for refueling and rearming', private=True, once=True)
         self._destroyed = True
         for agent in self.infiltrating_agents:
             source = agent.source_unit
@@ -533,7 +539,8 @@ class Unit(GameObject):
                         if self.id in effect.spawned_unit_ids:
                             effect.spawned_unit_ids.remove(self.id)
         from order_history import interrupt_unit_orders
-        interrupt_unit_orders(self, "unit_destroyed" if reason == 'destroyed' else 'unit_dismantled')
+        interrupt_unit_orders(self, {'destroyed': 'unit_destroyed', 'dismantled': 'unit_dismantled',
+                                    'endurance_expired': 'wing_endurance_expired'}[reason])
         logger.debug(f"Unit '{self.name}' has been destroyed.")
         if self.hangar_component:
             for docked_unit in list(self.hangar_component.docked_units):

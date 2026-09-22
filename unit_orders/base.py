@@ -39,6 +39,7 @@ class OrderStatus(Enum):
 
 
 class OrderType(Enum):
+    RETURN_FOR_SERVICE = auto()
     DISMANTLE_UNIT = auto()
     RECRUIT_TROOPS = auto()
     BOMBARD_PLANET = auto()

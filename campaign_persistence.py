@@ -421,6 +421,21 @@ def reconcile(candidate):
     # Carrier effects depend on restored explicit wing roots as well as the object graph.
     for obj, _ in list(iter_units(galaxy)):
         sm._restore_saved_commander(obj, candidate)
+        wing = obj.strikecraft_wing_component
+        if wing:
+            from campaign_graph import is_deployed
+            from constants import STRIKECRAFT_ENDURANCE_TURNS
+            if wing.last_endurance_round > candidate.turn_number:
+                raise ValueError('Wing endurance round is in the future')
+            if not is_deployed(obj, galaxy) and wing.turns_outside != 0:
+                raise ValueError('Docked wing must have reset endurance')
+        commander = obj.commander_component
+        for root in ([commander.current_order, *commander.orders_queue] if commander else []):
+            if root is not None and root.order_type.name == 'RETURN_FOR_SERVICE':
+                if (not wing or root is not commander.current_order
+                        or wing.turns_outside != STRIKECRAFT_ENDURANCE_TURNS
+                        or not is_deployed(obj, galaxy)):
+                    raise ValueError('Invalid mandatory wing return')
     from dismantling import restore as restore_dismantling
     restore_dismantling(galaxy)
     from location_validation import location

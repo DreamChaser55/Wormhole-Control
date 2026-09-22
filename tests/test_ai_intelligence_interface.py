@@ -81,7 +81,7 @@ def test_observation_discloses_only_authorized_agent_state():
     spy.infiltrating_agents.extend([hidden, discovered])
 
     observation = build_observation(game, player)
-    assert observation["schema_version"] == 20
+    assert observation["schema_version"] == 21
     assert observation["command_catalog"]["version"] == 17
     assert observation["intelligence"]["owned_agents"] == [
         {
@@ -291,7 +291,7 @@ def test_luna_coordinator_and_codex_control_use_identical_gateway_effects():
         observed = service._dispatch("observe", "observe-intelligence", {})
         assert observed["ok"]
         observation = observed["data"]["observation"]
-        assert observation["schema_version"] == 20
+        assert observation["schema_version"] == 21
         assert observation["command_catalog"]["version"] == 17
         assert observation["intelligence"]["owned_agents"][0]["agent_id"] == codex_agent.id
 

@@ -41,6 +41,14 @@ scaled by hull HP at completion. Durations add each unit's half build time round
 fund this command batch. Bays finish prepaid work first and pause new wing construction; explicitly use
 set_wing_production_enabled with enabled=true to resume. Selecting a wing design does not resume production.
 Use command previews and cancel the executor's order to stop dismantling without salvage.
+Wings have 80 owner turns of endurance outside a carrier. wing_service exposes remaining turns,
+mother_carrier_id, return availability and the servicing launch lock. At the 80th End Turn,
+the engine replaces every wing order with mandatory return before movement and combat.
+Returning wings cannot accept orders, cancellation, stance changes, Attack Run or Emergency Recovery.
+Rename is still allowed. Recall wings early and recover them before moving their carrier to another sector.
+At 80 or more turns outside, a missing or unreachable carrier (including temporary disablement)
+causes the wing to disappear; orphaning never resets the timer. Successful docking resets endurance
+and locks launch until the next wing-owner turn. No new fuel, ammunition or service charge is required.
 Wing roles are separate from template names: fighters intercept wings; bombers attack ships
 and stations. Attack Run requires your carrier's deployed bombers, including long-range bombers.
 Budget for fuel, repair, refinery and habitat dependencies as described by the catalog.
@@ -56,7 +64,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 20 and the command_catalog describes contract 17. The final turn_summary
+Observations use schema 21 and the command_catalog describes contract 17. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.

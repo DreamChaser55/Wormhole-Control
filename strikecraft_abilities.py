@@ -45,9 +45,11 @@ def owned_wing(source, wing, galaxy):
 
 def eligible_bombers(source, galaxy, *, include_recovering=False):
     from unit_components.enums import WingType
+    from strikecraft_service import required
     sector = sector_for(source, galaxy)
     return sorted((wing for wing in getattr(sector, 'units', ())
         if owned_wing(source, wing, galaxy)
+        and not required(wing)
         and wing.strikecraft_wing_component.wing_type == WingType.BOMBER
         and not wing.is_disabled and wing.commander_component
         and wing.engines_component and wing.engines_component.is_operational
@@ -78,6 +80,9 @@ def validate_target(source, kind, galaxy, target_id, position, *, check_particip
     else:
         if not owned_wing(source, target, galaxy):
             return 'target_unavailable'
+        from strikecraft_service import required
+        if kind == 'emergency_recovery' and required(target):
+            return 'wing_service_required'
         if kind == 'emergency_recovery' and (target.is_disabled or not target.commander_component
                 or not target.engines_component or not target.engines_component.is_operational
                 or not source.strikecraft_bay_component.can_dock(target)):
@@ -91,6 +96,9 @@ def issue_wing_orders(source, kind, galaxy, target_id):
     wings = eligible_bombers(source, galaxy) if kind == 'attack_run' else [galaxy.get_unit_by_id(target_id)]
     inst.participant_ids = [wing.id for wing in wings]
     for wing in wings:
+        from strikecraft_service import required
+        if required(wing):
+            continue
         params = {'source_carrier_id': source.id, 'source_owner_id': source.owner.id,
                   'ability_type': kind, 'release_round': round_now(galaxy) + 1,
                   'expires_round': inst.expires_round}
@@ -152,6 +160,9 @@ def speed_multiplier(wing):
 
 
 def outgoing_multiplier(source, target, turret):
+    from strikecraft_service import required
+    if required(source):
+        return 0.0
     from unit_components.enums import TurretVariant
     result = EVASIVE_OUTGOING if evasion(source) else 1.0
     root = wing_order(source)

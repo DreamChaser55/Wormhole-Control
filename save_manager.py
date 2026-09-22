@@ -42,7 +42,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.16"
+CURRENT_SAVE_VERSION = "4.17"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -557,7 +557,7 @@ def _restore_saved_commander(unit: Unit, game: Any) -> None:
         return
     data = unit._saved_commander_data
     commander = unit.commander_component
-    commander.set_stance(UnitStance(data["stance"]))
+    commander.set_stance(UnitStance(data["stance"]), internal=True)
     current = deserialize_order(data["current_order"], unit, game) if data["current_order"] is not None else None
     queued = [deserialize_order(raw, unit, game) for raw in data["orders_queue"]]
     commander.restore_explicit_orders(current, queued, game.galaxy)

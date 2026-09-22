@@ -2,7 +2,7 @@
 from .wormhole_stabilizer import StabilizeWormholeOrder
 from .planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
 from .abilities import UseAbilityOrder
-from .strikecraft import AttackRunOrder, EmergencyRecoveryOrder
+from .strikecraft import AttackRunOrder, EmergencyRecoveryOrder, ReturnForServiceOrder
 from .fuel_transport import TakeAntimatterOrder, ContinuousAntimatterTransportOrder
 from .antimatter import ContinuousResupplyOrder, TransferAntimatterOrder
 from .base import Order, OrderStatus, OrderType
@@ -34,6 +34,7 @@ from .trade import ContinuousTradeOrder, TradeOrder
 
 # The single authoritative mapping used by persistence and coverage tests.
 ORDER_CLASS_REGISTRY = {
+    OrderType.RETURN_FOR_SERVICE: ReturnForServiceOrder,
     OrderType.DISMANTLE_UNIT: DismantleOrder,
     OrderType.STABILIZE_WORMHOLE: StabilizeWormholeOrder,
     OrderType.RECRUIT_TROOPS: RecruitTroopsOrder,
@@ -93,6 +94,7 @@ __all__ = [
     "AttackLongRangeOrder",
     "AttackRunOrder",
     "EmergencyRecoveryOrder",
+    "ReturnForServiceOrder",
     "ProtectOrder",
     "StanceOrder",
     "DefendOrder",

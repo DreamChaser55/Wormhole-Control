@@ -3,7 +3,7 @@ import json
 
 MAX_EVENTS = 128
 MAX_CHARACTERS = 32_000
-PUBLIC_REASONS = frozenset({"completed", "failed", "cancelled", "execution_failed", "suborder_failed",
+PUBLIC_REASONS = frozenset({"wing_service_required", "wing_endurance_expired", "completed", "failed", "cancelled", "execution_failed", "suborder_failed",
     "unit_destroyed", "unit_dismantled", "dismantling_conflict", "target_out_of_range", "ownership_lost", "target_unavailable", "capability_unavailable",
     "assault_repulsed", "insufficient_troops", "cooldown_active", "insufficient_resources", "insufficient_population", "insufficient_capacity", "invalid_parameters",
     "path_unavailable", "construction_unavailable", "refit_unavailable", "ability_unavailable", "ability_expired"})

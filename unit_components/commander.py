@@ -77,6 +77,9 @@ class Commander(UnitComponent):
 
     def process_stance(self) -> None:
         """Update the standing policy while no explicit order is active."""
+        from strikecraft_service import required
+        if required(self.unit):
+            return
         from dismantling import offline
         if offline(self.unit) or self.current_order or self.orders_queue:
             return
@@ -122,7 +125,8 @@ class Commander(UnitComponent):
             'indent_level': 1
         })
         is_owned = (self.unit.owner == game_state.players[game_state.current_player_index])
-        if is_owned and orders_count > 0:
+        from strikecraft_service import required
+        if is_owned and orders_count > 0 and not required(self.unit):
             data.append({
                 'type': 'button',
                 'text': "Stop Unit",
@@ -151,7 +155,8 @@ class Commander(UnitComponent):
         })
         
         is_owned = (self.unit.owner == game_state.players[game_state.current_player_index])
-        if is_owned:
+        from strikecraft_service import required
+        if is_owned and not required(self.unit):
             options_list = [s.display_name for s in self.get_allowed_stances()]
             data.append({
                 'type': 'drop_down_menu',
@@ -180,7 +185,7 @@ class Commander(UnitComponent):
             'indent_level': 0
         })
 
-        if is_owned and self.get_active_orders_count() > 0:
+        if is_owned and self.get_active_orders_count() > 0 and not required(self.unit):
             data.append({
                 'type': 'button',
                 'text': "Stop Unit",
@@ -262,13 +267,17 @@ class Commander(UnitComponent):
             })
         return data
 
-    def add_order(self, order: Order) -> None:
+    def add_order(self, order: Order, *, internal: bool = False) -> None:
         """Own an explicit root, suspend stance engagement, and append it FIFO.
 
         An idle commander starts it synchronously; execution may complete or mutate
         the world before return. Existing foreground work is preserved. Callers
         validate issuance first and use clear_explicit_orders for replacement.
         """
+        from strikecraft_service import required
+        if not internal and required(self.unit):
+            order.fail('wing_service_required')
+            return
         from dismantling import offline
         if offline(self.unit):
             order.fail('dismantling_conflict')
@@ -280,8 +289,11 @@ class Commander(UnitComponent):
         if self.current_order is None:
             self.start_next_order()
 
-    def set_stance(self, stance: UnitStance) -> None:
+    def set_stance(self, stance: UnitStance, *, internal: bool = False) -> None:
         """Replace the standing policy without interrupting explicit work."""
+        from strikecraft_service import required
+        if not internal and required(self.unit):
+            return
         from dismantling import offline
         if offline(self.unit):
             return
@@ -345,13 +357,16 @@ class Commander(UnitComponent):
         self.current_order = None
         self._clear_weapon_target()
 
-    def clear_explicit_orders(self) -> None:
+    def clear_explicit_orders(self, *, internal: bool = False) -> None:
         """Cancel owned explicit roots without promoting any queued work.
 
         Concrete cancellation hooks release their own actuators/jobs and refund
         their own charges once. The standing policy remains selected and resumes
         through normal updates; this method returns no new execution result.
         """
+        from strikecraft_service import required
+        if not internal and required(self.unit):
+            return
         if self.current_order:
             self.current_order.cancel()
             self._release_current_order()
@@ -361,11 +376,14 @@ class Commander(UnitComponent):
         if not self.standing_order.has_engagement:
             self._clear_weapon_target()
 
-    def stop_and_idle(self) -> None:
+    def stop_and_idle(self, *, internal: bool = False) -> None:
         """Cancel all work, clear component state, and select Do Nothing."""
-        self.clear_explicit_orders()
+        from strikecraft_service import required
+        if not internal and required(self.unit):
+            return
+        self.clear_explicit_orders(internal=internal)
         self.suspend_stance_activity("unit stopped")
-        self.set_stance(UnitStance.DO_NOTHING)
+        self.set_stance(UnitStance.DO_NOTHING, internal=internal)
         if self.unit.engines_component:
             self.unit.engines_component.clear_move_target()
         if self.unit.hyperdrive_component:
@@ -439,6 +457,9 @@ class Commander(UnitComponent):
         sub-orders.  Patrol, Protect, and Defend may also authorize their active
         front Attack sub-order.  Queued and finished orders never authorize fire.
         """
+        from strikecraft_service import required
+        if required(self.unit):
+            return None
         root = self.current_order
         if root and root.order_type == OrderType.ATTACK_RUN and getattr(root, 'phase', None) != 'release':
             return None
@@ -463,6 +484,9 @@ class Commander(UnitComponent):
         Returns:
             True if the order was found and cancelled, False otherwise
         """
+        from strikecraft_service import required
+        if required(self.unit):
+            return False
         if self.current_order and self.current_order.local_order_id == local_order_id:
             self.current_order.cancel()
             self._release_current_order()

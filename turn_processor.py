@@ -92,8 +92,12 @@ class TurnProcessor:
             process_support(self.game, current_player)
             from tactical_abilities import reconcile_links
             reconcile_links(self.game.galaxy)
+            from strikecraft_service import process as process_wing_service
+            process_wing_service(self.game, current_player, advance=True)
             with ProfileTimer("Movement processing"):
                 sublight_movements = self._process_movement(current_player)
+
+            process_wing_service(self.game, current_player)
 
             from tactical_abilities import process_pulls
             process_pulls(self.game.galaxy, current_player, turn_num)
@@ -126,6 +130,7 @@ class TurnProcessor:
             process_actions(self.game, current_player)
             process_support(self.game, current_player)
 
+            process_wing_service(self.game, current_player)
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 
 
@@ -161,6 +166,11 @@ class TurnProcessor:
 
                 commander = unit.commander_component
                 if commander:
+                    from strikecraft_service import reconcile_unit
+                    reconcile_unit(unit, self.game.galaxy)
+                    from campaign_graph import is_deployed
+                    if not is_deployed(unit, self.game.galaxy):
+                        continue
                     from strikecraft_abilities import wing_order
                     root = wing_order(unit)
                     if root:

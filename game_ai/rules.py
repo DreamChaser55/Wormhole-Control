@@ -124,6 +124,10 @@ def body_is_public(game, player, body, selected_units=()):
 
 
 def capability_blocker(unit, command_type):
+    from strikecraft_service import command_blocker
+    service_blocker = command_blocker(unit, command_type)
+    if service_blocker:
+        return service_blocker
     from dismantling import offline
     if offline(unit) and command_type not in {'rename_unit', 'cancel_orders', 'clear_explicit_orders', 'cancel_order'}:
         return 'dismantling_conflict'
@@ -228,6 +232,9 @@ def command_guidance(
     """Return standalone legal commands, bounded options, and conditional actions."""
 
     supported = supported_commands(unit)
+    from strikecraft_service import required
+    if required(unit):
+        return ['rename_unit'], {'service_blocker': 'wing_service_required'}, []
     exact_bodies = list(exact_bodies)
     visible_units = list(visible_units)
     legal: set[str] = {"rename_unit"}

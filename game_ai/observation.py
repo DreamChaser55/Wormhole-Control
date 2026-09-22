@@ -157,7 +157,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "Presence signatures intentionally contain no unit count, identity, owner, or strength."
     )
     return {
-        "schema_version": 20,
+        "schema_version": 21,
         "turn_number": turn,
         "active_player": {
             "id": int(player.id),
@@ -310,13 +310,17 @@ def _unit_view(
         }
         wing = getattr(unit, 'strikecraft_wing_component', None)
         if wing:
+            from strikecraft_service import state_view, required
+            data['wing_service'] = state_view(unit, game.galaxy)
+            if data['wing_service']['mother_carrier_id'] not in {u.id for u in visible_units}:
+                data['wing_service']['mother_carrier_id'] = None
             from strikecraft_abilities import incoming_multiplier, evasion, round_now, wing_order
             from tactical_balance import EVASIVE_OUTGOING
             root = wing_order(unit)
             data['wing_tactical_state'] = {
                 'incoming_weapon_multiplier': incoming_multiplier(unit),
                 'evasive_outgoing_multiplier': EVASIVE_OUTGOING if evasion(unit) else 1.0,
-                'weapons_suppressed': bool(root and root.order_type.name == 'EMERGENCY_RECOVERY'),
+                'weapons_suppressed': required(unit) or bool(root and root.order_type.name == 'EMERGENCY_RECOVERY'),
                 'recovery_launch_locked': wing.recovery_ready_round > round_now(game.galaxy),
             }
     if relation == "enemy":
@@ -585,6 +589,10 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
             }
     bay = getattr(unit, "strikecraft_bay_component", None)
     if bay is not None:
+        from strikecraft_service import state_view as service_view
+        for view, wing in zip(details['strikecraft_bay']['docked_units'], bay.docked_units):
+            if wing.strikecraft_wing_component:
+                view['wing_service'] = service_view(wing, game.galaxy)
         details["strikecraft_bay"].update(
             production_enabled=bay.production_enabled, slots=bay.slot_views(),
             constructing=bay.constructing, construction_slot_index=bay.construction_slot_index,

@@ -30,6 +30,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
         if order is None:
             return None
         kind = enum_name(order.order_type)
+        if root and kind == 'return_for_service':
+            origin = 'system'
         private_agent_order = kind in {"extract_agent", "eliminate_agent"}
         data = {"type": kind, "status": enum_name(order.status), "origin": origin}
         if not rich:
@@ -82,6 +84,8 @@ def order_layers(unit, relation, visible_ids, body_ids):
                               destination_mode='automatic' if order.automatic else 'manual')
             data["parameters"] = public
         progress = {}
+        if kind == 'return_for_service':
+            progress = {'phase': 'approach'}
         if kind == 'dismantle_unit' and not hidden:
             progress = dict(phase=order.phase, turns_completed=order.progress, turns_required=order.duration,
                             included_unit_ids=[m['unit_id'] for m in order.members])

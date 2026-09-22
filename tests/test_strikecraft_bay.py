@@ -227,6 +227,7 @@ def test_strikecraft_wing_limit_enforced():
     assert not strikecraft_bay.can_dock(other_wing)
 
     # Deploy wing: still 1/1 (1 launched)
+    galaxy.game.turn_number = wing_comp.recovery_ready_round
     assert strikecraft_bay.deploy(wing, galaxy)
     assert strikecraft_bay.get_used_slots() == 1
     assert wing in strikecraft_bay.launched_units
