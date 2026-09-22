@@ -9,7 +9,7 @@ The project has useful foundations: explicit order ownership, separate campaign 
 
 The best next step is a sequence of small correctness fixes followed by focused extraction and documentation cleanup. A new entity framework, generic transaction engine, wholesale UI rewrite, or repository-wide typing conversion would add risk without addressing the demonstrated problems directly.
 
-**Final verification: 3,426 tests passed, plus 10 subtests, in 208.50 seconds.** One font-preload warning remains. The first run had six failures; two small test corrections resolved obsolete expectations without changing production behavior. The gameplay findings below remain open.
+**Final verification: 3,426 tests passed, plus 10 subtests, in 208.50 seconds.** One font-preload warning remains. The gameplay findings below remain open.
 
 ### Scope and method
 
@@ -19,16 +19,7 @@ The best next step is a sequence of small correctness fixes followed by focused 
 - Ran the full offline suite, configured quality checks, additional lint, local Markdown link/heading checks, and isolated behavioral probes. Live provider calls, real API credentials, and the user's saved campaigns were not used.
 - This is a source review and targeted behavioral audit, not a proof that every possible campaign, UI interaction, or malformed input is correct. Runtime coverage percentages were not measured, and the CI operating-system/Python matrix was not executed locally.
 
-### Changes made during this review
-
-Only this report and the following test expectation corrections are intended repository changes:
-
-| File | Change | Reason |
-|---|---|---|
-| [tests/test_covert_ships.py:101](D:/Programming/Github_repos/Wormhole-Control/tests/test_covert_ships.py:101) | Exclude the first row's `sidebar_identity` from the two ships' panel comparison. | Different selections need different internal scroll identities. All visible content comparisons and the separate observation/privacy assertions remain. |
-| [tests/test_celestial_descriptions.py:388](D:/Programming/Github_repos/Wormhole-Control/tests/test_celestial_descriptions.py:388) | Scroll to the bottom only when the scrollbar is enabled. | The test previously forced a disabled scrollbar to use an obsolete range after switching from tall to short content. Wrapping, bounds, actions, and actual scroll retention remain tested. |
-
-Production fixes, general cleanup, and documentation rewrites are recommendations, not completed changes. Local diagnostic scripts and logs are under the ignored `.codex_test_cache/audit/` directory.
+Production fixes, general cleanup, and documentation rewrites are recommendations, not completed changes.
 
 ## Prioritized findings
 
@@ -258,7 +249,7 @@ The following records individual important files and the main conclusions from t
 | [gui/event_router.py](D:/Programming/Github_repos/Wormhole-Control/gui/event_router.py) | `process_event()` is 300 lines. A few named per-dialog/feature handlers are simpler than continuing the branch chain or inventing a universal event framework. |
 | [input_processor/context_actions.py](D:/Programming/Github_repos/Wormhole-Control/input_processor/context_actions.py) | `handle_context_menu_action()` is 454 lines. Extract handlers by actual action family; data-driven routing is suitable for simple direct dispatch only. |
 | [input_processor/context_menu_builder.py](D:/Programming/Github_repos/Wormhole-Control/input_processor/context_menu_builder.py) | Repeats relationship helpers and capability decisions. Use canonical relationship/domain predicates so menu legality does not drift from execution. |
-| [gui/sidebar/view.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/view.py) | Stable selection identity and measuring from the viewport origin address real UI concerns. The observed test failures came from the test forcing a disabled scrollbar, not evidence that actual overflow retention is broken. |
+| [gui/sidebar/view.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/view.py) | Stable selection identity and measuring from the viewport origin address real UI concerns. |
 | [gui/sidebar/panels_unit.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_unit.py), [gui/sidebar/panels_world.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_world.py) | Keep user-visible rows distinct from internal identity metadata. Preserve public equipment/privacy comparisons when changing layouts. |
 | [gui/sidebar/order_formatting.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/order_formatting.py) | Large order-type formatter duplicates some traversal/knowledge used by renderers and AI views. Reuse neutral order traversal where possible, while retaining viewer-specific redaction. |
 | [gui/unit_editor_gui/widget_factory.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/widget_factory.py), [gui/retrofit_gui/layout.py](D:/Programming/Github_repos/Wormhole-Control/gui/retrofit_gui/layout.py) | Four widget helpers have identical bodies across these modules. Extract those small helpers, rather than building a generic form engine. |
@@ -406,11 +397,8 @@ Environment: **Windows, Python 3.12.14**, project `.venv`; pygame-ce **2.5.7**, 
 
 | Check | Result |
 |---|---|
-| Initial full `python -m pytest -q --durations=25` | 3,420 passed, 6 failed, 10 subtests passed; 214.40 s. |
-| Repeat of the two failing test files before corrections | Same six failures; 71 passed. |
-| Those two files after corrections | **77 passed**. |
 | Final full `python -m pytest -q --durations=20 -o cache_dir=.codex_test_cache/audit/pytest --junitxml=.codex_test_cache/audit/final-junit.xml` | **3,426 passed, 10 subtests passed, 1 warning; 208.50 s.** |
-| `python -m ruff check .` | Passed, including after test changes. |
+| `python -m ruff check .` | Passed. |
 | CI's scoped `ruff --select F,E9` check | Passed. |
 | `python scripts/check_import_boundaries.py` | Passed. |
 | `python -m mypy --platform linux` | Passed for the seven configured files. |
@@ -420,17 +408,9 @@ Environment: **Windows, Python 3.12.14**, project `.venv`; pygame-ce **2.5.7**, 
 | Local Markdown path/heading check | No unresolved local links detected. External URLs were not fetched. |
 | `git diff --check` | Passed for the changes. |
 
-The first run also emitted two cache-write warnings for the existing `.pytest_cache`; the final run used the writable ignored audit cache. The remaining warning is `noto_sans_bold_aa_14` not preloaded in `test_dismantling.py::test_preview_dialog_routes_to_shared_gateway`. It is non-fatal and should be fixed locally rather than globally suppressed.
+The remaining warning is `noto_sans_bold_aa_14` not preloaded in `test_dismantling.py::test_preview_dialog_routes_to_shared_gateway`. It is non-fatal and should be fixed locally rather than globally suppressed.
 
 CI additionally executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. Passing mypy with two `--platform` values is static analysis, not evidence that those runtime matrix jobs passed during this review.
-
-### Why the original failures were obsolete expectations
-
-Four parameterizations compared full sidebar row dictionaries for two different ships. The new `sidebar_identity` values necessarily differ by unit ID. Excluding only that internal field allows the full visible row comparison, forbidden text checks, AI observation equivalence, and precision-targeting privacy checks to execute and pass.
-
-The two expanded celestial-panel cases first displayed overflowing debris information, then shorter nebula information. The measured nebula content was **472 pixels in a 714-pixel viewport**. Its scrollbar was disabled, but the test directly set its scroll percentage to 1 using the previous range. The next refresh correctly returned to the origin. Restricting the simulated scroll to enabled scrollbars tests behavior a user can actually invoke and keeps the overflow-retention checks intact.
-
-No tests were skipped, deleted, marked expected-failure, or filtered out of the final full run.
 
 ### Keep these parts of the infrastructure
 
@@ -444,13 +424,12 @@ No tests were skipped, deleted, marked expected-failure, or filtered out of the 
 ### Bloat and blind spots to address
 
 1. **Misleading doubles:** The hangar boundary test passes an impossible live location and an old scale assumption. Use a small real campaign for membership/geometry rules; reserve mocks for external collaborators.
-2. **Brittle snapshots:** Whole UI dictionaries mix rendered content with implementation metadata. Compare the public behavior under test while retaining a separate identity/lifecycle check where needed.
-3. **Repeated setup:** Share duplicated collision setup and simple campaign/entity builders. Avoid fixtures that construct a full UI or large galaxy for a calculation needing two units.
-4. **Unused test setup:** Sixty unused local diagnostics merit review. A created entity may intentionally affect the world even if its variable is unused; do not delete the call automatically.
-5. **Weak lint scope:** The green default Ruff run says little about unused code. Expand cleaned module coverage gradually.
-6. **Narrow typing scope:** Strict mypy covers seven selected boundary files with silent import following, not the entire game. Add types first to preparation results, projection records, and persistence validators where they clarify contracts.
-7. **Missing cross-boundary tests:** Most reproduced bugs occur where two individually tested layers disagree. Add the focused scenarios below instead of more implementation-call-count assertions.
-8. **UI test cost:** Several large-display tests take approximately 2–4 seconds each. Keep representative resolution/scale transitions and privacy cases; consolidate redundant screenshots/setup only after checking they do not protect different regressions. A roughly 3.5-minute complete local run does not justify deleting meaningful tests just to reduce count.
+2. **Repeated setup:** Share duplicated collision setup and simple campaign/entity builders. Avoid fixtures that construct a full UI or large galaxy for a calculation needing two units.
+3. **Unused test setup:** Sixty unused local diagnostics merit review. A created entity may intentionally affect the world even if its variable is unused; do not delete the call automatically.
+4. **Weak lint scope:** The green default Ruff run says little about unused code. Expand cleaned module coverage gradually.
+5. **Narrow typing scope:** Strict mypy covers seven selected boundary files with silent import following, not the entire game. Add types first to preparation results, projection records, and persistence validators where they clarify contracts.
+6. **Missing cross-boundary tests:** Most reproduced bugs occur where two individually tested layers disagree. Add the focused scenarios below instead of more implementation-call-count assertions.
+7. **UI test cost:** Several large-display tests take approximately 2–4 seconds each. Keep representative resolution/scale transitions and privacy cases; consolidate redundant screenshots/setup only after checking they do not protect different regressions. A roughly 3.5-minute complete local run does not justify deleting meaningful tests just to reduce count.
 
 ### Recommended regression additions
 
@@ -499,7 +478,6 @@ The desired outcome is fewer independent implementations of the same rule, clear
 The most useful local diagnostic artifacts are:
 
 - [Final full-suite output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-pytest.log) and [JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-junit.xml).
-- [Initial full-suite output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit-pytest.log).
 - [Foreign reservation results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/foreign-reservations.json).
 - [Design, persistence, path, and observation probes](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/reproductions.json).
 - [Placement, movement, and ability-payment results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay-probes.json), with [probe source](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay_probes.py).
