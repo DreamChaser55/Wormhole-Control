@@ -275,6 +275,10 @@ configure equipment and save a design to make it available for construction.
 Custom designs use a separate [user-data library](#custom-design-storage) and are
 available to human players only; automated players use public built-in designs.
 The Designer and retrofit editor enforce the same complete equipment rules.
+Turret damage and range must be finite and nonnegative; cooldown must be a
+nonnegative integer. Editable fixed component hull costs must also be nonnegative.
+Zero values are allowed. Invalid input reports an error before publishing a design
+or paying for a refit, keeping accepted equipment compatible with campaign saves.
 
 Click **?** beside a component or ability toggle in the Unit Editor to read its
 description and key rules, including requirements and costs. Help is available
@@ -913,6 +917,11 @@ Equip abilities in the Designer or retrofit editor. The table gives activation
 costs, prerequisites, range and timing; the descriptions below explain effects.
 Human controls and both automated controllers use shared validation and orders.
 See [Codex commands](CODEX_CONTROL.md#tactical-ability-commands) for payloads.
+Positive-cost casts require functional Antimatter Storage and pay before applying
+effects. Failed payment leaves targets, cooldown and active duration unchanged.
+Rejected activations, including blocked microjumps and unsuccessful capture rolls,
+refund their activation payment and do not start cooldown. Zero-cost abilities
+retain their own equipment requirements.
 
 <!-- BEGIN GENERATED: abilities -->
 There are **24 special abilities** registered in the game.

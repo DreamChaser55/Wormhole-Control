@@ -352,7 +352,10 @@ Outcome history contains no target references, names, coordinates or raw excepti
 
 Preflight projects order-associated population, construction and docking reservations,
 replacement, cancellation, route edits, toggles, agent relocation/sabotage, CI cooldowns,
-credits and ship antimatter in array order. It creates no authoritative
+credits and ship antimatter in array order. Construction credits are reserved only from
+the initiating player's treasury; allied/enemy build queues cannot reduce that
+budget. Allied docking and colony-population reservations still share capacity.
+Preflight creates no authoritative
 orders, charges, component targets or lifecycle events. Construction/refit jobs bind their
 charge and cancellation ownership to the initiating order; cancelling a pending sibling
 cannot cancel/refund the active job. Refunds go to the original payer at most once.
@@ -441,6 +444,10 @@ remain redacted. Pending casts reserve caster AM/cooldown, choosing wings only a
 execution. Immediate casts project wing-order replacements in batch order.
 Execution rechecks legality. Saves preserve phases and deadlines without replaying
 casts or salvos; recovered wings cannot launch before the next owner-turn start.
+Ordinary cast readiness also requires functional storage for positive AM costs.
+Projected fuel may satisfy affordability but cannot substitute for working storage.
+Execution pays before applying effects; payment failure has no effect or cooldown,
+and ordinary activation rejection refunds the payment without starting cooldown.
 
 The six [tactical abilities](REFERENCE.md#deployment-and-link-abilities) share side-effect-free validation
 in `tactical_abilities.py` across human controls, observations, preflight and orders.

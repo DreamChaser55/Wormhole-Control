@@ -171,8 +171,10 @@ class AbilityInstance:
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
         """
-        Executed when the ability is activated. Returns True if activation succeeded,
-        False if activation failed/aborted.
+        Apply a paid ordinary cast. Return True on success; return False only
+        before changing gameplay or ability state so the caller can refund fuel.
+        Validation and any capture roll precede effects. Unexpected exceptions
+        propagate with potentially partial effects and are not refundable rejection.
         """
         return True
 

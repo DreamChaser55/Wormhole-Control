@@ -349,12 +349,35 @@ def test_every_parameter_minimum_at_execution_boundary(world, field, minimum):
     assert any(field in error for error in rejected.errors)
 
 
-def test_designer_turret_numeric_policy_does_not_gain_new_bounds(world):
+@pytest.mark.parametrize('field', ['damage', 'range', 'cooldown'])
+def test_invalid_turret_refit_rejects_before_payment_or_installation(world, field):
     target = world[-1]
-    config = {'turrets': [dict(type='BEAM', damage=-1, range=-1, cooldown=0)]}
+    turret = dict(type='BEAM', damage=1, range=100, cooldown=0)
+    turret[field] = -1
+    config = {'turrets': [turret]}
+    before = world[1].credits, dict(target.components)
     result = evaluate_refit(target, 'ADD', 'Weapons', config)
-    assert not result.errors
-    assert CustomUnitTemplate('Same policy', target.hull_size, result.proposed).validate() == []
+    assert any(field in e for e in result.errors)
+    order = issue(world, 'Weapons', config)
+    assert order.status == OrderStatus.FAILED
+    assert (world[1].credits, target.components) == before
+    assert world[3].constructor_component.current_refit_target is None
+
+
+@pytest.mark.parametrize('field', ['damage', 'range', 'cooldown'])
+def test_invalid_turret_at_completion_refunds_once(world, field):
+    _, payer, _, actor, target = world
+    credits = payer.credits
+    order = issue(world, 'Weapons', {'turrets': [dict(type='BEAM', damage=1, range=100, cooldown=0)]})
+    assert payer.credits < credits
+    actor.constructor_component.current_refit_target['component_config']['turrets'][0][field] = -1
+    finish(world)
+    assert order.status == OrderStatus.FAILED
+    assert target.weapons_component is None
+    assert payer.credits == credits
+    finish(world)
+    order.cancel()
+    assert payer.credits == credits
 
 
 def test_advanced_zero_radius_installs_exactly_the_validated_configuration(world):

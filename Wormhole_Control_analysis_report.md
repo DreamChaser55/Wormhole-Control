@@ -3,13 +3,15 @@
 Review date: **2026-09-22**  
 Base revision: **`5c6fe34f2d1902f9cf2a8a5e50ec35a880edaefd`**
 
+Resolved findings have been removed; remaining findings retain their original IDs. Code metrics and original audit results refer to the base revision above.
+
 ## Assessment
 
-The project has useful foundations: explicit order ownership, separate campaign preparation and commit, allowlisted persistence, player-scoped observations, shared command definitions, bounded histories, and substantial offline tests. These are worth preserving. The main problems are inconsistent validation between entry points, gameplay effects occurring without successful payment, and a few large modules that repeat related rules.
+The project has useful foundations: explicit order ownership, separate campaign preparation and commit, allowlisted persistence, player-scoped observations, shared command definitions, bounded histories, and substantial offline tests. These are worth preserving. The remaining correctness problems concern saved player and path validation, launch placement, movement payment, command discovery, and AI request lifecycle. Several large modules also repeat related rules.
 
 The best next step is a sequence of small correctness fixes followed by focused extraction and documentation cleanup. A new entity framework, generic transaction engine, wholesale UI rewrite, or repository-wide typing conversion would add risk without addressing the demonstrated problems directly.
 
-**Final verification: 3,426 tests passed, plus 10 subtests, in 208.50 seconds.** One font-preload warning remains. The gameplay findings below remain open.
+**Latest verification: 3,529 tests passed, plus 10 subtests, in 211.01 seconds.** One font-preload warning remains. The findings below remain open; original audit results are retained in the testing section.
 
 ### Scope and method
 
@@ -19,57 +21,20 @@ The best next step is a sequence of small correctness fixes followed by focused 
 - Ran the full offline suite, configured quality checks, additional lint, local Markdown link/heading checks, and isolated behavioral probes. Live provider calls, real API credentials, and the user's saved campaigns were not used.
 - This is a source review and targeted behavioral audit, not a proof that every possible campaign, UI interaction, or malformed input is correct. Runtime coverage percentages were not measured, and the CI operating-system/Python matrix was not executed locally.
 
-Production fixes, general cleanup, and documentation rewrites are recommendations, not completed changes.
+The remaining fixes, general cleanup, and documentation rewrites below are recommendations, not completed changes.
 
 ## Prioritized findings
 
-P1 means fix promptly because normal actions can produce substantial incorrect effects or unusable state. P2 means a reproducible correctness or lifecycle issue worth fixing next. These priorities are project triage judgments, not formal security ratings.
+The remaining findings are P2: reproducible correctness or lifecycle issues worth fixing next. These priorities are project triage judgments, not formal security ratings.
 
 | ID | Priority | Finding | Evidence |
 |---|---|---|---|
-| F1 | P1 | Another player's queued construction consumes the current player's projected credits. | Reproduced through `CommandGateway`. |
-| F2 | P1 | Accepted custom turret values can create a campaign that cannot reload. | Validation → construction → serialization → rejected load reproduced. |
-| F3 | P1 | An ability can apply damage before failed fuel payment, leaving no cooldown. | Two failed Cluster Warhead orders inflicted 160 damage for no fuel. |
 | F4 | P2 | Save identifiers can escape sidecar directories. | Accepted path-bearing ID and escaped write reproduced inside a temporary directory. |
 | F5 | P2 | Malformed saved player fields survive preparation and break later use. | Invalid team accepted; observation then raises `TypeError`. |
 | F6 | P2 | Carrier launch can place craft outside the sector. | A normal deployment completed at radius 5,040 in a radius-5,000 sector. |
 | F7 | P2 | Movement ignores failed antimatter consumption. | Destroyed storage allowed movement without a fuel debit. |
 | F8 | P2 | A legal player command is omitted from the supported-command list. | `upgrade_planetary_defenses` present in legal/options, absent from supported. |
 | F9 | P2 | Resetting AI planning leaves new work queued behind the old request. | Reproduced with a blocking fake provider; no network involved. |
-
-### F1 — Foreign construction reservations reduce the current player's credits
-
-Sources: [game_ai/commands.py:809](D:/Programming/Github_repos/Wormhole-Control/game_ai/commands.py:809), [_BatchProjection._rebuild:212](D:/Programming/Github_repos/Wormhole-Control/game_ai/commands.py:212), [construction debit:253](D:/Programming/Github_repos/Wormhole-Control/game_ai/commands.py:253).
-
-Preflight imports existing orders from deployed units across the galaxy. The construction branch subtracts each pending build from `self._credits` without checking that its payer is `self.player`. The adjacent recruitment/planetary branches do check ownership. The comment above ledger population says “other owned ships,” but the loop also includes opponents.
-
-**Reproduction:** Give the current player 1,000 credits and a constructor in Sol. An unrelated enemy constructor in Beta has a movement order followed by a pending `SHIPYARD_MK1` construction. Issuing the current player's 1,000-credit build is rejected with “only 0 remain in this batch.” Remove the enemy's queued build and the same command succeeds. The enemy need not be visible.
-
-This breaks command affordability and also exposes information about otherwise hidden reservations through accept/reject behavior.
-
-**Fix:** Charge projected credits only to the relevant payer. Preserve any intentionally shared allied docking/population constraints; filtering every foreign unit out of the entire projection would be too broad. Add paired scenarios with and without an enemy queue, plus an allied queue and the current player's own queue.
-
-### F2 — Design validation and save validation disagree about legal turret values
-
-Sources: [unit_template_validation.py:52](D:/Programming/Github_repos/Wormhole-Control/unit_template_validation.py:52), [turret_editor.py:66](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/turret_editor.py:66), [Turret.from_state:69](D:/Programming/Github_repos/Wormhole-Control/unit_components/weapons.py:69).
-
-`component_value_errors()` checks turret number types and finiteness but deliberately imposes no numeric bounds. The Designer also accepts a parsed negative cooldown. Persistence later requires damage, range, cooldown, and current cooldown to be nonnegative.
-
-**Reproduction:** A MEDIUM design with `has_weapon_bays=true` and a BEAM turret `{damage: 1, range: 100, cooldown: -1}` passes `validate_library()` with no errors and can be instantiated. Serializing the resulting campaign succeeds. `prepare_campaign()` then rejects it with `turret.cooldown: must be >= 0`.
-
-This is a round-trip correctness issue, not a request to impose arbitrary balance limits on creative designs. A legal design should not generate an unloadable campaign.
-
-**Fix:** Share the minimum representational invariants between design/refit validation and component loading. Reject negative turret fields before publication or construction. Audit editable fixed hull costs for the same mismatch. Add one accepted-design round-trip test and a parameterized set of invalid negative values across library, Designer validation, and refit entry points.
-
-### F3 — Failed ability payment can leave damage committed and the ability ready
-
-Sources: [AbilityComponent.can_use:167](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/component.py:167), [AbilityComponent.activate:189](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/component.py:189), [ClusterWarheadAbility:33](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/cluster_warhead.py:33), [AntimatterStorage.consume:59](D:/Programming/Github_repos/Wormhole-Control/unit_components/antimatter.py:59).
-
-The ordinary ability path checks fuel quantity but does not reject destroyed storage. It invokes `on_activate()` before `consume()`. A destroyed tank retains its quantity but refuses consumption. Activation therefore returns failure after applying the effect, before recording cooldown/active state.
-
-**Reproduction:** A caster has 100 AM and Cluster Warhead; its tank is destroyed. Issue an in-range order, clear the completed/failed foreground work, and issue another. Both orders report `FAILED`, the enemy loses **160 HP**, fuel remains **100**, and cooldown remains **0**. The healthy-tank comparison inflicts **80 HP**, consumes **30 AM**, sets cooldown to **5**, and rejects the second cast without another hit.
-
-**Fix:** For positive-cost abilities, require functional storage and make successful payment a prerequisite for effects. Separate pure target validation from effect application where needed; a general rollback framework is unnecessary. Account explicitly for activation rejection after reserving/debiting fuel. Add a test asserting that failed payment changes neither target state nor ability state, and exercise a timed effect as well as immediate damage.
 
 ### F4 — Saved IDs are used as unchecked filesystem path segments
 
@@ -115,7 +80,7 @@ The existing offset test uses `in_system=None` with a comment equating that to �
 
 Sources: [turn_processor.py:248](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py:248), [system-jump debit:413](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py:413), [hex-jump debit:542](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py:542).
 
-Movement checks the tank's quantity, then ignores the boolean returned by `consume()`. This is distinct from F3's effect-ordering problem: the movement code simply proceeds when consumption refuses payment. Both jump branches repeat the pattern.
+Movement checks the tank's quantity, then ignores the boolean returned by `consume()` and proceeds when consumption refuses payment. Both jump branches repeat the pattern.
 
 **Reproduction:** A real ship with a valid MoveOrder, speed 100, and a tank holding 100 AM moves 100 units. With a healthy tank it finishes at 98 AM; with destroyed storage it still moves 100 units and retains 100 AM. The jump cases were identified by inspection, not separately executed.
 
@@ -193,16 +158,16 @@ The following records individual important files and the main conclusions from t
 | [unit_components/constructor.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/constructor.py) | At 1,216 lines, combines assembly, eligibility, job state, settlement, and presentation. Extract pure assembly from the stateful constructor; preserve explicit template injection used in preparation. |
 | [unit_components/antimatter.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/antimatter.py) | `consume()` signals failure correctly for destroyed storage, but callers do not consistently honor it. Make the positive finite amount contract explicit at this reusable boundary. |
 | [unit_components/movement.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/movement.py) | Ownership tokens on targets are useful. Per-instance `RECHARGE_DURATION` looks like a module constant; rename only with deliberate persistence handling. |
-| [unit_components/weapons.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/weapons.py) | Persisting effective turret values avoids double-applying variants. Share its representational constraints with design validation to fix F2. |
+| [unit_components/weapons.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/weapons.py) | Persisting effective turret values avoids double-applying variants. |
 | [unit_components/hangar.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/hangar.py) | F6 and a misleading `in_system is None` branch. The SMALL-slot accounting branch also predates the current TINY-only docking rule; verify saved-state expectations before removing it. |
 | [unit_components/strikecraft.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/strikecraft.py) | Stable slots, production selection, containment, launch, and replenishment are related but crowded. Keep slot identity and paid work explicit; reuse safe placement and improve method contracts. |
 | [unit_components/abilities/base.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/base.py) | Separating static definitions from runtime instances is useful. Preserve explicit schema checks and restoration without activation side effects. |
-| [unit_components/abilities/component.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/component.py) | Fix F3 before reorganizing. Multiple ordinary/tactical/toggle paths need consistent payment and lifecycle contracts. |
+| [unit_components/abilities/component.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/component.py) | Preserve the separate ordinary, tactical, and toggle lifecycle contracts when reorganizing. |
 | [unit_components/abilities/registry.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/registry.py) | Existing definitions should remain the source of ability metadata. Do not add another manual requirements mapping. |
 | [unit_templates.py](D:/Programming/Github_repos/Wormhole-Control/unit_templates.py) | Built-in, Testing, and private categories are deliberately distinct. Preserve that privacy boundary and explicit Testing publication. Module import still reads the bundled catalog; this is different from unwanted user-data loading. |
 | [custom_unit_templates.py](D:/Programming/Github_repos/Wormhole-Control/custom_unit_templates.py) | Dataclasses, costs, validation adapters, conversion, and storage make this a 1,149-line mixed module. Separate the storage manager from design representation/costs, remove the fake mapping adapter, and correct its opening description. |
-| [unit_template_validation.py](D:/Programming/Github_repos/Wormhole-Control/unit_template_validation.py) | Strong type/shape checks, duplicate-key handling, and whole-library rejection are useful. The numeric minimum policy is incomplete where runtime/persistence invariants are stricter. |
-| [refit_validation.py](D:/Programming/Github_repos/Wormhole-Control/refit_validation.py) | Recalculating cost hints and validating the complete resulting equipment are good. Keep this pure and align its accepted values with persistence. |
+| [unit_template_validation.py](D:/Programming/Github_repos/Wormhole-Control/unit_template_validation.py) | Strong type/shape checks, duplicate-key handling, and whole-library rejection are useful. |
+| [refit_validation.py](D:/Programming/Github_repos/Wormhole-Control/refit_validation.py) | Recalculating cost hints and validating the complete resulting equipment are good. Keep this pure. |
 | [construction_customization.py](D:/Programming/Github_repos/Wormhole-Control/construction_customization.py), [unit_catalog.py](D:/Programming/Github_repos/Wormhole-Control/unit_catalog.py) | Shared customization/catalog output reduces UI/AI drift. Continue generating public descriptions from authoritative design data. |
 
 ### Feature services and persistence
@@ -231,7 +196,7 @@ The following records individual important files and the main conclusions from t
 
 | File | Review conclusion |
 |---|---|
-| [game_ai/commands.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/commands.py) | Highest-priority complexity hotspot: 2,069 lines, large preflight ledger and dispatch functions. Fix F1, then separate projection, command preparation, and commit orchestration while retaining clear failure-stage receipts. |
+| [game_ai/commands.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/commands.py) | Highest-priority complexity hotspot: 2,069 lines at the base revision, large preflight ledger and dispatch functions. Separate projection, command preparation, and commit orchestration while retaining clear failure-stage receipts. |
 | [game_ai/command_spec.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/command_spec.py) | Already the right place for shared command shape/capability metadata. Use it for player command discovery and generated version/field documentation. |
 | [game_ai/contracts.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/contracts.py), [game_ai/schema.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/schema.py) | Preserve strict structured-output fields and the distinction between transport schema and semantic game legality. Keep schema generation connected to command specifications. |
 | [game_ai/observation.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/observation.py) | Explicit disclosure and bounded option lists are valuable. Fix F8 and document which IDs/targets are safe for a viewer. Test private-state changes for absence of public differences. |
@@ -253,7 +218,7 @@ The following records individual important files and the main conclusions from t
 | [gui/sidebar/panels_unit.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_unit.py), [gui/sidebar/panels_world.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_world.py) | Keep user-visible rows distinct from internal identity metadata. Preserve public equipment/privacy comparisons when changing layouts. |
 | [gui/sidebar/order_formatting.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/order_formatting.py) | Large order-type formatter duplicates some traversal/knowledge used by renderers and AI views. Reuse neutral order traversal where possible, while retaining viewer-specific redaction. |
 | [gui/unit_editor_gui/widget_factory.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/widget_factory.py), [gui/retrofit_gui/layout.py](D:/Programming/Github_repos/Wormhole-Control/gui/retrofit_gui/layout.py) | Four widget helpers have identical bodies across these modules. Extract those small helpers, rather than building a generic form engine. |
-| [gui/unit_editor_gui/param_readers.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/param_readers.py), [gui/unit_editor_gui/turret_editor.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/turret_editor.py) | Input handling silently substitutes/defaults or preserves old values in several places. Consistent inline feedback would improve clarity; F2 needs shared validation first. |
+| [gui/unit_editor_gui/param_readers.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/param_readers.py) | Input handling silently substitutes/defaults or preserves old values in several places. Consistent inline feedback would improve clarity. |
 | [gui/theme_loader.py](D:/Programming/Github_repos/Wormhole-Control/gui/theme_loader.py), [gui/text_layout.py](D:/Programming/Github_repos/Wormhole-Control/gui/text_layout.py) | Scaled in-memory themes and measured wrapping are useful. Resolve the remaining rich-text fallback font warning at the actual manager/style used by the dismantling preview. |
 | [rendering/system_renderer.py](D:/Programming/Github_repos/Wormhole-Control/rendering/system_renderer.py) | Large draw and order-line methods need separation between waypoint collection and drawing. Reuse traversal with sector rendering where semantics match. |
 | [rendering/sector_renderer/sector_renderer.py](D:/Programming/Github_repos/Wormhole-Control/rendering/sector_renderer/sector_renderer.py) | Bounded effect surfaces and limits on large rendering allocations are justified, not gratuitous complexity. Preserve lifecycle/cache tests. |
@@ -264,7 +229,7 @@ The following records individual important files and the main conclusions from t
 
 ### Changes with a clear payoff
 
-1. **Share narrow invariants first.** Functional fuel/payment checks, representational numeric limits, player identity validation, and candidate placement have already drifted. Fix these in small helpers close to their domain, with one authoritative result used by UI, AI, and execution where applicable.
+1. **Share narrow invariants first.** Movement fuel/payment checks, player identity validation, and candidate placement remain inconsistent. Fix these in small helpers close to their domain, with one authoritative result used by UI, AI, and execution where applicable.
 2. **Split `game_ai/commands.py` by responsibility.** Keep `CommandGateway` as the facade. Move projection state and replay into a focused module; separate preparation by a few gameplay domains. Use small records for cohesive projected state if they replace parallel dictionaries. Preserve ordering, payer identity, replacement/queue semantics, and partial-commit receipts.
 3. **Extract movement resolution and assembly.** Pull sublight/hex/wormhole resolution from `TurnProcessor`, and pure template assembly from `Constructor`. Keep orchestration and state transitions visible in their current owners.
 4. **Reduce repeated presentation knowledge.** Share order traversal and tiny widget helpers. Do not force player-redacted AI output and rich GUI formatting into one universal serializer.
@@ -302,12 +267,11 @@ Particularly large functions at the reviewed revision include `handle_context_me
 
 The production AST inventory contains 2,274 functions/methods, of which 1,377 lack docstrings; 417 of those span at least 15 lines. This is a prioritization heuristic, not a claim that every property, closure, test helper, or trivial wrapper needs a long comment.
 
-The user's standard is appropriate for **important functions**: an opening docstring should explain purpose, high-level flow, meaningful arguments, and return values. For mutators, also state side effects, timing, and failure behavior. This is especially important when a boolean result does not currently imply that nothing happened, as F3 demonstrates.
+The user's standard is appropriate for **important functions**: an opening docstring should explain purpose, high-level flow, meaningful arguments, and return values. For mutators, also state side effects, timing, and failure behavior.
 
 | Priority function | What its docstring should establish |
 |---|---|
 | `CommandGateway._order_factory` | Validated inputs, deferred construction versus immediate execution, returned factory/label, and rejection behavior. |
-| `_BatchProjection._rebuild` | Whose resources are projected, order replay order, settled/reserved distinctions, and purity with respect to live state. |
 | `CommandGateway._prepare` / `_validate_unit_command` | Projection overrides, viewer/ownership checks, returned operations, and preflight versus execution guarantees. |
 | `TurnProcessor._process_movement` | Current-player scope, actuator ownership, fuel payment, relocation ordering, and the returned sublight movement record consumed by hazards. |
 | `MoveOrder.plan_route` | Input location assumptions, approach resolution, created child orders, no-safe-path behavior, and whether failure leaves prepared children. |
@@ -391,7 +355,7 @@ Suggested sequence:
 
 ## Testing infrastructure and results
 
-### Executed checks
+### Original audit checks
 
 Environment: **Windows, Python 3.12.14**, project `.venv`; pygame-ce **2.5.7**, pygame_gui **0.6.14**, pytest **9.1.1**, Ruff **0.12.12**, mypy **1.15.0**. The installed OpenAI SDK is **2.54.0**, but no live provider request was made.
 
@@ -435,9 +399,6 @@ CI additionally executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. Passin
 
 | Boundary | Meaningful assertion |
 |---|---|
-| Foreign pending orders → current-player preflight | Enemy/allied credit reservations do not debit the actor's budget; own reservations still do. |
-| Accepted design/refit → construction → save/load | Every accepted representative configuration can reload; negative representational values are rejected early. |
-| Ability execution → fuel payment | Failed payment produces no damage, no timed contribution, and no misleading success/partial activation. |
 | Movement → fuel payment | Destroyed storage prevents paid motion; successful motion pays exactly once; failed relocation does not debit. |
 | Save preparation → identity and filesystem | Invalid player values reject without commit; sidecars cannot escape their roots on Windows or POSIX path inputs. |
 | Carrier launch → sector membership | Candidate is in bounds and safe; failed placement retains docked membership and position. |
@@ -449,11 +410,10 @@ CI additionally executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. Passin
 
 ### First: correctness with small diffs
 
-1. Fix F1, F2, and F3 with their focused regressions.
-2. Fix strict player/ID validation and sidecar containment together (F4/F5).
-3. Fix carrier placement and movement payment (F6/F7).
-4. Fix command discovery (F8), then resolve the AI request lifecycle policy (F9).
-5. Correct inaccurate docs and public reason-code drift alongside the affected behavior.
+1. Fix strict player/ID validation and sidecar containment together (F4/F5).
+2. Fix carrier placement and movement payment (F6/F7).
+3. Fix command discovery (F8), then resolve the AI request lifecycle policy (F9).
+4. Correct inaccurate docs and public reason-code drift alongside the affected behavior.
 
 ### Next: reduce maintenance cost
 
@@ -465,7 +425,7 @@ CI additionally executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. Passin
 ### Useful improvements to consider after correctness
 
 - **A concise diagnostics summary:** Surface actionable order failure reasons and AI request state, including whether replacement work is queued behind an old request. Existing logs/receipts already provide the basis.
-- **Better Designer feedback:** Report invalid fields near the input instead of silently defaulting or retaining an old value. Show why a configuration cannot round-trip or fit its hull.
+- **Better Designer feedback:** Extend field-level error feedback to the remaining parameter readers that silently default or retain old values. Show why a configuration cannot fit its hull.
 - **Deterministic scenario probes:** Keep small, seeded save/command fixtures for representative construction, logistics, capture, docking, and overlapping effects. Favor a handful of cross-boundary invariants over a large new fuzzing framework initially.
 - **Measure observation and guidance cost:** Before caching, profile a large campaign's observation building, command guidance, and repeated graph lookups. Cache only stable catalog data or proven hotspots with explicit invalidation rules.
 - **Unified income explanation:** A shared income breakdown can improve both correctness and the player-facing economy display without a new subsystem.
@@ -477,10 +437,10 @@ The desired outcome is fewer independent implementations of the same rule, clear
 
 The most useful local diagnostic artifacts are:
 
-- [Final full-suite output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-pytest.log) and [JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-junit.xml).
-- [Foreign reservation results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/foreign-reservations.json).
-- [Design, persistence, path, and observation probes](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/reproductions.json).
-- [Placement, movement, and ability-payment results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay-probes.json), with [probe source](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay_probes.py).
+- [Latest full-suite JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/p1/full-junit.xml).
+- [Original audit full-suite output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-pytest.log) and [JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-junit.xml).
+- [Persistence, path, and observation probes](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/reproductions.json).
+- [Placement and movement results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay-probes.json), with [probe source](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay_probes.py).
 - [Coordinator reset results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/coordinator-probe.json), with [probe source](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/coordinator_probe.py).
 - [AST inventory](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/inventory.json), [expanded lint output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/expanded-lint.json), and [review statistics/link check](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/stats.json).
 

@@ -25,6 +25,15 @@ PARAMETER_MINIMUMS = {
 }
 
 
+# Editable costs persisted as component hull_cost. Derived cost hints (including
+# cloaking_hull_cost) are recalculated and must not be treated as fixed inputs.
+FIXED_HULL_COST_FIELDS = (
+    'antimatter_harvester_hull_cost', 'constructor_hull_cost', 'colony_hull_cost',
+    'civilian_habitat_hull_cost', 'orbital_defense_hull_cost', 'trade_hull_cost',
+    'metal_refinery_hull_cost', 'crystal_refinery_hull_cost', 'minelayer_hull_cost',
+)
+
+
 def sensor_hull_errors(hull_size, long_range_hexes, field="sensor_long_range_hexes"):
     """Equipment eligibility shared by design saves and field refits."""
     if hull_size == HullSize.STRIKECRAFT_WING and long_range_hexes != 0:
@@ -52,8 +61,8 @@ def number_is_valid(value, integer=False):
 def component_value_errors(values):
     """Check supplied values before any loader coercion or cost arithmetic.
 
-    Deliberately apply no new balance bounds to turret stats or fixed costs:
-    the current Designer imposes no such numeric bounds.
+    Turret stats and fixed hull costs must satisfy their persistence minimums,
+    so accepted designs cannot produce equipment that rejects its own save.
     """
     from custom_unit_templates import ComponentConfig
 
@@ -70,6 +79,8 @@ def component_value_errors(values):
             errors.append(f'{name}: must be a finite {expected} (booleans are not numbers).')
         elif kind is str and not isinstance(value, str):
             errors.append(f'{name}: must be a string.')
+        elif name in FIXED_HULL_COST_FIELDS and value < 0:
+            errors.append(f'{name}: must be >= 0.')
 
     choices = {
         'hyperdrive_type': set(HyperdriveType.__members__),
@@ -110,9 +121,8 @@ def component_value_errors(values):
                 value = turret.get(field, default)
                 if not isinstance(value, str) or value not in options:
                     errors.append(f'{prefix}.{field}: must be one of {", ".join(sorted(options))}.')
-            for field in ('damage', 'range', 'cooldown'):
-                if not number_is_valid(turret.get(field), integer=field == 'cooldown'):
-                    errors.append(f'{prefix}.{field}: must be a finite {"integer" if field == "cooldown" else "number"}.')
+            from unit_components.weapons import turret_numeric_errors
+            errors.extend(turret_numeric_errors(turret, prefix))
     return errors
 
 

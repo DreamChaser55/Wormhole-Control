@@ -645,15 +645,19 @@ def command_guidance(
 
 
 def ability_states(unit: Any) -> list[dict[str, Any]]:
+    from tactical_abilities import SPECS
     component = getattr(unit, "ability_component", None)
     result = []
     for ability_type, instance in getattr(component, "abilities", {}).items():
         definition = getattr(instance, "definition", None)
+        ready = bool(getattr(instance, "is_ready", False))
+        if ability_type.value not in SPECS and getattr(definition, 'activation_mode', 'cast') != 'toggle':
+            ready = component.can_use(ability_type)
         result.append(
             {
                 "ability": _enum_value(ability_type),
                 "required_location_fields": ["system_name", "hex_coord", "position"] if getattr(definition, "requires_target_position", False) else [],
-                "ready": bool(getattr(instance, "is_ready", False)),
+                "ready": ready,
                 "requires_target_unit": bool(
                     getattr(definition, "requires_target_unit", False)
                 ),

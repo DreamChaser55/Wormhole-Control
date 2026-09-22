@@ -211,7 +211,7 @@ def evaluate_refit(unit, action, component_name, configuration=None):
                 result.configuration['ability_types'] = list(single.abilities)
             result.configuration['hull_cost'] = result.hull_cost
             # As before, installing equipment never pays credits to the builder.
-            # Do not invent new numeric bounds on Designer turret parameters.
+            # Numeric persistence invariants were checked before cost arithmetic.
             result.cost_credits = max(0, int(round(result.hull_cost * COMPONENT_COST_PER_HULL_POINT)))
             result.duration = max(1, int(round(result.hull_cost / 5)))
             actual = unit.current_hull_usage + result.hull_cost

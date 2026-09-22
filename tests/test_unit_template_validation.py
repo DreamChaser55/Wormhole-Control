@@ -13,7 +13,7 @@ from custom_unit_templates import (
     ComponentConfig, CustomTemplateManager, CustomUnitTemplate, TurretConfig,
     template_from_dict,
 )
-from unit_template_validation import parse_library, validate_library
+from unit_template_validation import FIXED_HULL_COST_FIELDS, parse_library, validate_library
 from unit_templates import UNIT_TEMPLATES, builtin_template_names
 
 
@@ -95,9 +95,19 @@ def test_turret_schema(turret, field):
     assert field in messages(record(has_weapon_bays=True, turrets=[turret]))
 
 
-def test_turret_bounds_do_not_add_unapproved_balance_rules():
-    data = record(has_weapon_bays=True, turrets=[dict(type='BEAM', damage=-1, range=-1, cooldown=0)])
-    assert messages(data) == ''
+@pytest.mark.parametrize('field', ['damage', 'range', 'cooldown'])
+def test_turret_values_must_be_representable_in_campaign_saves(field):
+    turret = dict(type='BEAM', damage=1, range=100, cooldown=0)
+    turret[field] = -1
+    data = record(has_weapon_bays=True, turrets=[turret])
+    assert f'turrets[0].{field}' in messages(data)
+    assert any(f'turrets[0].{field}' in e for e in template_from_dict('Invalid', data).validate())
+
+
+@pytest.mark.parametrize('field', FIXED_HULL_COST_FIELDS)
+def test_fixed_hull_costs_must_be_nonnegative(field):
+    assert field in messages(record(**{field: -1}))
+    assert messages(record(**{field: 0})) == ''
 
 
 @pytest.mark.parametrize('field,value', [

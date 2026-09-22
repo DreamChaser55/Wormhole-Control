@@ -71,18 +71,18 @@ def do_add_turret(editor) -> None:
         ttype = raw[0] if isinstance(raw, tuple) else str(raw)
     else:
         ttype = "MASS_DRIVER"
-    try:
-        dmg = float(editor._turret_dmg_entry.get_text()) if editor._turret_dmg_entry else 10.0
-    except ValueError:
-        dmg = 10.0
-    try:
-        rng = float(editor._turret_range_entry.get_text()) if editor._turret_range_entry else 300.0
-    except ValueError:
-        rng = 300.0
-    try:
-        cd = int(editor._turret_cd_entry.get_text()) if editor._turret_cd_entry else 2
-    except ValueError:
-        cd = 2
+    values = {}
+    for name, entry, parse, default in (
+        ('damage', editor._turret_dmg_entry, float, 10.0),
+        ('range', editor._turret_range_entry, float, 300.0),
+        ('cooldown', editor._turret_cd_entry, int, 2),
+    ):
+        try:
+            values[name] = parse(entry.get_text()) if entry else default
+        except ValueError:
+            expected = 'integer' if name == 'cooldown' else 'number'
+            editor._set_status(f'turrets[0].{name}: must be a finite nonnegative {expected}.', error=True)
+            return
 
     if editor._turret_variant_dd:
         raw_variant = editor._turret_variant_dd.selected_option
@@ -90,7 +90,12 @@ def do_add_turret(editor) -> None:
     else:
         variant = "STANDARD"
 
-    editor._turrets.append(TurretConfig(turret_type=ttype, damage=dmg, range=rng, cooldown=cd, variant=variant))
+    from unit_template_validation import component_value_errors
+    errors = component_value_errors({'turrets': [dict(type=ttype, variant=variant, **values)]})
+    if errors:
+        editor._set_status(' | '.join(errors), error=True)
+        return
+    editor._turrets.append(TurretConfig(turret_type=ttype, variant=variant, **values))
     editor._comp.turrets = editor._turrets
     rebuild_turret_list(editor)
     editor._sync_dynamic_costs()

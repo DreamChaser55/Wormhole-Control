@@ -30,6 +30,27 @@ def targeting_range(turret_range: float, target_component_type: Optional[type] =
     return turret_range * COMPONENT_TARGET_RANGE_MULTIPLIER if target_component_type is not None else turret_range
 
 
+def turret_numeric_errors(values, path="turret", *, include_current_cooldown=False):
+    """Validate design or effective saved stats without scaling or mutation.
+
+    These are persistence invariants, not balance limits: zero and fractional
+    damage/range are valid, while both cooldown counters require integers.
+    """
+    from state_codec import number
+    errors = []
+    names = ("damage", "range", "cooldown")
+    if include_current_cooldown:
+        names += ("current_cooldown",)
+    for name in names:
+        try:
+            number(values.get(name), f"{path}.{name}", 0, integer="cooldown" in name)
+        except ValueError as exc:
+            errors.append(str(exc))
+        except OverflowError:
+            errors.append(f"{path}.{name}: must be finite.")
+    return errors
+
+
 @dataclasses.dataclass
 class Turret:
     """
@@ -67,13 +88,14 @@ class Turret:
 
     @classmethod
     def from_state(cls, data, unit):
-        from state_codec import decode, fields, number
+        from state_codec import decode, fields
         fields(data, ("turret_type", "variant", "damage", "range", "cooldown", "current_cooldown"), "turret")
         values = {k: decode(v) for k, v in data.items()}
         if not isinstance(values["turret_type"], TurretType) or not isinstance(values["variant"], TurretVariant):
             raise ValueError("Invalid turret type or variant")
-        for name in ("damage", "range", "cooldown", "current_cooldown"):
-            number(values[name], f"turret.{name}", 0, integer="cooldown" in name)
+        errors = turret_numeric_errors(values, include_current_cooldown=True)
+        if errors:
+            raise ValueError("; ".join(errors))
         # The save contains effective values. Do not apply variant scaling again.
         turret = cls.__new__(cls)
         turret.__dict__.update(values, parent_unit=unit, target=None, target_component_type=None)

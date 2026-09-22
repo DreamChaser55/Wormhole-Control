@@ -136,12 +136,6 @@ class AbilityComponent(UnitComponent):
                 cd_str = "Ready"
                 btn_obj_id = '#sidebar_expand_button'
 
-            # Check if there is enough antimatter
-            am_comp = self.unit.antimatter_component
-            has_enough_am = True
-            if am_comp and am_comp.current_amount < defn.antimatter_cost:
-                has_enough_am = False
-
             btn_text = f"{defn.name} ({defn.antimatter_cost} AM) [{cd_str}]"
             data.append({
                 'type': 'button',
@@ -154,7 +148,7 @@ class AbilityComponent(UnitComponent):
                     'requires_target_position': defn.requires_target_position,
                 },
                 'height': 28,
-                'enabled': self.can_use(ability_type) and has_enough_am,
+                'enabled': self.can_use(ability_type),
             })
             data.append({
                 'type': 'label',
@@ -165,7 +159,11 @@ class AbilityComponent(UnitComponent):
         return data
 
     def can_use(self, ability_type: AbilityType, *, ignore_reservations=False, resources=True) -> bool:
-        """Returns True if the ability exists, the component is intact, it is off cooldown, and has enough antimatter."""
+        """Check readiness without mutation, including functional storage for paid casts.
+
+        Projection may bypass the live balance with resources=False, but cannot
+        bypass the presence/functionality of the equipment that must pay.
+        """
         from dismantling import offline
         if offline(self.unit):
             return False
@@ -183,8 +181,12 @@ class AbilityComponent(UnitComponent):
         if not instance.is_ready:
             return False
         am_comp = self.unit.antimatter_component
-        if resources and am_comp and am_comp.current_amount < instance.definition.antimatter_cost:
-            return False
+        cost = instance.definition.antimatter_cost
+        if cost > 0:
+            if am_comp is None or am_comp.is_destroyed:
+                return False
+            if resources and am_comp.current_amount < cost:
+                return False
         return True
 
     def activate(
@@ -200,8 +202,11 @@ class AbilityComponent(UnitComponent):
         """
         Activates the specified ability.
 
-        Performs validation, applies immediate effects, and sets the active
-        state. Returns True on success, False on failure.
+        Ordinary casts pay before applying effects, then set active state and
+        cooldown. A callback rejection refunds that debit once and must leave
+        gameplay state unchanged. Exceptions propagate without a speculative
+        refund, since their effects may already have committed. Tactical casts
+        retain their separate validation and payment path.
         """
         from dismantling import offline
         if offline(self.unit):
@@ -228,7 +233,12 @@ class AbilityComponent(UnitComponent):
         instance = self.abilities[ability_type]
         defn = instance.definition
 
-        # --- Immediate activation effects ---
+        am_comp = self.unit.antimatter_component
+        cost = defn.antimatter_cost
+        if cost > 0 and not am_comp.consume(cost):
+            logger.debug(f"[{self.unit.name}] Consume failed before ability activation.")
+            return False
+
         success = instance.on_activate(
             component=self,
             galaxy=galaxy,
@@ -238,15 +248,12 @@ class AbilityComponent(UnitComponent):
             target_hex_coord=target_hex_coord,
         )
         if not success:
+            # Rejection occurs before gameplay mutation; restore only this cast's
+            # debit. In particular, blocked jumps and unsuccessful capture rolls
+            # retain their existing no-charge/no-cooldown behavior.
+            if cost > 0:
+                am_comp.add(cost)
             return False
-
-        # --- Consume antimatter ---
-        am_comp = self.unit.antimatter_component
-        if am_comp:
-            consumed = am_comp.consume(defn.antimatter_cost)
-            if not consumed:
-                logger.debug(f"[{self.unit.name}] Consume failed during activation (insufficient antimatter).")
-                return False
 
         # --- Mark as active and set cooldown ---
         instance.is_active = (defn.duration > 0)

@@ -146,6 +146,10 @@ stored settings. Engine speed, defenses, sensor ranges, repair/mining rates and
 ranges, cargo, inhibitor radius and cloaking radius must be non-negative. Jump
 range, hangar/bay slots, marines and agent counts must be at least one. Enabled
 AM storage must meet its hull-specific minimum.
+Turret damage/range and editable fixed component hull costs must be nonnegative;
+turret cooldown must be a nonnegative integer. Turret numeric validation is shared
+with component restoration. Zero values and fractional damage/range remain legal.
+Derived cost hints are still recalculated rather than validated as fixed costs.
 
 The Designer, validator and retrofit share equipment checks: hull capacity,
 hull/component restrictions, advanced equipment, wing turret roles, no wing
@@ -153,8 +157,8 @@ Mining, zero long-range wing Sensors, ability prerequisites, the Trade/Engine
 dependency and at least one enabled component. Validation reports violations
 without applying the Designer's input clamps.
 
-Turret damage/range must be finite numbers and cooldown an integer; validation
-adds no balance bounds beyond those enforced by the Designer. Derived dynamic
+The representational minimums above are shared with campaign persistence;
+no additional turret balance caps are imposed. Derived dynamic
 hull costs, HP, price and build time are regenerated for custom designs. Stored
 fixed costs still count toward enabled equipment's hull budget. Change performance
 parameters to change dynamic costs. Library loading and editing share current validation; see

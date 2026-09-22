@@ -210,6 +210,12 @@ class _BatchProjection:
                 raise _Rejected('dismantling_conflict', 'Target is offline for dismantling.')
 
     def _rebuild(self):
+        """Replay reservations without mutation: credits are personal, capacity can be shared.
+
+        Foreign orders remain relevant to allied colony population and docking
+        slots, but only this player's unpaid construction can reserve its credits.
+        Paid jobs are already reflected in the live balance and refund ledger.
+        """
         self._cargo = {}
         self._source_population = {}
         self._troop_cargo = {}
@@ -250,7 +256,7 @@ class _BatchProjection:
                         self._source_population[source.id] -= amount
                 elif kind == "colonize":
                     cargo = 0
-                elif kind == "construct" and (order is None or order.status.name == "PENDING"):
+                elif kind == "construct" and unit.owner == self.player and (order is None or order.status.name == "PENDING"):
                     build = unit.constructor_component.can_build(params.get("unit_template_name"))
                     if build:
                         self._credits -= build.cost_credits
@@ -806,7 +812,8 @@ class CommandGateway:
         self._viewer = player
         self._selected_units = []
         projection = _BatchProjection(self.game, player)
-        # Include existing reservations of other owned ships, not only selected ships.
+        # Include all deployed ships for shared capacity; _rebuild scopes credit
+        # reservations to their payer, including owned ships outside this batch.
         for system in getattr(self.game.galaxy, "systems", {}).values():
             for sector in getattr(system, "hexes", {}).values():
                 for unit in getattr(sector, "units", []):
