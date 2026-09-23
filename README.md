@@ -43,3 +43,4 @@ See the [Development guide](docs/DEVELOPMENT.md) for developer setup, offline te
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Bundled fonts retain their own licenses; see [font sources and notices](fonts/README.md).

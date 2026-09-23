@@ -56,11 +56,8 @@ pytestdebug.log
 *.mo
 *.gmo
 
-# Django stuff:
+# Runtime logs
 *.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
 
 # Sphinx documentation
 doc/_build/
@@ -69,22 +66,12 @@ doc/_build/
 .pybuilder/
 target/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
 # IPython
 profile_default/
 ipython_config.py
 
 # PEP 582; project local packages directory (used by pdm)
 __pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
 
 # Environments
 .env

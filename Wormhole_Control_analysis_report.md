@@ -150,11 +150,6 @@ The following records individual important files and the main conclusions from t
 4. **Separate pure calculations from settlement.** A shared income breakdown can drive the HUD and resource generation. Extend the existing preview/commit pattern where calculations are repeated.
 5. **Separate storage mechanics from design rules.** Custom-library file operations and registration belong together; cost formulas and design dataclasses can remain in a separate focused module. Retain atomic writes and failure preservation.
 
-### Concrete low-risk cleanup candidates
-
-- Simplify the generic `.gitignore` template's irrelevant Django/Celery/Sage/Jupyter sections if desired. This is minor housekeeping, not a significant source of runtime complexity.
-- `theme.json` references six of the fourteen bundled font files. The other eight are asset-removal candidates after checking packaging, runtime selection, and font-license requirements. Do not delete fonts solely because an import search finds no name.
-
 ### Quantified lint and complexity signals
 
 The configured whole-repository Ruff check selects `F401`, `F541`, `F821`, `F822`, `F823`, and `F841`. It passes. A fresh broader **diagnostic** run with `--select F,E9` reports these remaining findings:
