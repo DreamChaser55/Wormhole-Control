@@ -2,7 +2,6 @@ import logging
 import argparse
 import sys
 import typing
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 import pygame
@@ -13,7 +12,7 @@ from game_logging import setup_logging
 logger = logging.getLogger(__name__)
 
 # Local module imports
-from constants import PROFILE, RED, BLUE, YELLOW
+from constants import PROFILE as PROFILE
 from display_config import DisplayConfig
 from app_preferences import load_preferences
 from application_bootstrap import configure_dpi_awareness, discover_display_config
@@ -488,7 +487,7 @@ class Game:
             filepath = save_manager.save_game_to_file(self, filename)
             logger.debug(f"Game state saved to {filepath}")
             if self.gui:
-                self.gui.show_info_dialog(f"Game saved successfully.", title="Save Game")
+                self.gui.show_info_dialog("Game saved successfully.", title="Save Game")
             return filepath
         except Exception as e:
             logger.error(f"Error saving game state: {e}", exc_info=True)

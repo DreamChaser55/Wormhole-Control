@@ -1,5 +1,4 @@
 import logging
-import typing
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
@@ -19,7 +18,6 @@ from unit_orders.mining import MineOrder, UnloadResourcesOrder, ContinuousMineOr
 from unit_orders.hangar import DockOrder
 from unit_orders.patrol import PatrolOrder
 from unit_orders.abilities import UseAbilityOrder
-from unit_orders.antimatter import TransferAntimatterOrder
 from unit_orders.minelayer import LayMinefieldOrder
 from unit_orders.refit import RefitOrder
 from unit_orders.trade import TradeOrder, ContinuousTradeOrder

@@ -551,7 +551,6 @@ def test_resume_and_next_tick_do_not_replay_paid_replenishment_or_ability_activa
 
 
 def test_empty_or_removed_template_components_are_not_resurrected(monkeypatch):
-    import save_manager
     game = campaign()
     unit = ship(game)
     unit.template_name = "FIGHTER_WING"

@@ -171,7 +171,7 @@ def test_export_and_optional_defaults_round_trip_without_publication():
     comp = ComponentConfig(has_engine=True, has_weapon_bays=True,
                            turrets=[TurretConfig('BEAM', 1, 1, 0)])
     design = CustomUnitTemplate('Export', HullSize.MEDIUM, comp)
-    manager = CustomTemplateManager()
+    CustomTemplateManager()
     data = template_to_dict(design)
     data['hull_size'] = data['hull_size'].name
     before = copy.deepcopy(UNIT_TEMPLATES)

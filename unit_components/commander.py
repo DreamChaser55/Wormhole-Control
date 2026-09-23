@@ -1,11 +1,10 @@
 import logging
-import typing
 from typing import Optional, Deque, TYPE_CHECKING, Iterable
 from collections import deque
 import dataclasses
 
 from .base import UnitComponent
-from .enums import UnitStance, TurretVariant, WingType
+from .enums import UnitStance
 from unit_orders.base import Order, OrderStatus, OrderType
 from unit_orders.stance import StanceOrder
 

@@ -133,7 +133,6 @@ The following records individual important files and the main conclusions from t
 | [gui/sidebar/view.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/view.py) | Stable selection identity and measuring from the viewport origin address real UI concerns. |
 | [gui/sidebar/panels_unit.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_unit.py), [gui/sidebar/panels_world.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_world.py) | Keep user-visible rows distinct from internal identity metadata. Preserve public equipment/privacy comparisons when changing layouts. |
 | [gui/sidebar/order_formatting.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/order_formatting.py) | Large order-type formatter duplicates some traversal/knowledge used by renderers and AI views. Reuse neutral order traversal where possible, while retaining viewer-specific redaction. |
-| [gui/unit_editor_gui/widget_factory.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/widget_factory.py), [gui/retrofit_gui/layout.py](D:/Programming/Github_repos/Wormhole-Control/gui/retrofit_gui/layout.py) | Four widget helpers have identical bodies across these modules. Extract those small helpers, rather than building a generic form engine. |
 | [gui/unit_editor_gui/param_readers.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/param_readers.py) | Input handling silently substitutes/defaults or preserves old values in several places. Consistent inline feedback would improve clarity. |
 | [gui/theme_loader.py](D:/Programming/Github_repos/Wormhole-Control/gui/theme_loader.py), [gui/text_layout.py](D:/Programming/Github_repos/Wormhole-Control/gui/text_layout.py) | Scaled in-memory themes and measured wrapping are useful. Resolve the remaining rich-text fallback font warning at the actual manager/style used by the dismantling preview. |
 | [rendering/system_renderer.py](D:/Programming/Github_repos/Wormhole-Control/rendering/system_renderer.py) | Large draw and order-line methods need separation between waypoint collection and drawing. Reuse traversal with sector rendering where semantics match. |
@@ -147,31 +146,26 @@ The following records individual important files and the main conclusions from t
 
 1. **Split `game_ai/commands.py` by responsibility.** Keep `CommandGateway` as the facade. Move projection state and replay into a focused module; separate preparation by a few gameplay domains. Use small records for cohesive projected state if they replace parallel dictionaries. Preserve ordering, payer identity, replacement/queue semantics, and partial-commit receipts.
 2. **Extract movement resolution and assembly.** Pull sublight/hex/wormhole resolution from `TurnProcessor`, and pure template assembly from `Constructor`. Keep orchestration and state transitions visible in their current owners.
-3. **Reduce repeated presentation knowledge.** Share order traversal and tiny widget helpers. Do not force player-redacted AI output and rich GUI formatting into one universal serializer.
+3. **Reduce repeated presentation knowledge.** Share order traversal. Do not force player-redacted AI output and rich GUI formatting into one universal serializer.
 4. **Separate pure calculations from settlement.** A shared income breakdown can drive the HUD and resource generation. Extend the existing preview/commit pattern where calculations are repeated.
 5. **Separate storage mechanics from design rules.** Custom-library file operations and registration belong together; cost formulas and design dataclasses can remain in a separate focused module. Retain atomic writes and failure preservation.
 
 ### Concrete low-risk cleanup candidates
 
-- Remove the duplicated `game.display_config = DisplayConfig()` in `tests/support/campaigns.py`.
-- Consolidate the repeated collision-test setup and identical editor/retrofit widget builders. Avoid abstract base test classes for a single duplicated fixture.
-- Prune unused imports, unnecessary f-string prefixes, and truly unused locals in small batches. Review import side effects and local assignments before automatic deletion.
 - Simplify the generic `.gitignore` template's irrelevant Django/Celery/Sage/Jupyter sections if desired. This is minor housekeeping, not a significant source of runtime complexity.
 - `theme.json` references six of the fourteen bundled font files. The other eight are asset-removal candidates after checking packaging, runtime selection, and font-license requirements. Do not delete fonts solely because an import search finds no name.
 
 ### Quantified lint and complexity signals
 
-The configured whole-repository Ruff check selects only `F821`, `F822`, and `F823`. It passes. A broader **diagnostic** run with `--select F,E9` reports:
+The configured whole-repository Ruff check selects `F401`, `F541`, `F821`, `F822`, `F823`, and `F841`. It passes. A fresh broader **diagnostic** run with `--select F,E9` reports these remaining findings:
 
 | Diagnostic | Production/tooling | Tests |
 |---|---:|---:|
-| Unused imports (`F401`) | 159 | 31 |
-| Unused locals (`F841`) | 2 | 60 |
-| Redefinitions (`F811`) | 1 | 6 |
-| f-strings without placeholders (`F541`) | 12 | 1 |
-| **Total** | **174** | **98** |
+| Shadowed imports (`F402`) | 1 | 0 |
+| Redefinitions (`F811`) | 0 | 2 |
+| **Total** | **1** | **2** |
 
-These are **272 cleanup signals, not 272 bugs**. The test redefinitions reported here are import/shadowing cases, not evidence of overwritten test functions. Extend lint to cleaned modules incrementally; do not enable a large new rule set and then suppress its output wholesale.
+These are **3 cleanup signals, not 3 demonstrated bugs**. They concern a loop variable shadowing the imported `field` in `campaign_persistence.py` and repeated imports in `tests/test_gui_display_scales.py` and `tests/test_unit_template_validation.py`, not overwritten test functions. Extend lint to cleaned modules incrementally; do not enable a large new rule set and then suppress its output wholesale.
 
 Particularly large functions at the reviewed revision include `handle_context_menu_action` (454 lines), `command_guidance` (421), `_order_factory` (401), `_process_movement` (396), `_draw_system_view_order_lines` (357), `assemble_unit_from_template` (311), and `process_event` (300). These counts include comments and blanks; use them to select review targets, not as arbitrary maximums.
 
@@ -294,7 +288,7 @@ Environment: **Windows, Python 3.12.14**, project `.venv`; pygame-ce **2.5.7**, 
 | `python -m mypy --platform linux` | Passed for the seven configured files. |
 | `python -m mypy --platform win32` | Passed for the seven configured files. |
 | `python scripts/generate_reference.py --check` | Passed. |
-| Additional repository-wide `ruff --select F,E9` | 272 diagnostics, classified above; this broader check is not the configured gate. |
+| Additional repository-wide `ruff --select F,E9` | 272 diagnostics at the base revision; retained as historical evidence. Current remaining findings are listed above. |
 | Local Markdown path/heading check | No unresolved local links detected. External URLs were not fetched. |
 | `git diff --check` | Passed for the changes. |
 
@@ -313,12 +307,10 @@ CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit 
 
 ### Bloat and blind spots to address
 
-1. **Repeated setup:** Share duplicated collision setup and simple campaign/entity builders. Avoid fixtures that construct a full UI or large galaxy for a calculation needing two units.
-2. **Unused test setup:** Sixty unused local diagnostics merit review. A created entity may intentionally affect the world even if its variable is unused; do not delete the call automatically.
-3. **Weak lint scope:** The green default Ruff run says little about unused code. Expand cleaned module coverage gradually.
-4. **Narrow typing scope:** Strict mypy covers seven selected boundary files with silent import following, not the entire game. Add types first to preparation results, projection records, and persistence validators where they clarify contracts.
-5. **Missing cross-boundary tests:** Add focused coverage where individually tested layers can disagree, including public failure history below, instead of more implementation-call-count assertions.
-6. **UI test cost:** Several large-display tests take approximately 2–4 seconds each. Keep representative resolution/scale transitions and privacy cases; consolidate redundant screenshots/setup only after checking they do not protect different regressions. A roughly 3.5-minute complete local run does not justify deleting meaningful tests just to reduce count.
+1. **Repeated setup:** Share simple campaign/entity builders where setup remains duplicated. Avoid fixtures that construct a full UI or large galaxy for a calculation needing two units.
+2. **Narrow typing scope:** Strict mypy covers seven selected boundary files with silent import following, not the entire game. Add types first to preparation results, projection records, and persistence validators where they clarify contracts.
+3. **Missing cross-boundary tests:** Add focused coverage where individually tested layers can disagree, including public failure history below, instead of more implementation-call-count assertions.
+4. **UI test cost:** Several large-display tests take approximately 2–4 seconds each. Keep representative resolution/scale transitions and privacy cases; consolidate redundant screenshots/setup only after checking they do not protect different regressions. A roughly 3.5-minute complete local run does not justify deleting meaningful tests just to reduce count.
 
 ### Recommended regression additions
 
@@ -335,7 +327,6 @@ Correct inaccurate docs and public reason-code drift alongside the affected beha
 ### Next: reduce maintenance cost
 
 - Extract command projection, movement resolution, constructor assembly, and wizard pages in separate reviewable changes. Preserve public behavior while moving code.
-- Apply the small duplication/import cleanup, then widen lint for cleaned modules.
 - Add intent-focused docstrings to the important functions listed above; remove neighboring narration that becomes redundant.
 - Consolidate documentation according to topic ownership and keep version facts generated/checked.
 

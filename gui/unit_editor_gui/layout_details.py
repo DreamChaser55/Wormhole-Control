@@ -19,7 +19,7 @@ from .catalog import (
     ability_button_text,
     COMPONENT_DESCRIPTIONS,
 )
-from .widget_factory import make_label, make_entry, make_dropdown, make_button
+from gui.widget_factory import make_label, make_entry, make_dropdown, make_button
 from .widget_factory import make_help_button, set_wrapped_button_text
 from .descriptions import component_description
 

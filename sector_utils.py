@@ -1,7 +1,7 @@
 from display_config import DEFAULT_DISPLAY_CONFIG
 import math
 import random
-from geometry import Vector, distance, Position, Circle, is_point_in_circle, clamp_point_to_circle
+from geometry import distance, Position, Circle, is_point_in_circle, clamp_point_to_circle
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, ICON_DOT_RADIUS, ICON_DOT_SPACING
 
 # --- Sector Utility Functions ---

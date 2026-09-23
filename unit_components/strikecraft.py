@@ -1,12 +1,10 @@
 import logging
 import typing
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
-from .enums import WingType, TurretType, TurretVariant
-from .movement import Engines
-from .weapons import Weapons, Turret
+from .enums import WingType
 from geometry import Position
 from constants import HullSize, STRIKECRAFT_BAY_HULL_COST_PER_SLOT
 from deployment_placement import find_deployment_position

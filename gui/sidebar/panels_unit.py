@@ -1,12 +1,10 @@
 """Sidebar UI panel builders for Unit entities."""
-import typing
-from constants import MAX_UNIT_XP, UPKEEP_COST_PER_HULL_POINT
+from constants import MAX_UNIT_XP
 from economy import calculate_unit_upkeep
 from domain.units import Unit
 from domain.players import are_enemies
 from component_visibility import component_is_public, unit_details_are_public
 from unit_naming import MAX_UNIT_NAME_LENGTH
-from unit_components.intelligence import IntelligenceComponent
 
 
 def hit_point_style_id(unit: Unit) -> str:

@@ -385,7 +385,6 @@ def test_leave_gas_giant_order():
 
 def test_sidebar_and_context_menu():
     game, gas_giant, ship, wing, enemy_ship = create_test_setup()
-    hex_obj = game.galaxy.systems["Sol"].hexes[HexCoord(0, 0)]
 
     # Hide friendly ship and enemy ship
     gas_giant.hide_unit(ship, game.galaxy)

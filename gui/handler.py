@@ -10,7 +10,7 @@ from pygame import Color
 
 from constants import BLUE
 from utils import ContextMenuOption
-from geometry import Vector, Position
+from geometry import Position
 from .theme_loader import build_ui_manager
 from . import layout_main_menu, layout_ingame_menu, layout_hud, text_layout, context_menu, event_router
 from .layout_new_game_wizard import NewGameWizard

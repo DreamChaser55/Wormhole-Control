@@ -1,6 +1,6 @@
 from typing import Dict, Optional, Tuple, Any
 
-from geometry import Vector, Position, NAVIGATION_CLEARANCE
+from geometry import Vector, NAVIGATION_CLEARANCE as NAVIGATION_CLEARANCE
 from enum import Enum, auto
 
 # Development constants

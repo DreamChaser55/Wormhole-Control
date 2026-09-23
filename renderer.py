@@ -1,5 +1,4 @@
 import pygame
-from pygame import Color
 
 from constants import (
     GALAXY_BG_COLOR, SYSTEM_BG_COLOR, SECTOR_BG_COLOR, BLACK

@@ -247,7 +247,7 @@ class TestMemory(unittest.TestCase):
         self.assertTrue(first_turn_str.startswith("Turn "))
         # The latest turns must be preserved in full
         self.assertTrue(memory.receipts[-1].startswith("Turn 10: Action for turn 10: "))
-        self.assertEqual(len(memory.receipts[-1]), len("Turn 10: ") + len(f"Action for turn 10: " + ("x" * 1400)))
+        self.assertEqual(len(memory.receipts[-1]), len("Turn 10: ") + len("Action for turn 10: " + ("x" * 1400)))
         # Turn 1 and Turn 2 should have been evicted entirely
         surviving_turns = [r.split(":")[0] for r in memory.receipts]
         self.assertNotIn("Turn 1", surviving_turns)

@@ -1,7 +1,6 @@
 """Tests for strikecraft wing icon rendering in draw_shape and draw_wireframe_shape."""
 from unittest.mock import patch
 import pygame
-import pytest
 
 from constants import BLUE
 from geometry import Position

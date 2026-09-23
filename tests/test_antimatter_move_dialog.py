@@ -78,7 +78,6 @@ class TestAntimatterMoveDialog(unittest.TestCase):
         """Test calculation of antimatter for inter-system wormhole jump."""
         # Sol to Alpha Centauri via wormhole
         expected_sys_cost = get_hyperdrive_system_jump_cost(HullSize.MEDIUM)
-        expected_hex_cost = get_hyperdrive_hex_jump_cost(HullSize.MEDIUM)
 
         cost = calculate_required_antimatter(
             self.unit,

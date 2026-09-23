@@ -1012,7 +1012,6 @@ def test_weapons_sidebar_data():
 def test_unit_template_name_assignment():
     from unittest.mock import MagicMock
     from unit_components.constructor import Constructor
-    from unit_components.enums import WingType
     from constants import HullSize
     from geometry import Position
     import unit_components.constructor

@@ -18,7 +18,6 @@ from .rules import (
     is_colonizable_body,
     is_mining_target,
     is_self_owned,
-    is_star,
     is_antimatter_source,
 )
 from .intelligence import (
@@ -1482,7 +1481,6 @@ class CommandGateway:
         raise _Rejected("unsupported_command", "Unsupported command.")
 
     def _ability_factory(self, command: Any, target_unit: Any):
-        from geometry import Position
         from unit_components.abilities import ABILITY_DEFINITIONS
         from unit_components.enums import AbilityType
         from unit_orders.abilities import UseAbilityOrder

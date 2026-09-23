@@ -3,7 +3,6 @@ from display_config import DisplayConfig
 
 import builtins
 from pathlib import Path
-from geometry import Vector
 from utils import resource_path
 
 def test_resource_paths_ignore_cwd_and_support_bundles(tmp_path, monkeypatch):

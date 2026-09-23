@@ -208,7 +208,7 @@ def test_new_game_wizard_spawn_profile_ui():
     from unit_templates import UNIT_TEMPLATES
     before = dict(UNIT_TEMPLATES)
 
-    screen = pygame.display.set_mode((1280, 720))
+    pygame.display.set_mode((1280, 720))
     manager = pygame_gui.UIManager((1280, 720))
 
     from gui.layout_new_game_wizard import NewGameWizard

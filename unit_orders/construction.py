@@ -35,7 +35,7 @@ class ConstructOrder(Order):
 
         if not unit_template_name or target_pos is None:
             self.fail("invalid_parameters")
-            logger.debug(f"CONSTRUCT order failed: Missing parameters.")
+            logger.debug("CONSTRUCT order failed: Missing parameters.")
             return
 
         if not isinstance(target_pos, Position):
@@ -100,7 +100,7 @@ class ConstructOrder(Order):
             return
         if player.credits < buildable.cost_credits:
             self.fail("insufficient_resources")
-            logger.debug(f"CONSTRUCT order failed: Not enough credits.")
+            logger.debug("CONSTRUCT order failed: Not enough credits.")
             if self.unit and getattr(self.unit, 'game', None) and self.unit.game.gui:
                 self.unit.game.gui.show_warning_dialog(
                     f"Insufficient credits to construct <b>{unit_template_name}</b>.<br>Required: {buildable.cost_credits:.0f} credits (Available: {player.credits:.0f}).",

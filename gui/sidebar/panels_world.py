@@ -1,6 +1,5 @@
 """Sidebar UI panel builders for StarSystem, Hex, CelestialBody, and Minefield entities."""
-import typing
-from domain.celestials import CelestialBody, Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Wormhole, DebrisField, AsteroidField, IceField, Nebula, Storm, Comet
+from domain.celestials import CelestialBody, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Wormhole, Comet
 from domain.minefields import Minefield
 from domain.units import Unit
 from galaxy import StarSystem, Hex

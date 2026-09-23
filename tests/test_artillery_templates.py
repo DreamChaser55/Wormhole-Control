@@ -1,8 +1,7 @@
 """Tests for dedicated long-range (artillery) unit designs."""
-import pytest
 from constants import HullSize
 from geometry import Position
-from unit_components.enums import TurretType, TurretVariant
+from unit_components.enums import TurretVariant
 from unit_templates import UNIT_TEMPLATES
 from unit_components.constructor import instantiate_unit_from_template
 from tests.support.commands import world

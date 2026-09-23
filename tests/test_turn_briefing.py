@@ -117,7 +117,6 @@ def test_capture_and_carrier_cargo_losses_and_temporary_expiry():
     from unit_components.abilities.capture_unit import CaptureUnitAbility
     from unit_components.marines import MarinesComponent
     from unit_components.strikecraft import StrikecraftBayComponent
-    from unit_components.enums import WingType
     game = setup()
     carrier = ship(game)
     bay = StrikecraftBayComponent(carrier, max_slots=2)
@@ -234,7 +233,6 @@ def test_production_colony_and_mines_record_authoritative_results():
     from unit_components.colony import ColonyComponent
     from unit_components.constructor import Constructor
     from unit_components.strikecraft import StrikecraftBayComponent
-    from unit_components.enums import WingType
     game = setup()
     unit = ship(game)
     constructor = Constructor(unit)

@@ -63,13 +63,13 @@ def test_draw_sector_view_draws_lines_for_all_turn_player_units():
 
     # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
     with patch("pygame.draw.line") as mock_draw_line, \
-         patch("pygame.draw.circle") as mock_draw_circle, \
-         patch("pygame.draw.lines") as mock_draw_lines, \
-         patch("pygame.draw.rect") as mock_draw_rect, \
-         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("pygame.draw.circle"), \
+         patch("pygame.draw.lines"), \
+         patch("pygame.draw.rect"), \
+         patch("pygame.draw.polygon"), \
          patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
-         patch("pygame.font.Font") as mock_font, \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape"), \
+         patch("pygame.font.Font"), \
          patch("pygame.mouse.get_pos", return_value=(0, 0)):
 
         renderer.draw_sector_view()
@@ -133,7 +133,7 @@ def test_system_view_order_lines_only_for_active_player():
 
     # Patch system_renderer drawing functions
     with patch("rendering.system_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.system_renderer.pygame.draw.circle"), \
          patch("rendering.system_renderer.hex_to_pixel", side_effect=lambda q, r, *args, **kwargs: Position(q * 10, r * 10)):
 
          renderer._draw_system_view_order_lines(system)
@@ -247,14 +247,14 @@ def test_draw_sector_view_draws_four_corner_selection_brackets(zoom, logical_rad
     hex_obj.units = [unit]
 
     # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
-    with patch("pygame.draw.line") as mock_draw_line, \
-         patch("pygame.draw.circle") as mock_draw_circle, \
+    with patch("pygame.draw.line"), \
+         patch("pygame.draw.circle"), \
          patch("pygame.draw.lines") as mock_draw_lines, \
-         patch("pygame.draw.rect") as mock_draw_rect, \
-         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("pygame.draw.rect"), \
+         patch("pygame.draw.polygon"), \
          patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
-         patch("pygame.font.Font") as mock_font, \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape"), \
+         patch("pygame.font.Font"), \
          patch.object(renderer.entity_renderer, "draw_unit", return_value=logical_radius):
 
         renderer.draw_sector_view()
@@ -335,13 +335,13 @@ def test_draw_sector_view_draws_turn_notches():
 
     # Patch pygame.draw functions and sector_coords_to_pixels to return the logical pos coordinates
     with patch("pygame.draw.line") as mock_draw_line, \
-         patch("pygame.draw.circle") as mock_draw_circle, \
-         patch("pygame.draw.lines") as mock_draw_lines, \
-         patch("pygame.draw.rect") as mock_draw_rect, \
-         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("pygame.draw.circle"), \
+         patch("pygame.draw.lines"), \
+         patch("pygame.draw.rect"), \
+         patch("pygame.draw.polygon"), \
          patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
-         patch("pygame.font.Font") as mock_font:
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape"), \
+         patch("pygame.font.Font"):
 
         renderer.draw_sector_view()
 
@@ -399,8 +399,8 @@ def test_system_view_wormhole_lines():
     # Keep real hex geometry so the wormhole lies inside the system boundary
     # at every display resolution. Mock only the drawing operations.
     with patch("rendering.system_renderer.pygame.draw.line") as mock_draw_line, \
-         patch("rendering.system_renderer.pygame.draw.polygon") as mock_draw_polygon, \
-         patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle, \
+         patch("rendering.system_renderer.pygame.draw.polygon"), \
+         patch("rendering.system_renderer.pygame.draw.circle"), \
          patch("rendering.system_renderer.pygame.font.Font") as mock_font:
          
          # Setup mock font behavior
@@ -507,15 +507,15 @@ def test_draw_sector_view_patrol_order_path():
 
     # Patrol lines now go through draw_dotted_line (not pygame.draw.line directly).
     # We patch draw_dotted_line in the sector_renderer module and inspect its start/end args.
-    with patch("pygame.draw.line") as mock_draw_line, \
-         patch("pygame.draw.circle") as mock_draw_circle, \
-         patch("pygame.draw.lines") as mock_draw_lines, \
-         patch("pygame.draw.rect") as mock_draw_rect, \
-         patch("pygame.draw.polygon") as mock_draw_polygon, \
+    with patch("pygame.draw.line"), \
+         patch("pygame.draw.circle"), \
+         patch("pygame.draw.lines"), \
+         patch("pygame.draw.rect"), \
+         patch("pygame.draw.polygon"), \
          patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape"), \
          patch("rendering.sector_renderer.sector_overlay_renderer.draw_dotted_line") as mock_draw_dotted_line, \
-         patch("pygame.font.Font") as mock_font, \
+         patch("pygame.font.Font"), \
          patch("pygame.mouse.get_pos", return_value=(0, 0)):
 
         def dotted_coords():
@@ -635,13 +635,13 @@ def test_sector_view_movement_with_sub_orders_draws_sequential_lines():
 
     # 2. Verify drawn lines
     with patch("pygame.draw.line") as mock_draw_line, \
-         patch("pygame.draw.circle") as mock_draw_circle, \
-         patch("pygame.draw.lines") as mock_draw_lines, \
-         patch("pygame.draw.rect") as mock_draw_rect, \
-         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("pygame.draw.circle"), \
+         patch("pygame.draw.lines"), \
+         patch("pygame.draw.rect"), \
+         patch("pygame.draw.polygon"), \
          patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
-         patch("pygame.font.Font") as mock_font, \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape"), \
+         patch("pygame.font.Font"), \
          patch("pygame.mouse.get_pos", return_value=(0, 0)):
 
         renderer.draw_sector_view()
@@ -801,13 +801,13 @@ def test_sector_view_queued_orders_without_sub_orders_sequential():
     assert waypoints[1]['position'] == Position(200, 200)
 
     with patch("pygame.draw.line") as mock_draw_line, \
-         patch("pygame.draw.circle") as mock_draw_circle, \
-         patch("pygame.draw.lines") as mock_draw_lines, \
-         patch("pygame.draw.rect") as mock_draw_rect, \
-         patch("pygame.draw.polygon") as mock_draw_polygon, \
+         patch("pygame.draw.circle"), \
+         patch("pygame.draw.lines"), \
+         patch("pygame.draw.rect"), \
+         patch("pygame.draw.polygon"), \
          patch("rendering.sector_renderer.sector_grid_renderer.sector_coords_to_pixels", side_effect=lambda p, *args, **kwargs: p), \
-         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape") as mock_draw_shape, \
-         patch("pygame.font.Font") as mock_font, \
+         patch("rendering.sector_renderer.sector_entity_renderer.draw_shape"), \
+         patch("pygame.font.Font"), \
          patch("pygame.mouse.get_pos", return_value=(0, 0)):
 
         renderer.draw_sector_view()

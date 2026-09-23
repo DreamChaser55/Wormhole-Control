@@ -22,7 +22,7 @@ from game_ai.contracts import Command, CommandBatch
 from game_ai.observation import build_observation
 from save_manager import serialize_game_state, deserialize_game_state
 from tactical_abilities import (SPECS, activate, availability, deployments, start_owner_turn,
-                                process_pulls, combat_hit, cancel, validate)
+                                process_pulls, combat_hit, cancel)
 from tactical_balance import STRIKECRAFT_ABILITIES
 
 
@@ -139,7 +139,6 @@ def test_catalyst_historical_definition_preserved_but_current_requirements_apply
 
 @pytest.mark.parametrize('flag,label', [('has_sensors', 'Sensors'), ('has_antimatter_storage', 'Antimatter Storage')])
 def test_catalyst_designer_prerequisite_controls(pygame_context, tmp_path, flag, label):
-    import pygame
     import pygame_gui
     from custom_unit_templates import CustomTemplateManager
     from gui.unit_editor_gui.window import UnitEditorWindow
@@ -474,7 +473,6 @@ def test_owner_start_deadlines_do_not_depend_on_number_of_players(players_count)
 
 def test_historical_source_allocator():
     from domain.identity import GameObject
-    from campaign_persistence import prepare_campaign
     game = campaign()
     caster = equipped(game)
     assert activate(caster, 'ghost_fleet', game.galaxy, position=Position(200, 0))

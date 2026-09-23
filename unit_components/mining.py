@@ -1,6 +1,5 @@
 import logging
 from typing import Optional, TYPE_CHECKING
-import dataclasses
 
 from .base import UnitComponent
 from geometry import distance

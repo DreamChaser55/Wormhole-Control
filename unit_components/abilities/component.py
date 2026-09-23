@@ -5,8 +5,8 @@ from geometry import Position
 from domain.coordinates import HexCoord
 from ..base import UnitComponent
 from ..enums import AbilityType
-from .base import AbilityInstance, AbilityDefinition
-from .registry import ABILITY_CLASSES, ABILITY_DEFINITIONS
+from .base import AbilityInstance
+from .registry import ABILITY_CLASSES
 
 if TYPE_CHECKING:
     from domain.units import Unit

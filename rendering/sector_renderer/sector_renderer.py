@@ -1,15 +1,11 @@
 from display_config import display_config_for
 import pygame
-import math
 from collections import OrderedDict
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, WORMHOLE_RADIUS, FOG_PRESENCE_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, XP_SPEED_BONUS
 
-from sector_utils import sector_coords_to_pixels
-from geometry import Position
 from domain.units import Unit
-from unit_orders.base import OrderType, OrderStatus
+from unit_orders.base import OrderType
 from domain.minefields import Minefield
-from rendering.drawing_utils import draw_shape, draw_dotted_line
 
 from rendering.sector_renderer.sector_grid_renderer import SectorGridRenderer
 from rendering.sector_renderer.sector_celestial_renderer import SectorCelestialRenderer
@@ -156,7 +152,6 @@ class SectorViewRenderer:
         bodies_to_draw = hex_obj.celestial_bodies
         units_to_draw = [u for u in hex_obj.units if self.game.is_unit_visible(u)]
         minefields_to_draw = [mf for mf in getattr(hex_obj, 'minefields', []) if self.game.is_minefield_visible(mf)]
-        has_hidden = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
         
         if self.game.hex_has_presence(self.game.current_system_name, self.game.current_sector_coord):
             font_size = max(12, int(14 * display_config_for(self.game).text_scale))

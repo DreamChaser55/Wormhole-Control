@@ -245,7 +245,7 @@ def format_order_state_data(state_data: dict, galaxy: typing.Any = None) -> list
         return [f"{refit_type_styled} {_target_name_html(state_data)}"]
 
     elif order_type == "PROTECT":
-        protect_type_styled = f"<font color='#FF69B4'><b>Protect:</b></font>"
+        protect_type_styled = "<font color='#FF69B4'><b>Protect:</b></font>"
         return [f"{protect_type_styled} {_target_name_html(state_data)}"]
 
     elif order_type == "DOCK":

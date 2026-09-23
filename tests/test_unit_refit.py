@@ -154,7 +154,7 @@ def test_refit_remove_component_with_refund(setup_universe):
 
 def test_refit_remove_via_event_with_none_time_to_build(setup_universe):
     game, galaxy, player, _, constructor_unit, target_unit = setup_universe
-    order_system = OrderSystem(game, game.event_bus)
+    OrderSystem(game, game.event_bus)
 
     weapons_comp = Weapons(target_unit, hull_cost=5.0)
     target_unit.add_component(weapons_comp)
@@ -370,7 +370,7 @@ def test_refit_save_load_persistence(setup_universe):
 
 def test_refit_event_and_order_system(setup_universe):
     game, galaxy, player, _, constructor_unit, target_unit = setup_universe
-    order_system = OrderSystem(game, game.event_bus)
+    OrderSystem(game, game.event_bus)
 
     event = RefitUnitEvent(
         units=[constructor_unit],

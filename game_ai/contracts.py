@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 
 from .command_spec import COMMAND_SPECS, COMMAND_PROPERTIES, validate_command

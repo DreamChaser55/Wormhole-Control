@@ -4,7 +4,6 @@ from display_config import display_config_for
 import pygame
 import math
 import typing
-from typing import TYPE_CHECKING
 from galaxy import StarSystem
 from constants import (
     HOVER_HIGHLIGHT_COLOR,

@@ -316,7 +316,7 @@ def test_system_view_renderer_collect_waypoints_for_ability():
         
         # Manually invoke line drawing which triggers the waypoint collection
         with patch("rendering.system_renderer.pygame.draw.line") as mock_draw_line, \
-             patch("rendering.system_renderer.pygame.draw.circle") as mock_draw_circle:
+             patch("rendering.system_renderer.pygame.draw.circle"):
             renderer._draw_system_view_order_lines(system)
             # The line should be drawn to hex (0, 1)
             assert mock_draw_line.called

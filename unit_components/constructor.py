@@ -27,7 +27,7 @@ from planetary_balance import TROOP_DEFAULT_CAPACITY
 from .cloaking import CloakingDevice
 from .intelligence import IntelligenceComponent
 from .enums import (
-    HyperdriveType, UnitStance, TurretType, TurretVariant,
+    HyperdriveType, TurretType, TurretVariant,
     WingType, AbilityType, CloakingType
 )
 
@@ -382,7 +382,7 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
     if template.get("has_cloaking_device"):
         from unit_components.cloaking import CloakingDevice
         from unit_components.enums import CloakingType
-        from constants import CLOAKING_BASIC_HULL_COST, DEFAULT_ADVANCED_CLOAKING_RADIUS
+        from constants import DEFAULT_ADVANCED_CLOAKING_RADIUS
         c_type_raw = template.get("cloaking_type", "BASIC")
         c_type = CloakingType.ADVANCED if str(c_type_raw).upper() == "ADVANCED" else CloakingType.BASIC
         c_radius = float(template.get("cloaking_radius", DEFAULT_ADVANCED_CLOAKING_RADIUS)) if c_type == CloakingType.ADVANCED else 0.0
@@ -436,7 +436,6 @@ class Constructor(UnitComponent):
                             "construction_order_id": str, "refit_order_id": str}
 
     def validate_state(self):
-        from geometry import Position
         target = self.current_construction_target
         if target is not None:
             from location_validation import location

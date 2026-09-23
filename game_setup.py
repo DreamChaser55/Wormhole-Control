@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from constants import PlanetType
 from domain.players import Player
-from domain.celestials import Planet, Star, Wormhole
+from domain.celestials import Planet
 from galaxy import Galaxy, StarSystem
 from geometry import Position
 from unit_components.constructor import instantiate_unit_from_template

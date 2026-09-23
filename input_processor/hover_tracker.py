@@ -6,7 +6,7 @@ import logging
 from constants import (
     STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, HULL_BASE_ICON_SCALES,
     SECTOR_VIEW_BASE_ICON_SIZE, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS,
-    CELESTIAL_FIELD_RADIUS, SECTOR_OBJECT_CLICK_RADIUS_MULT
+    SECTOR_OBJECT_CLICK_RADIUS_MULT
 )
 from geometry import Position, distance_sq
 from hexgrid_utils import pixel_to_hex
@@ -15,7 +15,7 @@ from sector_utils import (
     get_minefield_dot_radius_px,
 )
 from domain.units import Unit
-from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField, IceField, DebrisField, Nebula, Storm
+from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole
 from galaxy_utils import logical_to_screen_galaxy
 
 logger = logging.getLogger(__name__)

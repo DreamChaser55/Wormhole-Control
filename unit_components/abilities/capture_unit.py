@@ -3,7 +3,7 @@ import random
 from typing import Optional, TYPE_CHECKING
 from geometry import Position
 from domain.coordinates import HexCoord
-from ..enums import AbilityType, UnitStance
+from ..enums import AbilityType
 from ..defenses import Defenses
 from ..marines import MarinesComponent
 from .base import AbilityDefinition, AbilityInstance

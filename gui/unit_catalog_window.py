@@ -7,9 +7,8 @@ from pygame_gui import elements
 from constants import HullSize
 from display_config import display_config_for
 from events import ConstructEvent
-from geometry import Position
 from unit_catalog import CATEGORIES, describe_template
-from unit_templates import UNIT_TEMPLATES, get_all_templates_for_player
+from unit_templates import get_all_templates_for_player
 
 
 def catalog_entries(templates, *, search='', category='All roles', hull='All hulls',

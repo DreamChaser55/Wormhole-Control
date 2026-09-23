@@ -9,7 +9,7 @@ from domain.coordinates import HexCoord
 from geometry import (
     Position, Vector, distance, hex_distance, is_point_in_circle,
     get_closest_point_on_circle_edge, clamp_point_to_circle, Circle,
-    segment_intersects_circle, compute_avoidance_waypoints, NoSafePathError, NAVIGATION_CLEARANCE,
+    compute_avoidance_waypoints, NoSafePathError, NAVIGATION_CLEARANCE,
     position_at_distance_from_target
 )
 from pathfinding import find_intersystem_path, find_hex_jump_path

@@ -25,7 +25,6 @@ def campaign():
         campaign_id="integrity", conversations={}, message_counter=40, game_started=True,
         selected_objects=[], hovered_object=None, deselect_object=lambda obj: None)
     game.display_config = DisplayConfig()
-    game.display_config = DisplayConfig()
     return game
 
 

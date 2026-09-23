@@ -6,7 +6,6 @@ from unit_orders.base import OrderTargetField
 import logging
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from constants import XP_JUMP_RANGE_BONUS
 from geometry import distance, hex_distance
 from .base import Order, OrderStatus, OrderType
 from .combat import AttackOrder

@@ -33,7 +33,7 @@ class ColonizeOrder(Order):
         target_id = self.parameters.get("target_id")
         if target_id is None:
             self.fail("invalid_parameters")
-            logger.debug(f"COLONIZE order failed: no target_id.")
+            logger.debug("COLONIZE order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)
@@ -72,7 +72,7 @@ class ColonizeOrder(Order):
         cargo = self.unit.colony_component.population_cargo
         if cargo <= 0:
             self.fail("insufficient_population")
-            logger.debug(f"COLONIZE order failed: No population in cargo to unload.")
+            logger.debug("COLONIZE order failed: No population in cargo to unload.")
             return
 
         success = self.unit.colony_component.unload_population(target, cargo)
@@ -109,7 +109,7 @@ class LoadColonistsOrder(Order):
 
         if target_id is None:
             self.fail("invalid_parameters")
-            logger.debug(f"LOAD_COLONISTS order failed: no target_id.")
+            logger.debug("LOAD_COLONISTS order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)

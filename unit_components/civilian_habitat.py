@@ -5,7 +5,6 @@ from .base import UnitComponent
 
 if TYPE_CHECKING:
     from domain.units import Unit
-    from domain.celestials import CelestialBody, Planet, Moon, ColonizableAsteroid
     from galaxy import Galaxy
     from game import Game
 

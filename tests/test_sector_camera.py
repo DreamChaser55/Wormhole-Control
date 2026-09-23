@@ -129,7 +129,7 @@ def test_input_processor_drag_pan():
          patch.object(ip.gui, 'process_event', return_value=None), \
          patch.object(ip.gui, 'is_ingame_menu_open', return_value=False), \
          patch.object(ip.gui, 'is_unit_editor_open', return_value=False), \
-         patch.object(ip, 'handle_mouse_click') as mock_click, \
+         patch.object(ip, 'handle_mouse_click'), \
          patch('pygame.event.get', return_value=[event_down]):
         
         ip.handle_input()

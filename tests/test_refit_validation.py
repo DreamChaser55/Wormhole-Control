@@ -480,7 +480,3 @@ def test_saved_removal_settles_exactly_once(outcome):
     order.cancel()
     ctor.finish_refit(game.galaxy)
     assert game.players[0].credits == expected
-
-
-
-from custom_unit_templates import template_to_dict, template_from_dict

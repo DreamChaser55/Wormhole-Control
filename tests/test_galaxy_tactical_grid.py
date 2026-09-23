@@ -6,14 +6,13 @@ import pygame
 from constants import (
     GALAXY_GRID_COLOR,
     GALAXY_BORDER_COLOR,
-    GALAXY_GRID_SPACING,
     LOGICAL_GALAXY_SIZE,
     WORMHOLE_LINE_COLOR,
 )
 from display_config import DisplayConfig
 from geometry import Position
 from galaxy_utils import logical_to_screen_galaxy
-from rendering.galaxy_renderer import GalaxyViewRenderer, draw_galaxy_preview, draw_galaxy_tactical_grid
+from rendering.galaxy_renderer import GalaxyViewRenderer, draw_galaxy_preview
 
 
 def make_mock_game(zoom=1.0, pan=Position(0, 0), viewport_rect=pygame.Rect(40, 30, 800, 500)):
@@ -110,7 +109,7 @@ def test_tactical_grid_drawn_before_wormholes_and_systems():
     }
 
     renderer = GalaxyViewRenderer(game)
-    with patch("pygame.draw.line") as mock_draw_line, patch("pygame.draw.circle") as mock_draw_circle:
+    with patch("pygame.draw.line") as mock_draw_line, patch("pygame.draw.circle"):
         renderer.draw_galaxy_view()
 
         all_line_calls = mock_draw_line.call_args_list

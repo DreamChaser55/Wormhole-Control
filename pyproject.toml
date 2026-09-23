@@ -3,7 +3,7 @@ target-version = "py310"
 extend-exclude = [".codex_test_cache", ".pytest_tmp", "saves", "build", "dist"]
 
 [tool.ruff.lint]
-select = ["F821", "F822", "F823"]
+select = ["F401", "F541", "F821", "F822", "F823", "F841"]
 
 [tool.mypy]
 python_version = "3.10"

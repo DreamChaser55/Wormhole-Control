@@ -267,7 +267,6 @@ def _unit_view(
     exact_bodies: list[Any],
     visible_units: list[Any],
 ) -> dict[str, Any]:
-    commander = getattr(unit, "commander_component", None)
     components = sorted(
         component.__class__.__name__ for component in public_components(unit, enemy=relation == "enemy")
     )

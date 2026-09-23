@@ -10,7 +10,6 @@ from .movement import MoveOrder
 if TYPE_CHECKING:
     from galaxy import Galaxy
     from domain.units import Unit
-    from domain.celestials import Planet
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class EnterGasGiantOrder(Order):
 
         if getattr(self.unit, 'hull_size', None) == HullSize.STRIKECRAFT_WING:
             self.fail("hazard_blocked")
-            logger.debug(f"ENTER_GAS_GIANT failed: Strikecraft wings cannot enter gas giants.")
+            logger.debug("ENTER_GAS_GIANT failed: Strikecraft wings cannot enter gas giants.")
             return
 
         eng = getattr(self.unit, 'engines_component', None)
@@ -57,7 +56,7 @@ class EnterGasGiantOrder(Order):
         target_id = self.parameters.get("target_id")
         if target_id is None:
             self.fail("invalid_parameters")
-            logger.debug(f"ENTER_GAS_GIANT failed: No target_id specified.")
+            logger.debug("ENTER_GAS_GIANT failed: No target_id specified.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)

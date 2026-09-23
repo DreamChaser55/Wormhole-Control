@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, List, Dict, Optional, Tuple, Any
+from typing import TYPE_CHECKING, List, Dict, Optional, Tuple
 
 from .base import UnitComponent
 from constants import (

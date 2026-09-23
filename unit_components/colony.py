@@ -1,6 +1,5 @@
 import logging
 from typing import TYPE_CHECKING
-import dataclasses
 
 from .base import UnitComponent
 
@@ -91,7 +90,7 @@ class ColonyComponent(UnitComponent):
             logger.debug(f"Planet {planet.name} has been colonized by {self.unit.owner.name}.")
 
         if planet.owner != self.unit.owner:
-            logger.debug(f"Error: Cannot unload population on planet owned by another player.")
+            logger.debug("Error: Cannot unload population on planet owned by another player.")
             return False
 
         planet.population += amount

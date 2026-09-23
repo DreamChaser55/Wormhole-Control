@@ -1,6 +1,5 @@
 import dataclasses
 import logging
-import typing
 from typing import Optional, List, ClassVar, TYPE_CHECKING
 from geometry import Position
 from domain.coordinates import HexCoord

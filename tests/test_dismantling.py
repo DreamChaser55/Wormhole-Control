@@ -10,7 +10,6 @@ from unit_components.constructor import Constructor
 from unit_components.strikecraft import StrikecraftBayComponent
 from unit_components.hangar import HangarComponent
 from unit_components.movement import Engines
-from unit_orders.dismantling import DismantleOrder
 from unit_orders.base import OrderStatus
 from dismantling import evaluate, offline, process
 from campaign_graph import find_unit

@@ -61,7 +61,7 @@ def test_stance_targets_visible_enemy_in_short_range_and_different_sector_with_s
     p1_ship.commander_component.stance = UnitStance.ATTACK_INTRA_SYSTEM_JUMP_RANGE
 
     # P1 also has a scout in (0, 1) granting short-range visibility in (0, 1)
-    p1_scout = create_combat_ship(galaxy, p1, "P1 Scout", (0, 1), pos=(0, 0), short_range=1000.0, long_range=0)
+    create_combat_ship(galaxy, p1, "P1 Scout", (0, 1), pos=(0, 0), short_range=1000.0, long_range=0)
 
     # P2 enemy in (0, 1) close to P1 scout
     p2_enemy = create_combat_ship(galaxy, p2, "P2 Frigate", (0, 1), pos=(50, 50), short_range=500.0, long_range=0)
@@ -132,7 +132,7 @@ def test_stance_order_cancelled_when_target_slips_into_fog_of_war():
     p1_scout = create_combat_ship(galaxy, p1, "P1 Scout", (0, 1), pos=(0, 0), short_range=1000.0, long_range=0)
 
     # P2 enemy in (0, 1)
-    p2_enemy = create_combat_ship(galaxy, p2, "P2 Runner", (0, 1), pos=(0, 0), short_range=500.0, long_range=0)
+    create_combat_ship(galaxy, p2, "P2 Runner", (0, 1), pos=(0, 0), short_range=500.0, long_range=0)
 
     # Initial update creates stance order
     p1_ship.commander_component.update()

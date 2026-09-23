@@ -5,7 +5,6 @@ import pygame
 import pygame_gui
 from unittest.mock import MagicMock
 from geometry import Position, Vector
-from display_config import display_config_for
 from gui.context_menu import (
     calculate_context_menu_min_col_width,
     compute_context_menu_layout,

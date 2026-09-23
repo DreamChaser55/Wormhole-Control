@@ -2,14 +2,12 @@ from display_config import display_config_for
 import pygame
 import random
 import math
-from constants import DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE, SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY, HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR, XP_JUMP_RANGE_BONUS, StarType, PlanetType, NEBULA_RADIUS, STORM_RADIUS, STORM_LIGHTNING_COLOR, SQRT3, WORMHOLE_LINE_COLOR, FOG_PRESENCE_COLOR, STAR_COLORS, DARK_RED
+from constants import DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE, SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY, HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR, XP_JUMP_RANGE_BONUS, PlanetType, STORM_LIGHTNING_COLOR, SQRT3, WORMHOLE_LINE_COLOR, STAR_COLORS, DARK_RED
 
 from hexgrid_utils import get_hex_vertices, hex_to_pixel, hex_distance
 from domain.celestials import Star, Planet, Wormhole, CelestialBody, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
 from domain.units import Unit
 from unit_orders.base import OrderType
-from domain.minefields import Minefield
-from visibility import is_minefield_visible
 from galaxy import Hex
 from geometry import Position
 from rendering.drawing_utils import draw_selection_brackets, selection_color_for, station_icon_rect

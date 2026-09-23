@@ -299,7 +299,7 @@ def test_template_cloaking_costs_and_validation():
 
 def test_template_dict_roundtrip():
     from custom_unit_templates import CustomTemplateManager
-    mgr = CustomTemplateManager()
+    CustomTemplateManager()
 
     t = CustomUnitTemplate("Phantom Cruiser", HullSize.MEDIUM)
     t.components.has_engine = True

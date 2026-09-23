@@ -27,7 +27,7 @@ class MineOrder(Order):
         target_id = self.parameters.get("target_id")
         if target_id is None:
             self.fail("invalid_parameters")
-            logger.debug(f"MINE order failed: no target_id.")
+            logger.debug("MINE order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)

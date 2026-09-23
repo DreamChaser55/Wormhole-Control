@@ -7,7 +7,7 @@ import typing
 
 from domain.coordinates import HexCoord
 from utils import ProfileTimer
-from geometry import Vector, Position, distance, hex_distance, Circle, is_point_in_circle
+from geometry import Position, distance, hex_distance, Circle, is_point_in_circle
 from sector_utils import move_towards_position
 from domain.units import Unit
 from domain.celestials import Wormhole, Planet, Moon, ColonizableAsteroid
@@ -15,13 +15,12 @@ from unit_components.enums import JumpStatus
 from unit_components.commander import Commander
 from visibility import VisibilityService
 from constants import (
-    UPKEEP_COST_PER_HULL_POINT, HullSize, TAX_RATE, XP_SPEED_BONUS, XP_JUMP_RANGE_BONUS,
-    ENGINE_ANTIMATTER_COST_PER_TURN, HYPERDRIVE_SYSTEM_JUMP_COST, HYPERDRIVE_HEX_JUMP_COST,
-    HYDROGEN_NEBULA_AM_BURN_MOD, CELESTIAL_FIELD_RADIUS, STORM_RADIUS,
-    NebulaType, StormType, StarType
+    HullSize, TAX_RATE, XP_JUMP_RANGE_BONUS,
+    CELESTIAL_FIELD_RADIUS, STORM_RADIUS,
+    StormType
 )
 from turn_presentation import NullTurnPresentation, TurnPresentation
-from economy import calculate_unit_upkeep, calculate_player_upkeep
+from economy import calculate_player_upkeep
 from turn_briefing import record, unit_event
 
 

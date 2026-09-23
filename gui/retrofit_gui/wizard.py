@@ -16,12 +16,9 @@ import pygame_gui
 from constants import (
     HullSize,
     UPKEEP_COST_PER_HULL_POINT,
-    DEFAULT_ANTIMATTER_CAPACITY,
-    DEFAULT_SENSOR_SHORT_RANGE,
-    DEFAULT_JUMP_RANGE,
 )
 
-from .catalog import RETROFIT_COMPONENTS, ABILITY_NAMES
+from .catalog import RETROFIT_COMPONENTS
 from refit_validation import evaluate_refit, eligible_component, allowed_turret_variants, installed_configuration
 from . import layout
 from . import param_readers

@@ -48,7 +48,7 @@ def wizard_setup():
 
     game = MockGame(galaxy, [player])
     galaxy.game = game
-    order_sys = OrderSystem(game, game.event_bus)
+    OrderSystem(game, game.event_bus)
 
     # Constructor unit
     constructor_unit = Unit(
@@ -94,6 +94,10 @@ def test_retrofit_wizard_component_switching(wizard_setup):
     )
 
     assert wizard._current_comp_key == "Engines"
+    engine_label = wizard._details_groups["Engines"][0]
+    assert engine_label.object_ids[-1] == "#sidebar_info_label"
+    assert engine_label.ui_container is wizard._controls_container.get_container()
+    assert wizard._title_label.object_ids[-1] == "#sidebar_title_label"
     # Switch to Weapons
     wizard.select_component("Weapons")
     assert wizard._current_comp_key == "Weapons"

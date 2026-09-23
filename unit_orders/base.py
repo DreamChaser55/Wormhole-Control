@@ -1,6 +1,5 @@
 import logging
 import uuid
-import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING, Deque
 from enum import Enum, auto
 from collections import deque

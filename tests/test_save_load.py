@@ -22,8 +22,7 @@ from save_manager import (
     serialize_celestial_body, deserialize_celestial_body,
     serialize_unit, deserialize_unit,
     serialize_order, deserialize_order,
-    serialize_game_state, deserialize_game_state,
-    _restore_saved_commander
+    serialize_game_state, deserialize_game_state
 )
 
 

@@ -402,7 +402,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
 
     def test_component_selection(self):
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
@@ -415,6 +414,10 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         self.assertEqual(win._selected_component_key, "has_engine")
         self.assertIn("has_engine", win._comp_select_btns)
         self.assertEqual(win._comp_select_btns["has_engine"].text, "▶▶▶")
+        engine_label = win._details_groups["has_engine"][0]
+        self.assertEqual(engine_label.object_ids[-1], "#comp_cost_label")
+        self.assertIs(engine_label.ui_container, win._panel.get_container())
+        self.assertEqual(win._details_hdr.object_ids[-1], "#editor_section_label")
 
         # Select "has_hyperdrive" via _select_component
         win._select_component("has_hyperdrive")
@@ -454,7 +457,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
         win.kill()
 
     def test_configurable_parameter_widgets(self):
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
@@ -507,7 +509,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_load_design_dropdown_visibility(self):
         """Verifies loading a design with hyperdrive unselected keeps hyperdrive dropdown hidden."""
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
@@ -530,7 +531,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_recreated_dropdown_tab_switching(self):
         """Verifies component tab switching correctly toggles visibility of recreated dropdowns."""
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
@@ -555,7 +555,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_component_buttons_fit_panel_bounds(self):
         """Verifies that component buttons are placed in UIScrollingContainer with full height."""
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
@@ -577,7 +576,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_summary_view_nested_parameters(self):
         """Verifies that component parameters in the design summary are nested directly beneath component lines."""
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager
@@ -626,7 +624,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_float_defenses_in_editor(self):
         """Verifies that float defense parameters are displayed and parsed properly without truncation."""
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate
@@ -669,7 +666,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_save_as_new_creates_independent_template(self):
         """Verifies that _do_save_as_new saves a new template without modifying loaded template."""
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from custom_unit_templates import CustomTemplateManager, CustomUnitTemplate
@@ -713,7 +709,6 @@ class TestUnitEditorWindowSelection(unittest.TestCase):
 
     def test_unit_editor_summary_predicted_upkeep_display(self):
         """Verifies that predicted unit upkeep is displayed in the Unit Designer Column 4 summary."""
-        import pygame
         import pygame_gui
         from gui.unit_editor_gui import UnitEditorWindow
         from gui.unit_editor_gui import cost_model
@@ -814,7 +809,6 @@ class TestDesignBusinessRules(unittest.TestCase):
 
 
 def test_wing_editor_load_switch_and_sensor_guard(pygame_context, tmp_path):
-    import pygame
     import pygame_gui
     from gui.unit_editor_gui.window import UnitEditorWindow
     from gui.unit_editor_gui.component_state import on_hull_changed

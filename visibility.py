@@ -6,15 +6,13 @@ from domain.players import are_allies, are_enemies
 from geometry import distance
 from hexgrid_utils import hexes_within_range
 from constants import (
-    NEBULA_RADIUS, CELESTIAL_FIELD_RADIUS, STORM_RADIUS,
-    DUST_NEBULA_SENSOR_MOD, NebulaType, StormType
+    NEBULA_RADIUS, CELESTIAL_FIELD_RADIUS
 )
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
     from domain.players import Player
     from domain.units import Unit
-    from domain.celestials import Nebula
 
 @dataclasses.dataclass
 class VisibilitySnapshot:

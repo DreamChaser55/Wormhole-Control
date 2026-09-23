@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 from display_config import DisplayConfig
 from constants import HullSize
 from geometry import Position
-from domain.players import Player
 from domain.construction_job import ConstructionJob, get_sector_construction_jobs
 from unit_components.constructor import Constructor
 from tests.support.units import ComponentUnit, ComponentPlayer

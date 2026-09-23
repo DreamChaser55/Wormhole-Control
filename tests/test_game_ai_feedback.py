@@ -6,7 +6,7 @@ from pathlib import Path
 from geometry import Position
 from domain.players import Player
 from game_ai.contracts import Command, CommandBatch, TurnPlan, SUPPORTED_COMMANDS
-from game_ai.schema import responses_text_config, TURN_PLAN_SCHEMA
+from game_ai.schema import TURN_PLAN_SCHEMA
 from game_ai.observation import build_observation, COMMAND_HELP
 from game_ai.prompts import SYSTEM_INSTRUCTIONS
 from game_ai.commands import CommandGateway
@@ -104,7 +104,6 @@ class TestFeedbackContracts(unittest.TestCase):
         self.assertIn("message_developer", COMMAND_HELP)
 
         # Verify command properties enum contains message_developer
-        config = responses_text_config()
         type_enum = TURN_PLAN_SCHEMA["properties"]["commands"]["items"]["properties"]["type"]["enum"]
         self.assertIn("message_developer", type_enum)
 

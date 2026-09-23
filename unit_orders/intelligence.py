@@ -1,7 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
-import typing
-from typing import Dict, Optional, Any, List, Tuple, TYPE_CHECKING
+from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance, position_at_distance_from_target
 from .base import Order, OrderStatus, OrderType
@@ -11,7 +10,6 @@ from unit_components.enums import SabotageType
 if TYPE_CHECKING:
     from galaxy import Galaxy
     from domain.units import Unit
-    from domain.celestials import CelestialBody
     from unit_components.intelligence import Agent
 
 logger = logging.getLogger(__name__)
@@ -46,7 +44,7 @@ class InfiltrateUnitOrder(Order):
             logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: target unit {target_unit_id} not found.")
             return
 
-        from domain.players import are_allies, are_enemies
+        from domain.players import are_allies
         if are_allies(self.unit.owner, target_unit.owner):
             self.status = OrderStatus.FAILED
             logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: cannot infiltrate friendly or allied unit.")

@@ -16,7 +16,6 @@ from unit_orders.base import Order, OrderStatus
 from unit_orders.fuel_transport import (
     TransferAntimatterOrder,
     TakeAntimatterOrder,
-    ContinuousAntimatterTransportOrder,
 )
 from antimatter_logistics import (
     estimate_approach,

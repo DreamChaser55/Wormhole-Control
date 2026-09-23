@@ -32,7 +32,7 @@ def is_star(body: Any) -> bool:
 
 
 def is_antimatter_source(body: Any) -> bool:
-    from domain.celestials import Star, Nebula
+    from domain.celestials import Nebula
     from constants import NebulaType
 
     if is_star(body):

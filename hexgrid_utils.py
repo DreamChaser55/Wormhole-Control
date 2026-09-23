@@ -2,7 +2,7 @@ from display_config import DEFAULT_DISPLAY_CONFIG
 import math
 import typing
 from constants import SQRT3
-from geometry import Vector, Position
+from geometry import Position
 from domain.coordinates import HexCoord
 
 # --- Hex Grid Utility Functions ---

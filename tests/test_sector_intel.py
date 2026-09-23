@@ -42,7 +42,6 @@ def test_long_range_sensor_updates_sector_intel():
     galaxy.systems[sys.name] = sys
 
     h00 = sys.hexes[(0, 0)]
-    h10 = sys.hexes[(1, 0)]
 
     mock_game = MagicMock()
     mock_game.display_config = DisplayConfig()

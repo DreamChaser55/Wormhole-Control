@@ -190,37 +190,42 @@ class TestEntityCollisionRadii(unittest.TestCase):
         self.assertEqual(wormhole.collision_radius, 0.0)
 
 
+def _set_up_collision_scenario(case):
+    """Give each movement or patrol test a fresh star-and-ship scenario."""
+    from unittest.mock import MagicMock
+    case.game = MagicMock()
+    case.game.display_config = DisplayConfig()
+    case.galaxy = SimpleGalaxy()
+    case.game.galaxy = case.galaxy
+    case.system = case.galaxy.systems["Sol"]
+    case.hex_00 = case.system.hexes[(0, 0)]
+    case.star = Star(in_system="Sol", star_type=StarType.G_TYPE)
+    case.hex_00.add_celestial_body(case.star)
+
+    case.player = ComponentPlayer()
+    case.game.players = [case.player]
+    case.game.current_player_index = 0
+
+    case.unit = ComponentUnit()
+    case.unit.owner = case.player
+    case.unit.game = case.game
+    case.unit.in_galaxy = case.galaxy
+    case.unit.in_system = "Sol"
+    case.unit.in_hex = (0, 0)
+    case.unit.position = Position(-1500, 0)
+
+    case.engines = Engines(case.unit, speed=100.0)
+    case.hyperdrive = Hyperdrive(case.unit, drive_type=HyperdriveType.BASIC)
+    case.commander = Commander(case.unit)
+    case.unit.add_component(case.engines)
+    case.unit.add_component(case.hyperdrive)
+    case.unit.add_component(case.commander)
+    case.hex_00.add_unit(case.unit)
+
+
 class TestMoveOrderCollisionAvoidance(unittest.TestCase):
     def setUp(self):
-        from unittest.mock import MagicMock
-        self.game = MagicMock()
-        self.game.display_config = DisplayConfig()
-        self.galaxy = SimpleGalaxy()
-        self.game.galaxy = self.galaxy
-        self.system = self.galaxy.systems["Sol"]
-        self.hex_00 = self.system.hexes[(0, 0)]
-        self.star = Star(in_system="Sol", star_type=StarType.G_TYPE)
-        self.hex_00.add_celestial_body(self.star)
-
-        self.player = ComponentPlayer()
-        self.game.players = [self.player]
-        self.game.current_player_index = 0
-
-        self.unit = ComponentUnit()
-        self.unit.owner = self.player
-        self.unit.game = self.game
-        self.unit.in_galaxy = self.galaxy
-        self.unit.in_system = "Sol"
-        self.unit.in_hex = (0, 0)
-        self.unit.position = Position(-1500, 0)
-
-        self.engines = Engines(self.unit, speed=100.0)
-        self.hyperdrive = Hyperdrive(self.unit, drive_type=HyperdriveType.BASIC)
-        self.commander = Commander(self.unit)
-        self.unit.add_component(self.engines)
-        self.unit.add_component(self.hyperdrive)
-        self.unit.add_component(self.commander)
-        self.hex_00.add_unit(self.unit)
+        _set_up_collision_scenario(self)
 
     def test_move_order_intra_hex_routes_around_star(self):
         # Move across the star at (0, 0) from (-1500, 0) to (1500, 0)
@@ -286,35 +291,7 @@ class TestMoveOrderCollisionAvoidance(unittest.TestCase):
 
 class TestPatrolOrderCollisionAvoidance(unittest.TestCase):
     def setUp(self):
-        from unittest.mock import MagicMock
-        self.game = MagicMock()
-        self.game.display_config = DisplayConfig()
-        self.galaxy = SimpleGalaxy()
-        self.game.galaxy = self.galaxy
-        self.system = self.galaxy.systems["Sol"]
-        self.hex_00 = self.system.hexes[(0, 0)]
-        self.star = Star(in_system="Sol", star_type=StarType.G_TYPE)
-        self.hex_00.add_celestial_body(self.star)
-
-        self.player = ComponentPlayer()
-        self.game.players = [self.player]
-        self.game.current_player_index = 0
-
-        self.unit = ComponentUnit()
-        self.unit.owner = self.player
-        self.unit.game = self.game
-        self.unit.in_galaxy = self.galaxy
-        self.unit.in_system = "Sol"
-        self.unit.in_hex = (0, 0)
-        self.unit.position = Position(-1500, 0)
-
-        self.engines = Engines(self.unit, speed=100.0)
-        self.hyperdrive = Hyperdrive(self.unit, drive_type=HyperdriveType.BASIC)
-        self.commander = Commander(self.unit)
-        self.unit.add_component(self.engines)
-        self.unit.add_component(self.hyperdrive)
-        self.unit.add_component(self.commander)
-        self.hex_00.add_unit(self.unit)
+        _set_up_collision_scenario(self)
 
     def test_patrol_order_avoids_star(self):
         patrol_order = PatrolOrder(self.unit, {

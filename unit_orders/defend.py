@@ -5,7 +5,6 @@ import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import Position, distance
-from constants import HullSize
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
 from .combat import AttackOrder

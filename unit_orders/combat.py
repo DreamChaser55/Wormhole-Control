@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
-from constants import HullSize, DEFAULT_STANDOFF_DISTANCE
+from constants import DEFAULT_STANDOFF_DISTANCE
 from unit_components.weapons import targeting_range
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder

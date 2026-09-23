@@ -51,7 +51,6 @@ class TestCivilianHabitatComponent(unittest.TestCase):
         self.assertEqual(self.unit.civilian_habitat_component, self.habitat_comp)
 
     def test_sector_colonized_object_detection(self):
-        hex_obj = self.system.hexes[self.hex_coord]
 
         # Case 1: Empty sector -> inactive
         self.assertFalse(self.habitat_comp.has_colonized_celestial_object_in_sector(self.galaxy))
@@ -74,7 +73,6 @@ class TestCivilianHabitatComponent(unittest.TestCase):
         self.assertTrue(self.habitat_comp.has_colonized_celestial_object_in_sector(self.galaxy))
 
     def test_destroyed_component_inactive(self):
-        hex_obj = self.system.hexes[self.hex_coord]
         planet = Planet(in_hex=self.hex_coord, in_system="Sol", planet_type=None)
         planet.owner = self.player
         planet.population = 100.0

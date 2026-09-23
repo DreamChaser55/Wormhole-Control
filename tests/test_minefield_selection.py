@@ -124,7 +124,6 @@ def test_anti_strikecraft_minefield_diamond_hover_and_click_selection():
 
 def test_invisible_enemy_minefield_not_selectable_by_clicking_dots():
     game = MockGame()
-    p1 = game.players[0]
     p2 = game.players[1]
     game.visibility = MagicMock()  # Enable fog-of-war check
     hex_obj = game.galaxy.systems["Sol"].hexes[(0, 0)]

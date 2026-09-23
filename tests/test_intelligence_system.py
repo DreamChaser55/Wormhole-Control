@@ -855,7 +855,7 @@ def test_ci_sweep_gui_action_handling(test_setup):
     p1, p2, galaxy, system, game = test_setup
 
     game.event_bus = EventBus()
-    order_sys = OrderSystem(game, game.event_bus)
+    OrderSystem(game, game.event_bus)
 
     ci_ship = Unit(p1, Position(100, 100), (0, 0), "Sol", "Security Ship", HullSize.MEDIUM, game)
     ci_comp = IntelligenceComponent(ci_ship, agents_count=1, agents_capacity=2, has_counter_intelligence=True)

@@ -6,7 +6,7 @@ from domain.coordinates import HexCoord
 from domain.players import are_allies, are_enemies
 from domain.identity import GameObject
 from domain.units import Unit
-from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField, DebrisField, IceField, Nebula, Storm
+from domain.celestials import Star, Planet, Moon, ColonizableAsteroid, MetalAsteroid, Comet, Wormhole, AsteroidField, Nebula
 from constants import NebulaType, PlanetType
 from unit_components.enums import HyperdriveType
 from unit_orders.base import OrderType

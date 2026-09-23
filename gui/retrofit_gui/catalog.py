@@ -6,11 +6,6 @@ for the Retrofit Customization Options Wizard.
 """
 
 from typing import List, Dict, Any
-from constants import (
-    HullSize, DEFAULT_ANTIMATTER_CAPACITY, DEFAULT_SENSOR_SHORT_RANGE,
-    DEFAULT_JUMP_RANGE, ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
-    ORBITAL_DEFENSE_HULL_COST
-)
 from unit_components.movement import Engines, Hyperdrive
 from unit_components.weapons import Weapons
 from unit_components.defenses import Defenses

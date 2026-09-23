@@ -9,7 +9,7 @@ from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, IssuePatrolOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
     MineEvent, UnloadResourcesEvent, DockEvent, UseAbilityEvent, IssueProtectOrderEvent,
-    ContinuousMineEvent, TransferAntimatterEvent, LayMinefieldEvent,
+    ContinuousMineEvent, LayMinefieldEvent,
     RefitUnitEvent, TradeEvent, ContinuousTradeEvent,
     InfiltrateUnitEvent, InfiltratePlanetEvent, RelocateAgentEvent,
     SabotageEvent, CISweepEvent, EliminateAgentEvent, ExtractAgentEvent,

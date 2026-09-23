@@ -1,6 +1,5 @@
 import typing
 import math
-import random
 import dataclasses
 from domain.coordinates import HexCoord
 

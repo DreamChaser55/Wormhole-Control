@@ -7,7 +7,6 @@ from player_controller import PlayerController
 
 if typing.TYPE_CHECKING:
     from gui.handler import GUI_Handler
-    from domain.players import Player
 
 logger = logging.getLogger(__name__)
 

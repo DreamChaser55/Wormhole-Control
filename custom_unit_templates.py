@@ -16,7 +16,6 @@ fixed hull costs.
 
 import json
 import logging
-import math
 import os
 import dataclasses
 from planetary_balance import TROOP_DEFAULT_CAPACITY
@@ -26,14 +25,9 @@ from utils import user_data_path
 from typing import Dict, List, Optional, Any
 
 from constants import (
-    HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_CAPACITY_PER_HULL_POINT,
-    MIN_ANTIMATTER_CAPACITY, MIN_ANTIMATTER_CAPACITY_BY_HULL, get_min_antimatter_capacity,
-    ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
-    DEFAULT_SENSOR_SHORT_RANGE, SENSOR_RANGE_PER_HULL_POINT, SENSOR_LONG_RANGE_HULL_COST_PER_HEX,
-    HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS, ENGINE_ANTIMATTER_HULL_SIZE_MULTIPLIERS,
-    HANGAR_HULL_COST_PER_SLOT, STRIKECRAFT_BAY_HULL_COST_PER_SLOT, REPAIR_RATE_PER_HULL_POINT,
-    REPAIR_CREDIT_COST_PER_HP, MINING_RATE_PER_HULL_POINT, MINING_CARGO_PER_HULL_POINT,
-    INHIBITOR_RADIUS_PER_HULL_POINT, HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST,
+    HullSize, HULL_CAPACITIES, HIT_POINTS, ANTIMATTER_HARVESTER_HULL_COST, MINELAYER_HULL_COST,
+    DEFAULT_SENSOR_SHORT_RANGE, HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS, ENGINE_ANTIMATTER_HULL_SIZE_MULTIPLIERS,
+    REPAIR_CREDIT_COST_PER_HP, HYPERDRIVE_HEX_JUMP_COST, HYPERDRIVE_SYSTEM_JUMP_COST,
     ENGINE_ANTIMATTER_COST_PER_TURN, BASELINE_ENGINE_SPEED,
     DEFAULT_ORBITAL_DEFENSE_RADIUS, DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS,
     DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS, ORBITAL_DEFENSE_HULL_COST
@@ -146,14 +140,9 @@ COMPONENT_COST_PER_HULL_POINT = 30  # credits per hull capacity point used
 # --------------------------------------------------------------------------
 # Dynamic hull-cost tuning constants & Component imports
 # --------------------------------------------------------------------------
-from unit_components.movement import (
-    Engines, Hyperdrive, SPEED_PER_HULL_POINT, ENGINE_HULL_SIZE_MULTIPLIERS,
-    HYPERDRIVE_BASE_COST, HYPERDRIVE_RANGE_PER_POINT, HYPERDRIVE_HULL_SIZE_MULTIPLIERS
-)
-from unit_components.weapons import (
-    Weapons, BASE_TURRET_COST, DMG_PER_POINT, RANGE_PER_POINT, COOLDOWN_BONUS
-)
-from unit_components.defenses import Defenses, DEFENSE_PER_HULL_POINT
+from unit_components.movement import Engines, Hyperdrive
+from unit_components.weapons import Weapons
+from unit_components.defenses import Defenses
 from unit_components.antimatter import AntimatterStorage
 from unit_components.sensors import Sensors
 from unit_components.hangar import HangarComponent
@@ -161,17 +150,23 @@ from unit_components.strikecraft import StrikecraftBayComponent
 from unit_components.repair import RepairComponent
 from unit_components.mining import MiningComponent
 from unit_components.inhibitor import HyperspaceInhibitionFieldEmitter
-from unit_components.marines import MarinesComponent, MARINES_HULL_COST_PER_MARINE
-from unit_components.abilities.component import AbilityComponent, ABILITY_BASE_COST, ABILITY_COST_PER_ABILITY
+from unit_components.marines import (
+    MarinesComponent,
+    MARINES_HULL_COST_PER_MARINE as MARINES_HULL_COST_PER_MARINE,
+)
+from unit_components.abilities.component import (
+    AbilityComponent,
+    ABILITY_BASE_COST as ABILITY_BASE_COST,
+    ABILITY_COST_PER_ABILITY as ABILITY_COST_PER_ABILITY,
+)
 from unit_components.cloaking import CloakingDevice
 from unit_components.civilian_habitat import CivilianHabitatComponent
 from unit_components.orbital_defense import OrbitalDefenseComponent
 from unit_components.intelligence import IntelligenceComponent
 from constants import (
     CLOAKING_BASIC_HULL_COST,
-    CLOAKING_ADVANCED_HULL_COST,
     DEFAULT_ADVANCED_CLOAKING_RADIUS,
-    ADVANCED_CLOAKING_MIN_HULL,
+    ADVANCED_CLOAKING_MIN_HULL as ADVANCED_CLOAKING_MIN_HULL,
 )
 
 

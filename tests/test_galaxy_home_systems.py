@@ -11,7 +11,7 @@ from player_controller import PlayerController
 import game_setup
 from galaxy_utils import get_home_systems_mapping
 from rendering.galaxy_renderer import GalaxyViewRenderer
-from save_manager import serialize_player, deserialize_player, deserialize_game_state
+from save_manager import serialize_player, deserialize_player
 from constants import GRAY, HOVER_HIGHLIGHT_COLOR, SELECTION_HIGHLIGHT_COLOR
 
 

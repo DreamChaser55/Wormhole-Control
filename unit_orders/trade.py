@@ -1,7 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
-import typing
-from typing import Dict, Optional, Any, List, Tuple, TYPE_CHECKING
+from typing import Dict, Optional, Any, List, TYPE_CHECKING
 
 from constants import TRADE_ARRIVAL_RANGE
 from geometry import distance

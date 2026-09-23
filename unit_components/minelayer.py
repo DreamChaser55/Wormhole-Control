@@ -1,7 +1,6 @@
 import logging
 import typing
 from typing import Optional, Tuple, TYPE_CHECKING
-import dataclasses
 
 from .base import UnitComponent
 from .enums import MinefieldType

@@ -217,7 +217,6 @@ def test_active_recipient_redaction_and_save_does_not_pin_automatic_mode(harvest
     game, actor, source, target, command = scenario(harvesting)
     assert issue(game, command).accepted
     tick(game, actor)
-    order = actor.commander_component.current_order
     view = order_layers(actor, 'self', {actor.id, source.id, target.id}, {source.id})['current_order']
     assert view['parameters']['target_id'] is None
     assert view['progress']['active_destination_id'] == target.id
