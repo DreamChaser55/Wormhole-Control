@@ -102,9 +102,20 @@ class PlanningResult:
 
 
 class PlanningProvider(Protocol):
-    def plan_turn(
+    """Async, cancellation-cooperative provider; inputs contain no live game state.
+
+    Implementations must yield during I/O and propagate CancelledError after
+    bounded cleanup. The coordinator owns the provider and closes it on its loop;
+    standalone evaluation callers own closing their provider on the same loop.
+    """
+
+    async def plan_turn(
         self,
         request: PlanningRequest,
         runtime_config: AgentRuntimeConfig,
     ) -> PlanningResult:
+        ...
+
+    async def aclose(self) -> None:
+        """Idempotently release owned resources, leaving borrowed clients open."""
         ...

@@ -19,31 +19,43 @@ from .base import PlanningOutputError, PlanningRequest, PlanningResult
 class OpenAIResponsesProvider:
     def __init__(self, *, client: Any | None = None):
         self._client = client
+        self._owns_client = client is None
+        self._closed = False
 
     def _client_for(self, runtime_config: AgentRuntimeConfig):
+        if self._closed:
+            raise RuntimeError("The planning provider is closed.")
         if self._client is not None:
             return self._client
         try:
-            from openai import OpenAI
+            from openai import AsyncOpenAI
         except ImportError as exc:
             raise RuntimeError(
                 "The OpenAI SDK is not installed. Install the project requirements."
             ) from exc
-        self._client = OpenAI(
+        self._client = AsyncOpenAI(
             api_key=load_openai_api_key(),
             timeout=runtime_config.timeout_seconds,
             max_retries=2,
         )
         return self._client
 
-    def plan_turn(
+    async def aclose(self) -> None:
+        """Close an internally created client on the same loop as its requests."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client and self._client is not None:
+            await self._client.close()
+
+    async def plan_turn(
         self,
         request: PlanningRequest,
         runtime_config: AgentRuntimeConfig,
     ) -> PlanningResult:
         started = perf_counter()
         client = self._client_for(runtime_config)
-        response = client.responses.create(
+        response = await client.responses.create(
             model=runtime_config.model,
             instructions=SYSTEM_INSTRUCTIONS,
             input=json.dumps(request.to_dict(), separators=(",", ":"), ensure_ascii=False),

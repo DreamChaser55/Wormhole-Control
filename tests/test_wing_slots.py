@@ -1,4 +1,5 @@
 """Stable mixed-production slots across commands, lifecycle and persistence."""
+import asyncio
 from copy import deepcopy
 
 import pytest
@@ -280,7 +281,7 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
     requested = command(carrier, None, slot_index=1)
     output = dict(plan=[], commands=[requested.to_dict()], memory_patch=EMPTY_PATCH, end_turn=True)
 
-    def fake_response(**kwargs):
+    async def fake_response(**kwargs):
         schema = kwargs['text']['format']
         assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v14'
         assert 'slot_index' in schema['schema']['properties']['commands']['items']['required']
@@ -288,7 +289,7 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
         return SimpleNamespace(id='fake', output_text=json.dumps(output), usage=None)
 
     provider = OpenAIResponsesProvider(client=SimpleNamespace(responses=SimpleNamespace(create=fake_response)))
-    result = provider.plan_turn(PlanningRequest('campaign', 'agent', 'AI', 1, {}, {}), get_runtime_config('low'))
+    result = asyncio.run(provider.plan_turn(PlanningRequest('campaign', 'agent', 'AI', 1, {}, {}), get_runtime_config('low')))
     assert result.plan.batch.commands[0] == requested
     assert issue(game, carrier.owner, *result.plan.batch.commands).accepted
     assert bay.slots[1]['production_template_name'] is None

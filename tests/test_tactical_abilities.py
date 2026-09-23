@@ -1,4 +1,5 @@
 """Gameplay, persistence and public gateway acceptance for tactical abilities."""
+import asyncio
 from display_config import DisplayConfig
 import json
 import pytest
@@ -515,7 +516,7 @@ def test_fake_provider_can_issue_each_tactical_ability(kind):
     plan = TurnPlan.from_dict({'plan': [], 'commands': [command.to_dict()], 'memory_patch': EMPTY_PATCH, 'end_turn': True})
     provider = FakePlanningProvider([plan])
     observation = build_observation(game, caster.owner)
-    output = provider.plan_turn(PlanningRequest('test', 'agent', 'One', 7, observation, {}), get_runtime_config('low'))
+    output = asyncio.run(provider.plan_turn(PlanningRequest('test', 'agent', 'One', 7, observation, {}), get_runtime_config('low')))
     result = CommandGateway(game).apply_batch(caster.owner, output.plan.batch)
     assert result.accepted, result.errors
     assert caster.ability_component.abilities[AbilityType(kind)].cooldown_remaining == SPECS[kind].cooldown

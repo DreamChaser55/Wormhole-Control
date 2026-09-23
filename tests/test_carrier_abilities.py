@@ -1,4 +1,5 @@
 """Carrier abilities share order, combat, visibility and persistence contracts."""
+import asyncio
 import json
 
 import pytest
@@ -88,7 +89,7 @@ def test_fake_provider_can_cast_carrier_ability(kind):
     observation = build_observation(game, carrier.owner)
     assert observation['ability_catalog']['flak_barrage']['radius'] == 500
     provider = FakePlanningProvider([plan])
-    output = provider.plan_turn(PlanningRequest('test', 'agent', 'One', 7, observation, {}), get_runtime_config('low'))
+    output = asyncio.run(provider.plan_turn(PlanningRequest('test', 'agent', 'One', 7, observation, {}), get_runtime_config('low')))
     fuel = carrier.antimatter_component.current_amount
     result = CommandGateway(game).apply_batch(carrier.owner, output.plan.batch)
     assert result.accepted, result.errors

@@ -18,7 +18,10 @@ class FakePlanningProvider:
         self.requests: list[PlanningRequest] = []
         self.runtime_configs: list[AgentRuntimeConfig] = []
 
-    def plan_turn(
+    async def aclose(self) -> None:
+        """The deterministic provider has no external resources."""
+
+    async def plan_turn(
         self,
         request: PlanningRequest,
         runtime_config: AgentRuntimeConfig,

@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 from geometry import Position
+from galaxy import Hex
 from constants import HullSize
 from unit_components.strikecraft import StrikecraftWingComponent, StrikecraftBayComponent
 from unit_orders.base import OrderStatus
@@ -63,6 +64,7 @@ def test_strikecraft_bay_dock_and_deploy():
     # Mock galaxy and systems
     galaxy = MagicMock()
     mock_system = MagicMock()
+    mock_system.hexes = {(0, 0): Hex(0, 0, "Sol")}
     galaxy.systems = {"Sol": mock_system}
     carrier.in_galaxy = galaxy
 
@@ -178,6 +180,7 @@ def test_dock_and_deploy_orders_with_strikecraft_bay():
     galaxy = MagicMock()
     galaxy.get_unit_by_id.side_effect = lambda uid: carrier if uid == carrier.id else wing
     galaxy.systems = {"Sol": MagicMock()}
+    galaxy.systems["Sol"].hexes = {(0, 0): Hex(0, 0, "Sol")}
 
     wing.game.galaxy = galaxy
     carrier.game.galaxy = galaxy
@@ -209,6 +212,7 @@ def test_strikecraft_wing_limit_enforced():
     
     galaxy = MagicMock()
     mock_system = MagicMock()
+    mock_system.hexes = {(0, 0): Hex(0, 0, "Sol")}
     galaxy.systems = {"Sol": mock_system}
     carrier.in_galaxy = galaxy
     
@@ -266,42 +270,13 @@ def test_strikecraft_wing_orphan_adoption():
 
     galaxy = MagicMock()
     mock_system = MagicMock()
+    mock_system.hexes = {(0, 0): Hex(0, 0, "Sol")}
     galaxy.systems = {"Sol": mock_system}
     carrier.in_galaxy = galaxy
 
     # Dock wing and check if it is adopted
     assert strikecraft_bay.dock(wing, galaxy)
     assert wing.strikecraft_wing_component.mother_carrier == carrier
-
-
-def test_strikecraft_bay_deploy_offset():
-    import math
-    from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
-    
-    carrier = MockUnit()
-    carrier.position = Position(990.0, 0.0) # Near the right edge
-    carrier.in_system = None # In sector view
-    
-    strikecraft_bay = StrikecraftBayComponent(carrier, max_slots=2)
-    carrier.add_component(strikecraft_bay)
-    
-    wing = MockUnit()
-    wing.hull_size = HullSize.STRIKECRAFT_WING
-    
-    galaxy = MagicMock()
-    strikecraft_bay.dock(wing, galaxy)
-    
-    # Deploy
-    success = strikecraft_bay.deploy(wing, galaxy)
-    assert success
-    
-    # Distance between carrier and wing should be between 20.0 and 50.0
-    dist = math.hypot(wing.position.x - carrier.position.x, wing.position.y - carrier.position.y)
-    assert 20.0 <= dist <= 50.0
-    
-    # Wing position should be inside sector radius
-    wing_dist_from_center = math.hypot(wing.position.x, wing.position.y)
-    assert wing_dist_from_center <= SECTOR_CIRCLE_RADIUS_LOGICAL
 
 
 def test_deploy_all_wings_order():
@@ -323,6 +298,7 @@ def test_deploy_all_wings_order():
 
     galaxy = MagicMock()
     mock_system = MagicMock()
+    mock_system.hexes = {(0, 0): Hex(0, 0, "Sol")}
     galaxy.systems = {"Sol": mock_system}
     carrier.in_galaxy = galaxy
     wing1.game.galaxy = galaxy

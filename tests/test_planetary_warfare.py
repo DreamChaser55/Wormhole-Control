@@ -1,4 +1,5 @@
 """Conquest economics, turn authority, disclosure and transactional persistence."""
+import asyncio
 import json
 import random
 
@@ -622,8 +623,8 @@ def test_offline_conquest_loop_through_provider_or_human_controls(human, pygame_
             plan = TurnPlan.from_dict(dict(plan=[], commands=[action(unit, body, kind, queue=queue)],
                                            memory_patch=EMPTY_PATCH, end_turn=True))
             provider = FakePlanningProvider([plan])
-            output = provider.plan_turn(PlanningRequest('test', 'agent', 'One', game.turn_number,
-                                                       build_observation(game, unit.owner), {}), get_runtime_config('low'))
+            output = asyncio.run(provider.plan_turn(PlanningRequest('test', 'agent', 'One', game.turn_number,
+                                                       build_observation(game, unit.owner), {}), get_runtime_config('low')))
             result = CommandGateway(game).apply_batch(unit.owner, output.plan.batch)
             assert result.accepted, result.errors
     try:

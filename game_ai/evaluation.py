@@ -121,24 +121,24 @@ class GatewayEvaluationReport:
         }
 
 
-def run_evaluation(
+async def run_evaluation(
     provider: PlanningProvider,
     cases: Iterable[EvaluationCase],
     *,
     reasoning_effort: str = "medium",
     seed: int = 0,
 ) -> EvaluationReport:
-    """Run deterministic fixture cases. Live OpenAI use is opt-in via provider choice."""
+    """Await fixture cases; the caller owns provider closure on this event loop."""
     random.seed(seed)
     runtime_config = get_runtime_config(reasoning_effort)
     report = EvaluationReport(reasoning_effort=runtime_config.reasoning_effort)
     for case in cases:
-        result = provider.plan_turn(case.request, runtime_config)
+        result = await provider.plan_turn(case.request, runtime_config)
         report.scores.append(score_plan(case, result.plan, result.latency_seconds, result.usage))
     return report
 
 
-def compare_reasoning_efforts(
+async def compare_reasoning_efforts(
     provider: PlanningProvider,
     cases: Iterable[EvaluationCase],
     *,
@@ -149,7 +149,7 @@ def compare_reasoning_efforts(
 
     fixed_cases = tuple(cases)
     return {
-        effort: run_evaluation(
+        effort: await run_evaluation(
             provider,
             fixed_cases,
             reasoning_effort=effort,
@@ -159,7 +159,7 @@ def compare_reasoning_efforts(
     }
 
 
-def compare_gateway_reasoning_efforts(
+async def compare_gateway_reasoning_efforts(
     provider: PlanningProvider,
     cases: Iterable[GatewayEvaluationCase],
     *,
@@ -174,7 +174,7 @@ def compare_gateway_reasoning_efforts(
         report = GatewayEvaluationReport(runtime_config.reasoning_effort)
         for case in fixed_cases:
             report.scores.append(
-                _run_gateway_case(provider, case, runtime_config)
+                await _run_gateway_case(provider, case, runtime_config)
             )
         reports[effort] = report
     return reports
@@ -438,7 +438,7 @@ def order_control_cases() -> tuple[EvaluationCase, ...]:
     )
 
 
-def _run_gateway_case(provider, case, runtime_config) -> GatewayCaseScore:
+async def _run_gateway_case(provider, case, runtime_config) -> GatewayCaseScore:
     base, validate = case.build()
     request = base
     attempts = 0
@@ -451,7 +451,7 @@ def _run_gateway_case(provider, case, runtime_config) -> GatewayCaseScore:
     for attempt_index in range(case.maximum_retries + 1):
         attempts += 1
         try:
-            result = provider.plan_turn(request, runtime_config)
+            result = await provider.plan_turn(request, runtime_config)
         except PlanningOutputError as error:
             latency += error.latency_seconds
             input_tokens += error.usage.get("input_tokens", 0)

@@ -1,3 +1,4 @@
+import asyncio
 from display_config import DisplayConfig
 
 
@@ -39,7 +40,7 @@ class _FakeResponses:
         self.output = output
         self.kwargs = None
 
-    def create(self, **kwargs):
+    async def create(self, **kwargs):
         self.kwargs = kwargs
         return SimpleNamespace(
             id="response-1",
@@ -60,7 +61,7 @@ class TestOpenAIAdapter(unittest.TestCase):
         client = SimpleNamespace(responses=responses)
         provider = OpenAIResponsesProvider(client=client)
         request = PlanningRequest("campaign", "agent", "AI", 1, {}, {})
-        result = provider.plan_turn(request, get_runtime_config("high"))
+        result = asyncio.run(provider.plan_turn(request, get_runtime_config("high")))
         self.assertEqual(result.response_id, "response-1")
         self.assertFalse(responses.kwargs["store"])
         self.assertTrue(responses.kwargs["text"]["format"]["strict"])
@@ -77,17 +78,17 @@ class TestOpenAIAdapter(unittest.TestCase):
             client=SimpleNamespace(responses=responses)
         )
         with self.assertRaises(PlanningOutputError) as caught:
-            provider.plan_turn(
+            asyncio.run(provider.plan_turn(
                 PlanningRequest("campaign", "agent", "AI", 1, {}, {}),
                 get_runtime_config("low"),
-            )
+            ))
         self.assertEqual(caught.exception.code, "invalid_contract")
         self.assertEqual(caught.exception.reasoning_effort, "low")
 
 
 class TestCoordinator(unittest.TestCase):
     @staticmethod
-    def _coordinator_fixture(repair_retries, plans):
+    def _coordinator_fixture(repair_retries, plans, provider=None):
         player = _Player(1, 1)
         player.controller = PlayerController.OPENAI
         player.agent_id = "agent-1"
@@ -106,7 +107,7 @@ class TestCoordinator(unittest.TestCase):
             end_turn=lambda: ended.append(True),
         )
         game.display_config = DisplayConfig()
-        provider = FakePlanningProvider(plans)
+        provider = provider if provider is not None else FakePlanningProvider(plans)
         return player, game, ended, provider, AgentTurnCoordinator(
             game, provider=provider
         )
@@ -275,16 +276,12 @@ class TestCoordinator(unittest.TestCase):
 
     def test_invalid_model_output_uses_repair_context_and_same_reasoning(self):
         plan = TurnPlan(("Recovered.",), CommandBatch((), True), EMPTY_PATCH)
-        player, _game, ended, _provider, coordinator = self._coordinator_fixture(
-            1, []
-        )
-
-        class Provider:
+        class Provider(FakePlanningProvider):
             def __init__(self):
                 self.requests = []
                 self.runtime_configs = []
 
-            def plan_turn(self, request, runtime_config):
+            async def plan_turn(self, request, runtime_config):
                 self.requests.append(request)
                 self.runtime_configs.append(runtime_config)
                 if len(self.requests) == 1:
@@ -303,7 +300,7 @@ class TestCoordinator(unittest.TestCase):
                 )
 
         provider = Provider()
-        coordinator.provider = provider
+        player, _game, ended, _provider, coordinator = self._coordinator_fixture(1, [], provider)
         try:
             with patch(
                 "game_ai.coordinator.build_observation", return_value={"schema_version": 2}
@@ -334,15 +331,11 @@ class TestCoordinator(unittest.TestCase):
             coordinator.shutdown()
 
     def test_malformed_output_exhausts_exact_semantic_retry_budget(self):
-        _player, _game, ended, _provider, coordinator = self._coordinator_fixture(
-            1, []
-        )
-
-        class InvalidProvider:
+        class InvalidProvider(FakePlanningProvider):
             def __init__(self):
                 self.requests = []
 
-            def plan_turn(self, request, runtime_config):
+            async def plan_turn(self, request, runtime_config):
                 self.requests.append(request)
                 raise PlanningOutputError(
                     "invalid_contract",
@@ -353,7 +346,7 @@ class TestCoordinator(unittest.TestCase):
                 )
 
         provider = InvalidProvider()
-        coordinator.provider = provider
+        _player, _game, ended, _provider, coordinator = self._coordinator_fixture(1, [], provider)
         try:
             with patch(
                 "game_ai.coordinator.build_observation", return_value={}
@@ -371,20 +364,16 @@ class TestCoordinator(unittest.TestCase):
             coordinator.shutdown()
 
     def test_transport_failure_does_not_use_semantic_retry(self):
-        _player, _game, ended, _provider, coordinator = self._coordinator_fixture(
-            3, []
-        )
-
-        class TransportProvider:
+        class TransportProvider(FakePlanningProvider):
             def __init__(self):
                 self.calls = 0
 
-            def plan_turn(self, request, runtime_config):
+            async def plan_turn(self, request, runtime_config):
                 self.calls += 1
                 raise TimeoutError("provider timeout")
 
         provider = TransportProvider()
-        coordinator.provider = provider
+        _player, _game, ended, _provider, coordinator = self._coordinator_fixture(3, [], provider)
         try:
             with patch(
                 "game_ai.coordinator.build_observation", return_value={}
@@ -557,7 +546,7 @@ class TestEvaluation(unittest.TestCase):
             ("Load first.",), CommandBatch((command,), True), EMPTY_PATCH
         )
         provider = FakePlanningProvider([plan, plan, plan])
-        reports = compare_reasoning_efforts(provider, [case])
+        reports = asyncio.run(compare_reasoning_efforts(provider, [case]))
         self.assertEqual(set(reports), {"low", "medium", "high"})
         self.assertTrue(all(report.pass_rate == 1.0 for report in reports.values()))
         self.assertEqual(
@@ -613,11 +602,11 @@ class TestEvaluation(unittest.TestCase):
             EMPTY_PATCH,
         )
 
-        class RepairAwareProvider:
+        class RepairAwareProvider(FakePlanningProvider):
             def __init__(self):
                 self.requests = []
 
-            def plan_turn(self, request, runtime_config):
+            async def plan_turn(self, request, runtime_config):
                 self.requests.append(request)
                 plan = repaired if request.repair_context else invalid
                 return PlanningResult(
@@ -630,9 +619,9 @@ class TestEvaluation(unittest.TestCase):
                 )
 
         provider = RepairAwareProvider()
-        reports = compare_gateway_reasoning_efforts(
+        reports = asyncio.run(compare_gateway_reasoning_efforts(
             provider, [colony_opening_gateway_case()]
-        )
+        ))
         for report in reports.values():
             self.assertEqual(report.acceptance_rate, 1.0)
             self.assertEqual(report.scores[0].attempts, 2)
@@ -665,11 +654,11 @@ class TestEvaluation(unittest.TestCase):
         plan = TurnPlan(("Wait",), CommandBatch((), True), EMPTY_PATCH)
         provider = FakePlanningProvider([plan])
 
-        report = run_evaluation(
+        report = asyncio.run(run_evaluation(
             provider,
             [case],
             reasoning_effort="invalid",
-        )
+        ))
 
         self.assertEqual(report.reasoning_effort, "medium")
         self.assertEqual(report.to_dict()["reasoning_effort"], "medium")

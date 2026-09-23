@@ -263,7 +263,8 @@ class ControlServiceTests(unittest.TestCase):
         self.assertTrue(Game.is_ai_input_locked(fake))
 
     def test_codex_never_starts_builtin_openai_coordinator_or_timer(self):
-        provider = MagicMock()
+        from game_ai.adapters.base import PlanningProvider
+        provider = MagicMock(spec=PlanningProvider)
         coordinator = AgentTurnCoordinator(self.game, provider=provider)
         try:
             self.assertFalse(coordinator.start_current_turn())

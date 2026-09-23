@@ -786,6 +786,15 @@ abilities use their respective ranges. Colonization and loading colonists stop
 150 units beyond the body's surface, approaching automatically if necessary.
 Microjump and carrier deployment also respect hull-blocking fields and storms.
 
+Carrier launches search up to 100 positions 20–50 units from the carrier. Every
+candidate must remain inside the sector and clear of solid bodies and terrain
+that excludes the craft, using normal navigation clearance. Wings cannot launch
+from carriers inside magnetic storms or be placed inside their exclusion zone.
+If no safe position is found, deployment fails and the craft stays docked with
+its location and bay slot unchanged. Launch All may deploy some wings while
+leaving blocked wings docked; discovery and command preflight do not reserve a
+launch position or guarantee that placement will succeed.
+
 ### Wormhole stabilization
 
 A **Wormhole Stabilizer** costs 15 hull and requires a Medium-or-larger ship or

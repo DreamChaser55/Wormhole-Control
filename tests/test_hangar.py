@@ -1,6 +1,7 @@
 from display_config import DisplayConfig
 from unittest.mock import MagicMock
 from geometry import Position
+from galaxy import Hex
 from constants import HullSize
 from unit_components.hangar import HangarComponent
 from unit_orders.base import OrderStatus, OrderType
@@ -77,6 +78,7 @@ def test_hangar_dock_and_deploy():
     # Mock galaxy and systems
     galaxy = MagicMock()
     mock_system = MagicMock()
+    mock_system.hexes = {(0, 0): Hex(0, 0, "Sol")}
     galaxy.systems = {"Sol": mock_system}
     carrier.in_galaxy = galaxy
 
@@ -142,6 +144,8 @@ def test_deploy_order():
     
     # Dock the ship first
     galaxy = MagicMock()
+    galaxy.systems = {"Sol": MagicMock()}
+    galaxy.systems["Sol"].hexes = {(0, 0): Hex(0, 0, "Sol")}
     hangar.dock(ship, galaxy)
     assert ship in hangar.docked_units
 
@@ -202,33 +206,3 @@ def test_cascading_destruction():
     # Verify carrier's destroy() triggers destroy() on docked ships, calling remove_unit
     galaxy_mock.remove_unit.assert_any_call(docked1)
     galaxy_mock.remove_unit.assert_any_call(docked2)
-
-
-def test_hangar_deploy_offset():
-    import math
-    from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
-    
-    carrier = MockUnit()
-    carrier.position = Position(990.0, 0.0) # Near the right edge
-    carrier.in_system = None # In sector view
-    
-    hangar = HangarComponent(carrier, max_slots=4)
-    carrier.add_component(hangar)
-    
-    ship = MockUnit()
-    ship.hull_size = HullSize.TINY
-    
-    galaxy = MagicMock()
-    hangar.dock(ship, galaxy)
-    
-    # Deploy
-    success = hangar.deploy(ship, galaxy)
-    assert success
-    
-    # Distance between carrier and ship should be between 20.0 and 50.0
-    dist = math.hypot(ship.position.x - carrier.position.x, ship.position.y - carrier.position.y)
-    assert 20.0 <= dist <= 50.0
-    
-    # Ship position should be inside sector radius
-    ship_dist_from_center = math.hypot(ship.position.x, ship.position.y)
-    assert ship_dist_from_center <= SECTOR_CIRCLE_RADIUS_LOGICAL

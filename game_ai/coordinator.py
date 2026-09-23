@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import json
 import logging
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future
 from pathlib import Path
 from typing import Any
 
 from .adapters.base import (
     PlanningOutputError,
+    PlanningProvider,
     PlanningRequest,
     PlanningResult,
     RepairContext,
@@ -20,6 +21,7 @@ from .commands import CommandGateway, CommandResult
 from .contracts import TurnPlan, ContractError
 from .memory import AgentMemory, write_memory_sidecar
 from .observation import build_observation
+from .planning_runtime import AsyncPlanningRuntime, PlanningHandle, PlanningRetirementError
 from .runtime import (
     DEFAULT_REASONING_EFFORT,
     DEFAULT_REPAIR_RETRIES,
@@ -38,15 +40,16 @@ class AgentTurnCoordinator:
         self,
         game: Any,
         *,
-        provider: Any | None = None,
-        executor: ThreadPoolExecutor | None = None,
+        provider: PlanningProvider | None = None,
     ):
         self.game = game
-        self.provider = provider or OpenAIResponsesProvider()
-        self._executor = executor or ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="wormhole-ai"
-        )
-        self._owns_executor = executor is None
+        self.provider = provider if provider is not None else OpenAIResponsesProvider()
+        self._runtime = AsyncPlanningRuntime(self.provider)
+        self._closed = False
+        self._generation = 0
+        self._request_generation = 0
+        self._handle: PlanningHandle | None = None
+        self._planning_status = ("thinking", "thinking…")
         self._future: Future | None = None
         self._request: PlanningRequest | None = None
         self._base_request: PlanningRequest | None = None
@@ -59,10 +62,10 @@ class AgentTurnCoordinator:
 
     @property
     def is_busy(self) -> bool:
-        return self.state in {"thinking", "repairing", "applying"}
+        return self.state in {"thinking", "repairing", "applying", "cancelling"}
 
     def start_current_turn(self) -> bool:
-        if self._future is not None or not getattr(self.game, "game_started", False):
+        if self._closed or self._future is not None or not getattr(self.game, "game_started", False):
             return False
         player = getattr(self.game, "current_player", None)
         if player is None or player.controller != PlayerController.OPENAI:
@@ -87,11 +90,38 @@ class AgentTurnCoordinator:
 
     def update(self) -> None:
         future = self._future
-        if future is None or not future.done():
+        if self._closed or future is None:
+            return
+        # Obsolete errors are as untrusted as obsolete successful plans. Invalidate
+        # before reading the outcome, including resets within the same turn.
+        if not self._turn_is_current():
+            self.reset()
+            return
+        handle = self._handle
+        if handle is not None and self._runtime.retirement_expired(handle):
+            self._runtime.cancel(handle)
+            self._future = None
+            self._handle = None
+            self._record_transport_error(PlanningRetirementError())
+            self._fail("The previous AI request did not stop within the cancellation deadline.")
+            return
+        if handle is not None and handle.waiting.is_set() and not handle.started.is_set():
+            self.state, self.status_message = "cancelling", "cancelling previous request…"
+        elif self.state == "cancelling":
+            self.state, self.status_message = self._planning_status
+        if not future.done():
             return
         self._future = None
+        self._handle = None
+        if future.cancelled():
+            self._discard_stale_result()
+            return
         try:
             result = future.result()
+        except PlanningRetirementError as exc:
+            self._record_transport_error(exc)
+            self._fail("The previous AI request did not stop within the cancellation deadline.")
+            return
         except PlanningOutputError as exc:
             logger.warning("AI output was invalid: %s", exc)
             self._handle_output_error(exc)
@@ -109,9 +139,11 @@ class AgentTurnCoordinator:
         self._apply_result(result)
 
     def reset(self) -> None:
-        """Forget in-flight work; completed stale responses will be discarded."""
-        if self._future is not None:
-            self._future.cancel()
+        """Invalidate this generation and cancel I/O without waiting on cleanup."""
+        self._generation += 1
+        if self._handle is not None:
+            self._runtime.cancel(self._handle)
+        self._handle = None
         self._future = None
         self._request = None
         self._base_request = None
@@ -124,9 +156,12 @@ class AgentTurnCoordinator:
         self._set_end_turn_enabled(True)
 
     def shutdown(self) -> None:
+        """Permanently stop planning and close the owned provider/runtime once."""
+        if self._closed:
+            return
         self.reset()
-        if self._owns_executor:
-            self._executor.shutdown(wait=False, cancel_futures=True)
+        self._closed = True
+        self._runtime.shutdown()
 
     def _submit(self, request: PlanningRequest, *, repairing: bool) -> None:
         player = self.game.current_player
@@ -134,6 +169,7 @@ class AgentTurnCoordinator:
             getattr(player, "ai_reasoning_effort", DEFAULT_REASONING_EFFORT)
         )
         self._request = request
+        self._request_generation = self._generation
         self._turn_token = (
             request.campaign_id,
             request.agent_id,
@@ -146,11 +182,11 @@ class AgentTurnCoordinator:
             )
         else:
             self.status_message = "thinking…"
+        self._planning_status = (self.state, self.status_message)
         self.last_error = ""
         self._set_end_turn_enabled(False)
-        self._future = self._executor.submit(
-            self.provider.plan_turn, request, runtime_config
-        )
+        self._handle = self._runtime.submit(request, runtime_config)
+        self._future = self._handle.result
 
     def _apply_result(self, result: PlanningResult) -> None:
         player = self.game.current_player
@@ -270,7 +306,7 @@ class AgentTurnCoordinator:
 
     def _turn_is_current(self) -> bool:
         player = getattr(self.game, "current_player", None)
-        if player is None or self._turn_token is None:
+        if player is None or self._turn_token is None or self._request_generation != self._generation:
             return False
         current = (
             str(self.game.campaign_id),

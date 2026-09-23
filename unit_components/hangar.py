@@ -1,12 +1,11 @@
 import logging
-import math
-import random
 from typing import TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
 from geometry import Position
-from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL, HANGAR_HULL_COST_PER_SLOT
+from constants import HullSize, HANGAR_HULL_COST_PER_SLOT
+from deployment_placement import find_deployment_position
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -120,32 +119,20 @@ class HangarComponent(UnitComponent):
         return True
 
     def deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+        """Place a docked craft safely; failed searches leave all membership intact."""
         from dismantling import offline
         if offline(self.unit) or offline(unit):
             return False
         if unit not in self.docked_units:
             return False
         
+        position = find_deployment_position(self.unit, unit, galaxy_ref)
+        if position is None:
+            return False
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
-        
-        while True:
-            angle = random.uniform(0, 2 * math.pi)
-            offset_dist = random.uniform(20.0, 50.0)
-            candidate_x = self.unit.position.x + math.cos(angle) * offset_dist
-            candidate_y = self.unit.position.y + math.sin(angle) * offset_dist
-            
-            if self.unit.in_system is None:
-                if math.hypot(candidate_x, candidate_y) <= SECTOR_CIRCLE_RADIUS_LOGICAL:
-                    unit.position = Position(candidate_x, candidate_y)
-                    break
-            else:
-                unit.position = Position(candidate_x, candidate_y)
-                break
-        
-        system = galaxy_ref.systems.get(unit.in_system)
-        if system:
-            system.add_unit(unit)
+        unit.position = position
+        galaxy_ref.systems[unit.in_system].add_unit(unit)
             
         self.docked_units.remove(unit)
         logger.debug(f"Unit {unit.name} deployed from carrier {self.unit.name}.")

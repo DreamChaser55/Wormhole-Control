@@ -1,4 +1,5 @@
 """Construction overrides preserve budgets, survive jobs, and enable fair counters."""
+import asyncio
 from concurrent.futures import Future
 from copy import deepcopy
 from dataclasses import replace
@@ -322,7 +323,7 @@ def test_socket_and_strict_provider_share_override_contract():
     assert reply['ok'] and reply['data']['accepted']
     assert builder.constructor_component.current_construction_target['defense_type_override'] is None
     output = dict(plan=[], commands=[command(builder).to_dict()], memory_patch=EMPTY_PATCH, end_turn=True)
-    def create(**kwargs):
+    async def create(**kwargs):
         schema = kwargs['text']['format']
         assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v14'
         fields = schema['schema']['properties']['commands']['items']
@@ -330,7 +331,7 @@ def test_socket_and_strict_provider_share_override_contract():
         assert fields['properties']['turret_type_override']['enum'] == [None, *TURRET_TYPES]
         return SimpleNamespace(id='fake', output_text=json.dumps(output), usage=None)
     provider = OpenAIResponsesProvider(client=SimpleNamespace(responses=SimpleNamespace(create=create)))
-    result = provider.plan_turn(PlanningRequest('campaign', 'agent', 'AI', 1, {}, {}), get_runtime_config('low'))
+    result = asyncio.run(provider.plan_turn(PlanningRequest('campaign', 'agent', 'AI', 1, {}, {}), get_runtime_config('low')))
     assert result.plan.batch.commands[0] == command(builder)
     assert issue(game, builder.owner, *result.plan.batch.commands).accepted
     assert builder.constructor_component.current_construction_target['defense_type_override'] == 'shields'

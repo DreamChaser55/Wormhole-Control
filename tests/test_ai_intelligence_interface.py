@@ -106,6 +106,10 @@ def test_observation_discloses_only_authorized_agent_state():
     hostile = next(view for view in observation["units"] if view["id"] == enemy_a.id)
     assert "IntelligenceComponent" not in hostile["components"]
     assert "sabotage" in observation["player_commands"]["legal"]
+    commands = observation["player_commands"]
+    assert set(commands["legal"]) <= set(commands["supported"])
+    assert set(commands["options"]) <= set(commands["supported"])
+    assert {"sabotage", "relocate_agent", "send_message", "message_developer"} <= set(commands["legal"])
     relocation = observation["player_commands"]["options"]["relocate_agent"]["agents"][0]
     assert relocation == {"agent_id": own_agent.id, "target_ids": [enemy_b.id]}
 
@@ -272,7 +276,8 @@ def test_luna_coordinator_and_codex_control_use_identical_gateway_effects():
     luna_game.campaign_id = "luna-intelligence"
     luna_game.gui = None
     luna_game.end_turn = lambda: None
-    coordinator = AgentTurnCoordinator(luna_game, provider=object())
+    from game_ai.adapters.fake import FakePlanningProvider
+    coordinator = AgentTurnCoordinator(luna_game, provider=FakePlanningProvider([]))
     try:
         coordinator._write_memory = lambda *_args: None
         coordinator._record_telemetry = lambda *_args, **_kwargs: None

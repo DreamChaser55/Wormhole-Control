@@ -10,10 +10,12 @@ files, or arbitrary tools.
 1. `TurnProcessor.check_and_schedule_ai_turn` retains the normal 500 ms turn
    transition delay, including slot-zero AI players and loaded AI turns.
 2. `AgentTurnCoordinator` builds the observation on the Pygame thread and sends
-   only plain data to a one-worker background executor.
+   only plain data to one background asyncio loop. One provider request may run,
+   with at most one pending replacement while obsolete work is being cancelled.
 3. `OpenAIResponsesProvider` makes one non-streaming Responses API request with
    strict JSON Schema output and `store=False`.
-4. The coordinator polls the future from `Game.update`.
+4. The coordinator polls completion from `Game.update`; all commands, memory,
+   telemetry and UI effects remain on the Pygame thread.
 5. `CommandGateway` preflights the entire batch. Hidden and nonexistent targets
    deliberately return the same `target_unavailable` error.
 6. Accepted orders are committed on the Pygame thread. A retryable rejection
@@ -106,6 +108,18 @@ The Luna-only runtime is defined in `game_ai/runtime.py`:
 
 Every choice uses the same 7,000-output-token limit, 120-second timeout, and
 40-command turn limit. The player setting changes only the reasoning effort.
+The timeout applies to each SDK request attempt; up to two transport retries can
+extend total elapsed time. Reset cancellation also interrupts retry backoff.
+
+The adapter uses `AsyncOpenAI` with foreground, non-streaming requests and
+`store=False`. Providers implement `async plan_turn(request, runtime_config)` and
+idempotent `async aclose()`. They must yield during I/O and propagate cancellation
+after bounded cleanup. The coordinator owns its provider, including an injected
+provider, and closes it on the same loop that performs requests. The OpenAI adapter
+closes SDK clients it creates; an explicitly injected client remains caller-owned.
+Foreground cancellation terminates the awaited HTTP connection, as described in
+the [Responses cancellation documentation](https://developers.openai.com/api/docs/guides/background#limits);
+no stored background response or polling job is created.
 
 The API key loader checks `OPENAI_API_KEY` first, then
 `API_keys/OpenAI.key`. The key is loaded lazily when the first AI turn begins.
@@ -259,7 +273,19 @@ observation and save schemas are unchanged.
   semantic repairs.
 - The retry limit is snapshotted when an AI turn begins, so in-match edits take
   effect on that AI player's next turn.
-- Stale responses are discarded when campaign, agent, or turn changes.
+- Reset immediately invalidates the request generation and schedules cancellation
+  without blocking the game loop. Stale successes and errors are discarded when
+  generation, campaign, agent, turn or controller changes.
+- Replacement planning starts after the previous request's cleanup actually
+  finishes. The HUD shows `cancelling previous request…` during retirement.
+  Cancelling a completion future alone does not release the provider. If the
+  request does not retire within two seconds, the replacement fails into manual
+  recovery; no additional worker or overlapping provider call is created. Retry
+  can succeed after the obsolete request finally retires.
+- Shutdown is idempotent and permanently stops submissions. It cancels requests,
+  closes owned provider resources, and stops/joins the loop within a five-second
+  total budget. Incomplete cleanup produces a payload-free warning; the daemon
+  runtime thread cannot hold process exit open.
 - On final failure, the error is shown and End Turn is re-enabled.
 - Third-party SDK request-body logging is suppressed; API keys, observations,
   memory, prompts, analysis, and raw model output are never logged.
@@ -286,6 +312,10 @@ observation and save schemas are unchanged.
 
 Inject `FakePlanningProvider` for deterministic CI. Live reasoning-effort
 comparisons are explicitly opt-in by constructing `OpenAIResponsesProvider`.
+Evaluation runners are asynchronous: await `run_evaluation`,
+`compare_reasoning_efforts` or `compare_gateway_reasoning_efforts`. A standalone
+caller owns the provider and must await `provider.aclose()` in `finally` on the
+same loop. Use one outer `asyncio.run()` for that complete evaluation lifecycle.
 `colony_opening_case` reproduces the zero-cargo opening decision, and
 `compare_reasoning_efforts` runs the same fixed cases at Low, Medium, and High
 without changing production settings.

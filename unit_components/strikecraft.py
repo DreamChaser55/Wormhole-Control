@@ -2,15 +2,14 @@ import logging
 import typing
 from typing import Optional, TYPE_CHECKING
 import dataclasses
-import math
-import random
 
 from .base import UnitComponent
 from .enums import WingType, TurretType, TurretVariant
 from .movement import Engines
 from .weapons import Weapons, Turret
 from geometry import Position
-from constants import HullSize, SECTOR_CIRCLE_RADIUS_LOGICAL, STRIKECRAFT_BAY_HULL_COST_PER_SLOT
+from constants import HullSize, STRIKECRAFT_BAY_HULL_COST_PER_SLOT
+from deployment_placement import find_deployment_position
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -483,36 +482,16 @@ class StrikecraftBayComponent(UnitComponent):
         return True
 
     def deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
+        """Launch after finding a safe position, preserving slots on failure."""
         if not self.can_deploy(unit, galaxy_ref):
             return False
-        
+        position = find_deployment_position(self.unit, unit, galaxy_ref)
+        if position is None:
+            return False
         unit.in_system = self.unit.in_system
         unit.in_hex = self.unit.in_hex
-        
-        from domain.celestials import is_position_in_magnetic_storm
-        attempts = 0
-        while attempts < 100:
-            attempts += 1
-            angle = random.uniform(0, 2 * math.pi)
-            offset_dist = random.uniform(20.0, 50.0)
-            candidate_x = self.unit.position.x + math.cos(angle) * offset_dist
-            candidate_y = self.unit.position.y + math.sin(angle) * offset_dist
-            candidate_pos = Position(candidate_x, candidate_y)
-            
-            if self.unit.in_system is None:
-                if math.hypot(candidate_x, candidate_y) > SECTOR_CIRCLE_RADIUS_LOGICAL:
-                    continue
-            if is_position_in_magnetic_storm(galaxy_ref, unit.in_system, unit.in_hex, candidate_pos):
-                continue
-            unit.position = candidate_pos
-            break
-        else:
-            logger.debug(f"Strikecraft wing {unit.name} cannot deploy: Launch zone obstructed by magnetic storm.")
-            return False
-        
-        system = galaxy_ref.systems.get(unit.in_system)
-        if system:
-            system.add_unit(unit)
+        unit.position = position
+        galaxy_ref.systems[unit.in_system].add_unit(unit)
             
         self.docked_units.remove(unit)
         self.launched_units.append(unit)

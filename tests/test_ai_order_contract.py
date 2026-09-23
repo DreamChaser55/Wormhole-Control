@@ -1,4 +1,5 @@
 """Real-engine regressions for the shared AI order contract (no API calls)."""
+import asyncio
 import json
 from collections import deque
 from concurrent.futures import Future
@@ -362,7 +363,8 @@ def test_luna_rejects_incomplete_turn_before_mutation_and_preserves_memory_on_co
     game.campaign_id = "test"
     player.controller = PlayerController.OPENAI
     player.ai_memory = {"strategy": "original"}
-    coordinator = AgentTurnCoordinator(game, provider=object())
+    from game_ai.adapters.fake import FakePlanningProvider
+    coordinator = AgentTurnCoordinator(game, provider=FakePlanningProvider([]))
     try:
         plan = TurnPlan((), CommandBatch((Command("clear_explicit_orders", (unit.id,)),), end_turn=False), {})
         result = PlanningResult(plan, "fake", "gpt-5.6-luna", "medium")
@@ -444,13 +446,13 @@ def test_offline_order_evaluations_and_rejected_plan_recovery():
     plans = [TurnPlan((), CommandBatch(), {}),
              TurnPlan((), CommandBatch((Command("set_stance", (101,), stance="attack_same_sector"),)), {}),
              TurnPlan((), CommandBatch((Command("patrol", (101,), waypoints=(waypoint(), waypoint(700))),)), {})]
-    report = run_evaluation(FakePlanningProvider(plans), order_control_cases())
+    report = asyncio.run(run_evaluation(FakePlanningProvider(plans), order_control_cases()))
     assert report.pass_rate == 1.0
     rejected = TurnPlan((), CommandBatch((Command("colonize", (101,), target_id=202),)), {})
     repaired = TurnPlan((), CommandBatch((Command("load_colonists", (101,), target_id=201, amount=50),
                                          Command("colonize", (101,), target_id=202, queue=True))), {})
     provider = FakePlanningProvider([rejected, repaired])
-    report = compare_gateway_reasoning_efforts(provider, [colony_opening_gateway_case()], efforts=("medium",))["medium"]
+    report = asyncio.run(compare_gateway_reasoning_efforts(provider, [colony_opening_gateway_case()], efforts=("medium",)))["medium"]
     assert report.acceptance_rate == 1.0 and report.scores[0].retries_used == 1
     assert provider.requests[-1].repair_context is not None
 
@@ -466,8 +468,9 @@ def test_luna_and_socket_patrols_have_identical_engine_effects():
     patch_fields = {name: None for name in ("strategy", "objectives", "commitments", "beliefs", "lessons", "misc")}
     output = TurnPlan((), CommandBatch((command,)), patch_fields).to_dict()
     response = SimpleNamespace(output_text=json.dumps(output), id="fake", usage=None)
-    provider = OpenAIResponsesProvider(client=SimpleNamespace(responses=SimpleNamespace(create=lambda **_: response)))
-    result = provider.plan_turn(PlanningRequest("campaign", "agent", "AI", 1, {}, {}), get_runtime_config("medium"))
+    from unittest.mock import AsyncMock
+    provider = OpenAIResponsesProvider(client=SimpleNamespace(responses=SimpleNamespace(create=AsyncMock(return_value=response))))
+    result = asyncio.run(provider.plan_turn(PlanningRequest("campaign", "agent", "AI", 1, {}, {}), get_runtime_config("medium")))
     assert issue(game, player, *result.plan.batch.commands).accepted
     expected = dict(unit.commander_component.current_order.parameters)
     game.game_started, game.current_player, game.campaign_id, game.view_mode = True, player, "campaign", "galaxy"
@@ -481,7 +484,7 @@ def test_luna_and_socket_patrols_have_identical_engine_effects():
     response.output_text = json.dumps(output)
     from game_ai.adapters.base import PlanningOutputError
     with pytest.raises(PlanningOutputError):
-        provider.plan_turn(PlanningRequest("campaign", "agent", "AI", 1, {}, {}), get_runtime_config("medium"))
+        asyncio.run(provider.plan_turn(PlanningRequest("campaign", "agent", "AI", 1, {}, {}), get_runtime_config("medium")))
 
 
 def test_queued_docking_cancellation_releases_only_its_slot_reservation():

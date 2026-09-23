@@ -219,7 +219,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "command_catalog": command_catalog(),
         "intelligence": intelligence,
         "player_commands": {
-            "supported": ["message_developer", "relocate_agent", "sabotage", "send_message"],
+            "supported": sorted(name for name, spec in COMMAND_SPECS.items() if spec.player_level),
             "legal": sorted(player_legal),
             "options": {
                 "send_message": {"target_ids": recipient_ids},

@@ -3,67 +3,25 @@
 Review date: **2026-09-22**  
 Base revision: **`5c6fe34f2d1902f9cf2a8a5e50ec35a880edaefd`**
 
-Remaining findings retain their original IDs. Code metrics and original audit results refer to the base revision above.
+Code metrics and original audit results refer to the base revision above.
 
 ## Assessment
 
-The project has useful foundations: explicit order ownership, separate campaign preparation and commit, allowlisted persistence, player-scoped observations, shared command definitions, bounded histories, and substantial offline tests. These are worth preserving. The remaining correctness problems concern launch placement, command discovery, and AI request lifecycle. Several large modules also repeat related rules.
+The project has useful foundations: explicit order ownership, separate campaign preparation and commit, allowlisted persistence, player-scoped observations, shared command definitions, bounded histories, and substantial offline tests. These are worth preserving. Several large modules repeat related rules, and documentation and public failure reasons still need attention.
 
-The best next step is a sequence of small correctness fixes followed by focused extraction and documentation cleanup. A new entity framework, generic transaction engine, wholesale UI rewrite, or repository-wide typing conversion would add risk without addressing the demonstrated problems directly.
+The best next step is to address rule-documentation mismatches and public failure reasons, followed by focused extraction and documentation cleanup. A new entity framework, generic transaction engine, wholesale UI rewrite, or repository-wide typing conversion would add risk without addressing these problems directly.
 
-**Latest recorded verification: the full offline suite passed on all three CI OS/Python combinations, executed locally.** See the latest recorded verification below for runtime versions and counts. One existing font-preload warning remains. The findings below remain open; original audit results are retained in the testing section.
+**Latest recorded verification: the full offline suite passed on all three CI OS/Python combinations, executed locally.** See the latest recorded verification below for runtime versions and counts. One existing font-preload warning remains. Original audit results are retained in the testing section.
 
 ### Scope and method
 
 - Read `README.md`, `docs/REFERENCE.md`, and `docs/AGENTIC_AI.md`, and cross-checked `DEVELOPMENT.md`, `SAVE_FORMAT.md`, and `CODEX_CONTROL.md` against implementation.
 - Inventoried all tracked Python files with the AST: **228 production/tooling files, 55,721 lines; 175 test/support files, 48,791 lines** at the base revision. Empty package files and scripts are included; dependencies, ignored caches, and generated runtime data are excluded.
-- Reviewed important application, domain, order, component, persistence, AI/control, UI, rendering, configuration, and testing files. Followed risky paths across modules and reproduced the findings identified as reproduced below. The file review records the principal conclusions; the AST inventory is broader than the detailed manual review.
+- Reviewed important application, domain, order, component, persistence, AI/control, UI, rendering, configuration, and testing files. Followed risky paths across modules. The file review records the principal conclusions; the AST inventory is broader than the detailed manual review.
 - Ran the full offline suite, configured quality checks, additional lint, local Markdown link/heading checks, and isolated behavioral probes. Live provider calls, real API credentials, and the user's saved campaigns were not used.
 - This is a source review and targeted behavioral audit, not a proof that every possible campaign, UI interaction, or malformed input is correct. Runtime coverage percentages were not measured. The original audit did not execute the CI operating-system/Python matrix; the latest recorded runtime verification is listed separately below.
 
-The remaining fixes, general cleanup, and documentation rewrites below are recommendations, not completed changes.
-
-## Prioritized findings
-
-The remaining findings are P2: reproducible correctness or lifecycle issues worth fixing next. These priorities are project triage judgments, not formal security ratings.
-
-| ID | Priority | Finding | Evidence |
-|---|---|---|---|
-| F6 | P2 | Carrier launch can place craft outside the sector. | A normal deployment completed at radius 5,040 in a radius-5,000 sector. |
-| F8 | P2 | A legal player command is omitted from the supported-command list. | `upgrade_planetary_defenses` present in legal/options, absent from supported. |
-| F9 | P2 | Resetting AI planning leaves new work queued behind the old request. | Reproduced with a blocking fake provider; no network involved. |
-
-### F6 — Launch placement skips sector bounds for real campaigns
-
-Sources: [HangarComponent.deploy:122](D:/Programming/Github_repos/Wormhole-Control/unit_components/hangar.py:122), [StrikecraftBayComponent.deploy:485](D:/Programming/Github_repos/Wormhole-Control/unit_components/strikecraft.py:485), [tests/test_hangar.py:208](D:/Programming/Github_repos/Wormhole-Control/tests/test_hangar.py:208).
-
-Both launch implementations apply their radius test only when `self.unit.in_system is None`. Deployed carriers in real campaigns have a system name, so this test is skipped. The normal hangar also accepts the first random candidate without checking collision geometry. The order's hazard checks concern the carrier location, not every candidate launch location.
-
-**Reproduction:** A real carrier at `(4990, 0)` docks a TINY ship. Force angle zero and offset 50. `DeployUnitOrder` completes, inserts the craft into the sector, and places it at `(5040, 0)` although the sector radius is 5,000. The strikecraft bay contains the same faulty bounds condition; that parallel path was confirmed by inspection rather than a second launch probe.
-
-The existing offset test uses `in_system=None` with a comment equating that to “sector view,” and places the carrier at 990. Neither reflects the live location model or the current boundary, so it misses the bug.
-
-**Fix:** Validate every candidate against the actual sector boundary and relevant obstacles/hazards. Use bounded attempts and return failure without changing containment when no candidate is safe. Share a small placement predicate where behavior is common; retain wing-specific magnetic-storm rules. Replace the misleading fixture with a real carrier near the current boundary and add blocked-placement coverage.
-
-### F8 — Player-level command discovery contradicts itself
-
-Source: [game_ai/observation.py:144](D:/Programming/Github_repos/Wormhole-Control/game_ai/observation.py:144) and [supported list:222](D:/Programming/Github_repos/Wormhole-Control/game_ai/observation.py:222).
-
-The code adds `upgrade_planetary_defenses` to player-level options and, when available, `legal`, but omits it from the hardcoded `supported` array. A populated owned Terran colony reproduces `legal - supported == {"upgrade_planetary_defenses"}`.
-
-**Fix:** Derive the player-level supported list from the existing command specifications, or minimally include the missing command and add an invariant test that every legal command is supported. Do not create another command registry.
-
-### F9 — AI reset does not release the only planning worker
-
-Sources: [game_ai/coordinator.py:46](D:/Programming/Github_repos/Wormhole-Control/game_ai/coordinator.py:46), [reset/shutdown:111](D:/Programming/Github_repos/Wormhole-Control/game_ai/coordinator.py:111), [provider configuration:32](D:/Programming/Github_repos/Wormhole-Control/game_ai/adapters/openai_responses.py:32).
-
-`Future.cancel()` cannot stop an already-running provider call. Reset discards the handle, but the single-worker executor remains occupied. New campaign planning is submitted to the same executor and waits behind the obsolete request. The configured request timeout is 120 seconds with two SDK retries, so the delay can be substantial; it is not necessarily capped at one timeout interval.
-
-**Reproduction:** A fake provider blocks its first request. After `reset()` and submission of a replacement, the old future remains running, the new future is queued, and coordinator state says `thinking`. Only releasing the old request starts the new one. Stale results are not shown to mutate the new campaign; the demonstrated issue is delayed replacement work.
-
-`shutdown(wait=False)` also does not terminate an active thread or guarantee immediate Python process exit.
-
-**Fix:** Define a bounded request cancellation/retirement policy and explicit provider shutdown ownership. Prefer cancellable I/O or a deliberately bounded lifecycle over accumulating replacement executors/threads. Test reset and shutdown with an actually running fake provider, not only an unstarted/cancellable Future.
+The cleanup and documentation rewrites below remain recommendations, not completed changes.
 
 ## Important file review
 
@@ -86,14 +44,14 @@ The following records individual important files and the main conclusions from t
 | [domain/coordinates.py](D:/Programming/Github_repos/Wormhole-Control/domain/coordinates.py) | A small typed coordinate boundary is preferable to another geometry hierarchy. Gradually reduce tuple/attribute compatibility branching where callers have a known type. |
 | [domain/players.py](D:/Programming/Github_repos/Wormhole-Control/domain/players.py) | Central ownership/team helpers already exist. Use them instead of copied `_are_allies` implementations. Preserve strict input validation before constructor defaulting during hydration. |
 | [domain/units.py](D:/Programming/Github_repos/Wormhole-Control/domain/units.py) | Component replacement/destruction cleanup has useful intent documentation. The class remains broad; preserve cleanup ordering and distinguish installed, operational, and deployed state in callers. |
-| [domain/celestials.py](D:/Programming/Github_repos/Wormhole-Control/domain/celestials.py) | Gas-giant release already uses bounded candidates, common safety checks, and commit-after-placement. This provides a simpler model for correcting carrier deployment. Sabotage implementation disagrees with the manual. |
+| [domain/celestials.py](D:/Programming/Github_repos/Wormhole-Control/domain/celestials.py) | Gas-giant release uses bounded candidates, common safety checks, and commit-after-placement. Sabotage implementation disagrees with the manual. |
 | [domain/construction_job.py](D:/Programming/Github_repos/Wormhole-Control/domain/construction_job.py) | This is a presentation/selection view of a live job, not another persisted entity. Name/document that distinction and avoid expanding it into authoritative construction state. |
 | [domain/communications.py](D:/Programming/Github_repos/Wormhole-Control/domain/communications.py) | Keep conversation persistence distinct from filesystem export. Preserve player identity/path validation before export. |
 | [domain/deployables.py](D:/Programming/Github_repos/Wormhole-Control/domain/deployables.py), [domain/minefields.py](D:/Programming/Github_repos/Wormhole-Control/domain/minefields.py) | Distinct tactical entities are justified. Keep their ownership, visibility, and removal semantics explicit rather than treating every object as a ship through duck typing. |
 | [galaxy.py](D:/Programming/Github_repos/Wormhole-Control/galaxy.py) | Generation, topology, lookups, and relocation share a large file. Separate generation from live graph operations if touched next. Preserve reciprocal wormhole and containment invariants. |
 | [geometry.py](D:/Programming/Github_repos/Wormhole-Control/geometry.py) | Pure geometric helpers are a good test boundary. Some comments narrate elementary arithmetic; retain tolerance, fallback, tangency, and safety explanations. |
 | [pathfinding.py](D:/Programming/Github_repos/Wormhole-Control/pathfinding.py) | The intersystem graph has unit-weight edges, so BFS can replace Dijkstra's heap/distances with fewer moving parts. Preserve deterministic tie behavior and hull-diameter filtering. This is a simplicity opportunity, not a demonstrated performance bottleneck. |
-| [location_validation.py](D:/Programming/Github_repos/Wormhole-Control/location_validation.py) | Useful shared destination validation. Extend consistent placement validation to launch candidates rather than duplicating only part of it. |
+| [location_validation.py](D:/Programming/Github_repos/Wormhole-Control/location_validation.py) | Useful shared destination validation. |
 | [visibility.py](D:/Programming/Github_repos/Wormhole-Control/visibility.py) | Explicit snapshots and `record_intel=False` support pure observation/loading. Document that distinction on `compute()` and replace copied relationship helpers with the canonical ones. |
 | [campaign_graph.py](D:/Programming/Github_repos/Wormhole-Control/campaign_graph.py) | Cycle/duplicate-containment detection and explicit stored-unit traversal are worth keeping. Use this traversal when “all owned units” truly includes stored craft; use deployment checks otherwise. |
 
@@ -111,15 +69,14 @@ The following records individual important files and the main conclusions from t
 | [unit_orders/abilities.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/abilities.py) | Large branching dispatcher, UI warnings inside domain execution, and an inaccurate class docstring about position-target auto-movement. Extract target/range validation without inventing a new ability engine. |
 | [unit_orders/construction.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/construction.py), [unit_orders/refit.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/refit.py) | Rechecking at execution and recording the actual payer are important. Keep cancellation/refund tests; avoid trusting UI price/duration hints. Refit's direct GUI warning callback is residual domain/presentation coupling. |
 | [unit_orders/combat.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/combat.py), [unit_orders/stance.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/stance.py) | Explicit attack and standing engagement are distinct behaviors and should remain distinct. Consolidate shared target/range predicates, not the entire order lifecycle. |
-| [unit_orders/hangar.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/hangar.py) | Launch orders check carrier hazards, but placement must also validate the selected craft position. See F6. |
 | [unit_orders/fuel_transport.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/fuel_transport.py), [unit_orders/antimatter.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/antimatter.py) | Long-lived transport phases are justified by waiting, sourcing, and delivery. Document phase transitions and reserve semantics rather than repeating branches in comments. |
 | [unit_orders/intelligence.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/intelligence.py) | Relocation, extraction, sabotage, discovery, and ownership are a substantial subsystem. Prefer shared target predicates and a clearly documented public failure vocabulary. |
 | [unit_components/constructor.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/constructor.py) | At 1,216 lines, combines assembly, eligibility, job state, settlement, and presentation. Extract pure assembly from the stateful constructor; preserve explicit template injection used in preparation. |
 | [unit_components/antimatter.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/antimatter.py) | `consume()` signals failure correctly for destroyed storage, and movement requires a successful debit. Preserve that safeguard and make the positive finite amount contract explicit at this reusable boundary. |
 | [unit_components/movement.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/movement.py) | Ownership tokens on targets are useful. Per-instance `RECHARGE_DURATION` looks like a module constant; rename only with deliberate persistence handling. |
 | [unit_components/weapons.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/weapons.py) | Persisting effective turret values avoids double-applying variants. |
-| [unit_components/hangar.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/hangar.py) | F6 and a misleading `in_system is None` branch. The SMALL-slot accounting branch also predates the current TINY-only docking rule; verify saved-state expectations before removing it. |
-| [unit_components/strikecraft.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/strikecraft.py) | Stable slots, production selection, containment, launch, and replenishment are related but crowded. Keep slot identity and paid work explicit; reuse safe placement and improve method contracts. |
+| [unit_components/hangar.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/hangar.py) | The SMALL-slot accounting branch predates the current TINY-only docking rule; verify saved-state expectations before removing it. |
+| [unit_components/strikecraft.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/strikecraft.py) | Stable slots, production selection, containment, launch, and replenishment are related but crowded. Keep slot identity and paid work explicit and improve method contracts. |
 | [unit_components/abilities/base.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/base.py) | Separating static definitions from runtime instances is useful. Preserve explicit schema checks and restoration without activation side effects. |
 | [unit_components/abilities/component.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/component.py) | Preserve the separate ordinary, tactical, and toggle lifecycle contracts when reorganizing. |
 | [unit_components/abilities/registry.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/registry.py) | Existing definitions should remain the source of ability metadata. Do not add another manual requirements mapping. |
@@ -156,13 +113,13 @@ The following records individual important files and the main conclusions from t
 | File | Review conclusion |
 |---|---|
 | [game_ai/commands.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/commands.py) | Highest-priority complexity hotspot: 2,069 lines at the base revision, large preflight ledger and dispatch functions. Separate projection, command preparation, and commit orchestration while retaining clear failure-stage receipts. |
-| [game_ai/command_spec.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/command_spec.py) | Already the right place for shared command shape/capability metadata. Use it for player command discovery and generated version/field documentation. |
+| [game_ai/command_spec.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/command_spec.py) | Already the right place for shared command shape/capability metadata. Keep generated version/field documentation connected to it. |
 | [game_ai/contracts.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/contracts.py), [game_ai/schema.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/schema.py) | Preserve strict structured-output fields and the distinction between transport schema and semantic game legality. Keep schema generation connected to command specifications. |
-| [game_ai/observation.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/observation.py) | Explicit disclosure and bounded option lists are valuable. Fix F8 and document which IDs/targets are safe for a viewer. Test private-state changes for absence of public differences. |
+| [game_ai/observation.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/observation.py) | Explicit disclosure and bounded option lists are valuable. Document which IDs/targets are safe for a viewer. Test private-state changes for absence of public differences. |
 | [game_ai/order_view.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/order_view.py), [game_ai/intelligence.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/intelligence.py) | Redaction is a contract, not incidental formatting. Add function-level docs explaining unavailable targets, owner/allied access, and omission behavior. |
 | [game_ai/rules.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/rules.py) | `command_guidance()` is 421 lines. Split its output assembly by capability/domain and reuse existing validators; avoid another parallel set of legality rules. |
-| [game_ai/coordinator.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/coordinator.py) | Main-thread mutation, stale-result checks, and bounded semantic repair are useful. Worker cancellation/lifecycle remains incomplete; see F9. |
-| [game_ai/adapters/openai_responses.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/adapters/openai_responses.py) | Provider details are correctly isolated. Document/own client closure, request cancellation, timeout, and transport retries together. No live model availability or provider behavior was tested in this review. |
+| [game_ai/coordinator.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/coordinator.py) | Main-thread mutation, stale-result checks, and bounded semantic repair are useful. |
+| [game_ai/adapters/openai_responses.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/adapters/openai_responses.py) | Provider details are correctly isolated. No live model availability or provider behavior was tested in this review. |
 | [game_ai/runtime.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/runtime.py), [game_ai/config.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/config.py) | Central runtime limits and credential-loading isolation are useful. Keep permissive user configuration normalization out of strict campaign restoration. |
 | [game_ai/memory.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/memory.py) | Bounded sections and atomic sidecar replacement are appropriate. Preserve shared identity and resolved-path containment checks. The 8,000-character bound applies to receipts, not all memory sections combined; make wording precise. |
 | [game_ai/evaluation.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/evaluation.py) | Provider-independent cases and gateway acceptance scoring are useful. Keep offline contract tests separate from model quality/cost evaluations. |
@@ -188,12 +145,11 @@ The following records individual important files and the main conclusions from t
 
 ### Changes with a clear payoff
 
-1. **Share narrow invariants first.** Candidate placement remains inconsistent. Preserve shared movement payment and player identity checks while extending common placement predicates where appropriate.
-2. **Split `game_ai/commands.py` by responsibility.** Keep `CommandGateway` as the facade. Move projection state and replay into a focused module; separate preparation by a few gameplay domains. Use small records for cohesive projected state if they replace parallel dictionaries. Preserve ordering, payer identity, replacement/queue semantics, and partial-commit receipts.
-3. **Extract movement resolution and assembly.** Pull sublight/hex/wormhole resolution from `TurnProcessor`, and pure template assembly from `Constructor`. Keep orchestration and state transitions visible in their current owners.
-4. **Reduce repeated presentation knowledge.** Share order traversal and tiny widget helpers. Do not force player-redacted AI output and rich GUI formatting into one universal serializer.
-5. **Separate pure calculations from settlement.** A shared income breakdown can drive the HUD and resource generation. Extend the existing preview/commit pattern where calculations are repeated.
-6. **Separate storage mechanics from design rules.** Custom-library file operations and registration belong together; cost formulas and design dataclasses can remain in a separate focused module. Retain atomic writes and failure preservation.
+1. **Split `game_ai/commands.py` by responsibility.** Keep `CommandGateway` as the facade. Move projection state and replay into a focused module; separate preparation by a few gameplay domains. Use small records for cohesive projected state if they replace parallel dictionaries. Preserve ordering, payer identity, replacement/queue semantics, and partial-commit receipts.
+2. **Extract movement resolution and assembly.** Pull sublight/hex/wormhole resolution from `TurnProcessor`, and pure template assembly from `Constructor`. Keep orchestration and state transitions visible in their current owners.
+3. **Reduce repeated presentation knowledge.** Share order traversal and tiny widget helpers. Do not force player-redacted AI output and rich GUI formatting into one universal serializer.
+4. **Separate pure calculations from settlement.** A shared income breakdown can drive the HUD and resource generation. Extend the existing preview/commit pattern where calculations are repeated.
+5. **Separate storage mechanics from design rules.** Custom-library file operations and registration belong together; cost formulas and design dataclasses can remain in a separate focused module. Retain atomic writes and failure preservation.
 
 ### Concrete low-risk cleanup candidates
 
@@ -249,7 +205,6 @@ For a mutating procedure, “Returns: None; updates …” is enough. Do not add
 - `custom_unit_templates.py` claims custom designs are inserted into `UNIT_TEMPLATES` and mentions `create_unit_from_template`; current private registration is separate and the constructor entry point is `instantiate_unit_from_template`.
 - The same module says only Engines, Weapons, Defenses, and Hyperdrive use dynamic costs, despite additional dynamic components.
 - `UseAbilityOrder` claims position-target abilities perform no auto-movement, but the implementation creates approach orders for applicable position-target effects.
-- The hangar test equates a missing system name with the camera's sector view; location and view mode are independent.
 
 ## Naming and organization
 
@@ -287,7 +242,6 @@ The existing six-document split is broadly appropriate. The problems are repeate
 | [REFERENCE.md:1031](D:/Programming/Github_repos/Wormhole-Control/docs/REFERENCE.md:1031) | Mentions partially recovering a cache and retaining its deployment slot. | Remove the obsolete fuel-cache statement; that deployable/order no longer exists. |
 | [REFERENCE.md:1298](D:/Programming/Github_repos/Wormhole-Control/docs/REFERENCE.md:1298) | Sensors sabotage disables both ranges. | Code halves short-range radius and disables long-range coverage. |
 | [REFERENCE.md:1299](D:/Programming/Github_repos/Wormhole-Control/docs/REFERENCE.md:1299) | Antimatter sabotage leaks 5 AM per turn. | `Unit.apply_sabotage` immediately attempts to drain half the current fuel; no corresponding 5-AM-per-turn drain exists in the reviewed update path. Resolve intended rule versus implementation explicitly. |
-| [REFERENCE.md:1160](D:/Programming/Github_repos/Wormhole-Control/docs/REFERENCE.md:1160) and launch descriptions | General placement/safety descriptions are stronger than carrier candidate validation. | Fix F6, then document consistent actual placement guarantees. |
 | [AGENTIC_AI.md:113](D:/Programming/Github_repos/Wormhole-Control/docs/AGENTIC_AI.md:113) | Memory-limit wording can read as a total memory limit. | State that the 8,000-character cap is for recent receipts; other bounded sections add to it. |
 
 The current implementation's version set is: **save 4.17; observation 21; command contract 17; response schema v14; prompt cache v21; socket protocol 3; Strikecraft Bay schema 5; Strikecraft Wing schema 2.** These are different contracts and should not be collapsed into one version number.
@@ -316,15 +270,15 @@ Suggested sequence:
 
 ### Latest recorded verification
 
-The recorded focused regression runs passed. They cover unsafe IDs, outside-file sentinels, temporary-file redirects, Windows junctions, Linux symbolic links, malformed player fields and identity collisions, transactional load rejection, exact identity/configuration round trips including numeric player ID zero, and payment/refund behavior in all three movement modes.
+The **2026-09-23 verification** passed focused regressions followed by the full offline CI runtime matrix. Coverage includes real carrier placement and failure atomicity, command-registry discovery invariants, running-request and retry cancellation, HTTP response closure, stale successes/errors, repeated resets, retirement deadlines, owned/borrowed clients, bounded shutdown and process exit. Existing semantic-repair and commit-failure behavior also passes. No live API requests were made; the existing key configuration was retained.
 
 | Local runtime | Full offline suite |
 |---|---|
-| Ubuntu under WSL, Python 3.10.21 (CI matrix version) | 3,823 passed, 5 skipped, 10 subtests passed; 242.41 seconds. |
-| Ubuntu under WSL, Python 3.14.7 (CI matrix version) | 3,823 passed, 5 skipped, 10 subtests passed; 196.96 seconds. |
-| Windows, Python 3.14.7 (CI matrix version) | 3,820 passed, 8 skipped, 10 subtests passed; 239.41 seconds. |
-| Windows, Python 3.12.14 | 3,820 passed, 8 skipped, 10 subtests passed; 203.86 seconds. |
-| Ubuntu under WSL, Python 3.12.3 | 3,823 passed, 5 skipped, 10 subtests passed; 202.70 seconds. |
+| Ubuntu under WSL, Python 3.10.21 (CI matrix version) | 3,874 passed, 5 skipped, 10 subtests passed; 1,316.09 seconds. |
+| Ubuntu under WSL, Python 3.14.7 (CI matrix version) | 3,874 passed, 5 skipped, 10 subtests passed; 1,262.59 seconds. |
+| Windows, Python 3.14.7 (CI matrix version) | 3,871 passed, 8 skipped, 10 subtests passed; 253.92 seconds. |
+
+The Linux runs used the mounted Windows workspace; elapsed times include concurrent local validation and filesystem overhead.
 
 The CI quality commands also pass under Ubuntu Python 3.10.21: default and scoped Ruff checks, import boundaries, both mypy platform configurations, and generated-reference consistency. Additional `F,E9` lint passes for the new helper modules and regression files.
 
@@ -362,31 +316,24 @@ CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit 
 
 ### Bloat and blind spots to address
 
-1. **Misleading doubles:** The hangar boundary test passes an impossible live location and an old scale assumption. Use a small real campaign for membership/geometry rules; reserve mocks for external collaborators.
-2. **Repeated setup:** Share duplicated collision setup and simple campaign/entity builders. Avoid fixtures that construct a full UI or large galaxy for a calculation needing two units.
-3. **Unused test setup:** Sixty unused local diagnostics merit review. A created entity may intentionally affect the world even if its variable is unused; do not delete the call automatically.
-4. **Weak lint scope:** The green default Ruff run says little about unused code. Expand cleaned module coverage gradually.
-5. **Narrow typing scope:** Strict mypy covers seven selected boundary files with silent import following, not the entire game. Add types first to preparation results, projection records, and persistence validators where they clarify contracts.
-6. **Missing cross-boundary tests:** Most reproduced bugs occur where two individually tested layers disagree. Add the focused scenarios below instead of more implementation-call-count assertions.
-7. **UI test cost:** Several large-display tests take approximately 2–4 seconds each. Keep representative resolution/scale transitions and privacy cases; consolidate redundant screenshots/setup only after checking they do not protect different regressions. A roughly 3.5-minute complete local run does not justify deleting meaningful tests just to reduce count.
+1. **Repeated setup:** Share duplicated collision setup and simple campaign/entity builders. Avoid fixtures that construct a full UI or large galaxy for a calculation needing two units.
+2. **Unused test setup:** Sixty unused local diagnostics merit review. A created entity may intentionally affect the world even if its variable is unused; do not delete the call automatically.
+3. **Weak lint scope:** The green default Ruff run says little about unused code. Expand cleaned module coverage gradually.
+4. **Narrow typing scope:** Strict mypy covers seven selected boundary files with silent import following, not the entire game. Add types first to preparation results, projection records, and persistence validators where they clarify contracts.
+5. **Missing cross-boundary tests:** Add focused coverage where individually tested layers can disagree, including public failure history below, instead of more implementation-call-count assertions.
+6. **UI test cost:** Several large-display tests take approximately 2–4 seconds each. Keep representative resolution/scale transitions and privacy cases; consolidate redundant screenshots/setup only after checking they do not protect different regressions. A roughly 3.5-minute complete local run does not justify deleting meaningful tests just to reduce count.
 
 ### Recommended regression additions
 
 | Boundary | Meaningful assertion |
 |---|---|
-| Carrier launch → sector membership | Candidate is in bounds and safe; failed placement retains docked membership and position. |
-| Observation → command specification | Legal commands are a subset of supported commands; supported player commands match the registry. |
-| AI reset → active worker | New work has defined bounded behavior while an old request runs; shutdown releases owned resources. |
 | Order failure → public history | Intended actionable reasons such as `hazard_blocked` survive journaling without exposing private details. |
 
 ## Suggested implementation order and improvement ideas
 
 ### First: correctness with small diffs
 
-1. Fix carrier placement (F6).
-2. Fix command discovery (F8).
-3. Resolve the AI request lifecycle policy (F9).
-4. Correct inaccurate docs and public reason-code drift alongside the affected behavior.
+Correct inaccurate docs and public reason-code drift alongside the affected behavior.
 
 ### Next: reduce maintenance cost
 
@@ -397,7 +344,7 @@ CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit 
 
 ### Useful improvements to consider after correctness
 
-- **A concise diagnostics summary:** Surface actionable order failure reasons and AI request state, including whether replacement work is queued behind an old request. Existing logs/receipts already provide the basis.
+- **A concise diagnostics summary:** Surface actionable order failure reasons. Existing logs/receipts already provide the basis.
 - **Better Designer feedback:** Extend field-level error feedback to the remaining parameter readers that silently default or retain old values. Show why a configuration cannot fit its hull.
 - **Deterministic scenario probes:** Keep small, seeded save/command fixtures for representative construction, logistics, capture, docking, and overlapping effects. Favor a handful of cross-boundary invariants over a large new fuzzing framework initially.
 - **Measure observation and guidance cost:** Before caching, profile a large campaign's observation building, command guidance, and repeated graph lookups. Cache only stable catalog data or proven hotspots with explicit invalidation rules.
@@ -410,13 +357,11 @@ The desired outcome is fewer independent implementations of the same rule, clear
 
 The most useful local diagnostic artifacts are:
 
-- [Windows Python 3.14 full-suite JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/windows314-junit.xml).
-- Linux full-suite JUnit results: [Python 3.10](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/linux310-junit.xml) and [Python 3.14](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/linux314-junit.xml).
+- [Windows Python 3.14 full-suite JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/windows314-junit.xml).
+- Linux full-suite JUnit results: [Python 3.10](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/linux310-final-junit.xml) and [Python 3.14](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/linux314-final-junit.xml).
 - Additional Python 3.12 full-suite JUnit results: [Windows](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/full-junit.xml) and [Linux](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/linux-junit.xml).
 - [Original audit full-suite output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-pytest.log) and [JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-junit.xml).
 - [Persistence, path, and observation probes](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/reproductions.json).
-- [Placement and movement results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay-probes.json), with [probe source](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/gameplay_probes.py).
-- [Coordinator reset results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/coordinator-probe.json), with [probe source](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/coordinator_probe.py).
 - [AST inventory](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/inventory.json), [expanded lint output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/expanded-lint.json), and [review statistics/link check](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/stats.json).
 
-These files are ignored working artifacts, not proposed permanent test infrastructure. The report includes the important reproduction conditions so its conclusions remain understandable without them.
+These files are ignored working artifacts, not proposed permanent test infrastructure. The report summarizes the relevant conclusions without requiring these files.
