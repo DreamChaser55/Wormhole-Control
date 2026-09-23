@@ -33,6 +33,7 @@ _case_ids = count()
 def isolated_process_state(monkeypatch):
     """Restore global allocators and registries; never share mutable user storage."""
     import random
+    import i18n
     from domain.identity import GameObject
     from domain.players import Player
     from unit_components.intelligence import Agent
@@ -46,22 +47,33 @@ def isolated_process_state(monkeypatch):
     registry = dict(UNIT_TEMPLATES)
     private_registry = dict(PRIVATE_TEMPLATES)
     rng = random.getstate()
-    random.seed(12)
-    # Keep fixture-owned files outside each test's tmp_path, so filesystem tests
-    # can assert that their own working directory remains untouched.
-    library = Path(_user_data.name, str(next(_case_ids)))
-    library.mkdir()
-    (library / "custom_unit_templates.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setenv("WORMHOLE_USER_DATA_DIR", str(library))
-    monkeypatch.setattr(save_manager, "SAVES_DIR", str(library / "saves"))
-    yield
-    for owner, field, value in counters:
-        setattr(owner, field, value)
-    UNIT_TEMPLATES.clear()
-    UNIT_TEMPLATES.update(registry)
-    PRIVATE_TEMPLATES.clear()
-    PRIVATE_TEMPLATES.update(private_registry)
-    random.setstate(rng)
+    # Each pygame_gui manager appends its translations path to this shared list.
+    # Duplicate paths make later text lookups repeatedly scan the same directory.
+    translation_paths = list(i18n.load_path)
+    translation_settings = {key: i18n.get(key) for key in ("locale", "file_format")}
+    try:
+        random.seed(12)
+        # Keep fixture-owned files outside each test's tmp_path, so filesystem tests
+        # can assert that their own working directory remains untouched.
+        library = Path(_user_data.name, str(next(_case_ids)))
+        library.mkdir()
+        (library / "custom_unit_templates.json").write_text("{}", encoding="utf-8")
+        monkeypatch.setenv("WORMHOLE_USER_DATA_DIR", str(library))
+        monkeypatch.setattr(save_manager, "SAVES_DIR", str(library / "saves"))
+        yield
+    finally:
+        # Autouse teardown follows test-owned GUI teardown. Preserve the list
+        # identity shared by i18n.load_path and i18n.config.settings['load_path'].
+        i18n.load_path[:] = translation_paths
+        for key, value in translation_settings.items():
+            i18n.set(key, value)
+        for owner, field, value in counters:
+            setattr(owner, field, value)
+        UNIT_TEMPLATES.clear()
+        UNIT_TEMPLATES.update(registry)
+        PRIVATE_TEMPLATES.clear()
+        PRIVATE_TEMPLATES.update(private_registry)
+        random.setstate(rng)
 
 
 

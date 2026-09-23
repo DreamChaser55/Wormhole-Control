@@ -52,6 +52,33 @@ CI=true WORMHOLE_CI_REPORT_DIR=/tmp/wormhole-ci-reports python -m pytest -v --du
 Memory reporting is opt-in through both environment variables and has no effect
 on pytest's exit status. Missing kernel metrics are reported as unavailable.
 
+### Local WSL tests
+
+Keep the Linux interpreter, virtual environment, and caches on WSL's native
+filesystem, even when the source checkout is on a Windows drive. For example,
+from the repository root in WSL, using an installed Linux Python 3.10 or newer:
+
+```bash
+python3 -m venv ~/.cache/wormhole-control/venv
+~/.cache/wormhole-control/venv/bin/python -m pip install -r requirements-dev.txt
+PYTHONPYCACHEPREFIX="$HOME/.cache/wormhole-control/pycache" \
+  ~/.cache/wormhole-control/venv/bin/python -m pytest --durations=20 \
+  -o cache_dir="$HOME/.cache/wormhole-control/pytest"
+```
+
+Use a separate environment and cache directory for each Python version. Keep
+pytest's temporary directories on Linux as well; its default `/tmp` location is
+suitable. Run performance comparisons sequentially with matching dependency
+versions, and distinguish the first run's bytecode compilation from warm runs.
+A native-Linux source checkout can further reduce filesystem overhead.
+
+Test isolation also restores pygame_gui's process-global translation search paths,
+locale, and file format after every test, including failures. Each manager adds
+a search path; without restoration, later GUI text lookups repeatedly scan the
+same directory. The cost is particularly high for environments under `/mnt/c` or
+`/mnt/d`. See the [WSL performance investigation](LINUX_TEST_PERFORMANCE_PLAN.md)
+for the measurements and verification.
+
 ## Architecture
 
 | Area | Responsibility and entry points |

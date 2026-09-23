@@ -89,6 +89,7 @@ def test_failed_test_releases_factory_games_and_injected_reference(tmp_path):
         [sys.executable, '-m', 'pytest', '-p', 'tests.conftest', '-p',
          'no:cacheprovider', '-q', '--tb=short', '-c', str(root / 'pytest.ini'),
          '--rootdir', str(tmp_path), '--confcutdir', str(tmp_path),
+         '--basetemp', str(tmp_path / 'child-temp'),
          str(script)],
         cwd=root, env=environment, capture_output=True, text=True, timeout=60,
     )
@@ -96,3 +97,87 @@ def test_failed_test_releases_factory_games_and_injected_reference(tmp_path):
     assert result.returncode == 1, output
     assert 'intentional cleanup probe' in output, output
     assert '1 failed, 1 passed' in output, output
+
+
+def test_translation_state_is_restored_after_success_and_failure(tmp_path):
+    # Exercise real fixture ordering, including raw managers and failed teardown.
+    script = tmp_path / 'test_translation_isolation.py'
+    script.write_text(textwrap.dedent('''
+        import json
+        from pathlib import Path
+
+        import i18n
+        import pygame
+        import pygame_gui
+        import pytest
+        from pygame_gui.core.utility import translate
+
+        paths = i18n.load_path
+        baseline = []
+        for name in ('first', 'second'):
+            directory = Path(__file__).parent / name
+            directory.mkdir()
+            (directory / f'{name}.en.json').write_text(
+                json.dumps({'en': {'label': f'{name} translation'}}), encoding='utf-8')
+            baseline.append(str(directory))
+        paths[:] = baseline
+        i18n.set('locale', 'fr')
+        i18n.set('file_format', 'py')
+
+        def assert_restored():
+            assert i18n.load_path is paths
+            assert i18n.get('load_path') is paths
+            assert paths == baseline
+            assert i18n.get('locale') == 'fr'
+            assert i18n.get('file_format') == 'py'
+
+        @pytest.mark.parametrize('attempt', range(2))
+        def test_raw_managers(pygame_context, attempt):
+            assert_restored()
+            managers = []
+            try:
+                for _ in range(3):
+                    manager = pygame_gui.UIManager((1280, 720))
+                    managers.append(manager)
+                    for key, expected in (
+                        ('pygame-gui.OK', 'OK'),
+                        ('first.label', 'first translation'),
+                        ('second.label', 'second translation'),
+                        ('Literal text. Still unchanged.', 'Literal text. Still unchanged.'),
+                    ):
+                        pygame_gui.elements.UILabel(
+                            pygame.Rect(0, 0, 400, 40), key, manager=manager)
+                        assert translate(key) == expected
+            finally:
+                for manager in managers:
+                    manager.clear_and_reset()
+
+        @pytest.fixture
+        def failed_teardown(game_factory):
+            assert_restored()
+            game_factory()
+            game_factory()
+            yield
+            raise RuntimeError('intentional translation teardown failure')
+
+        def test_failure(failed_teardown):
+            pytest.fail('intentional translation test failure')
+
+        def test_next_case_sees_original_state():
+            assert_restored()
+    '''), encoding='utf-8')
+    environment = os.environ.copy()
+    environment.pop('WORMHOLE_CI_REPORT_DIR', None)
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, '-m', 'pytest', '-p', 'tests.conftest', '-p',
+         'no:cacheprovider', '-q', '--tb=short', '-c', str(root / 'pytest.ini'),
+         '--rootdir', str(tmp_path), '--confcutdir', str(tmp_path),
+         '--basetemp', str(tmp_path / 'child-temp'), str(script)],
+        cwd=root, env=environment, capture_output=True, text=True, timeout=60,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode == 1, output
+    assert 'intentional translation test failure' in output, output
+    assert 'intentional translation teardown failure' in output, output
+    assert '1 failed, 3 passed, 1 error' in output, output
