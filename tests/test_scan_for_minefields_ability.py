@@ -10,7 +10,7 @@ from unit_components.antimatter import AntimatterStorage
 from unit_components.sensors import Sensors
 from unit_components.abilities.scan_for_minefields import ScanForMinefieldsAbility
 from unit_components.abilities.registry import ABILITY_DEFINITIONS, ABILITY_CLASSES
-from custom_unit_templates import ABILITY_REQUIRED_COMPONENTS
+from custom_unit_templates import get_ability_required_components
 from gui.unit_editor_gui.catalog import ABILITY_NAMES
 from visibility import VisibilityService, is_minefield_visible
 from save_manager import serialize_minefield, deserialize_minefield
@@ -121,7 +121,7 @@ def test_scan_for_minefields_definition():
     assert "scan_for_minefields" in ABILITY_NAMES
     assert AbilityType.SCAN_FOR_MINEFIELDS in ABILITY_CLASSES
     assert AbilityType.SCAN_FOR_MINEFIELDS in ABILITY_DEFINITIONS
-    assert ABILITY_REQUIRED_COMPONENTS.get("scan_for_minefields") == ["has_sensors"]
+    assert get_ability_required_components("scan_for_minefields") == ["has_sensors"]
 
 
 def test_scan_for_minefields_reveals_enemy_minefields_in_range():

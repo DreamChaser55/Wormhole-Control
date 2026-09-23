@@ -2,6 +2,7 @@ import dataclasses
 import typing
 from typing import Set, Tuple, Dict, List, Optional, TYPE_CHECKING
 from domain.coordinates import HexCoord
+from domain.players import are_allies, are_enemies
 from geometry import distance
 from hexgrid_utils import hexes_within_range
 from constants import (
@@ -22,38 +23,6 @@ class VisibilitySnapshot:
     presence_hexes: Set[Tuple[str, HexCoord]] = dataclasses.field(default_factory=set)
     visible_deployable_ids: Set[int] = dataclasses.field(default_factory=set)
     visible_patch_ids: Set[int] = dataclasses.field(default_factory=set)
-
-
-def _are_allies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
-    if p1 is None or p2 is None:
-        return False
-    if p1 is p2:
-        return True
-    from domain.players import Player
-    if isinstance(p1, Player):
-        return p1.is_allied_with(p2)
-    if isinstance(p2, Player):
-        return p2.is_allied_with(p1)
-    p1_id = getattr(p1, 'id', None)
-    p2_id = getattr(p2, 'id', None)
-    if isinstance(p1_id, (int, str)) and isinstance(p2_id, (int, str)) and p1_id == p2_id:
-        return True
-    team1 = getattr(p1, 'team_id', None)
-    team2 = getattr(p2, 'team_id', None)
-    if isinstance(team1, (int, str)) and isinstance(team2, (int, str)):
-        return team1 == team2
-    return p1 == p2
-
-
-def _are_enemies(p1: Optional[typing.Any], p2: Optional[typing.Any]) -> bool:
-    if p1 is None or p2 is None:
-        return False
-    from domain.players import Player
-    if isinstance(p1, Player):
-        return p1.is_enemy_of(p2)
-    if isinstance(p2, Player):
-        return p2.is_enemy_of(p1)
-    return not _are_allies(p1, p2)
 
 
 class VisibilityService:
@@ -80,15 +49,15 @@ class VisibilityService:
             for hex_coord, hex_obj in system.hexes.items():
                 for unit in hex_obj.units:
                     all_units.append(unit)
-                    is_friendly = _are_allies(unit.owner, viewer)
+                    is_friendly = are_allies(unit.owner, viewer)
                     
                     is_infiltrated = False
                     if hasattr(unit, 'infiltrating_agents') and isinstance(unit.infiltrating_agents, list):
-                        is_infiltrated = any(ag.owner and _are_allies(ag.owner, viewer) for ag in unit.infiltrating_agents)
+                        is_infiltrated = any(ag.owner and are_allies(ag.owner, viewer) for ag in unit.infiltrating_agents)
                     elif hasattr(unit, 'has_infiltrating_agent_from'):
                         is_infiltrated = unit.has_infiltrating_agent_from(viewer)
                     
-                    if is_infiltrated and _are_enemies(unit.owner, viewer):
+                    if is_infiltrated and are_enemies(unit.owner, viewer):
                         snapshot.visible_enemy_unit_ids.add(unit.id)
 
                     if is_friendly or is_infiltrated:
@@ -133,7 +102,7 @@ class VisibilityService:
 
                     is_infiltrated_body = False
                     if hasattr(body, 'infiltrating_agents') and isinstance(body.infiltrating_agents, list):
-                        is_infiltrated_body = any(ag.owner and _are_allies(ag.owner, viewer) for ag in body.infiltrating_agents)
+                        is_infiltrated_body = any(ag.owner and are_allies(ag.owner, viewer) for ag in body.infiltrating_agents)
                     elif hasattr(body, 'has_infiltrating_agent_from'):
                         is_infiltrated_body = body.has_infiltrating_agent_from(viewer)
 
@@ -157,7 +126,7 @@ class VisibilityService:
 
         # Evaluate enemy units
         for unit in all_units:
-            if _are_enemies(unit.owner, viewer):
+            if are_enemies(unit.owner, viewer):
                 unit_key = (unit.in_system, unit.in_hex)
 
                 # Check if this unit is actively cloaked (defeats long-range sensors only)
@@ -172,7 +141,7 @@ class VisibilityService:
                     hex_key = (unit.in_system, unit.in_hex)
                     if hex_key in active_area_cloaks:
                         for emitter_owner, emitter_pos, radius in active_area_cloaks[hex_key]:
-                            if _are_allies(emitter_owner, unit.owner) and distance(emitter_pos, unit.position) <= radius:
+                            if are_allies(emitter_owner, unit.owner) and distance(emitter_pos, unit.position) <= radius:
                                 is_cloaked = True
                                 break
 
@@ -195,7 +164,6 @@ class VisibilityService:
                 elif unit_key in long_range_covered and not is_cloaked and not is_in_nebula:
                     snapshot.presence_hexes.add(unit_key)
 
-        from domain.players import are_allies
         for system in galaxy.systems.values():
             for sector in system.hexes.values():
                 for patch in getattr(sector, 'catalyst_patches', ()):
@@ -235,7 +203,7 @@ def is_unit_visible(snapshot: Optional[VisibilitySnapshot], unit: 'Unit') -> boo
     """Return True if friendly unit, ally unit, or DETAILED enemy unit."""
     if snapshot is None or snapshot.viewer is None:
         return True
-    if _are_allies(unit.owner, snapshot.viewer):
+    if are_allies(unit.owner, snapshot.viewer):
         return True
     if getattr(unit, 'is_hidden_in_gas_giant', False):
         return False
@@ -258,7 +226,7 @@ def is_minefield_visible(snapshot: Optional[VisibilitySnapshot], minefield: typi
     """
     if snapshot is None or snapshot.viewer is None:
         return True
-    if _are_allies(minefield.owner, snapshot.viewer):
+    if are_allies(minefield.owner, snapshot.viewer):
         return True
     if hasattr(minefield, 'is_revealed_to') and minefield.is_revealed_to(snapshot.viewer):
         return True

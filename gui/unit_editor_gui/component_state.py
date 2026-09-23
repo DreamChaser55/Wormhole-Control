@@ -10,7 +10,7 @@ from custom_unit_templates import (
     HULL_RESTRICTIONS,
     ADVANCED_HYPERDRIVE_MIN_HULL,
     ADVANCED_CLOAKING_MIN_HULL,
-    ABILITY_REQUIRED_COMPONENTS,
+    get_ability_required_components,
 )
 from .catalog import COMPONENT_ROWS, HYPERDRIVE_TYPES, CLOAKING_TYPES, ability_button_text
 from .widget_factory import replace_dropdown, set_wrapped_button_text
@@ -46,7 +46,7 @@ def toggle_ability(editor, aname: str) -> None:
         editor: UnitEditorWindow instance.
         aname (str): Name identifier of the ability to toggle.
     """
-    req_keys = ABILITY_REQUIRED_COMPONENTS.get(aname, [])
+    req_keys = get_ability_required_components(aname)
     comp_labels = {row["key"]: row["label"] for row in COMPONENT_ROWS}
     missing = [k for k in req_keys if not getattr(editor._comp, k, False)]
     if missing and aname not in editor._selected_abilities:
@@ -95,7 +95,7 @@ def update_ability_toggle_labels(editor) -> None:
     c = editor._comp
     y = 0
     for aname, btn in editor._ability_buttons.items():
-        req_keys = ABILITY_REQUIRED_COMPONENTS.get(aname, [])
+        req_keys = get_ability_required_components(aname)
         missing = [k for k in req_keys if not getattr(c, k, False)]
         if aname in ('tracking_lock', 'flak_barrage') and not any(
                 getattr(t.variant, 'name', str(t.variant)).upper() == 'ANTI_STRIKECRAFT' for t in c.turrets):

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from constants import HullSize, HULL_CAPACITIES
-from custom_unit_templates import CustomUnitTemplate, ABILITY_REQUIRED_COMPONENTS, TurretConfig
+from custom_unit_templates import CustomUnitTemplate, get_ability_required_components, TurretConfig
 from domain.coordinates import HexCoord
 from domain.players import Player
 from domain.units import Unit
@@ -184,7 +184,7 @@ def test_advanced_modules_rejected_on_tiny(world, name, config):
 def test_all_ability_dependencies_and_removals(world, ability):
     target = world[-1]
     empty_equipment(target)
-    requirements = ABILITY_REQUIRED_COMPONENTS.get(ability.value, [])
+    requirements = get_ability_required_components(ability.value)
     config = {'ability_types': [ability.value]}
     for flag in requirements:
         name = next(name for name, spec in COMPONENT_SPECS.items() if spec.flag == flag)

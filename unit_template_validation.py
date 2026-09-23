@@ -221,7 +221,7 @@ def equipment_errors(hull_size, components):
     """Validate a complete equipment configuration without GUI or live mutation."""
     from custom_unit_templates import (
         CustomUnitTemplate, HULL_RESTRICTIONS, ADVANCED_HYPERDRIVE_MIN_HULL,
-        ADVANCED_CLOAKING_MIN_HULL, ABILITY_REQUIRED_COMPONENTS,
+        ADVANCED_CLOAKING_MIN_HULL, get_ability_required_components,
     )
     if not isinstance(hull_size, HullSize):
         return ["hull_size: must be a HullSize."]
@@ -289,7 +289,7 @@ def equipment_errors(hull_size, components):
             if ab_key in ('tracking_lock', 'flak_barrage') and not any(
                     getattr(t.variant, 'name', str(t.variant)).upper() == 'ANTI_STRIKECRAFT' for t in c.turrets):
                 errors.append(f"Ability '{ab_key.replace('_', ' ').title()}' requires an anti-strikecraft turret.")
-            reqs = ABILITY_REQUIRED_COMPONENTS.get(ab_key, [])
+            reqs = get_ability_required_components(ab_key)
             for req_comp in reqs:
                 if not getattr(c, req_comp, False):
                     ab_name = ab_key.replace('_', ' ').title()

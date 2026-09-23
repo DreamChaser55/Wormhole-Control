@@ -102,7 +102,6 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
 
 # Advanced hyperdrive is unavailable on TINY hulls (existing game rule).
 ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.SMALL
-ADVANCED_CLOAKING_MIN_HULL = HullSize.SMALL
 
 for _hull in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL):
     HULL_RESTRICTIONS.setdefault(_hull, set()).update({"has_troop_transport_component", "has_siege_battery_component", "has_wormhole_stabilizer_component"})
@@ -118,15 +117,6 @@ def get_ability_required_components(ability_key: str) -> List[str]:
         return list(defn.required_components) if defn else []
     except (ValueError, KeyError):
         return []
-
-class _AbilityRequirementsMap(dict):
-    def __getitem__(self, key: str) -> List[str]:
-        return get_ability_required_components(key)
-    def get(self, key: str, default=None) -> List[str]:
-        reqs = get_ability_required_components(key)
-        return reqs if reqs else (default if default is not None else [])
-
-ABILITY_REQUIRED_COMPONENTS = _AbilityRequirementsMap()
 
 
 # --------------------------------------------------------------------------

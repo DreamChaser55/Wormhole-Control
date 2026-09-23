@@ -330,7 +330,7 @@ class RetrofitWizardWindow:
     def _sync_cost_and_summary(self) -> None:
         """Preview exactly the configuration and charges execution will validate."""
         from html import escape
-        from custom_unit_templates import ABILITY_REQUIRED_COMPONENTS
+        from custom_unit_templates import get_ability_required_components
         from refit_validation import RefitEvaluation
         try:
             self._read_current_params()
@@ -366,7 +366,7 @@ class RetrofitWizardWindow:
             self._comp_config = result.configuration
         installed = installed_configuration(self.target_unit)
         for ability, button in self._ability_buttons.items():
-            missing = [key for key in ABILITY_REQUIRED_COMPONENTS.get(ability, []) if not getattr(installed, key)]
+            missing = [key for key in get_ability_required_components(ability) if not getattr(installed, key)]
             # Permit deselecting an ability whose prerequisite has since disappeared.
             if missing and ability not in self._selected_abilities:
                 button.disable()
