@@ -39,7 +39,7 @@ The following records individual important files and the main conclusions from t
 | [display_config.py](D:/Programming/Github_repos/Wormhole-Control/display_config.py) | Explicit display metrics and typed boundaries are a good separation. Prefer passing this object over adding more display globals. |
 | [app_preferences.py](D:/Programming/Github_repos/Wormhole-Control/app_preferences.py) | Atomic replacement and UI-visible failure propagation are appropriate for a small preferences file. No need for a configuration framework. |
 | [game_camera.py](D:/Programming/Github_repos/Wormhole-Control/game_camera.py) | Shared zoom mechanics are sensible. Modal/input-blocking knowledge is lengthy; let each dialog participate in one small common “blocks gameplay input” query as new dialogs are added. |
-| [game_logging.py](D:/Programming/Github_repos/Wormhole-Control/game_logging.py) | Filtering provider payload logs is valuable. Review handler ownership if logging is configured repeatedly: removed handlers are not explicitly closed. This is a cleanup concern, not a demonstrated application leak. |
+| [game_logging.py](D:/Programming/Github_repos/Wormhole-Control/game_logging.py) | Preserve explicit application-handler ownership, cleanup during repeated setup, provider-payload filtering, and caller ownership of externally installed handlers. |
 | [constants.py](D:/Programming/Github_repos/Wormhole-Control/constants.py) | Keep stable shared rules here; newer tactical/planetary balance modules already provide useful topic separation. Avoid scattering renamed duplicates across catalogs and GUI helpers. |
 | [domain/identity.py](D:/Programming/Github_repos/Wormhole-Control/domain/identity.py) | Allocation isolation is a useful invariant. Keep tests for zero IDs, high restored IDs, and rejected-load allocator preservation. |
 | [domain/coordinates.py](D:/Programming/Github_repos/Wormhole-Control/domain/coordinates.py) | A small typed coordinate boundary is preferable to another geometry hierarchy. Gradually reduce tuple/attribute compatibility branching where callers have a known type. |
@@ -242,33 +242,27 @@ CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit 
 
 ## Proposed action plan
 
-Proposed on **2026-09-24**, following a check of the relevant implementation at **`7a5bd48`**. The remaining actions are planned, not completed. The order balances impact, effort, and regression risk: two improvements followed by three focused refactors. Command handling is the highest-priority maintenance refactor; the earlier items provide smaller, independently reviewable improvements.
+Proposed on **2026-09-24**, following a check of the relevant implementation at **`7a5bd48`**. The remaining actions are planned, not completed. The order balances impact, effort, and regression risk: a Unit Designer feedback improvement followed by three focused refactors. Command handling is the highest-priority maintenance refactor; the Designer improvement is smaller and independently reviewable.
 
-### 1. Close replaced logging resources correctly
-
-**Effort: small.** [Logging setup](game_logging.py) removes existing handlers without explicitly closing them. Establish handler ownership and close replaced application handlers, preserving provider-payload filtering and safe handling of externally installed handlers. This addresses a cleanup concern; the review does not establish an application leak.
-
-**Complete when:** repeated initialization releases old file handles, avoids duplicate output, and retains the existing logging privacy checks. Use temporary log files for verification.
-
-### 2. Finish Unit Designer input feedback
+### 1. Finish Unit Designer input feedback
 
 **Effort: medium; direct user benefit.** [Parameter readers](gui/unit_editor_gui/param_readers.py) still swallow parsing errors and silently clamp or retain values. Extend the existing validation approach to those fields: retain invalid draft text, identify the affected field, explain accepted values, and prevent saving a stale configuration. Show the amount by which a design exceeds hull capacity. Reuse shared equipment rules and preserve legal zero and fractional values.
 
 **Complete when:** invalid text, non-finite values, invalid integer inputs, and capacity violations produce actionable feedback; correcting a field clears its error; rejected saves/refits preserve designs and credits. Extend existing Designer and retrofit regressions where coverage is missing.
 
-### 3. Split command projection from preparation and commit
+### 2. Split command projection from preparation and commit
 
 **Effort: large; highest maintenance priority.** Refactor [CommandGateway](game_ai/commands.py) in separate changes. First extract projection and its supporting records; then extract preparation by gameplay domain. Keep the gateway responsible for batch sequencing, commit, and receipts. Add types at the extracted boundaries where they clarify state ownership. Preserve the public facade and command/result contracts.
 
 **Complete when:** existing regressions preserve rejection without command effects, command ordering, queued prerequisites, shared capacity reservations, original-payer refunds, hidden-target privacy, and accurate partial-commit results. Check interactions such as load-then-colonize, cancellation versus active paid jobs, allied docking capacity, and immediate versus deferred fuel gains. Add tests only for uncovered interactions; do not introduce rollback semantics or automatic retries for commit failures.
 
-### 4. Extract detached unit assembly
+### 3. Extract detached unit assembly
 
 **Effort: medium.** Move [template assembly](unit_components/constructor.py) into a focused module. The detached assembly function already exists, making this a relatively clear extraction. Keep deployment, construction progress, payment, cancellation, and settlement with their current owners. Preserve explicit template injection during campaign preparation and existing allocation isolation.
 
 **Complete when:** campaign setup, ordinary construction, carrier production, and customization produce equivalent equipment and placement, with unchanged allocator isolation and settlement behavior. Preserve built-in, Testing, and human-only private-template boundaries.
 
-### 5. Extract movement resolution
+### 4. Extract movement resolution
 
 **Effort: medium to large.** Separate sublight, hex-jump, and wormhole-jump resolution from [TurnProcessor](turn_processor.py). Keep turn-phase sequencing visible in the processor and preserve the transient movement record consumed by environmental hazards. Make the extraction independently reviewable from changes to route planning.
 
@@ -285,7 +279,7 @@ Proposed on **2026-09-24**, following a check of the relevant implementation at 
 
 ### Implementation and verification
 
-Record a baseline once before implementation. Keep the five remaining actions in separate reviewable changes, with projection extraction preceding the command-preparation split. Constructor assembly and movement extraction can each proceed independently of that split. Keep behavior changes separate from mechanical extractions and preserve save and command formats throughout this scope.
+Record a baseline once before implementation. Keep the four remaining actions in separate reviewable changes, with projection extraction preceding the command-preparation split. Constructor assembly and movement extraction can each proceed independently of that split. Keep behavior changes separate from mechanical extractions and preserve save and command formats throughout this scope.
 
 Run focused checks after each change, extending existing tests only for uncovered guarantees. Require the full offline suite and existing Linux/Windows CI checks for major refactors: Ruff, import boundaries, both configured mypy platforms, and generated-reference consistency. Documentation changes need local link/anchor checks and the applicable reference checks; meaningful gameplay and privacy tests should remain intact.
 

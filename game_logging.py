@@ -1,4 +1,5 @@
 """Application logging configuration for Wormhole Control."""
+from contextlib import ExitStack
 import logging
 
 
@@ -13,6 +14,9 @@ THIRD_PARTY_LOGGERS = (
     "httpcore.http11",
     "httpcore.proxy",
 )
+
+# Keep ownership independent of root attachment: callers may detach our handlers.
+_application_handlers: list[logging.Handler] = []
 
 
 class ThirdPartyPayloadFilter(logging.Filter):
@@ -43,11 +47,18 @@ class GameLogFormatter(logging.Formatter):
 
 
 def setup_logging(log_to_file: bool = False):
-    """Configure logging for the application.
+    """Replace root logging destinations during explicit application setup.
 
-    When log_to_file is False (e.g. during module import / test execution),
-    logs are directed to standard output only and game.log is untouched.
-    When log_to_file is True (e.g. during main game launch), game.log is initialized in 'w' mode.
+    Detach all root handlers, but flush and close only handlers created here,
+    including any already detached by callers. External handlers remain owned by
+    their callers; the borrowed stderr stream is never closed.
+
+    Install filtered stderr output and, when log_to_file is True, truncate
+    game.log in the working directory after closing the previous destinations.
+    False leaves the file untouched apart from flushing an old owned handler.
+    Cleanup errors propagate after all owned handlers have been processed. A
+    file-opening error propagates with the new stderr handler still usable and
+    owned. Returns None; importing this module does not configure logging.
     """
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
@@ -61,15 +72,24 @@ def setup_logging(log_to_file: bool = False):
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
+    # Attempt every flush/close even if an earlier cleanup operation fails.
+    with ExitStack() as cleanup:
+        for handler in _application_handlers:
+            cleanup.callback(handler.close)
+            cleanup.callback(handler.flush)
+        _application_handlers.clear()
+
     fmt = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 
     stream_handler = logging.StreamHandler()
     stream_handler.addFilter(ThirdPartyPayloadFilter())
     stream_handler.setFormatter(GameLogFormatter(fmt))
+    _application_handlers.append(stream_handler)
     root_logger.addHandler(stream_handler)
 
     if log_to_file:
         file_handler = logging.FileHandler("game.log", mode='w')
         file_handler.addFilter(ThirdPartyPayloadFilter())
         file_handler.setFormatter(GameLogFormatter(fmt))
+        _application_handlers.append(file_handler)
         root_logger.addHandler(file_handler)

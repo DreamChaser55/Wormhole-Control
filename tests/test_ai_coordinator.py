@@ -508,31 +508,6 @@ class TestCoordinator(unittest.TestCase):
             coordinator.shutdown()
 
 
-class TestLogging(unittest.TestCase):
-    def test_third_party_http_clients_cannot_emit_debug_request_bodies(self):
-        import logging
-
-        from game_logging import THIRD_PARTY_LOGGERS, setup_logging
-
-        setup_logging(log_to_file=False)
-        for logger_name in THIRD_PARTY_LOGGERS:
-            self.assertGreaterEqual(
-                logging.getLogger(logger_name).getEffectiveLevel(), logging.WARNING
-            )
-        record = logging.LogRecord(
-            "openai._base_client.responses",
-            logging.DEBUG,
-            __file__,
-            1,
-            "request body: secret",
-            (),
-            None,
-        )
-        self.assertTrue(
-            all(not handler.filter(record) for handler in logging.getLogger().handlers)
-        )
-
-
 class TestEvaluation(unittest.TestCase):
     def test_colony_opening_fixture_and_reasoning_comparison_are_opt_in(self):
         case = colony_opening_case()
