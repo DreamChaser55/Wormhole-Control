@@ -3,15 +3,15 @@ custom_unit_templates.py
 
 Manages player-created unit designs at runtime.  A design is stored as a
 CustomUnitTemplate dataclass, converted into the same dict format used by
-data/unit_templates.json, and inserted into the global UNIT_TEMPLATES dict
-so that create_unit_from_template() works without modification.
+data/unit_templates.json, and registered in the separate private catalogue used
+by human construction. instantiate_unit_from_template() assembles designs from
+their template data; automated players see only the public built-in catalogue.
 
 Designs are persisted only in the configured platform user-data library.
 
-Component hull costs for Engines, Weapons, Defenses, and Hyperdrive are
-**computed dynamically** from their performance parameters using the
-calc_*_hull_cost() functions in this module.  All other components retain
-fixed hull costs.
+Dynamic component hull costs are computed from performance parameters using
+the calc_*_hull_cost() helpers. The Designer catalogue identifies dynamic and
+fixed-cost equipment; design validation checks the complete configuration.
 """
 
 import json

@@ -76,8 +76,25 @@ Test isolation also restores pygame_gui's process-global translation search path
 locale, and file format after every test, including failures. Each manager adds
 a search path; without restoration, later GUI text lookups repeatedly scan the
 same directory. The cost is particularly high for environments under `/mnt/c` or
-`/mnt/d`. See the [WSL performance investigation](LINUX_TEST_PERFORMANCE_PLAN.md)
-for the measurements and verification.
+`/mnt/d`.
+
+## Current formats and protocols
+
+These identifiers describe independent contracts; changing one does not imply
+changing the others. The table is generated from their runtime constants.
+
+<!-- BEGIN GENERATED: versions -->
+| Contract | Current version / identifier | Source |
+| --- | --- | --- |
+| Campaign save | 4.17 | [CURRENT_SAVE_VERSION](../save_manager.py) |
+| Observation | 21 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Command contract | 17 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
+| Response schema | wormhole_control_turn_v14 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
+| Prompt cache | wormhole-control-turn-v21 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Local socket protocol | 3 | [PROTOCOL_VERSION](../game_control_protocol.py) |
+| Strikecraft Bay component | 5 | [StrikecraftBayComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
+| Strikecraft Wing component | 2 | [StrikecraftWingComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
+<!-- END GENERATED: versions -->
 
 ## Architecture
 
@@ -244,6 +261,9 @@ the sole supported save format and rejection behavior. Prefer a short package ma
 
 `scripts/generate_reference.py` owns six blocks in `REFERENCE.md`: components,
 abilities, order count, planets, environments and the built-in unit catalogue.
+It also owns the current-format table above, reading literal module/class
+constants without importing the game or provider. Link to that table instead
+of repeating current-version announcements in feature documentation.
 Preserve each `BEGIN GENERATED` / `END GENERATED` marker pair exactly once.
 Regenerate with `python scripts/generate_reference.py`; prose and the README
 remain hand-maintained. Changing an enum requires reviewing the handwritten

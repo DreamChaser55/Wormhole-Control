@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from turn_processor import TurnProcessor
 from geometry import Position
 from domain.celestials import Planet
-from constants import UPKEEP_COST_PER_HULL_POINT, HullSize
+from constants import UPKEEP_COST_PER_HULL_POINT, HullSize, PlanetType
 from tests.support.units import ComponentUnit, ComponentPlayer
 
 
@@ -35,18 +35,17 @@ def test_process_resource_generation():
     game.players = [player]
     game.current_player_index = 0
     
-    # Mock celestial bodies in systems
-    planet1 = MagicMock(spec=Planet)
+    planet1 = Planet((0, 0), 'Sol', PlanetType.TERRAN)
     planet1.owner = player
     planet1.population = 50.0
     
-    planet2 = MagicMock(spec=Planet)
+    planet2 = Planet((0, 1), 'Sol', PlanetType.TERRAN)
     planet2.owner = player
     planet2.population = 100.0
     
     # Planet owned by another player (should not count)
     other_player = ComponentPlayer("AI Player")
-    planet_other = MagicMock(spec=Planet)
+    planet_other = Planet((0, 2), 'Sol', PlanetType.TERRAN)
     planet_other.owner = other_player
     planet_other.population = 500.0
     
@@ -365,16 +364,16 @@ def test_game_get_player_income():
     game = DummyGame()
     player = ComponentPlayer("Player 1")
     
-    planet1 = MagicMock(spec=Planet)
+    planet1 = Planet((0, 0), 'Sol', PlanetType.TERRAN)
     planet1.owner = player
     planet1.population = 100.0
     
-    planet2 = MagicMock(spec=Planet)
+    planet2 = Planet((0, 1), 'Sol', PlanetType.TERRAN)
     planet2.owner = player
     planet2.population = 50.0
     
     other_player = ComponentPlayer("Player 2")
-    planet_other = MagicMock(spec=Planet)
+    planet_other = Planet((0, 2), 'Sol', PlanetType.TERRAN)
     planet_other.owner = other_player
     planet_other.population = 200.0
     

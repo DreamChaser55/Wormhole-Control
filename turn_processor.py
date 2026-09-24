@@ -15,12 +15,12 @@ from unit_components.enums import JumpStatus
 from unit_components.commander import Commander
 from visibility import VisibilityService
 from constants import (
-    HullSize, TAX_RATE, XP_JUMP_RANGE_BONUS,
+    HullSize, XP_JUMP_RANGE_BONUS,
     CELESTIAL_FIELD_RADIUS, STORM_RADIUS,
     StormType
 )
 from turn_presentation import NullTurnPresentation, TurnPresentation
-from economy import calculate_player_upkeep
+from economy import calculate_income_breakdown, calculate_player_upkeep
 from turn_briefing import record, unit_event
 
 
@@ -632,56 +632,17 @@ class TurnProcessor:
                             obj.take_damage(int(hazard.amount), cause=hazard.kind)
 
     def _process_resource_generation(self, current_player):
-        total_credits_generated = 0
-        habitat_credits_generated = 0
-        siphon_credits_generated = 0
-        from unit_components.enums import SabotageType
-        for system in self.game.galaxy.systems.values():
-            for hexcoord, body in system.get_all_celestial_bodies():
-                if isinstance(body, (Planet, Moon, ColonizableAsteroid)):
-                    base_tax = body.population * TAX_RATE
-                    if body.owner == current_player:
-                        is_sab = False
-                        if getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list) and len(body.infiltrating_agents) > 0:
-                            if hasattr(body, 'is_sabotaged') and callable(body.is_sabotaged):
-                                is_sab = bool(body.is_sabotaged(SabotageType.ECONOMY))
-                        if is_sab:
-                            credits_generated = base_tax * 0.5
-                        else:
-                            credits_generated = base_tax
-                        current_player.credits += credits_generated
-                        total_credits_generated += credits_generated
-
-                        # Passive metal and crystal yields from planet traits
-                        p_metal = getattr(body, 'passive_metal', 0.0)
-                        p_crystal = getattr(body, 'passive_crystal', 0.0)
-                        if p_metal > 0:
-                            current_player.metal += p_metal
-                        if p_crystal > 0:
-                            current_player.crystal += p_crystal
-                    else:
-                        from domain.players import are_enemies
-                        if body.owner and are_enemies(current_player, body.owner) and getattr(body, 'infiltrating_agents', None) and isinstance(body.infiltrating_agents, list):
-                            if any(getattr(a, 'owner', None) == current_player and getattr(a, 'active_sabotage', None) == SabotageType.ECONOMY for a in body.infiltrating_agents):
-                                siphoned = base_tax * 0.25
-                                current_player.credits += siphoned
-                                siphon_credits_generated += siphoned
-
-            for unit, _ in system.get_all_units():
-                if unit.owner == current_player:
-                    hab_comp = getattr(unit, 'civilian_habitat_component', None)
-                    if hab_comp and not hab_comp.is_destroyed:
-                        if hab_comp.is_active(self.game.galaxy):
-                            bonus = hab_comp.economic_bonus
-                            current_player.credits += bonus
-                            habitat_credits_generated += bonus
-
-        if total_credits_generated > 0:
-            logger.debug(f"  {current_player.name} generated {total_credits_generated:.2f} credits from taxes.")
-        if siphon_credits_generated > 0:
-            logger.debug(f"  {current_player.name} siphoned {siphon_credits_generated:.2f} credits from infiltrated colonies.")
-        if habitat_credits_generated > 0:
-            logger.debug(f"  {current_player.name} generated {habitat_credits_generated:.2f} credits from civilian habitat bonuses.")
+        """Apply the shared preview once in this owner's income phase, before upkeep."""
+        income = calculate_income_breakdown(self.game.galaxy, current_player)
+        current_player.credits += income.total_credits
+        current_player.metal += income.metal
+        current_player.crystal += income.crystal
+        if income.colony_credits > 0:
+            logger.debug(f"  {current_player.name} generated {income.colony_credits:.2f} credits from taxes.")
+        if income.siphoned_credits > 0:
+            logger.debug(f"  {current_player.name} siphoned {income.siphoned_credits:.2f} credits from infiltrated colonies.")
+        if income.habitat_credits > 0:
+            logger.debug(f"  {current_player.name} generated {income.habitat_credits:.2f} credits from civilian habitat bonuses.")
 
     def _process_unit_upkeep(self, current_player):
         """Deducts upkeep costs from the current player's credits for every owned unit.

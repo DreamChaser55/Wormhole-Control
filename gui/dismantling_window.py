@@ -6,6 +6,7 @@ from pygame_gui.elements import UIWindow, UITextBox, UIButton
 from display_config import display_config_for
 from campaign_graph import find_unit
 from dismantling import evaluate
+from gui.theme_loader import preload_rich_text_fonts
 
 
 def is_open(gui):
@@ -15,6 +16,7 @@ def is_open(gui):
 
 class DismantlingWindow:
     def __init__(self, gui, unit, target, queue=False):
+        preload_rich_text_fonts(gui.manager)
         self.gui, self.game, self.unit = gui, gui.game_instance, unit
         self.target_id, self.queue = target.id, queue
         screen = gui.manager.get_root_container().get_rect()

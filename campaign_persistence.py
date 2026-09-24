@@ -91,10 +91,10 @@ def validate_document(data):
         if p["id"] in player_ids:
             raise ValueError(f"{path}.id: duplicate player ID")
         player_ids.add(p["id"])
-        for field, seen in player_namespaces.items():
-            key = p[field].casefold()
+        for identity_field, seen in player_namespaces.items():
+            key = p[identity_field].casefold()
             if key in seen:
-                raise ValueError(f"{path}.{field}: duplicate value ignoring case")
+                raise ValueError(f"{path}.{identity_field}: duplicate value ignoring case")
             seen.add(key)
         from turn_briefing import state_from_dict
         briefing = state_from_dict(p["briefing"])

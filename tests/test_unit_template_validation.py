@@ -11,7 +11,7 @@ import pytest
 from constants import HullSize, get_min_antimatter_capacity
 from custom_unit_templates import (
     ComponentConfig, CustomTemplateManager, CustomUnitTemplate, TurretConfig,
-    template_from_dict,
+    template_from_dict, template_to_dict,
 )
 from unit_template_validation import FIXED_HULL_COST_FIELDS, parse_library, validate_library
 from unit_templates import UNIT_TEMPLATES, builtin_template_names
@@ -341,5 +341,3 @@ def test_larger_hull_retains_mining_and_long_range_sensors():
     assert messages(record(hull_size='TINY', engine_speed=0, has_mining_component=True,
                            mining_rate=0, max_mining_cargo=0, has_sensors=True,
                            sensor_short_range=0, sensor_long_range_hexes=1)) == ''
-
-from custom_unit_templates import template_to_dict, template_from_dict

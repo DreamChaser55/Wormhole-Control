@@ -17,10 +17,11 @@ class UseAbilityOrder(Order):
     """
     Order to activate a unit's special ability.
 
-    For abilities that require a target unit the order validates range and moves
-    the unit closer if necessary before firing. For abilities that require a
-    target position, no auto-movement is performed — the position is used directly.
-    For self-targeted abilities neither target is required.
+    Ordinary unit targets and ranged position effects such as Cluster Warhead
+    create approach suborders when out of range. Tactical unit links also
+    approach; tactical position casts and carrier/anti-strikecraft casts require
+    local range without approach. Microjump stays within the current sector.
+    Self-targeted abilities require neither a unit nor a position target.
     """
     target_fields = (OrderTargetField('target_unit_id', 'unit', public=True), OrderTargetField('target_body_id', 'celestial', public=True))
 

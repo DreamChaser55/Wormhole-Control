@@ -15,6 +15,8 @@ from game_ai.schema import responses_text_config
 
 from .base import PlanningOutputError, PlanningRequest, PlanningResult
 
+PROMPT_CACHE_KEY = "wormhole-control-turn-v21"
+
 
 class OpenAIResponsesProvider:
     def __init__(self, *, client: Any | None = None):
@@ -69,7 +71,7 @@ class OpenAIResponsesProvider:
                 "turn": str(request.turn_number),
             },
             safety_identifier=_safe_identifier(request.agent_id),
-            prompt_cache_key="wormhole-control-turn-v21",
+            prompt_cache_key=PROMPT_CACHE_KEY,
         )
         latency_seconds = perf_counter() - started
         response_id = getattr(response, "id", None)

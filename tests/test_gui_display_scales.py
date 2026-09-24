@@ -1,5 +1,4 @@
 """Real widgets at supported physical pixel sizes; layout warnings are failures."""
-from display_config import DisplayConfig
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch

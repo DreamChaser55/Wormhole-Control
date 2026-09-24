@@ -1,18 +1,19 @@
 # Campaign persistence
 
-The current save version is **4.17**. New saves preserve the installed component
+See the [current formats and protocols](DEVELOPMENT.md#current-formats-and-protocols) for the supported save
+version and independent component schemas. New saves preserve the installed component
 inventory and its configuration and runtime state. Loading does not reconstruct
 current-format units from templates, so refits, removed components, empty weapon
 bays, and changes to template files cannot silently change an existing ship.
 
-Only version **4.17** is supported. Unversioned, older, unknown and future saves
+Only the current save version is supported. Unversioned, older, unknown and future saves
 are rejected with the expected version before hydration. Alpha schema changes
 require a new campaign; no migrations or automatic conversions are provided.
 Rejected files are never modified.
 
 ## Testing campaign catalogue
 
-Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted, and the save version is 4.17.
+Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted.
 
 After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges are rejected during validation. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
 
@@ -31,7 +32,7 @@ not repair it. See [design validation](REFERENCE.md#external-design-validation).
 
 ## Component and ability schemas
 
-Strikecraft Wing schema **2** persists `turns_outside` (an integer in 0–80),
+The current Strikecraft Wing schema persists `turns_outside` (an integer in 0–80),
 `last_endurance_round`, and the existing `recovery_ready_round` launch deadline.
 Docked wings require zero outside turns; the processed round cannot be in the future.
 The registered `RETURN_FOR_SERVICE` root preserves its carrier reference and approach
@@ -46,7 +47,7 @@ restore before carrier effects reconcile. Loading never replays activation costs
 salvos, docking or Flak damage. Antimatter Storage uses component schema 2 and
 stores capacity and current fuel; passive regeneration is not part of the model.
 
-Strikecraft Bay schema **5** stores exactly `max_slots` ordered slot records,
+The current Strikecraft Bay schema stores exactly `max_slots` ordered slot records,
 each containing nullable `production_template_name`, `turret_type_override`,
 `defense_type_override`, and occupant `wing_id`. Slots start unselected; null designs
 require null overrides. Non-null designs must be built-in wings with valid overrides.
@@ -115,7 +116,7 @@ actuators are reacquired through normal play.
 
 `ATTACK_LONG_RANGE` uses the same order envelope as `ATTACK`, retaining its distinct
 type, target/subsystem, UUID and approach descendants. Restoring it rebinds firing
-and navigation without replaying execution. The save format remains 4.17.
+and navigation without replaying execution.
 
 When adding a component or ability, register it, declare every persistent field,
 and extend its independent round-trip fixture. An incompatible schema change
@@ -166,7 +167,7 @@ IDs and must resolve when present. Booleans are not integers for these rules.
 Validation runs before player construction and reports the offending field.
 Restoration does not supply new-game defaults or normalize corrupted configuration.
 The existing load rules for player count, map and ownership remain separate from
-new-game setup restrictions. These validation fixes retain save version **4.17**.
+new-game setup restrictions. These validation rules apply to the current save format.
 
 ## References, indexes, and timers
 
@@ -251,7 +252,7 @@ and prices when they start. No new retrofit AI or socket command is introduced.
 
 ## Turn briefings
 
-Save 4.17 requires each player's `briefing` state: initialization/collection flags,
+The current save requires each player's `briefing` state: initialization/collection flags,
 reporting boundary, event sequence, bounded pending entries and omission count,
 economic baseline, discovery keys, frozen current report and human acknowledgement.
 The current report contains its start/end rounds, grouped entries, net economy
@@ -287,14 +288,14 @@ retain a private location anchor to follow moving depots after restoration.
 
 Loading resumes without extra transfer ticks, recipient selection, or harvesting.
 Invalid IDs, phases, reserves, and inconsistent manual active recipients reject
-transactionally. Save 4.17 is required; older saves and legacy resupply source
+transactionally. The current save format is required; older saves and legacy resupply source
 fields have no migration or aliases. Fuel-cache deployables, recovery orders and
 the old ability identifier remain unsupported.
 
 
 ## Planetary warfare state
 
-Save 4.17 uses unit schema 3. Every unit stores the nonnegative integer
+The current save uses unit schema 3. Every unit stores the nonnegative integer
 `last_planetary_action_round`, bounded by the saved campaign round. This survives
 refits, cancellation and capture, preventing replay or an extra action after load.
 Troop Transport schema 1 stores integer `capacity` and current `troops`; destroyed
@@ -316,18 +317,18 @@ are unsupported under the Alpha policy.
 
 ## Wormhole support state
 
-Format 4.17 registers `WormholeStabilizerComponent` and `STABILIZE_WORMHOLE`.
+The current format registers `WormholeStabilizerComponent` and `STABILIZE_WORMHOLE`.
 The component stores its last paid round and payer ID; the order stores its typed
 wormhole target, normal UUID/approach descendants, powered flag and phase.
 Coverage is derived from live eligible maintainers after references restore.
 Loading does not charge fuel, advance orders or modify natural wormhole stability.
 Invalid payment/state values reject the candidate; ineligible support reconciles
-to unpowered. Only 4.17 is supported; older saves require a new campaign.
+to unpowered. Older saves require a new campaign.
 
 
 ## Fixed destination validation
 
-Save 4.17 requires complete fixed destinations recursively in positional orders
+The current save requires complete fixed destinations recursively in positional orders
 and patrol waypoints. System names must resolve, hexes must exist and use integer
 coordinates, and positions must contain finite numbers. Missing coordinates are
 never replaced with a unit's location. Constructor component schema 3 stores its
@@ -346,9 +347,9 @@ Defenses component state, without reconstructing it from the catalogue.
 
 ## Dismantling persistence
 
-Version 4.17 stores queued, approaching, waiting and active `DISMANTLE_UNIT` roots,
+The current save stores queued, approaching, waiting and active `DISMANTLE_UNIT` roots,
 including owner, phase, member IDs, frozen design values, duration, progress,
-last processed round and settlement state. Bay component schema 4 stores
+last processed round and settlement state. The current Strikecraft Bay schema stores
 `production_enabled`, independent of design selection and replenishment.
 
 After all orders restore, the loader validates ownership, containment, overlapping
@@ -358,5 +359,4 @@ order cancellation, payments, progress or completion briefings. Inconsistent sav
 relationships reject the candidate campaign. Production pause persists across
 cancellation and loading until explicitly resumed. Older saves are not migrated.
 
-The AI command contract is 17, observation schema 21, response schema v14 and prompt
-cache v21. The local socket protocol remains 3.
+See the [current formats and protocols](DEVELOPMENT.md#current-formats-and-protocols) for the separate AI and socket identifiers.

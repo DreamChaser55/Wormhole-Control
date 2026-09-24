@@ -2,6 +2,9 @@
 
 Wormhole Control exposes a loopback-only JSON service so Codex can play one visible GUI campaign without calling the OpenAI API. The game remains authoritative: socket workers parse and queue requests, while `Game.update()` performs every read and mutation on the Pygame thread.
 
+See the [current formats and protocols](DEVELOPMENT.md#current-formats-and-protocols) for the independent
+save, observation, command and transport identifiers.
+
 ## Strikecraft servicing
 
 Strikecraft automatically return after 80 owner turns outside their carrier. Inspect
@@ -244,7 +247,7 @@ The normal control command starts a visible local GUI process and connects to a 
 
 ## Command discovery and order control
 
-Read `observation.command_catalog`: it contains command contract version 15, shared field
+Read `observation.command_catalog`: it contains the current command contract version, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
 semantics. Do not inspect implementation code to discover commands. Sparse commands default
 `queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
@@ -357,8 +360,7 @@ matching an ordinary warship with identical visible equipment. Catalog entries e
 generic; an already safe name requires no change. Enemy observations omit all three
 order-layer fields and never expose design identity, actual hull usage, upkeep or
 construction/refit details. These rules apply to all enemy units, preserving owners'
-and allies' existing access. Observation schema is 12, command contract is 10, and the
-socket envelope remains protocol 3.
+and allies' existing access.
 
 ## Attack range commands
 
@@ -396,10 +398,9 @@ Upkeep is charged before environmental hazards each owner turn, even in safe
 space; enabling checks the combined bill but does not reserve fuel. These toggles
 cannot be issued through `use_ability` or `cancel_ability`.
 
-Observation schema 21 and command contract 17 expose a deduplicated `ability_catalog`,
+Observations expose a deduplicated `ability_catalog`,
 visible deployables/patches, public links and authorized per-unit readiness, costs,
-targets and persistent deployment counts. Protocol version is 3. The strict
-response name is `wormhole_control_turn_v14`; unused OpenAI command fields stay null.
+targets and persistent deployment counts. Unused OpenAI command fields stay null.
 
 
 ```json
@@ -489,9 +490,8 @@ and override choices. Enemy views receive no production details.
 The human component panel labels slots starting at 1 and opens a slot-specific
 picker with the same configuration and equipment previews. **No production** clears
 the slot on **Select Production**; Cancel, Esc and closing discard edits.
-Save 4.17 / Strikecraft Bay schema 5 preserve selections, stable assignments and
-paid work without replaying payment or assembly. Command contract 17, observation
-21, response schema v14 and prompt cache v21 apply; socket protocol remains 3.
+The current save and Strikecraft Bay schema preserve selections, stable assignments
+and paid work without replaying payment or assembly. See the [current formats and protocols](DEVELOPMENT.md#current-formats-and-protocols).
 
 ```json
 {"type":"set_wing_production","unit_ids":[101],"slot_index":0,"template_name":"FIGHTER_WING","queue":false}
@@ -501,7 +501,7 @@ paid work without replaying payment or assembly. Command contract 17, observatio
 
 ## Turn-start event summary
 
-Every schema-15 observation ends with `turn_summary`: reporting rounds (`from_turn`
+Every observation includes `turn_summary`: reporting rounds (`from_turn`
 and `to_turn`), grouped event `entries`, net `economy` changes, and `omitted_count`.
 Read this briefing before choosing orders. It covers the previous End Turn's
 resolution and intervening activity through this turn's opening effects. It is
@@ -510,15 +510,13 @@ or regenerate it. Empty entries indicate no important events. Historical subject
 IDs and sectors grant no authority to command currently hidden targets.
 
 The same briefing appears in the human modal and built-in AI prompt. Conversation
-history includes all messages received so far, including the current round. Existing
-socket protocol 3 and command contract 17 remain unchanged; no acknowledgement
-command is required from Codex.
+history includes all messages received so far, including the current round.
+No acknowledgement command is required from Codex.
 
 
 ## Planetary commands
 
-Current observation schema is 12 and command contract is 10; socket protocol
-remains 3. Discover target choices and blockers in per-unit `command_options` and
+Discover target choices and blockers in per-unit `command_options` and
 fortification choices in player-level options.
 
 | Command | Fields beyond `type` |
@@ -544,7 +542,7 @@ income. Hidden and missing targets share `target_unavailable`.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
-casualties and capture. Save 4.17 preserves cargo, approach orders and invasion RNG;
+casualties and capture. The current save preserves cargo, approach orders and invasion RNG;
 reload does not repeat payments or rolls.
 
 ## Wormhole stabilization
@@ -566,7 +564,7 @@ See [complete rules](REFERENCE.md#wormhole-stabilization).
 
 ### Construction equipment overrides
 
-Command contract 17 supports optional nullable `turret_type_override` and
+The shared command contract supports optional nullable `turret_type_override` and
 `defense_type_override` on `construct` and `set_wing_production`, independently. Turret choices are
 `mass_driver`, `beam`, `missile`; defense choices are `armor`, `shields`,
 `point_defense`. Omission/null retains the template preset.

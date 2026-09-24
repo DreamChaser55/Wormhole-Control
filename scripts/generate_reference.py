@@ -52,6 +52,43 @@ def component_rows():
     raise ValueError('COMPONENT_ROWS catalogue was not found')
 
 
+def literal_constant(path, qualified_name):
+    """Read a module/class constant without importing its module or dependencies."""
+    nodes = ast.parse(path.read_text(encoding='utf-8')).body
+    *classes, name = qualified_name.split('.')
+    for class_name in classes:
+        matches = [node for node in nodes if isinstance(node, ast.ClassDef) and node.name == class_name]
+        if len(matches) != 1:
+            raise ValueError(f'{path}: expected one class {class_name}')
+        nodes = matches[0].body
+    values = []
+    for node in nodes:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) else []
+        if any(isinstance(target, ast.Name) and target.id == name for target in targets):
+            values.append(ast.literal_eval(node.value))
+    if len(values) != 1:
+        raise ValueError(f'{path}: expected one literal constant {qualified_name}')
+    return values[0]
+
+
+def version_table(root=ROOT):
+    """Keep independent format identifiers tied to their runtime owners."""
+    sources = (
+        ('Campaign save', 'save_manager.py', 'CURRENT_SAVE_VERSION'),
+        ('Observation', 'game_ai/observation.py', 'OBSERVATION_SCHEMA_VERSION'),
+        ('Command contract', 'game_ai/command_spec.py', 'CONTRACT_VERSION'),
+        ('Response schema', 'game_ai/schema.py', 'TURN_PLAN_SCHEMA_NAME'),
+        ('Prompt cache', 'game_ai/adapters/openai_responses.py', 'PROMPT_CACHE_KEY'),
+        ('Local socket protocol', 'game_control_protocol.py', 'PROTOCOL_VERSION'),
+        ('Strikecraft Bay component', 'unit_components/strikecraft.py', 'StrikecraftBayComponent.SCHEMA_VERSION'),
+        ('Strikecraft Wing component', 'unit_components/strikecraft.py', 'StrikecraftWingComponent.SCHEMA_VERSION'),
+    )
+    return table(['Contract', 'Current version / identifier', 'Source'], [
+        (label, literal_constant(root / relative, name), f'[{name}](../{relative})')
+        for label, relative, name in sources
+    ])
+
+
 def generated_blocks():
     from constants import PLANET_TRAITS
     from unit_components.abilities.registry import ABILITY_DEFINITIONS
@@ -86,6 +123,7 @@ def generated_blocks():
         [(e['name'], e['category'], e['hull_size'] + ' ' + e['kind'], f"{e['hull_used']:.2f}/{e['hull_capacity']:g}",
          e['credit_cost'], e['turns'], f"{e['upkeep']:.2f}", e['description']) for e in entries])
     blocks['environment'] = environmental_tables()
+    blocks['versions'] = version_table()
     return blocks
 
 
@@ -139,7 +177,10 @@ def replace_block(text, key, generated):
 def update_documents(blocks, *, check=False, root=ROOT):
     """Return stale relative paths. Check mode never writes any document."""
     stale = []
-    for relative, keys in {'docs/REFERENCE.md': ('components', 'abilities', 'order-count', 'planets', 'environment', 'unit-catalog')}.items():
+    for relative, keys in {
+        'docs/REFERENCE.md': ('components', 'abilities', 'order-count', 'planets', 'environment', 'unit-catalog'),
+        'docs/DEVELOPMENT.md': ('versions',),
+    }.items():
         path = root / relative
         original = path.read_text(encoding='utf-8')
         result = original

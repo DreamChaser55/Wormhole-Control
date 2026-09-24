@@ -351,13 +351,18 @@ def test_saved_inconsistent_membership_rejected(world):
         order.restore_bindings(game.galaxy)
 
 
-def test_preview_dialog_routes_to_shared_gateway(world, pygame_context):
+@pytest.mark.filterwarnings('error:Finding font with id:UserWarning')
+@pytest.mark.parametrize('themed', [False, True])
+def test_preview_dialog_routes_to_shared_gateway(world, pygame_context, themed):
     from types import SimpleNamespace
     import pygame
     import pygame_gui
     from gui.dismantling_window import DismantlingWindow
+    from gui.theme_loader import build_ui_manager
+    from display_config import DisplayConfig
     game, actor, target = world
-    manager = pygame_gui.UIManager((1280, 720))
+    game.display_config = DisplayConfig(1280, 720, False)
+    manager = build_ui_manager(game.display_config) if themed else pygame_gui.UIManager((1280, 720))
     gui = SimpleNamespace(manager=manager, game_instance=game, display_config=game.display_config)
     dialog = DismantlingWindow(gui, actor, target)
     gui.dismantling_window = dialog

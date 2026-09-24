@@ -4,14 +4,15 @@ Review date: **2026-09-22**
 Base revision: **`5c6fe34f2d1902f9cf2a8a5e50ec35a880edaefd`**
 
 Code metrics and original audit results refer to the base revision above.
+Outstanding recommendations were updated on **2026-09-24** after removing addressed findings.
 
 ## Assessment
 
-The project has useful foundations: explicit order ownership, separate campaign preparation and commit, allowlisted persistence, player-scoped observations, shared command definitions, bounded histories, and substantial offline tests. These are worth preserving. Several large modules repeat related rules, and documentation and public failure reasons still need attention.
+The project has useful foundations: explicit order ownership, separate campaign preparation and commit, allowlisted persistence, player-scoped observations, shared command definitions, bounded histories, and substantial offline tests. These are worth preserving. Several large modules repeat related rules, and documentation still duplicates contracts across feature sections.
 
-The best next step is to address rule-documentation mismatches and public failure reasons, followed by focused extraction and documentation cleanup. A new entity framework, generic transaction engine, wholesale UI rewrite, or repository-wide typing conversion would add risk without addressing these problems directly.
+The best next step is focused extraction of large responsibilities and consolidation of repeated documentation. A new entity framework, generic transaction engine, wholesale UI rewrite, or repository-wide typing conversion would add risk without addressing these problems directly.
 
-**Latest recorded verification: the full offline suite passed on all three CI OS/Python combinations, executed locally.** See the latest recorded verification below for runtime versions and counts. One existing font-preload warning remains. Original audit results are retained in the testing section.
+**Latest recorded verification: the full offline suite passed on all three CI OS/Python combinations, executed locally.** See the latest recorded verification below for runtime versions and counts. The latest runs reported no warnings. Original audit results are retained in the testing section.
 
 ### Scope and method
 
@@ -21,7 +22,7 @@ The best next step is to address rule-documentation mismatches and public failur
 - Ran the full offline suite, configured quality checks, additional lint, local Markdown link/heading checks, and isolated behavioral probes. Live provider calls, real API credentials, and the user's saved campaigns were not used.
 - This is a source review and targeted behavioral audit, not a proof that every possible campaign, UI interaction, or malformed input is correct. Runtime coverage percentages were not measured. The original audit did not execute the CI operating-system/Python matrix; the latest recorded runtime verification is listed separately below.
 
-The cleanup and documentation rewrites below remain recommendations, not completed changes.
+The remaining cleanup and documentation rewrites below are recommendations, not completed changes.
 
 ## Important file review
 
@@ -44,7 +45,7 @@ The following records individual important files and the main conclusions from t
 | [domain/coordinates.py](D:/Programming/Github_repos/Wormhole-Control/domain/coordinates.py) | A small typed coordinate boundary is preferable to another geometry hierarchy. Gradually reduce tuple/attribute compatibility branching where callers have a known type. |
 | [domain/players.py](D:/Programming/Github_repos/Wormhole-Control/domain/players.py) | Central ownership/team helpers already exist. Preserve strict input validation before constructor defaulting during hydration. |
 | [domain/units.py](D:/Programming/Github_repos/Wormhole-Control/domain/units.py) | Component replacement/destruction cleanup has useful intent documentation. The class remains broad; preserve cleanup ordering and distinguish installed, operational, and deployed state in callers. |
-| [domain/celestials.py](D:/Programming/Github_repos/Wormhole-Control/domain/celestials.py) | Gas-giant release uses bounded candidates, common safety checks, and commit-after-placement. Sabotage implementation disagrees with the manual. |
+| [domain/celestials.py](D:/Programming/Github_repos/Wormhole-Control/domain/celestials.py) | Gas-giant release uses bounded candidates, common safety checks, and commit-after-placement. |
 | [domain/construction_job.py](D:/Programming/Github_repos/Wormhole-Control/domain/construction_job.py) | This is a presentation/selection view of a live job, not another persisted entity. Name/document that distinction and avoid expanding it into authoritative construction state. |
 | [domain/communications.py](D:/Programming/Github_repos/Wormhole-Control/domain/communications.py) | Keep conversation persistence distinct from filesystem export. Preserve player identity/path validation before export. |
 | [domain/deployables.py](D:/Programming/Github_repos/Wormhole-Control/domain/deployables.py), [domain/minefields.py](D:/Programming/Github_repos/Wormhole-Control/domain/minefields.py) | Distinct tactical entities are justified. Keep their ownership, visibility, and removal semantics explicit rather than treating every object as a ship through duck typing. |
@@ -60,13 +61,13 @@ The following records individual important files and the main conclusions from t
 | File | Review conclusion |
 |---|---|
 | [turn_processor.py](D:/Programming/Github_repos/Wormhole-Control/turn_processor.py) | Phase sequencing is important and currently difficult to read beside the 396-line movement method. Future extraction of sublight, hex jump, and wormhole jump resolution must preserve successful-debit checks and rejected-relocation refunds. Describe owner-turn versus global-round timing at the orchestration point. |
-| [economy.py](D:/Programming/Github_repos/Wormhole-Control/economy.py) | Income estimation repeats resolution rules from `_process_resource_generation`, including slightly different sabotage relationship checks. Return a shared pure income breakdown and let resolution apply it. Preserve the explicitly documented upkeep exclusions. |
+| [economy.py](D:/Programming/Github_repos/Wormhole-Control/economy.py) | Preserve the shared pure income calculation used by previews and settlement, along with the explicitly documented upkeep exclusions. |
 | [events.py](D:/Programming/Github_repos/Wormhole-Control/events.py) | Typed UI events are useful. Avoid adding an additional parallel command representation for every new feature when an existing gateway operation already fits. |
 | [order_system.py](D:/Programming/Github_repos/Wormhole-Control/order_system.py) | Human-event translation and validation overlap with gateway/order logic. Reuse domain predicates and command preparation where practical; keep UI event translation thin. |
 | [unit_orders/base.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/base.py) | Explicit roots, suborders, outcomes, and cancellation ownership justify this abstraction. Document which transitions execute children synchronously and which wait for a turn. |
 | [unit_components/commander.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/commander.py) | Actuator ownership and separate standing/explicit work are valuable safeguards. Keep the detailed intent comments around cancellation and stale targets. Sidebar formatting could eventually leave this stateful component. |
 | [unit_orders/movement.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/movement.py) | Route planning, target approach, waypoint execution, and collision rules need smaller named units. Its class/method docs should explain when auto-approach replans and what failed planning leaves behind. |
-| [unit_orders/abilities.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/abilities.py) | Large branching dispatcher, UI warnings inside domain execution, and an inaccurate class docstring about position-target auto-movement. Extract target/range validation without inventing a new ability engine. |
+| [unit_orders/abilities.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/abilities.py) | Large branching dispatcher with UI warnings inside domain execution. Extract target/range validation without inventing a new ability engine. |
 | [unit_orders/construction.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/construction.py), [unit_orders/refit.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/refit.py) | Rechecking at execution and recording the actual payer are important. Keep cancellation/refund tests; avoid trusting UI price/duration hints. Refit's direct GUI warning callback is residual domain/presentation coupling. |
 | [unit_orders/combat.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/combat.py), [unit_orders/stance.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/stance.py) | Explicit attack and standing engagement are distinct behaviors and should remain distinct. Consolidate shared target/range predicates, not the entire order lifecycle. |
 | [unit_orders/fuel_transport.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/fuel_transport.py), [unit_orders/antimatter.py](D:/Programming/Github_repos/Wormhole-Control/unit_orders/antimatter.py) | Long-lived transport phases are justified by waiting, sourcing, and delivery. Document phase transitions and reserve semantics rather than repeating branches in comments. |
@@ -81,7 +82,7 @@ The following records individual important files and the main conclusions from t
 | [unit_components/abilities/component.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/component.py) | Preserve the separate ordinary, tactical, and toggle lifecycle contracts when reorganizing. |
 | [unit_components/abilities/registry.py](D:/Programming/Github_repos/Wormhole-Control/unit_components/abilities/registry.py) | Existing definitions should remain the source of ability metadata. Do not add another manual requirements mapping. |
 | [unit_templates.py](D:/Programming/Github_repos/Wormhole-Control/unit_templates.py) | Built-in, Testing, and private categories are deliberately distinct. Preserve that privacy boundary and explicit Testing publication. Module import still reads the bundled catalog; this is different from unwanted user-data loading. |
-| [custom_unit_templates.py](D:/Programming/Github_repos/Wormhole-Control/custom_unit_templates.py) | Dataclasses, costs, validation adapters, conversion, and storage make this a 1,149-line mixed module. Separate the storage manager from design representation/costs and correct its opening description. |
+| [custom_unit_templates.py](D:/Programming/Github_repos/Wormhole-Control/custom_unit_templates.py) | Dataclasses, costs, validation adapters, conversion, and storage make this a 1,149-line mixed module. Separate the storage manager from design representation/costs. |
 | [unit_template_validation.py](D:/Programming/Github_repos/Wormhole-Control/unit_template_validation.py) | Strong type/shape checks, duplicate-key handling, and whole-library rejection are useful. |
 | [refit_validation.py](D:/Programming/Github_repos/Wormhole-Control/refit_validation.py) | Recalculating cost hints and validating the complete resulting equipment are good. Keep this pure. |
 | [construction_customization.py](D:/Programming/Github_repos/Wormhole-Control/construction_customization.py), [unit_catalog.py](D:/Programming/Github_repos/Wormhole-Control/unit_catalog.py) | Shared customization/catalog output reduces UI/AI drift. Continue generating public descriptions from authoritative design data. |
@@ -100,7 +101,7 @@ The following records individual important files and the main conclusions from t
 | [strikecraft_service.py](D:/Programming/Github_repos/Wormhole-Control/strikecraft_service.py) | Read-only state and once-per-owner-round advancement are correctly separated. Names such as `required` and `process` obscure their purpose when imported directly. |
 | [tactical_abilities.py](D:/Programming/Github_repos/Wormhole-Control/tactical_abilities.py), [strikecraft_abilities.py](D:/Programming/Github_repos/Wormhole-Control/strikecraft_abilities.py) | Keep availability/preview separate from activation. Reduce duplicated guards across these and ordinary abilities, especially storage/functionality checks. |
 | [timed_effects.py](D:/Programming/Github_repos/Wormhole-Control/timed_effects.py) | Source-owned contributions are a compact solution to overlapping effects. Document key identity and idempotent removal; avoid replacing this with a generic effect framework. |
-| [order_history.py](D:/Programming/Github_repos/Wormhole-Control/order_history.py) | Bounded, saved outcomes are useful. `hazard_blocked` is emitted by orders but absent from `PUBLIC_REASONS`, so history normalizes it to `execution_failed`; unify the intentional public vocabulary. |
+| [order_history.py](D:/Programming/Github_repos/Wormhole-Control/order_history.py) | Bounded, saved outcomes and the explicit public reason allowlist are useful. Preserve exactly-once recording and disclosure limits. |
 | [turn_briefing.py](D:/Programming/Github_repos/Wormhole-Control/turn_briefing.py) | Frozen reports and recipient-scoped recording are good. Document begin/finish collection windows and omitted-count accounting at the important entry points. |
 | [save_manager.py](D:/Programming/Github_repos/Wormhole-Control/save_manager.py) | File I/O, JSON serialization, object hydration, and sidecar exports share 875 lines. Preserve strict identity serialization and shared sidecar containment when separating I/O responsibilities; keep file replacement behavior explicit. |
 | [campaign_persistence.py](D:/Programming/Github_repos/Wormhole-Control/campaign_persistence.py) | Prepare/reconcile/commit is worth preserving. Large validators can be split by document section while retaining one strict entry point. Presence checks alone do not establish usable state. |
@@ -121,7 +122,7 @@ The following records individual important files and the main conclusions from t
 | [game_ai/coordinator.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/coordinator.py) | Main-thread mutation, stale-result checks, and bounded semantic repair are useful. |
 | [game_ai/adapters/openai_responses.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/adapters/openai_responses.py) | Provider details are correctly isolated. No live model availability or provider behavior was tested in this review. |
 | [game_ai/runtime.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/runtime.py), [game_ai/config.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/config.py) | Central runtime limits and credential-loading isolation are useful. Keep permissive user configuration normalization out of strict campaign restoration. |
-| [game_ai/memory.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/memory.py) | Bounded sections and atomic sidecar replacement are appropriate. Preserve shared identity and resolved-path containment checks. The 8,000-character bound applies to receipts, not all memory sections combined; make wording precise. |
+| [game_ai/memory.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/memory.py) | Bounded sections and atomic sidecar replacement are appropriate. Preserve shared identity and resolved-path containment checks. |
 | [game_ai/evaluation.py](D:/Programming/Github_repos/Wormhole-Control/game_ai/evaluation.py) | Provider-independent cases and gateway acceptance scoring are useful. Keep offline contract tests separate from model quality/cost evaluations. |
 | [game_control_protocol.py](D:/Programming/Github_repos/Wormhole-Control/game_control_protocol.py) | Loopback-only binding, size limits, turn tokens, response caching, and main-thread pumping form a sensible local boundary. Document cache lifetime and uncertain outcomes; do not describe preflight atomicity as rollback of every possible commit failure. |
 | [game_control.py](D:/Programming/Github_repos/Wormhole-Control/game_control.py) | Small CLI is appropriate. Keep transport recovery tied to request IDs and observation refresh rather than blind command retries. |
@@ -134,7 +135,7 @@ The following records individual important files and the main conclusions from t
 | [gui/sidebar/panels_unit.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_unit.py), [gui/sidebar/panels_world.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_world.py) | Keep user-visible rows distinct from internal identity metadata. Preserve public equipment/privacy comparisons when changing layouts. |
 | [gui/sidebar/order_formatting.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/order_formatting.py) | Large order-type formatter duplicates some traversal/knowledge used by renderers and AI views. Reuse neutral order traversal where possible, while retaining viewer-specific redaction. |
 | [gui/unit_editor_gui/param_readers.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/param_readers.py) | Input handling silently substitutes/defaults or preserves old values in several places. Consistent inline feedback would improve clarity. |
-| [gui/theme_loader.py](D:/Programming/Github_repos/Wormhole-Control/gui/theme_loader.py), [gui/text_layout.py](D:/Programming/Github_repos/Wormhole-Control/gui/text_layout.py) | Scaled in-memory themes and measured wrapping are useful. Resolve the remaining rich-text fallback font warning at the actual manager/style used by the dismantling preview. |
+| [gui/theme_loader.py](D:/Programming/Github_repos/Wormhole-Control/gui/theme_loader.py), [gui/text_layout.py](D:/Programming/Github_repos/Wormhole-Control/gui/text_layout.py) | Scaled in-memory themes and measured wrapping are useful. |
 | [rendering/system_renderer.py](D:/Programming/Github_repos/Wormhole-Control/rendering/system_renderer.py) | Large draw and order-line methods need separation between waypoint collection and drawing. Reuse traversal with sector rendering where semantics match. |
 | [rendering/sector_renderer/sector_renderer.py](D:/Programming/Github_repos/Wormhole-Control/rendering/sector_renderer/sector_renderer.py) | Bounded effect surfaces and limits on large rendering allocations are justified, not gratuitous complexity. Preserve lifecycle/cache tests. |
 | [rendering/sector_renderer/sector_overlay_renderer.py](D:/Programming/Github_repos/Wormhole-Control/rendering/sector_renderer/sector_overlay_renderer.py) | Large overlay/order traversal is the next renderer extraction target. Avoid coupling presentation geometry back into command validation. |
@@ -147,20 +148,9 @@ The following records individual important files and the main conclusions from t
 1. **Split `game_ai/commands.py` by responsibility.** Keep `CommandGateway` as the facade. Move projection state and replay into a focused module; separate preparation by a few gameplay domains. Use small records for cohesive projected state if they replace parallel dictionaries. Preserve ordering, payer identity, replacement/queue semantics, and partial-commit receipts.
 2. **Extract movement resolution and assembly.** Pull sublight/hex/wormhole resolution from `TurnProcessor`, and pure template assembly from `Constructor`. Keep orchestration and state transitions visible in their current owners.
 3. **Reduce repeated presentation knowledge.** Share order traversal. Do not force player-redacted AI output and rich GUI formatting into one universal serializer.
-4. **Separate pure calculations from settlement.** A shared income breakdown can drive the HUD and resource generation. Extend the existing preview/commit pattern where calculations are repeated.
-5. **Separate storage mechanics from design rules.** Custom-library file operations and registration belong together; cost formulas and design dataclasses can remain in a separate focused module. Retain atomic writes and failure preservation.
+4. **Separate storage mechanics from design rules.** Custom-library file operations and registration belong together; cost formulas and design dataclasses can remain in a separate focused module. Retain atomic writes and failure preservation.
 
-### Quantified lint and complexity signals
-
-The configured whole-repository Ruff check selects `F401`, `F541`, `F821`, `F822`, `F823`, and `F841`. It passes. A fresh broader **diagnostic** run with `--select F,E9` reports these remaining findings:
-
-| Diagnostic | Production/tooling | Tests |
-|---|---:|---:|
-| Shadowed imports (`F402`) | 1 | 0 |
-| Redefinitions (`F811`) | 0 | 2 |
-| **Total** | **1** | **2** |
-
-These are **3 cleanup signals, not 3 demonstrated bugs**. They concern a loop variable shadowing the imported `field` in `campaign_persistence.py` and repeated imports in `tests/test_gui_display_scales.py` and `tests/test_unit_template_validation.py`, not overwritten test functions. Extend lint to cleaned modules incrementally; do not enable a large new rule set and then suppress its output wholesale.
+### Complexity signals
 
 Particularly large functions at the reviewed revision include `handle_context_menu_action` (454 lines), `command_guidance` (421), `_order_factory` (401), `_process_movement` (396), `_draw_system_view_order_lines` (357), `assemble_unit_from_template` (311), and `process_event` (300). These counts include comments and blanks; use them to select review targets, not as arbitrary maximums.
 
@@ -186,11 +176,7 @@ For a mutating procedure, “Returns: None; updates …” is enough. Do not add
 
 **Keep** explanations of actuator ownership, refund payer identity, deliberate conservative fuel estimates, cleanup ordering, restoration without activation, graphical allocation limits, and SDL event-payload cleanup. Those comments capture non-obvious intent.
 
-**Trim or correct** step-by-step arithmetic narration in geometry/pathfinding, comments such as “remove from system” immediately above a removal call, repeated log-like phase headings, and stale statements. Specific inaccuracies include:
-
-- `custom_unit_templates.py` claims custom designs are inserted into `UNIT_TEMPLATES` and mentions `create_unit_from_template`; current private registration is separate and the constructor entry point is `instantiate_unit_from_template`.
-- The same module says only Engines, Weapons, Defenses, and Hyperdrive use dynamic costs, despite additional dynamic components.
-- `UseAbilityOrder` claims position-target abilities perform no auto-movement, but the implementation creates approach orders for applicable position-target effects.
+**Trim or correct** step-by-step arithmetic narration in geometry/pathfinding, comments such as “remove from system” immediately above a removal call, repeated log-like phase headings, and stale statements.
 
 ## Naming and organization
 
@@ -215,22 +201,7 @@ Prefer `owner_round`, `turn_number`, `cooldown_remaining`, and `ready_round` acc
 
 ## Documentation accuracy and cleanup plan
 
-The existing six-document split is broadly appropriate. The problems are repeated contracts, feature-by-feature appendices that restate rules, and old version claims outside generated blocks. No broken local Markdown file/heading links were found by the audit checker. The generated reference check passes, but it does not validate all handwritten prose.
-
-### Specific inaccuracies
-
-| Location | Current problem | Required correction |
-|---|---|---|
-| [CODEX_CONTROL.md:247](D:/Programming/Github_repos/Wormhole-Control/docs/CODEX_CONTROL.md:247) | Says command contract 15. | Current command contract is 17. |
-| [CODEX_CONTROL.md:360](D:/Programming/Github_repos/Wormhole-Control/docs/CODEX_CONTROL.md:360), [CODEX_CONTROL.md:520](D:/Programming/Github_repos/Wormhole-Control/docs/CODEX_CONTROL.md:520) | Says observation 12 / command 10. | Current observation is 21 / command 17; socket protocol remains 3. |
-| [CODEX_CONTROL.md:504](D:/Programming/Github_repos/Wormhole-Control/docs/CODEX_CONTROL.md:504) | Calls the current turn-summary observation schema 15. | Use the current schema or link to one version table. |
-| [SAVE_FORMAT.md:326](D:/Programming/Github_repos/Wormhole-Control/docs/SAVE_FORMAT.md:326) | Dismantling section says Bay component schema 4. | Current Strikecraft Bay schema is 5; another section already documents it correctly. |
-| [REFERENCE.md:1031](D:/Programming/Github_repos/Wormhole-Control/docs/REFERENCE.md:1031) | Mentions partially recovering a cache and retaining its deployment slot. | Remove the obsolete fuel-cache statement; that deployable/order no longer exists. |
-| [REFERENCE.md:1298](D:/Programming/Github_repos/Wormhole-Control/docs/REFERENCE.md:1298) | Sensors sabotage disables both ranges. | Code halves short-range radius and disables long-range coverage. |
-| [REFERENCE.md:1299](D:/Programming/Github_repos/Wormhole-Control/docs/REFERENCE.md:1299) | Antimatter sabotage leaks 5 AM per turn. | `Unit.apply_sabotage` immediately attempts to drain half the current fuel; no corresponding 5-AM-per-turn drain exists in the reviewed update path. Resolve intended rule versus implementation explicitly. |
-| [AGENTIC_AI.md:113](D:/Programming/Github_repos/Wormhole-Control/docs/AGENTIC_AI.md:113) | Memory-limit wording can read as a total memory limit. | State that the 8,000-character cap is for recent receipts; other bounded sections add to it. |
-
-The current implementation's version set is: **save 4.17; observation 21; command contract 17; response schema v14; prompt cache v21; socket protocol 3; Strikecraft Bay schema 5; Strikecraft Wing schema 2.** These are different contracts and should not be collapsed into one version number.
+The existing six-document split is broadly appropriate. Remaining problems are repeated contracts and feature-by-feature appendices that restate rules. The generated reference check does not validate all handwritten prose. Use the [generated version table](docs/DEVELOPMENT.md#current-formats-and-protocols) for current format and protocol identifiers.
 
 ### Give each topic one owner
 
@@ -239,36 +210,34 @@ The current implementation's version set is: **save 4.17; observation 21; comman
 | `README.md` | Introduction, install/run, first-game path, links. | Keep it short; do not move detailed reference material into it. |
 | `REFERENCE.md` | Current player-facing rules, controls, equipment, generated catalog/terrain tables, storage troubleshooting. | Removed features, historical version notes, repeated protocol internals. |
 | `DEVELOPMENT.md` | Setup/checks, short architecture map, development invariants, fixtures, documentation maintenance. | Repeated test command lists elsewhere can link here. A permanent file-by-file inventory would become stale; this report is a dated review. |
-| `AGENTIC_AI.md` | Observation/disclosure contract, shared command semantics, provider turn flow, memory, repair/failure behavior, evaluation. | Detailed gameplay rules already owned by `REFERENCE.md`; repeated feature histories and current-version announcements. |
+| `AGENTIC_AI.md` | Observation/disclosure contract, shared command semantics, provider turn flow, memory, repair/failure behavior, evaluation. | Detailed gameplay rules already owned by `REFERENCE.md`; repeated feature histories. |
 | `CODEX_CONTROL.md` | Local bridge setup, CLI/envelopes, turn tokens, request IDs, waits, retry/recovery workflow, a few practical command examples. | Repeated shared command/rule descriptions; link to their owner in `AGENTIC_AI.md` or `REFERENCE.md`. |
-| `SAVE_FORMAT.md` | Sole current format, strict rejection, schema/state ownership, prepare/commit, references/timers, persistence-specific invariants. | Historical 4.x change narration and repeated full gameplay rules. |
+| `SAVE_FORMAT.md` | Sole current format, strict rejection, schema/state ownership, prepare/commit, references/timers, persistence-specific invariants. | Repeated full gameplay rules. |
 
 Suggested sequence:
 
-1. Correct the factual mismatches above before moving content.
-2. Put current versions in one small generated or centrally checked table and link to it. Keep historical information in Git history unless it explains a current invariant.
-3. Consolidate common command lifecycle rules: queue/replacement, preflight purity, execution recheck, partial commit, cancellation, and observable outcomes. Link feature sections to that contract.
-4. Keep feature documentation focused on its actual deltas: targets, timing, costs, visibility, and interruption conditions.
-5. Retain the existing six generated reference blocks. Extend generation only for stable registry facts such as versions or public reason codes; human explanations should remain authored prose.
-6. Run link checks, generated-reference checks, and the relevant contract tests after each documentation change.
+1. Consolidate common command lifecycle rules: queue/replacement, preflight purity, execution recheck, partial commit, cancellation, and observable outcomes. Link feature sections to that contract.
+2. Keep feature documentation focused on its actual deltas: targets, timing, costs, visibility, and interruption conditions.
+3. Retain the generated reference blocks and central version table. Extend generation only for stable registry facts; human explanations should remain authored prose.
+4. Run link checks, generated-reference checks, and the relevant contract tests after each documentation change.
 
 ## Testing infrastructure and results
 
 ### Latest recorded verification
 
-The **2026-09-23 verification** passed focused regressions followed by the full offline CI runtime matrix. Coverage includes real carrier placement and failure atomicity, command-registry discovery invariants, running-request and retry cancellation, HTTP response closure, stale successes/errors, repeated resets, retirement deadlines, owned/borrowed clients, bounded shutdown and process exit. Existing semantic-repair and commit-failure behavior also passes. No live API requests were made; the existing key configuration was retained.
+The **2026-09-24 verification** passed the full offline CI runtime matrix locally. Focused regressions cover public failure history and briefings, save/load retention, private-reason sanitization, income preview/settlement parity and purity, generated version documentation, and the dismantling preview with default and themed managers. No live API requests were made.
 
 | Local runtime | Full offline suite |
 |---|---|
-| Ubuntu under WSL, Python 3.10.21 (CI matrix version) | 3,874 passed, 5 skipped, 10 subtests passed; 1,316.09 seconds. |
-| Ubuntu under WSL, Python 3.14.7 (CI matrix version) | 3,874 passed, 5 skipped, 10 subtests passed; 1,262.59 seconds. |
-| Windows, Python 3.14.7 (CI matrix version) | 3,871 passed, 8 skipped, 10 subtests passed; 253.92 seconds. |
+| Ubuntu under WSL, Python 3.10.21 (CI matrix version) | 3,893 passed, 5 skipped, 10 subtests passed; 239.00 seconds. |
+| Ubuntu under WSL, Python 3.14.7 (CI matrix version) | 3,893 passed, 5 skipped, 10 subtests passed; 200.68 seconds. |
+| Windows, Python 3.14.7 (CI matrix version) | 3,890 passed, 8 skipped, 10 subtests passed; 224.89 seconds. |
 
-The Linux runs used the mounted Windows workspace; elapsed times include concurrent local validation and filesystem overhead.
+The Linux runs used the mounted Windows workspace and native Linux caches. Elapsed times include concurrent local validation and are not standalone benchmarks.
 
-The CI quality commands also pass under Ubuntu Python 3.10.21: default and scoped Ruff checks, import boundaries, both mypy platform configurations, and generated-reference consistency. Additional `F,E9` lint passes for the new helper modules and regression files.
+Configured Ruff checks and repository-wide `F,E9` lint pass, as do import boundaries, both mypy platform configurations, generated-reference consistency, and whitespace checks. All 104 local documentation links and anchors pass. The final privacy-assertion adjustment also passed focused checks on all three runtimes.
 
-The Windows skips are symbolic-link tests requiring unavailable privileges; Windows junction tests pass. Linux skips the four Windows junction cases and one existing Windows-only check. Each run reports the same existing font-preload warning. Save version remains **4.17**; command and observation payloads are unchanged.
+The Windows skips are symbolic-link tests requiring unavailable privileges; Windows junction tests pass. Linux skips the four Windows junction cases and one existing Windows-only check. No warnings were reported. Save and external wire formats are unchanged.
 
 ### Original audit checks
 
@@ -283,11 +252,9 @@ Environment: **Windows, Python 3.12.14**, project `.venv`; pygame-ce **2.5.7**, 
 | `python -m mypy --platform linux` | Passed for the seven configured files. |
 | `python -m mypy --platform win32` | Passed for the seven configured files. |
 | `python scripts/generate_reference.py --check` | Passed. |
-| Additional repository-wide `ruff --select F,E9` | 272 diagnostics at the base revision; retained as historical evidence. Current remaining findings are listed above. |
+| Additional repository-wide `ruff --select F,E9` | 272 diagnostics at the base revision; retained as historical evidence. The latest broader lint result is recorded above. |
 | Local Markdown path/heading check | No unresolved local links detected. External URLs were not fetched. |
 | `git diff --check` | Passed for the changes. |
-
-The remaining warning is `noto_sans_bold_aa_14` not preloaded in `test_dismantling.py::test_preview_dialog_routes_to_shared_gateway`. It is non-fatal and should be fixed locally rather than globally suppressed.
 
 CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit did not run those jobs. The latest recorded verification above distinguishes actual local runtime tests from the two static mypy platform configurations; local Ubuntu runs use WSL rather than GitHub-hosted runners.
 
@@ -304,34 +271,22 @@ CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit 
 
 1. **Repeated setup:** Share simple campaign/entity builders where setup remains duplicated. Avoid fixtures that construct a full UI or large galaxy for a calculation needing two units.
 2. **Narrow typing scope:** Strict mypy covers seven selected boundary files with silent import following, not the entire game. Add types first to preparation results, projection records, and persistence validators where they clarify contracts.
-3. **Missing cross-boundary tests:** Add focused coverage where individually tested layers can disagree, including public failure history below, instead of more implementation-call-count assertions.
+3. **Cross-boundary coverage:** Continue testing where individually tested layers can disagree instead of adding more implementation-call-count assertions.
 4. **UI test cost:** Several large-display tests take approximately 2–4 seconds each. Keep representative resolution/scale transitions and privacy cases; consolidate redundant screenshots/setup only after checking they do not protect different regressions. A roughly 3.5-minute complete local run does not justify deleting meaningful tests just to reduce count.
-
-### Recommended regression additions
-
-| Boundary | Meaningful assertion |
-|---|---|
-| Order failure → public history | Intended actionable reasons such as `hazard_blocked` survive journaling without exposing private details. |
 
 ## Suggested implementation order and improvement ideas
 
-### First: correctness with small diffs
-
-Correct inaccurate docs and public reason-code drift alongside the affected behavior.
-
-### Next: reduce maintenance cost
+### First: reduce maintenance cost
 
 - Extract command projection, movement resolution, constructor assembly, and wizard pages in separate reviewable changes. Preserve public behavior while moving code.
 - Add intent-focused docstrings to the important functions listed above; remove neighboring narration that becomes redundant.
 - Consolidate documentation according to topic ownership and keep version facts generated/checked.
 
-### Useful improvements to consider after correctness
+### Further improvements to consider
 
-- **A concise diagnostics summary:** Surface actionable order failure reasons. Existing logs/receipts already provide the basis.
 - **Better Designer feedback:** Extend field-level error feedback to the remaining parameter readers that silently default or retain old values. Show why a configuration cannot fit its hull.
 - **Deterministic scenario probes:** Keep small, seeded save/command fixtures for representative construction, logistics, capture, docking, and overlapping effects. Favor a handful of cross-boundary invariants over a large new fuzzing framework initially.
 - **Measure observation and guidance cost:** Before caching, profile a large campaign's observation building, command guidance, and repeated graph lookups. Cache only stable catalog data or proven hotspots with explicit invalidation rules.
-- **Unified income explanation:** A shared income breakdown can improve both correctness and the player-facing economy display without a new subsystem.
 - **Clear clocks:** Document owner turns, global rounds, cooldowns, and ready-round deadlines consistently in code and UI help. Many interruption and persistence errors become easier to review once the clock is explicit.
 
 The desired outcome is fewer independent implementations of the same rule, clearer ownership of mutable state, and tests that exercise real boundary behavior. The existing modular domain services and preparation/commit model can support that work without a broad rewrite.
@@ -340,8 +295,8 @@ The desired outcome is fewer independent implementations of the same rule, clear
 
 The most useful local diagnostic artifacts are:
 
-- [Windows Python 3.14 full-suite JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/windows314-junit.xml).
-- Linux full-suite JUnit results: [Python 3.10](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/linux310-final-junit.xml) and [Python 3.14](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/linux314-final-junit.xml).
+- Latest full-suite JUnit results: [Windows Python 3.14](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/maintenance/windows314-junit.xml), [Linux Python 3.10](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/maintenance/linux310-junit.xml), and [Linux Python 3.14](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/maintenance/linux314-junit.xml).
+- Previous 2026-09-23 full-suite JUnit results: [Windows Python 3.14](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/windows314-junit.xml), [Linux Python 3.10](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/linux310-final-junit.xml), and [Linux Python 3.14](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f689/linux314-final-junit.xml).
 - Additional Python 3.12 full-suite JUnit results: [Windows](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/full-junit.xml) and [Linux](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/f457/linux-junit.xml).
 - [Original audit full-suite output](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-pytest.log) and [JUnit results](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/final-junit.xml).
 - [Persistence, path, and observation probes](D:/Programming/Github_repos/Wormhole-Control/.codex_test_cache/audit/reproductions.json).

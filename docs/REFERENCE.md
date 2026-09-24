@@ -1054,8 +1054,7 @@ operational, and activation requires enough AM.
   and nitrogen cooling for allies, and oxygen splash damage and dust sensor
   penalties for enemies. Baseline nebula effects continue outside those enhancements.
 
-Ghost emitters have no expiry. Identifying a decoy or partially
-recovering a cache does not free a deployment slot. Source destruction, capture
+Ghost emitters have no expiry. Identifying a decoy does not free a deployment slot. Source destruction, capture
 or refitting does not reset the cap attached to that deploying ship. Active links
 end if their participants cease to meet deployment, equipment, allegiance or range
 requirements. See [tactical persistence](SAVE_FORMAT.md#tactical-state) for saved state.
@@ -1322,8 +1321,8 @@ and allies; infiltrated colonies provide a 500-radius visual area.
 | Weapons | Turret damage halved |
 | Defenses | Defense mitigation halved |
 | Hyperdrive | Hex and wormhole jumps disabled |
-| Sensors | Short-range sensors and long-range coverage disabled |
-| Antimatter | 5 AM leaked per turn |
+| Sensors | Short-range sensor radius halved; long-range coverage disabled |
+| Antimatter | Immediately drains half the current fuel from functioning storage; no recurring leak |
 | Economy | Colony tax income halved; the infiltrating player receives 25% of base tax |
 | Growth | Population growth halted |
 
