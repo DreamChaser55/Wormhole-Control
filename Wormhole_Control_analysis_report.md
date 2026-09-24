@@ -274,22 +274,64 @@ CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit 
 3. **Cross-boundary coverage:** Continue testing where individually tested layers can disagree instead of adding more implementation-call-count assertions.
 4. **UI test cost:** Several large-display tests take approximately 2–4 seconds each. Keep representative resolution/scale transitions and privacy cases; consolidate redundant screenshots/setup only after checking they do not protect different regressions. A roughly 3.5-minute complete local run does not justify deleting meaningful tests just to reduce count.
 
-## Suggested implementation order and improvement ideas
+## Proposed action plan
 
-### First: reduce maintenance cost
+Proposed on **2026-09-24**, following a check of the relevant implementation at **`7a5bd48`**. These actions remain planned, not completed. The order balances impact, effort, and regression risk: three quick improvements followed by three focused refactors. Command handling is the highest-priority maintenance refactor; the earlier items provide smaller, independently reviewable improvements.
 
-- Extract command projection, movement resolution, constructor assembly, and wizard pages in separate reviewable changes. Preserve public behavior while moving code.
-- Add intent-focused docstrings to the important functions listed above; remove neighboring narration that becomes redundant.
-- Consolidate documentation according to topic ownership and keep version facts generated/checked.
+### 1. Consolidate contracts and improve selected docstrings
 
-### Further improvements to consider
+**Effort: small.** Make the existing [shared order contract](docs/AGENTIC_AI.md#shared-order-contract) and [commit guarantees](docs/AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback) the authoritative explanation of preflight, execution rechecks, cancellation, refunds, and partial commits. Replace repeated explanations in feature sections with links. Keep gameplay rules in `REFERENCE.md` and version facts in the generated table in `DEVELOPMENT.md`.
 
-- **Better Designer feedback:** Extend field-level error feedback to the remaining parameter readers that silently default or retain old values. Show why a configuration cannot fit its hull.
-- **Deterministic scenario probes:** Keep small, seeded save/command fixtures for representative construction, logistics, capture, docking, and overlapping effects. Favor a handful of cross-boundary invariants over a large new fuzzing framework initially.
-- **Measure observation and guidance cost:** Before caching, profile a large campaign's observation building, command guidance, and repeated graph lookups. Cache only stable catalog data or proven hotspots with explicit invalidation rules.
-- **Clear clocks:** Document owner turns, global rounds, cooldowns, and ready-round deadlines consistently in code and UI help. Many interruption and persistence errors become easier to review once the clock is explicit.
+Document missing or weak contracts around projection, visibility, campaign preparation, and owner-turn timing. Distinguish owner turns, global rounds, cooldown counters, and ready-round deadlines. Several priority functions already have useful docstrings, so review gaps individually and retain explanations of non-obvious behavior.
 
-The desired outcome is fewer independent implementations of the same rule, clearer ownership of mutable state, and tests that exercise real boundary behavior. The existing modular domain services and preparation/commit model can support that work without a broad rewrite.
+**Complete when:** local links and generated-reference checks pass, each shared rule has one clear documentation home, and the selected function contracts explain side effects and failure behavior.
+
+### 2. Close replaced logging resources correctly
+
+**Effort: small.** [Logging setup](game_logging.py) removes existing handlers without explicitly closing them. Establish handler ownership and close replaced application handlers, preserving provider-payload filtering and safe handling of externally installed handlers. This addresses a cleanup concern; the review does not establish an application leak.
+
+**Complete when:** repeated initialization releases old file handles, avoids duplicate output, and retains the existing logging privacy checks. Use temporary log files for verification.
+
+### 3. Finish Unit Designer input feedback
+
+**Effort: medium; direct user benefit.** [Parameter readers](gui/unit_editor_gui/param_readers.py) still swallow parsing errors and silently clamp or retain values. Extend the existing validation approach to those fields: retain invalid draft text, identify the affected field, explain accepted values, and prevent saving a stale configuration. Show the amount by which a design exceeds hull capacity. Reuse shared equipment rules and preserve legal zero and fractional values.
+
+**Complete when:** invalid text, non-finite values, invalid integer inputs, and capacity violations produce actionable feedback; correcting a field clears its error; rejected saves/refits preserve designs and credits. Extend existing Designer and retrofit regressions where coverage is missing.
+
+### 4. Split command projection from preparation and commit
+
+**Effort: large; highest maintenance priority.** Refactor [CommandGateway](game_ai/commands.py) in separate changes. First extract projection and its supporting records; then extract preparation by gameplay domain. Keep the gateway responsible for batch sequencing, commit, and receipts. Add types at the extracted boundaries where they clarify state ownership. Preserve the public facade and command/result contracts.
+
+**Complete when:** existing regressions preserve mutation-free rejection, command ordering, queued prerequisites, shared capacity reservations, original-payer refunds, hidden-target privacy, and accurate partial-commit results. Check interactions such as load-then-colonize, cancellation versus active paid jobs, allied docking capacity, and immediate versus deferred fuel gains. Add tests only for uncovered interactions; do not introduce rollback semantics or automatic retries for commit failures.
+
+### 5. Extract detached unit assembly
+
+**Effort: medium.** Move [template assembly](unit_components/constructor.py) into a focused module. The detached assembly function already exists, making this a relatively clear extraction. Keep deployment, construction progress, payment, cancellation, and settlement with their current owners. Preserve explicit template injection during campaign preparation and existing allocation isolation.
+
+**Complete when:** campaign setup, ordinary construction, carrier production, and customization produce equivalent equipment and placement, with unchanged allocator isolation and settlement behavior. Preserve built-in, Testing, and human-only private-template boundaries.
+
+### 6. Extract movement resolution
+
+**Effort: medium to large.** Separate sublight, hex-jump, and wormhole-jump resolution from [TurnProcessor](turn_processor.py). Keep turn-phase sequencing visible in the processor and preserve the transient movement record consumed by environmental hazards. Make the extraction independently reviewable from changes to route planning.
+
+**Complete when:** tests preserve debit-before-movement, refunds after rejected relocation, actuator ownership, tankless-wing exceptions, collision/inhibition rules, and recharge/damage timing. Verify that only positive committed sublight displacement contributes to that owner-turn's movement hazard record.
+
+### Follow-up work
+
+- **Separate custom-template storage:** Extract file operations and registration from design representation and cost calculations. Preserve atomic writes, whole-library validation, failure preservation, and private-template access rules.
+- **Extract wizard pages:** Separate map preview and player/economy page responsibilities, retaining one clear owner for draft settings. Preserve Back navigation, home assignments, and failed-start state.
+- **Share neutral order traversal:** Reuse traversal where sidebar and renderer semantics match, while keeping GUI formatting and viewer-specific AI redaction distinct.
+- **Treat the BFS change as optional:** The current intersystem heap orders equal-distance candidates by system name; a straightforward BFS can change chosen routes. Establish route-equivalence tests, including equal-hop alternatives and hull-diameter restrictions, before replacing it.
+- **Keep deterministic scenario probes small:** Use seeded save/command fixtures for construction, logistics, capture, docking, and overlapping effects where existing coverage leaves a boundary untested. Prefer a handful of cross-boundary invariants over a new fuzzing framework.
+- **Measure before caching:** Profile observation building, command guidance, and repeated graph lookups in a large campaign. Cache only stable catalogue data or measured hotspots with explicit invalidation rules.
+
+### Implementation and verification
+
+Record a baseline once before implementation. Keep the six actions in separate reviewable changes, with projection extraction preceding the command-preparation split. Constructor assembly and movement extraction can each proceed independently of that split. Keep behavior changes separate from mechanical extractions and preserve save and command formats throughout this scope.
+
+Run focused checks after each change, extending existing tests only for uncovered guarantees. Require the full offline suite and existing Linux/Windows CI checks for major refactors: Ruff, import boundaries, both configured mypy platforms, and generated-reference consistency. Documentation changes need local link/anchor checks and the applicable reference checks; meaningful gameplay and privacy tests should remain intact.
+
+No implementation changes or new runtime verification are implied by this plan. The recorded test results above remain historical evidence until implementation checks are run.
 
 ## Local evidence
 
