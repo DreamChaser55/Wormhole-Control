@@ -45,6 +45,10 @@ class UnitEditorWindow:
         template_manager: CustomTemplateManager,
     ):
         self.manager = manager
+        from gui.equipment_input import install_feedback_theme
+        install_feedback_theme(manager)
+        self._field_errors: dict[str, str] = {}
+        self._validation_errors: list[str] = []
         from gui.theme_loader import preload_rich_text_fonts
         preload_rich_text_fonts(manager)
         self.display_config = display_config

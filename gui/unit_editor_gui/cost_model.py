@@ -5,7 +5,9 @@ Hull capacity calculations, dynamic component cost synchronization,
 and capacity bar rendering.
 """
 
+import math
 import pygame
+from gui.equipment_input import capacity_excess
 from constants import HULL_CAPACITIES
 from .catalog import COMPONENT_ROWS
 
@@ -37,18 +39,22 @@ def current_hull_used(editor) -> float:
     Returns:
         float: Sum of static and dynamically computed hull costs across all active components.
     """
-    total = 0.0
-    c = editor._comp
-    for row in COMPONENT_ROWS:
-        key = row["key"]
-        if getattr(c, key, False):
-            if key == "has_engine":
-                total += c.get_engine_hull_cost(editor._hull_size)
-            elif key == "has_hyperdrive":
-                total += c.get_hyperdrive_hull_cost(editor._hull_size)
-            else:
-                total += getattr(c, row["cost_key"], row["default_cost"])
-    return total
+    return sum(component_hull_cost(editor, row) for row in COMPONENT_ROWS
+               if getattr(editor._comp, row['key'], False))
+
+
+def component_hull_cost(editor, row):
+    """Return an individual cost, or infinity when finite input overflows."""
+    try:
+        if row['key'] == 'has_engine':
+            value = editor._comp.get_engine_hull_cost(editor._hull_size)
+        elif row['key'] == 'has_hyperdrive':
+            value = editor._comp.get_hyperdrive_hull_cost(editor._hull_size)
+        else:
+            value = getattr(editor._comp, row['cost_key'], row['default_cost'])
+        return value if math.isfinite(value) else math.inf
+    except (OverflowError, ValueError):
+        return math.inf
 
 
 def predicted_upkeep(editor) -> float:
@@ -75,6 +81,8 @@ def capacity_text(editor) -> str:
     """
     capacity = HULL_CAPACITIES[editor._hull_size]
     used = current_hull_used(editor)
+    if not math.isfinite(used):
+        return "Hull Capacity: unavailable"
     return f"Hull Capacity: {used:g} / {capacity:g}"
 
 
@@ -82,36 +90,22 @@ def update_capacity_label(editor) -> None:
     """Updates capacity label text."""
     if editor._capacity_label:
         editor._capacity_label.set_text(capacity_text(editor))
+    label = getattr(editor, '_capacity_excess_label', None)
+    if label:
+        used = current_hull_used(editor)
+        label.set_text(capacity_excess(used, HULL_CAPACITIES[editor._hull_size])
+                       if math.isfinite(used) else 'Correct values to preview')
 
 
 def sync_dynamic_costs(editor) -> None:
     """Refreshes displayed hull cost labels for dynamic components and updates capacity indicators."""
-    c = editor._comp
-    dynamic_values = {
-        "has_engine":             c.get_engine_hull_cost(editor._hull_size),
-        "has_antimatter_storage": c.antimatter_hull_cost,
-        "has_hyperdrive":         c.get_hyperdrive_hull_cost(editor._hull_size),
-        "has_weapon_bays":        c.weapon_bays_hull_cost,
-        "has_defenses":           c.defenses_hull_cost,
-        "has_ability_component":  c.ability_hull_cost,
-        "has_sensors":            c.sensors_hull_cost,
-        "has_repair_component":   c.repair_hull_cost,
-        "has_mining_component":   c.mining_hull_cost,
-        "has_hangar":             c.hangar_hull_cost,
-        "has_strikecraft_bay":    c.strikecraft_bay_hull_cost,
-        "has_inhibitor":          c.inhibitor_hull_cost,
-        "has_troop_transport_component": c.troop_transport_hull_cost,
-        "has_siege_battery_component": c.siege_battery_hull_cost,
-        "has_wormhole_stabilizer_component": c.wormhole_stabilizer_hull_cost,
-        "has_marines_component":  c.marines_hull_cost,
-        "has_cloaking_device":    c.cloaking_device_hull_cost,
-        "has_intelligence_component": c.intelligence_hull_cost,
-    }
-
-    for key, computed_cost in dynamic_values.items():
-        lbl = editor._comp_cost_labels.get(key)
+    for row in COMPONENT_ROWS:
+        if not row['is_dynamic']:
+            continue
+        computed_cost = component_hull_cost(editor, row)
+        lbl = editor._comp_cost_labels.get(row['key'])
         if lbl:
-            lbl.set_text(f"{computed_cost:g}")
+            lbl.set_text(f"{computed_cost:g}" if math.isfinite(computed_cost) else 'N/A')
 
     update_capacity_label(editor)
 
@@ -122,7 +116,7 @@ def draw_capacity_bar(editor, surface: pygame.Surface) -> None:
         return
     capacity = HULL_CAPACITIES[editor._hull_size]
     used = current_hull_used(editor)
-    frac = min(1.0, used / max(1, capacity))
+    frac = min(1.0, used / max(1, capacity)) if math.isfinite(used) else 1.0
     bar = editor._cap_bar_rect
 
     # Background

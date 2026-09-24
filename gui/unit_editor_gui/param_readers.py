@@ -1,166 +1,93 @@
-"""
-param_readers.py
-
-Parameter input parsing methods for dynamic component fields.
-"""
-
-from constants import DEFAULT_SENSOR_SHORT_RANGE, HullSize
-from unit_template_validation import parameter_minimum
+"""Read numeric drafts without discarding invalid text or silently clamping it."""
+from constants import HullSize
+from gui.equipment_input import INPUT_FIELDS, mark_entry, parse_number
 
 
-def read_engine_params(editor) -> None:
-    """Reads engine speed from UI input field and updates component configuration."""
-    try:
-        speed = float(editor._engine_speed_entry.get_text()) if editor._engine_speed_entry else 100.0
-        editor._comp.engine_speed = max(parameter_minimum("engine_speed", editor._hull_size), speed)
-    except ValueError:
-        pass
+def read_fields(editor, names):
+    """Update valid fields only and retain independent errors for invalid drafts."""
+    if not hasattr(editor, '_field_errors'):
+        editor._field_errors = {}
+    values = {}
+    for field in names:
+        entry = getattr(editor, INPUT_FIELDS[field].widget, None)
+        if entry is None:
+            continue
+        if field == 'sensor_long_range_hexes' and editor._hull_size == HullSize.STRIKECRAFT_WING:
+            if entry.get_text() != '0':
+                entry.set_text('0')
+        value, error = parse_number(entry.get_text(), field, editor._hull_size,
+                                    storage_enabled=editor._comp.has_antimatter_storage)
+        mark_entry(entry, error)
+        if error:
+            editor._field_errors[field] = error
+        else:
+            editor._field_errors.pop(field, None)
+            values[field] = value
+            if not field.startswith('turret.'):
+                setattr(editor._comp, field, value)
+    return values
 
 
-def read_antimatter_params(editor) -> None:
-    """Reads antimatter capacity from UI input field and updates component configuration."""
-    try:
-        min_cap = parameter_minimum("antimatter_capacity", editor._hull_size)
-        cap = float(editor._am_capacity_entry.get_text()) if editor._am_capacity_entry else min_cap
-        editor._comp.antimatter_capacity = max(min_cap, cap)
-    except ValueError:
-        pass
+def read_all(editor):
+    """Re-read even hidden/disabled settings before publishing a design."""
+    return read_fields(editor, INPUT_FIELDS)
 
 
-def read_hyperdrive_params(editor) -> None:
-    """Reads hyperdrive jump range from UI input field and updates component configuration."""
-    try:
-        jr = int(editor._hd_jump_range_entry.get_text()) if editor._hd_jump_range_entry else 5
-        editor._comp.hyperdrive_jump_range = max(parameter_minimum("hyperdrive_jump_range", editor._hull_size), jr)
-    except ValueError:
-        pass
+def read_turret_params(editor):
+    return read_fields(editor, ('turret.damage', 'turret.range', 'turret.cooldown'))
 
 
-def read_defense_params(editor) -> None:
-    """Reads armor, shields, and point defense from UI input fields and updates component configuration."""
-    try:
-        editor._comp.armor = max(parameter_minimum("armor", editor._hull_size), float(editor._armor_entry.get_text())) if editor._armor_entry else 0.0
-    except ValueError:
-        pass
-    try:
-        editor._comp.shields = max(parameter_minimum("shields", editor._hull_size), float(editor._shields_entry.get_text())) if editor._shields_entry else 0.0
-    except ValueError:
-        pass
-    try:
-        editor._comp.point_defense = max(parameter_minimum("point_defense", editor._hull_size), float(editor._pd_entry.get_text())) if editor._pd_entry else 0.0
-    except ValueError:
-        pass
+def read_engine_params(editor):
+    read_fields(editor, ('engine_speed',))
 
 
-def read_sensor_params(editor) -> None:
-    """Reads short/long range sensor values from UI input fields and updates component configuration."""
-    try:
-        sr = float(editor._sensor_short_range_entry.get_text()) if getattr(editor, '_sensor_short_range_entry', None) else DEFAULT_SENSOR_SHORT_RANGE
-        editor._comp.sensor_short_range = max(parameter_minimum("sensor_short_range", editor._hull_size), sr)
-    except ValueError:
-        pass
-    if editor._hull_size == HullSize.STRIKECRAFT_WING:
-        editor._comp.sensor_long_range_hexes = 0
-        if getattr(editor, '_sensor_long_range_entry', None):
-            editor._sensor_long_range_entry.set_text("0")
-        return
-    try:
-        lr = int(editor._sensor_long_range_entry.get_text()) if getattr(editor, '_sensor_long_range_entry', None) else 0
-        editor._comp.sensor_long_range_hexes = max(parameter_minimum("sensor_long_range_hexes", editor._hull_size), lr)
-    except ValueError:
-        pass
+def read_antimatter_params(editor):
+    read_fields(editor, ('antimatter_capacity',))
 
 
-def read_repair_params(editor) -> None:
-    """Reads repair rate and range parameters from UI input fields and updates component configuration."""
-    try:
-        rr = float(editor._repair_rate_entry.get_text()) if getattr(editor, '_repair_rate_entry', None) else 10.0
-        editor._comp.repair_rate = max(parameter_minimum("repair_rate", editor._hull_size), rr)
-    except ValueError:
-        pass
-    try:
-        rrange = float(editor._repair_range_entry.get_text()) if getattr(editor, '_repair_range_entry', None) else 200.0
-        editor._comp.repair_range = max(parameter_minimum("repair_range", editor._hull_size), rrange)
-    except ValueError:
-        pass
+def read_hyperdrive_params(editor):
+    read_fields(editor, ('hyperdrive_jump_range',))
 
 
-def read_mining_params(editor) -> None:
-    """Reads mining rate, range, and cargo capacity from UI input fields and updates component configuration."""
-    try:
-        mr = float(editor._mining_rate_entry.get_text()) if getattr(editor, '_mining_rate_entry', None) else 10.0
-        editor._comp.mining_rate = max(parameter_minimum("mining_rate", editor._hull_size), mr)
-    except ValueError:
-        pass
-    try:
-        mrange = float(editor._mining_range_entry.get_text()) if getattr(editor, '_mining_range_entry', None) else 200.0
-        editor._comp.mining_range = max(parameter_minimum("mining_range", editor._hull_size), mrange)
-    except ValueError:
-        pass
-    try:
-        mcargo = float(editor._mining_max_cargo_entry.get_text()) if getattr(editor, '_mining_max_cargo_entry', None) else 100.0
-        editor._comp.max_mining_cargo = max(parameter_minimum("max_mining_cargo", editor._hull_size), mcargo)
-    except ValueError:
-        pass
+def read_defense_params(editor):
+    read_fields(editor, ('armor', 'shields', 'point_defense'))
 
 
-def read_hangar_params(editor) -> None:
-    """Reads hangar slots count from UI input field and updates component configuration."""
-    try:
-        slots = int(editor._hangar_slots_entry.get_text()) if getattr(editor, '_hangar_slots_entry', None) else 2
-        editor._comp.hangar_slots = max(parameter_minimum("hangar_slots", editor._hull_size), slots)
-    except ValueError:
-        pass
+def read_sensor_params(editor):
+    read_fields(editor, ('sensor_short_range', 'sensor_long_range_hexes'))
 
 
-def read_strikecraft_bay_params(editor) -> None:
-    """Reads strikecraft bay slots count from UI input field and updates component configuration."""
-    try:
-        slots = int(editor._strikecraft_bay_slots_entry.get_text()) if getattr(editor, '_strikecraft_bay_slots_entry', None) else 2
-        editor._comp.strikecraft_bay_slots = max(parameter_minimum("strikecraft_bay_slots", editor._hull_size), slots)
-    except ValueError:
-        pass
+def read_repair_params(editor):
+    read_fields(editor, ('repair_rate', 'repair_range'))
 
 
-def read_inhibitor_params(editor) -> None:
-    """Reads inhibitor radius from UI input field and updates component configuration."""
-    try:
-        radius = float(editor._inhibitor_radius_entry.get_text()) if getattr(editor, '_inhibitor_radius_entry', None) else 100.0
-        editor._comp.inhibitor_radius = max(parameter_minimum("inhibitor_radius", editor._hull_size), radius)
-    except ValueError:
-        pass
+def read_mining_params(editor):
+    read_fields(editor, ('mining_rate', 'mining_range', 'max_mining_cargo'))
 
 
-def read_marines_params(editor) -> None:
-    """Reads marines count from UI input field and updates component configuration."""
-    try:
-        count = int(editor._marines_count_entry.get_text()) if getattr(editor, '_marines_count_entry', None) else 10
-        editor._comp.marines_count = max(parameter_minimum("marines_count", editor._hull_size), count)
-    except ValueError:
-        pass
+def read_hangar_params(editor):
+    read_fields(editor, ('hangar_slots',))
 
 
-def read_cloaking_params(editor) -> None:
-    """Reads cloaking radius from UI input field and updates component configuration."""
-    try:
-        radius = float(editor._cloaking_radius_entry.get_text()) if getattr(editor, '_cloaking_radius_entry', None) else 500.0
-        editor._comp.cloaking_radius = max(parameter_minimum("cloaking_radius", editor._hull_size), radius)
-    except ValueError:
-        pass
+def read_strikecraft_bay_params(editor):
+    read_fields(editor, ('strikecraft_bay_slots',))
 
 
-def read_intelligence_params(editor) -> None:
-    """Reads agent capacity from UI input field and updates component configuration."""
-    try:
-        count = int(editor._intel_agents_entry.get_text()) if getattr(editor, '_intel_agents_entry', None) else 1
-        editor._comp.intelligence_agents_count = max(parameter_minimum("intelligence_agents_count", editor._hull_size), count)
-    except ValueError:
-        pass
+def read_inhibitor_params(editor):
+    read_fields(editor, ('inhibitor_radius',))
 
+
+def read_marines_params(editor):
+    read_fields(editor, ('marines_count',))
+
+
+def read_cloaking_params(editor):
+    read_fields(editor, ('cloaking_radius',))
+
+
+def read_intelligence_params(editor):
+    read_fields(editor, ('intelligence_agents_count',))
 
 
 def read_troop_params(editor):
-    try:
-        editor._comp.troop_capacity = max(1, int(editor._troop_capacity_entry.get_text()))
-    except ValueError:
-        pass
+    read_fields(editor, ('troop_capacity',))

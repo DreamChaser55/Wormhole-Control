@@ -5,7 +5,9 @@ Component selection, component/ability toggles, toggle label updates,
 and hull restriction enforcement.
 """
 
-from constants import HullSize, get_min_antimatter_capacity
+from constants import HullSize
+from gui.equipment_input import INPUT_FIELDS
+from .param_readers import read_all
 from custom_unit_templates import (
     HULL_RESTRICTIONS,
     ADVANCED_HYPERDRIVE_MIN_HULL,
@@ -32,6 +34,8 @@ def toggle_component(editor, key: str) -> None:
             editor._set_status(f"⚠ {key} not allowed on {editor._hull_size.name} hull.", error=True)
             return
     setattr(editor._comp, key, not current)
+    read_all(editor)
+    refresh_hull_controls(editor)
     update_component_toggle_labels(editor)
     update_ability_toggle_labels(editor)
     editor._sync_dynamic_costs()
@@ -224,12 +228,8 @@ def apply_hull_restrictions(editor) -> None:
             editor._wt_lbl.hide()
             editor._wt_dropdown.hide()
 
-    # Minimum antimatter capacity restriction for current hull size
-    min_am_cap = get_min_antimatter_capacity(editor._hull_size)
-    if editor._comp.has_antimatter_storage and editor._comp.antimatter_capacity < min_am_cap:
-        editor._comp.antimatter_capacity = min_am_cap
-        if editor._am_capacity_entry:
-            editor._am_capacity_entry.set_text(f"{min_am_cap:g}")
+    read_all(editor)
+    refresh_hull_controls(editor)
 
     update_component_toggle_labels(editor)
     editor._sync_dynamic_costs()
@@ -247,7 +247,10 @@ def refresh_hull_controls(editor) -> None:
             if btn:
                 btn.disable()
             if sbtn:
-                sbtn.disable()
+                has_error = any(INPUT_FIELDS[field].component == key
+                                for field in getattr(editor, '_field_errors', {})
+                                if field in INPUT_FIELDS)
+                sbtn.enable() if has_error else sbtn.disable()
         else:
             if btn:
                 btn.enable()

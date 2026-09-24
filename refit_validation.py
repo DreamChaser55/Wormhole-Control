@@ -220,7 +220,8 @@ def evaluate_refit(unit, action, component_name, configuration=None):
             result.salvage = max(0, int(round(existing.hull_cost * COMPONENT_COST_PER_HULL_POINT * .5)))
             actual = unit.current_hull_usage - existing.hull_cost
         if not result.errors and (not math.isfinite(actual) or actual > unit.hull_capacity):
-            result.errors.append('Insufficient hull capacity for projected installed equipment.')
+            excess = f' Over by {actual - unit.hull_capacity:g} hull.' if math.isfinite(actual) else ''
+            result.errors.append('Insufficient hull capacity for projected installed equipment.' + excess)
     except (ValueError, TypeError, OverflowError, AttributeError, KeyError) as exc:
         result.errors = [f'Invalid equipment configuration: {exc}']
     return result

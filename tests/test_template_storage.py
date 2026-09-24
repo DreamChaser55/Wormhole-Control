@@ -130,7 +130,9 @@ def test_editor_reports_storage_failure_without_success(monkeypatch, operation):
     def fail(*args, **kwargs):
         raise TemplatePersistenceError('Disk write failed')
     editor = SimpleNamespace(template_manager=SimpleNamespace(save_design=fail, delete_design=fail),
-                             _editing_name='Storage Test')
+                             _editing_name='Storage Test', _comp=design().components,
+                             _turrets=[], _selected_abilities=set(), _hull_size=HullSize.MEDIUM,
+                             _update_summary=lambda: None)
     statuses, modals = [], []
     monkeypatch.setattr(template_io, 'set_status', lambda *args, **kwargs: statuses.append((args, kwargs)))
     monkeypatch.setattr(template_io, '_show_editor_modal', lambda *args, **kwargs: modals.append(args))

@@ -4,6 +4,11 @@ summary_view.py
 HTML summary text box formatting and updating for the Unit Designer GUI.
 """
 
+import math
+from html import escape
+from gui.equipment_input import capacity_excess
+from .validation import update_feedback
+
 from constants import HULL_CAPACITIES, HIT_POINTS, HullSize
 from economy import calculate_unit_upkeep
 from custom_unit_templates import (
@@ -12,11 +17,12 @@ from custom_unit_templates import (
     COMPONENT_COST_PER_HULL_POINT,
 )
 from .catalog import COMPONENT_ROWS
-from .cost_model import current_hull_used
+from .cost_model import current_hull_used, component_hull_cost
 
 
 def update_summary(editor) -> None:
     """Refresh the summary text box with current design stats."""
+    errors = update_feedback(editor)
     if not editor._summary_box:
         return
     c = editor._comp
@@ -25,20 +31,34 @@ def update_summary(editor) -> None:
     over = used > capacity
 
     hp = HIT_POINTS[editor._hull_size]
-    build_cost = HULL_BASE_COST[editor._hull_size] + int(round(used * COMPONENT_COST_PER_HULL_POINT))
-    base_bt = HULL_BASE_BUILD_TIME[editor._hull_size]
-    extra_bt = max(0, round((used / max(1.0, capacity)) * base_bt))
-    build_time = base_bt + extra_bt
-    upkeep = calculate_unit_upkeep(editor._hull_size, used)
+    lines = []
+    if errors:
+        lines = ["<b>Correct these errors before saving:</b>"]
+        lines.extend(f"<font color='#FF6666'>{escape(error)}</font>" for error in errors)
+        lines.append("")
+    if getattr(editor, '_field_errors', {}):
+        lines.append("Preview uses last valid numeric values.")
+    try:
+        if not math.isfinite(used):
+            raise ValueError()
+        build_cost = HULL_BASE_COST[editor._hull_size] + int(round(used * COMPONENT_COST_PER_HULL_POINT))
+        base_bt = HULL_BASE_BUILD_TIME[editor._hull_size]
+        extra_bt = max(0, round((used / max(1.0, capacity)) * base_bt))
+        build_time = base_bt + extra_bt
+        upkeep = calculate_unit_upkeep(editor._hull_size, used)
+    except (ValueError, OverflowError):
+        lines.append('Cost preview unavailable: reduce equipment values until totals are finite.')
+        editor._summary_box.set_text('<br>'.join(lines))
+        return
 
     cap_color = "#FF4444" if over else "#88FF88"
     upkeep_str = f"{upkeep:.2f} credits/turn"
     if editor._hull_size == HullSize.STRIKECRAFT_WING:
         upkeep_str += " (Exempt)"
 
-    lines = [
+    lines += [
         f"<b>Hull:</b> {editor._hull_size.name}   <b>HP:</b> {hp}",
-        f"<b>Hull capacity:</b> <font color='{cap_color}'>{used:g} / {capacity:g}</font>",
+        f"<b>Hull capacity:</b> <font color='{cap_color}'>{used:g} / {capacity:g} {capacity_excess(used, capacity)}</font>",
         f"<b>Build cost:</b> {build_cost} credits",
         f"<b>Build time:</b> {build_time} turns",
         f"<b>Predicted upkeep:</b> {upkeep_str}",
@@ -50,12 +70,7 @@ def update_summary(editor) -> None:
     for row in COMPONENT_ROWS:
         key = row["key"]
         if getattr(c, key, False):
-            if key == "has_engine":
-                cost = c.get_engine_hull_cost(editor._hull_size)
-            elif key == "has_hyperdrive":
-                cost = c.get_hyperdrive_hull_cost(editor._hull_size)
-            else:
-                cost = getattr(c, row["cost_key"], row["default_cost"])
+            cost = component_hull_cost(editor, row)
             cost_str = f"{cost:g}" if isinstance(cost, float) else str(cost)
             comp_lines.append(f"  • {row['label']} ({cost_str} hull)")
 

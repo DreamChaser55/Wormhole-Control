@@ -36,7 +36,7 @@ def test_editor_rejects_invalid_turret_without_changing_design(field, value):
     editor = SimpleNamespace(_turret_type_dd=None, _turret_variant_dd=None,
         _turret_dmg_entry=entry(values['damage']), _turret_range_entry=entry(values['range']),
         _turret_cd_entry=entry(values['cooldown']), _turrets=comp.turrets, _comp=comp,
-        _set_status=Mock())
+        _set_status=Mock(), _hull_size=HullSize.MEDIUM, _update_summary=Mock())
     do_add_turret(editor)
     assert comp.turrets == [existing]
     message = editor._set_status.call_args

@@ -238,7 +238,8 @@ def equipment_errors(hull_size, components):
         return ["total_hull_cost: cannot be computed from these parameters."]
     if total > design.hull_capacity:
         errors.append(
-            f"Hull over capacity: {total:g} / {design.hull_capacity:g} used."
+            f"Hull over capacity: {total:g} / {design.hull_capacity:g} used. "
+            f"Over by {total - design.hull_capacity:g} hull."
         )
     # Check hull-size restrictions
     restricted = HULL_RESTRICTIONS.get(hull_size, set())

@@ -16,21 +16,8 @@ from .component_state import (
     toggle_ability,
     on_hull_changed,
 )
-from .param_readers import (
-    read_hyperdrive_params,
-    read_engine_params,
-    read_antimatter_params,
-    read_defense_params,
-    read_sensor_params,
-    read_repair_params,
-    read_mining_params,
-    read_hangar_params,
-    read_strikecraft_bay_params,
-    read_inhibitor_params,
-    read_marines_params,
-    read_cloaking_params,
-    read_intelligence_params,
-)
+from .param_readers import read_all
+from gui.equipment_input import INPUT_FIELDS
 
 
 def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
@@ -149,75 +136,11 @@ def process_event(editor, event: pygame.event.Event) -> typing.Optional[str]:
             return "ui_handled"
 
     elif event.type == pygame_gui.UI_TEXT_ENTRY_CHANGED:
-        elem = event.ui_element
-        if elem is editor._hd_jump_range_entry:
-            read_hyperdrive_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem is editor._engine_speed_entry:
-            read_engine_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem is editor._am_capacity_entry:
-            read_antimatter_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem in (editor._armor_entry, editor._shields_entry, editor._pd_entry):
-            read_defense_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem in (getattr(editor, '_sensor_short_range_entry', None), getattr(editor, '_sensor_long_range_entry', None)):
-            read_sensor_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem in (getattr(editor, '_repair_rate_entry', None), getattr(editor, '_repair_range_entry', None)):
-            read_repair_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem in (getattr(editor, '_mining_rate_entry', None), getattr(editor, '_mining_range_entry', None), getattr(editor, '_mining_max_cargo_entry', None)):
-            read_mining_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem is getattr(editor, '_hangar_slots_entry', None):
-            read_hangar_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem is getattr(editor, '_strikecraft_bay_slots_entry', None):
-            read_strikecraft_bay_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem is getattr(editor, '_inhibitor_radius_entry', None):
-            read_inhibitor_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem is getattr(editor, "_troop_capacity_entry", None):
-            from .param_readers import read_troop_params
-            read_troop_params(editor)
-        elif elem is getattr(editor, '_marines_count_entry', None):
-            read_marines_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem is getattr(editor, '_cloaking_radius_entry', None):
-            read_cloaking_params(editor)
-            editor._sync_dynamic_costs()
-            editor._update_summary()
-            return "ui_handled"
-        elif elem is getattr(editor, '_intel_agents_entry', None):
-            read_intelligence_params(editor)
+        entries = [getattr(editor, spec.widget, None) for spec in INPUT_FIELDS.values()]
+        if event.ui_element in entries or event.ui_element is editor._display_entry:
+            read_all(editor)
             editor._sync_dynamic_costs()
             editor._update_summary()
             return "ui_handled"
 
     return None
-

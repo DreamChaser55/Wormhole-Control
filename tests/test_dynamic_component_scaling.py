@@ -120,6 +120,10 @@ def test_unit_editor_summary_hull_size_scaling():
     gui._selected_abilities = set()
     gui._current_hull_used = lambda: gui._comp.get_hyperdrive_hull_cost(gui._hull_size)
     gui._summary_box = MagicMock()
+    gui._display_entry = None
+    gui._save_button = gui._save_as_button = gui._add_turret_button = None
+    gui._comp_toggles = {}
+    gui._comp_select_btns = {}
 
     UnitEditorWindow._update_summary(gui)
 

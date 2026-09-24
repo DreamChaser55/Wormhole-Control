@@ -464,3 +464,74 @@ def test_retrofit_type_choices_respect_hull_and_wing_role(wizard_setup, hull):
             assert choices(wizard._turret_variant_dd) == ['ANTI_STRIKECRAFT']
     finally:
         wizard.kill()
+
+
+@pytest.mark.parametrize('component,widget,text', [
+    ('Engines', '_engine_speed_entry', '-1'),
+    ('AntimatterStorage', '_am_capacity_entry', '99'),
+    ('Hyperdrive', '_hd_jump_range_entry', '2.5'),
+    ('TroopTransportComponent', '_troop_capacity_entry', '1e2'),
+    ('Defenses', '_armor_entry', 'nan'),
+])
+def test_retrofit_rejects_invalid_drafts_without_charging_or_changing_equipment(wizard_setup, component, widget, text):
+    _, _, player, constructor, target, manager, resolution = wizard_setup
+    if component == 'AntimatterStorage':
+        from unit_components.antimatter import AntimatterStorage
+        target.remove_component(AntimatterStorage)
+    before_components = dict(target.components)
+    before_credits = player.credits
+    wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key=component)
+    try:
+        entry = getattr(wizard, widget)
+        entry.set_text(text)
+        # Confirmation must validate even without a preceding change event.
+        action = wizard.process_event(pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=wizard._confirm_button))
+        assert action['action'] == 'ui_handled'
+        assert not wizard.is_valid and not wizard._confirm_button.is_enabled
+        assert entry.get_text() == text
+        assert entry.tool_tip_text and '>=' in entry.tool_tip_text
+        assert player.credits == before_credits
+        assert target.components == before_components
+        assert constructor.constructor_component.refit_order_id is None
+    finally:
+        wizard.kill()
+
+
+def test_retrofit_multiple_errors_clear_independently_and_preserve_fractions(wizard_setup):
+    _, _, _, constructor, target, manager, resolution = wizard_setup
+    wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='Defenses')
+    try:
+        wizard._armor_entry.set_text('nan')
+        wizard._shields_entry.set_text('-1')
+        wizard._sync_cost_and_summary()
+        assert set(wizard._field_errors) == {'armor', 'shields'}
+        assert 'Armor' in wizard._status_box.html_text and 'Shields' in wizard._status_box.html_text
+        wizard._armor_entry.set_text('0.25')
+        wizard._sync_cost_and_summary()
+        assert set(wizard._field_errors) == {'shields'}
+        assert wizard._armor_entry.tool_tip_text is None
+        wizard._shields_entry.set_text('0')
+        wizard._sync_cost_and_summary()
+        assert wizard.is_valid and wizard._confirm_button.is_enabled
+        assert wizard._comp_config['armor'] == .25
+        assert wizard._comp_config['shields'] == 0
+    finally:
+        wizard.kill()
+
+
+def test_retrofit_capacity_excess_and_overflow_feedback(wizard_setup):
+    _, _, _, constructor, target, manager, resolution = wizard_setup
+    wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='Engines')
+    try:
+        wizard._engine_speed_entry.set_text('870')
+        wizard._sync_cost_and_summary()
+        assert 'Over by 0.5 hull' in wizard._status_box.html_text
+        assert not wizard._confirm_button.is_enabled
+        wizard.select_component('Weapons')
+        wizard._turret_dmg_entry.set_text('1e308')
+        wizard._turret_range_entry.set_text('1e308')
+        wizard._add_turret()
+        assert not wizard._confirm_button.is_enabled
+        assert 'unavailable' in wizard._credit_cost_label.text
+    finally:
+        wizard.kill()

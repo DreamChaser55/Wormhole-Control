@@ -222,7 +222,13 @@ The Designer, validator and retrofit share equipment checks: hull capacity,
 hull/component restrictions, advanced equipment, wing turret roles, no wing
 Mining, zero long-range wing Sensors, ability prerequisites, the Trade/Engine
 dependency and at least one enabled component. Validation reports violations
-without applying the Designer's input clamps.
+without clamping input. The GUI's shared equipment-input parser handles draft text
+separately from strict JSON validation, derives integer types from the design records,
+and uses the same parameter minimums. Invalid text is retained with field-keyed errors;
+only valid values update the numeric preview. Every save route re-reads hidden and
+disabled settings and validates a detached candidate before library publication.
+Retrofit confirmation likewise rechecks the current draft before emitting an action.
+Draft errors and widget styling are transient and are never persisted.
 
 The representational minimums above are shared with campaign persistence;
 no additional turret balance caps are imposed. Derived dynamic

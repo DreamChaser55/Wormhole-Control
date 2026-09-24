@@ -843,3 +843,188 @@ def test_wing_editor_load_switch_and_sensor_guard(pygame_context, tmp_path):
         assert editor._comp.sensor_long_range_hexes == 0
     finally:
         editor.kill()
+
+
+@pytest.fixture
+def draft_editor(pygame_context, tmp_path):
+    import pygame_gui
+    from gui.unit_editor_gui import UnitEditorWindow
+    editor = UnitEditorWindow(pygame_gui.UIManager((1280, 720)), DisplayConfig(1280, 720),
+        CustomTemplateManager(data_file=str(tmp_path / 'drafts.json')))
+    editor.show()
+    editor._display_entry.set_text('Draft ship')
+    editor._update_summary()
+    try:
+        yield editor
+    finally:
+        editor.kill()
+
+
+def edit_draft(editor, entry, text):
+    import pygame
+    import pygame_gui
+    entry.set_text(text)
+    return editor.process_event(pygame.event.Event(pygame_gui.UI_TEXT_ENTRY_CHANGED, ui_element=entry))
+
+
+def test_live_draft_errors_preserve_text_values_and_clear_independently(draft_editor):
+    e = draft_editor
+    before = e._comp.engine_speed
+    edit_draft(e, e._engine_speed_entry, 'nan')
+    edit_draft(e, e._hangar_slots_entry, '2.5')
+    assert e._engine_speed_entry.get_text() == 'nan'
+    assert e._comp.engine_speed == before
+    assert not e._save_button.is_enabled and not e._save_as_button.is_enabled
+    assert 'Engines / Speed' in e._summary_box.html_text
+    assert 'Hangar / Slots' in e._summary_box.html_text
+    assert 'last valid numeric values' in e._summary_box.html_text
+    assert e._engine_speed_entry.object_ids[-1] == '#equipment_input_error'
+    e._select_component('has_defenses')
+    e.hide()
+    e.show()
+    assert e._engine_speed_entry.get_text() == 'nan'
+    edit_draft(e, e._engine_speed_entry, '12.25')
+    assert 'engine_speed' not in e._field_errors
+    assert 'hangar_slots' in e._field_errors
+    assert e._engine_speed_entry.tool_tip_text is None
+    assert not e._save_button.is_enabled
+    edit_draft(e, e._hangar_slots_entry, '2')
+    assert e._save_button.is_enabled
+    assert not e._field_errors
+    assert e._comp.engine_speed == 12.25
+
+
+def test_disabled_and_hull_restricted_drafts_stay_reachable(draft_editor):
+    from gui.unit_editor_gui.component_state import toggle_component, on_hull_changed
+    e = draft_editor
+    on_hull_changed(e, 'LARGE')
+    edit_draft(e, e._am_capacity_entry, '150')
+    toggle_component(e, 'has_hangar')
+    edit_draft(e, e._hangar_slots_entry, '')
+    toggle_component(e, 'has_hangar')
+    assert not e._save_button.is_enabled
+    on_hull_changed(e, 'SMALL')
+    assert not e._comp_toggles['has_hangar'].is_enabled
+    assert e._comp_select_btns['has_hangar'].is_enabled
+    e._select_component('has_hangar')
+    assert e._hangar_slots_entry.visible
+    edit_draft(e, e._hangar_slots_entry, '1')
+    assert e._save_button.is_enabled
+    assert not e._comp_select_btns['has_hangar'].is_enabled
+
+
+def test_hull_change_revalidates_storage_without_clamping(draft_editor):
+    from gui.unit_editor_gui.component_state import on_hull_changed
+    e = draft_editor
+    on_hull_changed(e, 'HUGE')
+    assert e._am_capacity_entry.get_text() == '100'
+    assert e._comp.antimatter_capacity == 100
+    assert '200' in e._field_errors['antimatter_capacity']
+    edit_draft(e, e._am_capacity_entry, '200.25')
+    assert e._save_button.is_enabled
+
+
+@pytest.mark.parametrize('save_path', ['save', 'new', 'overwrite', 'confirmation_new', 'execute'])
+def test_every_save_path_rechecks_raw_drafts_and_preserves_library(draft_editor, save_path):
+    from copy import deepcopy
+    from pathlib import Path
+    from gui.unit_editor_gui.template_io import sync_widgets_from_template, handle_save_dialog_action, execute_save
+    e = draft_editor
+    original = CustomUnitTemplate('Original', HullSize.MEDIUM, ComponentConfig(has_engine=True))
+    assert e.template_manager.save_design(original) == []
+    sync_widgets_from_template(e, original)
+    library_file = Path(e.template_manager.data_file)
+    before = library_file.read_bytes()
+    registered = deepcopy(PRIVATE_TEMPLATES)
+    # No text-change event: the final action must independently re-read the widget.
+    e._engine_speed_entry.set_text('bad input')
+    if save_path == 'save':
+        result = e._do_save()
+    elif save_path == 'new':
+        e._display_entry.set_text('New name')
+        result = e._do_save_as_new()
+    elif save_path == 'execute':
+        result = execute_save(e, original)
+    else:
+        action = {'action': 'overwrite', 'target_name': 'Original'} if save_path == 'overwrite' else {
+            'action': 'save_as_new', 'new_name': 'New name'}
+        result = handle_save_dialog_action(e, action)
+    assert result != 'design_saved'
+    assert library_file.read_bytes() == before
+    assert PRIVATE_TEMPLATES == registered
+    assert e.template_manager.get_design('Original').components.engine_speed == 100
+    assert e._engine_speed_entry.get_text() == 'bad input'
+    assert not e._save_button.is_enabled
+
+
+def test_loading_a_design_clears_old_drafts_and_turret_errors(draft_editor):
+    from gui.unit_editor_gui.template_io import sync_widgets_from_template
+    e = draft_editor
+    edit_draft(e, e._engine_speed_entry, 'bad')
+    edit_draft(e, e._turret_cd_entry, '1.5')
+    template = CustomUnitTemplate('Replacement', HullSize.MEDIUM, ComponentConfig(has_engine=True))
+    sync_widgets_from_template(e, template)
+    assert not e._field_errors
+    assert e._engine_speed_entry.get_text() == '100'
+    assert e._turret_cd_entry.get_text() == '2'
+    assert e._engine_speed_entry.tool_tip_text is None
+    assert e._add_turret_button.is_enabled and e._save_button.is_enabled
+
+
+def test_loading_and_saving_preserves_fractional_precision(draft_editor):
+    from gui.unit_editor_gui.template_io import sync_widgets_from_template, execute_save
+    e = draft_editor
+    original = CustomUnitTemplate('Precise', HullSize.MEDIUM,
+        ComponentConfig(has_engine=True, engine_speed=123.456789012345,
+                        armor=0.000000123456789))
+    sync_widgets_from_template(e, original)
+    assert e._comp == original.components
+    assert execute_save(e, original) == 'design_saved'
+    assert e.template_manager.get_design('Precise').components == original.components
+
+
+def test_turret_drafts_require_explicit_add_and_correction(draft_editor):
+    from gui.unit_editor_gui.turret_editor import do_add_turret
+    e = draft_editor
+    edit_draft(e, e._turret_cd_entry, '0.5')
+    do_add_turret(e)
+    assert not e._turrets and not e._save_button.is_enabled
+    assert not e._add_turret_button.is_enabled
+    edit_draft(e, e._turret_cd_entry, '0')
+    edit_draft(e, e._turret_dmg_entry, '0.25')
+    assert not e._turrets and e._save_button.is_enabled
+    do_add_turret(e)
+    assert len(e._turrets) == 1
+    assert e._turrets[0].damage == .25 and e._turrets[0].cooldown == 0
+
+
+def test_capacity_excess_updates_and_troop_edits_refresh_immediately(draft_editor):
+    from gui.unit_editor_gui.component_state import toggle_component
+    e = draft_editor
+    toggle_component(e, 'has_engine')
+    toggle_component(e, 'has_troop_transport_component')
+    # 5 hull of engines + 5 storage + 40 troops * 0.5 = 30 hull.
+    assert '30 / 50' in e._capacity_label.text
+    assert edit_draft(e, e._troop_capacity_entry, '80') == 'ui_handled'
+    assert '50 / 50' in e._capacity_label.text and e._save_button.is_enabled
+    edit_draft(e, e._engine_speed_entry, '110')
+    assert 'Over by 0.5 hull' in e._capacity_excess_label.text
+    assert 'Over by 0.5 hull' in e._summary_box.html_text
+    assert not e._save_button.is_enabled
+    edit_draft(e, e._troop_capacity_entry, '79')
+    assert not e._capacity_excess_label.text and e._save_button.is_enabled
+
+
+def test_overflowing_derived_costs_do_not_crash_preview_or_save(draft_editor):
+    import pygame
+    from gui.unit_editor_gui.turret_editor import do_add_turret
+    from gui.unit_editor_gui.component_state import toggle_component
+    e = draft_editor
+    toggle_component(e, 'has_weapon_bays')
+    edit_draft(e, e._turret_range_entry, '1e308')
+    edit_draft(e, e._turret_dmg_entry, '1e308')
+    do_add_turret(e)
+    e.draw(pygame.Surface((1280, 720)))
+    assert 'unavailable' in e._summary_box.html_text
+    assert not e._save_button.is_enabled
+    assert e._do_save() != 'design_saved'

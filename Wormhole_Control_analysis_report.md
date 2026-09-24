@@ -134,7 +134,6 @@ The following records individual important files and the main conclusions from t
 | [gui/sidebar/view.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/view.py) | Stable selection identity and measuring from the viewport origin address real UI concerns. |
 | [gui/sidebar/panels_unit.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_unit.py), [gui/sidebar/panels_world.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/panels_world.py) | Keep user-visible rows distinct from internal identity metadata. Preserve public equipment/privacy comparisons when changing layouts. |
 | [gui/sidebar/order_formatting.py](D:/Programming/Github_repos/Wormhole-Control/gui/sidebar/order_formatting.py) | Large order-type formatter duplicates some traversal/knowledge used by renderers and AI views. Reuse neutral order traversal where possible, while retaining viewer-specific redaction. |
-| [gui/unit_editor_gui/param_readers.py](D:/Programming/Github_repos/Wormhole-Control/gui/unit_editor_gui/param_readers.py) | Input handling silently substitutes/defaults or preserves old values in several places. Consistent inline feedback would improve clarity. |
 | [gui/theme_loader.py](D:/Programming/Github_repos/Wormhole-Control/gui/theme_loader.py), [gui/text_layout.py](D:/Programming/Github_repos/Wormhole-Control/gui/text_layout.py) | Scaled in-memory themes and measured wrapping are useful. |
 | [rendering/system_renderer.py](D:/Programming/Github_repos/Wormhole-Control/rendering/system_renderer.py) | Large draw and order-line methods need separation between waypoint collection and drawing. Reuse traversal with sector rendering where semantics match. |
 | [rendering/sector_renderer/sector_renderer.py](D:/Programming/Github_repos/Wormhole-Control/rendering/sector_renderer/sector_renderer.py) | Bounded effect surfaces and limits on large rendering allocations are justified, not gratuitous complexity. Preserve lifecycle/cache tests. |
@@ -242,27 +241,21 @@ CI executes Ubuntu Python 3.10/3.14 and Windows Python 3.14. The original audit 
 
 ## Proposed action plan
 
-Proposed on **2026-09-24**, following a check of the relevant implementation at **`7a5bd48`**. The remaining actions are planned, not completed. The order balances impact, effort, and regression risk: a Unit Designer feedback improvement followed by three focused refactors. Command handling is the highest-priority maintenance refactor; the Designer improvement is smaller and independently reviewable.
+Proposed on **2026-09-24**, following a check of the relevant implementation at **`7a5bd48`**. The remaining actions are planned, not completed. The order balances impact, effort, and regression risk across three focused refactors. Command handling is the highest-priority maintenance refactor.
 
-### 1. Finish Unit Designer input feedback
-
-**Effort: medium; direct user benefit.** [Parameter readers](gui/unit_editor_gui/param_readers.py) still swallow parsing errors and silently clamp or retain values. Extend the existing validation approach to those fields: retain invalid draft text, identify the affected field, explain accepted values, and prevent saving a stale configuration. Show the amount by which a design exceeds hull capacity. Reuse shared equipment rules and preserve legal zero and fractional values.
-
-**Complete when:** invalid text, non-finite values, invalid integer inputs, and capacity violations produce actionable feedback; correcting a field clears its error; rejected saves/refits preserve designs and credits. Extend existing Designer and retrofit regressions where coverage is missing.
-
-### 2. Split command projection from preparation and commit
+### 1. Split command projection from preparation and commit
 
 **Effort: large; highest maintenance priority.** Refactor [CommandGateway](game_ai/commands.py) in separate changes. First extract projection and its supporting records; then extract preparation by gameplay domain. Keep the gateway responsible for batch sequencing, commit, and receipts. Add types at the extracted boundaries where they clarify state ownership. Preserve the public facade and command/result contracts.
 
 **Complete when:** existing regressions preserve rejection without command effects, command ordering, queued prerequisites, shared capacity reservations, original-payer refunds, hidden-target privacy, and accurate partial-commit results. Check interactions such as load-then-colonize, cancellation versus active paid jobs, allied docking capacity, and immediate versus deferred fuel gains. Add tests only for uncovered interactions; do not introduce rollback semantics or automatic retries for commit failures.
 
-### 3. Extract detached unit assembly
+### 2. Extract detached unit assembly
 
 **Effort: medium.** Move [template assembly](unit_components/constructor.py) into a focused module. The detached assembly function already exists, making this a relatively clear extraction. Keep deployment, construction progress, payment, cancellation, and settlement with their current owners. Preserve explicit template injection during campaign preparation and existing allocation isolation.
 
 **Complete when:** campaign setup, ordinary construction, carrier production, and customization produce equivalent equipment and placement, with unchanged allocator isolation and settlement behavior. Preserve built-in, Testing, and human-only private-template boundaries.
 
-### 4. Extract movement resolution
+### 3. Extract movement resolution
 
 **Effort: medium to large.** Separate sublight, hex-jump, and wormhole-jump resolution from [TurnProcessor](turn_processor.py). Keep turn-phase sequencing visible in the processor and preserve the transient movement record consumed by environmental hazards. Make the extraction independently reviewable from changes to route planning.
 
@@ -279,7 +272,7 @@ Proposed on **2026-09-24**, following a check of the relevant implementation at 
 
 ### Implementation and verification
 
-Record a baseline once before implementation. Keep the four remaining actions in separate reviewable changes, with projection extraction preceding the command-preparation split. Constructor assembly and movement extraction can each proceed independently of that split. Keep behavior changes separate from mechanical extractions and preserve save and command formats throughout this scope.
+Record a baseline once before implementation. Keep the three remaining actions in separate reviewable changes, with projection extraction preceding the command-preparation split. Constructor assembly and movement extraction can each proceed independently of that split. Keep behavior changes separate from mechanical extractions and preserve save and command formats throughout this scope.
 
 Run focused checks after each change, extending existing tests only for uncovered guarantees. Require the full offline suite and existing Linux/Windows CI checks for major refactors: Ruff, import boundaries, both configured mypy platforms, and generated-reference consistency. Documentation changes need local link/anchor checks and the applicable reference checks; meaningful gameplay and privacy tests should remain intact.
 

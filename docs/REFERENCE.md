@@ -277,8 +277,28 @@ available to human players only; automated players use public built-in designs.
 The Designer and retrofit editor enforce the same complete equipment rules.
 Turret damage and range must be finite and nonnegative; cooldown must be a
 nonnegative integer. Editable fixed component hull costs must also be nonnegative.
-Zero values are allowed. Invalid input reports an error before publishing a design
-or paying for a refit, keeping accepted equipment compatible with campaign saves.
+Zero values are allowed where the equipment minimum permits them; fractional values
+remain legal for numeric fields that do not require integers. Integer fields accept
+whole-number text (for example, `2`, not `2.0` or `2e0`).
+
+Invalid text stays in its field, marked with a red border and an explanatory tooltip.
+The Design Summary lists affected components, fields and accepted values as you edit.
+Correcting a field clears its error. Save Design and Save as New remain disabled until
+the draft and complete equipment configuration are valid. Invalid settings still block
+saving when their component is turned off; its details remain accessible for correction.
+Switching panels or closing and reopening the Designer preserves the draft. Loading a
+different design replaces it and resets the unadded turret's numeric fields.
+
+Previews use the last valid numeric values while a field is invalid. Values that
+overflow cost calculations show an unavailable preview. Over-capacity designs show
+**Over by X hull**, including fractional excess. Changing hulls rechecks the antimatter
+minimum without increasing the entered capacity; wing long-range Sensors remain locked
+to zero. Turrets enter the design only through **Add Turret**. Invalid turret drafts
+block that action and saving until corrected.
+
+The retrofit editor uses the same numeric feedback and keeps confirmation disabled
+for invalid input. Saving and refitting recheck the draft before publishing or charging,
+so rejected actions preserve existing designs, equipment and credits.
 
 Click **?** beside a component or ability toggle in the Unit Editor to read its
 description and key rules, including requirements and costs. Help is available

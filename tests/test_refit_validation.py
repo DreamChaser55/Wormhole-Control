@@ -77,6 +77,17 @@ def test_newly_installed_bay_requires_production_selection(world):
     assert not bay.constructing and not bay.docked_units and payer.credits == credits
 
 
+def test_installed_capacity_excess_keeps_fractional_feedback(world):
+    target = world[-1]
+    empty_equipment(target, HullSize.MEDIUM)
+    target.current_hull_usage = target.hull_capacity - 0.5
+    result = evaluate_refit(target, 'ADD', 'Engines', {'speed': 20})
+    assert result.errors == [
+        'Insufficient hull capacity for projected installed equipment. Over by 0.5 hull.']
+    target.current_hull_usage -= 0.5
+    assert not evaluate_refit(target, 'ADD', 'Engines', {'speed': 20}).errors
+
+
 @pytest.mark.parametrize('hull', list(HullSize))
 @pytest.mark.parametrize('name', list(COMPONENT_SPECS))
 def test_every_component_and_hull_matches_designer(world, hull, name):

@@ -20,6 +20,8 @@ from .component_state import (
 )
 from .turret_editor import rebuild_turret_list
 from .save_dialog import SaveConfirmationDialog
+from .param_readers import read_all
+from gui.equipment_input import INPUT_FIELDS
 
 
 def set_status(editor, msg: str, error: bool = False) -> None:
@@ -53,6 +55,11 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
         editor: UnitEditorWindow instance.
         template (CustomUnitTemplate): Design template containing component configuration.
     """
+    editor._field_errors.clear()
+    for widget, value in (('_turret_dmg_entry', '10'), ('_turret_range_entry', '300'), ('_turret_cd_entry', '2')):
+        entry = getattr(editor, widget, None)
+        if entry is not None:
+            entry.set_text(value)
     editor._editing_name = template.display_name
     editor._hull_size = template.hull_size
     editor._comp = copy.deepcopy(template.components)
@@ -61,47 +68,14 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
     if editor._display_entry:
         editor._display_entry.set_text(template.display_name)
 
-    # Restore dynamic sub-option entry fields
-    if editor._engine_speed_entry:
-        editor._engine_speed_entry.set_text(f"{editor._comp.engine_speed:g}")
-    if editor._am_capacity_entry:
-        editor._am_capacity_entry.set_text(f"{editor._comp.antimatter_capacity:g}")
-    if editor._hd_jump_range_entry:
-        editor._hd_jump_range_entry.set_text(str(editor._comp.hyperdrive_jump_range))
-    if editor._armor_entry:
-        editor._armor_entry.set_text(f"{editor._comp.armor:g}")
-    if editor._shields_entry:
-        editor._shields_entry.set_text(f"{editor._comp.shields:g}")
-    if editor._pd_entry:
-        editor._pd_entry.set_text(f"{editor._comp.point_defense:g}")
-    if getattr(editor, '_sensor_short_range_entry', None):
-        editor._sensor_short_range_entry.set_text(f"{editor._comp.sensor_short_range:g}")
-    if getattr(editor, '_sensor_long_range_entry', None):
-        editor._sensor_long_range_entry.set_text(str(int(editor._comp.sensor_long_range_hexes)))
-    if getattr(editor, '_repair_rate_entry', None):
-        editor._repair_rate_entry.set_text(f"{editor._comp.repair_rate:g}")
-    if getattr(editor, '_repair_range_entry', None):
-        editor._repair_range_entry.set_text(f"{editor._comp.repair_range:g}")
-    if getattr(editor, '_mining_rate_entry', None):
-        editor._mining_rate_entry.set_text(f"{editor._comp.mining_rate:g}")
-    if getattr(editor, '_mining_range_entry', None):
-        editor._mining_range_entry.set_text(f"{editor._comp.mining_range:g}")
-    if getattr(editor, '_mining_max_cargo_entry', None):
-        editor._mining_max_cargo_entry.set_text(f"{editor._comp.max_mining_cargo:g}")
-    if getattr(editor, '_hangar_slots_entry', None):
-        editor._hangar_slots_entry.set_text(str(int(editor._comp.hangar_slots)))
-    if getattr(editor, '_strikecraft_bay_slots_entry', None):
-        editor._strikecraft_bay_slots_entry.set_text(str(int(editor._comp.strikecraft_bay_slots)))
-    if getattr(editor, '_inhibitor_radius_entry', None):
-        editor._inhibitor_radius_entry.set_text(f"{editor._comp.inhibitor_radius:g}")
-    if getattr(editor, "_troop_capacity_entry", None):
-        editor._troop_capacity_entry.set_text(str(editor._comp.troop_capacity))
-    if getattr(editor, '_marines_count_entry', None):
-        editor._marines_count_entry.set_text(str(int(editor._comp.marines_count)))
-    if getattr(editor, '_cloaking_radius_entry', None):
-        editor._cloaking_radius_entry.set_text(f"{getattr(editor._comp, 'cloaking_radius', 500.0):g}")
-    if getattr(editor, '_intel_agents_entry', None):
-        editor._intel_agents_entry.set_text(str(int(getattr(editor._comp, "intelligence_agents_count", 1))))
+    # Round-trip numeric values exactly; display formatting must not change a
+    # loaded design when the normal draft readers run below.
+    for field, info in INPUT_FIELDS.items():
+        if field.startswith('turret.'):
+            continue
+        entry = getattr(editor, info.widget, None)
+        if entry is not None:
+            entry.set_text(str(getattr(editor._comp, field)).removesuffix('.0'))
     if getattr(editor, '_intel_ci_btn', None):
         editor._intel_ci_btn.set_text(
             "[x] Counter-Intelligence" if getattr(editor._comp, "has_counter_intelligence", False) else "[ ] Counter-Intelligence"
@@ -150,6 +124,7 @@ def sync_widgets_from_template(editor, template: CustomUnitTemplate) -> None:
             group_key="has_cloaking_device",
         )
 
+    read_all(editor)
     refresh_hull_controls(editor)
     update_component_toggle_labels(editor)
     update_ability_toggle_labels(editor)
@@ -202,37 +177,28 @@ def _collect_and_validate_template(
     editor, display_name: str
 ) -> typing.Tuple[typing.Optional[CustomUnitTemplate], typing.List[str]]:
     """Synchronizes all editor parameters into a CustomUnitTemplate and validates it."""
-    editor._read_engine_params()
-    editor._read_antimatter_params()
-    editor._read_hyperdrive_params()
-    editor._read_defense_params()
-    editor._read_sensor_params()
-    editor._read_repair_params()
-    editor._read_mining_params()
-    editor._read_hangar_params()
-    editor._read_strikecraft_bay_params()
-    editor._read_inhibitor_params()
-    editor._read_marines_params()
-    from .param_readers import read_troop_params
-    read_troop_params(editor)
-    editor._read_cloaking_params()
-    editor._read_intelligence_params()
+    read_all(editor)
     editor._comp.turrets = editor._turrets
     editor._comp.abilities = list(editor._selected_abilities)
+    editor._update_summary()
 
     template = CustomUnitTemplate(
         display_name=display_name,
         hull_size=editor._hull_size,
-        components=editor._comp,
+        components=copy.deepcopy(editor._comp),
     )
-    errors = template.validate()
-    return template, errors
+    errors = list(editor._field_errors.values()) + template.validate()
+    return (None if errors else template), errors
 
 
 def execute_save(
     editor, template: CustomUnitTemplate, original_name: typing.Optional[str] = None
 ) -> typing.Optional[str]:
-    """Persists the template via template_manager and updates the editor state."""
+    """Recheck the current draft, then publish a detached template atomically."""
+    template, errors = _collect_and_validate_template(editor, template.display_name)
+    if errors:
+        set_status(editor, 'Correct the errors in Design Summary.', error=True)
+        return None
     try:
         errors = editor.template_manager.save_design(template, original_name=original_name)
     except TemplatePersistenceError as exc:

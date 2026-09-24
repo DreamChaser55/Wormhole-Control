@@ -51,6 +51,37 @@ def test_application_views_at_explicit_display_sizes(game_factory, tmp_path, siz
     editor = UnitEditorWindow(gui.manager, DisplayConfig(*size), game.custom_template_manager)
     editor.show()
     capture('designer')
+    editor._display_entry.set_text('Feedback layout')
+    entry = editor._engine_speed_entry
+    entry.set_text('bad')
+    entry.focus()
+    entry.edit_position = 2
+    entry.select_range = [1, 2]
+    editor.process_event(pygame.event.Event(pygame_gui.UI_TEXT_ENTRY_CHANGED, ui_element=entry))
+    capture('designer-invalid')
+    assert entry.get_text() == 'bad' and entry.is_focused
+    assert entry.edit_position == 2 and entry.select_range == [1, 2]
+    assert entry.border_colour == pygame.Color('#FF6666')
+    assert entry.tool_tip_text and 'Engines / Speed' in editor._summary_box.html_text
+    assert not editor._save_button.is_enabled
+    for widget in (entry, editor._summary_box, editor._capacity_excess_label,
+                   editor._save_button, editor._save_as_button, editor._status_label):
+        assert editor._panel.get_abs_rect().contains(widget.get_abs_rect())
+    entry.set_text('100')
+    editor.process_event(pygame.event.Event(pygame_gui.UI_TEXT_ENTRY_CHANGED, ui_element=entry))
+    assert editor._save_button.is_enabled and entry.tool_tip_text is None
+    assert entry.is_focused
+    from gui.equipment_input import INPUT_FIELDS
+    for spec in INPUT_FIELDS.values():
+        getattr(editor, spec.widget).set_text('bad')
+    editor.process_event(pygame.event.Event(pygame_gui.UI_TEXT_ENTRY_CHANGED, ui_element=entry))
+    capture('designer-multiple-errors')
+    assert len(editor._field_errors) == len(INPUT_FIELDS)
+    assert editor._summary_box.scroll_bar is not None
+    editor._summary_box.scroll_bar.set_scroll_from_start_percentage(1.0)
+    capture('designer-errors-scrolled')
+    assert editor._summary_box.scroll_bar.start_percentage > 0
+    assert entry.is_focused
     editor.kill()
 
     world = campaign()
@@ -58,6 +89,12 @@ def test_application_views_at_explicit_display_sizes(game_factory, tmp_path, siz
     constructor = ship(world, hull=HullSize.LARGE)
     retrofit = RetrofitWizardWindow(gui.manager, pygame.Vector2(*size), target, [constructor], initial_comp_key='Weapons')
     capture('retrofit')
+    retrofit._turret_cd_entry.set_text('1.5')
+    retrofit._sync_cost_and_summary()
+    capture('retrofit-invalid')
+    assert not retrofit._confirm_button.is_enabled
+    assert 'integer' in retrofit._status_box.html_text
+    assert retrofit._turret_cd_entry.tool_tip_text
     assert retrofit._turret_labels[0].get_relative_rect().height > 0
     retrofit.kill()
 

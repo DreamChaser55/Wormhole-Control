@@ -7,6 +7,7 @@ Turret list management, adding turrets, and rebuilding turret list widgets.
 import pygame
 import pygame_gui
 from custom_unit_templates import TurretConfig
+from .param_readers import read_turret_params
 
 
 def hide_turret_list(editor) -> None:
@@ -71,18 +72,14 @@ def do_add_turret(editor) -> None:
         ttype = raw[0] if isinstance(raw, tuple) else str(raw)
     else:
         ttype = "MASS_DRIVER"
-    values = {}
-    for name, entry, parse, default in (
-        ('damage', editor._turret_dmg_entry, float, 10.0),
-        ('range', editor._turret_range_entry, float, 300.0),
-        ('cooldown', editor._turret_cd_entry, int, 2),
-    ):
-        try:
-            values[name] = parse(entry.get_text()) if entry else default
-        except ValueError:
-            expected = 'integer' if name == 'cooldown' else 'number'
-            editor._set_status(f'turrets[0].{name}: must be a finite nonnegative {expected}.', error=True)
-            return
+    parsed = read_turret_params(editor)
+    if any(field.startswith('turret.') for field in editor._field_errors):
+        editor._set_status(' | '.join(error for field, error in editor._field_errors.items()
+                                     if field.startswith('turret.')), error=True)
+        editor._update_summary()
+        return
+    values = {name: parsed.get(f'turret.{name}', default)
+              for name, default in (('damage', 10.0), ('range', 300.0), ('cooldown', 2))}
 
     if editor._turret_variant_dd:
         raw_variant = editor._turret_variant_dd.selected_option

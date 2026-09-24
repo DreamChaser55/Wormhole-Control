@@ -50,6 +50,14 @@ def build_col1_config(
     editor._elements.append(editor._capacity_label)
     c1y += row_h + 2
 
+    editor._capacity_excess_label = pygame_gui.elements.UILabel(
+        relative_rect=pygame.Rect(c1x, c1y, c1w, row_h), text="",
+        manager=editor.manager, container=editor._panel,
+        object_id="#editor_capacity_label",
+    )
+    editor._elements.append(editor._capacity_excess_label)
+    c1y += row_h + 2
+
     # Capacity bar visual
     bar_h = int(10 * scale_y)
     editor._cap_bar_rect = pygame.Rect(editor._panel_rect.x + c1x, editor._panel_rect.y + c1y, c1w, bar_h)

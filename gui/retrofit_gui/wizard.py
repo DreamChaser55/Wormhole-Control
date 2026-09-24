@@ -7,6 +7,8 @@ retrofits on friendly starships.
 
 from __future__ import annotations
 import logging
+import math
+from gui.equipment_input import INPUT_FIELDS, install_feedback_theme, mark_entry, capacity_excess
 import typing
 from typing import Optional, List, Dict, Any, Set
 
@@ -45,6 +47,8 @@ class RetrofitWizardWindow:
         shift_pressed: bool = False,
     ):
         self.manager = manager
+        install_feedback_theme(manager)
+        self._field_errors: dict[str, str] = {}
         from gui.theme_loader import preload_rich_text_fonts
         preload_rich_text_fonts(manager)
         self.screen_res = screen_res
@@ -237,11 +241,11 @@ class RetrofitWizardWindow:
         else:
             tvar = "STANDARD"
 
-        try:
-            dmg = param_readers.read_number(self, '_turret_dmg_entry', 'turret damage', 10)
-            rng = param_readers.read_number(self, '_turret_range_entry', 'turret range', 300)
-            cd = param_readers.read_number(self, '_turret_cd_entry', 'turret cooldown', 2, True)
-        except ValueError:
+        self._field_errors = {}
+        dmg = param_readers.read_number(self, '_turret_dmg_entry', 'turret.damage', 10)
+        rng = param_readers.read_number(self, '_turret_range_entry', 'turret.range', 300)
+        cd = param_readers.read_number(self, '_turret_cd_entry', 'turret.cooldown', 2)
+        if self._field_errors:
             self._sync_cost_and_summary()
             return
 
@@ -277,6 +281,7 @@ class RetrofitWizardWindow:
 
     def _read_current_params(self) -> None:
         """Reads input parameters for the currently active component."""
+        self._field_errors = {}
         self._comp_config = {}
         k = self._current_comp_key
         if k == "Engines":
@@ -289,12 +294,12 @@ class RetrofitWizardWindow:
                 raw_hd = self._hd_type_dropdown.selected_option
                 self._comp_config["drive_type"] = raw_hd[0] if isinstance(raw_hd, tuple) else str(raw_hd)
         elif k == "Weapons":
-            for widget, label, default, integer in (
-                ('_turret_dmg_entry', 'turret damage', 10, False),
-                ('_turret_range_entry', 'turret range', 300, False),
-                ('_turret_cd_entry', 'turret cooldown', 2, True),
+            for widget, label, default in (
+                ('_turret_dmg_entry', 'turret.damage', 10),
+                ('_turret_range_entry', 'turret.range', 300),
+                ('_turret_cd_entry', 'turret.cooldown', 2),
             ):
-                param_readers.read_number(self, widget, label, default, integer)
+                param_readers.read_number(self, widget, label, default)
             self._comp_config["turrets"] = self._turrets
         elif k == "Defenses":
             param_readers.read_defense_params(self)
@@ -311,7 +316,7 @@ class RetrofitWizardWindow:
         elif k == "HyperspaceInhibitionFieldEmitter":
             param_readers.read_inhibitor_params(self)
         elif k == "TroopTransportComponent":
-            param_readers.read_fields(self, [("capacity", "_troop_capacity_entry", "troop_capacity", 40, True)])
+            param_readers.read_fields(self, [("capacity", "_troop_capacity_entry", "troop_capacity", 40)])
         elif k == "MarinesComponent":
             param_readers.read_marines_params(self)
         elif k == "CloakingDevice":
@@ -328,12 +333,16 @@ class RetrofitWizardWindow:
         """Preview exactly the configuration and charges execution will validate."""
         from html import escape
         from custom_unit_templates import get_ability_required_components
+        from custom_unit_templates import CustomUnitTemplate, COMPONENT_COST_PER_HULL_POINT
         from refit_validation import RefitEvaluation
         try:
             self._read_current_params()
-            result = evaluate_refit(self.target_unit, 'ADD', self._current_comp_key, self._comp_config)
+            result = (RefitEvaluation(errors=list(self._field_errors.values())) if self._field_errors else
+                      evaluate_refit(self.target_unit, 'ADD', self._current_comp_key, self._comp_config))
         except (ValueError, OverflowError) as exc:
-            result = RefitEvaluation(errors=[str(exc)])
+            result = RefitEvaluation(errors=[f'Cost preview unavailable: {exc}. Reduce equipment values.'])
+        for field, spec in INPUT_FIELDS.items():
+            mark_entry(getattr(self, spec.widget, None), self._field_errors.get(field))
         self.calculated_hull_cost = result.hull_cost
         self.cost_credits = result.cost_credits
         self.time_to_build = result.duration
@@ -342,9 +351,21 @@ class RetrofitWizardWindow:
         errors = list(result.errors)
         if not errors and player.credits < result.cost_credits:
             errors.append(f'Insufficient credits: {result.cost_credits} required, {player.credits} available.')
-        proposed = self.target_unit.current_hull_usage + result.hull_cost
+        # Validation checks both complete Designer cost and projected installed
+        # usage. Report the binding limit when legacy/live cost hints differ.
+        try:
+            proposed = (max(CustomUnitTemplate('Preview', self.target_unit.hull_size, result.proposed).total_hull_cost,
+                            self.target_unit.current_hull_usage + result.hull_cost)
+                        if result.proposed is not None else math.nan)
+        except (ValueError, OverflowError, TypeError):
+            proposed = math.nan
+        unavailable = (bool(self._field_errors) or not math.isfinite(proposed)
+                       or not math.isfinite(result.hull_cost * COMPONENT_COST_PER_HULL_POINT)
+                       or any('total_hull_cost' in e or 'Cost preview unavailable' in e for e in errors))
+        if unavailable and not self._field_errors:
+            errors.append('Cost preview unavailable: correct equipment values before installing.')
         labels = (
-            (self._hull_impact_label, f'Hull Usage: {proposed:.1f} / {self.target_unit.hull_capacity:.1f} HP'),
+            (self._hull_impact_label, f'Hull Usage: {proposed:g} / {self.target_unit.hull_capacity:g}'),
             (self._added_cost_label, f'Component Hull: +{result.hull_cost:.1f} HP'),
             (self._credit_cost_label, f'Credit Cost: {result.cost_credits} c'),
             (self._player_credits_label, f'Available Credits: {player.credits} c'),
@@ -353,10 +374,18 @@ class RetrofitWizardWindow:
         )
         for label, text in labels:
             if label:
+                if unavailable and label is not self._player_credits_label:
+                    text = text.split(':', 1)[0] + ': unavailable'
                 label.set_text(text)
+        excess = capacity_excess(proposed, self.target_unit.hull_capacity) if not unavailable else ''
+        if excess and not any(excess in error for error in errors):
+            errors.append(excess)
         self.is_valid = not errors
         if self._status_box:
             self._status_box.set_text('<br>'.join(escape(e) for e in errors) if errors else 'Ready to Install')
+        if self._add_turret_button:
+            bad_turret = any(field.startswith('turret.') for field in self._field_errors)
+            self._add_turret_button.disable() if bad_turret else self._add_turret_button.enable()
         if self._confirm_button:
             self._confirm_button.enable() if self.is_valid else self._confirm_button.disable()
         if not errors:
