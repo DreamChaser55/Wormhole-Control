@@ -367,14 +367,14 @@ def test_luna_rejects_incomplete_turn_before_mutation_and_preserves_memory_on_co
     coordinator = AgentTurnCoordinator(game, provider=FakePlanningProvider([]))
     try:
         plan = TurnPlan((), CommandBatch((Command("clear_explicit_orders", (unit.id,)),), end_turn=False), {})
-        result = PlanningResult(plan, "fake", "gpt-5.6-luna", "medium")
+        result = PlanningResult(plan, "fake", "gpt-6-luna", "medium")
         with patch("game_ai.coordinator.CommandGateway") as gateway, patch.object(coordinator, "_handle_output_error") as output_error:
             coordinator._apply_result(result)
             gateway.assert_not_called()
             output_error.assert_called_once()
         valid = TurnPlan((), CommandBatch((Command("clear_explicit_orders", (unit.id,)),)), {"strategy": "rejected"})
         with patch.object(unit.commander_component, "clear_explicit_orders", side_effect=RuntimeError("failure")), patch.object(coordinator, "_append_telemetry"):
-            coordinator._apply_result(PlanningResult(valid, "fake", "gpt-5.6-luna", "medium"))
+            coordinator._apply_result(PlanningResult(valid, "fake", "gpt-6-luna", "medium"))
         assert player.ai_memory == {"strategy": "original"}
         assert player.last_ai_report["failure_stage"] == "commit"
         assert coordinator.state == "error" and coordinator._repair_attempts_used == 0

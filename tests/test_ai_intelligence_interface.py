@@ -282,7 +282,7 @@ def test_luna_coordinator_and_codex_control_use_identical_gateway_effects():
         coordinator._write_memory = lambda *_args: None
         coordinator._record_telemetry = lambda *_args, **_kwargs: None
         coordinator._apply_result(
-            PlanningResult(luna_plan, "fake", "gpt-5.6-luna", "medium")
+            PlanningResult(luna_plan, "fake", "gpt-6-luna", "medium")
         )
     finally:
         coordinator.shutdown()

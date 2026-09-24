@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 
 
-LUNA_MODEL = "gpt-5.6-luna"
+LUNA_MODEL = "gpt-6-luna"
 SUPPORTED_REASONING_EFFORTS: Tuple[str, ...] = ("low", "medium", "high")
 DEFAULT_REASONING_EFFORT = "medium"
 

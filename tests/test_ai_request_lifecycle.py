@@ -27,7 +27,7 @@ from tests.support.campaigns import campaign
 
 def result(strategy="current"):
     return PlanningResult(TurnPlan((), CommandBatch((), True), {"strategy": strategy}),
-                          "fake", "gpt-5.6-luna", "medium")
+                          "fake", "gpt-6-luna", "medium")
 
 
 class RunningProvider(FakePlanningProvider):
@@ -58,7 +58,7 @@ class RunningProvider(FakePlanningProvider):
             raise RuntimeError("private obsolete provider payload")
         if self.outcome == "output":
             raise PlanningOutputError("invalid_json", "private obsolete provider payload",
-                                      provider="fake", model="gpt-5.6-luna", reasoning_effort="medium")
+                                      provider="fake", model="gpt-6-luna", reasoning_effort="medium")
         return result("obsolete")
 
     async def aclose(self):

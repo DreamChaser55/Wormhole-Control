@@ -107,9 +107,9 @@ The Luna-only runtime is defined in `game_ai/runtime.py`:
 
 | Player choice | Model | Reasoning |
 |---|---|---|
-| Low | `gpt-5.6-luna` | low |
-| Medium (default) | `gpt-5.6-luna` | medium |
-| High | `gpt-5.6-luna` | high |
+| Low | `gpt-6-luna` | low |
+| Medium (default) | `gpt-6-luna` | medium |
+| High | `gpt-6-luna` | high |
 
 Every choice uses the same 7,000-output-token limit, 120-second timeout, and
 40-command turn limit. The player setting changes only the reasoning effort.

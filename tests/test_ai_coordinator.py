@@ -65,7 +65,7 @@ class TestOpenAIAdapter(unittest.TestCase):
         self.assertEqual(result.response_id, "response-1")
         self.assertFalse(responses.kwargs["store"])
         self.assertTrue(responses.kwargs["text"]["format"]["strict"])
-        self.assertEqual(responses.kwargs["model"], "gpt-5.6-luna")
+        self.assertEqual(responses.kwargs["model"], "gpt-6-luna")
         self.assertEqual(responses.kwargs["reasoning"], {"effort": "high"})
         self.assertEqual(result.reasoning_effort, "high")
         self.assertNotIn("tools", responses.kwargs)
@@ -428,7 +428,7 @@ class TestCoordinator(unittest.TestCase):
         result = PlanningResult(
             plan=plan,
             provider="fake",
-            model="gpt-5.6-luna",
+            model="gpt-6-luna",
             reasoning_effort="high",
         )
         coordinator = AgentTurnCoordinator(
@@ -449,7 +449,7 @@ class TestCoordinator(unittest.TestCase):
                         encoding="utf-8"
                     )
                 )
-            self.assertEqual(record["model"], "gpt-5.6-luna")
+            self.assertEqual(record["model"], "gpt-6-luna")
             self.assertEqual(record["reasoning_effort"], "high")
             self.assertEqual(record["attempt_index"], 0)
             self.assertFalse(record["is_repair"])
@@ -637,4 +637,4 @@ class TestEvaluation(unittest.TestCase):
 
         self.assertEqual(report.reasoning_effort, "medium")
         self.assertEqual(report.to_dict()["reasoning_effort"], "medium")
-        self.assertEqual(provider.runtime_configs[0].model, "gpt-5.6-luna")
+        self.assertEqual(provider.runtime_configs[0].model, "gpt-6-luna")
