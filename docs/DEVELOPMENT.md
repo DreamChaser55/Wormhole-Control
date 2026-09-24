@@ -117,6 +117,9 @@ and components from their defining modules. Canonical domain classes live in
 
 Commander owns explicit queue promotion and stance arbitration. An Order owns
 subtree status, cancellation and outcomes; concrete orders own actuator/job cleanup.
+The [shared order contract](AGENTIC_AI.md#shared-order-contract) and
+[commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback) define
+validation, projection, execution checks, refunds and partial failures.
 Turret authorization requires an `IN_PROGRESS` Attack or Attack (long-range only) on the active root's front
 child chain. Cached targets, queued attacks and suspended subtrees cannot authorize
 fire. See [player order rules](REFERENCE.md#queues-and-stances).
@@ -125,6 +128,26 @@ fire. See [player order rules](REFERENCE.md#queues-and-stances).
 references and operational standoff distances. Routing uses feasible system paths
 and verified obstacle-avoiding sector segments. Target-derived coordinates must
 follow the [observation disclosure policy](AGENTIC_AI.md#information-boundary).
+
+### Turn timing
+
+| Clock or phase | Meaning |
+|---|---|
+| Owner-turn resolution | `process_player_turn(player)` resolves that player's End Turn actions. `process_turn(player)` delegates to it; neither advances the player index or global round. |
+| Global round | `game.turn_number` increments only after the last player's resolution and global end-of-round effects. Population growth and quiet-round planetary recovery run in that global phase. |
+| Countdown counters | Ordinary ability cooldown/duration counters decrement during owner unit updates; stored units still tick timers without applying external ongoing effects. These are remaining counts, not round deadlines. |
+| Ready/expiry deadlines | Tactical `ready_round` / `expires_round` values are absolute round numbers. `start_owner_turn` derives remaining counters and expires eligible effects when that owner starts. Wing recovery and antimatter multiplication also compare independent unit deadlines against the round clock. |
+
+`end_turn()` owns the complete transition: resolve the departing player, run any
+global phase, advance the player/round, refresh the next owner's tactical deadlines,
+freeze the briefing and invoke presentation/AI scheduling. Services with round
+markers guard individual effects, not the whole turn: wing endurance increments
+once per owner per round before movement, while later reconciliation can enforce
+returns without incrementing it. Repeating the entire resolution is not safe.
+
+Load reconciliation derives state from saved clocks without advancing play. Keep
+feature-specific timing in the [reference](REFERENCE.md); do not describe every
+counter or deadline simply as "turns."
 
 ## Display and runtime resources
 

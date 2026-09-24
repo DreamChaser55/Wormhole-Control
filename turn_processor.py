@@ -33,7 +33,15 @@ class TurnProcessor:
         self.rng = rng or getattr(game_instance, 'rng', None) or random
 
     def end_turn(self):
-        """Processes the end of the current player's turn and advances turn/round state."""
+        """Resolve the active player, advance play, and present the next owner turn.
+
+        Open the departing player's briefing window and resolve their actions.
+        After the last player, run global effects and increment turn_number (the
+        global round); otherwise advance only the player index. Refresh the next
+        owner's tactical deadlines, freeze their briefing, then invoke presentation
+        and AI scheduling. Return None; errors propagate without rolling back
+        already-resolved phases.
+        """
         turn_num = getattr(self.game, 'turn_number', 1)
         current_player = self.game.players[self.game.current_player_index]
         from turn_briefing import begin_window, finish_window
@@ -66,13 +74,25 @@ class TurnProcessor:
         self.presentation.schedule_ai_turn()
 
     def process_turn(self, player=None):
-        """Processes actions that occur at the end of a player's turn (movement, jumps, economy, unit updates)."""
+        """Resolve player (default: active player) without advancing player or round.
+
+        Delegate to process_player_turn and return None. This mutates game state;
+        it does not perform end_turn's global effects, briefings or presentation.
+        """
         target_player = player if player is not None else self.game.players[self.game.current_player_index]
         self.process_player_turn(target_player)
 
 
     def process_player_turn(self, current_player):
-        """Processes player-specific actions that occur at the end of their turn (movement, economy, unit updates)."""
+        """Resolve one owner's End Turn phases without changing the turn/index.
+
+        Mutate movement, hazards, economy, equipment and orders for current_player;
+        interactions and destruction cleanup can affect other players' objects.
+        Ordinary ability counters tick in unit updates; tactical ready/expiry
+        deadlines refresh separately at owner-turn start. Return None, including
+        when the galaxy is absent/empty. Errors propagate with prior effects kept;
+        the full resolution is not idempotent even where a service guards its tick.
+        """
         with ProfileTimer("Total player turn processing"):
             turn_num = getattr(self.game, 'turn_number', 1)
             logger.debug(f"Processing Turn {turn_num} for {current_player.name}...")
@@ -81,12 +101,10 @@ class TurnProcessor:
                 logger.debug("Warning: Galaxy or systems not initialized in process_turn.")
                 return
 
-            # The execution order is critical for game state consistency:
-            # 1. Resolve unit movement first so positions are updated.
-            # 2. Minefield contact for the active player's ships, including stationary ships.
-            # 3. Generate resource credits for the active player based on population and habitats.
-            # 4. Deduct upkeep for the active player's units.
-            # 5. Run unit state updates (engines, weapons, order resolution) with updated context.
+            # Support and mandatory wing returns precede movement. Pulls/flak,
+            # mines and environmental hazards resolve before income/upkeep and
+            # unit updates; dismantling and planetary actions follow. Final
+            # support/service reconciliation sees arrivals and resource changes.
             from wormhole_stabilization import process_support
             process_support(self.game, current_player)
             from tactical_abilities import reconcile_links
@@ -134,7 +152,12 @@ class TurnProcessor:
 
 
     def process_global_end_of_round(self):
-        """Processes galaxy-wide actions at the end of a full round (after all players have acted)."""
+        """Apply growth, planetary recovery and intel after all players have acted.
+
+        Mutate galaxy-wide state using the current global round, without advancing
+        it; end_turn increments the clock afterward. Return None for an absent or
+        empty galaxy as well. Failures propagate without undoing earlier phases.
+        """
         with ProfileTimer("Total global end of round processing"):
             turn_num = getattr(self.game, 'turn_number', 1)
             logger.debug(f"Processing End of Round {turn_num} (Global)...")
@@ -180,6 +203,8 @@ class TurnProcessor:
     def _process_movement(self, current_player) -> dict[int, float]:
         """Resolve owned navigation actuators, paying before each displacement.
 
+        Process current_player's deployed units using their authorized active
+        order targets; clear stale actuators rather than moving for old orders.
         Sublight hazards clip a tentative position before payment and commit.
         Jump relocation's False result leaves containment unchanged and refunds
         the debit. Only committed jumps start recharge or roll instability damage.

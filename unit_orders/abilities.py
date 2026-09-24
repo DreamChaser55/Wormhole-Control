@@ -29,6 +29,20 @@ class UseAbilityOrder(Order):
         super().__init__(unit, OrderType.USE_ABILITY, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        """Validate and start this cast, creating approach work when allowed.
+
+        Read the order's ability/target/location parameters against the live galaxy
+        and equipment. Ordinary ranged targets and tactical unit links may append
+        Move plus retry-cast children, leaving this root in progress until they
+        run. Tactical position and carrier casts require local range; Microjump
+        requires the current sector and self casts need no approach.
+
+        In range, delegate activation, payment, effects and cooldowns to the
+        ability service/component. Successful activation completes the order;
+        invalid input, unavailable equipment or rejected activation fails it.
+        Some ordinary failures display GUI warnings. Return None; unexpected
+        activation exceptions propagate without promising reversal of effects.
+        """
         from location_validation import validate_order
         if not validate_order(self, galaxy_ref):
             return

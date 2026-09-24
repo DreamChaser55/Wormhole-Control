@@ -286,7 +286,18 @@ def validate_document(data):
 
 
 def reconcile(candidate):
-    """Rebuild derived state only; no turn advancement, commands, or UI callbacks."""
+    """Rebuild and validate a detached candidate; return object and agent ID maps.
+
+    The caller owns candidate and must keep it separate from live play. Traverse
+    containment, restore component/order references and ownership, rebuild indexes,
+    effects, carrier links and visibility, and reconcile deadlines to each owner's
+    current round. record_intel=False preserves saved historical intel.
+
+    This mutates candidate, but does not advance turns, issue commands, replay
+    activation/payment or invoke GUI/AI callbacks. Invalid graph/state raises
+    ValueError; other restoration errors propagate. Failure may leave candidate
+    partially rebuilt, so discard it rather than installing it in the live game.
+    """
     from domain.units import Unit
     from domain.celestials import Wormhole, Planet
     from galaxy import Hex
@@ -514,6 +525,18 @@ def _cancel_testing_construction(candidate, warnings):
 
 
 def prepare_campaign(data):
+    """Validate decoded save data and return a detached PreparedCampaign.
+
+    data is an already-parsed document, not JSON text or a filename. Check JSON
+    values and the current format, validate the document, hydrate its ownership
+    graph under isolated allocation, then reconcile references and derived state.
+    Settle unavailable active Testing construction only on the candidate and
+    include cancellation warnings and allocator high-water marks in the result.
+
+    Invalid saves raise ValueError; hydration/reconciliation failures propagate.
+    The allocation context restores on every exit. No live graph, GUI, AI or
+    authoritative counters are changed; commit_campaign owns installation.
+    """
     import save_manager as sm
     from domain.communications import Conversation
     from unit_orders.base import Order

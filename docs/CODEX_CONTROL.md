@@ -7,14 +7,10 @@ save, observation, command and transport identifiers.
 
 ## Strikecraft servicing
 
-Strikecraft automatically return after 80 owner turns outside their carrier. Inspect
-owned/allied `wing_service` for endurance, return availability and launch readiness;
-docked wings expose it in the carrier's bay details. Mandatory `return_for_service`
-orders are system-controlled and cannot be cancelled or replaced. Only renaming
-remains legal while returning; conflicting commands return `wing_service_required`.
-Recover wings before moving carriers between sectors: at 80 or more turns, an
-unavailable carrier or return route (including temporary disablement) causes loss.
-Docking resets endurance and prevents relaunch until the next wing-owner turn.
+Inspect owned/allied `wing_service` for endurance, return availability and launch
+readiness; docked wings expose it in the carrier's bay details. Mandatory
+`return_for_service` orders are system-controlled. Only renaming remains legal
+while returning; conflicting commands return `wing_service_required`.
 See the [servicing rules](REFERENCE.md#strikecraft-endurance-and-servicing) and
 [observation contract](AGENTIC_AI.md#strikecraft-endurance-contract).
 
@@ -173,7 +169,11 @@ Treat the observation as the only permitted source of game facts. Never infer hi
 
 ### `command`
 
-Requires the current `turn_token` and 1–40 command objects accepted by the existing command gateway. The full batch is preflighted atomically. A validation failure applies none of it and leaves the Codex turn active. A successful call does not end the turn, so several calls may build the turn incrementally.
+Requires the current `turn_token` and a batch satisfying the
+[shared order contract](AGENTIC_AI.md#shared-order-contract) and
+[commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).
+Validation rejection leaves the Codex turn active. A successful call does not end
+the turn, so several calls may build the turn incrementally.
 
 ```json
 {
@@ -187,16 +187,13 @@ Requires the current `turn_token` and 1–40 command objects accepted by the exi
 }
 ```
 
-On success, `data` contains `accepted`, `applied_count`, `receipts`, `operation_results`,
-`failure_stage: null`, `retryable: false`, `may_have_partial_effects: false`,
-`requires_observation: false`, and the unchanged token. Preflight rejection has
-`failure_stage: "preflight"`, indexed errors in `error.details`, and zero applied operations.
-Unexpected commit failure has `failure_stage: "commit"`, `retryable: false`, retained
-successful receipts, and applied/failed/unattempted operation results. `applied_count`
-counts successfully completed operations; the failing operation may itself have mutated
-state. Its effects are marked uncertain. The previous mutation token is invalidated,
-`turn_token` is null, and a successful fresh observation is required before another
-command or socket end-turn. No rollback or automatic semantic retry is performed. Supported command shapes and visible option lists are carried in each observation; see [Agentic AI Architecture](AGENTIC_AI.md) for additional command-gateway context.
+`data` carries the gateway result fields described in the
+[commit contract](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback), plus the
+turn token. Rejected commands expose indexed errors in `error.details`. Success
+and preflight rejection retain the token. A commit failure invalidates it and
+returns `turn_token: null`; a successful fresh observation is required before
+another command or socket end-turn. See [recovery distinctions](#recovery-distinctions)
+for request-ID handling after transport uncertainty.
 
 ### `end_turn`
 
@@ -249,10 +246,10 @@ The normal control command starts a visible local GUI process and connects to a 
 
 Read `observation.command_catalog`: it contains the current command contract version, shared field
 schemas, required fields, defaults, group/batch limits, capability requirements, and queue
-semantics. Do not inspect implementation code to discover commands. Sparse commands default
-`queue` to false; optional unused fields must be absent or null. Strings such as `"false"`,
-unknown fields, duplicate/boolean/fractional IDs and non-finite coordinates are rejected.
-Old protocol versions are rejected with an explicit client-upgrade error.
+semantics. Do not inspect implementation code to discover commands. Sparse commands
+default `queue` to false; optional unused fields must be absent or null. Validation
+and queue semantics follow the [shared contract](AGENTIC_AI.md#shared-order-contract).
+Unsupported transport versions are rejected with an explicit client-upgrade error.
 
 Read `observation.intelligence` for controllable owned agents and discovered hostile agents,
 and `observation.player_commands` for legal player-level `sabotage` and `relocate_agent`
@@ -261,12 +258,10 @@ and never disturb ship orders. Allied agents can extend sensor vision but are no
 or controllable. Intelligence and CI ship command options list only currently actionable
 infiltration, extraction, sweep, and elimination choices.
 
-Friendly units separate `standing_order`, `current_order` and `queued_orders`. The old
-`orders` array is gone. Use public UUID `order_id` values for editing, not internal integers.
-Explicit work suspends stance combat, including explicit Move. Changing stance preserves
-work. `cancel_orders` is full Stop; `clear_explicit_orders` preserves the selected stance.
-Continuous orders can block later queue entries until cancelled. Receipts confirm issuance;
-`order_history` supplies bounded, persistent terminal outcomes with retention metadata.
+Read friendly `standing_order`, `current_order` and `queued_orders`; use observed
+public UUID `order_id` values for editing. The [order contract](AGENTIC_AI.md#shared-order-contract)
+defines stance, Stop and individual cancellation behavior. Use `order_history` for
+terminal outcomes under the [lifecycle contract](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).
 
 Example command objects (wrap in a `command` request with a fresh request ID and token):
 
@@ -319,19 +314,17 @@ Example command objects (wrap in a `command` request with a fresh request ID and
 {"type":"eliminate_agent","unit_ids":[21],"agent_id":12}
 ```
 
-Patrol routes accept 1–16 waypoints or a single complete destination triplet. They return to
-the position captured when the patrol starts and repeat. Appending preserves the current
-leg. `queue=true` always creates another explicit root. Internal/stance orders cannot be
-cancelled individually. `order_unavailable` means the order is no longer editable for that
-owned unit; observe current roots rather than guessing identities.
+Use the [shared patrol and cancellation rules](AGENTIC_AI.md#shared-order-contract)
+when choosing between appending waypoints and queueing a new root. If an edit
+returns `order_unavailable`, observe current roots rather than guessing identities.
 
 ## Recovery distinctions
 
 - **Preflight/output rejection:** no command effects occurred. Correct the plan using the
   indexed errors and submit a new intentional request ID. The token remains valid.
-- **Partial commit failure:** earlier successful operations remain applied, the failed
-  operation may have uncertain effects, and later operations were not attempted. Observe
-  successfully before another mutation or end-turn (`observation_required` otherwise).
+- **Partial commit failure:** inspect the [operation results](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback)
+  and observe successfully before another mutation or end-turn
+  (`observation_required` otherwise).
 - **Uncertain transport outcome:** replay the identical payload with its original request
   ID; never retry changed content under that ID. Cached failure responses are replayed too.
   Cache retention is the last 256 mutation responses in this running service; after restart
@@ -364,23 +357,19 @@ and allies' existing access.
 
 ## Attack range commands
 
-`attack` approaches until every turret eligible to hit its target is in range.
-`attack_long_range` requires functional Weapons and at least one eligible Long Range
-variant turret, and approaches until all eligible Long Range turrets are in range.
-All eligible turrets may fire within their own ranges under either order, and neither
-order retreats. Select targets from the unit's command options; both support visible
-enemy units and deployables and optional public subsystem targeting.
+Select `attack` or `attack_long_range` and targets from the unit's command options.
+Both support visible enemy units/deployables and optional public subsystem targets.
+See [attack rules](REFERENCE.md#queues-and-stances) for turret eligibility, approach
+distance and the subsystem range modifier.
 
 ```json
 {"type":"attack_long_range","unit_ids":[101],"target_id":102,"queue":false}
 {"type":"attack_long_range","unit_ids":[101],"target_id":102,"target_component":"Weapons","queue":true}
 ```
 
-These are separate examples; substitute observed IDs. Omit coordinates. Ineligible
-units reject the whole command batch before any orders change. Later loss of all
-eligible long-range turrets fails the order instead of switching to normal Attack.
-The public order type is `attack_long_range`; queueing, cancellation and target
-redaction follow the ordinary [order contract](#command-discovery-and-order-control).
+These are separate examples; substitute observed IDs and omit coordinates. The
+public order type is `attack_long_range`; eligibility, queueing, cancellation and
+target redaction follow the [shared order contract](AGENTIC_AI.md#shared-order-contract).
 
 ## Tactical ability commands
 
@@ -424,80 +413,46 @@ a fresh observation. Position casts require local range, while unit-targeted
 casts and antimatter exchange approach automatically. Nebula Catalyst's `target_id` is a known nebula. Only active Tractor/Guardian links are cancellable. Ghost emitters persist indefinitely with one surviving emitter per deploying ship across the galaxy.
 
 Transfer and Take need functional storage and a friendly/allied target. Take moves
-the recipient; Transfer moves the donor. Exchange is limited to 25 AM per owner
-turn within 200 units and ends on empty supply or full capacity.
+the recipient; Transfer moves the donor. See [antimatter logistics](REFERENCE.md#antimatter-logistics)
+for exchange rates, range, reserve and waiting rules.
 
 Both continuous commands require `source_id`: a star/hydrogen nebula for
 `continuous_resupply`, or a loading unit for `continuous_antimatter_transport`.
 The transport command takes one mobile actor. Optional `target_id` pins an
 owned/allied recipient; null or omission enables automatic delivery to nearest
-reachable owned units galaxy-wide. Automatic routes visit multiple recipients per
-load and return to their source to wait when no productive delivery remains.
-They exclude their actor and loading source. A lost manual recipient fails; full
-manual recipients cause waiting. Harvesters retain 60 AM, while transports reserve
-buffered return fuel. Current orders expose configured mode/target separately from
+reachable owned units galaxy-wide. Current orders expose configured mode/target separately from
 `progress.active_destination_id`, plus phase, waiting reason and reserve. Source,
 recipient and approach geometry are redacted when unavailable. See
 [antimatter logistics](REFERENCE.md#antimatter-logistics) for route rules.
 
-Multiply Antimatter pays 20 AM, then doubles friendly current fuel within 500 units, capped by storage. Empty tanks gain nothing. The caster and every recipient that gains fuel have independent 30-round deadlines; the recipient deadline is shared across casters. Pulses with no positive net generation are rejected. Read the projected gains and net AM in ability state. Immediate pulse gains can fund later commands in the same batch; queued pulses reserve only their cost, and future pickups/travel cannot finance an immediate cast. Unused strict-response fields, including `source_id`, remain null.
-
-Preflight reserves queued cast costs and slots. Observe newly deployed emitter IDs before targeting them. See the [tactical ability overview](REFERENCE.md#deployment-and-link-abilities) for the other ability rules.
+For Multiply Antimatter, read projected gains and net AM in ability state. Its
+[command integration](AGENTIC_AI.md#cast-abilities) explains immediate versus queued
+funding; the [ability rules](REFERENCE.md#deployment-and-link-abilities) own costs,
+radius and recovery deadlines. Unused strict-response fields, including `source_id`,
+remain null. Observe newly deployed emitter IDs before targeting them. Cast
+reservations follow the [commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).
 
 ### Strikecraft production
 
-`action_catalogs.wing_templates` lists built-in Fighter, Bomber, Interceptor,
-Long Range Bomber and Recon Wings, with roles, equipment, prices and effective
-weapon statistics. Private designs are excluded. Fighter-role wings target wings;
-bomber-role wings target ships/stations and qualify for Attack Run.
+Read `action_catalogs.wing_templates` and the carrier's
+`command_options.set_wing_production` for templates, editable zero-based slot
+indices and override choices. Supply exactly one carrier, `slot_index`, an explicit
+`template_name`, and `queue=false`. Use `template_name: null` to clear a slot;
+omitting that field is invalid. Omitted/null overrides restore template presets.
 
-Use `set_wing_production` with exactly one owned carrier, required zero-based
-`slot_index`, explicitly supplied `template_name`, and `queue=false`. Each command
-replaces only that slot's template and independent `turret_type_override` and
-`defense_type_override`. Null/omitted overrides restore the template presets.
-Explicit `template_name: null` clears the slot and requires null/omitted overrides;
-omitting `template_name` is invalid. Overrides retain existing customization rules,
-statistics, variants, prices and construction duration.
-
-Selection is free, preserves orders and stance, and works while occupied,
-replenishing, paused or short of credits. Only the slot under construction is
-locked. Existing wings retain their equipment; changes configure future replacements.
-Invalid indices, templates, overrides and unavailable slots reject the complete
-batch before mutation. Commit rechecks availability; selections apply in array order.
-
-Every new slot is unselected and builds nothing until configured. The bay has one
-shared worker: replenishment keeps priority, followed by the first affordable empty
-selected slot in ascending index order. Payment occurs when construction starts.
-That slot is reserved until completion. Launch and return retain the same slot;
-loss, dismantling and transfer free it without changing its replacement settings.
-Incoming wings use the first free unreserved slot regardless of selected design,
-and docking never selects or changes production. Docking and replenishment work
-without production selections.
-
-`set_wing_production_enabled` remains bay-wide. Selecting or clearing a slot never
-changes the pause state; enabling alone never selects designs. Paid work finishes
-while paused, and dismantling retains its existing paid-work wait and pause rules.
-
-Owner/allied `capability_details.strikecraft_bay.slots` exposes each `slot_index`,
-`production_template`, nullable overrides, `wing_id`, `wing_name`, `status`
-(`empty`, `docked`, `launched`, `building`), `production_turns`,
-`production_credit_cost` and `edit_blocker`. Unselected costs/durations are null.
-The bay exposes `production_enabled`, `constructing`, `construction_slot_index`,
-`construction_progress`, `replenishing_unit_id` and `replenish_progress`.
-Owned command options expose editable `slot_indices`, `can_clear`, template names,
-and override choices. Enemy views receive no production details.
-
-The human component panel labels slots starting at 1 and opens a slot-specific
-picker with the same configuration and equipment previews. **No production** clears
-the slot on **Select Production**; Cancel, Esc and closing discard edits.
-The current save and Strikecraft Bay schema preserve selections, stable assignments
-and paid work without replaying payment or assembly. See the [current formats and protocols](DEVELOPMENT.md#current-formats-and-protocols).
+These are separate examples; replace the carrier ID and slot with observed values:
 
 ```json
 {"type":"set_wing_production","unit_ids":[101],"slot_index":0,"template_name":"FIGHTER_WING","queue":false}
 {"type":"set_wing_production","unit_ids":[101],"slot_index":1,"template_name":"LONG_RANGE_BOMBER_WING","turret_type_override":"beam","defense_type_override":"armor","queue":false}
 {"type":"set_wing_production","unit_ids":[101],"slot_index":2,"template_name":null,"queue":false}
 ```
+
+The [production command contract](AGENTIC_AI.md#strikecraft-production) owns field
+semantics and observation details. See the [production rules](REFERENCE.md#built-in-unit-catalog)
+for slot assignment, payment, replenishment and the independent bay-wide pause.
+Validation and results follow the [shared order contract](AGENTIC_AI.md#shared-order-contract)
+and [commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).
 
 ## Turn-start event summary
 
@@ -536,9 +491,10 @@ For example, replace the IDs with observed IDs:
 Approach is automatic. Only End Turn resolves recruitment, bombardment and assault;
 upgrades pay immediately, once per colony per round. The queue preserves recruited
 troops as a prerequisite. Each ship acts at most once per round. Invasion previews
-are estimates at arrival, and failed assaults require new orders. Preflight reserves
-population, credits, cargo and action fuel, without assuming victories or future
-income. Hidden and missing targets share `target_unavailable`.
+are estimates at arrival, and failed assaults require new orders. See the
+[planetary command contract](AGENTIC_AI.md#planetary-warfare-contract) for projection
+constraints and the [shared order contract](AGENTIC_AI.md#shared-order-contract) for
+target disclosure and validation.
 
 Read `planetary_defenses` on exact colonies and `troop_cargo` on own/allied ships.
 The [warfare reference](REFERENCE.md#planetary-warfare) covers range, costs,
@@ -573,14 +529,12 @@ The shared command contract supports optional nullable `turret_type_override` an
 {"type":"construct","unit_ids":[101],"template_name":"ARTILLERY_DREADNOUGHT","system_name":"Sol","hex_coord":[0,0],"position":[200,0],"turret_type_override":"beam","defense_type_override":"shields","queue":true}
 ```
 
-All turrets keep their stats and variants. All defense strength moves into the
-chosen defense, zeroing the others. Costs, hull usage, build time and upkeep stay
-unchanged. Missing equipment rejects the override; a defense override requires
-positive total strength. Non-null overrides on other commands are rejected.
-Group commands use the same choices per builder. Construct choices survive queues and saves
-and appear in owner/allied order parameters. Catalogue entries and names are unchanged.
+See [customization rules](REFERENCE.md#automated-construction-customization) for
+equipment requirements and preserved stats, and the
+[command integration](AGENTIC_AI.md#construct-customization-and-combat-inspection)
+for group choices, order parameters and validation.
 
-Observation 21 includes public enemy `capability_details.weapons` and `.defenses`
+Observations include public enemy `capability_details.weapons` and `.defenses`
 only for detailed visible contacts. Use their actual equipment to choose counters:
 Armor counters Mass Drivers, Shields counter Beams, and Point Defense counters
 Missiles. Enemy orders, template identity, accounting and covert components remain
@@ -598,31 +552,27 @@ Local-only abilities still require the caster to be in the specified sector.
 {"type":"construct","unit_ids":[101],"template_name":"CRYSTAL_REFINERY_STATION","system_name":"Epsilon Eridani","hex_coord":[10,-4],"position":[-431.75,-557.65],"queue":false}
 ```
 
-Destinations stay fixed across queues, approach, and saves. Once a build starts,
-displacement out of sector or build range fails it and refunds its charge once.
+Destinations stay fixed across queues, approach and saves. See
+[fixed construction sites](REFERENCE.md#fixed-construction-sites) for displacement
+behavior and the [commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback)
+for job settlement.
 
 ## Unit dismantling
 
-Contract 17 / observation 21 exposes the shared `dismantle_unit` order:
+Select an observed executor and target from `command_options.dismantle_unit.targets`:
 
 ```json
 {"type":"dismantle_unit","unit_ids":[101],"target_id":202,"queue":false}
 {"type":"set_wing_production_enabled","unit_ids":[303],"enabled":true,"queue":false}
 ```
 
-Use exactly one owned executor: a separate Constructor for ships/stations, or the
-owning carrier for an already-docked wing. The production toggle is immediate and
-requires a strict boolean. Design selection leaves the production toggle unchanged.
-`command_options.dismantle_unit.targets` provides blockers, recursive members,
-current refund estimates, total duration, discarded cargo and paid-work waits.
-Owned/allied details expose dismantling phase/progress and bay production state;
-enemy-private component and order information remains hidden.
+These are separate examples. Dismantling requires one owned executor; the production
+toggle requires a strict boolean and `queue=false`. Observe docking/deployment
+results before issuing dismantling. Inspect target blockers, recursive members,
+refund estimates, duration and paid-work waits before choosing a job. Use the
+executor's ordinary `cancel_order` to cancel it.
 
-Membership and Designer valuations freeze when work begins. Refunds depend on HP
-at completion and cannot finance subsequent commands in the issuing batch.
-Preflight projects order replacement, cancellations, claims and offline targets;
-overlapping jobs, worker/target cycles and conflicting operations reject the batch
-without effects. Issue dismantling after observing prior docking/deployment results.
-Cancel via the executor's ordinary `cancel_order`. Work progresses once per owner
-End Turn; observation, command issuance and loading never advance it or pay salvage.
-See [gameplay rules](REFERENCE.md#unit-dismantling) for eligibility and interruptions.
+The [dismantling command contract](AGENTIC_AI.md#unit-dismantling) describes projection
+constraints and disclosure; [gameplay rules](REFERENCE.md#unit-dismantling) own
+eligibility, work timing, salvage and interruptions. Results follow the
+[commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).

@@ -662,7 +662,8 @@ suspends stance combat; Shift queues behind other explicit work. Changing stance
 does not interrupt an order and takes effect when the explicit queue is empty.
 **Stop Unit** cancels both layers, clears fire/navigation targets, and selects
 **Do Nothing**. Automated controllers can also cancel individual orders or clear
-only explicit work; see [order control](CODEX_CONTROL.md#command-discovery-and-order-control).
+only explicit work; see the [shared order contract](AGENTIC_AI.md#shared-order-contract)
+and [socket examples](CODEX_CONTROL.md#command-discovery-and-order-control).
 
 | Stance | Automatic engagement boundary |
 |---|---|

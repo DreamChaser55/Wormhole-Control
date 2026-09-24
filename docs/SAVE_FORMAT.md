@@ -114,6 +114,13 @@ split, including an empty current slot. Active orders rebind their actuators
 without executing startup again. Transient stance engagement trees and their
 actuators are reacquired through normal play.
 
+Order UUIDs and payment state are required, including on recursively stored units.
+Restoration retains terminal-recording state and history counters without replaying
+outcomes or refunds; pending orders start on a subsequent update. Runtime cancellation,
+refund ownership and receipts follow the [shared lifecycle guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).
+The [Testing-catalogue exception](#testing-campaign-catalogue) settles unavailable
+active construction only on the isolated load candidate.
+
 `ATTACK_LONG_RANGE` uses the same order envelope as `ATTACK`, retaining its distinct
 type, target/subsystem, UUID and approach descendants. Restoring it rebinds firing
 and navigation without replaying execution.
@@ -125,10 +132,11 @@ versions are accepted.
 
 ## Transactional load
 
-`campaign_persistence.prepare_campaign()` completes these steps on an isolated
-candidate before changing the running game:
+The save loader parses JSON and rejects duplicate keys before calling
+`campaign_persistence.prepare_campaign()` with the decoded document. Preparation
+completes these steps on an isolated candidate before changing the running game:
 
-1. Parse JSON and reject duplicate keys, invalid values, and excessive nesting.
+1. Reject invalid JSON values and excessive nesting.
 2. Require the current save version.
 3. Validate the current document and hydrate players and the ownership graph.
 4. Resolve references, rebuild derived state, and validate graph invariants.
@@ -239,9 +247,9 @@ independent gameplay, round-trip and fake-provider acceptance coverage.
 
 Active Constructor refit jobs persist `payer_id` and `salvage_due` alongside the
 existing target, action, configuration, paid installation cost and duration. The
-original order retains its charge ownership. A valid completed removal grants
-salvage once; failed or cancelled new removals grant none. Installation validation
-failures and cancellation refund the paid charge once to its original payer.
+original order retains its charge ownership. Settlement follows the
+[shared refund guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback)
+and the installation/removal rules in [field refitting](REFERENCE.md#field-refitting).
 
 All jobs restore their recorded payer, salvage, costs and progress. Loading does not
 recharge a job, apply equipment changes, or reject historical equipment merely

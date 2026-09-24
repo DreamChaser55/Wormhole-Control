@@ -751,6 +751,20 @@ class MoveOrder(Order):
                 logger.debug(f"[{self.unit.name} (id:{self.unit.id})] MOVE(id:{self.local_order_id}): plan_route->plan_hex_jump_sequence: Added waypoint {i+1}/{len(waypoints)} at hex {waypoint_hex}.")
 
     def plan_route(self, galaxy_ref: 'Galaxy') -> None:
+        """Prepare child movement legs from the unit's current location; return None.
+
+        Expect a coherent galaxy and unit location plus normalized destination
+        parameters. Resolve unit/celestial approach targets before planning local
+        avoidance, hex jumps or hull-compatible wormhole legs. Update approach
+        parameters and append ReachWaypoint children; do not displace the unit or
+        pay movement fuel here. Inhibited wormhole exits may draw random headings.
+
+        An already-reached destination completes the order. Missing targets,
+        capabilities or safe routes fail it; some failures also show GUI warnings.
+        Planning can leave earlier children prepared when a later leg fails.
+        execute owns cancellation/clearing of those children before they can run;
+        callers must not treat this mutating planner as a pure feasibility query.
+        """
         logger.debug(f"\n--- Planning route for {self.unit.name} (id:{self.unit.id}) ---")
         if not self.unit or not galaxy_ref:
             self.fail("path_unavailable")

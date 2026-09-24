@@ -71,7 +71,19 @@ def _homeworld(system, player, population):
 
 
 def prepare_new_campaign(settings):
-    """Build and validate an isolated campaign; never invoke live GUI or AI code."""
+    """Return a validated PreparedCampaign from new-game settings, without commit.
+
+    Revalidate settings, copy player configuration and any supplied map preview,
+    then build homes and starter fleets with explicit Normal/Testing templates.
+    Reconcile references and initialize briefings on the detached candidate using
+    isolated ID allocation; return its allocator marks and Testing catalogue for
+    commit_campaign to publish later.
+
+    Invalid settings/topology/fleets raise ValueError; other preparation failures
+    propagate. Neither success nor failure replaces live play, edits the caller's
+    preview, publishes templates or invokes GUI/AI callbacks. Allocation scope is
+    restored on exit. Generation and home selection can consume random draws.
+    """
     from campaign_graph import iter_objects, iter_units
     from campaign_persistence import PreparedCampaign, reconcile
     from persistence_context import isolated_allocations

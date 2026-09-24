@@ -1,4 +1,4 @@
-"""Side-effect-free legality helpers shared by AI observation and validation."""
+"""Shared legality helpers; body disclosure may record visibility intel."""
 
 from __future__ import annotations
 

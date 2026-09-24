@@ -17,6 +17,18 @@ def point(value):
 
 
 def order_layers(unit, relation, visible_ids, body_ids):
+    """Return bounded public order layers without changing orders or visibility.
+
+    relation is the caller's viewer-to-unit relationship; visible_ids and body_ids
+    contain already-authorized unit/deployable and celestial IDs. Enemy units
+    return no layers. A unit without Commander returns empty layer values; self
+    and ally views include details, with editing flags restricted to owned roots.
+
+    Missing or undisclosed target references redact target IDs, parameters and
+    derived child geometry recursively. Fixed player-issued coordinates remain
+    intent. Preserve all explicit roots while bounding expanded children, depth
+    and waypoint previews, reporting omitted counts rather than raw order state.
+    """
     if relation == "enemy":
         return {}
     commander = getattr(unit, "commander_component", None)

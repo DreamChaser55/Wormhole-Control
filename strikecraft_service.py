@@ -102,7 +102,17 @@ def reconcile_unit(unit, galaxy):
 
 
 def process(game, player, *, advance=False):
-    """Tick once per owner round; reconciliation alone never advances endurance."""
+    """Reconcile player's deployed wings in ID order; optionally tick endurance.
+
+    With advance=True, increment each living wing at most once for game.turn_number
+    (the global round), capped at the endurance limit. Owner End Turn calls this
+    before movement; later calls use advance=False and do not increment counters.
+
+    Both modes mutate service state when required: replace explicit work with a
+    mandatory return, suppress combat, update that return, or expire a wing whose
+    carrier/route is unavailable. This is not an observation or load-time query.
+    Return None; reconciliation errors propagate to the turn caller.
+    """
     wings = sorted((unit for unit, _ in iter_units(game.galaxy)
                     if unit.owner == player and unit.strikecraft_wing_component
                     and is_deployed(unit, game.galaxy)), key=lambda unit: unit.id)

@@ -28,6 +28,22 @@ class VisibilityService:
 
     @staticmethod
     def compute(galaxy: 'Galaxy', viewer: Optional['Player'], turn_number: int = 1, *, record_intel: bool = True) -> VisibilitySnapshot:
+        """Return current detailed contacts and anonymous presence for viewer.
+
+        Combine allied sensors and allied agents' infiltrated-host coverage.
+        Short-range coverage reveals enemy identities; unconcealed long-range
+        contacts contribute only sector presence. The snapshot also contains
+        disclosed deployable and Catalyst patch IDs. Missing galaxy or viewer
+        returns an empty snapshot rather than raising for that absence.
+
+        With record_intel=True, record covered sectors on viewer and share ghost
+        identification with allies. turn_number timestamps sector intel; the
+        default value 1 falls back to the galaxy/game clock when available.
+        With record_intel=False, calculate the same current coverage without
+        writing historical intel or persistent identification state. Candidate
+        loading and selected tactical queries use that mode; normal observations
+        and some gateway target checks retain the recording default.
+        """
         if not viewer or not galaxy:
             return VisibilitySnapshot(viewer=viewer)
 

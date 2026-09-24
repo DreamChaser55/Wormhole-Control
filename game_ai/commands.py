@@ -76,7 +76,19 @@ class _Prepared:
 
 
 class _BatchProjection:
-    """Track guaranteed batch effects without mutating authoritative state."""
+    """Track batch effects and reservations separately from authoritative state.
+
+    Read the live game and issuing player's orders/resources, then update this
+    ledger in command order. Shared colony and docking capacity includes other
+    players' reservations; construction credits belong to the issuing player.
+    Replacement/cancellation releases pending reservations, while settled effects
+    remain available to later commands. Future travel, income and uncertain
+    outcomes cannot fund immediate operations.
+
+    Validation may mutate projection bookkeeping and raise _Rejected, but never
+    starts orders, pays charges or changes live targets. Discard the entire
+    projection on batch rejection; commit rechecks through authoritative rules.
+    """
 
     def __init__(self, game: Any, player: Any):
         self.game = game
@@ -920,6 +932,22 @@ class CommandGateway:
         units: list[Any],
         projection: _BatchProjection,
     ) -> list[_Prepared]:
+        """Return deferred operations for one command over caller-owned units.
+
+        apply_batch has validated the command shape, resolved owned actors and
+        applied preceding commands to projection. Check command-specific targets,
+        capabilities and projected resources before building _Prepared callbacks;
+        _Rejected reports an unavailable or illegal command to the batch caller.
+
+        Preparation may reserve projected state and assign public order UUIDs,
+        but does not create authoritative orders or execute callbacks. At commit,
+        callbacks recheck capabilities and applicable immediate-action rules,
+        create orders, and replace or append explicit work. Starting an order may
+        execute synchronously; later order execution revalidates live conditions.
+        These operations have no rollback guarantee if commit raises.
+        Target disclosure checks can refresh recorded visibility intel even when
+        preparation rejects; absence of command effects is not full query purity.
+        """
         projection.validate_dismantling_interactions(command, units)
         if command.type == 'set_wing_production_enabled':
             unit = units[0]
@@ -1079,6 +1107,18 @@ class CommandGateway:
         return operations
 
     def _order_factory(self, player: Any, command: Any):
+        """Return an actor-to-order factory and descriptive label for a command.
+
+        The caller validates command shape and actor ownership separately. Resolve
+        destinations and player-visible targets here, enforcing target relations
+        and command parameters; hidden/missing targets use public rejection codes.
+        Actor-specific eligibility and resource projection belong to _prepare.
+
+        Raise _Rejected for invalid or unsupported commands. Building the factory
+        neither constructs nor starts an order: commit invokes it for each actor,
+        and Commander starts the resulting work immediately or after queued work.
+        Enemy-unit and remote-body disclosure checks may record visibility intel.
+        """
         from geometry import Position
         if command.type == 'dismantle_unit':
             from unit_orders.dismantling import DismantleOrder
@@ -1825,6 +1865,18 @@ class CommandGateway:
     def _validate_unit_command(
         self, unit: Any, command: Any, projection: _BatchProjection
     ) -> None:
+        """Check one owned actor against live rules and preceding batch effects.
+
+        The caller supplies a shape-validated command and checks base capability.
+        Use projection for hidden state, cargo, resources and reserved abilities;
+        live equipment, target disclosure and location rules still apply. Tactical
+        checks may update projection bookkeeping without applying command effects.
+        Enemy-target disclosure checks may also refresh recorded visibility intel.
+
+        Return None on acceptance or raise _Rejected with a public code/reason.
+        This is issuance validation, not a promise of arrival or completion:
+        commit callbacks and executing orders check the applicable live conditions.
+        """
         hidden = projection.hidden_for(unit, queued=command.queue)
         if hidden and command.type != "leave_gas_giant":
             raise _Rejected("invalid_state", "Submerged units cannot execute orders while hidden in a gas giant atmosphere.")
