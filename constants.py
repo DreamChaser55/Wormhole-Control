@@ -255,6 +255,7 @@ class StarType(Enum):
     BROWN_DWARF = auto()
 
 STAR_HARVEST_MULTIPLIERS: Dict[StarType, float] = {
+    StarType.BLACK_HOLE: 3.0,
     StarType.PULSAR: 2.5,
     StarType.BLUE_GIANT: 2.0,
     StarType.NEUTRON_STAR: 1.8,
@@ -265,7 +266,6 @@ STAR_HARVEST_MULTIPLIERS: Dict[StarType, float] = {
     StarType.PROTOSTAR: 0.7,
     StarType.RED_DWARF: 0.5,
     StarType.BROWN_DWARF: 0.3,
-    StarType.BLACK_HOLE: 0.1,
 }
 
 STAR_COLORS: Dict[StarType, Tuple[int, int, int]] = {

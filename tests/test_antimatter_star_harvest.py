@@ -71,12 +71,12 @@ def test_star_harvest_multipliers_constants():
         assert star_type in STAR_HARVEST_MULTIPLIERS
         assert STAR_HARVEST_MULTIPLIERS[star_type] > 0.0
 
+    assert STAR_HARVEST_MULTIPLIERS[StarType.BLACK_HOLE] == 3.0
     assert STAR_HARVEST_MULTIPLIERS[StarType.PULSAR] == 2.5
     assert STAR_HARVEST_MULTIPLIERS[StarType.BLUE_GIANT] == 2.0
     assert STAR_HARVEST_MULTIPLIERS[StarType.G_TYPE] == 1.0
     assert STAR_HARVEST_MULTIPLIERS[StarType.RED_DWARF] == 0.5
     assert STAR_HARVEST_MULTIPLIERS[StarType.BROWN_DWARF] == 0.3
-    assert STAR_HARVEST_MULTIPLIERS[StarType.BLACK_HOLE] == 0.1
 
 
 def test_star_entity_harvest_multiplier_property():
@@ -88,15 +88,15 @@ def test_star_entity_harvest_multiplier_property():
     assert g_star.harvest_multiplier == 1.0
 
     black_hole = Star(in_system="Sol", star_type=StarType.BLACK_HOLE)
-    assert black_hole.harvest_multiplier == 0.1
+    assert black_hole.harvest_multiplier == 3.0
 
 
 @pytest.mark.parametrize("star_type,expected_multiplier", [
+    (StarType.BLACK_HOLE, 3.0),
     (StarType.PULSAR, 2.5),
     (StarType.BLUE_GIANT, 2.0),
     (StarType.G_TYPE, 1.0),
     (StarType.RED_DWARF, 0.5),
-    (StarType.BLACK_HOLE, 0.1),
 ])
 def test_harvester_updates_based_on_star_type(star_type, expected_multiplier):
     """Verify that harvester generates antimatter scaled by the nearby star's multiplier."""

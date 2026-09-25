@@ -1179,6 +1179,7 @@ A functioning Harvester must be within its harvesting range of the star's center
 
 | Star type | Harvest multiplier |
 |---|---|
+| Black Hole | 3.0× |
 | Pulsar | 2.5× |
 | Blue Giant | 2.0× |
 | Neutron Star | 1.8× |
@@ -1189,7 +1190,6 @@ A functioning Harvester must be within its harvesting range of the star's center
 | Protostar | 0.7× |
 | Red Dwarf | 0.5× |
 | Brown Dwarf | 0.3× |
-| Black Hole | 0.1× |
 
 Black holes inflict 15 base hull damage per owner turn within their 750-radius
 event horizon. Pulsars drain 5% of a ship's current AM from functioning storage
