@@ -48,7 +48,8 @@ DEFAULT_ORBITAL_DEFENSE_ATTACK_BONUS: float = 0.20  # +20% weapon attack damage 
 DEFAULT_ORBITAL_DEFENSE_DEFENSE_BONUS: float = 0.20  # +20% damage mitigation bonus
 ORBITAL_DEFENSE_HULL_COST: float = 20.0  # Base hull cost for orbital defense component
 ORBITAL_DEFENSE_RING_COLOR: tuple[int, int, int] = (100, 220, 100)  # Visual range ring color in sector view
-# Constructor Constants
+
+# Constructor Constants
 CONSTRUCTOR_BUILD_RANGE: float = 500.0
 CONSTRUCTOR_RANGE_RING_COLOR: tuple[int, int, int] = (255, 200, 50)  # Visual range ring color in sector view
 
@@ -108,7 +109,7 @@ ANTIMATTER_TRANSFER_RATE: float = 25.0
 ANTIMATTER_TRANSFER_RANGE: float = 200.0
 
 # Sensors / Fog of War Constants
-DEFAULT_SENSOR_SHORT_RANGE: float = 2000.0     # logical units (sector radius = 5000)
+DEFAULT_SENSOR_SHORT_RANGE: float = 200.0     # logical units (sector radius = 5000)
 SENSOR_RANGE_PER_HULL_POINT: float = 1000.0    # hull points per unit of short-range radius
 SENSOR_LONG_RANGE_HULL_COST_PER_HEX: float = 5.0   # hull points per long-range ring
 DEFAULT_SENSOR_LONG_RANGE_HEXES: int = 1       # default ring count for a long-range upgrade
