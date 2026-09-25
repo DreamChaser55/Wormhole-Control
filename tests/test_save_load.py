@@ -7,6 +7,7 @@ from collections import deque
 from geometry import Position
 from constants import HullSize, StarType, PlanetType
 from domain.players import Player
+from domain.coordinates import HexCoord
 from domain.identity import GameObject
 from domain.celestials import Star, Planet, Wormhole
 from domain.units import Unit
@@ -350,6 +351,60 @@ class TestSaveLoad(unittest.TestCase):
             serialized = serialize_player(player)
             self.assertEqual(serialized["persistent_id"], player.persistent_id)
             self.assertEqual(serialized["agent_id"], player.agent_id)
+        finally:
+            game.control_service.shutdown()
+            game.ai_coordinator.shutdown()
+
+    def test_sector_view_save_load_round_trip(self):
+        game = self.make_game()
+        new_game = None
+        saved_filepath = None
+        try:
+            self.assertTrue(game.start_new_game())
+            system = next(iter(game.galaxy.systems.values()))
+            hex_coord_tuple = next(iter(system.hexes.keys()))
+            target_coord = HexCoord(*hex_coord_tuple)
+
+            game.view_mode = "sector"
+            game.current_system_name = system.name
+            game.current_sector_coord = target_coord
+
+            saved_filepath = game.save_game("test_sector_view_save.json")
+            self.assertTrue(os.path.exists(saved_filepath))
+
+            new_game = self.make_game()
+            load_success = new_game.load_game(saved_filepath)
+            self.assertTrue(load_success)
+            self.assertEqual(new_game.view_mode, "sector")
+            self.assertEqual(new_game.current_system_name, system.name)
+            self.assertIsInstance(new_game.current_sector_coord, HexCoord)
+            self.assertEqual(new_game.current_sector_coord, target_coord)
+            self.assertEqual(new_game.current_sector_coord.q, target_coord.q)
+            self.assertEqual(new_game.current_sector_coord.r, target_coord.r)
+            self.assertEqual(new_game.sector_zoom, 1.0)
+            self.assertEqual(new_game.sector_pan_offset, Position(0, 0))
+
+            # update_view_specific_labels must succeed without error
+            new_game.update_view_specific_labels()
+        finally:
+            game.control_service.shutdown()
+            game.ai_coordinator.shutdown()
+            if new_game is not None:
+                new_game.control_service.shutdown()
+                new_game.ai_coordinator.shutdown()
+            if saved_filepath and os.path.exists(saved_filepath):
+                os.remove(saved_filepath)
+
+    def test_update_view_specific_labels_defensively_coerces_tuple(self):
+        game = self.make_game()
+        try:
+            game.view_mode = "sector"
+            game.current_system_name = "Sol"
+            game.current_sector_coord = (2, -1)
+            game.update_view_specific_labels()
+            self.assertIsInstance(game.current_sector_coord, HexCoord)
+            self.assertEqual(game.current_sector_coord.q, 2)
+            self.assertEqual(game.current_sector_coord.r, -1)
         finally:
             game.control_service.shutdown()
             game.ai_coordinator.shutdown()

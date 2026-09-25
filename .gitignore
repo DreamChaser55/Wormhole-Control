@@ -122,9 +122,6 @@ Thumbs.db
 # Secrets
 *.key
 
-# Agentic AI runtime artifacts
-saves/agent_memory/
-saves/ai_telemetry.jsonl
-saves/ai_feedback.md
-saves/comms.md
-saves/comms/
+# Saves and agentic AI runtime artifacts
+saves/
+

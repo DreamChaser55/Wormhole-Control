@@ -7,6 +7,7 @@ import uuid
 from campaign_graph import iter_objects, iter_units
 from persistence_context import isolated_allocations
 from state_codec import number
+from domain.coordinates import HexCoord
 from geometry import Position
 from persistence_paths import validate_identity
 from player_validation import validate_saved_player_values
@@ -550,7 +551,7 @@ def prepare_campaign(data):
         info = data["game_state"]
         candidate = SimpleNamespace(**{name: info[name] for name in
             ("turn_number", "current_player_index", "view_mode", "current_system_name", "campaign_id", "message_counter")})
-        candidate.current_sector_coord = tuple(info["current_sector_coord"]) if info["current_sector_coord"] is not None else None
+        candidate.current_sector_coord = HexCoord(*info["current_sector_coord"]) if info["current_sector_coord"] is not None else None
         from planetary_warfare import rng_from_state
         candidate.invasion_rng = rng_from_state(info["invasion_rng_state"])
         candidate.galaxy = None
