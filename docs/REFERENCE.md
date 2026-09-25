@@ -423,8 +423,9 @@ orders** appends one build per selected builder and also closes the catalogue. T
 buttons work independently of Shift. Queued builds pay when they start; idle builders
 start immediately. Multiple builders show their combined price.
 
-Wings are produced in Strikecraft Bays aboard carriers and are not listed in
-the Constructor catalogue. Each bay slot has its own future wing design and optional
+Wings are produced in Strikecraft Bays aboard mobile carriers and strikecraft
+stations and are not listed in the Constructor catalogue. Each bay slot has its
+own future wing design and optional
 **Turret type** and **Defense type** overrides. In the component panel, choose
 **Slot N: Select Production…** to inspect and configure that slot. Its status shows
 whether it is empty, building, docked or launched, alongside the current wing and
@@ -504,10 +505,13 @@ report mandatory returns and endurance losses.
 | Recon Wing | Carriers | STRIKECRAFT_WING wing | 6.97/7 | 259 | 2 | 0.00 | High-speed reconnaissance fighter wing with extended tactical sensors for scouting sectors and screening friendly carriers. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Fighter Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Balanced fighter wing for intercepting enemy strikecraft. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Long Range Bomber Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Lightly protected bomber wing with 292.5 effective weapon range and a nine-turn cooldown; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
+| Medium Strikecraft Station | Carriers | MEDIUM station | 46.80/50 | 1904 | 19 | 0.47 | Economical stationary four-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
+| Large Strikecraft Station | Carriers | LARGE station | 84.30/100 | 3529 | 28 | 0.84 | Stationary eight-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
 | Missile Platform | Combat | TINY station | 10.00/10 | 400 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
 | Patrol Cutter | Combat | TINY ship | 10.00/10 | 400 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
+| System Patrol Craft | Combat | SMALL ship | 23.20/25 | 946 | 12 | 0.23 | Affordable armed patrol craft for single-system policing and convoy protection. Basic Hyperdrive allows intra-system travel only. |
 | Interceptor | Combat | SMALL ship | 24.20/25 | 976 | 12 | 0.24 | Designed for strikecraft interception. Inter-system travel. |
 | Patrol Escort | Combat | MEDIUM ship | 33.00/50 | 1490 | 17 | 0.33 | Economical armed escort for patrol and convoy protection. Inter-system travel. |
 | Beam Frigate | Combat | MEDIUM ship | 45.50/50 | 1865 | 19 | 0.46 | Designed for beam combat. Inter-system travel. |
