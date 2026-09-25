@@ -236,3 +236,81 @@ def test_catalog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size
     finally:
         catalog.kill()
         manager.clear_and_reset()
+
+
+@pytest.mark.parametrize('size', [(1280, 720), (1920, 1080), (2560, 1440)])
+def test_load_game_dialog_layout_at_explicit_display_sizes(pygame_context, tmp_path, size):
+    from gui.layout_ingame_menu import show_load_game_dialog
+    import save_manager
+
+    screen = pygame.display.set_mode(size)
+    config = DisplayConfig(*size)
+    manager = build_ui_manager(config)
+    gui = SimpleNamespace(
+        scale_x=size[0] / 1280.0,
+        scale_y=size[1] / 720.0,
+        screen_res=Vector(*size),
+        manager=manager,
+        display_config=config,
+        load_save_window=None,
+        load_save_selection_list=None,
+        load_save_confirm_button=None,
+        load_save_cancel_button=None,
+        save_file_paths={},
+    )
+
+    dummy_saves = [
+        {
+            "filename": "save_turn_10_Sol_20260925_120000.json",
+            "filepath": "saves/save_turn_10_Sol_20260925_120000.json",
+            "turn_number": 10,
+            "timestamp": "2026-09-25T12:00:00",
+            "current_system": "Sol",
+        },
+        {
+            "filename": "save_turn_100_AlphaCentauri_20260925_120000.json",
+            "filepath": "saves/save_turn_100_AlphaCentauri_20260925_120000.json",
+            "turn_number": 100,
+            "timestamp": "2026-09-25T12:00:00",
+            "current_system": "Alpha Centauri",
+        },
+    ]
+
+    with patch.object(save_manager, 'list_save_files', return_value=dummy_saves):
+        show_load_game_dialog(gui)
+
+    def capture(name):
+        manager.update(0.1)
+        screen.fill((5, 10, 20))
+        manager.draw_ui(screen)
+        pygame.image.save(screen, str(tmp_path / f'load-game-{name}.png'))
+
+    try:
+        outer = gui.load_save_window.get_abs_rect()
+        assert screen.get_rect().contains(outer)
+        panel = gui.load_save_window.get_container().get_rect()
+        widgets = [
+            gui.load_save_selection_list,
+            gui.load_save_confirm_button,
+            gui.load_save_cancel_button,
+        ]
+        for index, widget in enumerate(widgets):
+            rect = widget.get_abs_rect()
+            assert rect.width > 0 and rect.height > 0
+            assert panel.contains(rect)
+            assert all(not rect.colliderect(other.get_abs_rect()) for other in widgets[index + 1:])
+
+        capture('dialog')
+        for item in gui.load_save_selection_list.item_list:
+            button = item['button_element']
+            if button is not None:
+                assert button.font.get_rect(item['text']).height < gui.load_save_selection_list.list_item_height
+                assert button.font.get_rect(item['text']).width < button.get_abs_rect().width
+
+        for button in (gui.load_save_confirm_button, gui.load_save_cancel_button):
+            assert button.font.get_rect(button.text).width < button.get_abs_rect().width - 10
+    finally:
+        if gui.load_save_window and gui.load_save_window.alive():
+            gui.load_save_window.kill()
+        manager.clear_and_reset()
+

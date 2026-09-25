@@ -79,6 +79,12 @@ def build_ui_manager(display_config: DisplayConfig) -> pygame_gui.UIManager:
             theme_data['#unit_catalog_list'] = {
                 'misc': {'list_item_height': str(scaled_item_height)}
             }
+            scaled_save_item_height = max(24, int(34 * display_config.text_scale))
+            if '#save_selection_list' not in theme_data:
+                theme_data['#save_selection_list'] = {'misc': {}}
+            elif 'misc' not in theme_data['#save_selection_list']:
+                theme_data['#save_selection_list']['misc'] = {}
+            theme_data['#save_selection_list']['misc']['list_item_height'] = str(scaled_save_item_height)
 
             # Scale window title bar height for windows
             for window_theme_id in ["window", "#message_window", "message_window", "#new_game_wizard_window", "#load_game_window", "#retrofit_wizard_window"]:

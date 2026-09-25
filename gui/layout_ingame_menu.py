@@ -272,8 +272,8 @@ def show_load_game_dialog(gui) -> None:
     import save_manager
     saves = save_manager.list_save_files()
 
-    window_width = int(520 * gui.scale_x)
-    window_height = int(420 * gui.scale_y)
+    window_width = int(700 * gui.scale_x)
+    window_height = int(460 * gui.scale_y)
     window_rect = pygame.Rect(
         (gui.screen_res.x - window_width) // 2,
         (gui.screen_res.y - window_height) // 2,
@@ -301,7 +301,7 @@ def show_load_game_dialog(gui) -> None:
     if not item_list:
         item_list = ["No saved games found."]
 
-    list_rect = pygame.Rect(int(10 * gui.scale_x), int(10 * gui.scale_y), window_width - int(45 * gui.scale_x), int(290 * gui.scale_y))
+    list_rect = pygame.Rect(int(10 * gui.scale_x), int(10 * gui.scale_y), window_width - int(45 * gui.scale_x), int(330 * gui.scale_y))
     gui.load_save_selection_list = pygame_gui.elements.UISelectionList(
         relative_rect=list_rect,
         item_list=item_list,
@@ -312,7 +312,7 @@ def show_load_game_dialog(gui) -> None:
 
     btn_w = int(120 * gui.scale_x)
     btn_h = int(35 * gui.scale_y)
-    btn_y = int(315 * gui.scale_y)
+    btn_y = int(355 * gui.scale_y)
 
     gui.load_save_confirm_button = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((window_width // 2 - btn_w - 10, btn_y), (btn_w, btn_h)),

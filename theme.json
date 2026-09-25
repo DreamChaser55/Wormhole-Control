@@ -104,7 +104,18 @@
         "misc": {
             "border_width": "1",
             "shadow_width": "1",
-            "border_colour": "#3A6D8CC8"
+            "border_colour": "#3A6D8CC8",
+            "list_item_height": "32"
+        }
+    },
+    "#save_selection_list.#item_list_item": {
+        "font": {
+            "name": "dejavu_sans",
+            "size": "14"
+        },
+        "misc": {
+            "text_horiz_alignment": "left",
+            "padding": "10,0"
         }
     },
     "panel": {
