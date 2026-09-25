@@ -10,6 +10,9 @@ from turn_briefing import BriefingState, entry_text
 from app_preferences import AppPreferences, TurnSummaryMode
 
 
+from .theme_loader import create_player_scifi_theme_colors
+
+
 def is_open(gui):
     window = getattr(gui, "turn_briefing_window", None)
     return isinstance(window, TurnBriefingWindow) and window.window.alive()
@@ -70,6 +73,11 @@ class TurnBriefingWindow:
             manager=gui.manager, window_display_title=f"Turn {player.briefing.current.to_turn} — {player.name} briefing",
             object_id="#turn_briefing_window", resizable=False)
         self.window.set_blocking(True)
+        bg_color = getattr(gui, 'current_player_bg_color', None)
+        border_color = getattr(gui, 'current_player_border_color', None)
+        if bg_color is None or border_color is None:
+            bg_color, border_color = create_player_scifi_theme_colors(getattr(player, 'color', (255, 255, 255)))
+        self.update_theme(bg_color, border_color)
         content_width, content_height = self.window.get_container().get_size()
         pad = max(8, int(14 * gui.scale_x))
         button_height = max(28, int(38 * gui.scale_y))
@@ -84,6 +92,16 @@ class TurnBriefingWindow:
         self.comms_button = pygame_gui.elements.UIButton(
             pygame.Rect(pad, content_height - button_height - pad, button_width, button_height),
             "Open Comms", manager=gui.manager, container=self.window)
+
+    def update_theme(self, bg_color: pygame.Color, border_color: pygame.Color) -> None:
+        """Updates window background and border colors to match player sci-fi theme."""
+        try:
+            self.window.background_colour = bg_color
+            if hasattr(self.window, "border_colour"):
+                self.window.border_colour = border_color
+            self.window.rebuild()
+        except Exception:
+            pass
 
     def owns(self, element):
         while element is not None:

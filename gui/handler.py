@@ -463,9 +463,19 @@ class GUI_Handler:
     def open_communications_window(self) -> None:
         """Opens or refreshes the Diplomatic Communications window."""
         if self.communications_window is not None and self.communications_window.is_alive:
+            if self.current_player_bg_color and hasattr(self.communications_window, 'update_theme'):
+                self.communications_window.update_theme(
+                    self.current_player_bg_color,
+                    self.current_player_border_color or self.current_player_bg_color,
+                )
             self.communications_window.refresh_message_log()
             return
         self.communications_window = CommunicationsWindow(self)
+        if self.current_player_bg_color and hasattr(self.communications_window, 'update_theme'):
+            self.communications_window.update_theme(
+                self.current_player_bg_color,
+                self.current_player_border_color or self.current_player_bg_color,
+            )
         self.update_comms_button()
 
     def close_communications_window(self) -> None:

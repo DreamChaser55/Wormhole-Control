@@ -318,6 +318,30 @@ def update_hud_panel_colors(gui, player_color: Color) -> None:
         else None
     )
 
+    turn_briefing = getattr(gui, 'turn_briefing_window', None)
+    turn_briefing_win = (
+        turn_briefing.window
+        if (
+            turn_briefing is not None
+            and getattr(turn_briefing, 'window', None) is not None
+            and hasattr(turn_briefing.window, 'alive')
+            and bool(turn_briefing.window.alive() is True)
+        )
+        else None
+    )
+
+    comms = getattr(gui, 'communications_window', None)
+    comms_win = (
+        comms.window
+        if (
+            comms is not None
+            and getattr(comms, 'window', None) is not None
+            and hasattr(comms.window, 'alive')
+            and bool(comms.window.alive() is True)
+        )
+        else None
+    )
+
     panels = [
         getattr(gui, 'top_bar_panel', None),
         getattr(gui, 'bottom_bar_panel', None),
@@ -326,7 +350,9 @@ def update_hud_panel_colors(gui, player_color: Color) -> None:
         getattr(gui, 'context_menu_panel', None),
         getattr(gui, 'main_menu_panel', None),
         getattr(gui, 'about_panel', None),
-        unit_editor_panel
+        unit_editor_panel,
+        turn_briefing_win,
+        comms_win,
     ]
 
     seen_panels = set()

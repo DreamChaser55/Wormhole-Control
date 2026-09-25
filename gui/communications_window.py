@@ -4,6 +4,7 @@ import typing
 import pygame
 import pygame_gui
 from player_controller import PlayerController
+from .theme_loader import create_player_scifi_theme_colors
 
 if typing.TYPE_CHECKING:
     from gui.handler import GUI_Handler
@@ -45,6 +46,14 @@ class CommunicationsWindow:
             window_display_title="Diplomatic Subspace Transceiver",
             object_id="#communications_window",
         )
+
+        bg_color = getattr(gui, 'current_player_bg_color', None)
+        border_color = getattr(gui, 'current_player_border_color', None)
+        if bg_color is None or border_color is None:
+            current_player = getattr(self.game, 'current_player', None)
+            player_color = getattr(current_player, 'color', (255, 255, 255))
+            bg_color, border_color = create_player_scifi_theme_colors(player_color)
+        self.update_theme(bg_color, border_color)
 
         pad_x = int(12 * gui.scale_x)
         pad_y = int(8 * gui.scale_y)
@@ -154,6 +163,16 @@ class CommunicationsWindow:
 
         # Populate message log
         self.refresh_message_log()
+
+    def update_theme(self, bg_color: pygame.Color, border_color: pygame.Color) -> None:
+        """Updates window background and border colors to match player sci-fi theme."""
+        try:
+            self.window.background_colour = bg_color
+            if hasattr(self.window, "border_colour"):
+                self.window.border_colour = border_color
+            self.window.rebuild()
+        except Exception as e:
+            logger.debug(f"Error updating CommunicationsWindow theme: {e}")
 
     @property
     def is_alive(self) -> bool:
