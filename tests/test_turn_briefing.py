@@ -14,7 +14,7 @@ from geometry import Position
 from save_manager import serialize_game_state, deserialize_game_state
 from tests.support.campaigns import campaign, ship
 from turn_briefing import (
-    MAX_CHARACTERS, MAX_ENTRIES, begin_window, finish_window, initialize_campaign,
+    MAX_CHARACTERS, MAX_ENTRIES, begin_window, economy_snapshot, finish_window, initialize_campaign,
     record, refresh_discoveries, state_from_dict, summary_view, unit_event,
 )
 from turn_processor import TurnProcessor
@@ -388,3 +388,35 @@ def test_invalid_event_payload_is_rejected(field, value):
     raw["current"]["entries"][0][field] = value
     with pytest.raises(ValueError):
         state_from_dict(raw)
+
+
+def test_population_growth_and_economy_snapshot():
+    from domain.celestials import Planet, Moon
+    from constants import PlanetType
+    game = setup()
+    p1 = game.players[0]
+    p2 = game.players[1]
+    system = game.galaxy.systems["Sol"]
+    planet = Planet((0, 0), "Sol", planet_type=PlanetType.TERRAN)
+    planet.population = 50.0
+    planet.owner = p1
+    moon = Moon((1, 0), "Sol")
+    moon.population = 10.0
+    moon.owner = p2
+    system.add_celestial_body(planet)
+    system.add_celestial_body(moon)
+
+    assert economy_snapshot(game, p1)["population"] == 50.0
+    assert economy_snapshot(game, p2)["population"] == 10.0
+
+    initialize_campaign(game)
+    processor = TurnProcessor(game)
+    # End p1's turn
+    processor.end_turn()
+    # End p2's turn (triggers global end-of-round population growth and cycles back to p1)
+    processor.end_turn()
+
+    report = summary_view(p1)
+    # Terran growth rate is 0.02, so 50.0 grows by 1.0 to 51.0
+    assert report["economy"]["population"] == 1.0
+
