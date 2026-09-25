@@ -507,7 +507,7 @@ report mandatory returns and endurance losses.
 | Long Range Bomber Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Lightly protected bomber wing with 292.5 effective weapon range and a nine-turn cooldown; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Medium Strikecraft Station | Carriers | MEDIUM station | 46.80/50 | 1904 | 19 | 0.47 | Economical stationary four-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
-| Large Strikecraft Station | Carriers | LARGE station | 84.30/100 | 3529 | 28 | 0.84 | Stationary eight-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
+| Large Strikecraft Station | Carriers | LARGE station | 84.30/100 | 3529 | 28 | 0.84 | Large stationary eight-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
 | Missile Platform | Combat | TINY station | 10.00/10 | 400 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
 | Patrol Cutter | Combat | TINY ship | 10.00/10 | 400 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
@@ -543,15 +543,15 @@ report mandatory returns and endurance losses.
 | Expedition Miner | Economy | MEDIUM ship | 46.50/50 | 1895 | 19 | 0.47 | Designed for expedition mining. Inter-system travel. Mine metal asteroids or comets and unload at the matching refinery. |
 | Blockade Runner | Economy | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Designed for covert inter-system trade. Inter-system travel. Needs active habitats in different sectors. |
 | Industrial Hub | Economy | LARGE station | 92.99/100 | 3790 | 29 | 0.93 | Designed for industrial support. Stationary installation. |
+| Shipyard | Logistics | SMALL station | 20.00/25 | 850 | 11 | 0.20 | Designed for stationary construction. Stationary installation. |
 | Small Repair Ship | Logistics | SMALL ship | 24.19/25 | 976 | 12 | 0.24 | Designed for local repair. Intra-system travel only. |
 | Antimatter Cache Station | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Small stationary fuel reserve with 460 AM storage. Accept deliveries and supply local friendly ships through Transfer Antimatter or Take Antimatter. |
-| Shipyard | Logistics | SMALL station | 25.00/25 | 1000 | 12 | 0.25 | Designed for stationary construction. Stationary installation. |
+| Constructor | Logistics | MEDIUM ship | 36.50/50 | 1595 | 17 | 0.36 | Designed for mobile construction and refitting. Inter-system travel. |
+| Small Repair Station | Logistics | MEDIUM station | 41.99/50 | 1760 | 18 | 0.42 | Designed for stationary repair. Stationary installation. |
 | Wormhole Stabilizer Station | Logistics | MEDIUM station | 42.50/50 | 1775 | 18 | 0.42 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
-| Constructor | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Designed for mobile construction and refitting. Inter-system travel. |
 | Fuel Depot | Logistics | MEDIUM station | 43.00/50 | 1790 | 19 | 0.43 | Designed for stationary fuel collection. Stationary installation. Harvest near stars or inside hydrogen nebulae. |
 | Wormhole Stabilizer Tender | Logistics | MEDIUM ship | 43.00/50 | 1790 | 19 | 0.43 | Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled. |
 | Antimatter Harvester | Logistics | MEDIUM ship | 45.00/50 | 1850 | 19 | 0.45 | Designed for fuel collection. Inter-system travel. Harvest near stars or inside hydrogen nebulae. |
-| Small Repair Station | Logistics | MEDIUM station | 47.99/50 | 1940 | 20 | 0.48 | Designed for stationary repair. Stationary installation. |
 | Antimatter Transporter | Logistics | MEDIUM ship | 49.00/50 | 1970 | 20 | 0.49 | Dedicated antimatter transport. Inter-system travel. Take Antimatter loads from friendly units; Continuous Antimatter Transport repeats deliveries with an automatic return reserve. |
 | Pulsar Harvester | Logistics | LARGE ship | 66.50/100 | 2995 | 25 | 0.67 | Reduces magnetic, pulsar hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Utility Transport | Logistics | LARGE ship | 76.50/100 | 3295 | 26 | 0.77 | Designed for Tiny vessel transport. Inter-system travel. Hangar accepts Tiny vessels, not strikecraft wings. |

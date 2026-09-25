@@ -9,6 +9,7 @@ from unit_components.constructor import Constructor
 from unit_components.movement import Engines
 from unit_orders.construction import ConstructOrder
 from unit_orders.movement import MoveOrder
+from unit_templates import get_template
 
 
 def builder(game, **kwargs):
@@ -42,7 +43,8 @@ def queue_build(unit):
 def test_only_own_pending_builds_reduce_budget(reservation_owner):
     game = campaign()
     player, other = game.players
-    player.credits = 1000
+    cost = get_template('SHIPYARD_MK1')['build_cost']
+    player.credits = cost
     actor = builder(game)
     if reservation_owner is not None:
         if reservation_owner == 'ally':
@@ -54,7 +56,7 @@ def test_only_own_pending_builds_reduce_budget(reservation_owner):
     result = issue(game, player, Command('rename_unit', (actor.id,), new_name='Accepted'),
                    build_command(actor))
     assert result.accepted == (reservation_owner != 'self')
-    assert player.credits == (1000 if reservation_owner == 'self' else 0)
+    assert player.credits == (cost if reservation_owner == 'self' else 0)
     assert actor.name == ('ship' if reservation_owner == 'self' else 'Accepted')
     assert bool(actor.constructor_component.current_construction_target) == result.accepted
     assert other.credits == before_other
@@ -70,7 +72,8 @@ def test_only_own_pending_builds_reduce_budget(reservation_owner):
 def test_releasing_own_pending_build_does_not_create_a_refund(edit):
     game = campaign()
     player = game.players[0]
-    player.credits = 1000
+    cost = get_template('SHIPYARD_MK1')['build_cost']
+    player.credits = cost
     actor = builder(game)
     pending = queue_build(actor)
     if edit == 'replace':
@@ -86,10 +89,11 @@ def test_releasing_own_pending_build_does_not_create_a_refund(edit):
 def test_paid_construction_is_not_reserved_again():
     game = campaign()
     player = game.players[0]
-    player.credits = 2000
+    cost = get_template('SHIPYARD_MK1')['build_cost']
+    player.credits = cost * 2
     first, second = builder(game), builder(game)
     assert issue(game, player, build_command(first)).accepted
-    assert player.credits == 1000
+    assert player.credits == cost
     assert issue(game, player, build_command(second)).accepted
     assert player.credits == 0
 
