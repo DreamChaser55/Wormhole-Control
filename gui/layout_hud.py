@@ -302,7 +302,7 @@ def update_player_color_indicator(gui, color: Color) -> None:
 
 
 def update_hud_panel_colors(gui, player_color: Color) -> None:
-    """Dynamically updates UI panels to semi-transparent sci-fi colors tinted by active player color.
+    """Dynamically updates UI panels to opaque sci-fi colors tinted by active player color.
 
     Args:
         gui: Target GUI_Handler instance.

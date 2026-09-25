@@ -132,13 +132,13 @@ def build_ui_manager(display_config: DisplayConfig) -> pygame_gui.UIManager:
 
 
 def create_player_scifi_theme_colors(player_color: typing.Union[pygame.Color, typing.Tuple[int, ...], str]) -> typing.Tuple[pygame.Color, pygame.Color]:
-    """Calculates semi-transparent sci-fi background and border colors derived from a player's color.
+    """Calculates opaque sci-fi backgrounds and accent borders from a player's color.
 
     Args:
         player_color: Pygame Color, RGB tuple, or color string representing active player.
 
     Returns:
-        Tuple[pygame.Color, pygame.Color]: (bg_color, border_color) where bg_color is semi-transparent
+        Tuple[pygame.Color, pygame.Color]: (bg_color, border_color) where bg_color is opaque
         dark slate tinted with player hue, and border_color is a sci-fi accent border.
     """
     try:
@@ -146,11 +146,18 @@ def create_player_scifi_theme_colors(player_color: typing.Union[pygame.Color, ty
     except (ValueError, TypeError):
         col = pygame.Color(255, 255, 255)
 
-    # Base dark sci-fi slate (12, 18, 30) blended with 18% player color + semi-transparent alpha (200 / 255 ~78% opacity)
+    # Base dark sci-fi slate (12, 18, 30) blended with 18% player color.
     bg_r = min(255, max(0, int(12 * 0.82 + col.r * 0.18)))
     bg_g = min(255, max(0, int(18 * 0.82 + col.g * 0.18)))
     bg_b = min(255, max(0, int(30 * 0.82 + col.b * 0.18)))
-    bg_color = pygame.Color(bg_r, bg_g, bg_b, 200)
+    # Bake the former 200/255 opacity into RGB against the System View backdrop
+    # (4, 4, 8). This deliberately dims player tints while making the fill opaque.
+    bg_color = pygame.Color(
+        round((bg_r * 200 + 4 * 55) / 255),
+        round((bg_g * 200 + 4 * 55) / 255),
+        round((bg_b * 200 + 8 * 55) / 255),
+        255,
+    )
 
     # Border accent: Sci-fi slate border (50, 90, 140) blended with 50% player color + alpha 220
     border_r = min(255, max(0, int(50 * 0.5 + col.r * 0.5)))
