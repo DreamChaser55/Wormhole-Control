@@ -93,6 +93,45 @@ class AttackOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, self.attack_type, parameters, parent_order)
 
+    def target_not_visible(self, galaxy_ref: 'Galaxy', visibility_snapshot=None) -> bool:
+        """Read current owner coverage without recording intel or advancing orders."""
+        if galaxy_ref is None:
+            return False
+        galaxy_ref = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
+        if galaxy_ref is None or self.unit.owner is None:
+            return False
+        target_id = self.parameters.get("target_unit_id")
+        if target_id is None:
+            return False
+        target = combat_target(galaxy_ref, target_id)
+        if target is None:
+            # Docked ships leave the galaxy lookup, but are still lost
+            # contacts rather than destroyed targets.
+            from campaign_graph import find_unit
+            target = find_unit(galaxy_ref, target_id)
+        from domain.players import are_enemies
+        if target is None or target.current_hit_points <= 0 or not are_enemies(self.unit.owner, target.owner):
+            return False  # Retain the existing missing/dead/friendly lifecycle.
+        from visibility import VisibilityService, is_unit_visible
+        if visibility_snapshot is None:
+            visibility_snapshot = VisibilityService.compute(galaxy_ref, self.unit.owner, record_intel=False)
+        return not is_unit_visible(visibility_snapshot, target)
+
+    def cancel_if_target_not_visible(self, galaxy_ref: 'Galaxy', visibility_snapshot=None) -> bool:
+        """Cancel this engagement only; callers settle roots/parents at safe boundaries."""
+        if self.status not in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}:
+            return False
+        if not self.target_not_visible(galaxy_ref, visibility_snapshot):
+            return False
+        self.failure_reason = "target_not_visible"
+        self.cancel()
+        self.sub_orders.clear()
+        logger.debug(
+            "Attack cancelled: attacker=%s target=%s order=%s reason=target_not_visible",
+            self.unit.id, self.parameters.get("target_unit_id"), self.public_id,
+        )
+        return True
+
     def approach_range(self, target_unit: 'Unit') -> Optional[float]:
         """Shortest effective range of the turrets that determine this approach."""
         weapons = self.unit.weapons_component
@@ -127,7 +166,12 @@ class AttackOrder(Order):
         return state_data
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        if self.status != OrderStatus.PENDING:
+            return
         super().execute(galaxy_ref)
+
+        if self.cancel_if_target_not_visible(galaxy_ref):
+            return
 
         target_unit_id = self.parameters["target_unit_id"]
         galaxy = getattr(getattr(self.unit, "game", None), "galaxy", None) or galaxy_ref
@@ -173,7 +217,8 @@ class AttackOrder(Order):
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
         if self.status != OrderStatus.IN_PROGRESS:
-            super().update(galaxy_ref)
+            return
+        if self.cancel_if_target_not_visible(galaxy_ref):
             return
 
         target_unit_id = self.parameters.get("target_unit_id")
@@ -308,6 +353,11 @@ class AttackOrder(Order):
     def resume(self, galaxy_ref: 'Galaxy') -> None:
         if self.status != OrderStatus.IN_PROGRESS:
             return
+        if self.target_not_visible(galaxy_ref):
+            # Hydration must not advance lifecycle/history or resume pursuit.
+            if self._owns_weapon_engagement() and self.unit.weapons_component:
+                self.unit.weapons_component.clear_target()
+            return
         target_id = self.parameters.get("target_unit_id")
         from tactical_abilities import combat_target
         target = combat_target(galaxy_ref, target_id) if target_id is not None else None
@@ -325,6 +375,18 @@ class AttackLongRangeOrder(AttackOrder):
     """Use long-range turrets for approach distance; all eligible turrets may fire."""
     attack_type = OrderType.ATTACK_LONG_RANGE
     long_range_only = True
+
+
+def discard_lost_attack_engagement(parent: Order, galaxy_ref: 'Galaxy') -> bool:
+    """Let a continuing mission consume contact loss without cancelling itself."""
+    if not parent.sub_orders or not isinstance(parent.sub_orders[0], AttackOrder):
+        return False
+    attack = parent.sub_orders[0]
+    attack.cancel_if_target_not_visible(galaxy_ref)
+    if attack.status == OrderStatus.CANCELLED and attack.failure_reason == "target_not_visible":
+        parent.sub_orders.popleft()
+        return True
+    return False
 
 
 class ProtectOrder(Order):
@@ -446,6 +508,8 @@ class ProtectOrder(Order):
             if self.unit.weapons_component:
                 self.unit.weapons_component.clear_target()
             return
+
+        discard_lost_attack_engagement(self, galaxy_ref)
 
         # Check if we are currently executing an AttackOrder
         has_attack_order = False

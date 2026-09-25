@@ -2,19 +2,21 @@ from unittest.mock import MagicMock
 from geometry import Position
 from unit_orders.base import OrderStatus, OrderType
 from unit_orders.combat import AttackOrder
-from unit_components.movement import Engines, Hyperdrive
-from unit_components.enums import HyperdriveType
 from unit_components.weapons import Weapons
-from tests.support.units import ComponentUnit
+from tests.support.combat import create_test_galaxy, create_combat_ship
+
+
+def combatants():
+    galaxy, owner, enemy = create_test_galaxy()
+    unit = create_combat_ship(galaxy, owner, 'Attacker', (0, 0))
+    target = create_combat_ship(galaxy, enemy, 'Target', (0, 0))
+    weapons = MagicMock(hull_cost=0)
+    unit.components[Weapons] = weapons
+    return unit, target, galaxy, weapons
 
 
 def test_attack_order():
-    unit = ComponentUnit()
-    weapons = MagicMock(hull_cost=0)
-    unit.components[Weapons] = weapons
-    
-    target = ComponentUnit()
-    unit.game.galaxy.get_unit_by_id.return_value = target
+    unit, target, galaxy, weapons = combatants()
     
     order = AttackOrder(unit, {"target_unit_id": target.id})
     
@@ -31,39 +33,14 @@ def test_attack_order():
     turret.range = 50.0
     weapons.turrets = [turret]
     
-    order.execute(MagicMock())
+    order.execute(galaxy)
     weapons.set_target.assert_called_once_with(target, None)
     # Should not spawn movement orders since in range
     assert len(order.sub_orders) == 0
 
 
 def test_attack_order_pursuit():
-    unit = ComponentUnit()
-    weapons = MagicMock(hull_cost=0)
-    unit.components[Weapons] = weapons
-    
-    # Add engines and hyperdrive to allow route planning and hex jumps
-    engines = Engines(unit, speed=100.0)
-    unit.add_component(engines)
-    hd = Hyperdrive(unit, drive_type=HyperdriveType.BASIC, jump_range=5)
-    unit.add_component(hd)
-    
-    target = ComponentUnit()
-    target.id = 456
-    target.name = "TargetUnit"
-    
-    galaxy = MagicMock()
-    unit.game.galaxy = galaxy
-    galaxy.get_unit_by_id.return_value = target
-    
-    # Mock system hexes to allow pathfinding
-    mock_hex = MagicMock()
-    mock_hex.get_all_inhibition_zones.return_value = []
-    galaxy.systems = {"Sol": MagicMock()}
-    galaxy.systems["Sol"].hexes = {
-        (0, 0): mock_hex,
-        (0, 1): mock_hex
-    }
+    unit, target, galaxy, weapons = combatants()
     
     # Setup weapons and range
     turret = MagicMock()
@@ -115,7 +92,10 @@ def test_attack_order_pursuit():
     assert new_move_sub.parameters["destination_position"] == Position(105.0, 0.0)
     
     # 4. Target jumps to a different hex
+    galaxy.systems['Sol'].hexes[(0, 0)].units.remove(target)
     target.in_hex = (0, 1)
+    galaxy.systems['Sol'].hexes[(0, 1)].units.append(target)
+    create_combat_ship(galaxy, unit.owner, 'Forward scout', (0, 1))
     order.update(galaxy)
     
     assert len(order.sub_orders) == 1
@@ -125,7 +105,9 @@ def test_attack_order_pursuit():
     assert hex_jump_move_sub.parameters["destination_hex_coord"] == (0, 1)
     
     # 5. Target moves back within range (attacker is at (0, 0), target moves to (20, 0) in (0, 0))
+    galaxy.systems['Sol'].hexes[(0, 1)].units.remove(target)
     target.in_hex = (0, 0)
+    galaxy.systems['Sol'].hexes[(0, 0)].units.append(target)
     target.position = Position(20, 0)
     order.update(galaxy)
     

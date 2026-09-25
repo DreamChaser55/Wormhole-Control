@@ -7,7 +7,7 @@ from typing import Dict, Optional, Any, TYPE_CHECKING
 from geometry import Position, distance
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
-from .combat import AttackOrder
+from .combat import AttackOrder, discard_lost_attack_engagement
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -173,6 +173,8 @@ class DefendOrder(Order):
             return
 
         guard_radius = float(self.parameters.get("guard_radius", DEFAULT_DEFEND_GUARD_RADIUS))
+
+        discard_lost_attack_engagement(self, galaxy_ref)
 
         # Check if we are currently executing an AttackOrder sub-order
         has_attack_order = False

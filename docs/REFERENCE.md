@@ -694,7 +694,16 @@ and [socket examples](CODEX_CONTROL.md#command-discovery-and-order-control).
 | `ATTACK_SAME_SYSTEM` | Visible enemies anywhere in the system |
 
 Stance pursuit stops when the enemy becomes hidden or leaves the selected boundary.
-A direct Attack order is independent of that boundary. Turrets fire only for an
+A direct Attack order is independent of the stance boundary, but requires continued
+detailed visibility of its target through its owner's shared sensors and intelligence.
+Losing that contact permanently cancels Attack and Attack (long-range only), including
+their approach movement and weapon locks. Anonymous radar presence and remembered
+contacts do not preserve an attack. Cancellation is checked before movement and firing
+and after every player's turn; the ship cannot follow a hidden target or automatically
+resume the cancelled order when it reappears. Other queued work and the selected stance
+remain intact. Patrol, Protect and Defend discard only the lost-target engagement and
+continue their mission; autonomous policies may acquire a newly visible target afresh.
+Turrets fire only for an
 active Attack or Attack (long-range only), including normal attacks performed by Stance, Patrol, Protect or Defend;
 queued, suspended or cancelled attacks do not authorize fire.
 

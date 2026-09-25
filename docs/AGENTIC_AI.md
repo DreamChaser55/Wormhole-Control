@@ -410,6 +410,16 @@ changing it to normal Attack. See [attack rules](REFERENCE.md#queues-and-stances
 for approach/firing behavior and the 50% subsystem range modifier. Observation
 turret `range` values remain hull ranges; command guidance explains the modifier.
 
+Both attack commands require continuing detailed visibility to the attacking owner's
+shared sensors/intelligence. Lost contact permanently cancels the active attack and
+its approach with `target_not_visible`, reported once in the owner's order history and
+briefing. Radar presence is insufficient. Checks run before movement/firing and at the
+end of every player's turn, including opponents' turns. Reappearance does not revive
+the cancelled order. Queued attacks revalidate when activated; other queued work,
+stances and parent Patrol/Protect/Defend missions remain intact. These checks do not
+run as mutations during observations or preflight. Loading restores no bindings to a
+hidden target and defers cancellation/history to the first gameplay validation.
+
 ## Failure behavior
 
 - SDK retries transient transport failures up to two times.

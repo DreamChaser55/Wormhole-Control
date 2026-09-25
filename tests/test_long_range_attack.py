@@ -82,7 +82,11 @@ def test_pursuit_stops_and_restarts_without_retreat(battle, order_class, limit, 
     target.position = Position(limit + 100, 0)
     order.update(game.galaxy)
     assert order.sub_orders[0].parameters['destination_position'] == Position(105, 0)
+    # Pursuit across sectors requires continuing shared detailed coverage.
+    game.galaxy.systems['Sol'].hexes[(0, 0)].units.remove(target)
     target.in_hex = (0, 1)
+    game.galaxy.systems['Sol'].hexes[(0, 1)].units.append(target)
+    create_combat_ship(game.galaxy, unit.owner, 'Forward scout', (0, 1))
     order.update(game.galaxy)
     assert order.sub_orders[0].parameters['destination_hex_coord'] == (0, 1)
 

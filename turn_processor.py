@@ -148,7 +148,24 @@ class TurnProcessor:
             process_support(self.game, current_player)
 
             process_wing_service(self.game, current_player)
+            self._cancel_hidden_attacks()
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
+
+    def _cancel_hidden_attacks(self):
+        """Settle lost contacts for every owner without running their next orders."""
+        from campaign_graph import iter_units
+        snapshots = {}
+        for unit, _ in iter_units(self.game.galaxy):
+            commander = unit.commander_component
+            if not commander:
+                continue
+            snapshot = None
+            if commander.attack_for_visibility_check() and unit.owner is not None:
+                if unit.owner.id not in snapshots:
+                    snapshots[unit.owner.id] = VisibilityService.compute(
+                        self.game.galaxy, unit.owner, record_intel=False)
+                snapshot = snapshots[unit.owner.id]
+            commander.cancel_hidden_attack(self.game.galaxy, snapshot)
 
 
     def process_global_end_of_round(self):
@@ -360,6 +377,10 @@ class TurnProcessor:
 
             for unit, movement_details in units_to_move:
                 movement_type, movement_data, expected_order_id = movement_details
+                # Other sublight moves or earlier jumps can have removed the
+                # scout supplying this attack's coverage since preparation.
+                if unit.commander_component:
+                    unit.commander_component.cancel_hidden_attack(self.game.galaxy)
                 origin_system = self.game.galaxy.systems[unit.in_system]
                 if not origin_system:
                     logger.debug(f"   FATAL Error: Could not find origin system {unit.in_system} for unit {unit.id}. Skipping move.")

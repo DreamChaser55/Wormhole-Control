@@ -473,6 +473,23 @@ class Commander(UnitComponent):
         if weapons:
             weapons.clear_target()
 
+    def attack_for_visibility_check(self) -> Optional[Order]:
+        """The active engagement, including approach; Attack Run owns its own aborts."""
+        from unit_orders.combat import AttackOrder
+        if self.current_order and self.current_order.order_type == OrderType.ATTACK_RUN:
+            return None
+        return next((order for order in self._active_front_chain() if isinstance(order, AttackOrder)), None)
+
+    def cancel_hidden_attack(self, galaxy_ref, visibility_snapshot=None) -> bool:
+        """Cancellation only: never promote queued work or advance a parent mission."""
+        attack = self.attack_for_visibility_check()
+        cancelled = bool(attack and attack.cancel_if_target_not_visible(galaxy_ref, visibility_snapshot))
+        root = self.current_order
+        if root and root.status == OrderStatus.CANCELLED and root.failure_reason == "target_not_visible":
+            self._release_current_order()
+            cancelled = True
+        return cancelled
+
     def cancel_order(self, local_order_id: int, *, promote_next: bool = True) -> bool:
         """Cancel an explicit root by its process-local ID.
 
@@ -520,6 +537,20 @@ class Commander(UnitComponent):
             getattr(self.unit, "in_galaxy", None)
             or getattr(getattr(self.unit, "game", None), "galaxy", None)
         )
+        self.cancel_hidden_attack(galaxy_ref)
+        from dismantling import offline
+        if not self.unit.is_disabled and not offline(self.unit):
+            # A turn-end cancellation deliberately did not activate this owner's
+            # queue. Promote now so its next movement is ready for this phase.
+            while not self.current_order and self.orders_queue:
+                self.start_next_order()
+                if not self.cancel_hidden_attack(galaxy_ref):
+                    break
+            root = self.get_active_order_root()
+            if (root and root.sub_orders
+                    and root.sub_orders[0].status == OrderStatus.CANCELLED
+                    and root.sub_orders[0].failure_reason == "target_not_visible"):
+                root.update(galaxy_ref)
         # Capability loss invalidates the selected standing policy even while an
         # explicit foreground order is running; the explicit order itself is not
         # interrupted, but the stale stance cannot resume later.

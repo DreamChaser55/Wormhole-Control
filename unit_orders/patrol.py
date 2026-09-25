@@ -6,7 +6,7 @@ from domain.coordinates import HexCoord
 from geometry import Position, distance
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
-from .combat import AttackOrder
+from .combat import AttackOrder, discard_lost_attack_engagement
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -168,6 +168,9 @@ class PatrolOrder(Order):
         if self.status != OrderStatus.IN_PROGRESS:
             super().update(galaxy_ref)
             return
+
+        if discard_lost_attack_engagement(self, galaxy_ref):
+            self._spawn_move_to_current_waypoint()
 
         # Check if we are currently executing an AttackOrder
         has_attack_order = False

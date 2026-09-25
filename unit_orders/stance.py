@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from geometry import distance, hex_distance
 from .base import Order, OrderStatus, OrderType
-from .combat import AttackOrder
+from .combat import AttackOrder, discard_lost_attack_engagement
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -231,6 +231,8 @@ class StanceOrder(Order):
         self.sub_orders.popleft()
 
     def validate_engagement(self, galaxy_ref: 'Galaxy') -> bool:
+        if discard_lost_attack_engagement(self, galaxy_ref):
+            return False
         attack = self.active_attack
         if not attack:
             return True

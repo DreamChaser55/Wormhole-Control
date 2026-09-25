@@ -426,6 +426,8 @@ def test_weapons_and_turrets():
     
     # Update weapons: turret should fire
     mock_galaxy = MagicMock()
+    mock_galaxy.get_unit_by_id.side_effect = lambda uid: {unit.id: unit, target.id: target}.get(uid)
+    unit.game.galaxy = mock_galaxy
     mock_system = MagicMock()
     mock_system.name = "Sol"
     hex_obj = MagicMock()

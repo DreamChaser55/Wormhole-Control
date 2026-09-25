@@ -366,6 +366,13 @@ class Weapons(UnitComponent):
 
         commander = self.unit.commander_component
         active_attack = commander.get_active_attack_order() if commander else None
+        visibility_snapshot = None
+        if active_attack and self.unit.owner and galaxy:
+            from visibility import VisibilityService
+            visibility_snapshot = VisibilityService.compute(galaxy, self.unit.owner, record_intel=False)
+        if commander:
+            commander.cancel_hidden_attack(galaxy, visibility_snapshot)
+            active_attack = commander.get_active_attack_order()
         if active_attack is None:
             self.clear_target()
             return
@@ -378,14 +385,6 @@ class Weapons(UnitComponent):
             ):
                 turret.target = None
                 turret.target_component_type = None
-
-        visibility_snapshot = None
-        if any(t.target for t in self.turrets) and self.unit.owner and galaxy:
-            from visibility import VisibilityService
-            turn_num = getattr(galaxy, 'turn_number', 1)
-            if hasattr(galaxy, 'game') and hasattr(galaxy.game, 'turn_number'):
-                turn_num = getattr(galaxy.game, 'turn_number', 1)
-            visibility_snapshot = VisibilityService.compute(galaxy, self.unit.owner, turn_number=turn_num)
 
         for turret in self.turrets:
             if turret.target:
