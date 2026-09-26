@@ -66,7 +66,7 @@ def test_short_range_detailed_visibility(test_setup):
 
     enemy_in_range = Unit(
         owner=p2,
-        position=Position(1000, 0),
+        position=Position(DEFAULT_SENSOR_SHORT_RANGE / 2, 0),
         in_hex=(0, 0),
         in_system="Alpha",
         name="Enemy Scout",

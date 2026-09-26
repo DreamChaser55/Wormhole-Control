@@ -87,10 +87,10 @@ changing the others. The table is generated from their runtime constants.
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
 | Campaign save | 4.17 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 21 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
-| Command contract | 17 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
+| Observation | 22 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Command contract | 18 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
 | Response schema | wormhole_control_turn_v14 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v21 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Prompt cache | wormhole-control-turn-v22 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
 | Local socket protocol | 3 | [PROTOCOL_VERSION](../game_control_protocol.py) |
 | Strikecraft Bay component | 5 | [StrikecraftBayComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
 | Strikecraft Wing component | 2 | [StrikecraftWingComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |

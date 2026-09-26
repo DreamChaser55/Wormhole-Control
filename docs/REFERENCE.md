@@ -697,6 +697,19 @@ and [socket examples](CODEX_CONTROL.md#command-discovery-and-order-control).
 | `ATTACK_INTRA_SYSTEM_JUMP_RANGE` | Visible enemies within intra-system jump range |
 | `ATTACK_SAME_SYSTEM` | Visible enemies anywhere in the system |
 
+Stance controls are available only on units with a Weapons component containing
+at least one turret. Unarmed units, including empty weapon bays and carriers whose
+only weapons belong to their wings, retain an internal **Do Nothing** policy and
+show only their ordinary orders. Defenses, siege batteries, mines and abilities
+do not grant stance controls. Stop remains available under its normal rules.
+
+Damaged installed Weapons and turret cooldowns preserve the selected stance;
+engagement resumes when the weapons can operate. Removing the last turret resets
+the policy to Do Nothing and cancels its pursuit without clearing explicit work.
+Installing weapons reveals the controls but does not select an attack stance.
+Replacing armed Weapons with armed Weapons preserves the selected policy.
+Movement-based stance requirements still apply independently.
+
 Stance pursuit stops when the enemy becomes hidden or leaves the selected boundary.
 A direct Attack order is independent of the stance boundary, but requires continued
 detailed visibility of its target through its owner's shared sensors and intelligence.

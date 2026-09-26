@@ -131,6 +131,8 @@ def capability_blocker(unit, command_type):
     from dismantling import offline
     if offline(unit) and command_type not in {'rename_unit', 'cancel_orders', 'clear_explicit_orders', 'cancel_order'}:
         return 'dismantling_conflict'
+    if command_type == "set_stance" and not getattr(getattr(unit, "commander_component", None), "supports_stances", False):
+        return "capability_unavailable"
     if command_type == "attack_long_range":
         from unit_components.enums import TurretVariant
         if getattr(unit, 'is_disabled', False) is True or not any(t.variant == TurretVariant.LONG_RANGE
@@ -153,7 +155,9 @@ def capability_blocker(unit, command_type):
 
 
 def supported_commands(unit: Any) -> list[str]:
-    commands = ["rename_unit", "cancel_orders", "clear_explicit_orders", "cancel_order", "append_patrol_waypoints", "set_stance"]
+    commands = ["rename_unit", "cancel_orders", "clear_explicit_orders", "cancel_order", "append_patrol_waypoints"]
+    if getattr(getattr(unit, "commander_component", None), "supports_stances", False):
+        commands.append("set_stance")
     if getattr(unit, "engines_component", None) is not None:
         commands.extend(["move", "patrol", "protect"])
         if _hull_name(unit) != "strikecraft_wing":
@@ -246,12 +250,12 @@ def command_guidance(
         _enum_value(stance)
         for stance in (
             commander.get_allowed_stances()
-            if commander and hasattr(commander, "get_allowed_stances")
+            if commander and getattr(commander, "supports_stances", False)
             else []
         )
     ]
-    options["set_stance"] = {"values": stances}
     if stances:
+        options["set_stance"] = {"values": stances}
         legal.add("set_stance")
 
     commander_roots = [getattr(commander, "current_order", None), *list(getattr(commander, "orders_queue", []))]

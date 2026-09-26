@@ -213,6 +213,20 @@ def handle_lay_minefield(game, action: dict) -> None:
     game.sidebar_needs_update = True
 
 
+def _issue_stance(game, unit, stance: UnitStance) -> None:
+    """Keep human selection and stale widget events on the shared command path."""
+    from game_ai.commands import CommandGateway
+    from game_ai.contracts import Command, CommandBatch
+    result = CommandGateway(game).apply_batch(
+        game.players[game.current_player_index],
+        CommandBatch((Command('set_stance', (unit.id,), stance=stance.value),)),
+    )
+    if not result.accepted and game.gui:
+        game.gui.show_warning_dialog(
+            '<br>'.join(error.message for error in result.errors), title="Invalid Stance"
+        )
+
+
 def handle_set_stance(game, action: dict) -> None:
     unit_id = action.get('unit_id')
     stance_display_name = action.get('stance_display_name')
@@ -226,17 +240,7 @@ def handle_set_stance(game, action: dict) -> None:
                     matching_stance = stance
                     break
             if matching_stance is not None:
-                allowed_stances = unit.commander_component.get_allowed_stances()
-                if matching_stance in allowed_stances:
-                    unit.commander_component.set_stance(matching_stance)
-                    logger.debug(f"Unit {format_unit_for_log(unit)} stance set to {matching_stance.name}.")
-                else:
-                    logger.warning(f"Unit {format_unit_for_log(unit)} stance {matching_stance.name} is not allowed.")
-                    if game.gui:
-                        game.gui.show_warning_dialog(
-                            f"Stance '{matching_stance.display_name}' is not allowed for unit '{unit.name}'.",
-                            title="Invalid Stance"
-                        )
+                _issue_stance(game, unit, matching_stance)
             else:
                 logger.debug(f"Stance not found for display name: {stance_display_name}")
     game.sidebar_needs_update = True
@@ -255,8 +259,7 @@ def handle_cycle_stance(game, action: dict) -> None:
                     current_stance = allowed_stances[0]
                 current_idx = allowed_stances.index(current_stance)
                 next_idx = (current_idx + 1) % len(allowed_stances)
-                unit.commander_component.set_stance(allowed_stances[next_idx])
-                logger.debug(f"Unit {format_unit_for_log(unit)} stance cycled to {unit.commander_component.stance.name}.")
+                _issue_stance(game, unit, allowed_stances[next_idx])
     game.sidebar_needs_update = True
 
 

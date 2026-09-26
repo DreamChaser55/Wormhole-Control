@@ -62,8 +62,22 @@ class Commander(UnitComponent):
     def stance(self, stance: UnitStance) -> None:
         self.set_stance(stance)
 
+    @property
+    def supports_stances(self) -> bool:
+        """Installed turrets support policy selection even while damaged or cooling."""
+        weapons = self.unit.weapons_component
+        return weapons is not None and bool(weapons.turrets)
+
+    def reconcile_stance_capability(self) -> None:
+        """Restore the unarmed invariant without issuing commands or clearing work."""
+        if not self.supports_stances:
+            self.suspend_stance_activity("weapons removed")
+            self._replace_stance(UnitStance.DO_NOTHING)
+
     def get_allowed_stances(self) -> list[UnitStance]:
         """Gets the list of allowed stances for this unit based on its components."""
+        if not self.supports_stances:
+            return [UnitStance.DO_NOTHING]
         allowed = [UnitStance.DO_NOTHING, UnitStance.ATTACK_WEAPON_RANGE]
         if self.unit.engines_component is not None and self.unit.engines_component.is_operational:
             allowed.append(UnitStance.ATTACK_SAME_SECTOR)
@@ -77,6 +91,7 @@ class Commander(UnitComponent):
 
     def process_stance(self) -> None:
         """Update the standing policy while no explicit order is active."""
+        self.reconcile_stance_capability()
         from strikecraft_service import required
         if required(self.unit):
             return
@@ -117,9 +132,10 @@ class Commander(UnitComponent):
         else:
             curr_name = "None"
         obj_id = '#sidebar_status_active_label' if orders_count > 0 else '#sidebar_value_label'
+        stance_prefix = f"Stance: [{self.stance.display_name}] | " if self.supports_stances else ""
         data.append({
             'type': 'label',
-            'text': f"• Stance: [{self.stance.display_name}] | Order: {curr_name} ({orders_count} active)",
+            'text': f"• {stance_prefix}Order: {curr_name} ({orders_count} active)",
             'object_id': obj_id,
             'height': 18,
             'indent_level': 1
@@ -144,46 +160,41 @@ class Commander(UnitComponent):
             return super().get_sidebar_data(game_state)
         data = []
 
-        
-        # Display Unit Stance
-        data.append({
-            'type': 'label',
-            'text': "Stance:",
-            'object_id': '#sidebar_info_label',
-            'height': 20,
-            'indent_level': 0
-        })
-        
         is_owned = (self.unit.owner == game_state.players[game_state.current_player_index])
         from strikecraft_service import required
-        if is_owned and not required(self.unit):
-            options_list = [s.display_name for s in self.get_allowed_stances()]
-            data.append({
-                'type': 'drop_down_menu',
-                'options_list': options_list,
-                'starting_option': self.stance.display_name,
-                'action_id': 'set_stance',
-                'target_data': self.unit.id,
-                'height': 25,
-                'indent_level': 0
-            })
-        else:
+        if self.supports_stances:
             data.append({
                 'type': 'label',
-                'text': self.stance.display_name,
+                'text': "Stance:",
                 'object_id': '#sidebar_info_label',
                 'height': 20,
-                'indent_level': 1
+                'indent_level': 0
             })
-            
-        # Add a vertical gap before order list
-        data.append({
-            'type': 'label',
-            'text': "",
-            'object_id': '#sidebar_info_label',
-            'height': 5,
-            'indent_level': 0
-        })
+            if is_owned and not required(self.unit):
+                data.append({
+                    'type': 'drop_down_menu',
+                    'options_list': [s.display_name for s in self.get_allowed_stances()],
+                    'starting_option': self.stance.display_name,
+                    'action_id': 'set_stance',
+                    'target_data': self.unit.id,
+                    'height': 25,
+                    'indent_level': 0
+                })
+            else:
+                data.append({
+                    'type': 'label',
+                    'text': self.stance.display_name,
+                    'object_id': '#sidebar_info_label',
+                    'height': 20,
+                    'indent_level': 1
+                })
+            data.append({
+                'type': 'label',
+                'text': "",
+                'object_id': '#sidebar_info_label',
+                'height': 5,
+                'indent_level': 0
+            })
 
         if is_owned and self.get_active_orders_count() > 0 and not required(self.unit):
             data.append({
@@ -196,19 +207,20 @@ class Commander(UnitComponent):
                 'indent_level': 0
             })
 
-        data.append({
-            'type': 'label',
-            'text': "Stance Order:",
-            'object_id': '#sidebar_section_header_label',
-            'height': 25,
-            'indent_level': 0,
-        })
-        data.append({
-            'type': 'text_box',
-            'html_text': game_state._generate_order_data_recursive(self.standing_order, 0),
-            'height': 120 if self.standing_order.has_engagement else 45,
-            'object_id': '#order_text_box',
-        })
+        if self.supports_stances:
+            data.append({
+                'type': 'label',
+                'text': "Stance Order:",
+                'object_id': '#sidebar_section_header_label',
+                'height': 25,
+                'indent_level': 0,
+            })
+            data.append({
+                'type': 'text_box',
+                'html_text': game_state._generate_order_data_recursive(self.standing_order, 0),
+                'height': 120 if self.standing_order.has_engagement else 45,
+                'object_id': '#order_text_box',
+            })
 
         # Display Current Order (always visible if exists)
         current_order = self.current_order
@@ -299,6 +311,10 @@ class Commander(UnitComponent):
             return
         if not isinstance(stance, UnitStance):
             raise TypeError("stance must be a UnitStance")
+        self._replace_stance(stance)
+
+    def _replace_stance(self, stance: UnitStance) -> None:
+        """Engine policy replacement, also used by equipment reconciliation."""
         old_stance = getattr(self, "_stance", UnitStance.DO_NOTHING)
         old_order = getattr(self, "standing_order", None)
         # A normal assignment of the same policy is idempotent, but do not
@@ -532,6 +548,7 @@ class Commander(UnitComponent):
 
     def prepare_for_movement(self) -> None:
         """Invalidate stance scope and reject actuator targets without an active owner."""
+        self.reconcile_stance_capability()
         galaxy_ref: Optional['Galaxy'] = (
             getattr(self.unit, "in_galaxy", None)
             or getattr(getattr(self.unit, "game", None), "galaxy", None)

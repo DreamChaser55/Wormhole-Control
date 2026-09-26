@@ -25,7 +25,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 21
+OBSERVATION_SCHEMA_VERSION = 22
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -452,7 +452,7 @@ def _capability_details(unit: Any, game: Any) -> dict[str, Any]:
             _enum_value(stance)
             for stance in (
                 commander.get_allowed_stances()
-                if commander and hasattr(commander, "get_allowed_stances")
+                if commander and getattr(commander, "supports_stances", False)
                 else []
             )
         ]

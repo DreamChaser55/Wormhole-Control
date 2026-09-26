@@ -64,7 +64,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 21 and the command_catalog describes contract 17. The final turn_summary
+Observations use schema 22 and the command_catalog describes contract 18. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.
@@ -77,6 +77,9 @@ separate standing_order, current_order and queued_orders. Keep useful explicit w
 stance preserves it; explicit work suspends stance engagement and stance resumes afterwards.
 Explicit Move suppresses stance combat. cancel_orders is full Stop (including Do Nothing stance);
 clear_explicit_orders preserves stance. cancel_order removes just the named public explicit root.
+Only units with installed turrets support set_stance, even when their weapons are damaged or
+cooling down. Unarmed units advertise no stance choices and reject set_stance, including
+do_nothing; their standing_order is an internal passive policy. Use cancel_orders to Stop them.
 Internal suborders and stance engagements cannot be edited individually.
 attack closes until all target-eligible turrets are in range. attack_long_range requires an
 eligible Long Range variant turret and closes only until all eligible Long Range turrets

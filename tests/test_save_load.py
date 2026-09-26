@@ -11,7 +11,8 @@ from domain.coordinates import HexCoord
 from domain.identity import GameObject
 from domain.celestials import Star, Planet, Wormhole
 from domain.units import Unit
-from unit_components.enums import UnitStance
+from unit_components.enums import UnitStance, TurretType
+from unit_components.weapons import Weapons, Turret
 from unit_orders.combat import AttackOrder
 from unit_orders.movement import MoveOrder
 from unit_orders.base import OrderStatus, OrderType
@@ -130,6 +131,9 @@ class TestSaveLoad(unittest.TestCase):
     def test_commander_payload_separates_stance_current_and_queue(self):
         player = Player("Fleet Cmd", (0, 255, 0))
         unit = Unit(player, Position(0, 0), (0, 0), "Sol", "Flagship", HullSize.HUGE, None)
+        weapons = Weapons(unit)
+        weapons.add_turret(Turret(TurretType.MASS_DRIVER, 10, 100, 1, unit))
+        unit.add_component(weapons)
         commander = unit.commander_component
         commander.set_stance(UnitStance.ATTACK_SAME_SECTOR)
 
@@ -208,6 +212,9 @@ class TestSaveLoad(unittest.TestCase):
                 for unit, _ in system.get_all_units()
                 if unit.commander_component
             )
+            weapons = Weapons(stance_unit)
+            weapons.add_turret(Turret(TurretType.MASS_DRIVER, 10, 100, 1, stance_unit))
+            stance_unit.add_component(weapons)
             stance_unit.commander_component.set_stance(UnitStance.ATTACK_WEAPON_RANGE)
             stance_unit_id = stance_unit.id
 

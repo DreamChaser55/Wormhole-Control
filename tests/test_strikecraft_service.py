@@ -218,6 +218,10 @@ def test_carrier_orders_cannot_replace_mandatory_return():
 
 def test_observations_are_pure_and_enemy_private():
     game, carrier, wing = world()
+    # Keep the returning wing in detailed enemy sensor view for this privacy check.
+    observer = next(u for u, _ in game.galaxy.systems['Sol'].get_all_units()
+                    if u.name == 'Enemy ship')
+    observer.sensors_component.short_range_radius = 2000
     wing.strikecraft_wing_component.turns_outside = 79
     process(game, wing.owner, advance=True)
     before = serialize_game_state(game)

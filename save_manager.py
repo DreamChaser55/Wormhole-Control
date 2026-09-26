@@ -545,6 +545,7 @@ def _restore_saved_commander(unit: Unit, game: Any) -> None:
     data = unit._saved_commander_data
     commander = unit.commander_component
     commander.set_stance(UnitStance(data["stance"]), internal=True)
+    commander.reconcile_stance_capability()
     current = deserialize_order(data["current_order"], unit, game) if data["current_order"] is not None else None
     queued = [deserialize_order(raw, unit, game) for raw in data["orders_queue"]]
     commander.restore_explicit_orders(current, queued, game.galaxy)

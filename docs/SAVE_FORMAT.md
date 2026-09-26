@@ -114,6 +114,13 @@ split, including an empty current slot. Active orders rebind their actuators
 without executing startup again. Transient stance engagement trees and their
 actuators are reacquired through normal play.
 
+After all equipment is restored, an unarmed unit's saved stance is normalized to
+Do Nothing without changing its explicit orders. This includes empty Weapons
+components and recursively docked units. Installed turrets preserve an armed
+unit's saved stance even when Weapons HP is zero, regardless of component load
+order. Reconciliation does not acquire targets, advance orders, spend resources
+or replay gameplay outcomes. The saved Commander schema is unchanged.
+
 Order UUIDs and payment state are required, including on recursively stored units.
 Restoration retains terminal-recording state and history counters without replaying
 outcomes or refunds; pending orders start on a subsequent update. Runtime cancellation,

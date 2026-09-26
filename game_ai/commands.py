@@ -1560,16 +1560,25 @@ class CommandGateway:
             stance = UnitStance(stance_value)
         except (TypeError, ValueError) as exc:
             raise _Rejected("invalid_value", "Unknown stance.") from exc
-        operations = []
-        for unit in units:
+
+        def validate(unit):
+            self._require_capability(unit, "set_stance")
             if stance not in unit.commander_component.get_allowed_stances():
                 raise _Rejected(
                     "capability_unavailable",
                     f"Stance {stance.value} is unavailable to unit {unit.id}.",
                 )
+
+        def apply(unit):
+            validate(unit)
+            unit.commander_component.set_stance(stance)
+
+        operations = []
+        for unit in units:
+            validate(unit)
             operations.append(
                 _Prepared(
-                    apply=lambda unit=unit, stance=stance: unit.commander_component.set_stance(stance),
+                    apply=lambda unit=unit: apply(unit),
                     receipt=f"Set {unit.name} stance to {stance.value}.",
                 )
             )

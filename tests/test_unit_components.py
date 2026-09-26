@@ -1127,6 +1127,9 @@ def test_commander_get_sidebar_data_stance_dropdown():
     friendly_unit.id = 100
     friendly_unit.owner = player_friendly
     friendly_unit.name = "Friendly Unit"
+    weapons = Weapons(friendly_unit)
+    weapons.add_turret(Turret(TurretType.MASS_DRIVER, 10, 100, 1, friendly_unit))
+    friendly_unit.add_component(weapons)
     friendly_unit.add_component(Engines(friendly_unit, speed=100.0))
     friendly_unit.add_component(Hyperdrive(friendly_unit, drive_type=HyperdriveType.BASIC, jump_range=2))
 
@@ -1183,6 +1186,9 @@ def test_allowed_stances_restriction():
     unit = ComponentUnit()
     commander = Commander(unit)
     unit.add_component(commander)
+    weapons = Weapons(unit)
+    weapons.add_turret(Turret(TurretType.MASS_DRIVER, 10, 100, 1, unit))
+    unit.add_component(weapons)
 
     # 1. No engines, no hyperdrive -> only DO_NOTHING and ATTACK_WEAPON_RANGE
     allowed = commander.get_allowed_stances()

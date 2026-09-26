@@ -575,7 +575,8 @@ def test_paused_fifo_survives_save_and_can_be_edited(atmosphere):
     assert observed['queued_orders'][1]['blocked_by_order_id'] == paused.public_id
     assert 'cancel_order' in observed['legal_commands']
     assert paused.public_id in observed['command_options']['cancel_order']['order_ids']
-    assert observed['command_options']['set_stance']['values']
+    assert 'set_stance' not in observed['command_options']
+    assert observed['capability_details']['allowed_stances'] == []
     result = CommandGateway(game).apply_batch(game.players[0], CommandBatch((Command('cancel_order', (unit.id,), order_id=paused.public_id),)))
     assert result.accepted, result.errors
     assert not restored.is_hidden_in_gas_giant

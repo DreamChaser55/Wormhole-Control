@@ -521,6 +521,8 @@ def test_retrofit_multiple_errors_clear_independently_and_preserve_fractions(wiz
 
 def test_retrofit_capacity_excess_and_overflow_feedback(wizard_setup):
     _, _, _, constructor, target, manager, resolution = wizard_setup
+    # Pin the background equipment cost instead of relying on default sensors.
+    target.sensors_component.short_range_radius = 2000
     wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='Engines')
     try:
         wizard._engine_speed_entry.set_text('870')

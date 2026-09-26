@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 17
+CONTRACT_VERSION = 18
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -71,7 +71,7 @@ COMMAND_SPECS = {
     "lay_minefield": _spec("Lay anti_ship (default) or anti_strikecraft mines.", ("minefield_type",), ()),
     "trade": _spec("Trade with a friendly active habitat.", ("target_id",), capability=("trade_component",)),
     "continuous_trade": _spec("Repeat trade routes indefinitely.", capability=("trade_component",)),
-    "set_stance": _spec("Change standing policy without cancelling explicit work, even an explicit Attack.", ("stance",), queued=False),
+    "set_stance": _spec("Change standing policy on a unit with installed turrets without cancelling explicit work, even an explicit Attack. Damaged weapons and turret cooldowns do not prevent policy selection. Unarmed units cannot set any stance, including Do Nothing; use cancel_orders to Stop.", ("stance",), queued=False),
     "toggle_inhibitor": _spec("Immediately flip the inhibitor; activation requires a valid non-overlapping field.", queued=False, capability=("inhibitor_component",)),
     "toggle_cloaking": _spec("Immediately flip a functioning cloak.", queued=False, capability=("cloaking_component",)),
     "toggle_ability": _spec("Immediately enable or disable an equipped environmental resistance without changing orders. Enabling checks combined upkeep; payment occurs before owner-turn hazards.", ("ability",), queued=False, single_unit=True),

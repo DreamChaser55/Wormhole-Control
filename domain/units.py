@@ -128,6 +128,8 @@ class Unit(GameObject):
             existing.on_destroyed()
         self.components[type(component)] = component
         self._update_hull_usage()
+        if type(component) is Weapons:
+            self._weapons_changed()
 
     def get_component(self, component_type: type) -> typing.Optional[UnitComponent]:
         return self.components.get(component_type)
@@ -142,6 +144,15 @@ class Unit(GameObject):
             self.components[component_type].on_destroyed()
             del self.components[component_type]
             self._update_hull_usage()
+            if component_type is Weapons:
+                self._weapons_changed()
+
+    def _weapons_changed(self) -> None:
+        """Reconcile the completed equipment change; hydration defers to load."""
+        if self.commander_component and not hasattr(self, '_saved_commander_data'):
+            self.commander_component.reconcile_stance_capability()
+        if self.game is not None:
+            self.game.sidebar_needs_update = True
 
     @property
     def sensors_component(self) -> typing.Optional[Sensors]:

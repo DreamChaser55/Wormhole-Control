@@ -279,7 +279,12 @@ def test_current_equipment_prices_ignore_template_and_component_damage(world):
 
 
 def test_cancel_then_operate_target_in_same_batch(world):
+    from unit_components.weapons import Weapons, Turret
+    from unit_components.enums import TurretType
     game, actor, target = world
+    weapons = Weapons(target)
+    weapons.add_turret(Turret(TurretType.MASS_DRIVER, 10, 100, 1, target))
+    target.add_component(weapons)
     order = start(game, actor, target)
     result = issue(game, Command('cancel_order', (actor.id,), order_id=order.public_id),
                    Command('set_stance', (target.id,), stance='do_nothing'))

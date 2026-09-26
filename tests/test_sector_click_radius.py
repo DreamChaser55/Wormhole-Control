@@ -5,13 +5,13 @@ from display_config import DisplayConfig
 from unittest.mock import MagicMock
 import pytest
 from constants import (
-    HullSize, PlanetType, StarType, HULL_BASE_ICON_SCALES,
-    SECTOR_VIEW_BASE_ICON_SIZE, STAR_RADIUS, PLANET_RADIUS
+    HullSize, PlanetType, HULL_BASE_ICON_SCALES,
+    SECTOR_VIEW_BASE_ICON_SIZE, PLANET_RADIUS
 )
 import constants
 from geometry import Position
 from domain.units import Unit
-from domain.celestials import Planet, Star
+from domain.celestials import Planet
 from domain.construction_job import ConstructionJob
 from domain.minefields import Minefield
 from unit_components.enums import MinefieldType

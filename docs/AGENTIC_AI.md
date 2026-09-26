@@ -202,7 +202,16 @@ entries as guidance. Progress contains actual engine phase/counters, never inven
 
 Explicit work suspends stance attacks; explicit Move also suppresses stance combat.
 Changing stance preserves explicit work. Clearing explicit work resumes the selected
-policy when idle. Stop cancels both layers and selects Do Nothing. Commands:
+policy when idle. Stop cancels both layers and selects Do Nothing.
+
+`set_stance` requires installed Weapons with at least one turret, independent of
+weapon damage or turret cooldowns. Unarmed units omit it from `supported_commands`,
+`legal_commands` and `command_options`, and expose `capability_details.allowed_stances: []`.
+Every stance request on an unarmed unit, including `do_nothing`, rejects with
+`capability_unavailable`. Their owned/allied `standing_order` remains a passive
+Do Nothing policy with no engagement; use `cancel_orders` for Stop. Human stance
+selection and cycling use the same gateway. Preflight rejects mixed armed/unarmed
+groups atomically, and commit rechecks equipment and stance eligibility.
 
 | Command | Required fields besides type/unit_ids | Meaning |
 |---|---|---|

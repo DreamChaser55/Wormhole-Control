@@ -246,6 +246,10 @@ class StanceOrder(Order):
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
         from unit_components.enums import UnitStance
+        commander = self.unit.commander_component
+        commander.reconcile_stance_capability()
+        if not commander.supports_stances:
+            return
         self.status = OrderStatus.IN_PROGRESS
         if self.stance not in self.unit.commander_component.get_allowed_stances():
             self.unit.commander_component.set_stance(UnitStance.DO_NOTHING)
