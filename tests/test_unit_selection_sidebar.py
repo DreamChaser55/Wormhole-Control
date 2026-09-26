@@ -451,13 +451,10 @@ def test_unit_sidebar_identity():
     assert p1_comp[0]['sidebar_identity'] == 'unit:501:components:Commander'
 
 
-def test_sidebar_scroll_resets_on_new_unit_selection():
+@pytest.mark.parametrize('scroll_percentage', [0.25, 1.0], ids=['interior', 'bottom'])
+def test_sidebar_scroll_resets_on_new_unit_selection(game_factory, scroll_percentage):
     """Verify that scrolling down a tall unit sidebar and selecting a shorter unit resets scroll to top."""
-    import os
-    os.environ['SDL_VIDEODRIVER'] = 'dummy'
-    import pygame
-    pygame.init()
-    game = Game(display_config=DisplayConfig(1280, 720, fullscreen=False))
+    game = game_factory(display_config=DisplayConfig(1280, 720, fullscreen=False))
     game.start_new_game()
     gui = game.gui
     scroll = gui.side_bar_scroll_container
@@ -471,10 +468,10 @@ def test_sidebar_scroll_resets_on_new_unit_selection():
     gui.manager.update(0.1)
     assert scroll.vert_scroll_bar_active
 
-    # Scroll down halfway
-    scroll.vert_scroll_bar.set_scroll_from_start_percentage(0.5)
+    # pygame_gui clamps the requested percentage to the rendered content's range.
+    scroll.vert_scroll_bar.set_scroll_from_start_percentage(scroll_percentage)
     gui.manager.update(0.1)
-    assert scroll.vert_scroll_bar.start_percentage == 0.5
+    assert scroll.vert_scroll_bar.start_percentage > 0
     assert scroll.get_container().get_relative_rect().y < 0
 
     # Select short unit
@@ -492,13 +489,10 @@ def test_sidebar_scroll_resets_on_new_unit_selection():
     assert not scroll.vert_scroll_bar_active
 
 
-def test_sidebar_scroll_preserved_on_same_unit_refresh():
+@pytest.mark.parametrize('scroll_percentage', [0.25, 1.0], ids=['interior', 'bottom'])
+def test_sidebar_scroll_preserved_on_same_unit_refresh(game_factory, scroll_percentage):
     """Verify that refreshing content for the same unit preserves the vertical scroll position."""
-    import os
-    os.environ['SDL_VIDEODRIVER'] = 'dummy'
-    import pygame
-    pygame.init()
-    game = Game(display_config=DisplayConfig(1280, 720, fullscreen=False))
+    game = game_factory(display_config=DisplayConfig(1280, 720, fullscreen=False))
     game.start_new_game()
     gui = game.gui
     scroll = gui.side_bar_scroll_container
@@ -510,12 +504,14 @@ def test_sidebar_scroll_preserved_on_same_unit_refresh():
 
     gui.update_side_bar_content(tall_data)
     gui.manager.update(0.1)
+    assert scroll.vert_scroll_bar_active
 
-    scroll.vert_scroll_bar.set_scroll_from_start_percentage(0.5)
+    scroll.vert_scroll_bar.set_scroll_from_start_percentage(scroll_percentage)
     gui.manager.update(0.1)
+    # Preserve the actual offset, which depends on font metrics and clamping.
     initial_scroll = scroll.vert_scroll_bar.start_percentage
     initial_y = scroll.get_container().get_relative_rect().y
-    assert initial_scroll == 0.5
+    assert initial_scroll > 0
     assert initial_y < 0
 
     # Refresh the same unit with identical identity and height
@@ -526,13 +522,10 @@ def test_sidebar_scroll_preserved_on_same_unit_refresh():
     assert scroll.get_container().get_relative_rect().y == pytest.approx(initial_y, abs=2)
 
 
-def test_sidebar_scroll_resets_on_tall_to_tall_unit_switch():
+@pytest.mark.parametrize('scroll_percentage', [0.25, 1.0], ids=['interior', 'bottom'])
+def test_sidebar_scroll_resets_on_tall_to_tall_unit_switch(game_factory, scroll_percentage):
     """Verify that switching between two tall units resets the scroll position to 0.0."""
-    import os
-    os.environ['SDL_VIDEODRIVER'] = 'dummy'
-    import pygame
-    pygame.init()
-    game = Game(display_config=DisplayConfig(1280, 720, fullscreen=False))
+    game = game_factory(display_config=DisplayConfig(1280, 720, fullscreen=False))
     game.start_new_game()
     gui = game.gui
     scroll = gui.side_bar_scroll_container
@@ -544,10 +537,12 @@ def test_sidebar_scroll_resets_on_tall_to_tall_unit_switch():
 
     gui.update_side_bar_content(tall_data_1)
     gui.manager.update(0.1)
+    assert scroll.vert_scroll_bar_active
 
-    scroll.vert_scroll_bar.set_scroll_from_start_percentage(0.6)
+    scroll.vert_scroll_bar.set_scroll_from_start_percentage(scroll_percentage)
     gui.manager.update(0.1)
-    assert scroll.vert_scroll_bar.start_percentage > 0.4
+    assert scroll.vert_scroll_bar.start_percentage > 0
+    assert scroll.get_container().get_relative_rect().y < 0
 
     tall_data_2 = [{'type': 'text_entry_line', 'initial_text': 'Ship 2', 'object_id': '#unit_name_entry',
                     'height': 30, 'sidebar_identity': 'unit:102:basic_info'}]
