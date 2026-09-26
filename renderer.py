@@ -1,8 +1,7 @@
 import pygame
 
-from constants import (
-    GALAXY_BG_COLOR, SYSTEM_BG_COLOR, SECTOR_BG_COLOR, BLACK
-)
+from constants import BLACK
+
 from rendering.galaxy_renderer import GalaxyViewRenderer
 from rendering.system_renderer import SystemViewRenderer
 from rendering.sector_renderer import SectorViewRenderer
@@ -23,18 +22,8 @@ class Renderer:
 
     def draw(self):
         """Renders the current game state to the screen."""
-        if self.game.view_mode == 'galaxy':
-            background_color = GALAXY_BG_COLOR
-        elif self.game.view_mode == 'system':
-            background_color = SYSTEM_BG_COLOR
-        elif self.game.view_mode == 'sector':
-            background_color = SECTOR_BG_COLOR
-        elif self.game.view_mode == 'main_menu' or self.game.view_mode == 'about':
-            background_color = GALAXY_BG_COLOR
-        else:
-            background_color = BLACK
 
-        self.screen.fill(background_color)
+        self.screen.fill(BLACK)
 
         # Always clear the overlay surface at the start of a draw call
         self.overlay_surface.fill((0, 0, 0, 0))
