@@ -1,5 +1,6 @@
 """Intelligence, Espionage, Counter-Intelligence, and Sabotage module."""
 import logging
+from game_logging import format_unit_for_log
 import typing
 from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from .base import UnitComponent
@@ -190,7 +191,7 @@ class IntelligenceComponent(UnitComponent):
     def deploy_agent(self, target_obj: typing.Union['Unit', 'CelestialBody']) -> Optional[Agent]:
         """Deploys an operative onto an enemy unit or celestial body."""
         if not self.can_deploy_agent:
-            logger.debug(f"[{self.unit.name}] Intelligence component cannot deploy agent: no available agents.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] Intelligence component cannot deploy agent: no available agents.")
             return None
 
         from domain.units import Unit
@@ -211,7 +212,8 @@ class IntelligenceComponent(UnitComponent):
         self.agents_count = max(0, self.agents_count - 1)
         self._deployed_agents.append(agent)
 
-        logger.debug(f"[{self.unit.name}] Deployed agent {agent.id} onto {target_type} {target_obj.name} (id:{target_obj.id}).")
+        target_label = format_unit_for_log(target_obj) if isinstance(target_obj, Unit) else f"{target_obj.name} (id:{target_obj.id})"
+        logger.debug(f"[{format_unit_for_log(self.unit)}] Deployed agent {agent.id} onto {target_type} {target_label}.")
         return agent
 
     def remove_agent_reference(self, agent: Agent) -> None:
@@ -239,7 +241,7 @@ class IntelligenceComponent(UnitComponent):
         agent.attached_to = None
         self.remove_agent_reference(agent)
         self.agents_count = min(self.agents_capacity, self.agents_count + 1)
-        logger.debug(f"[{self.unit.name}] Retrieved agent {agent.id}.")
+        logger.debug(f"[{format_unit_for_log(self.unit)}] Retrieved agent {agent.id}.")
         return True
 
     def _is_enemy_of_active_player(self, game_state: 'Game') -> bool:

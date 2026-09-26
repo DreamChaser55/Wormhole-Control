@@ -259,6 +259,21 @@ or location. Socket binding and command failure contracts belong to the
 [control guide](CODEX_CONTROL.md#transport-and-process-behavior) and
 [AI failure guide](AGENTIC_AI.md#failure-behavior).
 
+## Unit references in logs
+
+Use `game_logging.format_unit_for_log(unit)` for every named unit in a log
+message, including targets and list members. It returns `Name (id:42)` using
+the current object fields, preserves ID `0`, and works after docking or removal
+without a galaxy lookup. In incomplete diagnostic objects, missing names and
+IDs become `Unit` and `unknown`. The helper imports no domain or GUI modules and
+does not configure logging.
+
+Format each reference at the logging call site, including references in locally
+assembled log text; do not modify unit names, UI labels or persisted state.
+For mixed object kinds, apply it only to units. Design names, other object names
+and quoted communications/developer feedback retain their existing formatting.
+Both file and console handlers receive the same formatted message.
+
 ## Test conventions
 
 `pytest.ini` sets `pythonpath = .`, `testpaths = tests` and the `smoke` marker.

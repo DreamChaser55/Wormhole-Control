@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import TYPE_CHECKING, List, Dict, Optional, Tuple
 
 from .base import UnitComponent
@@ -109,7 +110,7 @@ class TradeComponent(UnitComponent):
         habitat_unit: 'Unit',
         galaxy: Optional['Galaxy'] = None
     ) -> Tuple[bool, float, str]:
-        """Executes a trade transaction at an active civilian habitat unit."""
+        """Execute a trade and return success, income and a diagnostic log message."""
         if self.is_destroyed:
             return False, 0.0, "Trade Module is destroyed."
 
@@ -118,21 +119,21 @@ class TradeComponent(UnitComponent):
 
         hab_comp = getattr(habitat_unit, 'civilian_habitat_component', None)
         if not hab_comp or hab_comp.is_destroyed:
-            return False, 0.0, f"Target {habitat_unit.name} has no functioning Civilian Habitat component."
+            return False, 0.0, f"Target {format_unit_for_log(habitat_unit)} has no functioning Civilian Habitat component."
 
         g = galaxy or (getattr(self.unit, 'in_galaxy', None) if self.unit else None)
         if not g and self.unit and getattr(self.unit, 'game', None):
             g = getattr(self.unit.game, 'galaxy', None)
 
         if not hab_comp.is_active(g):
-            return False, 0.0, f"Civilian Habitat on {habitat_unit.name} is currently inactive (exceeds colony capacity or not stationed at colonized world)."
+            return False, 0.0, f"Civilian Habitat on {format_unit_for_log(habitat_unit)} is currently inactive (exceeds colony capacity or not stationed at colonized world)."
 
         dest_sector = (habitat_unit.in_system, (habitat_unit.in_hex[0], habitat_unit.in_hex[1]))
 
         if self.last_traded_sector is None:
             self.last_traded_sector = dest_sector
             self.last_traded_unit_id = habitat_unit.id
-            return True, 0.0, f"Trade route established at {habitat_unit.name} ({dest_sector[0]} {dest_sector[1]}). Next destination in another sector will earn credits."
+            return True, 0.0, f"Trade route established at {format_unit_for_log(habitat_unit)} ({dest_sector[0]} {dest_sector[1]}). Next destination in another sector will earn credits."
 
         if self.last_traded_sector == dest_sector:
             return False, 0.0, f"Already traded in sector ({dest_sector[0]} {dest_sector[1]}). Must travel to an active Civilian Habitat in a different sector."
@@ -149,7 +150,7 @@ class TradeComponent(UnitComponent):
             dest_str = f"{dest_sector[0]} {dest_sector[1]}"
             self.last_traded_sector = dest_sector
             self.last_traded_unit_id = habitat_unit.id
-            logger.info(f"Unit {self.unit.name} completed trade route {origin_str} -> {dest_str}, earning {income:.2f} credits.")
+            logger.info(f"Unit {format_unit_for_log(self.unit)} completed trade route {origin_str} -> {dest_str}, earning {income:.2f} credits.")
             return True, income, f"Trade completed! Route from {origin_str} to {dest_str} earned +{int(income)} Credits."
 
         return False, 0.0, "Trade yielded 0 distance."

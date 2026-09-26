@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
@@ -53,12 +54,12 @@ class DockOrder(Order):
 
         if not docking_component:
             self.fail("target_unavailable")
-            logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no compatible hangar/strikecraftbay for {self.unit.name}.")
+            logger.debug(f"DOCK order failed: Target carrier {format_unit_for_log(target_carrier)} has no compatible hangar/strikecraftbay for {format_unit_for_log(self.unit)}.")
             return
 
         if not docking_component.can_dock(self.unit):
             self.fail("insufficient_capacity")
-            logger.debug(f"DOCK order failed: Target carrier {target_carrier.name} has no space/slots for {self.unit.name}.")
+            logger.debug(f"DOCK order failed: Target carrier {format_unit_for_log(target_carrier)} has no space/slots for {format_unit_for_log(self.unit)}.")
             return
 
         docking_range = DOCKING_RANGE
@@ -81,10 +82,10 @@ class DockOrder(Order):
         success = docking_component.dock(self.unit, galaxy_ref)
         if success:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"Unit {self.unit.name} successfully docked to {target_carrier.name}.")
+            logger.debug(f"Unit {format_unit_for_log(self.unit)} successfully docked to {format_unit_for_log(target_carrier)}.")
         else:
             self.fail("target_unavailable")
-            logger.debug(f"Docking of {self.unit.name} to {target_carrier.name} failed.")
+            logger.debug(f"Docking of {format_unit_for_log(self.unit)} to {format_unit_for_log(target_carrier)} failed.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -122,7 +123,7 @@ class DeployUnitOrder(Order):
 
         if not self.unit.hangar_component and not self.unit.strikecraft_bay_component:
             self.fail("execution_failed")
-            logger.debug(f"DEPLOY_UNIT order failed: Unit {self.unit.name} has no HangarComponent or StrikecraftBayComponent.")
+            logger.debug(f"DEPLOY_UNIT order failed: Unit {format_unit_for_log(self.unit)} has no HangarComponent or StrikecraftBayComponent.")
             return
 
         docked_unit_id = self.parameters.get("docked_unit_id")
@@ -150,23 +151,23 @@ class DeployUnitOrder(Order):
         from domain.celestials import is_position_in_magnetic_storm, is_position_blocked_by_celestial_field
         if docked_unit.hull_size == HullSize.STRIKECRAFT_WING and is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position):
             self.fail("hazard_blocked")
-            logger.debug(f"DEPLOY_UNIT order failed: Cannot launch strikecraft wing {docked_unit.name} in a magnetic storm.")
+            logger.debug(f"DEPLOY_UNIT order failed: Cannot launch strikecraft wing {format_unit_for_log(docked_unit)} in a magnetic storm.")
             return
 
         if is_position_blocked_by_celestial_field(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position, docked_unit):
             self.fail("hazard_blocked")
-            logger.debug(f"DEPLOY_UNIT order failed: Cannot launch unit {docked_unit.name} ({docked_unit.hull_size.name}) in a dense celestial field.")
+            logger.debug(f"DEPLOY_UNIT order failed: Cannot launch unit {format_unit_for_log(docked_unit)} ({docked_unit.hull_size.name}) in a dense celestial field.")
             return
 
         success = source_component.deploy(docked_unit, galaxy_ref)
         if success:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"Unit {docked_unit.name} successfully deployed from {self.unit.name}.")
+            logger.debug(f"Unit {format_unit_for_log(docked_unit)} successfully deployed from {format_unit_for_log(self.unit)}.")
         else:
             in_storm = is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position)
             in_field = is_position_blocked_by_celestial_field(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position, docked_unit)
             self.fail("hazard_blocked" if ((docked_unit.hull_size == HullSize.STRIKECRAFT_WING and in_storm) or in_field) else "execution_failed")
-            logger.debug(f"Deployment of {docked_unit.name} from {self.unit.name} failed.")
+            logger.debug(f"Deployment of {format_unit_for_log(docked_unit)} from {format_unit_for_log(self.unit)} failed.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -188,19 +189,19 @@ class DeployAllWingsOrder(Order):
 
         if not self.unit.strikecraft_bay_component:
             self.fail("execution_failed")
-            logger.debug(f"DEPLOY_ALL_WINGS order failed: Unit {self.unit.name} has no StrikecraftBayComponent.")
+            logger.debug(f"DEPLOY_ALL_WINGS order failed: Unit {format_unit_for_log(self.unit)} has no StrikecraftBayComponent.")
             return
 
         comp = self.unit.strikecraft_bay_component
         from domain.celestials import is_position_in_magnetic_storm
         if is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position):
             self.fail("hazard_blocked")
-            logger.debug(f"DEPLOY_ALL_WINGS order failed: Cannot launch strikecraft wings from {self.unit.name} in a magnetic storm.")
+            logger.debug(f"DEPLOY_ALL_WINGS order failed: Cannot launch strikecraft wings from {format_unit_for_log(self.unit)} in a magnetic storm.")
             return
 
         if not comp.docked_units:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"DEPLOY_ALL_WINGS: No docked strikecraft wings to deploy on {self.unit.name}.")
+            logger.debug(f"DEPLOY_ALL_WINGS: No docked strikecraft wings to deploy on {format_unit_for_log(self.unit)}.")
             return
 
         docked_copy = list(comp.docked_units)
@@ -212,10 +213,10 @@ class DeployAllWingsOrder(Order):
 
         if success_count > 0:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"Successfully deployed {success_count} fighter wings from {self.unit.name}.")
+            logger.debug(f"Successfully deployed {success_count} fighter wings from {format_unit_for_log(self.unit)}.")
         else:
             self.fail("hazard_blocked" if is_position_in_magnetic_storm(galaxy_ref, self.unit.in_system, self.unit.in_hex, self.unit.position) else "execution_failed")
-            logger.debug(f"Failed to deploy any fighter wings from {self.unit.name}.")
+            logger.debug(f"Failed to deploy any fighter wings from {format_unit_for_log(self.unit)}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:

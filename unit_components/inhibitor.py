@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Any, Iterable, Optional, TYPE_CHECKING
 import dataclasses
 
@@ -86,7 +87,7 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
             return
         # In the future, an order will perform validation before setting this.
         self.is_active = True
-        logger.debug(f"Unit {self.unit.name} inhibition field activated.")
+        logger.debug(f"Unit {format_unit_for_log(self.unit)} inhibition field activated.")
 
     def turn_off(self) -> None:
         """Deactivates the inhibition field and cleans up registered spatial zone."""
@@ -99,7 +100,7 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
                     if self.unit.id in current_hex.dynamic_inhibition_zones:
                         del current_hex.dynamic_inhibition_zones[self.unit.id]
         self.is_active = False
-        logger.debug(f"Unit {self.unit.name} inhibition field deactivated.")
+        logger.debug(f"Unit {format_unit_for_log(self.unit)} inhibition field deactivated.")
 
     def update(self) -> None:
         """Consume antimatter while active. Auto-deactivate if empty or missing storage."""
@@ -110,7 +111,7 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         am_comp = getattr(self.unit, 'antimatter_component', None)
         if not am_comp:
             logger.debug(
-                f"[{self.unit.name}] Inhibitor Field deactivated: no AntimatterStorage on unit."
+                f"[{format_unit_for_log(self.unit)}] Inhibitor Field deactivated: no AntimatterStorage on unit."
             )
             self.turn_off()
             return
@@ -120,7 +121,7 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
             from turn_briefing import unit_event
             unit_event(self.unit, "problem", "Inhibitor deactivated: insufficient antimatter", private=True, once=True)
             logger.debug(
-                f"[{self.unit.name}] Inhibitor Field deactivated: insufficient antimatter "
+                f"[{format_unit_for_log(self.unit)}] Inhibitor Field deactivated: insufficient antimatter "
                 f"({am_comp.current_amount:.1f} < {cost:.1f})."
             )
             self.turn_off()
@@ -188,7 +189,7 @@ class HyperspaceInhibitionFieldEmitter(UnitComponent):
         if not check.allowed:
             logger.debug(
                 "[%s] SET_INHIBITOR: FAILED (%s).",
-                self.unit.name,
+                format_unit_for_log(self.unit),
                 check.message,
             )
             return check

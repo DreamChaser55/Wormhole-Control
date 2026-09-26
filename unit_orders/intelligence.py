@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance, position_at_distance_from_target
@@ -35,30 +36,30 @@ class InfiltrateUnitOrder(Order):
         target_unit_id = self.parameters.get("target_unit_id")
         if target_unit_id is None:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: no target_unit_id provided.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_UNIT failed: no target_unit_id provided.")
             return
 
         target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
         if not target_unit:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: target unit {target_unit_id} not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_UNIT failed: target unit {target_unit_id} not found.")
             return
 
         from domain.players import are_allies
         if are_allies(self.unit.owner, target_unit.owner):
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: cannot infiltrate friendly or allied unit.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_UNIT failed: cannot infiltrate friendly or allied unit.")
             return
 
         intel_comp = getattr(self.unit, 'intelligence_component', None)
         if not intel_comp or intel_comp.is_destroyed:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: unit has no functioning IntelligenceComponent.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_UNIT failed: unit has no functioning IntelligenceComponent.")
             return
 
         if intel_comp.available_agents <= 0:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_UNIT failed: no available agents remaining.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_UNIT failed: no available agents remaining.")
             return
 
         # Check if in same system and hex
@@ -92,7 +93,7 @@ class InfiltrateUnitOrder(Order):
         agent = intel_comp.deploy_agent(target_unit)
         if agent:
             self.status = OrderStatus.COMPLETED
-            logger.info(f"[{self.unit.name}] Successfully infiltrated enemy unit {target_unit.name} with Agent {agent.id}!")
+            logger.info(f"[{format_unit_for_log(self.unit)}] Successfully infiltrated enemy unit {format_unit_for_log(target_unit)} with Agent {agent.id}!")
         else:
             self.status = OrderStatus.FAILED
 
@@ -120,7 +121,7 @@ class InfiltratePlanetOrder(Order):
         target_body = galaxy_ref.get_celestial_body_by_id(target_body_id) if target_body_id is not None else None
         if not target_body:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_PLANET failed: celestial body not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_PLANET failed: celestial body not found.")
             return
 
         target_system, target_hex = target_body.in_system, target_body.in_hex
@@ -128,18 +129,18 @@ class InfiltratePlanetOrder(Order):
         from domain.players import are_allies
         if not body_owner or are_allies(self.unit.owner, body_owner):
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_PLANET failed: celestial body is unowned or friendly/allied.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_PLANET failed: celestial body is unowned or friendly/allied.")
             return
 
         intel_comp = getattr(self.unit, 'intelligence_component', None)
         if not intel_comp or intel_comp.is_destroyed:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_PLANET failed: unit has no functioning IntelligenceComponent.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_PLANET failed: unit has no functioning IntelligenceComponent.")
             return
 
         if intel_comp.available_agents <= 0:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] INFILTRATE_PLANET failed: no available agents remaining.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_PLANET failed: no available agents remaining.")
             return
 
         if self.unit.in_system != target_system or self.unit.in_hex != target_hex:
@@ -168,7 +169,7 @@ class InfiltratePlanetOrder(Order):
         agent = intel_comp.deploy_agent(target_body)
         if agent:
             self.status = OrderStatus.COMPLETED
-            logger.info(f"[{self.unit.name}] Successfully infiltrated colonized body {target_body.name} with Agent {agent.id}!")
+            logger.info(f"[{format_unit_for_log(self.unit)}] Successfully infiltrated colonized body {target_body.name} with Agent {agent.id}!")
         else:
             self.status = OrderStatus.FAILED
 
@@ -194,7 +195,7 @@ class RelocateAgentOrder(Order):
 
         if agent_id is None or dest_id is None:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: missing agent_id or destination_id.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: missing agent_id or destination_id.")
             return
 
         # Find agent and source target
@@ -232,11 +233,11 @@ class RelocateAgentOrder(Order):
 
         if not agent or not source_target:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: agent {agent_id} not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: agent {agent_id} not found.")
             return
         if agent.owner != self.unit.owner:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: agent is unavailable.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: agent is unavailable.")
             return
 
         # Find destination target
@@ -253,25 +254,25 @@ class RelocateAgentOrder(Order):
 
         if not dest_target:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: destination target {dest_id} not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: destination target {dest_id} not found.")
             return
 
         dest_owner = getattr(dest_target, 'owner', None)
         from domain.players import are_allies
         if not dest_owner or are_allies(self.unit.owner, dest_owner):
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: destination target is unowned or friendly/allied.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: destination target is unowned or friendly/allied.")
             return
 
         # Check range between source and destination
         if source_sys != dest_target.in_system or source_hex != dest_target.in_hex:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: destination is in different sector.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: destination is in different sector.")
             return
 
         if distance(source_pos, dest_target.position) > INTELLIGENCE_OPERATIONAL_RANGE:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] RELOCATE_AGENT failed: destination target out of range (> {INTELLIGENCE_OPERATIONAL_RANGE}).")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: destination target out of range (> {INTELLIGENCE_OPERATIONAL_RANGE}).")
             return
 
         # Transfer agent
@@ -281,7 +282,10 @@ class RelocateAgentOrder(Order):
         agent.is_discovered = False
         dest_target.infiltrating_agents.append(agent)
         self.status = OrderStatus.COMPLETED
-        logger.info(f"Agent {agent.id} successfully relocated from {source_target.name} to {dest_target.name}.")
+        from domain.units import Unit
+        source_label = format_unit_for_log(source_target) if isinstance(source_target, Unit) else source_target.name
+        destination_label = format_unit_for_log(dest_target) if isinstance(dest_target, Unit) else dest_target.name
+        logger.info(f"Agent {agent.id} successfully relocated from {source_label} to {destination_label}.")
 
 
 class SabotageOrder(Order):
@@ -302,7 +306,7 @@ class SabotageOrder(Order):
 
         if agent_id is None or not sabotage_type_val:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] SABOTAGE order failed: missing agent_id or sabotage_type.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] SABOTAGE order failed: missing agent_id or sabotage_type.")
             return
 
         sab_type = SabotageType(sabotage_type_val) if isinstance(sabotage_type_val, str) else sabotage_type_val
@@ -333,12 +337,12 @@ class SabotageOrder(Order):
 
         if not agent or not target_obj:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] SABOTAGE order failed: agent {agent_id} not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] SABOTAGE order failed: agent {agent_id} not found.")
             return
 
         if agent.owner != self.unit.owner:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] SABOTAGE order failed: agent is unavailable.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] SABOTAGE order failed: agent is unavailable.")
             return
 
         from domain.units import Unit
@@ -353,13 +357,14 @@ class SabotageOrder(Order):
         )
         if sab_type not in allowed:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] SABOTAGE order failed: sabotage type unavailable for host.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] SABOTAGE order failed: sabotage type unavailable for host.")
             return
 
         success = target_obj.apply_sabotage(agent, sab_type)
         if success:
             self.status = OrderStatus.COMPLETED
-            logger.info(f"Agent {agent.id} commenced sabotage {sab_type.name} on {target_obj.name}.")
+            target_label = format_unit_for_log(target_obj) if isinstance(target_obj, Unit) else target_obj.name
+            logger.info(f"Agent {agent.id} commenced sabotage {sab_type.name} on {target_label}.")
         else:
             self.status = OrderStatus.FAILED
 
@@ -382,23 +387,23 @@ class CISweepOrder(Order):
         intel_comp = getattr(self.unit, 'intelligence_component', None)
         if not intel_comp or intel_comp.is_destroyed or not intel_comp.has_counter_intelligence:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] CI_SWEEP failed: unit lacks functional Counter-Intelligence suite.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CI_SWEEP failed: unit lacks functional Counter-Intelligence suite.")
             return
 
         if intel_comp.ci_cooldown_remaining > 0:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] CI_SWEEP failed: Counter-Intelligence suite is on cooldown ({intel_comp.ci_cooldown_remaining} turns remaining).")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CI_SWEEP failed: Counter-Intelligence suite is on cooldown ({intel_comp.ci_cooldown_remaining} turns remaining).")
             return
 
         if not self.unit.owner or getattr(self.unit.owner, 'credits', 0.0) < CI_SWEEP_CREDIT_COST:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] CI_SWEEP failed: insufficient empire credits (requires {CI_SWEEP_CREDIT_COST}).")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CI_SWEEP failed: insufficient empire credits (requires {CI_SWEEP_CREDIT_COST}).")
             return
 
         am_comp = getattr(self.unit, 'antimatter_component', None)
         if not am_comp or am_comp.is_destroyed or am_comp.current_amount < CI_SWEEP_ANTIMATTER_COST:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] CI_SWEEP failed: insufficient antimatter (requires {CI_SWEEP_ANTIMATTER_COST}).")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CI_SWEEP failed: insufficient antimatter (requires {CI_SWEEP_ANTIMATTER_COST}).")
             return
 
         sys_obj = galaxy_ref.systems.get(self.unit.in_system)
@@ -439,7 +444,7 @@ class CISweepOrder(Order):
         from turn_briefing import record, refresh_discoveries
         record(self.unit.game, self.unit.owner, "intelligence", "CI Sweep completed", subject=self.unit)
         refresh_discoveries(self.unit.game)
-        logger.info(f"[{self.unit.name}] CI Sweep complete! Discovered {discovered_count} enemy agent(s). (Cost: {CI_SWEEP_CREDIT_COST}c, {CI_SWEEP_ANTIMATTER_COST}am, Cooldown: {CI_SWEEP_COOLDOWN_TURNS}t)")
+        logger.info(f"[{format_unit_for_log(self.unit)}] CI Sweep complete! Discovered {discovered_count} enemy agent(s). (Cost: {CI_SWEEP_CREDIT_COST}c, {CI_SWEEP_ANTIMATTER_COST}am, Cooldown: {CI_SWEEP_COOLDOWN_TURNS}t)")
 
 
 class EliminateAgentOrder(Order):
@@ -458,13 +463,13 @@ class EliminateAgentOrder(Order):
         agent_id = self.parameters.get("agent_id")
         if agent_id is None:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] ELIMINATE_AGENT failed: no agent_id provided.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] ELIMINATE_AGENT failed: no agent_id provided.")
             return
 
         intel_comp = getattr(self.unit, 'intelligence_component', None)
         if not intel_comp or intel_comp.is_destroyed or not intel_comp.has_counter_intelligence:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] ELIMINATE_AGENT failed: unit lacks Counter-Intelligence suite.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] ELIMINATE_AGENT failed: unit lacks Counter-Intelligence suite.")
             return
 
         # Find agent & host
@@ -504,7 +509,7 @@ class EliminateAgentOrder(Order):
 
         if not agent or not host_target:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] ELIMINATE_AGENT failed: agent {agent_id} not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] ELIMINATE_AGENT failed: agent {agent_id} not found.")
             return
 
         from domain.players import are_allies, are_enemies
@@ -514,7 +519,7 @@ class EliminateAgentOrder(Order):
             or not are_allies(self.unit.owner, getattr(host_target, 'owner', None))
         ):
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] ELIMINATE_AGENT failed: agent is unavailable.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] ELIMINATE_AGENT failed: agent is unavailable.")
             return
 
         if self.unit.in_system != host_sys or self.unit.in_hex != host_hex:
@@ -570,7 +575,8 @@ class EliminateAgentOrder(Order):
             owner_unit.intelligence_component.remove_agent_reference(agent)
 
         self.status = OrderStatus.COMPLETED
-        logger.info(f"[{self.unit.name}] Successfully neutralized and eliminated Agent {agent.id} from {host_target.name}!")
+        host_label = format_unit_for_log(host_target) if host_is_unit else host_target.name
+        logger.info(f"[{format_unit_for_log(self.unit)}] Successfully neutralized and eliminated Agent {agent.id} from {host_label}!")
 
     def check_completion_conditions(self) -> None:
         if self.status == OrderStatus.IN_PROGRESS and not self.sub_orders:
@@ -593,13 +599,13 @@ class ExtractAgentOrder(Order):
         agent_id = self.parameters.get("agent_id")
         if agent_id is None:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] EXTRACT_AGENT failed: no agent_id provided.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] EXTRACT_AGENT failed: no agent_id provided.")
             return
 
         intel_comp = getattr(self.unit, 'intelligence_component', None)
         if not intel_comp or intel_comp.is_destroyed:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] EXTRACT_AGENT failed: unit lacks functional IntelligenceComponent.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] EXTRACT_AGENT failed: unit lacks functional IntelligenceComponent.")
             return
 
         # Locate agent
@@ -639,16 +645,16 @@ class ExtractAgentOrder(Order):
 
         if not agent or not host_target:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] EXTRACT_AGENT failed: agent {agent_id} not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] EXTRACT_AGENT failed: agent {agent_id} not found.")
             return
 
         if agent.owner != self.unit.owner:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] EXTRACT_AGENT failed: agent is unavailable.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] EXTRACT_AGENT failed: agent is unavailable.")
             return
         if intel_comp.agents_count >= intel_comp.agents_capacity:
             self.status = OrderStatus.FAILED
-            logger.debug(f"[{self.unit.name}] EXTRACT_AGENT failed: no free agent capacity.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] EXTRACT_AGENT failed: no free agent capacity.")
             return
 
         if self.unit.in_system != host_sys or self.unit.in_hex != host_hex:
@@ -698,7 +704,7 @@ class ExtractAgentOrder(Order):
         success = intel_comp.retrieve_agent(agent)
         if success:
             self.status = OrderStatus.COMPLETED
-            logger.info(f"[{self.unit.name}] Successfully extracted Agent {agent.id} back into unit.")
+            logger.info(f"[{format_unit_for_log(self.unit)}] Successfully extracted Agent {agent.id} back into unit.")
         else:
             self.status = OrderStatus.FAILED
 

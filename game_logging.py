@@ -19,6 +19,17 @@ THIRD_PARTY_LOGGERS = (
 _application_handlers: list[logging.Handler] = []
 
 
+def format_unit_for_log(unit: object) -> str:
+    """Identify a unit from its current fields, even after removal from the world.
+
+    Diagnostic callers may supply incomplete objects; missing names/IDs remain
+    explicit without requiring a galaxy lookup or importing domain classes.
+    """
+    name = getattr(unit, "name", None)
+    unit_id = getattr(unit, "id", None)
+    return f"{name if name is not None else 'Unit'} (id:{unit_id if unit_id is not None else 'unknown'})"
+
+
 class ThirdPartyPayloadFilter(logging.Filter):
     """Drop verbose SDK records even if a child logger enables DEBUG itself."""
 

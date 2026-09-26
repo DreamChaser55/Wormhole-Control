@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import Position, distance, position_at_distance_from_target
@@ -27,7 +28,7 @@ class ConstructOrder(Order):
 
         if not self.unit.constructor_component:
             self.fail("capability_unavailable")
-            logger.debug(f"CONSTRUCT order failed: Unit {self.unit.name} has no ConstructorComponent.")
+            logger.debug(f"CONSTRUCT order failed: Unit {format_unit_for_log(self.unit)} has no ConstructorComponent.")
             return
 
         unit_template_name = self.parameters.get("unit_template_name")
@@ -55,7 +56,7 @@ class ConstructOrder(Order):
 
         if not buildable:
             self.fail("execution_failed")
-            logger.debug(f"CONSTRUCT order failed: {self.unit.name} cannot build {unit_template_name}.")
+            logger.debug(f"CONSTRUCT order failed: {format_unit_for_log(self.unit)} cannot build {unit_template_name}.")
             return
 
         target_sys = self.parameters["target_system_name"]
@@ -68,7 +69,7 @@ class ConstructOrder(Order):
             engines = getattr(self.unit, "engines_component", None)
             if not engines or not engines.is_operational:
                 self.fail("target_out_of_range")
-                logger.debug(f"CONSTRUCT order failed: {self.unit.name} cannot reach construction site because it lacks operational engines.")
+                logger.debug(f"CONSTRUCT order failed: {format_unit_for_log(self.unit)} cannot reach construction site because it lacks operational engines.")
                 gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                 if gui:
                     gui.show_warning_dialog(

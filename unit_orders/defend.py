@@ -2,6 +2,7 @@ from unit_orders.base import OrderTargetField
 """Positional Defend order instructing a unit to guard a target coordinate or entity."""
 
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import Position, distance
@@ -93,7 +94,7 @@ class DefendOrder(Order):
 
         if dest_system is None or dest_hex is None or dest_pos is None:
             self.status = OrderStatus.FAILED
-            logger.debug(f"DEFEND order failed for {self.unit.name}: could not resolve destination.")
+            logger.debug(f"DEFEND order failed for {format_unit_for_log(self.unit)}: could not resolve destination.")
             return
 
         in_same_system = self.unit.in_system == dest_system
@@ -201,7 +202,7 @@ class DefendOrder(Order):
                         is_in_range = True
 
                 if not is_in_range:
-                    logger.debug(f"[{self.unit.name}] Defend target lost, destroyed, or left perimeter. Resuming position guard.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] Defend target lost, destroyed, or left perimeter. Resuming position guard.")
                     current_sub.cancel()
                     self.sub_orders.popleft()
                     has_attack_order = False
@@ -210,7 +211,7 @@ class DefendOrder(Order):
             # Look for enemies invading the guarded perimeter
             nearby_enemy = self._find_nearby_enemy(galaxy_ref, dest_system, dest_hex, dest_pos)
             if nearby_enemy:
-                logger.debug(f"[{self.unit.name}] Hostile detected in defended sector: {nearby_enemy.name}. Engaging!")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] Hostile detected in defended sector: {format_unit_for_log(nearby_enemy)}. Engaging!")
                 for sub in list(self.sub_orders):
                     sub.cancel()
                 self.sub_orders.clear()
@@ -235,7 +236,7 @@ class DefendOrder(Order):
                 )
 
                 if has_movement_order and in_same_system_and_hex and dist_to_target <= 30.0:
-                    logger.debug(f"[{self.unit.name}] Arrived at defended post. Holding position.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] Arrived at defended post. Holding position.")
                     if self.sub_orders:
                         self.sub_orders[0].cancel()
                         self.sub_orders.popleft()

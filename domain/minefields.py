@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from game_logging import format_unit_for_log
 import typing
 
 from constants import (
@@ -88,7 +89,7 @@ class Minefield(GameObject):
         unit.current_hit_points = max(0, unit.current_hit_points - damage_int)
         self.mines_remaining -= 1
 
-        logger.debug(f"{self.name} (Owner: {self.owner.name}) detonated against {unit.name}! Dealt {damage_int} damage. Mines remaining: {self.mines_remaining}")
+        logger.debug(f"{self.name} (Owner: {self.owner.name}) detonated against {format_unit_for_log(unit)}! Dealt {damage_int} damage. Mines remaining: {self.mines_remaining}")
         if unit.current_hit_points <= 0:
             unit.destroy()
         return damage_int

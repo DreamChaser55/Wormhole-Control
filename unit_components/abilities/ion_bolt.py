@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 from geometry import Position
 from domain.coordinates import HexCoord
@@ -36,18 +37,18 @@ class IonBoltAbility(AbilityInstance):
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
         if target_unit_id is None:
-            logger.debug(f"[{component.unit.name}] Ion Bolt requires a target unit.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Ion Bolt requires a target unit.")
             return False
         target_unit = galaxy.get_unit_by_id(target_unit_id)
         if not target_unit:
-            logger.debug(f"[{component.unit.name}] Ion Bolt: target unit {target_unit_id} not found.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Ion Bolt: target unit {target_unit_id} not found.")
             return False
 
         self.target_unit_id = target_unit_id
         self.restore_effect(component, galaxy)
         from turn_briefing import unit_event
         unit_event(target_unit, "combat", "Disabled by Ion Bolt", actor=component.unit)
-        logger.debug(f"[{component.unit.name}] Ion Bolt disabled {target_unit.name}.")
+        logger.debug(f"[{format_unit_for_log(component.unit)}] Ion Bolt disabled {format_unit_for_log(target_unit)}.")
         return True
 
     def on_expire(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
@@ -57,7 +58,7 @@ class IonBoltAbility(AbilityInstance):
             if target_unit:
                 from timed_effects import remove
                 remove(target_unit, component.unit.id, self.definition.ability_type)
-                logger.debug(f"[{component.unit.name}] Ion Bolt expired on {target_unit.name}. Disabled: {target_unit.is_disabled}.")
+                logger.debug(f"[{format_unit_for_log(component.unit)}] Ion Bolt expired on {format_unit_for_log(target_unit)}. Disabled: {target_unit.is_disabled}.")
         self.target_unit_id = None
 
     def restore_effect(self, component, galaxy):

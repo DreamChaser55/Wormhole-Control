@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, List, TYPE_CHECKING
 
 from constants import TRADE_ARRIVAL_RANGE
@@ -29,30 +30,30 @@ class TradeOrder(Order):
         target_unit_id = self.parameters.get("target_unit_id")
         if target_unit_id is None:
             self.fail("target_unavailable")
-            logger.debug(f"[{self.unit.name}] TRADE order failed: no target_unit_id.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order failed: no target_unit_id.")
             return
 
         target_unit = galaxy_ref.get_unit_by_id(target_unit_id)
         if not target_unit:
             self.fail("target_unavailable")
-            logger.debug(f"[{self.unit.name}] TRADE order failed: target unit {target_unit_id} not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order failed: target unit {target_unit_id} not found.")
             return
 
         trade_comp = getattr(self.unit, 'trade_component', None)
         if not trade_comp or trade_comp.is_destroyed:
             self.fail("execution_failed")
-            logger.debug(f"[{self.unit.name}] TRADE order failed: unit has no functioning TradeComponent.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order failed: unit has no functioning TradeComponent.")
             return
 
         hab_comp = getattr(target_unit, 'civilian_habitat_component', None)
         if not hab_comp or hab_comp.is_destroyed:
             self.fail("target_unavailable")
-            logger.debug(f"[{self.unit.name}] TRADE order failed: target {target_unit.name} has no functioning CivilianHabitatComponent.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order failed: target {format_unit_for_log(target_unit)} has no functioning CivilianHabitatComponent.")
             return
 
         if not hab_comp.is_active(galaxy_ref):
             self.fail("target_unavailable")
-            logger.debug(f"[{self.unit.name}] TRADE order failed: target {target_unit.name} civilian habitat is inactive.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order failed: target {format_unit_for_log(target_unit)} civilian habitat is inactive.")
             return
 
         at_location = (self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex)
@@ -75,10 +76,10 @@ class TradeOrder(Order):
         success, income, msg = trade_comp.execute_trade(target_unit, galaxy_ref)
         if success:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"[{self.unit.name}] TRADE order completed: {msg}")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order completed: {msg}")
         else:
             self.fail("execution_failed")
-            logger.debug(f"[{self.unit.name}] TRADE order failed: {msg}")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order failed: {msg}")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -104,10 +105,10 @@ class TradeOrder(Order):
             success, income, msg = trade_comp.execute_trade(target_unit, galaxy_ref)
             if success:
                 self.status = OrderStatus.COMPLETED
-                logger.debug(f"[{self.unit.name}] TRADE order completed on arrival: {msg}")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order completed on arrival: {msg}")
             else:
                 self.fail("execution_failed")
-                logger.debug(f"[{self.unit.name}] TRADE order failed on arrival: {msg}")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] TRADE order failed on arrival: {msg}")
 
 
 class ContinuousTradeOrder(Order):
@@ -125,7 +126,7 @@ class ContinuousTradeOrder(Order):
         trade_comp = getattr(self.unit, 'trade_component', None)
         if not trade_comp or trade_comp.is_destroyed:
             self.fail("execution_failed")
-            logger.debug(f"[{self.unit.name}] CONTINUOUS_TRADE order failed: unit has no TradeComponent.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_TRADE order failed: unit has no TradeComponent.")
             return
 
         self._plan_next_trade_leg(galaxy_ref)
@@ -151,7 +152,7 @@ class ContinuousTradeOrder(Order):
         all_active = self._get_active_habitats(galaxy_ref)
         if not all_active:
             self.fail("execution_failed")
-            logger.debug(f"[{self.unit.name}] CONTINUOUS_TRADE failed: No active Civilian Habitats found in galaxy.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_TRADE failed: No active Civilian Habitats found in galaxy.")
             return
 
         current_sector = (self.unit.in_system, tuple(self.unit.in_hex))
@@ -173,7 +174,7 @@ class ContinuousTradeOrder(Order):
             valid_targets = all_active
 
         if not valid_targets:
-            logger.debug(f"[{self.unit.name}] CONTINUOUS_TRADE: All active habitats are in the current/last traded sector. Waiting for habitat in another sector.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_TRADE: All active habitats are in the current/last traded sector. Waiting for habitat in another sector.")
             return
 
         # Select the target that yields the highest trade payout (longest distance)
@@ -189,7 +190,7 @@ class ContinuousTradeOrder(Order):
                 best_target = hab
 
         if best_target:
-            logger.debug(f"[{self.unit.name}] CONTINUOUS_TRADE: Selected habitat {best_target.name} (id:{best_target.id}) in {best_target.in_system} {best_target.in_hex} for estimated payout {max_income:.0f}c.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_TRADE: Selected habitat {format_unit_for_log(best_target)} in {best_target.in_system} {best_target.in_hex} for estimated payout {max_income:.0f}c.")
             trade_params = {"target_unit_id": best_target.id}
             self.add_sub_order(TradeOrder(self.unit, trade_params, parent_order=self))
         else:

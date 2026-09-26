@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from domain.units import Unit
 
 import logging
+from game_logging import format_unit_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -264,7 +265,7 @@ class Planet(CelestialBody):
             unit.hyperdrive_component.clear_jump_target()
 
         self.hidden_units.append(unit)
-        logger.debug(f"Unit '{unit.name}' (id:{unit.id}) hidden in gas giant atmosphere '{self.name}' (id:{self.id}).")
+        logger.debug(f"Unit '{format_unit_for_log(unit)}' hidden in gas giant atmosphere '{self.name}' (id:{self.id}).")
         return True
 
     def release_unit(self, unit: 'Unit', galaxy_ref: typing.Any = None) -> typing.Optional[Position]:
@@ -328,7 +329,7 @@ class Planet(CelestialBody):
         if unit.hyperdrive_component:
             unit.hyperdrive_component.clear_jump_target()
 
-        logger.debug(f"Unit '{unit.name}' (id:{unit.id}) emerged from gas giant '{self.name}' at {emerge_pos}.")
+        logger.debug(f"Unit '{format_unit_for_log(unit)}' emerged from gas giant '{self.name}' at {emerge_pos}.")
         return emerge_pos
 
     def update_population(self):

@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from .base import Order, OrderStatus, OrderType
@@ -20,16 +21,15 @@ class ToggleInhibitorOrder(Order):
         turn_on = self.parameters.get("turn_on", False)
         
         if not self.unit.inhibitor_component:
-            logger.debug(f"[{self.unit.name} (id:{self.unit.id})] TOGGLE_INHIBITOR ({self.local_order_id}): FAILED (no inhibitor component).")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] TOGGLE_INHIBITOR ({self.local_order_id}): FAILED (no inhibitor component).")
             self.status = OrderStatus.FAILED
             return
 
         result = self.unit.inhibitor_component.set_active(turn_on, galaxy_ref)
         if not result.allowed:
             logger.debug(
-                "[%s (id:%s)] TOGGLE_INHIBITOR (%s): FAILED (%s).",
-                self.unit.name,
-                self.unit.id,
+                "[%s] TOGGLE_INHIBITOR (%s): FAILED (%s).",
+                format_unit_for_log(self.unit),
                 self.local_order_id,
                 result.message,
             )

@@ -1,6 +1,7 @@
 from tactical_abilities import combat_target
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
@@ -216,6 +217,8 @@ class AttackOrder(Order):
             self.add_sub_order(move_order)
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
+        from domain.units import Unit
+
         if self.status != OrderStatus.IN_PROGRESS:
             return
         if self.cancel_if_target_not_visible(galaxy_ref):
@@ -268,7 +271,8 @@ class AttackOrder(Order):
 
                 # If we are now in the same system and hex, and already within range, we should cancel the movement sub-order.
                 if in_the_same_system_and_hex and in_range:
-                    logger.debug(f"[{self.unit.name}] Target {target_unit.name} is in weapon range. Cancelling movement.")
+                    target_label = format_unit_for_log(target_unit) if isinstance(target_unit, Unit) else target_unit.name
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] Target {target_label} is in weapon range. Cancelling movement.")
                     current_sub.cancel()
                     self.sub_orders.popleft()
                     has_movement_order = False
@@ -285,7 +289,8 @@ class AttackOrder(Order):
                                 target_moved = True
 
                     if target_moved:
-                        logger.debug(f"[{self.unit.name}] Target {target_unit.name} moved. Recalculating path.")
+                        target_label = format_unit_for_log(target_unit) if isinstance(target_unit, Unit) else target_unit.name
+                        logger.debug(f"[{format_unit_for_log(self.unit)}] Target {target_label} moved. Recalculating path.")
                         current_sub.cancel()
                         self.sub_orders.popleft()
                         has_movement_order = False
@@ -427,7 +432,7 @@ class ProtectOrder(Order):
         from domain.players import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
             self.fail("target_unavailable")
-            logger.debug(f"PROTECT order failed: Target unit {target_unit.name} is not allied.")
+            logger.debug(f"PROTECT order failed: Target unit {format_unit_for_log(target_unit)} is not allied.")
             return
 
     def _find_nearby_enemy(self, galaxy_ref: 'Galaxy', target_unit: 'Unit') -> Optional['Unit']:
@@ -534,7 +539,7 @@ class ProtectOrder(Order):
                         is_in_range = True
 
                 if not is_in_range:
-                    logger.debug(f"[{self.unit.name}] Protect attack target lost, dead, or out of threat range. Resuming protection.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] Protect attack target lost, dead, or out of threat range. Resuming protection.")
                     current_sub.cancel()
                     self.sub_orders.popleft()
                     has_attack_order = False
@@ -543,7 +548,7 @@ class ProtectOrder(Order):
             # Look for nearby enemies to engage
             nearby_enemy = self._find_nearby_enemy(galaxy_ref, target_unit)
             if nearby_enemy:
-                logger.debug(f"[{self.unit.name}] Enemy detected near protected target: {nearby_enemy.name}. Engaging!")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] Enemy detected near protected target: {format_unit_for_log(nearby_enemy)}. Engaging!")
                 # Cancel current movement/follow sub-orders
                 for sub in list(self.sub_orders):
                     sub.cancel()
@@ -570,7 +575,7 @@ class ProtectOrder(Order):
                                 dest_hex != target_unit.in_hex or
                                 (dest_pos and approach_resolved and
                                  abs(distance(dest_pos, target_unit.position) - planned_standoff) > 15.0)):
-                            logger.debug(f"[{self.unit.name}] Protected unit {target_unit.name} moved. Recalculating path.")
+                            logger.debug(f"[{format_unit_for_log(self.unit)}] Protected unit {format_unit_for_log(target_unit)} moved. Recalculating path.")
                             current_sub.cancel()
                             self.sub_orders.popleft()
                             has_movement_order = False
@@ -580,7 +585,7 @@ class ProtectOrder(Order):
                     if self.unit.in_system == target_unit.in_system and self.unit.in_hex == target_unit.in_hex:
                         dist_to_target = distance(self.unit.position, target_unit.position)
                         if dist_to_target <= DEFAULT_STANDOFF_DISTANCE:
-                            logger.debug(f"[{self.unit.name}] Close enough to protected unit {target_unit.name}. Stopping movement.")
+                            logger.debug(f"[{format_unit_for_log(self.unit)}] Close enough to protected unit {format_unit_for_log(target_unit)}. Stopping movement.")
                             if self.sub_orders:
                                 self.sub_orders[0].cancel()
                                 self.sub_orders.popleft()

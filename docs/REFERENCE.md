@@ -1464,7 +1464,10 @@ for fields, types, derived values and the Python API.
 ### Logs and recovery
 
 Each run writes `game.log` in the root folder. Check it for storage and runtime
-failures. AI telemetry and developer-feedback files are documented under
+failures. Generated unit mentions in file and console logs include the unit's
+current name and ID, for example `Scout (id:42)`, so identically named ships can
+be distinguished. Design names and quoted communications retain their original text.
+AI telemetry and developer-feedback files are documented under
 [AI failure behavior](AGENTIC_AI.md#failure-behavior). For rejected commands,
 uncertain transport outcomes or partial execution, follow
 [Codex recovery distinctions](CODEX_CONTROL.md#recovery-distinctions).

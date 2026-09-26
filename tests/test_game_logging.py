@@ -3,6 +3,7 @@ from contextlib import ExitStack
 import io
 import logging
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -221,3 +222,194 @@ def test_flush_failure_still_closes_every_owned_handler(monkeypatch):
     assert all(handler._closed for handler in old_handlers)
     assert not game_logging._application_handlers
     assert not logging.getLogger().handlers
+
+
+@pytest.mark.parametrize("fields, expected", [
+    ({"name": "Scout", "id": 0}, "Scout (id:0)"),
+    ({"id": 42}, "Unit (id:42)"),
+    ({"name": "Scout"}, "Scout (id:unknown)"),
+    ({"name": None, "id": None}, "Unit (id:unknown)"),
+])
+def test_incomplete_unit_diagnostics_preserve_available_identity(fields, expected):
+    assert game_logging.format_unit_for_log(SimpleNamespace(**fields)) == expected
+    assert game_logging.format_unit_for_log(None) == "Unit (id:unknown)"
+
+
+def test_file_and_console_identify_same_named_units_after_docking_and_rename(capsys, tmp_path):
+    from constants import HullSize
+    from tests.support.campaigns import campaign, ship
+    from unit_components.hangar import HangarComponent
+    from unit_naming import rename_unit
+
+    game = campaign()
+    carrier = ship(game, "Scout")
+    craft = ship(game, "Scout", hull=HullSize.TINY)
+    craft.id = 0  # Valid restored ID, not a missing identity.
+    carrier.add_component(HangarComponent(carrier, max_slots=1))
+    game_logging.setup_logging(log_to_file=True)
+    capsys.readouterr()
+
+    assert carrier.hangar_component.dock(craft, game.galaxy)
+    assert game.galaxy.get_unit_by_id(craft.id) is None
+    rename_unit(craft, "Renamed Scout")
+    craft.take_damage(1)
+    craft.destroy()
+
+    console = capsys.readouterr().err
+    contents = (tmp_path / "game.log").read_text()
+    expected = [
+        f"Unit Scout (id:0) docked into carrier Scout (id:{carrier.id}).",
+        "Unit 'Renamed Scout (id:0)' takes 1 damage.",
+        "Unit 'Renamed Scout (id:0)' has been destroyed.",
+    ]
+    for output in (console, contents):
+        for message in expected:
+            assert output.count(message) == 1
+        assert "(id:0) (id:0)" not in output
+    assert craft.name == "Renamed Scout"
+    assert carrier.name == "Scout"
+    assert game_logging.format_unit_for_log(craft) == "Renamed Scout (id:0)"
+
+
+def test_context_action_logs_every_same_named_selected_unit(capsys, monkeypatch):
+    from input_processor import context_actions
+    from tests.support.campaigns import campaign, ship
+
+    game = campaign()
+    first, second = ship(game, "Scout"), ship(game, "Scout")
+    game.selected_objects = [first, second]
+    monkeypatch.setattr(context_actions, "_get_shift_pressed", lambda: False)
+    game_logging.setup_logging()
+    capsys.readouterr()
+
+    context_actions.handle_context_menu_action(game, "unknown", None)
+
+    output = capsys.readouterr().err
+    assert f"Actors: ['Scout (id:{first.id})', 'Scout (id:{second.id})']" in output
+
+
+@pytest.mark.parametrize("kind", ["unit", "planet"])
+def test_selection_formats_units_without_changing_celestial_labels(kind, capsys, monkeypatch):
+    from constants import PlanetType
+    from domain.celestials import Planet
+    from geometry import Position
+    from input_processor import mouse_handler
+    from sector_utils import sector_coords_to_pixels
+    from tests.support.campaigns import campaign, ship
+
+    game = campaign()
+    selected = ship(game, "Scout") if kind == "unit" else Planet((0, 0), "Sol", PlanetType.TERRAN)
+    selected.name = "Scout"
+    game.sector_view_mouse_hover_object = selected
+    game.sector_zoom, game.sector_pan_offset = 1.0, Position(0, 0)
+    position = sector_coords_to_pixels(Position(0, 0), 1.0, game.sector_pan_offset,
+                                       display_config=game.display_config)
+    monkeypatch.setattr(mouse_handler, "_get_shift_pressed", lambda: False)
+    game_logging.setup_logging()
+    capsys.readouterr()
+
+    mouse_handler.handle_mouse_click(game, None, 1, position)
+
+    output = capsys.readouterr().err
+    expected = f"Selected object: Unit Scout (id:{selected.id})" if kind == "unit" else "Selected object: Planet Scout"
+    assert expected in output
+    assert selected.name == "Scout"
+    if kind == "planet":
+        assert "(id:" not in output
+
+
+@pytest.mark.parametrize("source_kind", ["unit", "planet"])
+@pytest.mark.parametrize("destination_kind", ["unit", "planet"])
+def test_intelligence_logs_distinguish_unit_and_planet_hosts(
+    source_kind, destination_kind, capsys,
+):
+    from constants import PlanetType
+    from domain.celestials import Planet
+    from geometry import Position
+    from tests.support.campaigns import campaign, ship
+    from unit_components.enums import SabotageType
+    from unit_components.intelligence import IntelligenceComponent
+    from unit_orders.base import OrderStatus
+    from unit_orders.intelligence import RelocateAgentOrder, SabotageOrder
+
+    game = campaign()
+    spy = ship(game, "Scout")
+    spy.add_component(IntelligenceComponent(spy, agents_count=1))
+
+    def host(kind):
+        if kind == "unit":
+            return ship(game, "Scout", owner=1)
+        body = Planet((0, 0), "Sol", PlanetType.TERRAN)
+        body.name, body.owner, body.position = "Scout", game.players[1], Position(100, 0)
+        game.galaxy.systems['Sol'].add_celestial_body(body)
+        return body
+
+    source, destination = host(source_kind), host(destination_kind)
+    game_logging.setup_logging()
+    capsys.readouterr()
+    agent = spy.intelligence_component.deploy_agent(source)
+    assert agent is not None
+    sabotage = SabotageType.SENSORS if source_kind == "unit" else SabotageType.GROWTH
+    order = SabotageOrder(spy, {"agent_id": agent.id, "sabotage_type": sabotage.value})
+    order.execute(game.galaxy)
+    assert order.status == OrderStatus.COMPLETED
+    relocation = RelocateAgentOrder(spy, {"agent_id": agent.id, "target_type": destination_kind,
+                                          "destination_id": destination.id})
+    relocation.execute(game.galaxy)
+    assert relocation.status == OrderStatus.COMPLETED
+
+    output = capsys.readouterr().err
+    source_label = f"Scout (id:{source.id})" if source_kind == "unit" else "Scout"
+    destination_label = f"Scout (id:{destination.id})" if destination_kind == "unit" else "Scout"
+    assert f"Agent {agent.id} commenced sabotage {sabotage.name} on {source_label}." in output
+    assert f"Agent {agent.id} successfully relocated from {source_label} to {destination_label}." in output
+    assert f"[Scout (id:{spy.id})]" in output
+
+
+def test_trade_order_includes_identity_in_embedded_component_message(capsys):
+    from constants import PlanetType
+    from domain.celestials import Planet
+    from tests.support.campaigns import campaign, ship
+    from unit_components.civilian_habitat import CivilianHabitatComponent
+    from unit_components.trade import TradeComponent
+    from unit_orders.base import OrderStatus
+    from unit_orders.trade import TradeOrder
+
+    game = campaign()
+    trader, habitat = ship(game, "Scout"), ship(game, "Scout")
+    trader.add_component(TradeComponent(trader))
+    habitat.add_component(CivilianHabitatComponent(habitat))
+    planet = Planet((0, 0), "Sol", PlanetType.TERRAN)
+    planet.owner, planet.population = game.players[0], 50
+    game.galaxy.systems['Sol'].add_celestial_body(planet)
+    game_logging.setup_logging()
+    capsys.readouterr()
+
+    order = TradeOrder(trader, {"target_unit_id": habitat.id})
+    order.execute(game.galaxy)
+
+    assert order.status == OrderStatus.COMPLETED
+    output = capsys.readouterr().err
+    assert (
+        f"[Scout (id:{trader.id})] TRADE order completed: "
+        f"Trade route established at Scout (id:{habitat.id})"
+    ) in output
+
+
+def test_order_logs_keep_unit_and_order_identities_distinct(capsys):
+    from tests.support.campaigns import campaign, ship
+    from unit_orders.inhibitor import ToggleInhibitorOrder
+
+    game = campaign()
+    unit = ship(game, "Scout")
+    unit.id = 0
+    order = ToggleInhibitorOrder(unit, {"turn_on": True})
+    game_logging.setup_logging()
+    capsys.readouterr()
+
+    order.execute(game.galaxy)
+
+    output = capsys.readouterr().err
+    assert f"[Scout (id:0)] ToggleInhibitorOrder.execute: TOGGLE_INHIBITOR (id:{order.local_order_id})" in output
+    assert f"[Scout (id:0)] TOGGLE_INHIBITOR ({order.local_order_id}): FAILED" in output
+    assert "(id:0) (id:" not in output

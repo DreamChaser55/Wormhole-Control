@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -346,20 +347,20 @@ class StarSystem:
         """
         origin_hex = unit.in_hex
         if origin_hex == destination_hex:
-            logger.debug(f"Warning: Attempted to move unit {unit.id} ({unit.name}) to its current hex {origin_hex}.")
+            logger.debug(f"Warning: Attempted to move unit {format_unit_for_log(unit)} to its current hex {origin_hex}.")
             return False # Or True, arguably it's 'moved'
 
         if destination_hex not in self.hexes:
-            logger.debug(f"Error: Cannot move unit {unit.id} ({unit.name}) to invalid destination hex {destination_hex} in system {self.name}")
+            logger.debug(f"Error: Cannot move unit {format_unit_for_log(unit)} to invalid destination hex {destination_hex} in system {self.name}")
             return False
 
         # 1. Remove from origin
         removed = self.remove_unit(unit)
         if not removed:
-            logger.debug(f"Error: Failed to remove unit {unit.id} ({unit.name}) from origin hex {origin_hex} during move.")
+            logger.debug(f"Error: Failed to remove unit {format_unit_for_log(unit)} from origin hex {origin_hex} during move.")
             # Attempt to find where the unit actually is, if anywhere
             actual_hex = unit.in_hex
-            logger.debug(f"Unit {unit.id} ({unit.name}) is not in hex {origin_hex} but in {actual_hex}")
+            logger.debug(f"Unit {format_unit_for_log(unit)} is not in hex {origin_hex} but in {actual_hex}")
             return False
 
         # 2. Update unit's internal hex
@@ -367,7 +368,7 @@ class StarSystem:
 
         # 3. Add to destination
         self.add_unit(unit)
-        logger.debug(f"System {self.name}: Moved unit {unit.id} ({unit.name}) from {origin_hex} to {destination_hex}")
+        logger.debug(f"System {self.name}: Moved unit {format_unit_for_log(unit)} from {origin_hex} to {destination_hex}")
         return True
 
 # --- Galaxy Class ---
@@ -709,13 +710,13 @@ class Galaxy:
 
         # Validate destination hex exists in the destination system
         if destination_hex not in destination_system.hexes:
-             logger.debug(f"Error: Cannot move unit {unit.id} ({unit.name}) to invalid destination hex {destination_hex} in system {destination_system_name}")
+             logger.debug(f"Error: Cannot move unit {format_unit_for_log(unit)} to invalid destination hex {destination_hex} in system {destination_system_name}")
              return False
 
         # 1. Remove from origin system
         removed = origin_system.remove_unit(unit)
         if not removed:
-            logger.debug(f"Error: Failed to remove unit {unit.id} ({unit.name}) from origin system {origin_system_name} during transfer.")
+            logger.debug(f"Error: Failed to remove unit {format_unit_for_log(unit)} from origin system {origin_system_name} during transfer.")
             return False
 
         # 2. Update unit's system ID and hex
@@ -724,7 +725,7 @@ class Galaxy:
 
         # 3. Add to destination system
         destination_system.add_unit(unit)
-        logger.debug(f"Galaxy: Transferred unit {unit.id} ({unit.name}) from system {origin_system_name} to system {destination_system_name}, into hex {destination_hex}")
+        logger.debug(f"Galaxy: Transferred unit {format_unit_for_log(unit)} from system {origin_system_name} to system {destination_system_name}, into hex {destination_hex}")
         return True
 
     def get_celestial_body_by_id(self, body_id: int) -> typing.Optional['CelestialBody']:

@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Any, TYPE_CHECKING
 from .base import Order, OrderStatus, OrderType
 from unit_components.minelayer import MinelayerComponent
@@ -36,7 +37,7 @@ class LayMinefieldOrder(Order):
 
         minelayer = self.unit.get_component(MinelayerComponent)
         if not minelayer or minelayer.is_destroyed:
-            logger.debug(f"{self.unit.name} cannot lay minefield: Minelayer component missing or destroyed.")
+            logger.debug(f"{format_unit_for_log(self.unit)} cannot lay minefield: Minelayer component missing or destroyed.")
             self.status = OrderStatus.FAILED
             return self.status
 
@@ -47,10 +48,10 @@ class LayMinefieldOrder(Order):
         minefield = minelayer.deploy_mine(target_galaxy, system_name, hex_coord, position, minefield_type=self.minefield_type)
 
         if minefield:
-            logger.debug(f"{self.unit.name} successfully executed LayMinefieldOrder.")
+            logger.debug(f"{format_unit_for_log(self.unit)} successfully executed LayMinefieldOrder.")
             self.status = OrderStatus.COMPLETED
         else:
-            logger.debug(f"{self.unit.name} failed to deploy minefield.")
+            logger.debug(f"{format_unit_for_log(self.unit)} failed to deploy minefield.")
             self.status = OrderStatus.FAILED
 
         return self.status

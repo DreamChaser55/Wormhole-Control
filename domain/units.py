@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from game import Game
 
 import logging
+from game_logging import format_unit_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -281,13 +282,13 @@ class Unit(GameObject):
         target_type = _normalize_sabotage_type(sabotage_type)
         if agent in getattr(self, 'infiltrating_agents', []):
             agent.active_sabotage = target_type
-            logger.debug(f"Applied sabotage {target_type.name} to {self.name} via Agent {agent.id}.")
+            logger.debug(f"Applied sabotage {target_type.name} to {format_unit_for_log(self)} via Agent {agent.id}.")
             if target_type == SabotageType.ANTIMATTER:
                 am_comp = self.antimatter_component
                 if am_comp and am_comp.current_amount > 0:
                     drained = am_comp.current_amount * 0.5
                     am_comp.consume(drained)
-                    logger.debug(f"Antimatter sabotage drained {drained:.1f} AM from {self.name}.")
+                    logger.debug(f"Antimatter sabotage drained {drained:.1f} AM from {format_unit_for_log(self)}.")
             elif target_type == SabotageType.HYPERDRIVE:
                 hd = self.hyperdrive_component
                 if hd:
@@ -401,7 +402,7 @@ class Unit(GameObject):
                 if self.is_sabotaged(SabotageType.DEFENSES):
                     mitigation *= 0.5
                 amount = max(0, int(round(amount - mitigation)))
-                logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} damage. Remaining damage: {amount}")
+                logger.debug(f"Unit '{format_unit_for_log(self)}' defenses mitigated {mitigation} damage. Remaining damage: {amount}")
 
         reduction = max(0.0, min(1.0, self.damage_reduction))
         if reduction > 0.0:
@@ -413,7 +414,7 @@ class Unit(GameObject):
         self.current_hit_points -= amount
         if self.current_hit_points < 0:
             self.current_hit_points = 0
-        logger.debug(f"Unit '{self.name}' takes {amount} damage. Current HP: {self.current_hit_points}/{self.max_hit_points}")
+        logger.debug(f"Unit '{format_unit_for_log(self)}' takes {amount} damage. Current HP: {self.current_hit_points}/{self.max_hit_points}")
 
         if self.current_hit_points <= 0:
             self.current_hit_points = 0
@@ -435,7 +436,7 @@ class Unit(GameObject):
                 if self.is_sabotaged(SabotageType.DEFENSES):
                     mitigation *= 0.5
                 amount = max(0, int(round(amount - mitigation)))
-                logger.debug(f"Unit '{self.name}' defenses mitigated {mitigation} component damage. Remaining damage: {amount}")
+                logger.debug(f"Unit '{format_unit_for_log(self)}' defenses mitigated {mitigation} component damage. Remaining damage: {amount}")
 
         if apply_reduction:
             amount = int(amount * (1 - max(0.0, min(1.0, self.damage_reduction))))
@@ -444,7 +445,7 @@ class Unit(GameObject):
         if not component or component.is_destroyed:
             return amount  # All damage spills over if component is missing or already destroyed
 
-        logger.debug(f"Unit '{self.name}' component {component_type.__name__} takes {amount} damage.")
+        logger.debug(f"Unit '{format_unit_for_log(self)}' component {component_type.__name__} takes {amount} damage.")
         from turn_briefing import unit_event
         if amount > 0:
             unit_event(self, "hazard" if cause else "combat", f"{cause + ': ' if cause else ''}{component.DISPLAY_NAME} damage (HP)",
@@ -457,7 +458,7 @@ class Unit(GameObject):
             spillover = abs(component.current_hit_points)
             component.current_hit_points = 0
             component.on_destroyed()
-            logger.debug(f"Unit '{self.name}' component {component_type.__name__} has been destroyed!")
+            logger.debug(f"Unit '{format_unit_for_log(self)}' component {component_type.__name__} has been destroyed!")
 
         return spillover
 
@@ -467,7 +468,7 @@ class Unit(GameObject):
             return 0
         healed = min(amount, self.max_hit_points - self.current_hit_points)
         self.current_hit_points += healed
-        logger.debug(f"Unit '{self.name}' hull healed by {healed}. HP: {self.current_hit_points}/{self.max_hit_points}")
+        logger.debug(f"Unit '{format_unit_for_log(self)}' hull healed by {healed}. HP: {self.current_hit_points}/{self.max_hit_points}")
         return healed
 
     def heal_components(self, amount: int) -> int:
@@ -482,7 +483,7 @@ class Unit(GameObject):
                 component.current_hit_points += healed
                 healed_total += healed
                 amount -= healed
-                logger.debug(f"Unit '{self.name}' component {type(component).__name__} healed by {healed}. HP: {component.current_hit_points}/{component.max_hit_points}")
+                logger.debug(f"Unit '{format_unit_for_log(self)}' component {type(component).__name__} healed by {healed}. HP: {component.current_hit_points}/{component.max_hit_points}")
         return healed_total
 
     def destroy(self) -> None:
@@ -541,7 +542,7 @@ class Unit(GameObject):
         from order_history import interrupt_unit_orders
         interrupt_unit_orders(self, {'destroyed': 'unit_destroyed', 'dismantled': 'unit_dismantled',
                                     'endurance_expired': 'wing_endurance_expired'}[reason])
-        logger.debug(f"Unit '{self.name}' has been destroyed.")
+        logger.debug(f"Unit '{format_unit_for_log(self)}' has been destroyed.")
         if self.hangar_component:
             for docked_unit in list(self.hangar_component.docked_units):
                 docked_unit.destroy()
@@ -571,7 +572,7 @@ class Unit(GameObject):
         self.current_hull_usage = usage
         
         if hasattr(self, 'hull_capacity') and self.current_hull_usage > self.hull_capacity:
-            logger.debug(f"Warning: Unit '{self.name}' created exceeding hull capacity! "
+            logger.debug(f"Warning: Unit '{format_unit_for_log(self)}' created exceeding hull capacity! "
                   f"Usage: {self.current_hull_usage}, Capacity: {self.hull_capacity}")
         
     def update(self) -> None:

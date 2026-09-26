@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 
 from .base import UnitComponent
@@ -119,11 +120,11 @@ class MiningComponent(UnitComponent):
         if isinstance(self.mining_target, MetalAsteroid):
             # Infinite yield: we extract mining_rate without depleting the asteroid
             self.raw_metal_cargo += amount_to_mine
-            logger.debug(f"{self.unit.name} mined {amount_to_mine} raw metal from {self.mining_target.name}. Cargo: {self.raw_metal_cargo}/{self.max_cargo}")
+            logger.debug(f"{format_unit_for_log(self.unit)} mined {amount_to_mine} raw metal from {self.mining_target.name}. Cargo: {self.raw_metal_cargo}/{self.max_cargo}")
         elif isinstance(self.mining_target, Comet):
             # Infinite yield: we extract mining_rate without depleting the comet
             self.raw_crystal_cargo += amount_to_mine
-            logger.debug(f"{self.unit.name} mined {amount_to_mine} raw crystal from {self.mining_target.name}. Cargo: {self.raw_crystal_cargo}/{self.max_cargo}")
+            logger.debug(f"{format_unit_for_log(self.unit)} mined {amount_to_mine} raw crystal from {self.mining_target.name}. Cargo: {self.raw_crystal_cargo}/{self.max_cargo}")
 
     def unload_to_refinery(self, unload_metal: bool = True, unload_crystal: bool = True) -> tuple[float, float]:
         """Empties cargo and returns a tuple of (metal_amount, crystal_amount) unloaded."""
@@ -172,7 +173,7 @@ class MetalRefineryComponent(UnitComponent):
             return
         if self.unit.owner:
             self.unit.owner.metal += amount
-            logger.debug(f"{self.unit.name} refined {amount} raw metal instantly for {self.unit.owner.name}.")
+            logger.debug(f"{format_unit_for_log(self.unit)} refined {amount} raw metal instantly for {self.unit.owner.name}.")
 
 
 class CrystalRefineryComponent(UnitComponent):
@@ -211,4 +212,4 @@ class CrystalRefineryComponent(UnitComponent):
             return
         if self.unit.owner:
             self.unit.owner.crystal += amount
-            logger.debug(f"{self.unit.name} refined {amount} raw crystal instantly for {self.unit.owner.name}.")
+            logger.debug(f"{format_unit_for_log(self.unit)} refined {amount} raw crystal instantly for {self.unit.owner.name}.")

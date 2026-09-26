@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 import uuid
 from typing import Dict, Optional, Any, TYPE_CHECKING, Deque
 from enum import Enum, auto
@@ -166,7 +167,7 @@ class Order:
         sub_order.parent_order = self
         sub_order.unit = self.unit
         self.sub_orders.append(sub_order)
-        logger.debug(f"  Added sub-order {sub_order.order_type.name} (id:{sub_order.local_order_id}) to order {self.order_type.name} (id:{self.local_order_id}) for unit {self.unit.name} (id:{self.unit.id}).")
+        logger.debug(f"  Added sub-order {sub_order.order_type.name} (id:{sub_order.local_order_id}) to order {self.order_type.name} (id:{self.local_order_id}) for unit {format_unit_for_log(self.unit)}.")
         
     def remove_sub_order(self, local_order_id: int) -> bool:
         """Remove a sub-order by its process-local ID.
@@ -293,7 +294,7 @@ class Order:
         if self.status != OrderStatus.PENDING:
             return
         self.status = OrderStatus.IN_PROGRESS
-        logger.debug(f"[{self.unit.name} (id:{self.unit.id})] {self.__class__.__name__}.execute: {self.order_type.name} (id:{self.local_order_id}): Executing order.")
+        logger.debug(f"[{format_unit_for_log(self.unit)}] {self.__class__.__name__}.execute: {self.order_type.name} (id:{self.local_order_id}): Executing order.")
 
     def find_wormhole_to_system(self, current_system_name: str, target_system_name: str, galaxy_ref: 'Galaxy', ship_size: Optional[HullSize] = None) -> Optional['Wormhole']:
         if not galaxy_ref: return None

@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 import random
 from typing import Optional, TYPE_CHECKING
 from geometry import Position
@@ -39,37 +40,37 @@ class CaptureUnitAbility(AbilityInstance):
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
         if target_unit_id is None:
-            logger.debug(f"[{component.unit.name}] Capture Unit requires a target unit.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Capture Unit requires a target unit.")
             return False
         target_unit = galaxy.get_unit_by_id(target_unit_id)
         if not target_unit:
-            logger.debug(f"[{component.unit.name}] Capture Unit: target unit {target_unit_id} not found.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Capture Unit: target unit {target_unit_id} not found.")
             return False
 
         from domain.players import are_allies
         if are_allies(target_unit.owner, component.unit.owner):
-            logger.debug(f"[{component.unit.name}] Capture Unit: target unit {target_unit.name} is friendly/allied.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Capture Unit: target unit {format_unit_for_log(target_unit)} is friendly/allied.")
             return False
 
         if target_unit.engines_component is not None:
             engines_disabled = target_unit.engines_component.is_destroyed or target_unit.is_disabled
             if not engines_disabled:
-                logger.debug(f"[{component.unit.name}] Capture Unit failed: target {target_unit.name} engines are not disabled.")
+                logger.debug(f"[{format_unit_for_log(component.unit)}] Capture Unit failed: target {format_unit_for_log(target_unit)} engines are not disabled.")
                 return False
 
         if target_unit.weapons_component and not target_unit.weapons_component.is_destroyed:
-            logger.debug(f"[{component.unit.name}] Capture Unit failed: target {target_unit.name} weapons are active.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Capture Unit failed: target {format_unit_for_log(target_unit)} weapons are active.")
             return False
 
         defenses = target_unit.get_component(Defenses)
         if defenses and not defenses.is_destroyed:
-            logger.debug(f"[{component.unit.name}] Capture Unit failed: target {target_unit.name} defenses are active.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Capture Unit failed: target {format_unit_for_log(target_unit)} defenses are active.")
             return False
 
         marines_comp = component.unit.get_component(MarinesComponent)
         marines_count = marines_comp.marines_count if marines_comp else 0
         if marines_count <= 0:
-            logger.debug(f"[{component.unit.name}] Capture Unit failed: no active marines available on board.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Capture Unit failed: no active marines available on board.")
             return False
 
         target_capacity = getattr(target_unit, "hull_capacity", 50.0)
@@ -79,8 +80,8 @@ class CaptureUnitAbility(AbilityInstance):
         roll = random.random()
         if roll >= success_prob:
             logger.debug(
-                f"[{component.unit.name}] Capture Unit failed roll ({roll:.2f} >= {success_prob:.2f}) "
-                f"with {marines_count} marines against {target_unit.name}."
+                f"[{format_unit_for_log(component.unit)}] Capture Unit failed roll ({roll:.2f} >= {success_prob:.2f}) "
+                f"with {marines_count} marines against {format_unit_for_log(target_unit)}."
             )
             return False
 
@@ -104,7 +105,7 @@ class CaptureUnitAbility(AbilityInstance):
             target_unit.weapons_component.clear_target()
 
         logger.debug(
-            f"[{component.unit.name}] Captured unit {target_unit.name} (id:{target_unit.id}) from player "
+            f"[{format_unit_for_log(component.unit)}] Captured unit {format_unit_for_log(target_unit)} from player "
             f"{old_owner.id if old_owner else 'None'} to player {component.unit.owner.id} "
             f"with {marines_count} marines (success prob: {success_prob:.0%})."
         )

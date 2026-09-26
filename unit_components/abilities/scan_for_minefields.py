@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 from geometry import Position, distance
 from domain.coordinates import HexCoord
@@ -49,9 +50,9 @@ class ScanForMinefieldsAbility(AbilityInstance):
                     if distance(unit.position, mf.position) <= self.definition.range:
                         mf.reveal_to(unit.owner)
                         revealed_count += 1
-                        logger.debug(f"[{unit.name}] Scan for Minefields revealed {mf.name} at {mf.position}.")
+                        logger.debug(f"[{format_unit_for_log(unit)}] Scan for Minefields revealed {mf.name} at {mf.position}.")
 
-        logger.debug(f"[{unit.name}] Scan for Minefields executed. {revealed_count} enemy minefield(s) revealed.")
+        logger.debug(f"[{format_unit_for_log(unit)}] Scan for Minefields executed. {revealed_count} enemy minefield(s) revealed.")
 
         game = getattr(unit, 'game', None)
         if game:

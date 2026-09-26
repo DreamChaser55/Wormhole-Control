@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from domain.coordinates import HexCoord
@@ -191,7 +192,7 @@ class PatrolOrder(Order):
                     target_unit.in_system != self.unit.in_system or 
                     target_unit.in_hex != self.unit.in_hex):
                     # Target is dead, missing, or fled the sector. Cancel the attack order.
-                    logger.debug(f"[{self.unit.name}] Patrol target lost, dead, or fled. Resuming patrol.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] Patrol target lost, dead, or fled. Resuming patrol.")
                     current_sub.cancel()
                     self.sub_orders.popleft()
                     # Re-route to current waypoint destination
@@ -202,7 +203,7 @@ class PatrolOrder(Order):
             # Look for nearby enemies to engage
             nearby_enemy = self._find_nearby_enemy(galaxy_ref)
             if nearby_enemy:
-                logger.debug(f"[{self.unit.name}] Enemy detected: {nearby_enemy.name}. Engaging!")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] Enemy detected: {format_unit_for_log(nearby_enemy)}. Engaging!")
                 # Cancel current movement sub-orders
                 for sub in list(self.sub_orders):
                     sub.cancel()
@@ -227,6 +228,6 @@ class PatrolOrder(Order):
 
         idx = self.current_waypoint_index
         if idx < num_wps:
-            logger.debug(f"[{self.unit.name}] Patrol leg completed. Heading to waypoint {idx}: {wps[idx]['position']}")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] Patrol leg completed. Heading to waypoint {idx}: {wps[idx]['position']}")
         else:
-            logger.debug(f"[{self.unit.name}] Patrol leg completed. Returning to start: {self.start_position}")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] Patrol leg completed. Returning to start: {self.start_position}")

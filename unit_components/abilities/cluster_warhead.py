@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 from geometry import Position, distance
 from domain.coordinates import HexCoord
@@ -39,7 +40,7 @@ class ClusterWarheadAbility(AbilityInstance):
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
         if target_position is None:
-            logger.debug(f"[{component.unit.name}] Cluster Warhead requires a target position.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Cluster Warhead requires a target position.")
             return False
 
         self._apply_splash_damage(
@@ -82,4 +83,4 @@ class ClusterWarheadAbility(AbilityInstance):
                 damage = max(1, int(self.BASE_DAMAGE * falloff))
                 from tactical_abilities import combat_hit
                 combat_hit(target_unit, damage, is_splash=True, attacker=component.unit)
-                logger.debug(f"[Cluster Warhead] Hit {target_unit.name} for {damage} damage (dist={dist:.1f}).")
+                logger.debug(f"[Cluster Warhead] Hit {format_unit_for_log(target_unit)} for {damage} damage (dist={dist:.1f}).")

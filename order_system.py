@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from events import (
     CancelOrdersEvent, IssueMoveOrderEvent, JumpInterhexEvent, JumpWormholeEvent,
     AttackUnitEvent, ColonizeEvent, LoadColonistsEvent, ConstructEvent, RepairUnitEvent,
@@ -93,7 +94,7 @@ class OrderSystem:
 
         required_am = calculate_required_antimatter(unit, galaxy_ref, dest_system, dest_hex, dest_pos)
         if required_am > 0 and am_comp.current_amount < required_am:
-            logger.warning(f"Insufficient antimatter for unit {unit.name}: required {required_am:.1f}, available {am_comp.current_amount:.1f}")
+            logger.warning(f"Insufficient antimatter for unit {format_unit_for_log(unit)}: required {required_am:.1f}, available {am_comp.current_amount:.1f}")
             if getattr(self.game, 'gui', None):
                 self.game.gui.show_error_dialog(
                     f"Unit <b>{unit.name}</b> has insufficient antimatter reserves to complete the destination journey.<br><br>"
@@ -137,7 +138,7 @@ class OrderSystem:
         for unit in self._controllable_units(event.units):
             if unit.commander_component:
                 unit.commander_component.stop_and_idle()
-                logger.debug(f"  Unit {unit.name} stopped and stance reset via event.")
+                logger.debug(f"  Unit {format_unit_for_log(unit)} stopped and stance reset via event.")
         self.game.sidebar_needs_update = True
 
     def _event_location(self, system_name, hex_coord, position):
@@ -192,9 +193,9 @@ class OrderSystem:
             move_order = MoveOrder(unit, move_params)
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
-                logger.debug(f"  Unit {unit.name} orders cancelled.")
+                logger.debug(f"  Unit {format_unit_for_log(unit)} orders cancelled.")
             unit.commander_component.add_order(move_order)
-            logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to move to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_issue_patrol_order(self, event: IssuePatrolOrderEvent):
@@ -235,7 +236,7 @@ class OrderSystem:
 
             if add_waypoint and existing_patrol:
                 existing_patrol.add_waypoint(event.system_name, event.sector_coord, event.destination)
-                logger.debug(f"  Added waypoint to existing patrol order for unit {unit.name}: {event.system_name}:{event.sector_coord}:{event.destination}")
+                logger.debug(f"  Added waypoint to existing patrol order for unit {format_unit_for_log(unit)}: {event.system_name}:{event.sector_coord}:{event.destination}")
             else:
                 patrol_params = {
                     "destination_system_name": event.system_name,
@@ -245,9 +246,9 @@ class OrderSystem:
                 patrol_order = PatrolOrder(unit, patrol_params)
                 if not event.shift_pressed:
                     unit.commander_component.clear_explicit_orders()
-                    logger.debug(f"  Unit {unit.name} orders cancelled.")
+                    logger.debug(f"  Unit {format_unit_for_log(unit)} orders cancelled.")
                 unit.commander_component.add_order(patrol_order)
-                logger.debug(f"  Unit {unit.name} ordered to patrol to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
+                logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to patrol to {event.system_name}:{event.sector_coord}:{event.destination} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_jump_interhex(self, event: JumpInterhexEvent):
@@ -270,9 +271,9 @@ class OrderSystem:
                 move_order = MoveOrder(unit, move_params)
                 if not event.shift_pressed:
                     unit.commander_component.clear_explicit_orders()
-                    logger.debug(f"  Unit {unit.name} orders cancelled.")
+                    logger.debug(f"  Unit {format_unit_for_log(unit)} orders cancelled.")
                 unit.commander_component.add_order(move_order)
-                logger.debug(f"  Unit {unit.name} ordered to move to {event.system_name}:{event.target_hex}:{move_params['destination_position']} via event.")
+                logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to move to {event.system_name}:{event.target_hex}:{move_params['destination_position']} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_jump_wormhole(self, event: JumpWormholeEvent):
@@ -303,9 +304,9 @@ class OrderSystem:
                     move_order = MoveOrder(unit, move_params)
                     if not event.shift_pressed:
                         unit.commander_component.clear_explicit_orders()
-                        logger.debug(f"  Unit {unit.name} orders cancelled.")
+                        logger.debug(f"  Unit {format_unit_for_log(unit)} orders cancelled.")
                     unit.commander_component.add_order(move_order)
-                    logger.debug(f"  Unit {unit.name} ordered to move via wormhole {target_wormhole.name} to {exit_system_name}:{exit_wormhole.in_hex}:{exit_wormhole.position} via event.")
+                    logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to move via wormhole {target_wormhole.name} to {exit_system_name}:{exit_wormhole.in_hex}:{exit_wormhole.position} via event.")
             else:
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -333,7 +334,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(attack_order)
-            logger.debug(f"  Unit {unit.name} ordered to attack {event.target_unit.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to attack {format_unit_for_log(event.target_unit)} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_colonize(self, event: ColonizeEvent):
@@ -361,7 +362,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(colonize_order)
-            logger.debug(f"  Unit {unit.name} ordered to colonize {event.target_body.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to colonize {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_load_colonists(self, event: LoadColonistsEvent):
@@ -382,7 +383,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(load_order)
-            logger.debug(f"  Unit {unit.name} ordered to load {event.amount} colonists from planet {event.target_body.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to load {event.amount} colonists from planet {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_construct(self, event: ConstructEvent):
@@ -411,7 +412,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(construct_order)
-            logger.debug(f"  Unit {unit.name} ordered to construct {event.unit_template_name} at {format_location(system_name, hex_coord, position)} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to construct {event.unit_template_name} at {format_location(system_name, hex_coord, position)} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_repair_unit(self, event: RepairUnitEvent):
@@ -428,7 +429,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(repair_order)
-            logger.debug(f"  Unit {unit.name} ordered to repair {event.target_unit.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to repair {format_unit_for_log(event.target_unit)} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_refit_unit(self, event: RefitUnitEvent):
@@ -452,7 +453,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(refit_order)
-            logger.debug(f"  Unit {unit.name} ordered to refit {event.target_unit.name} ({event.action} {event.component_type}) via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to refit {format_unit_for_log(event.target_unit)} ({event.action} {event.component_type}) via event.")
         self.game.sidebar_needs_update = True
 
     def handle_issue_protect_order(self, event: IssueProtectOrderEvent):
@@ -462,7 +463,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(protect_order)
-            logger.debug(f"  Unit {unit.name} ordered to protect {event.target_unit.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to protect {format_unit_for_log(event.target_unit)} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_mine(self, event: MineEvent):
@@ -479,7 +480,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(mine_order)
-            logger.debug(f"  Unit {unit.name} ordered to mine {event.target_body.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to mine {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_continuous_mine(self, event: ContinuousMineEvent):
@@ -496,7 +497,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(continuous_mine_order)
-            logger.debug(f"  Unit {unit.name} ordered to continuous mine {event.target_body.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to continuous mine {event.target_body.name} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_unload_resources(self, event: UnloadResourcesEvent):
@@ -527,7 +528,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(unload_order)
-            logger.debug(f"  Unit {unit.name} ordered to unload resources to {event.target_unit.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to unload resources to {format_unit_for_log(event.target_unit)} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_dock(self, event: DockEvent):
@@ -544,7 +545,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(dock_order)
-            logger.debug(f"  Unit {unit.name} ordered to dock to {event.target_carrier.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to dock to {format_unit_for_log(event.target_carrier)} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_use_ability(self, event: UseAbilityEvent):
@@ -592,7 +593,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(ability_order)
-            logger.debug(f"  Unit {unit.name} ordered to use ability {event.ability_type_str} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to use ability {event.ability_type_str} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_transfer_antimatter(self, event: TransferAntimatterEvent):
@@ -631,7 +632,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(lay_order)
-            logger.debug(f"  Unit {unit.name} ordered to lay {mtype} minefield via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to lay {mtype} minefield via event.")
         self.game.sidebar_needs_update = True
 
     def handle_trade(self, event: TradeEvent):
@@ -649,7 +650,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(trade_order)
-            logger.debug(f"  Unit {unit.name} ordered to trade with {event.target_unit.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to trade with {format_unit_for_log(event.target_unit)} via event.")
         self.game.sidebar_needs_update = True
 
     def handle_continuous_trade(self, event: ContinuousTradeEvent):
@@ -666,7 +667,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(continuous_trade_order)
-            logger.debug(f"  Unit {unit.name} ordered to continuous trade via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to continuous trade via event.")
         self.game.sidebar_needs_update = True
 
     def handle_infiltrate_unit(self, event: InfiltrateUnitEvent):
@@ -691,7 +692,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
-            logger.debug(f"  Unit {unit.name} ordered to infiltrate {event.target_unit.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to infiltrate {format_unit_for_log(event.target_unit)} via event.")
 
             # If already in range in the same sector, execute immediately to deploy agent in real time
             if getattr(self.game, 'galaxy', None) and unit.in_system == event.target_unit.in_system and unit.in_hex == event.target_unit.in_hex:
@@ -729,7 +730,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
-            logger.debug(f"  Unit {unit.name} ordered to infiltrate {getattr(event.target_body, 'name', 'colony')} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to infiltrate {getattr(event.target_body, 'name', 'colony')} via event.")
 
             # If already in range in the same sector, execute immediately to deploy agent in real time
             if getattr(self.game, 'galaxy', None) and unit.in_system == event.target_system and unit.in_hex == event.target_hex:
@@ -822,7 +823,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
-            logger.debug(f"  Unit {unit.name} ordered CI Sweep via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered CI Sweep via event.")
             if getattr(self.game, 'galaxy', None):
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True
@@ -843,7 +844,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
-            logger.debug(f"  Unit {unit.name} ordered to eliminate Agent {event.agent_id} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to eliminate Agent {event.agent_id} via event.")
             if getattr(self.game, 'galaxy', None):
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True
@@ -859,7 +860,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
-            logger.debug(f"  Unit {unit.name} ordered to extract Agent {event.agent_id} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to extract Agent {event.agent_id} via event.")
             if getattr(self.game, 'galaxy', None):
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True
@@ -881,7 +882,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
-            logger.debug(f"  Unit {unit.name} ordered to enter gas giant {event.gas_giant.name} via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to enter gas giant {event.gas_giant.name} via event.")
             if getattr(self.game, 'galaxy', None):
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True
@@ -894,7 +895,7 @@ class OrderSystem:
             if not event.shift_pressed:
                 unit.commander_component.clear_explicit_orders()
             unit.commander_component.add_order(order)
-            logger.debug(f"  Unit {unit.name} ordered to leave gas giant via event.")
+            logger.debug(f"  Unit {format_unit_for_log(unit)} ordered to leave gas giant via event.")
             if getattr(self.game, 'galaxy', None):
                 order.execute(self.game.galaxy)
                 self.game.visibility_dirty = True

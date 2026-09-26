@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 import typing
 from typing import Optional, Tuple, TYPE_CHECKING
 import dataclasses
@@ -293,7 +294,7 @@ class Hyperdrive(UnitComponent):
         self.recharge_time_remaining = self.RECHARGE_DURATION + extra_turns
         owner_id = self.jump_target_order_id if local_order_id is None else local_order_id
         self.clear_jump_target(owner_id)
-        logger.debug(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive starting recharge for {self.recharge_time_remaining} turns. Status: CHARGING.")
+        logger.debug(f"Unit {format_unit_for_log(self.unit)} hyperdrive starting recharge for {self.recharge_time_remaining} turns. Status: CHARGING.")
 
     def update_recharge(self) -> None:
         """Updates the recharge status of the hyperdrive. Called each turn."""
@@ -302,4 +303,4 @@ class Hyperdrive(UnitComponent):
             if self.recharge_time_remaining <= 0:
                 self.jump_status = JumpStatus.READY
                 self.recharge_time_remaining = 0
-                logger.debug(f"Unit {self.unit.name} (id:{self.unit.id}) hyperdrive recharged. Status: READY.")
+                logger.debug(f"Unit {format_unit_for_log(self.unit)} hyperdrive recharged. Status: READY.")

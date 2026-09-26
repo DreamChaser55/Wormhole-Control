@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 import typing
 from typing import TYPE_CHECKING
 import dataclasses
@@ -461,7 +462,7 @@ class StrikecraftBayComponent(UnitComponent):
             unit.commander_component.clear_explicit_orders()
             unit.commander_component.suspend_stance_activity("docked")
             
-        logger.debug(f"Strikecraft wing {unit.name} docked into carrier {self.unit.name}.")
+        logger.debug(f"Strikecraft wing {format_unit_for_log(unit)} docked into carrier {format_unit_for_log(self.unit)}.")
         return True
 
     def can_deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
@@ -493,7 +494,7 @@ class StrikecraftBayComponent(UnitComponent):
             
         self.docked_units.remove(unit)
         self.launched_units.append(unit)
-        logger.debug(f"Strikecraft wing {unit.name} deployed from carrier {self.unit.name}.")
+        logger.debug(f"Strikecraft wing {format_unit_for_log(unit)} deployed from carrier {format_unit_for_log(self.unit)}.")
         return True
 
     def finish_auto_construction(self, galaxy: 'Galaxy'):
@@ -519,7 +520,7 @@ class StrikecraftBayComponent(UnitComponent):
         self.construction_progress = 0
         from turn_briefing import unit_event
         unit_event(new_unit, "development", "Wing construction completed", private=True)
-        logger.debug(f"Auto-constructed and docked new strikecraft wing {new_unit.name} ({new_unit.id}) for carrier {self.unit.name}.")
+        logger.debug(f"Auto-constructed and docked new strikecraft wing {format_unit_for_log(new_unit)} for carrier {format_unit_for_log(self.unit)}.")
 
     def update(self, galaxy: 'Galaxy'):
         """Automatically constructs or replenishes wings. Called each turn."""
@@ -546,7 +547,7 @@ class StrikecraftBayComponent(UnitComponent):
                 self.replenish_progress += 1
                 if self.replenish_progress >= 1: # 1 turn to restore up to 10 hull HP
                     self.replenishing_unit.heal_hull(10)
-                    logger.debug(f"Strikecraft bay on {self.unit.name} restored hull HP to wing {self.replenishing_unit.name}. HP: {self.replenishing_unit.current_hit_points}/{self.replenishing_unit.max_hit_points}")
+                    logger.debug(f"Strikecraft bay on {format_unit_for_log(self.unit)} restored hull HP to wing {format_unit_for_log(self.replenishing_unit)}. HP: {self.replenishing_unit.current_hit_points}/{self.replenishing_unit.max_hit_points}")
                     # If fully healed, clear. Otherwise keep replenishing on next turn
                     if self.replenishing_unit.current_hit_points >= self.replenishing_unit.max_hit_points:
                         self.replenishing_unit = None
@@ -590,7 +591,7 @@ class StrikecraftBayComponent(UnitComponent):
                 owner.credits -= cost
                 self.replenishing_unit = damaged_wing
                 self.replenish_progress = 0
-                logger.debug(f"Strikecraft bay on {self.unit.name} started replenishing wing {damaged_wing.name} for {cost} credits.")
+                logger.debug(f"Strikecraft bay on {format_unit_for_log(self.unit)} started replenishing wing {format_unit_for_log(damaged_wing)} for {cost} credits.")
                 return
 
         # 4. One worker chooses the first affordable empty, configured slot.
@@ -606,5 +607,5 @@ class StrikecraftBayComponent(UnitComponent):
                     owner.credits -= cost
                     self.construction_slot_index = index
                     self.construction_progress = 0
-                    logger.debug(f"Strikecraft bay on {self.unit.name} started constructing {template['name']} in slot {index} for {cost} credits.")
+                    logger.debug(f"Strikecraft bay on {format_unit_for_log(self.unit)} started constructing {template['name']} in slot {index} for {cost} credits.")
                     return

@@ -1,6 +1,7 @@
 """Context menu action execution and game event bus dispatch."""
 import typing
 import logging
+from game_logging import format_unit_for_log
 import pygame
 from geometry import Position
 from domain.units import Unit
@@ -42,7 +43,7 @@ def handle_context_menu_action(game, action_id: str, target: typing.Any, *, loca
 
     selected_units = [obj for obj in game.selected_objects if isinstance(obj, Unit) and obj.owner == current_player]
 
-    logger.debug(f"Context Action: '{action_id}', Target: {target}, Actors: {[u.name for u in selected_units]}, SHIFT: {shift_pressed}")
+    logger.debug(f"Context Action: '{action_id}', Target: {target}, Actors: {[format_unit_for_log(u) for u in selected_units]}, SHIFT: {shift_pressed}")
 
     # Robustly extract action_id if it is nested (from context menu with sub-options)
     extracted_action_id = action_id

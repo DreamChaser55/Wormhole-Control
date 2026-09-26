@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 from geometry import Position
 from domain.coordinates import HexCoord
@@ -36,27 +37,27 @@ class DrainAntimatterAbility(AbilityInstance):
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
         if target_unit_id is None:
-            logger.debug(f"[{component.unit.name}] Drain Antimatter requires a target unit.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Drain Antimatter requires a target unit.")
             return False
 
         target_unit = galaxy.get_unit_by_id(target_unit_id)
         if not target_unit:
-            logger.debug(f"[{component.unit.name}] Drain Antimatter: target unit {target_unit_id} not found.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Drain Antimatter: target unit {target_unit_id} not found.")
             return False
 
         from domain.players import are_allies
         if are_allies(target_unit.owner, component.unit.owner):
-            logger.debug(f"[{component.unit.name}] Drain Antimatter: target unit {target_unit.name} is friendly/allied.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Drain Antimatter: target unit {format_unit_for_log(target_unit)} is friendly/allied.")
             return False
 
         source_am = component.unit.antimatter_component
         if not source_am or source_am.is_destroyed:
-            logger.debug(f"[{component.unit.name}] Drain Antimatter failed: source unit has no active antimatter storage.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Drain Antimatter failed: source unit has no active antimatter storage.")
             return False
 
         target_am = target_unit.antimatter_component
         if not target_am or target_am.is_destroyed or target_am.current_amount <= 0:
-            logger.debug(f"[{component.unit.name}] Drain Antimatter failed: target {target_unit.name} has no antimatter to drain.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Drain Antimatter failed: target {format_unit_for_log(target_unit)} has no antimatter to drain.")
             return False
 
         drain_cap = 30.0
@@ -71,7 +72,7 @@ class DrainAntimatterAbility(AbilityInstance):
         added = source_am.add(drain_amount)
 
         logger.debug(
-            f"[{component.unit.name}] Drained {drain_amount:.1f} antimatter from {target_unit.name} "
+            f"[{format_unit_for_log(component.unit)}] Drained {drain_amount:.1f} antimatter from {format_unit_for_log(target_unit)} "
             f"(target left with {target_am.current_amount:.1f}, source added {added:.1f})."
         )
         return True

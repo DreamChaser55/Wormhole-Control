@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 import typing
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
@@ -38,7 +39,7 @@ class MineOrder(Order):
 
         if not getattr(self.unit, 'mining_component', None):
             self.fail("execution_failed")
-            logger.debug(f"MINE order failed: Unit {self.unit.name} has no MiningComponent.")
+            logger.debug(f"MINE order failed: Unit {format_unit_for_log(self.unit)} has no MiningComponent.")
             return
 
         at_location = (self.unit.in_system == target.in_system and self.unit.in_hex == target.in_hex)
@@ -64,7 +65,7 @@ class MineOrder(Order):
             return
 
         self.unit.mining_component.set_target(target)
-        logger.debug(f"MINE order: {self.unit.name} started mining {target.name}.")
+        logger.debug(f"MINE order: {format_unit_for_log(self.unit)} started mining {target.name}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -73,7 +74,7 @@ class MineOrder(Order):
             if self.unit.mining_component.get_cargo_fullness() >= 1.0:
                 self.status = OrderStatus.COMPLETED
                 self.unit.mining_component.clear_target()
-                logger.debug(f"MINE order completed: Cargo full for {self.unit.name}.")
+                logger.debug(f"MINE order completed: Cargo full for {format_unit_for_log(self.unit)}.")
 
 
 class UnloadResourcesOrder(Order):
@@ -100,7 +101,7 @@ class UnloadResourcesOrder(Order):
 
         if not getattr(self.unit, 'mining_component', None):
             self.fail("execution_failed")
-            logger.debug(f"UNLOAD_RESOURCES order failed: Unit {self.unit.name} has no MiningComponent.")
+            logger.debug(f"UNLOAD_RESOURCES order failed: Unit {format_unit_for_log(self.unit)} has no MiningComponent.")
             return
 
         is_metal_refinery = bool(getattr(target_unit, 'metal_refinery_component', None))
@@ -108,7 +109,7 @@ class UnloadResourcesOrder(Order):
 
         if not (is_metal_refinery or is_crystal_refinery):
             self.fail("target_unavailable")
-            logger.debug(f"UNLOAD_RESOURCES order failed: Target {target_unit.name} has no refinery components.")
+            logger.debug(f"UNLOAD_RESOURCES order failed: Target {format_unit_for_log(target_unit)} has no refinery components.")
             return
 
         # Determine unload range from either component
@@ -148,7 +149,7 @@ class UnloadResourcesOrder(Order):
             target_unit.crystal_refinery_component.accept_resources(crystal_amount)
 
         self.status = OrderStatus.COMPLETED
-        logger.debug(f"UNLOAD_RESOURCES order completed: {self.unit.name} unloaded resources to {target_unit.name}.")
+        logger.debug(f"UNLOAD_RESOURCES order completed: {format_unit_for_log(self.unit)} unloaded resources to {format_unit_for_log(target_unit)}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -170,18 +171,18 @@ class ContinuousMineOrder(Order):
         target_id = self.parameters.get("target_id")
         if target_id is None:
             self.fail("invalid_parameters")
-            logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: no target_id.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_MINE order failed: no target_id.")
             return
 
         target = galaxy_ref.get_celestial_body_by_id(target_id)
         if not target:
             self.fail("target_unavailable")
-            logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Celestial body with ID {target_id} not found.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_MINE order failed: Celestial body with ID {target_id} not found.")
             return
 
         if not getattr(self.unit, 'mining_component', None):
             self.fail("execution_failed")
-            logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Unit has no MiningComponent.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_MINE order failed: Unit has no MiningComponent.")
             return
 
         mining_comp = self.unit.mining_component
@@ -189,7 +190,7 @@ class ContinuousMineOrder(Order):
             refinery = self._find_closest_refinery(galaxy_ref)
             if not refinery:
                 self.fail("execution_failed")
-                logger.debug(f"[{self.unit.name}] CONTINUOUS_MINE order failed: Cargo full but no refinery found.")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] CONTINUOUS_MINE order failed: Cargo full but no refinery found.")
                 return
             self._spawn_unload_order(refinery.id)
         else:
@@ -271,10 +272,10 @@ class ContinuousMineOrder(Order):
                 refinery = self._find_closest_refinery(galaxy_ref)
                 if not refinery:
                     self.fail("execution_failed")
-                    logger.debug(f"[{self.unit.name}] ContinuousMineOrder failed: cargo full, no refinery found.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] ContinuousMineOrder failed: cargo full, no refinery found.")
                     return
                 self._spawn_unload_order(refinery.id)
-                logger.debug(f"[{self.unit.name}] ContinuousMineOrder: cargo full. Heading to refinery {refinery.name} (id:{refinery.id}).")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] ContinuousMineOrder: cargo full. Heading to refinery {format_unit_for_log(refinery)}.")
             else:
                 self._spawn_mine_order(target_id)
-                logger.debug(f"[{self.unit.name}] ContinuousMineOrder: cargo has space. Heading back to mine target {target_id}.")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] ContinuousMineOrder: cargo has space. Heading back to mine target {target_id}.")

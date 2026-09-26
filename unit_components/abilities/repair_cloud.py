@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 from geometry import Position, distance
 from domain.coordinates import HexCoord
@@ -35,14 +36,14 @@ class RepairCloudAbility(AbilityInstance):
         target_system_name: Optional[str] = None,
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
-        logger.debug(f"[{component.unit.name}] Repair Cloud activated. Healing friendlies within {self.definition.range} units for {self.definition.duration} turns.")
+        logger.debug(f"[{format_unit_for_log(component.unit)}] Repair Cloud activated. Healing friendlies within {self.definition.range} units for {self.definition.duration} turns.")
         return True
 
     def on_turn_update(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
         self._apply_repair_cloud(component, galaxy)
 
     def on_expire(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
-        logger.debug(f"[{component.unit.name}] Repair Cloud expired.")
+        logger.debug(f"[{format_unit_for_log(component.unit)}] Repair Cloud expired.")
 
     def _apply_repair_cloud(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
         """Heals all friendly and allied units within Repair Cloud range by 5 HP."""
@@ -59,4 +60,4 @@ class RepairCloudAbility(AbilityInstance):
                 continue
             if distance(component.unit.position, unit.position) <= self.definition.range:
                 unit.heal_hull(heal_per_turn)
-                logger.debug(f"[Repair Cloud] Healed {unit.name} for {heal_per_turn} HP.")
+                logger.debug(f"[Repair Cloud] Healed {format_unit_for_log(unit)} for {heal_per_turn} HP.")

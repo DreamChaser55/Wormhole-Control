@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 import typing
 from typing import Optional, TYPE_CHECKING
 import dataclasses
@@ -609,7 +610,7 @@ class Constructor(UnitComponent):
 
         buildable = self.can_build(unit_template_name)
         if not buildable:
-            logger.debug(f"Error: {self.unit.name} cannot build {unit_template_name}.")
+            logger.debug(f"Error: {format_unit_for_log(self.unit)} cannot build {unit_template_name}.")
             return False
 
         template = get_all_templates_for_player(self.unit.owner, base_templates=UNIT_TEMPLATES).get(unit_template_name)
@@ -631,7 +632,7 @@ class Constructor(UnitComponent):
         self.time_to_build = buildable.time_to_build
         self.construction_progress = 0
         from location_validation import format_location
-        logger.debug(f"{self.unit.name} started constructing {unit_template_name} at {format_location(system_name, hex_coord, position)}. Cost: {buildable.cost_credits}")
+        logger.debug(f"{format_unit_for_log(self.unit)} started constructing {unit_template_name} at {format_location(system_name, hex_coord, position)}. Cost: {buildable.cost_credits}")
         return True
 
     def _owning_construction_order(self):
@@ -662,7 +663,7 @@ class Constructor(UnitComponent):
         order = self._owning_construction_order()
         if order is not None:
             order.refund_charge()
-        logger.debug("Construction site lost by %s: %s", self.unit.name,
+        logger.debug("Construction site lost by %s: %s", format_unit_for_log(self.unit),
                      format_location(job["system_name"], job["hex_coord"], job["position"]))
         self.cancel_construction()
         if order is not None:
@@ -808,7 +809,7 @@ class Constructor(UnitComponent):
         job = self.current_construction_target
         unit_template_name, position = job["template_name"], job["position"]
         from location_validation import format_location
-        logger.debug("Construction of %s finished by %s at %s", unit_template_name, self.unit.name,
+        logger.debug("Construction of %s finished by %s at %s", unit_template_name, format_unit_for_log(self.unit),
                      format_location(job["system_name"], job["hex_coord"], position))
         
         template = get_all_templates_for_player(self.unit.owner, base_templates=UNIT_TEMPLATES).get(unit_template_name)

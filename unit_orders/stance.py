@@ -4,6 +4,7 @@ from __future__ import annotations
 from unit_orders.base import OrderTargetField
 
 import logging
+from game_logging import format_unit_for_log
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from geometry import distance, hex_distance
@@ -220,9 +221,8 @@ class StanceOrder(Order):
         if not attack:
             return
         logger.debug(
-            "[%s (id:%s)] STANCE(id:%s): invalidating target %s (%s).",
-            self.unit.name,
-            self.unit.id,
+            "[%s] STANCE(id:%s): invalidating target %s (%s).",
+            format_unit_for_log(self.unit),
             self.local_order_id,
             attack.parameters.get("target_unit_id"),
             reason,
@@ -269,12 +269,10 @@ class StanceOrder(Order):
         target = self.find_target(galaxy_ref)
         if target:
             logger.debug(
-                "[%s (id:%s)] STANCE(id:%s): acquired target %s (id:%s).",
-                self.unit.name,
-                self.unit.id,
+                "[%s] STANCE(id:%s): acquired target %s.",
+                format_unit_for_log(self.unit),
                 self.local_order_id,
-                target.name,
-                target.id,
+                format_unit_for_log(target),
             )
             attack = AttackOrder(self.unit, {"target_unit_id": target.id}, parent_order=self)
             self.add_sub_order(attack)

@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 from geometry import Position
 from domain.coordinates import HexCoord
@@ -36,21 +37,21 @@ class DesignateTargetAbility(AbilityInstance):
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
         if target_unit_id is None:
-            logger.debug(f"[{component.unit.name}] Designate Target requires a target unit.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Designate Target requires a target unit.")
             return False
         target_unit = galaxy.get_unit_by_id(target_unit_id)
         if not target_unit:
-            logger.debug(f"[{component.unit.name}] Designate Target: target unit {target_unit_id} not found.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Designate Target: target unit {target_unit_id} not found.")
             return False
 
         from domain.players import are_allies
         if are_allies(target_unit.owner, component.unit.owner):
-            logger.debug(f"[{component.unit.name}] Designate Target: target unit {target_unit.name} is friendly/allied.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Designate Target: target unit {format_unit_for_log(target_unit)} is friendly/allied.")
             return False
 
         self.target_unit_id = target_unit_id
         self.restore_effect(component, galaxy)
-        logger.debug(f"[{component.unit.name}] Designate Target applied to {target_unit.name}. Amplification now: {target_unit.damage_amplification:.2f}.")
+        logger.debug(f"[{format_unit_for_log(component.unit)}] Designate Target applied to {format_unit_for_log(target_unit)}. Amplification now: {target_unit.damage_amplification:.2f}.")
         return True
 
     def on_expire(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
@@ -60,7 +61,7 @@ class DesignateTargetAbility(AbilityInstance):
             if target_unit:
                 from timed_effects import remove
                 remove(target_unit, component.unit.id, self.definition.ability_type)
-                logger.debug(f"[{component.unit.name}] Designate Target expired on {target_unit.name}. Amplification now: {target_unit.damage_amplification:.2f}.")
+                logger.debug(f"[{format_unit_for_log(component.unit)}] Designate Target expired on {format_unit_for_log(target_unit)}. Amplification now: {target_unit.damage_amplification:.2f}.")
         self.target_unit_id = None
 
     def restore_effect(self, component, galaxy):

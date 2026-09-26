@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import TYPE_CHECKING
 import dataclasses
 
@@ -115,7 +116,7 @@ class HangarComponent(UnitComponent):
             unit.commander_component.clear_explicit_orders()
             unit.commander_component.suspend_stance_activity("docked")
             
-        logger.debug(f"Unit {unit.name} docked into carrier {self.unit.name}.")
+        logger.debug(f"Unit {format_unit_for_log(unit)} docked into carrier {format_unit_for_log(self.unit)}.")
         return True
 
     def deploy(self, unit: 'Unit', galaxy_ref: 'Galaxy') -> bool:
@@ -135,5 +136,5 @@ class HangarComponent(UnitComponent):
         galaxy_ref.systems[unit.in_system].add_unit(unit)
             
         self.docked_units.remove(unit)
-        logger.debug(f"Unit {unit.name} deployed from carrier {self.unit.name}.")
+        logger.debug(f"Unit {format_unit_for_log(unit)} deployed from carrier {format_unit_for_log(self.unit)}.")
         return True

@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 from geometry import Position, is_point_in_circle, clamp_point_to_circle, Circle
 from constants import SECTOR_CIRCLE_RADIUS_LOGICAL
@@ -37,7 +38,7 @@ class MicrojumpAbility(AbilityInstance):
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
         if target_position is None:
-            logger.debug(f"[{component.unit.name}] Microjump requires a target position.")
+            logger.debug(f"[{format_unit_for_log(component.unit)}] Microjump requires a target position.")
             return False
 
         unit = component.unit
@@ -46,7 +47,7 @@ class MicrojumpAbility(AbilityInstance):
 
         # Microjump is strictly intra-sector (same system and hex)
         if sys_name != unit.in_system or hex_coord != unit.in_hex:
-            logger.debug(f"[{unit.name}] Microjump failed: Target position is in a different sector.")
+            logger.debug(f"[{format_unit_for_log(unit)}] Microjump failed: Target position is in a different sector.")
             gui = getattr(getattr(unit, 'game', None), 'gui', None)
             if gui:
                 gui.show_warning_dialog(
@@ -64,7 +65,7 @@ class MicrojumpAbility(AbilityInstance):
             # 1. Check origin position
             for zone in inhibition_zones:
                 if is_point_in_circle(unit.position, zone):
-                    logger.debug(f"[{unit.name}] Microjump failed: Origin position is inside an inhibition field.")
+                    logger.debug(f"[{format_unit_for_log(unit)}] Microjump failed: Origin position is inside an inhibition field.")
                     gui = getattr(getattr(unit, 'game', None), 'gui', None)
                     if gui:
                         gui.show_warning_dialog(
@@ -76,7 +77,7 @@ class MicrojumpAbility(AbilityInstance):
             # 2. Check destination position
             for zone in inhibition_zones:
                 if is_point_in_circle(target_position, zone):
-                    logger.debug(f"[{unit.name}] Microjump failed: Destination position is inside an inhibition field.")
+                    logger.debug(f"[{format_unit_for_log(unit)}] Microjump failed: Destination position is inside an inhibition field.")
                     gui = getattr(getattr(unit, 'game', None), 'gui', None)
                     if gui:
                         gui.show_warning_dialog(
@@ -87,7 +88,7 @@ class MicrojumpAbility(AbilityInstance):
 
         from domain.celestials import is_position_blocked_by_celestial_field
         if is_position_blocked_by_celestial_field(galaxy, unit.in_system, unit.in_hex, target_position, unit):
-            logger.debug(f"[{unit.name}] Microjump failed: Destination position is inside an impassable dense celestial field.")
+            logger.debug(f"[{format_unit_for_log(unit)}] Microjump failed: Destination position is inside an impassable dense celestial field.")
             gui = getattr(getattr(unit, 'game', None), 'gui', None)
             if gui:
                 gui.show_warning_dialog(
@@ -101,5 +102,5 @@ class MicrojumpAbility(AbilityInstance):
 
         # Perform the jump
         unit.position = clamped_pos
-        logger.debug(f"[{unit.name}] Microjump executed successfully to position {clamped_pos}.")
+        logger.debug(f"[{format_unit_for_log(unit)}] Microjump executed successfully to position {clamped_pos}.")
         return True

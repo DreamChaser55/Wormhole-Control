@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance, position_at_distance_from_target, is_point_in_circle
@@ -51,20 +52,20 @@ class UseAbilityOrder(Order):
         from unit_components.enums import AbilityType
 
         if not self.unit.ability_component:
-            logger.debug(f"[{self.unit.name}] USE_ABILITY order failed: unit has no AbilityComponent.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY order failed: unit has no AbilityComponent.")
             self.status = OrderStatus.FAILED
             return
 
         ability_type_str = self.parameters.get("ability_type")
         if not ability_type_str:
-            logger.debug(f"[{self.unit.name}] USE_ABILITY order failed: no ability_type parameter.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY order failed: no ability_type parameter.")
             self.status = OrderStatus.FAILED
             return
 
         try:
             ability_type = AbilityType(ability_type_str)
         except ValueError:
-            logger.debug(f"[{self.unit.name}] USE_ABILITY order failed: unknown ability_type '{ability_type_str}'.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY order failed: unknown ability_type '{ability_type_str}'.")
             self.status = OrderStatus.FAILED
             return
 
@@ -83,7 +84,7 @@ class UseAbilityOrder(Order):
             return
 
         if not self.unit.ability_component.can_use(ability_type, ignore_reservations=True):
-            logger.debug(f"[{self.unit.name}] USE_ABILITY order failed: ability {ability_type.name} not ready (on cooldown or already active).")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY order failed: ability {ability_type.name} not ready (on cooldown or already active).")
             gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
             if gui:
                 gui.show_warning_dialog(
@@ -125,13 +126,13 @@ class UseAbilityOrder(Order):
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if target_unit:
                 if target_unit.owner == self.unit.owner:
-                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target unit {target_unit.name} is already friendly.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target unit {format_unit_for_log(target_unit)} is already friendly.")
                     self.status = OrderStatus.FAILED
                     return
                 if target_unit.engines_component is not None:
                     engines_disabled = target_unit.engines_component.is_destroyed or target_unit.is_disabled
                     if not engines_disabled:
-                        logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} engines are not disabled.")
+                        logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target {format_unit_for_log(target_unit)} engines are not disabled.")
                         gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                         if gui:
                             gui.show_warning_dialog(
@@ -142,7 +143,7 @@ class UseAbilityOrder(Order):
                         return
                 from unit_components.defenses import Defenses
                 if target_unit.weapons_component and not target_unit.weapons_component.is_destroyed:
-                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} weapons are active.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target {format_unit_for_log(target_unit)} weapons are active.")
                     gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                     if gui:
                         gui.show_warning_dialog(
@@ -153,7 +154,7 @@ class UseAbilityOrder(Order):
                     return
                 defenses = target_unit.get_component(Defenses)
                 if defenses and not defenses.is_destroyed:
-                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} defenses are active.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target {format_unit_for_log(target_unit)} defenses are active.")
                     gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                     if gui:
                         gui.show_warning_dialog(
@@ -168,12 +169,12 @@ class UseAbilityOrder(Order):
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if target_unit:
                 if target_unit.owner == self.unit.owner:
-                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target unit {target_unit.name} is friendly.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target unit {format_unit_for_log(target_unit)} is friendly.")
                     self.status = OrderStatus.FAILED
                     return
                 target_am = target_unit.antimatter_component
                 if not target_am or target_am.is_destroyed or target_am.current_amount <= 0:
-                    logger.debug(f"[{self.unit.name}] USE_ABILITY: target {target_unit.name} has no antimatter to drain.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target {format_unit_for_log(target_unit)} has no antimatter to drain.")
                     gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                     if gui:
                         gui.show_warning_dialog(
@@ -191,7 +192,7 @@ class UseAbilityOrder(Order):
 
                 # Microjump is strictly intra-sector
                 if target_sys != self.unit.in_system or target_hex != self.unit.in_hex:
-                    logger.debug(f"[{self.unit.name}] USE_ABILITY (Microjump) failed: target is in a different sector.")
+                    logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY (Microjump) failed: target is in a different sector.")
                     gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                     if gui:
                         gui.show_warning_dialog(
@@ -207,7 +208,7 @@ class UseAbilityOrder(Order):
                     inhibition_zones = hex_obj.get_all_inhibition_zones()
                     for zone in inhibition_zones:
                         if is_point_in_circle(self.unit.position, zone):
-                            logger.debug(f"[{self.unit.name}] USE_ABILITY (Microjump) failed: origin position is inside an inhibition field.")
+                            logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY (Microjump) failed: origin position is inside an inhibition field.")
                             gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                             if gui:
                                 gui.show_warning_dialog(
@@ -217,7 +218,7 @@ class UseAbilityOrder(Order):
                             self.status = OrderStatus.FAILED
                             return
                         if is_point_in_circle(target_position, zone):
-                            logger.debug(f"[{self.unit.name}] USE_ABILITY (Microjump) failed: destination position is inside an inhibition field.")
+                            logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY (Microjump) failed: destination position is inside an inhibition field.")
                             gui = getattr(getattr(self.unit, 'game', None), 'gui', None)
                             if gui:
                                 gui.show_warning_dialog(
@@ -231,7 +232,7 @@ class UseAbilityOrder(Order):
         if defn.requires_target_unit and target_unit_id is not None:
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if not target_unit or target_unit.current_hit_points <= 0:
-                logger.debug(f"[{self.unit.name}] USE_ABILITY: target unit {target_unit_id} not found or dead.")
+                logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target unit {target_unit_id} not found or dead.")
                 self.status = OrderStatus.FAILED
                 return
 
@@ -287,10 +288,10 @@ class UseAbilityOrder(Order):
             target_hex_coord=self.parameters.get("target_hex_coord"),
         )
         if success:
-            logger.debug(f"[{self.unit.name}] USE_ABILITY: {ability_type.name} activated successfully.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: {ability_type.name} activated successfully.")
             self.status = OrderStatus.COMPLETED
         else:
-            logger.debug(f"[{self.unit.name}] USE_ABILITY: {ability_type.name} activation failed.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: {ability_type.name} activation failed.")
             self.status = OrderStatus.FAILED
 
     def check_completion_conditions(self) -> None:

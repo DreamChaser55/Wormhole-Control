@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
@@ -42,7 +43,7 @@ class RepairOrder(Order):
 
         if not self.unit.repair_component:
             self.fail("execution_failed")
-            logger.debug(f"REPAIR order failed: Unit {self.unit.name} has no RepairComponent.")
+            logger.debug(f"REPAIR order failed: Unit {format_unit_for_log(self.unit)} has no RepairComponent.")
             return
 
         target_unit_id = self.parameters.get("target_unit_id")
@@ -56,7 +57,7 @@ class RepairOrder(Order):
         from domain.players import are_allies
         if not are_allies(self.unit.owner, target_unit.owner):
             self.fail("target_unavailable")
-            logger.debug(f"REPAIR order failed: Target unit {target_unit.name} is not friendly/allied.")
+            logger.debug(f"REPAIR order failed: Target unit {format_unit_for_log(target_unit)} is not friendly/allied.")
             return
 
         self.unit.repair_component.set_target(target_unit)

@@ -3,6 +3,7 @@ from sector_utils import is_pixel_in_sector, pixels_to_sector_coords, sector_coo
 from display_config import display_config_for
 import typing
 import logging
+from game_logging import format_unit_for_log
 import pygame
 from geometry import Position, distance_sq
 from game_camera import camera_input_blocked, cancel_camera_drag
@@ -243,7 +244,7 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
                         target_unit=clicked_object,
                         shift_pressed=shift_pressed,
                     ))
-                    logger.debug(f"Ability {ability_type_str} targeted at unit {clicked_object.name}.")
+                    logger.debug(f"Ability {ability_type_str} targeted at unit {format_unit_for_log(clicked_object)}.")
                     game.pending_ability = None
                     game.sidebar_needs_update = True
                     return  # Consume the click
@@ -354,17 +355,18 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
                     if shift_pressed:
                         from domain.construction_job import ConstructionJob
                         if isinstance(clicked_object, (Unit, ConstructionJob)):
+                            log_name = format_unit_for_log(clicked_object) if isinstance(clicked_object, Unit) else clicked_object.name
                             if clicked_object in game.selected_objects:
                                 game.selected_objects.remove(clicked_object)
-                                logger.debug(f"Deselected object: {clicked_object.name}")
+                                logger.debug(f"Deselected object: {log_name}")
                             else:
                                 game.selected_objects.append(clicked_object)
-                                logger.debug(f"Added object to selection: {clicked_object.name}")
+                                logger.debug(f"Added object to selection: {log_name}")
                             game.sidebar_needs_update = True
                     else:
                         game.selected_objects = [clicked_object]
                         obj_type = clicked_object.__class__.__name__
-                        obj_name = getattr(clicked_object, 'name', 'Unnamed')
+                        obj_name = format_unit_for_log(clicked_object) if isinstance(clicked_object, Unit) else getattr(clicked_object, 'name', 'Unnamed')
                         game.sidebar_needs_update = True
                         logger.debug(f"Selected object: {obj_type} {obj_name}")
                 else:

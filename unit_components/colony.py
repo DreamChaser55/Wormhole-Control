@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import TYPE_CHECKING
 
 from .base import UnitComponent
@@ -52,7 +53,7 @@ class ColonyComponent(UnitComponent):
 
     def load_population(self, planet: 'Planet', amount: int) -> bool:
         if self.is_destroyed:
-            logger.debug(f"Error: Cannot load population, {self.unit.name}'s ColonyComponent is destroyed.")
+            logger.debug(f"Error: Cannot load population, {format_unit_for_log(self.unit)}'s ColonyComponent is destroyed.")
             return False
         if getattr(planet, 'is_colonizable', True) is False:
             logger.debug(f"Error: Cannot load population from non-colonizable celestial body {planet.name}.")
@@ -74,7 +75,7 @@ class ColonyComponent(UnitComponent):
 
     def unload_population(self, planet: 'Planet', amount: int) -> bool:
         if self.is_destroyed:
-            logger.debug(f"Error: Cannot unload population, {self.unit.name}'s ColonyComponent is destroyed.")
+            logger.debug(f"Error: Cannot unload population, {format_unit_for_log(self.unit)}'s ColonyComponent is destroyed.")
             return False
         if getattr(planet, 'is_colonizable', True) is False:
             logger.debug(f"Error: Cannot unload population onto non-colonizable celestial body {planet.name}.")

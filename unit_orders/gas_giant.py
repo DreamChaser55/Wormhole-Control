@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
@@ -50,7 +51,7 @@ class EnterGasGiantOrder(Order):
         eng = getattr(self.unit, 'engines_component', None)
         if not eng or not getattr(eng, 'is_operational', False):
             self.fail("capability_unavailable")
-            logger.debug(f"ENTER_GAS_GIANT failed: Unit {self.unit.name} has no operational engines.")
+            logger.debug(f"ENTER_GAS_GIANT failed: Unit {format_unit_for_log(self.unit)} has no operational engines.")
             return
 
         target_id = self.parameters.get("target_id")
@@ -89,10 +90,10 @@ class EnterGasGiantOrder(Order):
         success = target.hide_unit(self.unit, galaxy_ref)
         if success:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"ENTER_GAS_GIANT completed: {self.unit.name} is now hidden in {target.name}.")
+            logger.debug(f"ENTER_GAS_GIANT completed: {format_unit_for_log(self.unit)} is now hidden in {target.name}.")
         else:
             self.fail("execution_failed")
-            logger.debug(f"ENTER_GAS_GIANT failed: Could not hide {self.unit.name} in {target.name}.")
+            logger.debug(f"ENTER_GAS_GIANT failed: Could not hide {format_unit_for_log(self.unit)} in {target.name}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -115,7 +116,7 @@ class LeaveGasGiantOrder(Order):
 
         if not getattr(self.unit, 'is_hidden_in_gas_giant', False) and getattr(self.unit, 'hidden_in_gas_giant_id', None) is None:
             self.fail("invalid_state")
-            logger.debug(f"LEAVE_GAS_GIANT failed: Unit {self.unit.name} is not hidden in a gas giant.")
+            logger.debug(f"LEAVE_GAS_GIANT failed: Unit {format_unit_for_log(self.unit)} is not hidden in a gas giant.")
             return
 
         gas_giant_id = getattr(self.unit, 'hidden_in_gas_giant_id', None)
@@ -135,16 +136,16 @@ class LeaveGasGiantOrder(Order):
 
         if not target:
             self.fail("target_unavailable")
-            logger.debug(f"LEAVE_GAS_GIANT failed: Gas giant not found for unit {self.unit.name}.")
+            logger.debug(f"LEAVE_GAS_GIANT failed: Gas giant not found for unit {format_unit_for_log(self.unit)}.")
             return
 
         emerge_pos = target.release_unit(self.unit, galaxy_ref)
         if emerge_pos is not None:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"LEAVE_GAS_GIANT completed: {self.unit.name} emerged at {emerge_pos}.")
+            logger.debug(f"LEAVE_GAS_GIANT completed: {format_unit_for_log(self.unit)} emerged at {emerge_pos}.")
         else:
             self.fail("path_unavailable")
-            logger.debug(f"LEAVE_GAS_GIANT failed: Could not release {self.unit.name} from {target.name}.")
+            logger.debug(f"LEAVE_GAS_GIANT failed: Could not release {format_unit_for_log(self.unit)} from {target.name}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:

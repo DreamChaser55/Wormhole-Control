@@ -1,5 +1,6 @@
 import dataclasses
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, List, Optional, TYPE_CHECKING
 from geometry import Position
 from domain.coordinates import HexCoord
@@ -227,7 +228,7 @@ class AbilityComponent(UnitComponent):
                 return False
             return activate(self.unit, ability_type.value, galaxy, target_body_id if target_body_id is not None else target_unit_id, target_position)
         if not self.can_use(ability_type):
-            logger.debug(f"[{self.unit.name}] Cannot use {ability_type.name}: not ready, component destroyed, or low antimatter.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] Cannot use {ability_type.name}: not ready, component destroyed, or low antimatter.")
             return False
 
         instance = self.abilities[ability_type]
@@ -236,7 +237,7 @@ class AbilityComponent(UnitComponent):
         am_comp = self.unit.antimatter_component
         cost = defn.antimatter_cost
         if cost > 0 and not am_comp.consume(cost):
-            logger.debug(f"[{self.unit.name}] Consume failed before ability activation.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] Consume failed before ability activation.")
             return False
 
         success = instance.on_activate(

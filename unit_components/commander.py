@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, Deque, TYPE_CHECKING, Iterable
 from collections import deque
 import dataclasses
@@ -315,9 +316,8 @@ class Commander(UnitComponent):
         self._stance = stance
         self.standing_order = StanceOrder(self.unit, {"stance": stance.value})
         logger.debug(
-            "[%s (id:%s)] Commander: stance changed from %s to %s.",
-            self.unit.name,
-            self.unit.id,
+            "[%s] Commander: stance changed from %s to %s.",
+            format_unit_for_log(self.unit),
             old_stance.value,
             stance.value,
         )
@@ -340,9 +340,8 @@ class Commander(UnitComponent):
         """Cancel only the transient engagement while retaining its policy."""
         if self.standing_order.has_engagement:
             logger.debug(
-                "[%s (id:%s)] Commander: suspending stance activity (%s).",
-                self.unit.name,
-                self.unit.id,
+                "[%s] Commander: suspending stance activity (%s).",
+                format_unit_for_log(self.unit),
                 reason,
             )
             self.standing_order.cancel_engagement(reason)
@@ -588,9 +587,8 @@ class Commander(UnitComponent):
         engines = self.unit.engines_component
         if engines and engines.move_target is not None and engines.move_target_order_id not in active_ids:
             logger.debug(
-                "[%s (id:%s)] Commander: clearing orphaned engine target owned by order %s.",
-                self.unit.name,
-                self.unit.id,
+                "[%s] Commander: clearing orphaned engine target owned by order %s.",
+                format_unit_for_log(self.unit),
                 engines.move_target_order_id,
             )
             engines.clear_move_target()
@@ -601,9 +599,8 @@ class Commander(UnitComponent):
             and drive.jump_target_order_id not in active_ids
         ):
             logger.debug(
-                "[%s (id:%s)] Commander: clearing orphaned hyperdrive target owned by order %s.",
-                self.unit.name,
-                self.unit.id,
+                "[%s] Commander: clearing orphaned hyperdrive target owned by order %s.",
+                format_unit_for_log(self.unit),
                 drive.jump_target_order_id,
             )
             drive.clear_jump_target()
@@ -636,7 +633,7 @@ class Commander(UnitComponent):
                 self.current_order.execute(galaxy_ref=galaxy_ref)
             self.current_order.update(galaxy_ref=galaxy_ref)
         else:
-            unit_name = getattr(self.unit, 'name', f"Unit ID {getattr(self.unit, 'id', 'Unknown')}")
+            unit_name = format_unit_for_log(self.unit)
             logger.debug(f"Error: [{unit_name}] Commander Component UPDATE: Cannot update order, unit.in_galaxy is None.")
             if self.current_order.status == OrderStatus.IN_PROGRESS:
                  self.current_order.status = OrderStatus.FAILED
@@ -655,7 +652,7 @@ class Commander(UnitComponent):
             self._release_current_order()
             self.start_next_order()
             if not self.current_order:
-                logger.debug("[%s (id:%s)] Commander: resuming standing stance.", self.unit.name, self.unit.id)
+                logger.debug("[%s] Commander: resuming standing stance.", format_unit_for_log(self.unit))
                 self.process_stance()
 
     def _update_hidden_orders(self) -> None:
@@ -710,7 +707,7 @@ class Commander(UnitComponent):
                 if self.current_order and self.current_order.status == OrderStatus.IN_PROGRESS and self.current_order.update_on_start:
                     self.current_order.update(galaxy_ref=galaxy_ref)
             else:
-                unit_name = getattr(self.unit, 'name', f"Unit ID {getattr(self.unit, 'id', 'Unknown')}")
+                unit_name = format_unit_for_log(self.unit)
                 logger.debug(f"Error: [{unit_name}] Commander Component START_NEXT_ORDER: Cannot execute order, unit.in_galaxy is None.")
                 if self.current_order:
                     self.current_order.status = OrderStatus.FAILED

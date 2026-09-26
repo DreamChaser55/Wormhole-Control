@@ -1,5 +1,6 @@
 from unit_orders.base import OrderTargetField
 import logging
+from game_logging import format_unit_for_log
 from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from geometry import distance
@@ -50,7 +51,7 @@ class ColonizeOrder(Order):
 
         if not self.unit.colony_component:
             self.fail("capability_unavailable")
-            logger.debug(f"COLONIZE order failed: Unit {self.unit.name} has no ColonyComponent.")
+            logger.debug(f"COLONIZE order failed: Unit {format_unit_for_log(self.unit)} has no ColonyComponent.")
             return
 
         in_range = within_colony_range(self.unit, target)
@@ -79,10 +80,10 @@ class ColonizeOrder(Order):
 
         if success:
             self.status = OrderStatus.COMPLETED
-            logger.debug(f"COLONIZE order completed: Unit {self.unit.name} successfully colonized {target.name}.")
+            logger.debug(f"COLONIZE order completed: Unit {format_unit_for_log(self.unit)} successfully colonized {target.name}.")
         else:
             self.fail("target_unavailable")
-            logger.debug(f"COLONIZE order failed: Unload population failed for unit {self.unit.name} on {target.name}.")
+            logger.debug(f"COLONIZE order failed: Unload population failed for unit {format_unit_for_log(self.unit)} on {target.name}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:
@@ -126,7 +127,7 @@ class LoadColonistsOrder(Order):
 
         if not self.unit.colony_component:
             self.fail("capability_unavailable")
-            logger.debug(f"LOAD_COLONISTS order failed: Unit {self.unit.name} has no ColonyComponent.")
+            logger.debug(f"LOAD_COLONISTS order failed: Unit {format_unit_for_log(self.unit)} has no ColonyComponent.")
             return
 
         in_range = within_colony_range(self.unit, target)
@@ -156,7 +157,7 @@ class LoadColonistsOrder(Order):
             self.status = OrderStatus.COMPLETED
         else:
             self.fail("execution_failed")
-            logger.debug(f"LOAD_COLONISTS order failed for unit {self.unit.name}.")
+            logger.debug(f"LOAD_COLONISTS order failed for unit {format_unit_for_log(self.unit)}.")
 
     def check_completion_conditions(self) -> None:
         if self.status != OrderStatus.IN_PROGRESS:

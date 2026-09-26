@@ -1,6 +1,7 @@
 """GUI action handlers for unit commands, stances, abilities, and carrier wing deployment."""
 from tactical_ui import handle_action as handle_tactical_action
 import logging
+from game_logging import format_unit_for_log
 import pygame
 import typing
 
@@ -54,7 +55,7 @@ def handle_deploy_ship(game, action: dict) -> None:
             deploy_order = DeployUnitOrder(carrier, {"docked_unit_id": docked_unit_id})
             if carrier.commander_component:
                 carrier.commander_component.add_order(deploy_order)
-                logger.debug(f"Issued DEPLOY_UNIT order for carrier {carrier.name} (docked unit ID: {docked_unit_id}).")
+                logger.debug(f"Issued DEPLOY_UNIT order for carrier {format_unit_for_log(carrier)} (docked unit ID: {docked_unit_id}).")
     game.sidebar_needs_update = True
 
 
@@ -76,7 +77,7 @@ def handle_launch_all_wings(game, action: dict) -> None:
             deploy_order = DeployAllWingsOrder(carrier)
             if carrier.commander_component:
                 carrier.commander_component.add_order(deploy_order)
-                logger.debug(f"Issued DEPLOY_ALL_WINGS order for carrier {carrier.name}.")
+                logger.debug(f"Issued DEPLOY_ALL_WINGS order for carrier {format_unit_for_log(carrier)}.")
     game.sidebar_needs_update = True
 
 
@@ -91,7 +92,7 @@ def handle_recall_ship(game, action: dict) -> None:
             dock_order = DockOrder(launched_unit, {"target_carrier_id": carrier.id})
             if launched_unit.commander_component:
                 launched_unit.commander_component.add_order(dock_order)
-                logger.debug(f"Issued DOCK order for launched wing {launched_unit.name} to dock to carrier {carrier.name}.")
+                logger.debug(f"Issued DOCK order for launched wing {format_unit_for_log(launched_unit)} to dock to carrier {format_unit_for_log(carrier)}.")
     game.sidebar_needs_update = True
 
 
@@ -186,7 +187,7 @@ def handle_unload_resources_nearest(game, action: dict) -> None:
             for order in orders_to_add:
                 if unit.commander_component:
                     unit.commander_component.add_order(order)
-                    logger.debug(f"Added UnloadResourcesOrder to unit {unit.name} queue targeting refinery ID {order.parameters['target_unit_id']}.")
+                    logger.debug(f"Added UnloadResourcesOrder to unit {format_unit_for_log(unit)} queue targeting refinery ID {order.parameters['target_unit_id']}.")
         else:
             if getattr(game, 'gui', None):
                 game.gui.show_warning_dialog(
@@ -208,7 +209,7 @@ def handle_lay_minefield(game, action: dict) -> None:
             minefield_type=mtype,
             shift_pressed=shift_pressed
         ))
-        logger.debug(f"GUI: Lay Minefield ({mtype}) button pressed for unit {unit.name} (id:{unit.id}).")
+        logger.debug(f"GUI: Lay Minefield ({mtype}) button pressed for unit {format_unit_for_log(unit)}.")
     game.sidebar_needs_update = True
 
 
@@ -228,9 +229,9 @@ def handle_set_stance(game, action: dict) -> None:
                 allowed_stances = unit.commander_component.get_allowed_stances()
                 if matching_stance in allowed_stances:
                     unit.commander_component.set_stance(matching_stance)
-                    logger.debug(f"Unit {unit.name} (id:{unit.id}) stance set to {matching_stance.name}.")
+                    logger.debug(f"Unit {format_unit_for_log(unit)} stance set to {matching_stance.name}.")
                 else:
-                    logger.warning(f"Unit {unit.name} (id:{unit.id}) stance {matching_stance.name} is not allowed.")
+                    logger.warning(f"Unit {format_unit_for_log(unit)} stance {matching_stance.name} is not allowed.")
                     if game.gui:
                         game.gui.show_warning_dialog(
                             f"Stance '{matching_stance.display_name}' is not allowed for unit '{unit.name}'.",
@@ -255,7 +256,7 @@ def handle_cycle_stance(game, action: dict) -> None:
                 current_idx = allowed_stances.index(current_stance)
                 next_idx = (current_idx + 1) % len(allowed_stances)
                 unit.commander_component.set_stance(allowed_stances[next_idx])
-                logger.debug(f"Unit {unit.name} (id:{unit.id}) stance cycled to {unit.commander_component.stance.name}.")
+                logger.debug(f"Unit {format_unit_for_log(unit)} stance cycled to {unit.commander_component.stance.name}.")
     game.sidebar_needs_update = True
 
 
@@ -330,13 +331,13 @@ def handle_toggle_inhibitor(game, action: dict) -> None:
                 turn_on = not unit.inhibitor_component.is_active
                 unit.commander_component.add_order(
                     ToggleInhibitorOrder(unit, {'turn_on': turn_on}))
-                logger.debug(f"Queued TOGGLE_INHIBITOR order for {unit.name}.")
+                logger.debug(f"Queued TOGGLE_INHIBITOR order for {format_unit_for_log(unit)}.")
             else:
                 success = unit.inhibitor_component.toggle(galaxy_ref=game.galaxy)
                 if success:
-                    logger.debug(f"Directly toggled inhibitor for {unit.name}.")
+                    logger.debug(f"Directly toggled inhibitor for {format_unit_for_log(unit)}.")
                 else:
-                    logger.debug(f"Direct inhibitor toggle failed for {unit.name}.")
+                    logger.debug(f"Direct inhibitor toggle failed for {format_unit_for_log(unit)}.")
                     if getattr(game, 'gui', None):
                         game.gui.show_warning_dialog(
                             f"Failed to toggle Hyperspace Inhibitor Field on unit <b>{unit.name}</b>.",
@@ -356,9 +357,9 @@ def handle_toggle_cloaking(game, action: dict) -> None:
         if isinstance(unit, Unit) and unit.cloaking_component:
             success = unit.cloaking_component.toggle()
             if success:
-                logger.debug(f"Directly toggled cloaking for {unit.name}.")
+                logger.debug(f"Directly toggled cloaking for {format_unit_for_log(unit)}.")
             else:
-                logger.debug(f"Direct cloaking toggle failed for {unit.name}.")
+                logger.debug(f"Direct cloaking toggle failed for {format_unit_for_log(unit)}.")
                 if getattr(game, 'gui', None):
                     game.gui.show_warning_dialog(
                         f"Failed to toggle Cloaking Device on unit <b>{unit.name}</b>.",

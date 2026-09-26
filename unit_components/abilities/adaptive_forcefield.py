@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 from geometry import Position
 from domain.coordinates import HexCoord
@@ -36,13 +37,13 @@ class AdaptiveForcefieldAbility(AbilityInstance):
         target_hex_coord: Optional[HexCoord] = None,
     ) -> bool:
         self.restore_effect(component, galaxy)
-        logger.debug(f"[{component.unit.name}] Adaptive Forcefield activated. Damage reduction: 75%.")
+        logger.debug(f"[{format_unit_for_log(component.unit)}] Adaptive Forcefield activated. Damage reduction: 75%.")
         return True
 
     def on_expire(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:
         from timed_effects import remove
         remove(component.unit, component.unit.id, self.definition.ability_type)
-        logger.debug(f"[{component.unit.name}] Adaptive Forcefield expired. Damage reduction removed.")
+        logger.debug(f"[{format_unit_for_log(component.unit)}] Adaptive Forcefield expired. Damage reduction removed.")
 
     def restore_effect(self, component, galaxy):
         from timed_effects import add

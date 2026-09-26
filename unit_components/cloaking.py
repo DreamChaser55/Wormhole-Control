@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import TYPE_CHECKING, Optional, Union
 
 from .base import UnitComponent
@@ -106,12 +107,12 @@ class CloakingDevice(UnitComponent):
         if self.is_destroyed or offline(self.unit):
             return
         self.is_active = True
-        logger.debug(f"[{self.unit.name}] Cloaking Device ({self.device_type.value}) activated.")
+        logger.debug(f"[{format_unit_for_log(self.unit)}] Cloaking Device ({self.device_type.value}) activated.")
 
     def deactivate(self) -> None:
         """Deactivate the cloaking field."""
         self.is_active = False
-        logger.debug(f"[{self.unit.name}] Cloaking Device ({self.device_type.value}) deactivated.")
+        logger.debug(f"[{format_unit_for_log(self.unit)}] Cloaking Device ({self.device_type.value}) deactivated.")
 
     def toggle(self) -> bool:
         """Toggle the cloaking field on or off.
@@ -122,7 +123,7 @@ class CloakingDevice(UnitComponent):
         """
         from dismantling import offline
         if self.is_destroyed or offline(self.unit):
-            logger.debug(f"[{self.unit.name}] Cloaking Device toggle failed: component is destroyed.")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] Cloaking Device toggle failed: component is destroyed.")
             return False
         if self.is_active:
             self.deactivate()
@@ -143,7 +144,7 @@ class CloakingDevice(UnitComponent):
         cost = self.get_antimatter_cost_per_turn()
         if not am_comp:
             logger.debug(
-                f"[{self.unit.name}] Cloaking Device deactivated: no AntimatterStorage on unit."
+                f"[{format_unit_for_log(self.unit)}] Cloaking Device deactivated: no AntimatterStorage on unit."
             )
             self.deactivate()
             return
@@ -153,7 +154,7 @@ class CloakingDevice(UnitComponent):
             from turn_briefing import unit_event
             unit_event(self.unit, "problem", "Cloaking device deactivated: insufficient antimatter", private=True, once=True)
             logger.debug(
-                f"[{self.unit.name}] Cloaking Device deactivated: insufficient antimatter "
+                f"[{format_unit_for_log(self.unit)}] Cloaking Device deactivated: insufficient antimatter "
                 f"({am_comp.current_amount:.1f} < {cost:.1f})."
             )
             self.deactivate()

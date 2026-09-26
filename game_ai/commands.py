@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import uuid
 import logging
+from game_logging import format_unit_for_log
 import traceback
 from typing import Any, Callable
 
@@ -1097,7 +1098,7 @@ class CommandGateway:
                 if order.order_type.name == "CONSTRUCT":
                     from location_validation import format_location
                     params = order.parameters
-                    logger.debug("Unit %s ordered to construct %s at %s via command.", unit.name,
+                    logger.debug("Unit %s ordered to construct %s at %s via command.", format_unit_for_log(unit),
                                  params["unit_template_name"], format_location(params["target_system_name"],
                                  params["target_hex_coord"], params["target_position"]))
 

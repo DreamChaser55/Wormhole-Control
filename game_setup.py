@@ -1,5 +1,6 @@
 """Game state bootstrap and starting fleet setup."""
 import logging
+from game_logging import format_unit_for_log
 import random
 import typing
 import copy
@@ -256,7 +257,7 @@ def spawn_units(
                 if hex_obj and hex_obj.units:
                     spawned = hex_obj.units[-1]
                     spawned.name = f"{player.name} {spawned.name}"
-                    logger.debug(f"Added {spawned.name} to {target_system.name} at {spawn_hex} for {player.name}")
+                    logger.debug(f"Added {format_unit_for_log(spawned)} to {target_system.name} at {spawn_hex} for {player.name}")
 
         else:
             # Testing profile: Full complement of ships, stations, and carrier
@@ -283,4 +284,4 @@ def spawn_units(
                 if hex_obj and hex_obj.units:
                     spawned = hex_obj.units[-1]
                     spawned.name = f"{player.name} {spawned.name}"
-                    logger.debug(f"Added {spawned.name} to {target_system.name} at {spawn_hex} for {player.name}")
+                    logger.debug(f"Added {format_unit_for_log(spawned)} to {target_system.name} at {spawn_hex} for {player.name}")

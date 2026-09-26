@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 import math
 from typing import Optional, List, TYPE_CHECKING
 from geometry import Position, distance
@@ -40,7 +41,7 @@ class MissileBatteriesAbility(AbilityInstance):
     ) -> bool:
         spawned = self._spawn_missile_platforms(component, galaxy, self.definition.duration)
         self.spawned_unit_ids = spawned
-        logger.debug(f"[{component.unit.name}] Missile Batteries: spawned {len(spawned)} platforms.")
+        logger.debug(f"[{format_unit_for_log(component.unit)}] Missile Batteries: spawned {len(spawned)} platforms.")
         return True
 
     def on_turn_update(self, component: 'AbilityComponent', galaxy: 'Galaxy') -> None:

@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 
 from .base import UnitComponent
@@ -100,7 +101,7 @@ class RepairComponent(UnitComponent):
 
         player = self.unit.owner
         if player.credits <= 0:
-            logger.debug(f"Repair by {self.unit.name} on {self.target.name} halted due to insufficient credits.")
+            logger.debug(f"Repair by {format_unit_for_log(self.unit)} on {format_unit_for_log(self.target)} halted due to insufficient credits.")
             return
 
         max_hp_to_repair = min(self.repair_rate, player.credits / self.credit_cost_per_hp)
@@ -123,4 +124,4 @@ class RepairComponent(UnitComponent):
         if hp_repaired > 0:
             cost = int(hp_repaired * self.credit_cost_per_hp)
             player.credits = max(0, player.credits - cost)
-            logger.debug(f"Unit {self.unit.name} repaired {self.target.name} for {hp_repaired} HP, costing {cost} credits.")
+            logger.debug(f"Unit {format_unit_for_log(self.unit)} repaired {format_unit_for_log(self.target)} for {hp_repaired} HP, costing {cost} credits.")

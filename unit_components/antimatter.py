@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 from typing import Optional, TYPE_CHECKING
 import dataclasses
 
@@ -62,7 +63,7 @@ class AntimatterStorage(UnitComponent):
             return False
         if self.current_amount >= amount:
             self.current_amount -= amount
-            logger.debug(f"[{self.unit.name}] Consumed {amount} antimatter. Remaining: {self.current_amount:.1f}/{self.max_capacity:.1f}")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] Consumed {amount} antimatter. Remaining: {self.current_amount:.1f}/{self.max_capacity:.1f}")
             return True
         return False
 
@@ -213,4 +214,4 @@ class AntimatterHarvester(UnitComponent):
         effective_rate = self.harvest_rate * multiplier
         added = am_comp.add(effective_rate)
         if added > 0:
-            logger.debug(f"[{self.unit.name}] Harvested {added:.1f} antimatter (base {self.harvest_rate:.1f} x {multiplier:.1f}x) near {nearby_star.name}. Current: {am_comp.current_amount:.1f}/{am_comp.max_capacity:.1f}")
+            logger.debug(f"[{format_unit_for_log(self.unit)}] Harvested {added:.1f} antimatter (base {self.harvest_rate:.1f} x {multiplier:.1f}x) near {nearby_star.name}. Current: {am_comp.current_amount:.1f}/{am_comp.max_capacity:.1f}")

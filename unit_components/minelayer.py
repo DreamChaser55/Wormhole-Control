@@ -1,4 +1,5 @@
 import logging
+from game_logging import format_unit_for_log
 import typing
 from typing import Optional, Tuple, TYPE_CHECKING
 
@@ -120,5 +121,5 @@ class MinelayerComponent(UnitComponent):
             minefield_type=minefield_type
         )
         hex_obj.add_minefield(minefield)
-        logger.debug(f"{self.unit.name} deployed {minefield.name} in {system_name}:{hex_coord} at pos {position}")
+        logger.debug(f"{format_unit_for_log(self.unit)} deployed {minefield.name} in {system_name}:{hex_coord} at pos {position}")
         return minefield
