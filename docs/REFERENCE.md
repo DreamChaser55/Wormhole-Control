@@ -507,7 +507,7 @@ report mandatory returns and endurance losses.
 | Long Range Bomber Wing | Carriers | STRIKECRAFT_WING wing | 7.00/7 | 260 | 2 | 0.00 | Lightly protected bomber wing with 292.5 effective weapon range and a nine-turn cooldown; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors. |
 | Medium Strikecraft Station | Carriers | MEDIUM station | 46.80/50 | 1904 | 19 | 0.47 | Economical stationary four-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Escort Carrier | Carriers | MEDIUM ship | 49.30/50 | 1979 | 20 | 0.49 | Designed for light carrier. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
-| Large Strikecraft Station | Carriers | LARGE station | 84.30/100 | 3529 | 28 | 0.84 | Large stationary eight-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
+| Large Strikecraft Station | Carriers | LARGE station | 86.30/100 | 3589 | 28 | 0.86 | Large stationary eight-wing base for local-sector defense. Builds and replenishes strikecraft wings; select production separately for each slot. |
 | Fleet Carrier | Carriers | HUGE ship | 166.60/200 | 6998 | 37 | 1.67 | Designed for carrier command. Inter-system travel. Select a built-in strikecraft wing design using the production picker. |
 | Missile Platform | Combat | TINY station | 10.00/10 | 400 | 6 | 0.10 | Designed for local missile defense. Stationary installation. |
 | Patrol Cutter | Combat | TINY ship | 10.00/10 | 400 | 6 | 0.10 | Designed for local patrol. Local-sector operations; Tiny craft can travel aboard a hangar transport. |
