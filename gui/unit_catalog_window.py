@@ -9,10 +9,13 @@ from display_config import display_config_for
 from events import ConstructEvent
 from unit_catalog import CATEGORIES, describe_template
 from unit_templates import get_all_templates_for_player
+from resource_costs import ResourceCost, resource_balances
+from game_ai.commands import construction_budget
 
 
 def catalog_entries(templates, *, search='', category='All roles', hull='All hulls',
-                    kind='All units', affordable=False, credits=0):
+                    kind='All units', affordable=False, budget=None, builder_count=1):
+    budget = budget if budget is not None else ResourceCost().to_dict()
     entries = [describe_template(key, raw) for key, raw in templates.items()]
     query = search.casefold().strip()
     return sorted((entry for entry in entries
@@ -21,7 +24,7 @@ def catalog_entries(templates, *, search='', category='All roles', hull='All hul
                    and (category == 'All roles' or entry['category'] == category)
                    and (hull == 'All hulls' or entry['hull_size'] == hull)
                    and (kind == 'All units' or entry['kind'] == kind)
-                   and (not affordable or entry['credit_cost'] <= credits)
+                   and (not affordable or ResourceCost.from_dict(entry['resource_cost']).scaled(builder_count).affordable(budget))
                    and (not query or query in ' '.join([entry['name'], entry['template_name'],
                        entry['description'], *entry['roles'], *entry['abilities']]).casefold())),
                   key=lambda entry: (entry['category'], entry['credit_cost'], entry['name']))
@@ -44,7 +47,8 @@ def details_html(entry):
                          if not (k == 'cloaking_radius' and not v))
     lines = [f"<b>{escape(entry['name'])}</b>", escape(entry['description']),
              f"Initial unit name: {escape(entry['default_unit_name'])}",
-             f"{label(entry['hull_size'])} {entry['kind']} · {entry['credit_cost']} credits · {entry['turns']} turns",
+             f"{label(entry['hull_size'])} {entry['kind']} · {entry['turns']} turns",
+             f"<b>Cost:</b> {ResourceCost.from_dict(entry['resource_cost']).describe()}",
              f"Hull: {entry['hull_used']:.2f}/{entry['hull_capacity']:g} · HP: {entry['hit_points']} · Upkeep: {entry['upkeep']:.2f}",
              '<b>Movement</b><br>' + values(entry['movement']),
              f"Fuel capacity: {entry['fuel_capacity']:g}",
@@ -129,7 +133,8 @@ class UnitCatalogWindow:
             self.kill()
             return
         templates = get_all_templates_for_player(self.player)
-        stamp = (self.player.credits, tuple((key, id(raw)) for key, raw in templates.items()))
+        stamp = (resource_balances(self.player), self.budget(queue=False), self.budget(queue=True),
+                 tuple((key, id(raw)) for key, raw in templates.items()))
         if stamp != self._stamp:
             self._stamp = stamp
             self.refresh()
@@ -143,8 +148,8 @@ class UnitCatalogWindow:
         templates = get_all_templates_for_player(self.player)
         rows = catalog_entries(templates, search=self.search.get_text(), category=self.choice(self.category),
             hull=self.choice(self.hull), kind=self.choice(self.kind),
-            affordable=self.choice(self.affordability) == 'Affordable', credits=self.player.credits)
-        entries = {f"{entry['name']} ({entry['credit_cost']}c)": entry for entry in rows}
+            affordable=self.choice(self.affordability) == 'Affordable', budget=self.budget(queue=False), builder_count=len(self.units))
+        entries = {f"{entry['name']} ({entry['credit_cost']}c / {entry['resource_cost']['metal']:g}m / {entry['resource_cost']['crystal']:g}x)": entry for entry in rows}
         if list(entries) != list(self.entries):
             scroll = self.list.scroll_bar.start_percentage if self.list.scroll_bar else 0
             self.list.set_item_list(list(entries))
@@ -153,6 +158,12 @@ class UnitCatalogWindow:
         self.entries = entries
         entry = next((e for e in rows if e['template_name'] == self.selected_key), None)
         self.show_entry(entry)
+
+    def budget(self, *, queue):
+        try:
+            return construction_budget(self.game, self.player, self.units, queue=queue)
+        except ValueError:
+            return {name: -1 for name in ('credits', 'metal', 'crystal')}
 
     def show_entry(self, entry):
         previous_key = self.selected_key
@@ -178,14 +189,19 @@ class UnitCatalogWindow:
                 button.select() if selected else button.unselect()
         if entry:
             buildable = self.valid_context() and all(u.constructor_component.can_build(self.selected_key) for u in self.units)
-            affordable = self.player.credits >= entry['credit_cost'] * len(self.units)
+            cost = ResourceCost.from_dict(entry['resource_cost']).scaled(len(self.units))
+            build_budget, queue_budget = self.budget(queue=False), self.budget(queue=True)
+            affordable = cost.affordable(build_budget)
             self.price_label.set_text(
-                f"Total: {entry['credit_cost'] * len(self.units)} credits "
+                f"Total: {cost.credits:g}c / {cost.metal:g}m / {cost.crystal:g}x "
                 f"({len(self.units)} {'builder' if len(self.units) == 1 else 'builders'})")
             if buildable:
-                self.queue_button.enable()
+                if cost.affordable(queue_budget):
+                    self.queue_button.enable()
                 if affordable:
                     self.build_button.enable()
+            self.build_button.set_tooltip(f'Requires {cost.describe()}. Missing: {cost.shortfall(build_budget).describe()}.')
+            self.queue_button.set_tooltip(f'Requires {cost.describe()}. Missing after reservations: {cost.shortfall(queue_budget).describe()}.')
 
     def process_event(self, event):
         self.update()

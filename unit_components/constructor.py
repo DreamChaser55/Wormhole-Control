@@ -44,6 +44,7 @@ from constants import (
 
 from unit_templates import UNIT_TEMPLATES, get_all_templates_for_player
 from construction_customization import customize_template, validate_template_overrides, validate_override_values, OVERRIDE_FIELDS
+from resource_costs import ResourceCost, template_cost
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -425,11 +426,17 @@ class BuildableUnit:
     unit_template_name: str
     time_to_build: int
     cost_credits: int
+    cost_metal: float = 0
+    cost_crystal: float = 0
+
+    @property
+    def resource_cost(self):
+        return ResourceCost(self.cost_credits, self.cost_metal, self.cost_crystal)
 
 
 class Constructor(UnitComponent):
     """A component that allows a unit to construct other units (stations) and refit friendly units."""
-    SCHEMA_VERSION = 3
+    SCHEMA_VERSION = 4
     STATE_CONFIG = ('build_range',)
     STATE_RUNTIME = ('current_construction_target', 'construction_progress', 'time_to_build', 'construction_order_id', 'current_refit_target', 'refit_progress', 'refit_time', 'refit_order_id')
     STATE_REFS = ()
@@ -449,7 +456,14 @@ class Constructor(UnitComponent):
 
         if self.current_refit_target is not None:
             from state_codec import number, fields
-            fields(self.current_refit_target, ("target_unit_id", "action", "component_type", "component_config", "cost_credits", "time_to_build", "payer_id", "salvage_due"), "refit")
+            fields(self.current_refit_target, ("target_unit_id", "action", "component_type", "component_config", "cost_credits", "time_to_build", "payer_id", "salvage_due", "resource_cost", "resource_salvage"), "refit")
+            cost = ResourceCost.from_dict(self.current_refit_target['resource_cost'])
+            salvage = ResourceCost.from_dict(self.current_refit_target['resource_salvage'])
+            if cost.credits != self.current_refit_target['cost_credits'] or salvage.credits != self.current_refit_target['salvage_due']:
+                raise ValueError('Inconsistent refit accounting')
+            if ((self.current_refit_target['action'] == 'ADD' and salvage != ResourceCost())
+                    or (self.current_refit_target['action'] == 'REMOVE' and cost != ResourceCost())):
+                raise ValueError('Invalid refit charge or salvage for action')
             number(self.current_refit_target.get("target_unit_id"), "refit.target_unit_id", 0, integer=True)
             if self.current_refit_target.get("action") not in ("ADD", "REMOVE"):
                 raise ValueError("Invalid refit action")
@@ -566,10 +580,13 @@ class Constructor(UnitComponent):
         for name, template in templates.items():
             if _is_strikecraft_wing_template(template):
                 continue
+            cost = template_cost(template)
             buildables.append(BuildableUnit(
                 unit_template_name=name,
                 time_to_build=template.get("build_time", 10),
-                cost_credits=template.get("build_cost", 500)
+                cost_credits=template.get("build_cost", 500),
+                cost_metal=cost.metal,
+                cost_crystal=cost.crystal
             ))
         return buildables
 
@@ -581,10 +598,13 @@ class Constructor(UnitComponent):
         if template:
             if _is_strikecraft_wing_template(template):
                 return None
+            cost = template_cost(template)
             return BuildableUnit(
                 unit_template_name=unit_template_name,
                 time_to_build=template.get("build_time", 10),
-                cost_credits=template.get("build_cost", 500)
+                cost_credits=template.get("build_cost", 500),
+                cost_metal=cost.metal,
+                cost_crystal=cost.crystal
             )
         return None
 
@@ -620,15 +640,16 @@ class Constructor(UnitComponent):
             return False
 
         owner = self.unit.owner
-        if owner.credits < buildable.cost_credits:
-            logger.debug(f"Error: Not enough credits to build {unit_template_name}.")
+        if not buildable.resource_cost.pay(owner):
+            logger.debug(f"Error: Not enough resources to build {unit_template_name}.")
             return False
-        owner.credits -= buildable.cost_credits
 
         self.current_construction_target = dict(template_name=unit_template_name, system_name=system_name, hex_coord=hex_coord, position=position,
                                                 turret_type_override=turret_type_override, defense_type_override=defense_type_override)
         self.construction_order_id = order.public_id if order else None
         self._construction_order_ref = order
+        if order is not None:
+            order.record_charge(buildable.resource_cost, owner.id)
         self.time_to_build = buildable.time_to_build
         self.construction_progress = 0
         from location_validation import format_location
@@ -697,21 +718,22 @@ class Constructor(UnitComponent):
                 or distance(self.unit.position, target_unit.position) > self.build_range):
             return False
         result = evaluate_refit(target_unit, action, component_type, component_config)
-        if result.errors or self.unit.owner.credits < result.cost_credits:
+        if result.errors or not result.resource_cost.affordable(self.unit.owner):
             return False
         owner = self.unit.owner
-        owner.credits -= result.cost_credits
+        if not result.resource_cost.pay(owner):
+            return False
         self.current_refit_target = {
             "target_unit_id": target_unit.id, "action": action,
             "component_type": result.component_name, "component_config": result.configuration,
             "cost_credits": result.cost_credits, "time_to_build": result.duration,
             "payer_id": owner.id, "salvage_due": result.salvage,
+            "resource_cost": result.resource_cost.to_dict(), "resource_salvage": result.resource_salvage.to_dict(),
         }
         self.refit_order_id = order.public_id if order else None
         self._refit_order_ref = order
         if order:
-            order._charged_credits = result.cost_credits
-            order._charged_player_id = owner.id
+            order.record_charge(result.resource_cost, owner.id)
         self.refit_time = result.duration
         self.refit_progress = 0
         return True
@@ -741,9 +763,9 @@ class Constructor(UnitComponent):
         if payer is None and self.unit.owner.id == job['payer_id']:
             payer = self.unit.owner
         if payer is not None:
-            payer.credits += job['salvage_due'] if success else job['cost_credits']
+            ResourceCost.from_dict(job['resource_salvage'] if success else job['resource_cost']).refund(payer)
         if order:
-            order._charged_credits = 0
+            order.clear_charge()
         self.current_refit_target = None
         self.refit_order_id = None
         self._refit_order_ref = None
@@ -839,6 +861,9 @@ class Constructor(UnitComponent):
             return
 
         # Construction complete; reset building state variables.
+        order = self._owning_construction_order()
+        if order is not None:
+            order.clear_charge()
         self.construction_order_id = None
         self._construction_order_ref = None
         self.current_construction_target = None

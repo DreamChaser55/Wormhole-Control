@@ -270,29 +270,44 @@ must explicitly pass `record_intel=False`.
 
 Preflight projects order-associated population, construction and docking reservations,
 replacement, cancellation, route edits, toggles, agent relocation/sabotage, CI cooldowns,
-credits and ship antimatter in array order. Construction credits are reserved only from
+credits, metal, crystal and ship antimatter in array order. Construction resources are reserved only from
 the initiating player's treasury; allied/enemy build queues cannot reduce that
 budget. Allied docking and colony-population reservations still share capacity.
 Only guaranteed effects can support later commands; feature sections specify which
 effects are immediate and which merely reserve resources until execution.
 
-`active_player.resources.credit_budget` exposes the initial preflight budget in
-both built-in AI and Codex observations: exact `treasury_credits`, `reserved_credits`
-and `available_credits`, plus up to 64 `reservations` and an `omitted_count`.
-Each reservation names its owned `unit_id`, public `order_id`, command `type` and
-`credits`; construction also includes `template_name`. Totals include omitted entries,
-retain fractional precision and may show a negative available balance. The view uses
-the gateway's reservation ledger without charging or starting work. It includes pending
-construction and recruitment reservations; paid construction is already reflected in
-the treasury. This is a validation budget, not a forecast of future cash flow.
+`active_player.resources.resource_budget` exposes the initial preflight budget in
+both built-in AI and Codex observations. `treasury`, `reserved` and `available` each
+contain exact `credits`, `metal` and `crystal` amounts. Up to 64 `reservations`
+identify owned `unit_id`, public `order_id`, command `type` and a `resources`
+bundle; construction also identifies `template_name`. Totals include omitted
+entries and preserve fractional precision and negative available balances.
 
-Plan from `available_credits` without subtracting existing reservations again.
-Each new Construct commits the full catalogue price for every selected builder,
-including queued builds; commands earlier in the batch can spend or release funds.
-Construct's `template_names` is a treasury-based shortlist, not a combined-affordability
-guarantee. The prompt and command catalogue explain this distinction. Future income,
-trade and salvage cannot finance the batch. Insufficient construction funds reject
-the batch before any commands apply, with guidance to reduce or defer spending.
+The budget includes pending and approaching unpaid construction, plus credit-only
+recruitment reservations. Paid construction is already reflected in the treasury.
+Only the initiating player's orders reserve their resources; allied/enemy queues
+never reduce that budget. This is a validation budget, not escrow or a forecast.
+
+Use each `available` amount directly without subtracting reservations again.
+Each Construct commits the full catalogue `resource_cost` for every selected
+builder, including queued builds. Earlier commands can spend resources or release
+reservations and eligible paid-job refunds. Fortification upgrades project their
+three-resource cost in the same batch. Per-unit `construct.template_names` uses
+the replacement budget; `construct.prices` supplies `resource_cost`,
+`replacement_shortfall` and `queued_shortfall` for each design. These single-builder
+quotes are not a combined-affordability guarantee.
+Future income, mining deliveries, trade and salvage cannot finance the batch.
+Insufficient resources reject the complete batch before any commands apply;
+execution separately rechecks actual stockpiles when work starts.
+
+Construction and wing catalogue entries expose `resource_cost` and
+`resource_shortfall` alongside their credit price. Construction shortfalls use
+the available budget after reservations; wing shortfalls use the current treasury
+because configuring production is free. Planetary upgrade options include
+`resource_shortfall` against the available budget. Mineral prices derive uniformly
+from hull capacity and equipment usage, including custom human designs; turret/defense overrides preserve them.
+Use mining, matching refinery deliveries and passive-yield colonies to replenish
+materials. Raw cargo cannot be spent and credits cannot substitute for minerals.
 
 Replacement or cancellation releases the affected pending reservations, not effects
 already completed synchronously (such as a colonist load). Construction/refit jobs
@@ -631,7 +646,7 @@ omitting `template_name` is invalid. Overrides retain existing customization rul
 statistics, variants, prices and construction duration.
 
 Selection is free, preserves orders and stance, and works while occupied,
-replenishing, paused or short of credits. Only the slot under construction is
+replenishing, paused or short of any resource. Only the slot under construction is
 locked. Existing wings retain their equipment; changes configure future replacements.
 Selection follows the [shared order contract](#shared-order-contract) and
 [ordered commit guarantees](#commit-guarantees-and-lifecycle-feedback).
@@ -643,7 +658,7 @@ own worker priority, payment timing, slot assignment, replenishment and pause be
 Owner/allied `capability_details.strikecraft_bay.slots` exposes each `slot_index`,
 `production_template`, nullable overrides, `wing_id`, `wing_name`, `status`
 (`empty`, `docked`, `launched`, `building`), `production_turns`,
-`production_credit_cost` and `edit_blocker`. Unselected costs/durations are null.
+`production_credit_cost`, `production_resource_cost`, `production_shortfall` and `edit_blocker`. Unselected costs/durations are null.
 The bay exposes `production_enabled`, `constructing`, `construction_slot_index`,
 `construction_progress`, `replenishing_unit_id` and `replenish_progress`.
 Owned command options expose editable `slot_indices`, `can_clear`, template names,
@@ -707,7 +722,7 @@ later command. Reservation release and failure handling follow the
 [commit guarantees](#commit-guarantees-and-lifecycle-feedback); preflight never
 consumes invasion randomness.
 
-Exact colony observations include `planetary_defenses`; own/allied ships include
+Exact colony observations include `planetary_defenses` with `next_upgrade_resources`; own/allied ships include
 `troop_cargo`. Enemy cargo remains private. Command options expose costs, ranges,
 amount limits, blockers, probabilities and casualty outcomes. Recheck these before
 issuing an order; arrival can change odds. Recruitment is private to the owner;
@@ -778,7 +793,8 @@ Use exactly one owned executor: a separate Constructor for ships/stations, or th
 owning carrier for an already-docked wing. The production toggle is immediate and
 requires a strict boolean. Design selection leaves the production toggle unchanged.
 `command_options.dismantle_unit.targets` provides blockers, recursive members,
-current refund estimates, total duration, discarded cargo and paid-work waits.
+current credit and three-resource refund estimates (`estimated_resource_refund`),
+total duration, discarded cargo and paid-work waits.
 Owned/allied details expose dismantling phase/progress and bay production state;
 enemy-private component and order information remains hidden.
 

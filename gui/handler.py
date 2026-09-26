@@ -370,6 +370,8 @@ class GUI_Handler:
             self.unit_catalog_window.update()
         if self.wing_production_window:
             self.wing_production_window.update()
+        if self.retrofit_wizard:
+            self.retrofit_wizard.update()
         self.manager.update(time_delta)
         # Forward update to unit editor so its internal widgets animate/update
         if self.unit_editor_window and self.unit_editor_window.is_visible:

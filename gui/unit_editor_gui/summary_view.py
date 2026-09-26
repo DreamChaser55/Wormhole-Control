@@ -11,6 +11,7 @@ from .validation import update_feedback
 
 from constants import HULL_CAPACITIES, HIT_POINTS, HullSize
 from economy import calculate_unit_upkeep
+from resource_costs import construction_cost
 from custom_unit_templates import (
     HULL_BASE_COST,
     HULL_BASE_BUILD_TIME,
@@ -42,6 +43,7 @@ def update_summary(editor) -> None:
         if not math.isfinite(used):
             raise ValueError()
         build_cost = HULL_BASE_COST[editor._hull_size] + int(round(used * COMPONENT_COST_PER_HULL_POINT))
+        resources = construction_cost(editor._hull_size, used, build_cost)
         base_bt = HULL_BASE_BUILD_TIME[editor._hull_size]
         extra_bt = max(0, round((used / max(1.0, capacity)) * base_bt))
         build_time = base_bt + extra_bt
@@ -59,7 +61,7 @@ def update_summary(editor) -> None:
     lines += [
         f"<b>Hull:</b> {editor._hull_size.name}   <b>HP:</b> {hp}",
         f"<b>Hull capacity:</b> <font color='{cap_color}'>{used:g} / {capacity:g} {capacity_excess(used, capacity)}</font>",
-        f"<b>Build cost:</b> {build_cost} credits",
+        f"<b>Build cost:</b> {resources.describe()}",
         f"<b>Build time:</b> {build_time} turns",
         f"<b>Predicted upkeep:</b> {upkeep_str}",
         "",

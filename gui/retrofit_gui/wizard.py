@@ -8,6 +8,7 @@ retrofits on friendly starships.
 from __future__ import annotations
 import logging
 import math
+from resource_costs import ResourceCost, resource_balances
 from gui.equipment_input import INPUT_FIELDS, install_feedback_theme, mark_entry, capacity_excess
 import typing
 from typing import Optional, List, Dict, Any, Set
@@ -164,7 +165,8 @@ class RetrofitWizardWindow:
         self._hull_impact_label: Optional[pygame_gui.elements.UILabel] = None
         self._added_cost_label: Optional[pygame_gui.elements.UILabel] = None
         self._credit_cost_label: Optional[pygame_gui.elements.UILabel] = None
-        self._player_credits_label: Optional[pygame_gui.elements.UILabel] = None
+        self._metal_cost_label: Optional[pygame_gui.elements.UILabel] = None
+        self._crystal_cost_label: Optional[pygame_gui.elements.UILabel] = None
         self._build_time_label: Optional[pygame_gui.elements.UILabel] = None
         self._upkeep_label: Optional[pygame_gui.elements.UILabel] = None
         self._status_box: Optional[pygame_gui.elements.UITextBox] = None
@@ -349,8 +351,13 @@ class RetrofitWizardWindow:
         # The constructor's owner pays even when the target belongs to an ally.
         player = self.constructor_units[0].owner if self.constructor_units else self.target_unit.owner
         errors = list(result.errors)
-        if not errors and player.credits < result.cost_credits:
-            errors.append(f'Insufficient credits: {result.cost_credits} required, {player.credits} available.')
+        try:
+            cost = result.resource_cost
+        except (ValueError, OverflowError):
+            cost = ResourceCost()
+            errors.append('Cost preview unavailable: reduce equipment values.')
+        if not errors and not cost.affordable(player):
+            errors.append(f'Insufficient resources. Missing: {cost.shortfall(player).describe()}.')
         # Validation checks both complete Designer cost and projected installed
         # usage. Report the binding limit when legacy/live cost hints differ.
         try:
@@ -367,14 +374,15 @@ class RetrofitWizardWindow:
         labels = (
             (self._hull_impact_label, f'Hull Usage: {proposed:g} / {self.target_unit.hull_capacity:g}'),
             (self._added_cost_label, f'Component Hull: +{result.hull_cost:.1f} HP'),
-            (self._credit_cost_label, f'Credit Cost: {result.cost_credits} c'),
-            (self._player_credits_label, f'Available Credits: {player.credits} c'),
+            (self._credit_cost_label, f'Credits: {cost.credits:g} / {player.credits:g}'),
+            (self._metal_cost_label, f'Metal: {cost.metal:g} / {player.metal:g}'),
+            (self._crystal_cost_label, f'Crystal: {cost.crystal:g} / {player.crystal:g}'),
             (self._build_time_label, f'Est. Time to Build: {result.duration} Turns'),
             (self._upkeep_label, f'Upkeep Impact: +{0 if self.target_unit.hull_size == HullSize.STRIKECRAFT_WING else result.hull_cost * UPKEEP_COST_PER_HULL_POINT:.2f} cr/turn'),
         )
         for label, text in labels:
             if label:
-                if unavailable and label is not self._player_credits_label:
+                if unavailable:
                     text = text.split(':', 1)[0] + ': unavailable'
                 label.set_text(text)
         excess = capacity_excess(proposed, self.target_unit.hull_capacity) if not unavailable else ''
@@ -390,6 +398,7 @@ class RetrofitWizardWindow:
             self._confirm_button.enable() if self.is_valid else self._confirm_button.disable()
         if not errors:
             self._comp_config = result.configuration
+        self._resource_stamp = resource_balances(player)
         installed = installed_configuration(self.target_unit)
         for ability, button in self._ability_buttons.items():
             missing = [key for key in get_ability_required_components(ability) if not getattr(installed, key)]
@@ -398,6 +407,13 @@ class RetrofitWizardWindow:
                 button.disable()
             else:
                 button.enable()
+
+    def update(self):
+        if not self.is_visible or not self.window.alive():
+            return
+        player = self.constructor_units[0].owner if self.constructor_units else self.target_unit.owner
+        if resource_balances(player) != getattr(self, '_resource_stamp', None):
+            self._sync_cost_and_summary()
 
     def process_event(self, event: pygame.event.Event) -> Optional[Dict[str, Any]]:
         """Processes pygame events and returns an action payload if an action occurred."""

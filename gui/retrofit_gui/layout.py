@@ -343,10 +343,14 @@ def _build_summary_panel(
     wizard._added_cost_label = make_label(pygame.Rect(pad, y, w - pad * 2, small_h), "Component Hull: +0.0 HP", mgr, pan, object_id="#sidebar_info_label")
     y += small_h + int(4 * scale_y)
 
-    wizard._credit_cost_label = make_label(pygame.Rect(pad, y, w - pad * 2, small_h), "Credit Cost: 0 c", mgr, pan, object_id="#sidebar_info_label")
+    make_label(pygame.Rect(pad, y, w - pad * 2, small_h), 'Cost / Available', mgr, pan, object_id='#sidebar_info_label')
+    y += small_h + int(4 * scale_y)
+    wizard._credit_cost_label = make_label(pygame.Rect(pad, y, w - pad * 2, small_h), "Credits: 0 / 0", mgr, pan, object_id="#sidebar_info_label")
     y += small_h + int(4 * scale_y)
 
-    wizard._player_credits_label = make_label(pygame.Rect(pad, y, w - pad * 2, small_h), "Available Credits: 0 c", mgr, pan, object_id="#sidebar_info_label")
+    wizard._metal_cost_label = make_label(pygame.Rect(pad, y, w - pad * 2, small_h), "Metal: 0 / 0", mgr, pan, object_id="#sidebar_info_label")
+    y += small_h + int(4 * scale_y)
+    wizard._crystal_cost_label = make_label(pygame.Rect(pad, y, w - pad * 2, small_h), "Crystal: 0 / 0", mgr, pan, object_id="#sidebar_info_label")
     y += small_h + int(4 * scale_y)
 
     wizard._build_time_label = make_label(pygame.Rect(pad, y, w - pad * 2, small_h), "Est. Time to Build: 1 Turn", mgr, pan, object_id="#sidebar_info_label")

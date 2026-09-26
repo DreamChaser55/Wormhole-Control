@@ -87,8 +87,8 @@ def get_refit_context_options(game, actors: typing.List[Unit], target_unit: Unit
         evaluation = evaluate_refit(target_unit, 'REMOVE', comp_cls.__name__)
         if evaluation.errors:
             continue
-        salvage_refund = evaluation.salvage
-        remove_options.append((f"{comp_inst.DISPLAY_NAME} (+{salvage_refund}c / -{comp_inst.hull_cost:.0f}h)", f"refit_remove_{comp_cls.__name__}"))
+        salvage = evaluation.resource_salvage
+        remove_options.append((f"{comp_inst.DISPLAY_NAME} (+{salvage.credits:g}c / {salvage.metal:g} metal / {salvage.crystal:g} crystal)", f"refit_remove_{comp_cls.__name__}"))
 
     if remove_options:
         refit_options.append(("Remove Component", remove_options))

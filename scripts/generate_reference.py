@@ -80,6 +80,8 @@ def version_table(root=ROOT):
         ('Response schema', 'game_ai/schema.py', 'TURN_PLAN_SCHEMA_NAME'),
         ('Prompt cache', 'game_ai/adapters/openai_responses.py', 'PROMPT_CACHE_KEY'),
         ('Local socket protocol', 'game_control_protocol.py', 'PROTOCOL_VERSION'),
+        ('Constructor component', 'unit_components/constructor.py', 'Constructor.SCHEMA_VERSION'),
+        ('Commander component', 'unit_components/commander.py', 'Commander.SCHEMA_VERSION'),
         ('Strikecraft Bay component', 'unit_components/strikecraft.py', 'StrikecraftBayComponent.SCHEMA_VERSION'),
         ('Strikecraft Wing component', 'unit_components/strikecraft.py', 'StrikecraftWingComponent.SCHEMA_VERSION'),
     )
@@ -119,9 +121,9 @@ def generated_blocks():
     entries = [describe_template(key, raw) for key, raw in _load_templates().items()]
     entries.sort(key=lambda e: (e['category'], e['credit_cost'], e['name']))
     blocks['unit-catalog'] = table(
-        ['Design', 'Category', 'Hull / kind', 'Hull used', 'Credits', 'Turns', 'Upkeep', 'Role and operation'],
+        ['Design', 'Category', 'Hull / kind', 'Hull used', 'Credits', 'Metal', 'Crystal', 'Turns', 'Upkeep', 'Role and operation'],
         [(e['name'], e['category'], e['hull_size'] + ' ' + e['kind'], f"{e['hull_used']:.2f}/{e['hull_capacity']:g}",
-         e['credit_cost'], e['turns'], f"{e['upkeep']:.2f}", e['description']) for e in entries])
+         e['credit_cost'], e['resource_cost']['metal'], e['resource_cost']['crystal'], e['turns'], f"{e['upkeep']:.2f}", e['description']) for e in entries])
     blocks['environment'] = environmental_tables()
     blocks['versions'] = version_table()
     return blocks

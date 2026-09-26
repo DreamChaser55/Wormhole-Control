@@ -6,6 +6,7 @@ from pygame_gui.elements import UIWindow, UITextBox, UIButton
 from display_config import display_config_for
 from campaign_graph import find_unit
 from dismantling import evaluate
+from resource_costs import ResourceCost
 from gui.theme_loader import preload_rich_text_fonts
 
 
@@ -38,13 +39,13 @@ class DismantlingWindow:
         preview = evaluate(self.unit, find_unit(self.game.galaxy, self.target_id), self.game.galaxy)
         lines = [f'<b>{escape(self.unit.name)}</b> will dismantle:']
         for member in preview.members:
-            lines.append(f"{escape(member['name'])}: {member['turns']} turns, approximately {member['estimated_refund']:.2f} credits")
+            lines.append(f"{escape(member['name'])}: {member['turns']} turns, approximately {ResourceCost.from_dict(member['estimated_resource_refund']).describe()}")
             if member['cargo_lost']:
                 labels = {'current_amount': 'Antimatter', 'raw_metal_cargo': 'Raw metal',
                           'raw_crystal_cargo': 'Raw crystal', 'population_cargo': 'Colonists', 'troops': 'Troops'}
                 cargo = ', '.join(f'{escape(labels.get(k, k))}: {v:g}' for k, v in member['cargo_lost'].items())
                 lines.append('Discarded cargo: ' + cargo)
-        lines.append(f'<br>Total: {preview.duration} owner turns; estimated return {preview.refund:.2f} credits.')
+        lines.append(f'<br>Total: {preview.duration} owner turns; estimated return {preview.resource_refund.describe()}.')
         if preview.waiting:
             lines.append('Waiting for paid bay work to finish. Newly completed docked wings will be included.')
         lines.append('<br>Targets go offline when work begins. All docked craft at that time are included. '

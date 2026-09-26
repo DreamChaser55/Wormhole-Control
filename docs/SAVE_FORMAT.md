@@ -15,7 +15,7 @@ Rejected files are never modified.
 
 Loading any save uses the normal construction catalogue plus custom designs, even when the saved campaign started with the Testing profile. Existing Testing ships retain their saved components. The spawn profile is not persisted.
 
-After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges are rejected during validation. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its credits, and its active catalogue.
+After order restoration on the isolated load candidate, active Testing-only construction is cancelled without promoting queued work. Recorded charges are refunded once to the original payer; orphaned jobs without recorded charges are rejected during validation. A load warning reports each cancellation. Queued Testing-only construction remains queued and fails through normal unavailable-template handling when attempted. Failed loads preserve the running campaign, its resource balances, and its active catalogue.
 
 ## Design validation
 
@@ -38,8 +38,8 @@ Docked wings require zero outside turns; the processed round cannot be in the fu
 The registered `RETURN_FOR_SERVICE` root preserves its carrier reference and approach
 subtree. It is only valid as the current order of a deployed wing at the endurance
 limit. Loading rebinds navigation without ticking endurance, docking, expiring wings,
-or replaying briefing events. Orphans retain their elapsed endurance. Save 4.16 and
-earlier formats are unsupported; start a new campaign.
+or replaying briefing events. Orphans retain their elapsed endurance. Earlier save formats are unsupported;
+start a new campaign.
 
 Saves include carrier participant IDs and deadlines, Attack Run and Emergency
 Recovery phases, recovery launch locks and Flak phase markers. Commander roots
@@ -119,9 +119,17 @@ Do Nothing without changing its explicit orders. This includes empty Weapons
 components and recursively docked units. Installed turrets preserve an armed
 unit's saved stance even when Weapons HP is zero, regardless of component load
 order. Reconciliation does not acquire targets, advance orders, spend resources
-or replay gameplay outcomes. The saved Commander schema is unchanged.
+or replay gameplay outcomes. Commander stores three-resource order payment state;
+its current schema is listed in the generated format table.
 
 Order UUIDs and payment state are required, including on recursively stored units.
+Payment state contains `charged_credits`, `charged_metal`, `charged_crystal` and
+`charged_player_id`. Amounts must be finite non-negative numbers; a positive charge
+requires a valid payer. Loading paid construction never deducts resources again.
+Testing-only construction cancellation refunds the recorded resource bundle.
+Dismantling members persist frozen `resource_cost` and `estimated_resource_refund`
+bundles alongside their credit valuations. Completion uses the frozen costs and
+current hull HP; loading cannot settle salvage or change progress.
 Restoration retains terminal-recording state and history counters without replaying
 outcomes or refunds; pending orders start on a subsequent update. Runtime cancellation,
 refund ownership and receipts follow the [shared lifecycle guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).
@@ -252,9 +260,12 @@ independent gameplay, round-trip and fake-provider acceptance coverage.
 
 ## Retrofit settlement
 
-Active Constructor refit jobs persist `payer_id` and `salvage_due` alongside the
-existing target, action, configuration, paid installation cost and duration. The
-original order retains its charge ownership. Settlement follows the
+Active Constructor refit jobs persist `payer_id`, `salvage_due`, `resource_cost`
+and `resource_salvage` alongside the target, action, configuration, paid credit
+cost and duration. Credit fields must agree with their resource bundles.
+Installation has no salvage; removal has no upfront charge. The active owning
+order must match the job's target, action, equipment, payer and recorded payment.
+The original order retains its charge ownership. Settlement follows the
 [shared refund guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback)
 and the installation/removal rules in [field refitting](REFERENCE.md#field-refitting).
 

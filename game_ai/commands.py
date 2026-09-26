@@ -8,6 +8,7 @@ import logging
 from game_logging import format_unit_for_log
 import traceback
 from typing import Any, Callable
+from resource_costs import ResourceCost, RESOURCE_NAMES, resource_balances, fortification_cost
 
 from .contracts import CommandBatch, ContractError
 from .command_spec import COMMAND_SPECS, validate_command, MAX_COMMANDS
@@ -81,7 +82,7 @@ class _BatchProjection:
 
     Read the live game and issuing player's orders/resources, then update this
     ledger in command order. Shared colony and docking capacity includes other
-    players' reservations; construction credits belong to the issuing player.
+    players' reservations; construction resources belong to the issuing player.
     Replacement/cancellation releases pending reservations, while settled effects
     remain available to later commands. Future travel, income and uncertain
     outcomes cannot fund immediate operations.
@@ -96,7 +97,7 @@ class _BatchProjection:
         self.player = player
         self._order_ledger = {}
         self._ledger_units = {}
-        self._refunds = 0.0
+        self._refunds = ResourceCost()
         self._settled_cargo = {}
         self._settled_population = {}
         self._settled_docks = {}
@@ -108,12 +109,12 @@ class _BatchProjection:
         self._edit_target = None
         self._cargo: dict[int, float] = {}
         self._source_population: dict[int, float] = {}
-        self._planetary_upgrade_spend = 0.0
+        self._planetary_upgrade_spend = ResourceCost()
         self._planetary_upgrades = set()
         self._troop_cargo = {}
         self._planetary_reserved_am = {}
-        self._credits = float(getattr(player, "credits", 0))
-        self._credit_reservations: list[dict[str, Any]] = []
+        self._available = resource_balances(player)
+        self._resource_reservations: list[dict[str, Any]] = []
         self._docking_slots: dict[int, int] = {}
         self._inhibitor_states: dict[int, bool] = {}
         self._cloaking_states: dict[int, bool] = {}
@@ -199,8 +200,8 @@ class _BatchProjection:
                 self._order_ledger[unit.id] = []
             for entry in removed:
                 order = entry["order"]
-                if order is not None and hasattr(order, "refundable_credits"):
-                    self._refunds += order.refundable_credits(self.player.id)
+                if order is not None and hasattr(order, "refundable_resources"):
+                    self._refunds += order.refundable_resources(self.player.id)
             if command.type == "cancel_order":
                 self._settle_front(unit)
         self._rebuild()
@@ -236,18 +237,21 @@ class _BatchProjection:
                 raise _Rejected('dismantling_conflict', 'Target is offline for dismantling.')
 
     def _rebuild(self):
-        """Replay reservations without mutation: credits are personal, capacity can be shared.
+        """Replay reservations without mutation: resources are personal, capacity can be shared.
 
         Foreign orders remain relevant to allied colony population and docking
-        slots, but only this player's unpaid construction can reserve its credits.
+        slots, but only this player's unpaid construction can reserve its resources.
         Paid jobs are already reflected in the live balance and refund ledger.
         """
         self._cargo = {}
         self._source_population = {}
         self._troop_cargo = {}
         self._planetary_reserved_am = {}
-        self._credits = float(getattr(self.player, "credits", 0)) + self._refunds - self._ci_credit_spend - self._planetary_upgrade_spend
-        self._credit_reservations = []
+        treasury = resource_balances(self.player)
+        self._available = {name: treasury[name] + getattr(self._refunds, name)
+                           - getattr(self._planetary_upgrade_spend, name) for name in RESOURCE_NAMES}
+        self._credits -= self._ci_credit_spend
+        self._resource_reservations = []
         self._docking_slots = dict(self._settled_docks)
         for unit_id, entries in self._order_ledger.items():
             unit = self._ledger_units[unit_id]
@@ -283,10 +287,10 @@ class _BatchProjection:
                         self._source_population[source.id] -= amount
                 elif kind == "colonize":
                     cargo = 0
-                elif kind == "construct" and unit.owner == self.player and (order is None or order.status.name == "PENDING"):
+                elif kind == "construct" and unit.owner == self.player and (order is None or not _construction_paid(order)):
                     build = unit.constructor_component.can_build(params.get("unit_template_name"))
                     if build:
-                        self._reserve_credits(unit, entry, build.cost_credits)
+                        self._reserve_resources(unit, entry, build.resource_cost)
                 elif kind in {"dock", "dock_in_hangar", "dock_in_strikecraft_bay"}:
                     target = self.game.galaxy.get_unit_by_id(params.get("target_carrier_id"))
                     if target is not None:
@@ -297,13 +301,25 @@ class _BatchProjection:
                             self._docking_slots[key] -= self._docking_cost(comp, unit)
             self._cargo[unit_id] = cargo
 
+    @property
+    def _credits(self):
+        return self._available['credits']
+
+    @_credits.setter
+    def _credits(self, value):
+        self._available['credits'] = value
+
     def _reserve_credits(self, unit, entry, amount):
-        self._credits -= amount
+        self._reserve_resources(unit, entry, ResourceCost(credits=amount))
+
+    def _reserve_resources(self, unit, entry, cost):
+        for name, amount in cost.to_dict().items():
+            self._available[name] -= amount
         reservation = {"unit_id": unit.id, "order_id": entry["id"],
-                       "type": entry["type"], "credits": float(amount)}
+                       "type": entry["type"], "resources": cost.to_dict()}
         if entry["type"] == "construct":
             reservation["template_name"] = entry["parameters"]["unit_template_name"]
-        self._credit_reservations.append(reservation)
+        self._resource_reservations.append(reservation)
 
     def cargo_for(self, unit):
         self._ensure_orders(unit)
@@ -361,13 +377,13 @@ class _BatchProjection:
                 constructor.can_build(command.template_name) if constructor else None
             )
             if buildable is not None:
-                costs.append(float(buildable.cost_credits))
-        required = sum(costs)
-        if required > self._credits:
+                costs.append(buildable.resource_cost)
+        required = sum(costs, ResourceCost())
+        if not required.affordable(self._available):
             raise _Rejected(
                 "insufficient_resources",
-                f"Construction requires {required:g} credits but only "
-                f"{self._credits:g} remain after order reservations and earlier commands. "
+                f"Construction requires {required.describe()}. "
+                f"Missing {required.shortfall(self._available).describe()} after order reservations and earlier commands. "
                 "Queued builds also reserve their full cost for each builder. "
                 "Reduce new spending or cancel unwanted pending orders before adding builds; "
                 "future income cannot fund this batch.",
@@ -703,7 +719,7 @@ class _BatchProjection:
                     self._ensure_orders(member)
                     for prior in self._order_ledger[member.id]:
                         if prior['order'] is not None:
-                            self._refunds += prior['order'].refundable_credits(self.player.id)
+                            self._refunds += prior['order'].refundable_resources(self.player.id)
                     self._order_ledger[member.id] = []
             return
         if kind == 'use_ability':
@@ -733,7 +749,7 @@ class _BatchProjection:
                             self._ensure_orders(wing)
                             for prior in self._order_ledger[wing.id]:
                                 if prior['order'] is not None:
-                                    self._refunds += prior['order'].refundable_credits(self.player.id)
+                                    self._refunds += prior['order'].refundable_resources(self.player.id)
                             self._order_ledger[wing.id] = [{'id': uuid.uuid4().hex, 'type': ability,
                                 'parameters': {'target_carrier_id': unit.id}, 'order': None,
                                 'started': True, 'settled': False}]
@@ -832,22 +848,34 @@ class _BatchProjection:
         return str(getattr(unit, "in_system", "")), tuple(hex_coord)
 
 
-def credit_budget_view(game: Any, player: Any) -> dict[str, Any]:
-    """Expose the current preflight credit budget without charging or starting work.
+def _construction_paid(order):
+    """An approaching root may own its paid job through a descendant."""
+    constructor = getattr(order.unit, 'constructor_component', None)
+    if constructor and constructor.current_construction_target and constructor.construction_order_id == order.public_id:
+        return True
+    return any(_construction_paid(child) for child in order.sub_orders)
 
-    Totals include all reservations even when the per-order preview is bounded.
-    Preserve precision and deficits so affordability is not overstated.
-    """
+
+def resource_budget_view(game: Any, player: Any) -> dict[str, Any]:
+    """Expose the same three-resource budget used by preflight without mutation."""
     projection = _BatchProjection.from_game(game, player)
     projection._rebuild()
-    reservations = projection._credit_reservations
+    reservations = projection._resource_reservations
     return {
-        "treasury_credits": float(player.credits),
-        "reserved_credits": sum(entry["credits"] for entry in reservations),
-        "available_credits": projection._credits,
+        "treasury": resource_balances(player),
+        "reserved": {name: sum(entry['resources'][name] for entry in reservations) for name in RESOURCE_NAMES},
+        "available": dict(projection._available),
         "reservations": reservations[:64],
         "omitted_count": max(0, len(reservations) - 64),
     }
+
+
+def construction_budget(game, player, units, *, queue):
+    """Human group preview shares replacement refunds and reservations with AI."""
+    from .contracts import Command
+    projection = _BatchProjection.from_game(game, player)
+    projection.before(Command(type='construct', unit_ids=tuple(u.id for u in units), queue=queue), units)
+    return dict(projection._available)
 
 
 class CommandGateway:
@@ -882,14 +910,13 @@ class CommandGateway:
                     projection._rebuild()
                     body = self._body(command.target_id)
                     from planetary_warfare import blocker, upgrade
-                    from planetary_balance import FORTIFICATION_COSTS
-                    error = blocker(self.game, player, command.type, body, credits=projection._credits)
+                    error = blocker(self.game, player, command.type, body, budget=projection._available)
                     if body.id in projection._planetary_upgrades:
                         error = "cooldown_active"
                     if error:
                         raise _Rejected(error, "Planetary defense upgrade unavailable.")
                     projection._planetary_upgrades.add(body.id)
-                    projection._planetary_upgrade_spend += FORTIFICATION_COSTS[body.fortification_level]
+                    projection._planetary_upgrade_spend += fortification_cost(body.fortification_level + 1)
                     operations = [_Prepared(lambda body=body: upgrade(self.game, player, body), "Planetary defenses upgraded.")]
                 elif COMMAND_SPECS[command.type].player_level:
                     operations = self._prepare_player_intelligence(player, command, projection)

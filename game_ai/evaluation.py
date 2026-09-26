@@ -184,7 +184,7 @@ def colony_opening_case() -> EvaluationCase:
     """Minimal regression fixture for the observed zero-cargo colony opening."""
 
     observation = {
-        "schema_version": 23,
+        "schema_version": 24,
         "command_catalog": command_catalog(),
         "turn_number": 1,
         "active_player": {
@@ -192,8 +192,9 @@ def colony_opening_case() -> EvaluationCase:
             "name": "AI",
             "team_id": 1,
             "resources": {"credits": 1000, "metal": 0, "crystal": 0,
-                          "credit_budget": {"treasury_credits": 1000, "reserved_credits": 0,
-                                            "available_credits": 1000, "reservations": [], "omitted_count": 0}},
+                          "resource_budget": {"treasury": {"credits": 1000, "metal": 1000, "crystal": 500},
+                                            "reserved": {"credits": 0, "metal": 0, "crystal": 0},
+                                            "available": {"credits": 1000, "metal": 1000, "crystal": 500}, "reservations": [], "omitted_count": 0}},
         },
         "systems": [
             {
@@ -357,7 +358,7 @@ def inhibitor_overlap_case() -> EvaluationCase:
     """Regression fixture for an inhibitor blocked by an existing field."""
 
     observation = {
-        "schema_version": 23,
+        "schema_version": 24,
         "command_catalog": command_catalog(),
         "turn_number": 3,
         "active_player": {
@@ -365,8 +366,9 @@ def inhibitor_overlap_case() -> EvaluationCase:
             "name": "AI",
             "team_id": 1,
             "resources": {"credits": 1000, "metal": 0, "crystal": 0,
-                          "credit_budget": {"treasury_credits": 1000, "reserved_credits": 0,
-                                            "available_credits": 1000, "reservations": [], "omitted_count": 0}},
+                          "resource_budget": {"treasury": {"credits": 1000, "metal": 1000, "crystal": 500},
+                                            "reserved": {"credits": 0, "metal": 0, "crystal": 0},
+                                            "available": {"credits": 1000, "metal": 1000, "crystal": 500}, "reservations": [], "omitted_count": 0}},
         },
         "systems": [],
         "units": [
@@ -414,7 +416,7 @@ def order_control_cases() -> tuple[EvaluationCase, ...]:
     from copy import deepcopy
 
     base = {
-        "schema_version": 23, "command_catalog": command_catalog(), "turn_number": 1,
+        "schema_version": 24, "command_catalog": command_catalog(), "turn_number": 1,
         "active_player": {"id": 1, "name": "AI", "team_id": 1},
         "systems": [{"name": "Sol", "navigation_anchor": {"hex_coord": [0, 0], "position": [0, 0]}}],
         "units": [{"id": 101, "relation": "self", "system_name": "Sol", "hex_coord": [0, 0],

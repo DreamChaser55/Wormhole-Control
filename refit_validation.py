@@ -103,6 +103,17 @@ class RefitEvaluation:
     duration: int = 1
     salvage: int = 0
 
+    @property
+    def resource_cost(self):
+        from resource_costs import installation_cost, ResourceCost
+        return installation_cost(self.hull_cost, self.cost_credits) if self.configuration else ResourceCost()
+
+    @property
+    def resource_salvage(self):
+        from resource_costs import installation_cost, ResourceCost, SALVAGE_FACTOR
+        materials = installation_cost(self.hull_cost).scaled(SALVAGE_FACTOR) if not self.configuration else ResourceCost()
+        return ResourceCost(self.salvage, materials.metal, materials.crystal)
+
 
 def allowed_turret_variants(hull_size, wing_type='FIGHTER'):
     from unit_components.enums import TurretVariant

@@ -15,17 +15,21 @@ Defend orders move to and hold strategic coordinates or bodies, engaging intrude
 
 The construction_templates catalog explains roles, equipment, prices and support dependencies.
 Choose suitable designs from this catalog; no unit design command is available.
-Before adding builds, read active_player.resources.credit_budget. available_credits is the
-validator's starting budget after existing order reservations, not the displayed treasury balance.
-reservations identifies the owning unit/order and credit cost; totals include omitted entries.
-Use available_credits directly: do not subtract those existing reservations a second time.
+Before adding builds, read active_player.resources.resource_budget. available is the
+validator's starting credits/metal/crystal budget after existing order reservations, not the displayed treasury balance.
+reservations identifies the owning unit/order and resource cost; totals include omitted entries.
+Use each available resource directly: do not subtract those existing reservations a second time.
 Track additional spending in commands array order. Each construct reserves its full catalog cost
 for EACH selected builder, even with queue=true or when work will start on a later turn.
-Pending unpaid construction and recruitment can already commit credits; paid builds are not counted twice.
+Pending and approaching unpaid construction commits all three resources; recruitment commits credits; paid builds are not counted twice.
 Cancelling/replacing pending work releases its reservation, without refunding money never paid.
 Do not cancel useful work just to spend more. Future income, trade and salvage cannot fund this batch.
-Construct template_names is a treasury-based shortlist, not a guarantee that all listed builds fit
-after commitments or other commands. If funds are insufficient, defer new builds or submit fewer.
+Construct template_names is a single-builder replacement shortlist, not a guarantee that all listed builds fit.
+Construct prices gives replacement_shortfall and queued_shortfall; account for every selected builder and earlier commands.
+If any resource is insufficient, defer new builds or submit fewer.
+Mine metal asteroids or comets and unload at the matching refinery; mineral colonies also supply
+passive income. Raw cargo is not spendable until refined. No credits-for-minerals substitution exists.
+Fortification upgrades also require minerals; repairs and wing replenishment remain credit-only.
 Construct and set_wing_production support independent nullable turret_type_override
 (mass_driver, beam, missile) and defense_type_override (armor, shields, point_defense).
 The turret override changes every installed turret's type, preserving variants and stats.

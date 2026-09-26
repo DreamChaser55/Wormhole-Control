@@ -127,7 +127,9 @@ def mutate(component, target):
         component.build_range = 777.5
         component.current_construction_target = dict(turret_type_override=None, defense_type_override=None, template_name="FIGHTER_WING", system_name=component.unit.in_system, hex_coord=component.unit.in_hex, position=Position(5, 6))
         component.current_refit_target = {"target_unit_id": target.id, "action": "ADD", "component_type": "Engines",
-            "component_config": {"speed": 73.5}, "cost_credits": 100, "time_to_build": 3, "payer_id": target.owner.id, "salvage_due": 0}
+            "component_config": {"speed": 73.5}, "cost_credits": 100, "time_to_build": 3, "payer_id": target.owner.id, "salvage_due": 0,
+            "resource_cost": {"credits": 100, "metal": 4, "crystal": 2},
+            "resource_salvage": {"credits": 0, "metal": 0, "crystal": 0}}
         component.construction_order_id = "a" * 32
         component.refit_order_id = "b" * 32
 

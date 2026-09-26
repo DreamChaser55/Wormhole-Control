@@ -23,6 +23,7 @@ class Commander(UnitComponent):
     This component maintains a queue of orders and processes them in sequence,
     handling the execution and status updates of each order.
     """
+    SCHEMA_VERSION = 2
     STATE_CONFIG = ('stance',)
     STATE_RUNTIME = ()
     STATE_REFS = ()

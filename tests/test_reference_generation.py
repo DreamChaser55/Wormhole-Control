@@ -34,6 +34,8 @@ def test_versions_follow_literals_without_executing_modules(tmp_path):
         'game_ai/schema.py': 'TURN_PLAN_SCHEMA_NAME = "test-response"',
         'game_ai/adapters/openai_responses.py': 'PROMPT_CACHE_KEY = "test-cache"',
         'game_control_protocol.py': 'PROTOCOL_VERSION = 73',
+        'unit_components/constructor.py': 'class Constructor:\n    SCHEMA_VERSION = 76',
+        'unit_components/commander.py': 'class Commander:\n    SCHEMA_VERSION = 77',
         'unit_components/strikecraft.py': (
             'class StrikecraftBayComponent:\n    SCHEMA_VERSION = 74\n'
             'class StrikecraftWingComponent:\n    SCHEMA_VERSION = 75'),
@@ -44,7 +46,7 @@ def test_versions_follow_literals_without_executing_modules(tmp_path):
         path.write_text('raise AssertionError("must never execute")\n' + source, encoding='utf-8')
     result = version_table(tmp_path)
     assert version_table(tmp_path) == result
-    for value in ('test-save', '71', '72', 'test-response', 'test-cache', '73', '74', '75'):
+    for value in ('test-save', '71', '72', 'test-response', 'test-cache', '73', '74', '75', '76', '77'):
         assert f'| {value} |' in result
     path = tmp_path / 'game_ai/observation.py'
     path.write_text('OBSERVATION_SCHEMA_VERSION = 81', encoding='utf-8')

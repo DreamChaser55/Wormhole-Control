@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 18
+CONTRACT_VERSION = 19
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -54,7 +54,7 @@ COMMAND_SPECS = {
     "protect": _spec("Escort a friendly unit and engage nearby enemies.", ("target_id",), capability=("engines_component",)),
     "colonize": _spec("Colonize an unowned body; queue behind a required colonist load.", ("target_id",), capability=("colony_component",)),
     "load_colonists": _spec("Load a positive amount of colonists from a self-owned colony.", ("target_id", "amount"), capability=("colony_component",)),
-    "construct": _spec("Construct one template per selected builder at an explicit system, sector and position. Reserve the full cost per builder against active_player.resources.credit_budget.available_credits, including queued builds; earlier batch commands change that budget. Payment occurs when work starts. Optional turret_type_override changes all installed turrets; defense_type_override consolidates total defense strength into one type. Null preserves presets. Requires matching equipment; costs and other stats are unchanged.", ("template_name", *DESTINATION, "turret_type_override", "defense_type_override"), ("template_name", *DESTINATION), capability=("constructor_component",)),
+    "construct": _spec("Construct one template per selected builder at an explicit system, sector and position. Reserve the full credits, metal and crystal cost per builder against active_player.resources.resource_budget.available, including queued builds; earlier batch commands change that budget. Payment occurs when work starts. Optional turret_type_override changes all installed turrets; defense_type_override consolidates total defense strength into one type. Null preserves presets. Requires matching equipment; costs and other stats are unchanged.", ("template_name", *DESTINATION, "turret_type_override", "defense_type_override"), ("template_name", *DESTINATION), capability=("constructor_component",)),
     "set_wing_production": _spec("Configure one stable zero-based bay slot's future wing template and nullable turret/defense overrides. Explicit template_name=null clears production and requires null overrides. New slots start unselected. Existing wings are unchanged; only the slot under construction is locked. Selection is free, preserves orders and the bay-wide pause state. Each selection replaces this slot's complete configuration.", ("slot_index", "template_name", "turret_type_override", "defense_type_override"), ("slot_index",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
     "repair": _spec("Repair a friendly unit.", ("target_id",), capability=("repair_component",)),
     "mine": _spec("Mine a body once.", ("target_id",), capability=("mining_component",)),

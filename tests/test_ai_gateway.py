@@ -185,7 +185,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
         unit_view = observation["units"][0]
         inhibitor = unit_view["capability_details"]["inhibitor"]
-        self.assertEqual(observation["schema_version"], 23)
+        self.assertEqual(observation["schema_version"], 24)
         self.assertIn("toggle_inhibitor", unit_view["supported_commands"])
         self.assertNotIn("toggle_inhibitor", unit_view["legal_commands"])
         self.assertFalse(inhibitor["can_activate"])
@@ -407,11 +407,8 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
     def test_construction_credits_are_reserved_across_a_batch(self):
         player = _Player(1, 1)
         unit = _unit(10, player)
-        buildable = SimpleNamespace(
-            unit_template_name="SCOUT",
-            cost_credits=6,
-            time_to_build=1,
-        )
+        from unit_components.constructor import BuildableUnit
+        buildable = BuildableUnit("SCOUT", 1, 6)
         unit.constructor_component = SimpleNamespace(
             can_build=lambda name: buildable if name == "SCOUT" else None,
             buildable_units=[buildable],
@@ -524,7 +521,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
             observation = build_observation(game, player)
         unit_view = observation["units"][0]
-        self.assertEqual(observation["schema_version"], 23)
+        self.assertEqual(observation["schema_version"], 24)
         self.assertNotIn("celestial_bodies", observation)
         self.assertIn("colonize", unit_view["supported_commands"])
         self.assertNotIn("colonize", unit_view["legal_commands"])

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 import random
+from resource_costs import fortification_cost, resource_balances
 
 from planetary_balance import (
     BASE_DEFENSE, DEFENSE_PER_POPULATION, FORTIFICATION_BONUS, FORTIFICATION_COSTS,
@@ -39,6 +40,7 @@ def defense_view(body):
     return dict(fortification_level=level, readiness=body.defense_readiness,
                 maximum_defense=maximum, current_defense=maximum * body.defense_readiness,
                 next_upgrade_cost=FORTIFICATION_COSTS[level] if level < len(FORTIFICATION_COSTS) else None,
+                next_upgrade_resources=fortification_cost(level + 1).to_dict() if level < len(FORTIFICATION_COSTS) else None,
                 recovery_per_quiet_round=RECOVERY_PER_ROUND, minimum_readiness=MIN_READINESS)
 
 
@@ -98,7 +100,7 @@ def in_range(unit, body, kind):
             and distance(unit.position, body.position) <= body.collision_radius + limit + 0.01)
 
 
-def blocker(game, player, kind, body, unit=None, amount=None, *, resources=True, troops=None, population=None, credits=None, fuel=None, execution=False):
+def blocker(game, player, kind, body, unit=None, amount=None, *, resources=True, troops=None, population=None, credits=None, fuel=None, execution=False, budget=None):
     from domain.players import are_enemies
     from campaign_graph import is_deployed
     if not colonizable(body) or body.owner is None:
@@ -113,8 +115,10 @@ def blocker(game, player, kind, body, unit=None, amount=None, *, resources=True,
             return 'capability_unavailable'
         if body.last_defense_upgrade_round == game.turn_number:
             return 'cooldown_active'
-        available = player.credits if credits is None else credits
-        return 'insufficient_resources' if available < FORTIFICATION_COSTS[body.fortification_level] else None
+        available = resource_balances(player if budget is None else budget)
+        if credits is not None:
+            available['credits'] = credits
+        return 'insufficient_resources' if not fortification_cost(body.fortification_level + 1).affordable(available) else None
     if unit is None or unit.owner != player or unit.current_hit_points <= 0 or not is_deployed(unit, game.galaxy):
         return 'unit_unavailable'
     if unit.is_disabled or getattr(unit, 'is_hidden_in_gas_giant', False):
@@ -161,7 +165,8 @@ def upgrade(game, player, body):
     error = blocker(game, player, 'upgrade_planetary_defenses', body)
     if error:
         raise ValueError(error)
-    player.credits -= FORTIFICATION_COSTS[body.fortification_level]
+    if not fortification_cost(body.fortification_level + 1).pay(player):
+        raise ValueError('insufficient_resources')
     body.fortification_level += 1
     body.last_defense_upgrade_round = game.turn_number
     _record(game, body, 'development', f'Fortifications upgraded to level {body.fortification_level}', private=True)

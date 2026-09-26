@@ -655,6 +655,11 @@ class CustomUnitTemplate:
         return HULL_BASE_COST[self.hull_size] + int(round(self.total_hull_cost * COMPONENT_COST_PER_HULL_POINT))
 
     @property
+    def resource_cost(self):
+        from resource_costs import construction_cost
+        return construction_cost(self.hull_size, self.total_hull_cost, self.build_cost)
+
+    @property
     def build_time(self) -> int:
         """Calculated build time proportional to hull size + component load."""
         base = HULL_BASE_BUILD_TIME[self.hull_size]

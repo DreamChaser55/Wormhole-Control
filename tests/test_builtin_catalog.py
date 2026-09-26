@@ -338,7 +338,7 @@ def test_observation_catalog_deduplicates_builders_and_exposes_bomber_choices():
     assert len(catalog['construction_templates']) == 67
     assert len(catalog['wing_templates']) == 5
     assert all(e['description'] and e['roles'] and 'support' in e for e in catalog['construction_templates'])
-    assert observation['command_catalog']['version'] == 18
+    assert observation['command_catalog']['version'] == 19
 
 
 def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context):
@@ -357,7 +357,9 @@ def test_catalog_window_filters_build_dispatch_and_stale_context(pygame_context)
     window = UnitCatalogWindow(gui, [builder], Position(200, 200), system_name=([builder])[0].in_system, hex_coord=([builder])[0].in_hex)
     try:
         assert [e['template_name'] for e in catalog_entries(UNIT_TEMPLATES, search='counter-intelligence')] == ['INTELLIGENCE_SHIP']
-        assert all(e['credit_cost'] <= 1000 for e in catalog_entries(UNIT_TEMPLATES, affordable=True, credits=1000))
+        rows = catalog_entries(UNIT_TEMPLATES, affordable=True, budget={'credits': 1000, 'metal': 1000, 'crystal': 500})
+        assert rows and all(e['credit_cost'] <= 1000 for e in rows)
+        assert not catalog_entries(UNIT_TEMPLATES, affordable=True, budget={'credits': 1000, 'metal': 0, 'crystal': 0})
         assert not any(e['template_name'] in ('FIGHTER_WING', 'BOMBER_WING') for e in window.entries.values())
         window.show_entry(None)
         assert not window.build_button.is_enabled
@@ -518,13 +520,13 @@ def test_catalog_refresh_preserves_list_scroll_and_clears_filtered_selection(con
     game.players[0].credits -= 1
     window.update()
     assert window.list.scroll_bar.start_percentage == pytest.approx(scroll)
-    assert window.list.get_single_selection() == 'Fleet Carrier (6998c)'
+    assert window.list.get_single_selection() == 'Fleet Carrier (6998c / 267m / 84x)'
     # A changed list must also retain the highlight and viewport where possible.
     window.affordability.selected_option = 'Affordable'
-    game.players[0].credits = 7500
+    game.players[0].credits = 15000
     window.update()
     assert window.list.scroll_bar.start_percentage == pytest.approx(scroll)
-    assert window.list.get_single_selection() == 'Fleet Carrier (6998c)'
+    assert window.list.get_single_selection() == 'Fleet Carrier (6998c / 267m / 84x)'
     game.players[0].credits = 2 * UNIT_TEMPLATES['SCOUT']['build_cost']
     window.show_entry(describe_template('SCOUT', UNIT_TEMPLATES['SCOUT']))
     game.players[0].credits = 0
@@ -565,3 +567,22 @@ def test_catalog_opening_shift_does_not_change_build(construction_catalog, monke
         assert len(events) == 1 and events[0].shift_pressed is False
     finally:
         opened.kill()
+
+
+@pytest.mark.parametrize('resource', ['metal', 'crystal'])
+def test_catalog_refreshes_mineral_shortages_and_group_affordability(construction_catalog, resource):
+    from resource_costs import template_cost
+    game, builders, window, events = construction_catalog
+    price = template_cost(UNIT_TEMPLATES['SHIPYARD_MK1'])
+    window.show_entry(describe_template('SHIPYARD_MK1', UNIT_TEMPLATES['SHIPYARD_MK1']))
+    assert window.build_button.is_enabled and window.queue_button.is_enabled
+    setattr(game.players[0], resource, getattr(price, resource) * len(builders) - .25)
+    window.update()
+    assert not window.build_button.is_enabled and not window.queue_button.is_enabled
+    before = [unit.commander_component.current_order for unit in builders]
+    press_catalog(window, window.build_button)
+    assert not events
+    assert [unit.commander_component.current_order for unit in builders] == before
+    setattr(game.players[0], resource, getattr(price, resource) * len(builders))
+    window.update()
+    assert window.build_button.is_enabled and window.queue_button.is_enabled

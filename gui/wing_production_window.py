@@ -8,6 +8,7 @@ from pygame_gui import elements
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, customize_template
 from display_config import display_config_for
 from unit_catalog import describe_template, wing_template_names
+from resource_costs import ResourceCost, resource_balances
 from unit_templates import UNIT_TEMPLATES
 from .unit_catalog_window import details_html
 
@@ -89,7 +90,7 @@ class WingProductionWindow:
         if not self.valid_context():
             self.close()
             return
-        stamp = tuple((key, id(UNIT_TEMPLATES[key])) for key in wing_template_names())
+        stamp = (resource_balances(self.player), tuple((key, id(UNIT_TEMPLATES[key])) for key in wing_template_names()))
         if stamp != self._stamp:
             self._stamp = stamp
             self.refresh()
@@ -126,6 +127,9 @@ class WingProductionWindow:
                         + '<br><br>Selection is free and applies to future builds. '
                           'Types change; statistics, variants, costs and build time stay the same. '
                           'The bay pays when construction starts; existing wings are unchanged.')
+                cost = ResourceCost.from_dict(entry['resource_cost'])
+                if not cost.affordable(self.player):
+                    html += f'<br><br>Waiting for resources before production can start. Missing: {cost.shortfall(self.player).describe()}.'
                 if self.valid_context() and self.bay.can_set_production(
                         self.slot_index, self.selected_key, self.turret_type_override, self.defense_type_override):
                     self.select_button.enable()

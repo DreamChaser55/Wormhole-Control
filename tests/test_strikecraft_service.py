@@ -236,7 +236,7 @@ def test_observations_are_pure_and_enemy_private():
     # Observations refresh visibility intel, but never the service/order state or RNG.
     assert own['wing_service']['turns_outside'] == wing.strikecraft_wing_component.turns_outside == 80
     assert rng == random.getstate() and counter == Order.order_counter
-    assert before['version'] == after['version'] == '4.17'
+    assert before['version'] == after['version'] == '4.18'
 
 
 @pytest.mark.parametrize('phase', ['deployed', 'returning', 'orphan', 'docked'])

@@ -7,6 +7,7 @@ from collections import deque
 from dataclasses import dataclass
 
 from constants import HullSize
+from resource_costs import ResourceCost
 
 if TYPE_CHECKING:
     from galaxy import Galaxy
@@ -115,6 +116,8 @@ class Order:
         self._issuing_player = None
         self.failure_reason = None
         self._charged_credits = 0
+        self._charged_metal = 0
+        self._charged_crystal = 0
         self._charged_player_id = None
         from persistence_context import allocate_id
         self.local_order_id = allocate_id(Order, "order_counter")
@@ -244,21 +247,38 @@ class Order:
 
     def get_persistence_state(self) -> Dict[str, Any]:
         """Return mutable runtime state which is not part of ``parameters``."""
-        return {"charged_credits": self._charged_credits, "charged_player_id": self._charged_player_id}
+        return {"charged_credits": self._charged_credits, "charged_metal": self._charged_metal,
+                "charged_crystal": self._charged_crystal, "charged_player_id": self._charged_player_id}
 
     def restore_persistence_state(self, state: Dict[str, Any]) -> None:
         """Restore mutable runtime state saved by :meth:`get_persistence_state`."""
         self._charged_credits = state["charged_credits"]
+        self._charged_metal = state["charged_metal"]
+        self._charged_crystal = state["charged_crystal"]
         self._charged_player_id = state["charged_player_id"]
 
+    @property
+    def charged_resources(self):
+        return ResourceCost(self._charged_credits, self._charged_metal, self._charged_crystal)
+
+    def record_charge(self, cost, player_id):
+        self._charged_credits, self._charged_metal, self._charged_crystal = cost.credits, cost.metal, cost.crystal
+        self._charged_player_id = player_id
+
+    def clear_charge(self):
+        self._charged_credits = self._charged_metal = self._charged_crystal = 0
+
     def refundable_credits(self, player_id):
-        """Credits this subtree owns in active component jobs; used by preflight."""
+        return self.refundable_resources(player_id).credits
+
+    def refundable_resources(self, player_id):
+        """Resources this subtree owns in active component jobs; used by preflight."""
         constructor = getattr(self.unit, "constructor_component", None)
         owns = constructor and (
             (getattr(constructor, "construction_order_id", None) == self.public_id and constructor.current_construction_target)
             or (getattr(constructor, "refit_order_id", None) == self.public_id and constructor.current_refit_target))
-        own_amount = self._charged_credits if owns and self._charged_player_id == player_id else 0
-        return own_amount + sum(child.refundable_credits(player_id) for child in self.sub_orders)
+        own_amount = self.charged_resources if owns and self._charged_player_id == player_id else ResourceCost()
+        return sum((child.refundable_resources(player_id) for child in self.sub_orders), own_amount)
 
     def refund_charge(self):
         """Release only this order's charge once, to its original payer."""
@@ -268,8 +288,8 @@ class Order:
         if player is None and self.unit.owner.id == player_id:
             player = self.unit.owner
         if player is not None:
-            player.credits += self._charged_credits
-            self._charged_credits = 0
+            self.charged_resources.refund(player)
+            self.clear_charge()
 
     def resume(self, galaxy_ref: 'Galaxy') -> None:
         """Rebind runtime state after loading without executing side effects again.

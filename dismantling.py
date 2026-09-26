@@ -7,6 +7,7 @@ from contextvars import ContextVar
 from campaign_graph import find_unit, is_deployed, iter_units
 from constants import HullSize
 from geometry import distance
+from resource_costs import ResourceCost, SALVAGE_FACTOR
 
 _projected_offline = ContextVar('dismantling_projected_offline', default=None)
 
@@ -71,13 +72,15 @@ def in_range(actor, target):
 class Evaluation:
     blocker: str | None = None
     members: list = field(default_factory=list)
+    resource_refund: ResourceCost = field(default_factory=ResourceCost)
     duration: int = 0
     refund: float = 0.0
     waiting: bool = False
 
     def public(self):
         return dict(blocker=self.blocker, members=self.members, turns_required=self.duration,
-                    estimated_refund=self.refund, waiting_for_paid_bay_work=self.waiting)
+                    estimated_refund=self.refund, estimated_resource_refund=self.resource_refund.to_dict(),
+                    waiting_for_paid_bay_work=self.waiting)
 
 
 def evaluate(actor, target, galaxy, *, ignore_orders=(), check_claims=True):
@@ -133,7 +136,8 @@ def evaluate(actor, target, galaxy, *, ignore_orders=(), check_claims=True):
     for unit in members:
         design = CustomUnitTemplate('Dismantling', unit.hull_size, installed_configuration(unit))
         duration = max(1, ceil(design.build_time / 2))
-        refund = 0.5 * design.build_cost * unit.current_hit_points / unit.max_hit_points
+        resource_refund = design.resource_cost.scaled(SALVAGE_FACTOR * unit.current_hit_points / unit.max_hit_points)
+        refund = resource_refund.credits
         cargo = {}
         for attr, fields in (('antimatter_component', ('current_amount',)),
                              ('mining_component', ('raw_metal_cargo', 'raw_crystal_cargo')),
@@ -146,9 +150,12 @@ def evaluate(actor, target, galaxy, *, ignore_orders=(), check_claims=True):
                     if value:
                         cargo[name] = value
         result.members.append(dict(unit_id=unit.id, name=unit.name, build_cost=design.build_cost,
-                                   turns=duration, estimated_refund=refund, cargo_lost=cargo))
+                                   resource_cost=design.resource_cost.to_dict(),
+                                   turns=duration, estimated_refund=refund,
+                                   estimated_resource_refund=resource_refund.to_dict(), cargo_lost=cargo))
         result.duration += duration
         result.refund += refund
+        result.resource_refund += resource_refund
     result.waiting = any(b.constructing or b.replenishing_unit is not None for b in bays_for(actor, target))
     return result
 
@@ -202,11 +209,13 @@ def state_view(unit):
         waiting = 'waiting_for_worker'
     members = [dict(member, cargo_lost=dict(member['cargo_lost'])) for member in
                (job.members or evaluate(job.unit, target, galaxy, ignore_orders=(job.public_id,)).members)]
-    refund = 0.0
+    resource_refund = ResourceCost()
     for member in members:
         current = find_unit(galaxy, member['unit_id'])
         if current:
-            refund += 0.5 * member['build_cost'] * current.current_hit_points / current.max_hit_points
+            resource_refund += ResourceCost.from_dict(member['resource_cost']).scaled(
+                SALVAGE_FACTOR * current.current_hit_points / current.max_hit_points)
     return dict(order_id=job.public_id, executor_id=job.unit.id, target_id=job.parameters['target_unit_id'],
                 phase=job.phase, turns_completed=job.progress, turns_required=job.duration,
-                offline=offline(unit), waiting_reason=waiting, members=members, estimated_refund=refund)
+                offline=offline(unit), waiting_reason=waiting, members=members, estimated_refund=resource_refund.credits,
+                estimated_resource_refund=resource_refund.to_dict())

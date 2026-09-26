@@ -84,7 +84,7 @@ COMPONENT_DESCRIPTIONS = {
     "has_hyperdrive": "Basic Hyperdrive jumps between sectors within a star system. Advanced Hyperdrive also traverses wormholes between systems. Natural and artificial inhibition fields block jump entry and exit.",
     "has_weapon_bays": "Mounts Mass Driver, Beam and Missile turrets. Choose Standard, Anti-Strikecraft or Long Range variants. Turrets fire during authorized combat orders, subject to range, cooldown and line of fire.",
     "has_defenses": "Mitigates incoming attacks with Armor, Shields and Point Defense. Armor counters kinetic fire, Shields counter beams, and Point Defense counters missiles. Shields are mitigation, not a regenerating health pool.",
-    "has_constructor_component": "Builds Tiny through Huge ships and stations and refits friendly or allied units. Strikecraft wings are produced by Strikecraft Bays. Construction spends credits and takes turns.",
+    "has_constructor_component": "Builds Tiny through Huge ships and stations and refits friendly or allied units. Strikecraft wings are produced by Strikecraft Bays. Construction spends credits, metal and crystal and takes turns.",
     "has_repair_component": "Restores damaged friendly or allied ships using repair orders. The ship approaches repair range automatically; repair work costs credits.",
     "has_colony_component": "Carries colonists to settle habitable planets, moons and colonizable asteroids. Load population from friendly or allied colonies before colonizing. Gas giants cannot be colonized.",
     "has_civilian_habitat_component": "Provides 50 credits per turn while supported by its owner's populated colony in the same sector. Active habitats are destinations for trade routes.",

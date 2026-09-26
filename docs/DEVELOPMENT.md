@@ -86,12 +86,14 @@ changing the others. The table is generated from their runtime constants.
 <!-- BEGIN GENERATED: versions -->
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
-| Campaign save | 4.17 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 23 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
-| Command contract | 18 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
+| Campaign save | 4.18 | [CURRENT_SAVE_VERSION](../save_manager.py) |
+| Observation | 24 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Command contract | 19 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
 | Response schema | wormhole_control_turn_v14 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v23 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Prompt cache | wormhole-control-turn-v24 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
 | Local socket protocol | 3 | [PROTOCOL_VERSION](../game_control_protocol.py) |
+| Constructor component | 4 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
+| Commander component | 2 | [Commander.SCHEMA_VERSION](../unit_components/commander.py) |
 | Strikecraft Bay component | 5 | [StrikecraftBayComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
 | Strikecraft Wing component | 2 | [StrikecraftWingComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
 <!-- END GENERATED: versions -->
@@ -128,6 +130,25 @@ fire. See [player order rules](REFERENCE.md#queues-and-stances).
 references and operational standoff distances. Routing uses feasible system paths
 and verified obstacle-avoiding sector segments. Target-derived coordinates must
 follow the [observation disclosure policy](AGENTIC_AI.md#information-boundary).
+
+### Industrial resource accounting
+
+`resource_costs.py` owns immutable `ResourceCost` bundles, uniform material formulas,
+atomic affordability/payment/refund operations, and treasury reads. Quotes use
+canonical hull usage; material prices are derived rather than editable template
+inputs. Existing credit prices and production durations remain independent.
+
+Construction, refits, wing production and fortifications charge through the shared
+helpers. Orders retain original payer and paid amounts in all three resources;
+removal/dismantling pay fractional salvage only on completion. Human group
+construction and automated commands share the projected reservation budget.
+Reservations do not escrow stockpiles. Extend the shared helpers when adding
+industrial spending instead of implementing separate credit/material mutations.
+
+Tests should cover each independently insufficient resource, rejection before order
+replacement, approaching and queued reservations, paid-work restoration, and
+exactly-once original-payer settlement. AI-facing budget and disclosure fields are
+specified in the [commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).
 
 ### Turn timing
 

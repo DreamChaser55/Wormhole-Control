@@ -54,8 +54,8 @@ class Player:
         self.briefing = BriefingState()
         self.last_ai_report: Dict[str, Any] = {}
         self.credits = 20000
-        self.metal = 10000
-        self.crystal = 10000
+        self.metal = 1000
+        self.crystal = 500
         self.sector_intel: Dict[Tuple[str, HexCoord], int] = {}
 
     def is_allied_with(self, other: Optional['Player']) -> bool:

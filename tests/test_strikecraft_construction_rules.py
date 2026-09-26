@@ -118,6 +118,7 @@ def test_context_menu_construct_options_exclude_strikecraft_wings():
 def test_ai_observation_construction_catalog_excludes_strikecraft_wings():
     """Verify AI observation construction_templates and unit details omit strikecraft wings."""
     from game_ai.observation import _construction_catalog
+    from resource_costs import resource_balances
 
     player = ComponentPlayer()
     unit = ComponentUnit()
@@ -125,7 +126,7 @@ def test_ai_observation_construction_catalog_excludes_strikecraft_wings():
     constructor = Constructor(unit)
     unit.add_component(constructor)
 
-    catalog = _construction_catalog([unit], player)
+    catalog = _construction_catalog([unit], player, resource_balances(player))
     template_names = [entry["template_name"] for entry in catalog]
 
     assert "FIGHTER_WING" not in template_names

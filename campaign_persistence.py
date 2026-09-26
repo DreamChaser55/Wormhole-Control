@@ -163,11 +163,14 @@ def validate_document(data):
         public_ids.add(uid)
         if not isinstance(raw["parameters"], dict) or not isinstance(raw["runtime_state"], dict) or not isinstance(raw["sub_orders"], list):
             raise ValueError(f"{path}: malformed order state")
-        require(raw["runtime_state"], ("charged_credits", "charged_player_id"), f"{path}.runtime_state")
-        number(raw["runtime_state"]["charged_credits"], f"{path}.charged_credits", 0)
+        require(raw["runtime_state"], ("charged_credits", "charged_metal", "charged_crystal", "charged_player_id"), f"{path}.runtime_state")
+        for resource in ('credits', 'metal', 'crystal'):
+            number(raw['runtime_state']['charged_' + resource], f'{path}.charged_{resource}', 0)
         payer = raw["runtime_state"]["charged_player_id"]
         if payer is not None and (type(payer) is not int or payer not in player_ids):
             raise ValueError(f"{path}: unknown charge payer")
+        if payer is None and any(raw['runtime_state']['charged_' + name] for name in ('credits', 'metal', 'crystal')):
+            raise ValueError(f'{path}: paid order requires a payer')
         order_values(raw["parameters"], f"{path}.parameters")
         order_values(raw["runtime_state"], f"{path}.runtime_state")
         for i, child in enumerate(raw["sub_orders"]):
@@ -477,6 +480,18 @@ def reconcile(candidate):
                     or params.get("defense_type_override") != job["defense_type_override"]
                     or order._charged_player_id is None):
                 raise ValueError("Construction job does not match its owning order")
+        if constructor and constructor.current_refit_target:
+            from resource_costs import ResourceCost
+            job = constructor.current_refit_target
+            order = constructor._owning_refit_order()
+            if (order is None or order.order_type.name != 'REFIT_UNIT' or order.status.name != 'IN_PROGRESS'
+                    or order not in unit.commander_component._active_front_chain()
+                    or order._charged_player_id != job['payer_id']
+                    or order.charged_resources != ResourceCost.from_dict(job['resource_cost'])
+                    or order.parameters.get('target_unit_id') != job['target_unit_id']
+                    or order.parameters.get('action') != job['action']
+                    or order.parameters.get('component_type') != job['component_type']):
+                raise ValueError('Refit job does not match its owning order and payment')
     from wormhole_stabilization import reconcile as reconcile_stabilizers
     reconcile_stabilizers(candidate)
     reconcile_links(galaxy)

@@ -161,8 +161,8 @@ class GameSettings:
 
     # --- Economy / starting resources ---
     starting_credits: float = 20_000.0
-    starting_metal: float = 10_000.0
-    starting_crystal: float = 10_000.0
+    starting_metal: float = 1_000.0
+    starting_crystal: float = 500.0
     starting_population: int = 50
 
     # --- Spawn profile ---

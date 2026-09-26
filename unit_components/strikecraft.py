@@ -9,6 +9,7 @@ from .enums import WingType
 from geometry import Position
 from constants import HullSize, STRIKECRAFT_BAY_HULL_COST_PER_SLOT
 from deployment_placement import find_deployment_position
+from resource_costs import template_cost
 
 if TYPE_CHECKING:
     from domain.units import Unit
@@ -267,6 +268,7 @@ class StrikecraftBayComponent(UnitComponent):
         result = []
         for index, slot in enumerate(self.slots):
             template = self.production_template(index)
+            cost = template_cost(template) if template else None
             wing = wings.get(slot['wing_id'])
             status = ('building' if index == self.construction_slot_index else
                       'docked' if wing in self.docked_units else 'launched' if wing is not None else 'empty')
@@ -275,6 +277,8 @@ class StrikecraftBayComponent(UnitComponent):
                                wing_id=slot['wing_id'], wing_name=wing.name if wing else None, status=status,
                                production_turns=template['build_time'] if template else None,
                                production_credit_cost=template['build_cost'] if template else None,
+                               production_resource_cost=cost.to_dict() if cost else None,
+                               production_shortfall=cost.shortfall(self.unit.owner).to_dict() if cost else None,
                                edit_blocker=self.production_blocker(index)))
         return result
 
@@ -602,10 +606,9 @@ class StrikecraftBayComponent(UnitComponent):
                 if template is None:
                     continue
                 self.validate_production(slot['production_template_name'], slot['turret_type_override'], slot['defense_type_override'])
-                cost = template['build_cost']
-                if owner.credits >= cost:
-                    owner.credits -= cost
+                cost = template_cost(template)
+                if cost.pay(owner):
                     self.construction_slot_index = index
                     self.construction_progress = 0
-                    logger.debug(f"Strikecraft bay on {format_unit_for_log(self.unit)} started constructing {template['name']} in slot {index} for {cost} credits.")
+                    logger.debug(f"Strikecraft bay on {format_unit_for_log(self.unit)} started constructing {template['name']} in slot {index} for {cost.describe()}.")
                     return

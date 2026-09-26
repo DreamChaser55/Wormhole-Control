@@ -17,7 +17,7 @@ Click **New Game**, generate a map and inspect its preview, then select **Next: 
 
 ## Playing the Game
 
-Explore systems, establish colonies, build ships, and keep your fleets supplied while choosing where to engage opponents. Credits, metal, and crystal support your empire; ships use antimatter for movement and equipment. Sensors reveal nearby space, making reconnaissance useful for planning routes and identifying targets.
+Explore systems, establish colonies, build ships, and keep your fleets supplied while choosing where to engage opponents. Construction, equipment installation, and fortifications require credits, metal, and crystal; mining and mineral-producing colonies supply industry, while dismantling recovers materials. Ships use antimatter for movement and equipment. Sensors reveal nearby space, making reconnaissance useful for planning routes and identifying targets.
 
 Left-click to select a unit, then right-click to open contextual actions or issue a direct command. Hold **Shift** when issuing an order to queue it behind existing work. Press **G** for Galaxy View, **S** for System View, and use Sector View for individual ships and tactical positioning. When finished, press **E** or click **End Turn** to resolve your actions and advance to the next player. See [controls and views](docs/REFERENCE.md#controls-and-views) for navigation, selection, and turn briefings.
 

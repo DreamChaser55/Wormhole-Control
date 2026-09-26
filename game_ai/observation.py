@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from typing import Any
+from resource_costs import ResourceCost
 
 from .rules import (
     ability_states,
@@ -19,14 +20,14 @@ from .rules import (
 
 
 from .command_spec import COMMAND_SPECS, command_catalog
-from .commands import credit_budget_view
+from .commands import resource_budget_view
 from .tactical import visible_deployables
 from .order_view import order_layers, enum_name
 from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 23
+OBSERVATION_SCHEMA_VERSION = 24
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -129,7 +130,8 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         )
         for unit in visible_unit_objects
     ]
-    construction_templates = _construction_catalog(visible_unit_objects, player)
+    resource_budget = resource_budget_view(game, player)
+    construction_templates = _construction_catalog(visible_unit_objects, player, resource_budget['available'])
     from .intelligence import intelligence_observation
     intelligence, player_intelligence_options = intelligence_observation(
         galaxy,
@@ -143,8 +145,14 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         if getattr(other, "id", None) != getattr(player, "id", None)
     ]
     from planetary_warfare import blocker, defense_view, colonizable
-    upgrades = [dict(target_id=body.id, **defense_view(body), blocker=blocker(game, player, "upgrade_planetary_defenses", body))
-                for body in exact_bodies if colonizable(body) and body.owner == player]
+    upgrades = []
+    for body in exact_bodies:
+        if colonizable(body) and body.owner == player:
+            quote = defense_view(body)
+            cost = quote['next_upgrade_resources']
+            upgrades.append(dict(target_id=body.id, **quote,
+                resource_shortfall=ResourceCost.from_dict(cost).shortfall(resource_budget['available']).to_dict() if cost else None,
+                blocker=blocker(game, player, "upgrade_planetary_defenses", body, budget=resource_budget['available'])))
     player_intelligence_options["upgrade_planetary_defenses"] = {"targets": upgrades[:32], "omitted_count": max(0, len(upgrades) - 32)}
     player_legal = ["message_developer"]
     if any(item["blocker"] is None for item in upgrades):
@@ -167,7 +175,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
             "team_id": int(player.team_id),
             "resources": {
                 "credits": _rounded(player.credits),
-                "credit_budget": credit_budget_view(game, player),
+                "resource_budget": resource_budget,
                 "metal": _rounded(player.metal),
                 "crystal": _rounded(player.crystal),
                 "income": _safe_game_metric(game, "get_player_income", player),
@@ -675,7 +683,7 @@ def _body_summary(bodies: list[Any], viewer: Any) -> dict[str, Any]:
     }
 
 
-def _construction_catalog(units: list[Any], player: Any) -> list[dict[str, Any]]:
+def _construction_catalog(units: list[Any], player: Any, budget) -> list[dict[str, Any]]:
     catalog: dict[str, dict[str, Any]] = {}
     from unit_templates import UNIT_TEMPLATES
     for unit in units:
@@ -689,7 +697,9 @@ def _construction_catalog(units: list[Any], player: Any) -> list[dict[str, Any]]
                 continue
             from unit_catalog import describe_template
             if buildable.unit_template_name not in catalog:
-                catalog[buildable.unit_template_name] = describe_template(buildable.unit_template_name, tpl)
+                entry = describe_template(buildable.unit_template_name, tpl)
+                entry['resource_shortfall'] = buildable.resource_cost.shortfall(budget).to_dict()
+                catalog[buildable.unit_template_name] = entry
 
     return [catalog[name] for name in sorted(catalog)]
 
@@ -699,7 +709,10 @@ def _wing_catalog(units, player):
     from unit_catalog import describe_template, wing_template_names
     if not any(is_self_owned(player, getattr(unit, "owner", None)) and getattr(unit, "strikecraft_bay_component", None) for unit in units):
         return []
-    return [describe_template(key, UNIT_TEMPLATES[key]) for key in wing_template_names()]
+    entries = [describe_template(key, UNIT_TEMPLATES[key]) for key in wing_template_names()]
+    for entry in entries:
+        entry['resource_shortfall'] = ResourceCost.from_dict(entry['resource_cost']).shortfall(player).to_dict()
+    return entries
 
 
 def _component_amount(component: Any) -> dict[str, float] | None:

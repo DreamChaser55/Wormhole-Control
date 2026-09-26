@@ -2,6 +2,7 @@
 from unit_orders.base import Order, OrderStatus, OrderType, OrderTargetField
 from campaign_graph import find_unit
 import dismantling as rules
+from resource_costs import ResourceCost, SALVAGE_FACTOR
 
 
 class DismantleOrder(Order):
@@ -112,18 +113,19 @@ class DismantleOrder(Order):
         if self.progress < self.duration:
             return
         members = [find_unit(galaxy, item['unit_id']) for item in self.members]
-        refund = sum(0.5 * item['build_cost'] * unit.current_hit_points / unit.max_hit_points
-                     for item, unit in zip(self.members, members))
+        refund = sum((ResourceCost.from_dict(item['resource_cost']).scaled(
+            SALVAGE_FACTOR * unit.current_hit_points / unit.max_hit_points)
+            for item, unit in zip(self.members, members)), ResourceCost())
         self.settled = True
         self.status = OrderStatus.COMPLETED
         rules.release(self)
         from turn_briefing import record
-        record(self.unit.game, self.unit.owner, 'development', 'Dismantling completed (credits recovered)',
-               subject=members[0], amount=refund)
+        record(self.unit.game, self.unit.owner, 'development', f'Dismantling completed ({refund.describe()} recovered)',
+               subject=members[0], amount=refund.credits)
         # Children first, so removal never treats carried craft as combat losses.
         for unit in reversed(members):
             unit.remove_for_dismantling()
-        self.unit.owner.credits += refund
+        refund.refund(self.unit.owner)
 
     def fail(self, reason='execution_failed'):
         for child in self.sub_orders:
@@ -156,7 +158,11 @@ class DismantleOrder(Order):
             raise ValueError('Invalid dismantling state')
         for member in state['members']:
             from state_codec import fields
-            fields(member, ('unit_id', 'name', 'build_cost', 'turns', 'estimated_refund', 'cargo_lost'), 'dismantling member')
+            fields(member, ('unit_id', 'name', 'build_cost', 'resource_cost', 'turns', 'estimated_refund', 'estimated_resource_refund', 'cargo_lost'), 'dismantling member')
+            cost = ResourceCost.from_dict(member['resource_cost'])
+            refund = ResourceCost.from_dict(member['estimated_resource_refund'])
+            if cost.credits != member['build_cost'] or refund.credits != member['estimated_refund']:
+                raise ValueError('Inconsistent dismantling accounting')
             for key in ('unit_id', 'build_cost', 'turns'):
                 number(member[key], key, 1 if key == 'turns' else 0, integer=True)
             number(member['estimated_refund'], 'estimated_refund', 0)

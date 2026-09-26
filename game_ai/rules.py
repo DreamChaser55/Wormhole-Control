@@ -508,12 +508,15 @@ def command_guidance(
 
     constructor = getattr(unit, "constructor_component", None)
     if constructor is not None:
-        templates = [
-            buildable.unit_template_name
-            for buildable in getattr(constructor, "buildable_units", [])
-            if float(getattr(player, "credits", 0)) >= buildable.cost_credits
-        ]
-        options["construct"] = {"template_names": templates}
+        from .commands import construction_budget
+        replacement_budget = construction_budget(game, player, [unit], queue=False)
+        queued_budget = construction_budget(game, player, [unit], queue=True)
+        buildables = getattr(constructor, "buildable_units", [])
+        templates = [b.unit_template_name for b in buildables if b.resource_cost.affordable(replacement_budget)]
+        options["construct"] = {"template_names": templates, "prices": [dict(
+            template_name=b.unit_template_name, resource_cost=b.resource_cost.to_dict(),
+            replacement_shortfall=b.resource_cost.shortfall(replacement_budget).to_dict(),
+            queued_shortfall=b.resource_cost.shortfall(queued_budget).to_dict()) for b in buildables]}
         if templates:
             legal.add("construct")
 

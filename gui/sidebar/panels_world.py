@@ -246,10 +246,18 @@ def build_celestial_body_panel(game, body: CelestialBody, *, show_rules: bool = 
             data.append({'type': 'label', 'text': f"Readiness: {body.defense_readiness:.0%}; fortifications: {body.fortification_level}/3", 'height': 25})
             data.append({'type': 'label', 'text': 'Recovers 10% readiness per quiet round; minimum 25%.', 'height': 25})
             if body.owner == current_player and defense['next_upgrade_cost'] is not None:
+                from resource_costs import ResourceCost
+                cost = ResourceCost.from_dict(defense['next_upgrade_resources'])
                 error = blocker(game, current_player, 'upgrade_planetary_defenses', body)
-                data.append({'type': 'button', 'text': f"Upgrade fortifications ({defense['next_upgrade_cost']} credits)", 'action_id': 'upgrade_planetary_defenses', 'target_data': body.id, 'height': 32, 'enabled': error is None})
+                data.append({'type': 'label', 'text': f'Upgrade cost: {cost.credits:g} credits', 'height': 25})
+                data.append({'type': 'label', 'text': f'{cost.metal:g} metal / {cost.crystal:g} crystal', 'height': 25})
+                data.append({'type': 'button', 'text': 'Upgrade fortifications', 'action_id': 'upgrade_planetary_defenses', 'target_data': body.id, 'height': 32, 'enabled': error is None})
                 if error:
                     data.append({'type': 'label', 'text': error.replace('_', ' ').capitalize(), 'height': 25})
+                    if error == 'insufficient_resources':
+                        for name, amount in cost.shortfall(current_player).to_dict().items():
+                            if amount:
+                                data.append({'type': 'label', 'text': f'Missing: {amount:g} {name}', 'height': 25})
         data.append({'type': 'label', 'text': f"Population: {body.population:.2f} / {body.max_population:.2f}", 'object_id': '#sidebar_info_label', 'height': 25})
         if body.owner and body.population > 0:
             cap = body.get_supported_habitat_capacity() if hasattr(body, 'get_supported_habitat_capacity') else 0
@@ -372,4 +380,3 @@ def build_construction_job_panel(game, job) -> list[dict]:
         })
 
     return data
-

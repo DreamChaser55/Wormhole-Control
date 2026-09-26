@@ -252,7 +252,7 @@ def test_save_restore_preserves_enabled_state_without_charging_or_expiring():
     unit.ability_component.update(game.galaxy)
     assert active_kinds(unit) == {'hazard_shielding'}
     state = serialize_game_state(game)
-    assert state['version'] == '4.17'
+    assert state['version'] == '4.18'
     restored = campaign()
     assert deserialize_game_state(restored, json.loads(json.dumps(state)))
     loaded = restored.galaxy.get_unit_by_id(unit.id)

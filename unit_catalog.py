@@ -1,6 +1,7 @@
 """Pure catalog descriptions shared by players, controllers and reference tables."""
 from custom_unit_templates import template_from_dict, template_to_dict
 from unit_naming import initial_unit_name, normalize_unit_name
+from resource_costs import construction_cost
 from constants import (
     DEFAULT_ANTIMATTER_HARVEST_RATE, DEFAULT_SENSOR_SHORT_RANGE,
     INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS, CLOAKING_BASIC_ANTIMATTER_COST_PER_TURN,
@@ -75,6 +76,7 @@ def describe_template(key, raw):
         **({'wing_type': data['wing_type']} if kind == 'wing' else {}),
         'hull_used': design.total_hull_cost, 'hull_capacity': design.hull_capacity,
         'hit_points': data['hull_points'], 'credit_cost': raw.get('build_cost', design.build_cost),
+        'resource_cost': construction_cost(design.hull_size, design.total_hull_cost, raw.get('build_cost', design.build_cost)).to_dict(),
         'turns': raw.get('build_time', design.build_time), 'upkeep': design.predicted_upkeep,
         'movement': {'speed': data['engine_speed'] if data['has_engine'] else 0,
                      'hyperdrive': data['hyperdrive_type'] if data['has_hyperdrive'] else None,

@@ -393,6 +393,9 @@ class OrderSystem:
         system_name, hex_coord, position = site
         from geometry import Position, distance
         from location_validation import format_location
+        from resource_costs import ResourceCost
+        from game_ai.commands import construction_budget
+        units = []
         for unit in self._controllable_units(event.units):
             constructor = unit.constructor_component
             if not constructor:
@@ -402,6 +405,21 @@ class OrderSystem:
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog("The construction site is outside this builder's reach.", title="Target Out of Range")
                 continue
+            if not constructor.can_build(event.unit_template_name):
+                continue
+            units.append(unit)
+        if not units:
+            return
+        cost = sum((u.constructor_component.can_build(event.unit_template_name).resource_cost for u in units), ResourceCost())
+        try:
+            budget = construction_budget(self.game, units[0].owner, units, queue=event.shift_pressed)
+            if not cost.affordable(budget):
+                raise ValueError(f'Insufficient resources. Required: {cost.describe()}. Missing: {cost.shortfall(budget).describe()}.')
+        except ValueError as exc:
+            if getattr(self.game, 'gui', None):
+                self.game.gui.show_warning_dialog(str(exc), title='Construction unavailable')
+            return
+        for unit in units:
             construct_params = {
                 "unit_template_name": event.unit_template_name,
                 "target_position": Position(position.x, position.y),

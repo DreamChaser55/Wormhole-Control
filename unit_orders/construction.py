@@ -99,12 +99,12 @@ class ConstructOrder(Order):
             self.fail("execution_failed")
             logger.debug(f"CONSTRUCT order failed: Could not find player with id {self.unit.owner.id}.")
             return
-        if player.credits < buildable.cost_credits:
+        if not buildable.resource_cost.affordable(player):
             self.fail("insufficient_resources")
-            logger.debug("CONSTRUCT order failed: Not enough credits.")
+            logger.debug("CONSTRUCT order failed: Not enough resources.")
             if self.unit and getattr(self.unit, 'game', None) and self.unit.game.gui:
                 self.unit.game.gui.show_warning_dialog(
-                    f"Insufficient credits to construct <b>{unit_template_name}</b>.<br>Required: {buildable.cost_credits:.0f} credits (Available: {player.credits:.0f}).",
+                    f"Insufficient resources to construct <b>{unit_template_name}</b>.<br>Required: {buildable.resource_cost.describe()}.<br>Missing: {buildable.resource_cost.shortfall(player).describe()}.",
                     title="Insufficient Resources"
                 )
             return
@@ -114,8 +114,7 @@ class ConstructOrder(Order):
                                                  defense_type_override=self.parameters["defense_type_override"])
         if success:
             constructor.construction_order_id = self.public_id
-            self._charged_credits = buildable.cost_credits
-            self._charged_player_id = self.unit.owner.id
+            self.record_charge(buildable.resource_cost, self.unit.owner.id)
         else:
             self.fail("construction_unavailable")
 

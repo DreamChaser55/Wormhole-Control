@@ -250,7 +250,7 @@ def test_retrofit_wizard_validation_insufficient_credits(wizard_setup):
 
     wizard._sync_cost_and_summary()
     assert wizard.is_valid is False
-    assert "Insufficient credits" in wizard._status_box.html_text
+    assert "Insufficient resources" in wizard._status_box.html_text
     wizard.kill()
 
 
@@ -419,7 +419,7 @@ def test_ally_target_preview_uses_constructor_credits(wizard_setup):
     wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key='Engines')
     try:
         assert wizard.is_valid
-        assert str(player.credits) in wizard._player_credits_label.text
+        assert f'{player.credits:g}' in wizard._credit_cost_label.text
     finally:
         wizard.kill()
 
