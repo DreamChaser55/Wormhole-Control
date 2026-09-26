@@ -5,8 +5,7 @@ import typing
 import logging
 from constants import (
     STAR_RADIUS, PLANET_RADIUS, WORMHOLE_RADIUS, HULL_BASE_ICON_SCALES,
-    SECTOR_VIEW_BASE_ICON_SIZE, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS,
-    SECTOR_OBJECT_CLICK_RADIUS_MULT
+    SECTOR_VIEW_BASE_ICON_SIZE, MOON_RADIUS, ASTEROID_RADIUS, COMET_RADIUS
 )
 from geometry import Position, distance_sq
 from hexgrid_utils import pixel_to_hex
@@ -117,10 +116,7 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                         obj_radius_logical = 13.89
 
                     obj_radius = sector_radius_to_pixels(obj_radius_logical, zoom, display_config=display_config_for(game))
-                    actual_click_radius = obj_radius * SECTOR_OBJECT_CLICK_RADIUS_MULT
-                    click_radius_sq = (max(actual_click_radius, 5.0))**2
-                    if click_radius_sq < 5**2:
-                        click_radius_sq = 5**2
+                    click_radius_sq = (max(obj_radius, 5.0)) ** 2
                     dist_sq_val = distance_sq(mouse_pos, pixel_pos)
 
                     if dist_sq_val < click_radius_sq and dist_sq_val < min_dist_sq:
@@ -130,7 +126,7 @@ def update_hover_states(game, gui, mouse_pos: Position) -> None:
                 # Check Minefield mine count icons (dots/diamonds)
                 visible_minefields = [mf for mf in getattr(hex_obj, 'minefields', []) if game.is_minefield_visible(mf)]
                 dot_radius_px = get_minefield_dot_radius_px(zoom, display_config=display_config_for(game))
-                dot_click_radius = max(dot_radius_px * SECTOR_OBJECT_CLICK_RADIUS_MULT, 5.0)
+                dot_click_radius = max(dot_radius_px, 5.0)
                 dot_click_radius_sq = dot_click_radius ** 2
                 for mf in visible_minefields:
                     dot_positions = get_minefield_dot_pixel_positions(mf.position, mf.mines_remaining, zoom, pan_offset, display_config=display_config_for(game))
@@ -180,10 +176,7 @@ def get_units_under_mouse(game, mouse_pos: Position) -> typing.List[Unit]:
         scale_factor = HULL_BASE_ICON_SCALES[unit.hull_size]
         effective_icon_size = SECTOR_VIEW_BASE_ICON_SIZE * scale_factor
         obj_radius = sector_radius_to_pixels(effective_icon_size, zoom, display_config=display_config_for(game))
-        actual_click_radius = obj_radius * SECTOR_OBJECT_CLICK_RADIUS_MULT
-        click_radius_sq = (max(actual_click_radius, 5.0)) ** 2
-        if click_radius_sq < 5 ** 2:
-            click_radius_sq = 5 ** 2
+        click_radius_sq = (max(obj_radius, 5.0)) ** 2
         dist_sq_val = distance_sq(mouse_pos, pixel_pos)
 
         if dist_sq_val < click_radius_sq:
