@@ -54,12 +54,12 @@ def test_draw_inhibition_zones_draws_outlined_circle(mock_parent):
         # Verify outlined circle style (width >= 1, specifically INHIBITION_FIELD_LINE_WIDTH)
         width_arg = call_kwargs.get("width", call_args[4] if len(call_args) > 4 else 0)
         assert width_arg == INHIBITION_FIELD_LINE_WIDTH
-        assert width_arg == 2
+        assert width_arg == 4
 
     # Only the opaque boundary is painted; the main renderer composites it later.
     assert mock_parent.overlay_surface.get_at((400, 300)).a == 0
-    assert mock_parent.overlay_surface.get_at((400 + expected_pixel_radius - 1, 300)) == (255, 60, 60, 255)
-    assert mock_parent.overlay_surface.get_at((400 + expected_pixel_radius - 3, 300)).a == 0
+    assert mock_parent.overlay_surface.get_at((400 + expected_pixel_radius - 1, 300)) == (100, 150, 255, 255)
+    assert mock_parent.overlay_surface.get_at((400 + expected_pixel_radius - 5, 300)).a == 0
     mock_parent.screen.blit.assert_not_called()
 
 
