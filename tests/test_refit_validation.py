@@ -77,6 +77,37 @@ def test_newly_installed_bay_requires_production_selection(world):
     assert not bay.constructing and not bay.docked_units and payer.credits == credits
 
 
+@pytest.mark.parametrize('hull', list(HullSize))
+def test_sensor_installation_rejects_below_minimum_then_accepts_boundary(world, hull):
+    from resource_costs import resource_balances
+    _, payer, _, actor, target = world
+    empty_equipment(target, hull)
+    before = resource_balances(payer)
+    rejected = issue(world, 'Sensors', {'short_range_radius': 199.999})
+    assert rejected.status == OrderStatus.FAILED
+    assert target.sensors_component is None
+    assert actor.constructor_component.current_refit_target is None
+    assert resource_balances(payer) == before
+
+    actor.commander_component.clear_explicit_orders()
+    accepted = issue(world, 'Sensors', {'short_range_radius': 200.0})
+    assert accepted.status == OrderStatus.IN_PROGRESS
+    finish(world)
+    assert accepted.status == OrderStatus.COMPLETED
+    assert target.sensors_component.short_range_radius == 200.0
+    assert target.sensors_component.long_range_hexes == 0
+    assert target.sensors_component.hull_cost == pytest.approx(0.2)
+    assert payer.credits == before['credits'] - 6
+
+
+def test_refit_must_remove_historical_subminimum_sensors_before_other_equipment(world):
+    target = world[-1]
+    target.sensors_component.short_range_radius = 100.0
+    assert any('sensor_short_range' in error for error in evaluate_refit(target, 'ADD', 'Engines').errors)
+    assert not evaluate_refit(target, 'REMOVE', 'Sensors').errors
+    assert target.sensors_component.short_range_radius == 100.0
+
+
 def test_installed_capacity_excess_keeps_fractional_feedback(world):
     target = world[-1]
     empty_equipment(target, HullSize.MEDIUM)
@@ -268,7 +299,7 @@ def test_strict_existing_errors_and_last_component(world):
     target = world[-1]
     empty_equipment(target, HullSize.TINY)
     target.add_component(instantiate_component_for_unit('Hyperdrive', target, {'drive_type': 'ADVANCED'}))
-    target.add_component(Sensors(target, short_range_radius=0, long_range_hexes=0))
+    target.add_component(Sensors(target, short_range_radius=200, long_range_hexes=0))
     assert evaluate_refit(target, 'ADD', 'Defenses').errors
     assert not evaluate_refit(target, 'REMOVE', 'Hyperdrive').errors
     target.remove_component(type(target.hyperdrive_component))

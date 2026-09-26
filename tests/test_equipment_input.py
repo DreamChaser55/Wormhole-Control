@@ -62,3 +62,12 @@ def test_storage_minimum_depends_on_hull_and_installation(hull):
 
 def test_all_component_minimums_have_input_bindings():
     assert set(PARAMETER_MINIMUMS) <= INPUT_FIELDS.keys()
+
+
+@pytest.mark.parametrize('hull', list(HullSize))
+def test_sensor_draft_minimum_depends_on_installation(hull):
+    field = 'sensor_short_range'
+    assert parse_number('199.999', field, hull)[0] is None
+    assert parse_number('200.25', field, hull) == (200.25, None)
+    assert parse_number('0', field, hull, sensors_enabled=False) == (0, None)
+    assert parse_number('-1', field, hull, sensors_enabled=False)[0] is None

@@ -46,17 +46,17 @@ _NUMBER_TYPES = {f.name: f.type for f in fields(ComponentConfig)}
 _NUMBER_TYPES.update({f'turret.{f.name}': f.type for f in fields(TurretConfig)})
 
 
-def parse_number(text: str, field: str, hull_size, *, storage_enabled=True):
+def parse_number(text: str, field: str, hull_size, *, storage_enabled=True, sensors_enabled=True):
     """Return (value, error) without changing text; invalid values return None.
 
     Integer syntax is deliberately stricter than float syntax. Disabled settings
-    keep their normal minimums; only the storage minimum depends on installation,
-    exactly as in complete equipment validation.
+    keep their normal minimums, except storage and sensor minimums depend on
+    installation, exactly as in complete equipment validation.
     """
     integer = _NUMBER_TYPES[field] is int
     minimum = (0 if field.startswith('turret.') else
                None if field == 'antimatter_capacity' and not storage_enabled else
-               parameter_minimum(field, hull_size))
+               parameter_minimum(field, hull_size, sensors_enabled=sensors_enabled))
     accepted = f"a finite {'integer' if integer else 'number'}"
     if minimum is not None:
         accepted += f' >= {minimum:g}'

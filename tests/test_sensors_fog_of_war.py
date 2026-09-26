@@ -24,6 +24,29 @@ def test_setup():
     return p1, p2, galaxy, system
 
 
+def test_sensor_penalties_can_reduce_effective_range_below_design_minimum():
+    from constants import NebulaType
+    from domain.celestials import Nebula
+    from environmental_effects import sensor_radius
+    from tests.support.campaigns import campaign, ship
+    from unit_components.enums import SabotageType
+    from unit_components.intelligence import Agent
+
+    game = campaign()
+    observer = ship(game)
+    observer.sensors_component.short_range_radius = 200.0
+    assert sensor_radius(observer) == 200.0
+    nebula = Nebula(in_hex=(0, 0), in_system='Sol', nebula_type=NebulaType.DUST)
+    game.galaxy.systems['Sol'].hexes[(0, 0)].add_celestial_body(nebula)
+    assert sensor_radius(observer) == pytest.approx(140.0)
+    spy = ship(game, 'Spy', owner=1)
+    agent = Agent(spy.owner, spy.id, 'UNIT', observer.id, active_sabotage=SabotageType.SENSORS)
+    observer.infiltrating_agents.append(agent)
+    assert observer.sensors_component.effective_short_range_radius == 100.0
+    assert sensor_radius(observer) == pytest.approx(70.0)
+    assert observer.sensors_component.short_range_radius == 200.0
+
+
 def test_baseline_sensors_on_unit_creation(test_setup):
     p1, p2, galaxy, system = test_setup
     mock_game = MagicMock()

@@ -80,6 +80,34 @@ def test_failed_load_can_be_retried(tmp_path):
     assert manager.save_design(design('Another')) == []
 
 
+def test_subminimum_sensor_library_rejects_without_repair_or_publication(tmp_path):
+    from copy import deepcopy
+    from unit_templates import PRIVATE_TEMPLATES
+    manager = CustomTemplateManager(data_file=tmp_path / 'sensors.json')
+    valid = design()
+    valid.components.has_sensors = True
+    assert manager.save_design(valid) == []
+    before = deepcopy(manager.designs), deepcopy(PRIVATE_TEMPLATES)
+    saved_bytes = manager.data_file.read_bytes()
+    invalid = deepcopy(valid)
+    invalid.components.sensor_short_range = 199.999
+    assert any('sensor_short_range' in error for error in manager.save_design(invalid))
+    assert manager.data_file.read_bytes() == saved_bytes
+    assert (manager.designs, PRIVATE_TEMPLATES) == before
+
+    raw = json.loads(saved_bytes)
+    raw['Storage Test']['sensor_short_range'] = 199.999
+    payload = json.dumps(raw).encode()
+    manager.data_file.write_bytes(payload)
+    manager.load_from_file()
+    assert 'Storage Test' in str(manager.last_load_error)
+    assert 'sensor_short_range' in str(manager.last_load_error)
+    assert manager.data_file.read_bytes() == payload
+    assert (manager.designs, PRIVATE_TEMPLATES) == before
+    with pytest.raises(TemplatePersistenceError):
+        manager.save_design(design('Another'))
+
+
 @pytest.mark.parametrize('operation', ['save', 'rename', 'delete'])
 def test_failed_write_preserves_disk_manager_and_registry(tmp_path, monkeypatch, operation):
     target = tmp_path / 'library.json'

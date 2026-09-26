@@ -109,6 +109,7 @@ ANTIMATTER_TRANSFER_RATE: float = 25.0
 ANTIMATTER_TRANSFER_RANGE: float = 200.0
 
 # Sensors / Fog of War Constants
+MIN_SENSOR_SHORT_RANGE: float = 200.0         # minimum configured radius with Sensors enabled
 DEFAULT_SENSOR_SHORT_RANGE: float = 200.0     # logical units (sector radius = 5000)
 SENSOR_RANGE_PER_HULL_POINT: float = 1000.0    # hull points per unit of short-range radius
 SENSOR_LONG_RANGE_HULL_COST_PER_HEX: float = 5.0   # hull points per long-range ring

@@ -426,7 +426,10 @@ hulls. Dynamic costs follow configured performance; fixed costs appear in the ta
   deactivates it.
 - **Abilities:** Cost scales with equipped abilities; prerequisites must also be installed.
 - **Sensors:** All hulls. Cost scales with short-range radius and long-range hex
-  coverage. Wings must have zero long-range coverage.
+  coverage. Designs with Sensors enabled and field refits require a base short-range
+  radius of at least **200.0 logical units**. Sabotage and environmental effects can
+  reduce the effective radius below this minimum. Disabled Sensors settings retain
+  a nonnegative radius requirement. Wings must have zero long-range coverage.
 - **Minelayer:** Deploys anti-ship or anti-strikecraft minefields.
 - **Troop Transport:** Medium or larger mobile hull with Engines and Antimatter Storage. Configurable integer capacity costs 0.5 hull per troop; default 40 troops / 20 hull. Newly built transports are empty.
 - **Siege Battery:** Same hull and equipment prerequisites; fixed 20 hull, 1,000 surface range, 10 defense damage for 10 AM per volley.

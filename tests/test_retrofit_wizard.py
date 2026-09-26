@@ -472,12 +472,16 @@ def test_retrofit_type_choices_respect_hull_and_wing_role(wizard_setup, hull):
     ('Hyperdrive', '_hd_jump_range_entry', '2.5'),
     ('TroopTransportComponent', '_troop_capacity_entry', '1e2'),
     ('Defenses', '_armor_entry', 'nan'),
+    ('Sensors', '_sensor_short_range_entry', '199.999'),
 ])
 def test_retrofit_rejects_invalid_drafts_without_charging_or_changing_equipment(wizard_setup, component, widget, text):
     _, _, player, constructor, target, manager, resolution = wizard_setup
     if component == 'AntimatterStorage':
         from unit_components.antimatter import AntimatterStorage
         target.remove_component(AntimatterStorage)
+    if component == 'Sensors':
+        from unit_components.sensors import Sensors
+        target.remove_component(Sensors)
     before_components = dict(target.components)
     before_credits = player.credits
     wizard = RetrofitWizardWindow(manager, resolution, target, [constructor], initial_comp_key=component)

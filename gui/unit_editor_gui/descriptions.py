@@ -91,6 +91,8 @@ def component_description(key: str) -> tuple[str, str]:
         facts.append(("Radius costs", f"Hull: radius / {rules.INHIBITOR_RADIUS_PER_HULL_POINT:g}. "
                       f"Active fuel: {rules.INHIBITOR_ANTIMATTER_COST_PER_50_RADIUS:g} AM per 50 radius per turn."))
     elif key == "has_sensors":
+        facts.append(("Minimum base radius", f"{rules.MIN_SENSOR_SHORT_RANGE:.1f} logical units when equipped. "
+                      "Sabotage and environmental effects can reduce the effective radius below this minimum."))
         facts.append(("Strikecraft wings", "Long-range hex coverage must be zero."))
     elif key == "has_cloaking_device":
         facts.extend([

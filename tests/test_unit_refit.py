@@ -595,7 +595,7 @@ def test_wing_local_sensor_refit_and_historical_mining_removal(setup_universe):
     wing.hull_capacity = 7
     wing.remove_component(Sensors)
     order = RefitOrder(constructor, dict(target_unit_id=wing.id, action='ADD',
-        component_type='Sensors', component_config={'short_range_radius': 100}))
+        component_type='Sensors', component_config={'short_range_radius': 200}))
     order.execute(galaxy)
     for _ in range(5):
         constructor.constructor_component.update(galaxy)
@@ -614,10 +614,12 @@ def test_historical_wing_save_preserves_hp_and_equipment(setup_universe):
     wing.max_hit_points = 40
     wing.current_hit_points = 35
     wing.sensors_component.long_range_hexes = 2
+    wing.sensors_component.short_range_radius = 100.0
     wing.add_component(MiningComponent(wing, hull_cost=1))
     restored = deserialize_unit(serialize_unit(wing), {player.id: player}, game)
     assert restored.max_hit_points == 40
     assert restored.current_hit_points == 35
     assert restored.hull_capacity == 7
     assert restored.sensors_component.long_range_hexes == 2
+    assert restored.sensors_component.short_range_radius == 100.0
     assert restored.mining_component is not None

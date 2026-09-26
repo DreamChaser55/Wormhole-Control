@@ -340,4 +340,54 @@ def test_wing_capacity_boundary(capacity, valid):
 def test_larger_hull_retains_mining_and_long_range_sensors():
     assert messages(record(hull_size='TINY', engine_speed=0, has_mining_component=True,
                            mining_rate=0, max_mining_cargo=0, has_sensors=True,
-                           sensor_short_range=0, sensor_long_range_hexes=1)) == ''
+                           sensor_short_range=200, sensor_long_range_hexes=1)) == ''
+
+
+@pytest.mark.parametrize('hull', list(HullSize))
+@pytest.mark.parametrize('radius', [0, 199.0, 199.999, 200.0, 200.25])
+@pytest.mark.parametrize('enabled', [False, True])
+def test_sensor_minimum_depends_on_installation_on_every_hull(hull, radius, enabled):
+    data = record(hull_size=hull.name, engine_speed=0,
+                  has_sensors=enabled, sensor_short_range=radius)
+    before = copy.deepcopy(data)
+    design = template_from_dict('Sensor design', data)
+    errors = design.validate()
+    assert bool(errors) is (enabled and radius < 200.0)
+    assert bool(messages(data)) is bool(errors)
+    if errors:
+        assert 'sensor_short_range: must be at least 200.' in errors
+    assert data == before and design.components.sensor_short_range == radius
+
+
+@pytest.mark.parametrize('hull', list(HullSize))
+def test_omitted_sensor_radius_uses_valid_default(hull):
+    data = record(hull_size=hull.name, engine_speed=0, has_sensors=True)
+    design = template_from_dict('Default sensors', data)
+    assert design.validate() == []
+    assert design.components.sensor_short_range == 200.0
+
+
+@pytest.mark.parametrize('enabled', [False, True])
+@pytest.mark.parametrize('radius', [-1, True, '200', None, float('nan'), float('inf')])
+def test_invalid_sensor_numbers_rejected_even_when_disabled(enabled, radius):
+    assert 'sensor_short_range' in messages(record(has_sensors=enabled, sensor_short_range=radius))
+
+
+@pytest.mark.parametrize('radius,exit_code', [(199.999, 1), (200.0, 0)])
+def test_sensor_minimum_cli_is_read_only(tmp_path, radius, exit_code):
+    target = tmp_path / 'sensors.json'
+    payload = json.dumps({'Sensor design': record(has_sensors=True, sensor_short_range=radius)})
+    target.write_text(payload)
+    result = run_cli(tmp_path, target)
+    assert result.returncode == exit_code, result.stdout + result.stderr
+    if exit_code:
+        assert 'Sensor design' in result.stdout and 'sensor_short_range' in result.stdout
+    assert target.read_text() == payload
+
+
+def test_shipped_catalogues_meet_sensor_minimum():
+    for filename in ('unit_templates.json', 'test_unit_templates.json'):
+        raw = json.loads((ROOT / 'data' / filename).read_text(encoding='utf-8'))
+        for key, data in raw.items():
+            if data.get('has_sensors'):
+                assert template_from_dict(key, data).components.sensor_short_range >= 200.0, key

@@ -234,6 +234,10 @@ stored settings. Engine speed, defenses, sensor ranges, repair/mining rates and
 ranges, cargo, inhibitor radius and cloaking radius must be non-negative. Jump
 range, hangar/bay slots, marines and agent counts must be at least one. Enabled
 AM storage must meet its hull-specific minimum.
+Enabled Sensors additionally require a base short-range radius of at least 200.0
+logical units on every hull, including wings. The Designer, library/CLI validation
+and field refits share this minimum; disabled Sensors retain the nonnegative floor.
+Effective range penalties and saved installed equipment are unaffected.
 Turret damage/range and editable fixed component hull costs must be nonnegative;
 turret cooldown must be a nonnegative integer. Turret numeric validation is shared
 with component restoration. Zero values and fractional damage/range remain legal.
@@ -251,9 +255,9 @@ disabled settings and validates a detached candidate before library publication.
 Retrofit confirmation likewise rechecks the current draft before emitting an action.
 Draft errors and widget styling are transient and are never persisted.
 
-The representational minimums above are shared with campaign persistence;
-no additional turret balance caps are imposed. Derived dynamic
-hull costs, HP, price and build time are regenerated for custom designs. Stored
+Campaign persistence keeps its representational minimums and preserves installed
+sensor radii below the design minimum; no additional turret balance caps are imposed.
+Derived dynamic hull costs, HP, price and build time are regenerated for custom designs. Stored
 fixed costs still count toward enabled equipment's hull budget. Change performance
 parameters to change dynamic costs. Library loading and editing share current validation; see
 [design validation](SAVE_FORMAT.md#design-validation).

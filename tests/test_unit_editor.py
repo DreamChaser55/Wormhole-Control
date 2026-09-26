@@ -925,19 +925,22 @@ def test_hull_change_revalidates_storage_without_clamping(draft_editor):
 
 
 @pytest.mark.parametrize('save_path', ['save', 'new', 'overwrite', 'confirmation_new', 'execute'])
-def test_every_save_path_rechecks_raw_drafts_and_preserves_library(draft_editor, save_path):
+@pytest.mark.parametrize('field,text', [('engine_speed', 'bad input'), ('sensor_short_range', '199.999')])
+def test_every_save_path_rechecks_raw_drafts_and_preserves_library(draft_editor, save_path, field, text):
     from copy import deepcopy
     from pathlib import Path
     from gui.unit_editor_gui.template_io import sync_widgets_from_template, handle_save_dialog_action, execute_save
+    from gui.equipment_input import INPUT_FIELDS
     e = draft_editor
-    original = CustomUnitTemplate('Original', HullSize.MEDIUM, ComponentConfig(has_engine=True))
+    original = CustomUnitTemplate('Original', HullSize.MEDIUM, ComponentConfig(has_engine=True, has_sensors=True))
     assert e.template_manager.save_design(original) == []
     sync_widgets_from_template(e, original)
     library_file = Path(e.template_manager.data_file)
     before = library_file.read_bytes()
     registered = deepcopy(PRIVATE_TEMPLATES)
     # No text-change event: the final action must independently re-read the widget.
-    e._engine_speed_entry.set_text('bad input')
+    entry = getattr(e, INPUT_FIELDS[field].widget)
+    entry.set_text(text)
     if save_path == 'save':
         result = e._do_save()
     elif save_path == 'new':
@@ -953,8 +956,31 @@ def test_every_save_path_rechecks_raw_drafts_and_preserves_library(draft_editor,
     assert library_file.read_bytes() == before
     assert PRIVATE_TEMPLATES == registered
     assert e.template_manager.get_design('Original').components.engine_speed == 100
-    assert e._engine_speed_entry.get_text() == 'bad input'
+    assert e.template_manager.get_design('Original').components.sensor_short_range == 200
+    assert entry.get_text() == text
     assert not e._save_button.is_enabled
+
+
+def test_sensor_toggle_revalidates_minimum_without_clamping(draft_editor):
+    from gui.unit_editor_gui.component_state import toggle_component
+    e = draft_editor
+    assert not e._comp.has_sensors
+    edit_draft(e, e._sensor_short_range_entry, '199.999')
+    assert not e._field_errors and e._save_button.is_enabled
+    toggle_component(e, 'has_sensors')
+    assert e._sensor_short_range_entry.get_text() == '199.999'
+    assert e._comp.sensor_short_range == 199.999
+    assert '200' in e._field_errors['sensor_short_range']
+    assert 'Sensors / Short-range radius' in e._summary_box.html_text
+    assert e._sensor_short_range_entry.object_ids[-1] == '#equipment_input_error'
+    assert not e._save_button.is_enabled and not e._save_as_button.is_enabled
+    toggle_component(e, 'has_sensors')
+    assert not e._field_errors and e._save_button.is_enabled
+    toggle_component(e, 'has_sensors')
+    edit_draft(e, e._sensor_short_range_entry, '200.0')
+    assert e._comp.sensor_short_range == 200.0
+    assert not e._field_errors and e._save_button.is_enabled and e._save_as_button.is_enabled
+    assert e._sensor_short_range_entry.tool_tip_text is None
 
 
 def test_loading_a_design_clears_old_drafts_and_turret_errors(draft_editor):

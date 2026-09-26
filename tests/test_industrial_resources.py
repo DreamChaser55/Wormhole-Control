@@ -425,7 +425,7 @@ def test_custom_and_testing_prices_use_canonical_hull_usage(monkeypatch):
     game = campaign()
     actor = builder(game)
     custom = deepcopy(UNIT_TEMPLATES['SHIPYARD_MK1'])
-    custom.update(name='Private industrial design', sensor_short_range=123.5)
+    custom.update(name='Private industrial design', sensor_short_range=223.5)
     monkeypatch.setitem(PRIVATE_TEMPLATES, 'Industrial Custom', custom)
     for key, raw in {'Industrial Custom': custom, **load_testing_templates()}.items():
         normalized = dict(raw, hull_size=raw['hull_size'].name)

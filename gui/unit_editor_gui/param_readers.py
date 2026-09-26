@@ -16,7 +16,8 @@ def read_fields(editor, names):
             if entry.get_text() != '0':
                 entry.set_text('0')
         value, error = parse_number(entry.get_text(), field, editor._hull_size,
-                                    storage_enabled=editor._comp.has_antimatter_storage)
+                                    storage_enabled=editor._comp.has_antimatter_storage,
+                                    sensors_enabled=editor._comp.has_sensors)
         mark_entry(entry, error)
         if error:
             editor._field_errors[field] = error
