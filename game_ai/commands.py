@@ -113,6 +113,7 @@ class _BatchProjection:
         self._troop_cargo = {}
         self._planetary_reserved_am = {}
         self._credits = float(getattr(player, "credits", 0))
+        self._credit_reservations: list[dict[str, Any]] = []
         self._docking_slots: dict[int, int] = {}
         self._inhibitor_states: dict[int, bool] = {}
         self._cloaking_states: dict[int, bool] = {}
@@ -134,6 +135,19 @@ class _BatchProjection:
         self._inhibitor_dynamic_zones: dict[
             tuple[str, tuple[int, int]], dict[int, Any]
         ] = {}
+
+    @classmethod
+    def from_game(cls, game, player):
+        """Seed the same live order ledger for observation and batch validation."""
+        projection = cls(game, player)
+        # Shared capacity includes all deployed ships. Credit reservations are
+        # scoped to the issuing player in _rebuild, including unselected units.
+        for system in getattr(game.galaxy, "systems", {}).values():
+            for sector in getattr(system, "hexes", {}).values():
+                for unit in getattr(sector, "units", []):
+                    if getattr(unit, "commander_component", None):
+                        projection._ensure_orders(unit)
+        return projection
 
     def _ensure_orders(self, unit):
         if unit.id in self._order_ledger:
@@ -233,6 +247,7 @@ class _BatchProjection:
         self._troop_cargo = {}
         self._planetary_reserved_am = {}
         self._credits = float(getattr(self.player, "credits", 0)) + self._refunds - self._ci_credit_spend - self._planetary_upgrade_spend
+        self._credit_reservations = []
         self._docking_slots = dict(self._settled_docks)
         for unit_id, entries in self._order_ledger.items():
             unit = self._ledger_units[unit_id]
@@ -247,7 +262,7 @@ class _BatchProjection:
                     from planetary_balance import TROOP_CREDIT_COST, TROOP_POPULATION_COST
                     amount = params["amount"]
                     self._troop_cargo[unit_id] += amount
-                    self._credits -= amount * TROOP_CREDIT_COST
+                    self._reserve_credits(unit, entry, amount * TROOP_CREDIT_COST)
                     source = self.game.galaxy.get_celestial_body_by_id(params.get("target_id"))
                     if source is not None:
                         self._source_population.setdefault(source.id, float(source.population) - self._settled_population.get(source.id, 0))
@@ -271,7 +286,7 @@ class _BatchProjection:
                 elif kind == "construct" and unit.owner == self.player and (order is None or order.status.name == "PENDING"):
                     build = unit.constructor_component.can_build(params.get("unit_template_name"))
                     if build:
-                        self._credits -= build.cost_credits
+                        self._reserve_credits(unit, entry, build.cost_credits)
                 elif kind in {"dock", "dock_in_hangar", "dock_in_strikecraft_bay"}:
                     target = self.game.galaxy.get_unit_by_id(params.get("target_carrier_id"))
                     if target is not None:
@@ -281,6 +296,14 @@ class _BatchProjection:
                             self._docking_slots.setdefault(key, self._free_docking_slots(comp))
                             self._docking_slots[key] -= self._docking_cost(comp, unit)
             self._cargo[unit_id] = cargo
+
+    def _reserve_credits(self, unit, entry, amount):
+        self._credits -= amount
+        reservation = {"unit_id": unit.id, "order_id": entry["id"],
+                       "type": entry["type"], "credits": float(amount)}
+        if entry["type"] == "construct":
+            reservation["template_name"] = entry["parameters"]["unit_template_name"]
+        self._credit_reservations.append(reservation)
 
     def cargo_for(self, unit):
         self._ensure_orders(unit)
@@ -344,7 +367,10 @@ class _BatchProjection:
             raise _Rejected(
                 "insufficient_resources",
                 f"Construction requires {required:g} credits but only "
-                f"{self._credits:g} remain in this batch.",
+                f"{self._credits:g} remain after order reservations and earlier commands. "
+                "Queued builds also reserve their full cost for each builder. "
+                "Reduce new spending or cancel unwanted pending orders before adding builds; "
+                "future income cannot fund this batch.",
             )
 
     @staticmethod
@@ -806,6 +832,24 @@ class _BatchProjection:
         return str(getattr(unit, "in_system", "")), tuple(hex_coord)
 
 
+def credit_budget_view(game: Any, player: Any) -> dict[str, Any]:
+    """Expose the current preflight credit budget without charging or starting work.
+
+    Totals include all reservations even when the per-order preview is bounded.
+    Preserve precision and deficits so affordability is not overstated.
+    """
+    projection = _BatchProjection.from_game(game, player)
+    projection._rebuild()
+    reservations = projection._credit_reservations
+    return {
+        "treasury_credits": float(player.credits),
+        "reserved_credits": sum(entry["credits"] for entry in reservations),
+        "available_credits": projection._credits,
+        "reservations": reservations[:64],
+        "omitted_count": max(0, len(reservations) - 64),
+    }
+
+
 class CommandGateway:
     """Preflight a complete batch, then commit it on the game thread."""
 
@@ -823,14 +867,7 @@ class CommandGateway:
             return CommandResult(False, errors=(CommandError(-1, "invalid_command_contract", "A batch may contain at most 40 commands."),))
         self._viewer = player
         self._selected_units = []
-        projection = _BatchProjection(self.game, player)
-        # Include all deployed ships for shared capacity; _rebuild scopes credit
-        # reservations to their payer, including owned ships outside this batch.
-        for system in getattr(self.game.galaxy, "systems", {}).values():
-            for sector in getattr(system, "hexes", {}).values():
-                for unit in getattr(sector, "units", []):
-                    if getattr(unit, "commander_component", None):
-                        projection._ensure_orders(unit)
+        projection = _BatchProjection.from_game(self.game, player)
         for index, command in enumerate(batch.commands):
             try:
                 validate_command(command.to_dict())

@@ -15,6 +15,17 @@ Defend orders move to and hold strategic coordinates or bodies, engaging intrude
 
 The construction_templates catalog explains roles, equipment, prices and support dependencies.
 Choose suitable designs from this catalog; no unit design command is available.
+Before adding builds, read active_player.resources.credit_budget. available_credits is the
+validator's starting budget after existing order reservations, not the displayed treasury balance.
+reservations identifies the owning unit/order and credit cost; totals include omitted entries.
+Use available_credits directly: do not subtract those existing reservations a second time.
+Track additional spending in commands array order. Each construct reserves its full catalog cost
+for EACH selected builder, even with queue=true or when work will start on a later turn.
+Pending unpaid construction and recruitment can already commit credits; paid builds are not counted twice.
+Cancelling/replacing pending work releases its reservation, without refunding money never paid.
+Do not cancel useful work just to spend more. Future income, trade and salvage cannot fund this batch.
+Construct template_names is a treasury-based shortlist, not a guarantee that all listed builds fit
+after commitments or other commands. If funds are insufficient, defer new builds or submit fewer.
 Construct and set_wing_production support independent nullable turret_type_override
 (mass_driver, beam, missile) and defense_type_override (armor, shields, point_defense).
 The turret override changes every installed turret's type, preserving variants and stats.
@@ -64,7 +75,7 @@ information. Form a concise strategic plan, issue only commands listed as legal 
 conditional for that unit, use only listed option values and exact target IDs, update
 long-term memory when useful, and end the turn. Empty command lists are legal.
 
-Observations use schema 22 and the command_catalog describes contract 18. The final turn_summary
+Observations use schema 23 and the command_catalog describes contract 18. The final turn_summary
 section is your frozen briefing since the previous End Turn, including its resolution. Consider
 losses, problems, discoveries, messages and economic changes before planning. Historical contacts
 and locations do not make targets currently visible or legal; use the current observation for that.

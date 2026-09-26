@@ -369,7 +369,7 @@ def test_command_discovery_exposes_sources_and_allows_no_demand(harvesting):
     assert source.id in options[command['type']]['source_ids']
     assert options[command['type']]['automatic_when_target_null']
     assert options[command['type']]['automatic_recipient_scope'] == 'owned_galaxy_wide'
-    assert observation['schema_version'] == 22
+    assert observation['schema_version'] == 23
     assert observation['command_catalog']['version'] == 18
 
 

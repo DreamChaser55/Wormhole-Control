@@ -276,6 +276,24 @@ budget. Allied docking and colony-population reservations still share capacity.
 Only guaranteed effects can support later commands; feature sections specify which
 effects are immediate and which merely reserve resources until execution.
 
+`active_player.resources.credit_budget` exposes the initial preflight budget in
+both built-in AI and Codex observations: exact `treasury_credits`, `reserved_credits`
+and `available_credits`, plus up to 64 `reservations` and an `omitted_count`.
+Each reservation names its owned `unit_id`, public `order_id`, command `type` and
+`credits`; construction also includes `template_name`. Totals include omitted entries,
+retain fractional precision and may show a negative available balance. The view uses
+the gateway's reservation ledger without charging or starting work. It includes pending
+construction and recruitment reservations; paid construction is already reflected in
+the treasury. This is a validation budget, not a forecast of future cash flow.
+
+Plan from `available_credits` without subtracting existing reservations again.
+Each new Construct commits the full catalogue price for every selected builder,
+including queued builds; commands earlier in the batch can spend or release funds.
+Construct's `template_names` is a treasury-based shortlist, not a combined-affordability
+guarantee. The prompt and command catalogue explain this distinction. Future income,
+trade and salvage cannot finance the batch. Insufficient construction funds reject
+the batch before any commands apply, with guidance to reduce or defer spending.
+
 Replacement or cancellation releases the affected pending reservations, not effects
 already completed synchronously (such as a colonist load). Construction/refit jobs
 bind their charge and cancellation ownership to the initiating order; cancelling a

@@ -15,7 +15,7 @@ from game_ai.schema import responses_text_config
 
 from .base import PlanningOutputError, PlanningRequest, PlanningResult
 
-PROMPT_CACHE_KEY = "wormhole-control-turn-v22"
+PROMPT_CACHE_KEY = "wormhole-control-turn-v23"
 
 
 class OpenAIResponsesProvider:

@@ -2,6 +2,7 @@
 import pytest
 
 from game_ai.contracts import Command
+from game_ai.observation import build_observation
 from geometry import Position
 from tests.support.campaigns import campaign, ship
 from tests.support.commands import issue
@@ -53,6 +54,17 @@ def test_only_own_pending_builds_reduce_budget(reservation_owner):
         pending = queue_build(queued)
         before_queue = list(queued.commander_component.orders_queue)
     before_other = other.credits
+    budget = build_observation(game, player)['active_player']['resources']['credit_budget']
+    reserved = cost if reservation_owner == 'self' else 0
+    assert budget['treasury_credits'] == cost
+    assert budget['reserved_credits'] == reserved
+    assert budget['available_credits'] == cost - reserved
+    assert budget['omitted_count'] == 0
+    assert budget['reservations'] == ([{
+        'unit_id': queued.id, 'order_id': pending.public_id, 'type': 'construct',
+        'credits': cost, 'template_name': 'SHIPYARD_MK1',
+    }] if reservation_owner == 'self' else [])
+    assert player.credits == cost
     result = issue(game, player, Command('rename_unit', (actor.id,), new_name='Accepted'),
                    build_command(actor))
     assert result.accepted == (reservation_owner != 'self')
@@ -84,6 +96,9 @@ def test_releasing_own_pending_build_does_not_create_a_refund(edit):
         commands = [edit_command, build_command(builder(game))]
     assert issue(game, player, *commands).accepted
     assert player.credits == 0
+    budget = build_observation(game, player)['active_player']['resources']['credit_budget']
+    assert budget['reserved_credits'] == budget['available_credits'] == 0
+    assert budget['reservations'] == []
 
 
 def test_paid_construction_is_not_reserved_again():
@@ -94,8 +109,92 @@ def test_paid_construction_is_not_reserved_again():
     first, second = builder(game), builder(game)
     assert issue(game, player, build_command(first)).accepted
     assert player.credits == cost
+    budget = build_observation(game, player)['active_player']['resources']['credit_budget']
+    assert budget['available_credits'] == cost
+    assert budget['reserved_credits'] == 0
+    assert budget['reservations'] == []
     assert issue(game, player, build_command(second)).accepted
     assert player.credits == 0
+
+
+def test_grouped_queued_builds_and_later_commands_share_observed_budget():
+    from dataclasses import replace
+    game = campaign()
+    player = game.players[0]
+    first, second, third = [builder(game) for _ in range(3)]
+    cost = get_template('SHIPYARD_MK1')['build_cost']
+    for unit in (first, second):
+        unit.commander_component.add_order(MoveOrder(unit, {
+            'destination_system_name': unit.in_system, 'destination_hex_coord': unit.in_hex,
+            'destination_position': Position(1500, 0),
+        }))
+    player.credits = 3 * cost - 0.125
+    grouped = replace(build_command(first), unit_ids=(first.id, second.id), queue=True)
+    rejected = issue(game, player, grouped, build_command(third))
+    assert not rejected.accepted
+    assert rejected.errors[0].command_index == 1
+    assert rejected.errors[0].code == 'insufficient_resources'
+    assert all(not unit.commander_component.orders_queue for unit in (first, second))
+    assert player.credits == 3 * cost - 0.125
+
+    assert issue(game, player, grouped).accepted
+    budget = build_observation(game, player)['active_player']['resources']['credit_budget']
+    assert budget['reserved_credits'] == 2 * cost
+    assert budget['available_credits'] == cost - 0.125
+    assert {entry['unit_id'] for entry in budget['reservations']} == {first.id, second.id}
+    assert player.credits == 3 * cost - 0.125
+    assert not issue(game, player, build_command(third)).accepted
+    player.credits += 0.125
+    assert issue(game, player, build_command(third)).accepted
+
+
+def test_budget_includes_recruitment_alongside_construction():
+    from domain.celestials import Moon
+    from unit_components.planetary import TroopTransportComponent
+    from unit_orders.planetary import RecruitTroopsOrder
+    game = campaign()
+    player = game.players[0]
+    cost = get_template('SHIPYARD_MK1')['build_cost']
+    player.credits = cost + 100
+    unit = builder(game)
+    pending = queue_build(unit)
+    unit.add_component(TroopTransportComponent(unit))
+    source = Moon((0, 0), 'Sol')
+    source.owner, source.population = player, 50
+    game.galaxy.systems['Sol'].add_celestial_body(source)
+    recruitment = RecruitTroopsOrder(unit, {'target_id': source.id, 'amount': 10})
+    unit.commander_component.add_order(recruitment)
+    budget = build_observation(game, player)['active_player']['resources']['credit_budget']
+    assert budget['reserved_credits'] == cost + 20
+    assert budget['available_credits'] == 80
+    assert {entry['order_id']: entry['credits'] for entry in budget['reservations']} == {
+        pending.public_id: cost, recruitment.public_id: 20,
+    }
+    assert player.credits == cost + 100
+    assert unit.troop_transport_component.troops == 0
+
+
+def test_budget_totals_include_omitted_reservations_and_preserve_deficits():
+    game = campaign()
+    player = game.players[0]
+    unit = builder(game)
+    pending = queue_build(unit)
+    for _ in range(64):
+        unit.commander_component.add_order(ConstructOrder(unit, pending.parameters.copy()))
+    cost = get_template('SHIPYARD_MK1')['build_cost']
+    player.credits = 65 * cost - 0.125
+    before = list(unit.commander_component.orders_queue)
+    first = build_observation(game, player)['active_player']['resources']['credit_budget']
+    second = build_observation(game, player)['active_player']['resources']['credit_budget']
+    assert first == second
+    assert first['reserved_credits'] == 65 * cost
+    assert first['available_credits'] == -0.125
+    assert len(first['reservations']) == 64
+    assert first['omitted_count'] == 1
+    assert player.credits == 65 * cost - 0.125
+    assert list(unit.commander_component.orders_queue) == before
+    assert all(order.status.name == 'PENDING' for order in before)
+    assert unit.constructor_component.current_construction_target is None
 
 
 def test_allied_pending_dock_still_reserves_shared_hangar():

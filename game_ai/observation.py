@@ -19,13 +19,14 @@ from .rules import (
 
 
 from .command_spec import COMMAND_SPECS, command_catalog
+from .commands import credit_budget_view
 from .tactical import visible_deployables
 from .order_view import order_layers, enum_name
 from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 22
+OBSERVATION_SCHEMA_VERSION = 23
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -166,6 +167,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
             "team_id": int(player.team_id),
             "resources": {
                 "credits": _rounded(player.credits),
+                "credit_budget": credit_budget_view(game, player),
                 "metal": _rounded(player.metal),
                 "crystal": _rounded(player.crystal),
                 "income": _safe_game_metric(game, "get_player_income", player),
