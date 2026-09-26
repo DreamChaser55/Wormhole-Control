@@ -159,9 +159,9 @@ class NewGameWizard:
         self._selected_player_index_for_home: int = 0
 
         # --- Economy State ---
-        self._credits_str: str = "20000"
-        self._metal_str: str = "10000"
-        self._crystal_str: str = "10000"
+        self._credits_str: str = "10000"
+        self._metal_str: str = "1000"
+        self._crystal_str: str = "500"
         self._population_str: str = "50"
 
         # --- Preview Interaction State ---

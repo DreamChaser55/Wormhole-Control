@@ -53,7 +53,7 @@ class Player:
         from turn_briefing import BriefingState
         self.briefing = BriefingState()
         self.last_ai_report: Dict[str, Any] = {}
-        self.credits = 20000
+        self.credits = 10000
         self.metal = 1000
         self.crystal = 500
         self.sector_intel: Dict[Tuple[str, HexCoord], int] = {}

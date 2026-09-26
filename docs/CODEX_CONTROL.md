@@ -143,9 +143,9 @@ Optional galaxy/economy fields use `GameSettings` defaults when absent:
     "wormhole_density": 0.3333333333,
     "system_radius_min": 6,
     "system_radius_max": 10,
-    "starting_credits": 20000,
-    "starting_metal": 10000,
-    "starting_crystal": 10000,
+    "starting_credits": 10000,
+    "starting_metal": 1000,
+    "starting_crystal": 500,
     "starting_population": 50
   }
 }
