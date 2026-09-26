@@ -315,8 +315,11 @@ The Design Summary lists affected components, fields and accepted values as you 
 Correcting a field clears its error. Save Design and Save as New remain disabled until
 the draft and complete equipment configuration are valid. Invalid settings still block
 saving when their component is turned off; its details remain accessible for correction.
-Switching panels or closing and reopening the Designer preserves the draft. Loading a
-different design replaces it and resets the unadded turret's numeric fields.
+Switching component panels or dismissing help preserves the current draft. Closing
+the Designer discards unsaved edits without prompting. Each opening starts with a
+blank name, Medium hull, Antimatter Storage enabled, and no turrets or abilities.
+Saved designs remain available to load. Loading a different design replaces the
+draft and resets the unadded turret's numeric fields.
 
 Previews use the last valid numeric values while a field is invalid. Values that
 overflow cost calculations show an unavailable preview. Over-capacity designs show

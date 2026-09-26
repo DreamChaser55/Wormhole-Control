@@ -191,15 +191,52 @@ class UnitEditorWindow:
         layout.build_col4_summary(self, c4x, c4y, c4w, row_h, pad, pr)
 
     def show(self) -> None:
-        """Make the editor visible."""
+        """Open a fresh draft, preserving an already-visible editing session."""
+        if self.is_visible:
+            return
+        self._reset_draft()
         self.is_visible = True
         if self._panel:
             self._panel.show()
         self._refresh_load_dropdown()
         self._refresh_component_details()
 
+    def _reset_draft(self) -> None:
+        """Restore the initial design and all transient editing controls."""
+        from gui.equipment_input import INPUT_FIELDS
+        from .catalog import TURRET_TYPES, TURRET_VARIANTS
+        from .widget_factory import replace_dropdown
+
+        self.manager.set_focus_set(None)
+        for widget in {"_display_entry", *(spec.widget for spec in INPUT_FIELDS.values())}:
+            entry = getattr(self, widget, None)
+            if entry is not None:
+                entry.unfocus()
+
+        self._select_component("has_engine")
+        self._sync_widgets_from_template(CustomUnitTemplate(
+            display_name="", hull_size=HullSize.MEDIUM,
+            components=ComponentConfig(has_antimatter_storage=True),
+        ))
+        self._editing_name = None
+        self._set_status("")
+        self._turret_type_dd = replace_dropdown(
+            self, self._turret_type_dd, TURRET_TYPES, TURRET_TYPES[0],
+            "#turret_type_dropdown", group_key="has_weapon_bays",
+        )
+        self._turret_variant_dd = replace_dropdown(
+            self, self._turret_variant_dd, TURRET_VARIANTS, "STANDARD",
+            "#turret_variant_dropdown", group_key="has_weapon_bays",
+        )
+        self._apply_hull_restrictions()
+        for container in (self._comp_scroll_container, self._ability_scroll_container):
+            if container and container.vert_scroll_bar:
+                container.vert_scroll_bar.set_scroll_from_start_percentage(0.0)
+        if self._summary_box and self._summary_box.scroll_bar:
+            self._summary_box.scroll_bar.set_scroll_from_start_percentage(0.0)
+
     def hide(self) -> None:
-        """Hide the editor without destroying widgets."""
+        """End the editing session; the next opening starts with a fresh draft."""
         self.is_visible = False
         self.close_description()
         if self._save_dialog:

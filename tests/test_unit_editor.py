@@ -880,8 +880,6 @@ def test_live_draft_errors_preserve_text_values_and_clear_independently(draft_ed
     assert 'last valid numeric values' in e._summary_box.html_text
     assert e._engine_speed_entry.object_ids[-1] == '#equipment_input_error'
     e._select_component('has_defenses')
-    e.hide()
-    e.show()
     assert e._engine_speed_entry.get_text() == 'nan'
     edit_draft(e, e._engine_speed_entry, '12.25')
     assert 'engine_speed' not in e._field_errors
@@ -911,6 +909,152 @@ def test_disabled_and_hull_restricted_drafts_stay_reachable(draft_editor):
     edit_draft(e, e._hangar_slots_entry, '1')
     assert e._save_button.is_enabled
     assert not e._comp_select_btns['has_hangar'].is_enabled
+
+
+@pytest.mark.parametrize('saved_design', [False, True])
+def test_reopening_discards_draft_and_preserves_saved_library(draft_editor, saved_design):
+    from copy import deepcopy
+    from pathlib import Path
+    from gui.equipment_input import INPUT_FIELDS
+    from gui.unit_editor_gui.catalog import TURRET_TYPES, TURRET_VARIANTS
+    from gui.unit_editor_gui.widget_factory import replace_dropdown
+    from custom_unit_templates import TurretConfig
+
+    e = draft_editor
+    defaults = ComponentConfig(has_antimatter_storage=True)
+    default_text = {field: getattr(e, spec.widget).get_text() for field, spec in INPUT_FIELDS.items()}
+    template = CustomUnitTemplate('Saved carrier', HullSize.HUGE, ComponentConfig(
+        has_antimatter_storage=True, antimatter_capacity=200, has_engine=True,
+        has_weapon_bays=True, turrets=[TurretConfig('BEAM', 10, 300, 2)],
+        has_ability_component=True, abilities=['drain_antimatter'],
+        hyperdrive_type='ADVANCED', cloaking_type='ADVANCED', wing_type='BOMBER',
+        has_intelligence_component=True, has_counter_intelligence=True,
+    ))
+    if saved_design:
+        assert e.template_manager.save_design(template) == []
+        e._load_design(template.display_name)
+    else:
+        e._on_hull_changed('HUGE')
+        e._display_entry.set_text('')
+        e._toggle_component('has_weapon_bays')
+        e._do_add_turret()
+        e._toggle_component('has_ability_component')
+        e._toggle_ability('drain_antimatter')
+    library = Path(e.template_manager.data_file)
+    before_bytes = library.read_bytes() if library.exists() else None
+    before_registry = deepcopy(PRIVATE_TEMPLATES)
+    assert e._turrets and e._selected_abilities
+    e._select_component('has_weapon_bays')
+    old_turret_widgets = e._turret_labels + e._turret_remove_buttons
+    e._turret_type_dd = replace_dropdown(
+        e, e._turret_type_dd, TURRET_TYPES, 'MISSILE', '#turret_type_dropdown',
+        group_key='has_weapon_bays',
+    )
+    e._turret_variant_dd = replace_dropdown(
+        e, e._turret_variant_dd, TURRET_VARIANTS, 'LONG_RANGE', '#turret_variant_dropdown',
+        group_key='has_weapon_bays',
+    )
+    edit_draft(e, e._turret_dmg_entry, '99')
+    edit_draft(e, e._turret_range_entry, 'bad range')
+    edit_draft(e, e._turret_cd_entry, '1.5')
+    edit_draft(e, e._engine_speed_entry, 'nan')
+    edit_draft(e, e._hangar_slots_entry, '2.5')
+    e._set_status('Previous draft failed', error=True)
+    e._select_component('has_ability_component')
+    for container in (e._comp_scroll_container, e._ability_scroll_container):
+        container.vert_scroll_bar.set_scroll_from_start_percentage(0.7)
+    e.manager.set_focus_set(e._display_entry)
+    e.manager.update(0.1)
+    e.hide()
+    e.show()
+    e.manager.update(0.1)
+
+    assert e._hull_size == HullSize.MEDIUM
+    assert e._hull_dropdown.selected_option[0] == 'MEDIUM'
+    assert e._comp == defaults
+    assert not e._turrets and not e._selected_abilities
+    assert all(not widget.alive() for widget in old_turret_widgets)
+    assert e._editing_name is None and e._display_entry.get_text() == ''
+    assert e._load_dd.selected_option[0] == '— select —'
+    assert e._status_label.text == ''
+    assert e._selected_component_key == 'has_engine'
+    assert e._engine_speed_entry.visible and not e._turret_dmg_entry.visible
+    assert e._turret_type_dd.selected_option[0] == TURRET_TYPES[0]
+    assert e._turret_variant_dd.selected_option[0] == 'STANDARD'
+    assert e._hd_type_dropdown.selected_option[0] == 'BASIC'
+    assert e._cloaking_type_dropdown.selected_option[0] == 'BASIC'
+    assert e._wt_dropdown.selected_option[0] == 'FIGHTER' and not e._wt_dropdown.is_enabled
+    assert not e._field_errors
+    assert not e._save_button.is_enabled and not e._save_as_button.is_enabled
+    assert e._add_turret_button.is_enabled
+    assert 'last valid numeric values' not in e._summary_box.html_text
+    assert 'BEAM' not in e._summary_box.html_text
+    assert e.manager.get_focus_set() is None and not e._display_entry.is_focused
+    for field, spec in INPUT_FIELDS.items():
+        entry = getattr(e, spec.widget)
+        assert entry.get_text() == default_text[field]
+        assert entry.tool_tip_text is None and not entry.is_focused
+    for container in (e._comp_scroll_container, e._ability_scroll_container):
+        assert container.vert_scroll_bar.start_percentage == 0.0
+    if e._summary_box.scroll_bar:
+        assert e._summary_box.scroll_bar.start_percentage == 0.0
+    assert (library.read_bytes() if library.exists() else None) == before_bytes
+    assert PRIVATE_TEMPLATES == before_registry
+    if saved_design:
+        e._load_design(template.display_name)
+        assert e._editing_name == template.display_name
+        assert e._comp == template.components
+
+
+def test_show_while_visible_preserves_draft_and_help(draft_editor):
+    e = draft_editor
+    edit_draft(e, e._engine_speed_entry, 'unfinished')
+    e._select_component('has_hangar')
+    e.show_description('Equipment help', 'Help text')
+    dialog = e._description_dialog
+    e.show()
+    assert e._description_dialog is dialog and dialog.window.alive()
+    e.close_description()
+    assert e.is_visible and e._selected_component_key == 'has_hangar'
+    assert e._display_entry.get_text() == 'Draft ship'
+    assert e._engine_speed_entry.get_text() == 'unfinished'
+    assert 'engine_speed' in e._field_errors
+
+
+@pytest.mark.parametrize('close_path', ['close_button', 'toggle', 'escape', 'hide_all'])
+def test_application_editor_close_paths_start_fresh(game_factory, close_path):
+    import pygame
+    import pygame_gui
+    from game_actions import handle_gui_action
+    from tests.support.pygame_runtime import drain_events
+
+    game = game_factory(display_config=DisplayConfig(1280, 720, False))
+    gui = game.gui
+    game.game_started = True
+    game.view_mode = 'system'
+    gui.show_game_ui()
+    for cycle in range(2):
+        gui.open_unit_editor(game.custom_template_manager)
+        e = gui.unit_editor_window
+        assert e._display_entry.get_text() == '' and e._editing_name is None
+        assert e._comp == ComponentConfig(has_antimatter_storage=True)
+        edit_draft(e, e._display_entry, f'Unsaved {cycle}')
+        edit_draft(e, e._engine_speed_entry, 'bad')
+        drain_events()
+        if close_path in ('close_button', 'toggle'):
+            button = e._close_button if close_path == 'close_button' else gui.unit_editor_button
+            event = pygame.event.Event(pygame_gui.UI_BUTTON_PRESSED, ui_element=button)
+            action = gui.process_event(event)
+            assert action == {'action': 'toggle_unit_editor'}
+            handle_gui_action(game, action)
+        elif close_path == 'escape':
+            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+            game.input_processor.handle_input()
+        else:
+            gui.hide_all_panels()
+        assert not gui.is_unit_editor_open()
+    gui.open_unit_editor(game.custom_template_manager)
+    assert e._display_entry.get_text() == '' and not e._field_errors
 
 
 def test_hull_change_revalidates_storage_without_clamping(draft_editor):
