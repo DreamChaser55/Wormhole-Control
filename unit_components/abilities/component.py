@@ -65,7 +65,8 @@ class AbilityComponent(UnitComponent):
     @staticmethod
     def calc_hull_cost(abilities: List[str]) -> float:
         """Compute the hull cost of an Ability component from its list of selected abilities."""
-        return float(ABILITY_BASE_COST + len(abilities) * ABILITY_COST_PER_ABILITY)
+        from titan_balance import TITAN_ABILITIES, ABILITY_HULL_COST
+        return float(ABILITY_BASE_COST + sum(ABILITY_HULL_COST if getattr(a, "value", a) in TITAN_ABILITIES else ABILITY_COST_PER_ABILITY for a in abilities))
 
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         status = "DESTROYED" if self.is_destroyed else f"HP: {self.current_hit_points}/{self.max_hit_points}"
@@ -171,7 +172,7 @@ class AbilityComponent(UnitComponent):
         from tactical_abilities import SPECS, availability
         if ability_type.value in SPECS:
             galaxy = self.unit.in_galaxy or getattr(self.unit.game, "galaxy", None)
-            return availability(self.unit, ability_type.value, galaxy, ignore_reservations=ignore_reservations) is None
+            return availability(self.unit, ability_type.value, galaxy, ignore_reservations=ignore_reservations, resources=resources) is None
         if self.is_destroyed:
             return False
         instance = self.abilities.get(ability_type)
@@ -261,6 +262,8 @@ class AbilityComponent(UnitComponent):
         instance.duration_remaining = defn.duration
         instance.target_position = target_position
         instance.cooldown_remaining = defn.cooldown
+        from titan_abilities import reconcile as reconcile_titans
+        reconcile_titans(galaxy)
         return True
 
     def _expire_ability(self, ability_type: AbilityType, galaxy: 'Galaxy') -> None:

@@ -87,6 +87,7 @@ def describe_template(key, raw):
         'weapons': weapons,
         'defenses': {field: data[field] if data['has_defenses'] else 0 for field in ('armor', 'shields', 'point_defense')},
         'abilities': data['abilities'] if data['has_ability_component'] else [], 'support': support,
+        **({'titan_core': data['has_titan_component'], 'acquisition_limit': 1} if design.hull_size.name == 'TITAN' else {}),
     }
 
 

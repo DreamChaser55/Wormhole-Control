@@ -53,12 +53,34 @@ def ability_panel(unit, game):
     if unit.owner != game.players[game.current_player_index]:
         return data
     galaxy = game.galaxy
+    from titan_balance import TITAN_ABILITIES
     for kind, spec in SPECS.items():
         inst = get_instance(unit, kind)
         if not inst:
             continue
-        data.append(label(f'{spec.name}: range {spec.range:g}; cooldown {spec.cooldown}; ' +
+        reach = 'anywhere in current system' if kind in ('fleet_jump', 'deep_scan') else f'range {spec.range:g}'
+        data.append(label(f'{spec.name}: {reach}; cooldown {spec.cooldown}; ' +
                           (f'duration {spec.duration} owner turns' if spec.duration else 'one-shot')))
+        if kind in TITAN_ABILITIES:
+            data.append(label(f'{spec.cost} AM; ready in {max(0, unit.titan_cooldowns.get(kind, 0)-game.turn_number)} rounds'))
+            if inst.is_active:
+                data.append(label(f'Active: {inst.duration_remaining} rounds remaining'))
+            if kind == 'siege_lance' and inst.is_active:
+                data.append(label(f'Charging: fires at owner End Turn {inst.charge_round+1}'))
+            if kind == 'deep_scan':
+                data.append(label('Right-click a hex in system view or a location in sector view.'))
+                if inst.is_active:
+                    data.append(label(f'Scan coverage: {inst.system_name} {inst.hex_coord}; until owner round {inst.expires_round}'))
+            if kind == 'fleet_jump':
+                from titan_abilities import jump_participants
+                from tactical_abilities import deployed
+                participants = jump_participants(unit, galaxy) if deployed(unit, galaxy) else []
+                data.append(label(f'Gather radius 750; escort hull {sum(u.hull_capacity for u in participants if u is not unit):g}/800'))
+                for passenger in participants:
+                    if passenger is unit:
+                        continue
+                    orders = [passenger.commander_component.current_order, *passenger.commander_component.orders_queue]
+                    data.append(label(f'{passenger.name}: replaces ' + ', '.join(o.order_type.name for o in orders if o) if any(orders) else f'{passenger.name}: idle'))
         blocker = availability(unit, kind, galaxy)
         if blocker:
             data.append(label('Unavailable: ' + blocker.replace('_', ' ')))
@@ -70,7 +92,7 @@ def ability_panel(unit, game):
                 reason = {'ghost_fleet': 'An existing emitter must be destroyed.',
                           'nebula_catalyst': 'Wait for the existing patch to expire.'}[kind]
                 data.append(label('At cap: ' + reason))
-        if kind in ('tractor_tether', 'guardian_link') and inst.is_active:
+        if kind in ('tractor_tether', 'guardian_link', 'aegis_field', 'siege_lance', 'deep_scan', 'carrier_supremacy') and inst.is_active:
             data.append(button('Cancel ' + spec.name, 'cancel_tactical_ability', {'unit_id': unit.id, 'ability': kind}))
         if kind == 'attack_run':
             from strikecraft_abilities import eligible_bombers
@@ -176,6 +198,16 @@ def draw(renderer, sector):
         if not game.is_unit_visible(source):
             continue
         from strikecraft_abilities import effect_valid, wing_order
+        from titan_abilities import effect_valid as titan_effect, protected
+        if titan_effect(source, 'aegis_field', game.galaxy):
+            pygame.draw.circle(renderer.screen, source.owner.color, pixel(source.position), radius(1000), 2)
+        if protected(source, 'carrier_supremacy'):
+            pygame.draw.circle(renderer.screen, source.owner.color, pixel(source.position), 20, 2)
+        if titan_effect(source, 'siege_lance', game.galaxy):
+            inst = get_instance(source, 'siege_lance')
+            target = game.galaxy.get_unit_by_id(inst.target_unit_id)
+            if target and game.is_unit_visible(target):
+                pygame.draw.line(renderer.screen, (255, 170, 50), pixel(source.position), pixel(target.position), 2)
         from tactical_balance import FLAK_RADIUS
         if effect_valid(source, 'flak_barrage', game.galaxy):
             pygame.draw.circle(renderer.screen, source.owner.color, pixel(source.position), radius(FLAK_RADIUS), 2)
@@ -203,7 +235,16 @@ def draw(renderer, sector):
         return
     unit, kind = actors[0], pending[0]
     point = pixels_to_sector_coords(Position(*pygame.mouse.get_pos()), game.sector_zoom, game.sector_pan_offset, display_config=config)
-    pygame.draw.circle(renderer.screen, unit.owner.color, pixel(unit.position), radius(SPECS[kind].range), 1)
+    if kind not in ('fleet_jump', 'deep_scan'):
+        pygame.draw.circle(renderer.screen, unit.owner.color, pixel(unit.position), radius(SPECS[kind].range), 1)
+    elif kind == 'fleet_jump':
+        if unit.in_system == game.current_system_name and unit.in_hex == game.current_sector_coord:
+            pygame.draw.circle(renderer.screen, unit.owner.color, pixel(unit.position), radius(750), 1)
+        from titan_abilities import jump_plan
+        error, plan = jump_plan(unit, game.galaxy, game.current_system_name, game.current_sector_coord, point)
+        pygame.draw.circle(renderer.screen, (255, 80, 80) if error else unit.owner.color, pixel(point), 14, 2)
+        for passenger, arrival in plan:
+            pygame.draw.circle(renderer.screen, passenger.owner.color, pixel(arrival), 10, 1)
     if kind == 'mine_clearing_sweep':
         dx, dy = point.x-unit.position.x, point.y-unit.position.y
         length = math.hypot(dx, dy)

@@ -42,6 +42,10 @@ class StrikecraftWingComponent(UnitComponent):
     def get_sidebar_data(self, game_state: 'Game') -> list[dict]:
         data = super().get_sidebar_data(game_state)
         role_str = "Fighter" if self.wing_type == WingType.FIGHTER else "Bomber"
+        from titan_abilities import protected
+        if protected(self.unit, 'carrier_supremacy'):
+            data.extend({'type': 'label', 'text': text, 'object_id': '#sidebar_info_label', 'height': 20}
+                        for text in ('Carrier Supremacy active', 'Weapon damage ×2; speed ×1.5', 'Incoming weapon damage ×0.5'))
         data.append({'type': 'label', 'text': f"Role: {role_str}", 'object_id': '#sidebar_info_label', 'height': 20})
         mother_name = self.mother_carrier.name if self.mother_carrier else "None"
         data.append({'type': 'label', 'text': f"Mother Carrier: {mother_name}", 'object_id': '#sidebar_info_label', 'height': 20})

@@ -832,3 +832,22 @@ loading do not advance the timer. Clock terminology is defined in
 
 The current save and Wing component schema persist the counter, last processed
 round, return order and launch deadline. See the [current formats and protocols](DEVELOPMENT.md#current-formats-and-protocols).
+
+## Titan controller contract
+
+All controllers use the [Titan rules](TITANS.md) and shared gateway. Observations
+include `titan_capacity` with owned IDs and pending reservation roots. Construction
+catalogue entries expose replacement/queue blockers. Owned/allied Titan state
+includes Core status, enduring cooldowns, active coverage and charge timing;
+ability state previews Fleet Jump passengers and replaced explicit orders.
+Owned/allied wings expose current Titan bonuses without changing base equipment.
+
+`deep_scan` introduces the `sector` target kind: provide `system_name` and
+`hex_coord`, leaving `position` and `target_id` null. Unknown/unexplored existing
+hexes are legal in the current system. `fleet_jump` uses all three position fields
+and an explored same-system hex; distance is unlimited, gathering radius is 750,
+and a ready Basic or Advanced Hyperdrive qualifies. Other systems remain invalid.
+All five casts reserve AM at issuance and execute before movement at owner End
+Turn without automatic approach. `cancel_ability` also ends Aegis, Lance charge,
+Deep Scan or Supremacy, retaining cooldown and spent AM. Capturing a Titan reserves
+acquisition capacity without assuming a successful boarding roll.

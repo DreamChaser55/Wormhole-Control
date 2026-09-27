@@ -127,6 +127,13 @@ class VisibilityService:
                         short_range_by_hex[key].append((body.position, 500.0))
                         long_range_covered.add(key)
 
+        from titan_abilities import coverage
+        for system_name, hex_coord in coverage(galaxy, viewer):
+            sector = galaxy.systems[system_name].hexes[hex_coord]
+            key = (system_name, hex_coord)
+            short_range_by_hex.setdefault(key, []).append((sector.boundary_circle.center, sector.boundary_circle.radius))
+            long_range_covered.add(key)
+
         current_turn = turn_number
         if current_turn == 1:
             if hasattr(galaxy, 'turn_number'):

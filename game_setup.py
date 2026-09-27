@@ -144,7 +144,7 @@ def prepare_new_campaign(settings):
             player.credits, player.metal, player.crystal = settings.starting_credits, settings.starting_metal, settings.starting_crystal
         candidate.player_homeworlds = homes
         spawn_units(candidate, player_homeworlds=homes, spawn_profile=settings.spawn_profile, templates=templates)
-        expected_units = 4 if settings.spawn_profile == SpawnProfile.NORMAL else 11
+        expected_units = 4 if settings.spawn_profile == SpawnProfile.NORMAL else 12
         for player in candidate.players:
             world = galaxy.get_celestial_body_by_id(player.homeworld_id)
             if world is None or world.owner is not player or not world.is_colonizable or not 0 <= world.population <= world.max_population:
@@ -268,6 +268,7 @@ def spawn_units(
                 testing_spawn_entries.append((f"SPAWN_SHIP_{hull}", x, -1300.0))
                 testing_spawn_entries.append((f"SPAWN_STATION_{hull}", x, -1100.0))
             testing_spawn_entries.append(("SPAWN_CARRIER", -500.0 + 5 * 200.0, -1200.0))
+            testing_spawn_entries.append(("TITAN_FLAGSHIP", 900.0, -1200.0))
 
             for template_key, x_off, y_off in testing_spawn_entries:
                 instantiate_unit_from_template(

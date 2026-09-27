@@ -24,6 +24,9 @@ from save_manager import serialize_game_state, deserialize_game_state
 from tactical_abilities import (SPECS, activate, availability, deployments, start_owner_turn,
                                 process_pulls, combat_hit, cancel)
 from tactical_balance import STRIKECRAFT_ABILITIES
+from titan_balance import TITAN_ABILITIES
+# This fixture equips ordinary tactical powers on a Huge hull; Titan powers have dedicated acceptance tests.
+SPECS = {k: v for k, v in SPECS.items() if k not in TITAN_ABILITIES}
 
 
 def equipped(game, name='caster', owner=0, hull=HullSize.HUGE):
@@ -189,7 +192,7 @@ def test_persistent_cap_survives_time_save_refit_and_capture(kind, cap):
     assert not activate(caster, kind, game.galaxy, position=Position(200, 0))
     assert caster.antimatter_component.current_amount == fuel
     state = json.loads(json.dumps(serialize_game_state(game)))
-    assert state['version'] == '4.18'
+    assert state['version'] == '4.19'
     assert all('lifetime' not in d for s in state['galaxy']['systems'] for h in s['hexes'] for d in h['deployables'])
     restored = campaign()
     assert deserialize_game_state(restored, state)
@@ -303,7 +306,7 @@ def test_gateway_duplicate_spending_is_atomic_and_catalog_has_all_six():
     assert not deployments(game.galaxy, caster.id, 'ghost_fleet')
     assert issue(game, caster, 'ghost_fleet', position=(200, 0)).accepted
     observation = build_observation(game, caster.owner)
-    assert observation['schema_version'] == 24
+    assert observation['schema_version'] == 25
     assert set(SPECS) <= set(observation['ability_catalog'])
     assert observation['visible_deployables'][0]['persistent'] is True
 

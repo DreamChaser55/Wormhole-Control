@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 from resource_costs import ResourceCost
+from constants import HullSize
+from titan_acquisition import capacity as titan_capacity
 
 from .rules import (
     ability_states,
@@ -27,7 +29,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 24
+OBSERVATION_SCHEMA_VERSION = 25
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -169,6 +171,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
     return {
         "schema_version": OBSERVATION_SCHEMA_VERSION,
         "turn_number": turn,
+        "titan_capacity": titan_capacity(game.galaxy, player),
         "active_player": {
             "id": int(player.id),
             "name": str(player.name),
@@ -306,6 +309,10 @@ def _unit_view(
         transport = getattr(unit, "troop_transport_component", None)
         if transport:
             data["troop_cargo"] = {"current": transport.troops, "capacity": transport.capacity}
+        from titan_abilities import state_view as titan_state, protected
+        if unit.hull_size == HullSize.TITAN:
+            data["titan"] = titan_state(unit)
+        data["titan_bonuses"] = {"aegis": protected(unit, "aegis_field"), "carrier_supremacy": protected(unit, "carrier_supremacy")}
         data["last_planetary_action_round"] = getattr(unit, "last_planetary_action_round", 0)
         data["multiplication_receive_cooldown"] = max(0, getattr(unit, 'multiply_receive_ready_round', 0)-game.turn_number)
         data["capability_details"] = _capability_details(unit, game)
@@ -328,6 +335,8 @@ def _unit_view(
             from tactical_balance import EVASIVE_OUTGOING
             root = wing_order(unit)
             data['wing_tactical_state'] = {
+                'supremacy_outgoing_multiplier': 2 if protected(unit, 'carrier_supremacy') else 1,
+                'supremacy_speed_multiplier': 1.5 if protected(unit, 'carrier_supremacy') else 1,
                 'incoming_weapon_multiplier': incoming_multiplier(unit),
                 'evasive_outgoing_multiplier': EVASIVE_OUTGOING if evasion(unit) else 1.0,
                 'weapons_suppressed': required(unit) or bool(root and root.order_type.name == 'EMERGENCY_RECOVERY'),
@@ -699,6 +708,10 @@ def _construction_catalog(units: list[Any], player: Any, budget) -> list[dict[st
             if buildable.unit_template_name not in catalog:
                 entry = describe_template(buildable.unit_template_name, tpl)
                 entry['resource_shortfall'] = buildable.resource_cost.shortfall(budget).to_dict()
+                if getattr(hull_size, 'name', hull_size) == 'TITAN':
+                    from titan_acquisition import construction_blocker
+                    entry['replacement_blocker'] = construction_blocker(unit.game, player, [unit], queue=False)
+                    entry['queued_blocker'] = construction_blocker(unit.game, player, [unit], queue=True)
                 catalog[buildable.unit_template_name] = entry
 
     return [catalog[name] for name in sorted(catalog)]

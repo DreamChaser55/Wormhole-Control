@@ -84,6 +84,10 @@ def pending_casts(unit):
 
 
 def availability(unit, kind, galaxy, *, ignore_reservations=False, resources=True):
+    from titan_balance import TITAN_ABILITIES
+    if kind in TITAN_ABILITIES:
+        from titan_abilities import availability as titan_availability
+        return titan_availability(unit, kind, galaxy, ignore_reservations=ignore_reservations, resources=resources)
     spec = SPECS[kind]
     inst = get_instance(unit, kind)
     from tactical_balance import STRIKECRAFT_ABILITIES
@@ -184,7 +188,11 @@ def link_valid(source, inst, galaxy):
     return distance(source.position, target.position) <= limit and (kind != 'guardian_link' or are_allies(source.owner, target.owner))
 
 
-def validate(unit, kind, galaxy, target_id=None, position=None, *, approach=False, check_ready=True, ignore_reservations=False, resources=True, links=True, participants=True):
+def validate(unit, kind, galaxy, target_id=None, position=None, *, approach=False, check_ready=True, ignore_reservations=False, resources=True, links=True, participants=True, system_name=None, hex_coord=None):
+    from titan_balance import TITAN_ABILITIES
+    if kind in TITAN_ABILITIES:
+        from titan_abilities import validate as titan_validate
+        return titan_validate(unit, kind, galaxy, target_id, position, system_name=system_name, hex_coord=hex_coord, check_ready=check_ready, ignore_reservations=ignore_reservations, resources=resources)
     spec = SPECS[kind]
     if check_ready:
         blocker = availability(unit, kind, galaxy, ignore_reservations=ignore_reservations, resources=resources)
@@ -255,6 +263,9 @@ def activate(unit, kind, galaxy, target_id=None, position=None):
     if blocker:
         return False
     from domain.deployables import Deployable, CatalystPatch
+    from titan_balance import TITAN_ABILITIES
+    if kind in TITAN_ABILITIES:
+        return False  # Titan execution belongs exclusively to the owner phase.
     spec, inst = SPECS[kind], get_instance(unit, kind)
     sector = sector_for(unit, galaxy)
     game = getattr(unit, 'game', None)
@@ -304,6 +315,10 @@ def activate(unit, kind, galaxy, target_id=None, position=None):
 
 
 def cancel(unit, kind):
+    from titan_balance import TITAN_ABILITIES
+    if kind in TITAN_ABILITIES:
+        from titan_abilities import cancel as titan_cancel
+        return titan_cancel(unit, kind)
     inst = get_instance(unit, kind)
     if kind not in ('tractor_tether', 'guardian_link') or not inst or not inst.is_active:
         return False
@@ -314,11 +329,16 @@ def cancel(unit, kind):
 
 
 def start_owner_turn(galaxy, player, round_number):
+    from titan_abilities import start_owner_turn as titan_start
+    titan_start(galaxy, player, round_number)
     from campaign_graph import iter_units
     for unit, _ in iter_units(galaxy):
         if unit.owner != player or not unit.ability_component:
             continue
+        from titan_balance import TITAN_ABILITIES
         for kind in SPECS:
+            if kind in TITAN_ABILITIES:
+                continue
             inst = get_instance(unit, kind)
             if not inst:
                 continue
@@ -339,6 +359,8 @@ def start_owner_turn(galaxy, player, round_number):
 
 
 def reconcile_links(galaxy):
+    from titan_abilities import reconcile as titan_reconcile
+    titan_reconcile(galaxy)
     from campaign_graph import iter_units
     for unit, _ in iter_units(galaxy):
         for kind in ('tractor_tether', 'guardian_link'):
@@ -482,4 +504,9 @@ def ability_catalog():
     for kind in RESISTANCES:
         catalog[kind].update(resistance_details(kind), duration=None, approach=False,
                              stacking='independent_hazard_sources', local_sector=True)
+    from titan_balance import TITAN_ABILITIES
+    for kind in TITAN_ABILITIES:
+        catalog[kind].update(approach=False, local_sector=kind not in ("fleet_jump", "deep_scan"), clock="owner_phase_round_deadline", stacking="nonstacking_identical", hull_cost=25)
+    catalog["fleet_jump"].update(destination_reach="anywhere_in_current_system", gather_radius=750, escort_hull_limit=800, hyperdrive_types=["basic", "advanced"])
+    catalog["deep_scan"].update(required_location_fields=["system_name", "hex_coord"])
     return catalog

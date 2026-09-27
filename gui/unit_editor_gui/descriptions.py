@@ -18,6 +18,7 @@ from .catalog import COMPONENT_DESCRIPTIONS, COMPONENT_ROWS
 
 
 DYNAMIC_COST_BASIS = {
+    "has_titan_component": "a fixed, non-editable 100 hull",
     "has_engine": "speed and hull size",
     "has_antimatter_storage": "fuel capacity",
     "has_hyperdrive": "drive type, jump range and hull size",
@@ -125,7 +126,9 @@ def ability_description(name: str) -> tuple[str, str]:
         duration = 'Until disabled; no cooldown'
     range_text = ("Any legal position in the same sector" if name == "microjump" else
                   f"{definition.range:g} logical units" if definition.range else "Self")
-    targets = {"self": "Self", "unit": "Unit", "position": "Position",
+    if name in ("fleet_jump", "deep_scan"):
+        range_text = "Anywhere in the current system"
+    targets = {"sector": "Hex (system name and hex coordinates)", "self": "Self", "unit": "Unit", "position": "Position",
                "celestial_position": "Nebula and position inside it"}
     facts = [
         ("Requires", ", ".join(["Abilities", *required])),

@@ -47,13 +47,51 @@ class StrikecraftAbility(TacticalAbility):
             number(uid, 'strikecraft.participant_id', 0, integer=True)
 
 
+class TitanAbility(TacticalAbility):
+    STATE_FIELDS = TacticalAbility.STATE_FIELDS + ('system_name', 'hex_coord', 'origin_position', 'charge_round', 'order_id')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.system_name = None
+        self.hex_coord = None
+        self.origin_position = None
+        self.charge_round = None
+        self.order_id = None
+
+    def validate_state(self):
+        super().validate_state()
+        from state_codec import number
+        from geometry import Position
+        for field in ('charge_round',):
+            if getattr(self, field) is not None:
+                number(getattr(self, field), 'titan.' + field, 0, integer=True)
+        if self.order_id is not None and not isinstance(self.order_id, str):
+            raise ValueError("Invalid Titan order ID")
+        if self.system_name is not None and (not isinstance(self.system_name, str) or not self.system_name):
+            raise ValueError('Invalid Titan system')
+        if self.hex_coord is not None and (not isinstance(self.hex_coord, tuple) or len(self.hex_coord) != 2 or any(type(v) is not int for v in self.hex_coord)):
+            raise ValueError('Invalid Titan sector')
+        if self.origin_position is not None and not isinstance(self.origin_position, Position):
+            raise ValueError('Invalid Titan origin')
+        if self.is_active and (self.system_name is None or self.hex_coord is None or self.source_owner_id is None):
+            raise ValueError('Missing active Titan location or owner')
+        if self.is_active:
+            if self.ready_round is None or self.expires_round is None:
+                raise ValueError('Missing active Titan deadlines')
+            if self.definition.ability_type == AbilityType.SIEGE_LANCE and (
+                    self.charge_round is None or self.origin_position is None
+                    or not self.order_id or self.target_unit_id is None):
+                raise ValueError('Missing Siege Lance charge state')
+
+
 def _ability_class(kind, spec):
     definition = AbilityDefinition(AbilityType(kind), spec.name, spec.description,
         spec.cooldown, spec.duration, spec.range, spec.target_kind == 'unit',
         spec.target_kind in ('position', 'celestial_position'), spec.cost, list(spec.equipment),
         ongoing_antimatter=TRACTOR_COST if kind == 'tractor_tether' else 0)
     from tactical_balance import STRIKECRAFT_ABILITIES
-    base = StrikecraftAbility if kind in STRIKECRAFT_ABILITIES else TacticalAbility
+    from titan_balance import TITAN_ABILITIES
+    base = TitanAbility if kind in TITAN_ABILITIES else StrikecraftAbility if kind in STRIKECRAFT_ABILITIES else TacticalAbility
     return type(''.join(part.title() for part in kind.split('_')) + 'Ability', (base,), {'DEFINITION': definition})
 
 

@@ -21,7 +21,7 @@ def current_order(unit):
 
 def equipment_ready(unit):
     from constants import HullSize
-    return (unit.hull_size in (HullSize.MEDIUM, HullSize.LARGE, HullSize.HUGE)
+    return (unit.hull_size in (HullSize.MEDIUM, HullSize.LARGE, HullSize.HUGE, HullSize.TITAN)
             and all(c is not None and not c.is_destroyed for c in
                     (getattr(unit, 'wormhole_stabilizer_component', None), unit.antimatter_component)))
 

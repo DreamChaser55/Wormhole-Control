@@ -23,6 +23,7 @@ from geometry import Position
 from unit_components.abilities import AbilityComponent
 from unit_components.antimatter import AntimatterHarvester, AntimatterStorage
 from unit_components.base import UnitComponent
+from unit_components.titan import TitanComponent
 from unit_components.wormhole_stabilizer import WormholeStabilizerComponent
 from unit_components.civilian_habitat import CivilianHabitatComponent
 from unit_components.cloaking import CloakingDevice
@@ -70,6 +71,8 @@ class Unit(GameObject):
         super().__init__(position, in_hex, in_system)
         self.owner = owner
         self.last_planetary_action_round = 0
+        self.last_titan_action_round = 0
+        self.titan_cooldowns = {}
         self.name: str = name
         self.game = game
         self.in_galaxy: Optional['Galaxy'] = game.galaxy if game else None
@@ -125,6 +128,8 @@ class Unit(GameObject):
         """
         existing = self.components.get(type(component))
         if existing is not None and existing is not component:
+            from titan_abilities import decommission
+            decommission(self, existing)
             existing.on_destroyed()
         self.components[type(component)] = component
         self._update_hull_usage()
@@ -141,6 +146,8 @@ class Unit(GameObject):
         exception propagates before removal; refit orders own costs and timing.
         """
         if component_type in self.components:
+            from titan_abilities import decommission
+            decommission(self, self.components[component_type])
             self.components[component_type].on_destroyed()
             del self.components[component_type]
             self._update_hull_usage()
@@ -235,6 +242,10 @@ class Unit(GameObject):
     @property
     def strikecraft_wing_component(self) -> typing.Optional[StrikecraftWingComponent]:
         return self.get_component(StrikecraftWingComponent)
+
+    @property
+    def titan_component(self):
+        return self.get_component(TitanComponent)
 
     @property
     def ability_component(self) -> typing.Optional[AbilityComponent]:
@@ -468,6 +479,8 @@ class Unit(GameObject):
             unit_event(self, "combat", f"{component.DISPLAY_NAME} destroyed", component_type=component_type, once=True)
             spillover = abs(component.current_hit_points)
             component.current_hit_points = 0
+            from titan_abilities import decommission
+            decommission(self, component)
             component.on_destroyed()
             logger.debug(f"Unit '{format_unit_for_log(self)}' component {component_type.__name__} has been destroyed!")
 
@@ -537,6 +550,8 @@ class Unit(GameObject):
         from campaign_graph import detach_unit, iter_units
         galaxy = self.in_galaxy or getattr(self.game, "galaxy", None)
         for component in list(self.components.values()):
+            from titan_abilities import decommission
+            decommission(self, component)
             component.on_destroyed()
         if galaxy:
             for source, _ in list(iter_units(galaxy)):

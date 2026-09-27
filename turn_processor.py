@@ -112,6 +112,8 @@ class TurnProcessor:
             reconcile_links(self.game.galaxy)
             from strikecraft_service import process as process_wing_service
             process_wing_service(self.game, current_player, advance=True)
+            from titan_abilities import process as process_titans
+            process_titans(self.game, current_player)
             with ProfileTimer("Movement processing"):
                 sublight_movements = self._process_movement(current_player)
 
@@ -149,6 +151,7 @@ class TurnProcessor:
             process_support(self.game, current_player)
 
             process_wing_service(self.game, current_player)
+            reconcile_links(self.game.galaxy)
             self._cancel_hidden_attacks()
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 

@@ -145,9 +145,13 @@ class _BatchProjection:
         # scoped to the issuing player in _rebuild, including unselected units.
         for system in getattr(game.galaxy, "systems", {}).values():
             for sector in getattr(system, "hexes", {}).values():
-                for unit in getattr(sector, "units", []):
+                for unit in getattr(sector, "units", ()):
                     if getattr(unit, "commander_component", None):
                         projection._ensure_orders(unit)
+        from campaign_graph import iter_units
+        for unit, _ in iter_units(game.galaxy):
+            if unit.commander_component:
+                projection._ensure_orders(unit)
         return projection
 
     def _ensure_orders(self, unit):
@@ -172,6 +176,7 @@ class _BatchProjection:
 
     def before(self, command, units):
         self._group_links = {}
+        self._group_titan_count = 0
         for unit in units:
             from strikecraft_service import command_blocker
             if command_blocker(unit, command.type):
@@ -604,7 +609,10 @@ class _BatchProjection:
         for entry in self._order_ledger.get(unit.id, ()):
             kind = entry['parameters'].get('ability_type')
             if entry['type'] == 'use_ability' and not entry.get('settled') and kind in costs:
-                available -= costs[kind]
+                from titan_abilities import instance
+                lance = instance(unit, 'siege_lance') if kind == 'siege_lance' else None
+                if not (lance and lance.is_active and entry.get('order') and lance.order_id == entry['order'].public_id):
+                    available -= costs[kind]
         return available
 
     def tactical_links(self):
@@ -690,6 +698,9 @@ class _BatchProjection:
                       "turret_type_override": command.turret_type_override, "defense_type_override": command.defense_type_override,
                       "waypoints": list(command.waypoints or []), "ability_type": command.ability, "target_unit_id": command.target_id, "target_position": command.position,
                       "target_system_name": command.system_name, "target_hex_coord": command.hex_coord}
+            if command.type == 'construct':
+                from titan_acquisition import intended_hull
+                params['construction_hull_size'] = intended_hull(params, self.player)
             for unit in units:
                 self._order_ledger[unit.id].append({"id": uuid.uuid4().hex, "type": command.type, "parameters": params, "order": None, "started": False, "settled": False})
                 self._settle_front(unit)
@@ -726,6 +737,10 @@ class _BatchProjection:
             from tactical_abilities import SPECS, validate
             from geometry import Position
             ability = params.get('ability_type')
+            from titan_balance import TITAN_ABILITIES
+            from titan_acquisition import acquisition
+            if ability in TITAN_ABILITIES or acquisition(kind, params, unit.owner, self.game.galaxy):
+                return
             if ability in SPECS:
                 raw_point = params.get('target_position')
                 point = raw_point if isinstance(raw_point, Position) else Position(*raw_point) if raw_point is not None else None
@@ -1071,7 +1086,10 @@ class CommandGateway:
         if command.type == "cancel_ability":
             from tactical_abilities import cancel
             for unit in units:
-                if not any(kind == command.ability and source == unit.id for (kind, _), source in projection.tactical_links().items()):
+                from titan_balance import TITAN_ABILITIES
+                from titan_abilities import effect_valid
+                titan_active = command.ability in TITAN_ABILITIES - {'fleet_jump'} and effect_valid(unit, command.ability, self.game.galaxy) and (unit.id, command.ability) not in projection._tactical_cancelled
+                if not titan_active and not any(kind == command.ability and source == unit.id for (kind, _), source in projection.tactical_links().items()):
                     raise _Rejected('capability_unavailable', 'This link is not active.')
                 projection._tactical_cancelled.add((unit.id, command.ability))
             return [_Prepared(apply=lambda unit=unit: cancel(unit, command.ability), receipt='Cancelled ability link.') for unit in units]
@@ -1219,7 +1237,7 @@ class CommandGateway:
             spec = SPECS[command.ability]
             if spec.target_kind in ('unit', 'celestial_position') and command.target_id is None:
                 raise _Rejected('missing_field', 'This ability requires target_id.')
-            if spec.target_kind in ('position', 'self') and command.target_id is not None:
+            if spec.target_kind in ('position', 'self', 'sector') and command.target_id is not None:
                 raise _Rejected('invalid_command_contract', 'This ability does not use target_id.')
             if (spec.target_kind in ('position', 'celestial_position')) != (command.position is not None):
                 raise _Rejected('invalid_command_contract', 'Incorrect position for this ability.')
@@ -1232,6 +1250,10 @@ class CommandGateway:
                 params['target_body_id' if spec.target_kind == 'celestial_position' else 'target_unit_id'] = command.target_id
             if command.position is not None:
                 params.update(target_position=self._destination(command), target_system_name=command.system_name, target_hex_coord=command.hex_coord)
+            if spec.target_kind == 'sector':
+                from location_validation import location
+                system, coord, _ = location(command.system_name, command.hex_coord, (0, 0), self.game.galaxy)
+                params.update(target_system_name=system, target_hex_coord=coord)
             def tactical_order(unit):
                 bound = dict(params)
                 return UseAbilityOrder(unit, bound)
@@ -1951,6 +1973,13 @@ class CommandGateway:
         This is issuance validation, not a promise of arrival or completion:
         commit callbacks and executing orders check the applicable live conditions.
         """
+        from titan_acquisition import acquisition, capacity
+        params = {"unit_template_name": command.template_name, "ability_type": command.ability, "target_unit_id": command.target_id}
+        if acquisition(command.type, params, unit.owner, self.game.galaxy):
+            slots = capacity(self.game.galaxy, unit.owner, ledger=projection._order_ledger)
+            if slots["available"] <= projection._group_titan_count:
+                raise _Rejected("titan_limit_reached", "One surviving Titan or reserved acquisition is allowed per player.")
+            projection._group_titan_count += 1
         hidden = projection.hidden_for(unit, queued=command.queue)
         if hidden and command.type != "leave_gas_giant":
             raise _Rejected("invalid_state", "Submerged units cannot execute orders while hidden in a gas giant atmosphere.")
@@ -2140,6 +2169,15 @@ class CommandGateway:
                 self._destination(command)
             if command.ability == "microjump" and (command.system_name != unit.in_system or command.hex_coord != unit.in_hex):
                 raise _Rejected("out_of_range", "Microjump requires the current sector.")
+            from titan_balance import TITAN_ABILITIES
+            if command.ability in TITAN_ABILITIES:
+                from titan_abilities import validate as titan_validate
+                from geometry import Position
+                error = titan_validate(unit, command.ability, self.game.galaxy, command.target_id, Position(*command.position) if command.position is not None else None, system_name=command.system_name, hex_coord=command.hex_coord, ignore_reservations=True, resources=False)
+                if error:
+                    raise _Rejected(error, 'Titan ability unavailable: ' + error.replace('_', ' '))
+                projection.validate_tactical(command, unit)
+                return
             if command.ability in SPECS:
                 if command.system_name not in (None, unit.in_system) or (command.hex_coord is not None and tuple(command.hex_coord) != tuple(unit.in_hex)):
                     raise _Rejected('out_of_range', 'Tactical positions must be in the current sector.')

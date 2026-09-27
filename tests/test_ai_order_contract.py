@@ -268,7 +268,7 @@ def test_socket_partial_response_cached_and_observation_required():
 
 
 @pytest.mark.parametrize("kind", ["construct", "refit"])
-def test_restored_component_job_refunds_only_its_owner_once(kind):
+def test_restored_component_job_refunds_only_its_owner_once(kind, monkeypatch):
     from save_manager import deserialize_order, serialize_order
     from unit_components.constructor import BuildableUnit, Constructor
     from unit_orders.construction import ConstructOrder
@@ -276,6 +276,9 @@ def test_restored_component_job_refunds_only_its_owner_once(kind):
     game, player, _, unit = world()
     unit.add_component(Constructor(unit))
     constructor = unit.constructor_component
+    from unit_templates import UNIT_TEMPLATES
+    from constants import HullSize
+    monkeypatch.setitem(UNIT_TEMPLATES, "test", {"hull_size": HullSize.MEDIUM})
     constructor.can_build = lambda name: BuildableUnit('test', 5, 100)
     player.credits = 500
     if kind == "construct":

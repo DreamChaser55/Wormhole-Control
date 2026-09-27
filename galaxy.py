@@ -712,11 +712,11 @@ class Galaxy:
         else:
             stability = 100
 
-        # Determine diameter: 70% HUGE, 15% LARGE, 15% MEDIUM
+        # Determine diameter: 70% TITAN, 15% LARGE, 15% MEDIUM
         if diameter is None:
             rand = random.random()
             if rand < 0.70:
-                diameter = HullSize.HUGE
+                diameter = HullSize.TITAN
             elif rand < 0.85:
                 diameter = HullSize.LARGE
             else:
@@ -783,6 +783,10 @@ class Galaxy:
 
         # 3. Add to destination system
         destination_system.add_unit(unit)
+        if origin_system_name != destination_system_name:
+            from titan_abilities import cancel
+            cancel(unit, 'deep_scan')
+            cancel(unit, 'siege_lance')
         logger.debug(f"Galaxy: Transferred unit {format_unit_for_log(unit)} from system {origin_system_name} to system {destination_system_name}, into hex {destination_hex}")
         return True
 

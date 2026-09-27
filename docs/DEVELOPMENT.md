@@ -86,13 +86,13 @@ changing the others. The table is generated from their runtime constants.
 <!-- BEGIN GENERATED: versions -->
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
-| Campaign save | 4.18 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 24 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
-| Command contract | 19 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
-| Response schema | wormhole_control_turn_v14 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v24 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Campaign save | 4.19 | [CURRENT_SAVE_VERSION](../save_manager.py) |
+| Observation | 25 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Command contract | 20 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
+| Response schema | wormhole_control_turn_v15 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
+| Prompt cache | wormhole-control-turn-v25 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
 | Local socket protocol | 3 | [PROTOCOL_VERSION](../game_control_protocol.py) |
-| Constructor component | 4 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
+| Constructor component | 5 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
 | Commander component | 2 | [Commander.SCHEMA_VERSION](../unit_components/commander.py) |
 | Strikecraft Bay component | 5 | [StrikecraftBayComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
 | Strikecraft Wing component | 2 | [StrikecraftWingComponent.SCHEMA_VERSION](../unit_components/strikecraft.py) |
@@ -374,3 +374,28 @@ Movement returns a transient map of unit IDs to the post-drag speed used for
 positive sublight displacement. The same owner-turn hazard phase consumes this
 map, so arrival does not erase abrasion eligibility and old movement cannot leak
 into a later turn. No movement receipts are persisted.
+
+## Titan services
+
+`titan_balance.py` owns Core/power tuning; ordinary hull tables define Titan
+capacity, HP, propulsion and rendering. `titan_acquisition.py` derives ownership
+and pending acquisitions from `campaign_graph`, explicit roots and constructor
+jobs. The batch ledger substitutes projected roots for live roots, so cancellation
+and replacement release capacity without predicting boarding success. Accepted
+construction persists `construction_hull_size` and rechecks it before payment
+and completion. Completion settles its root as ownership replaces the reservation.
+
+`titan_abilities.process` runs once per owner round before movement/hazards.
+Queued issuance reserves fuel; only this phase executes powers. Unit-level
+`titan_cooldowns` and `last_titan_action_round` survive component replacement.
+Active ability instances hold expiry, source ownership, scan coordinates and
+Lance charge/origin/public-order identity. Decommissioning prerequisites cancels
+active effects before removal. Pure visibility and effective-stat queries do not
+advance or reconcile state. Visibility coverage uses the existing short-range
+pipeline; weapon protection uses `combat_hit`, and wing bonuses multiply through
+existing speed and outgoing/incoming damage helpers.
+
+The [Titan acceptance tests](../tests/test_titans.py) cover deferred activation,
+atomic placement, both drive types, construction/capture reservations, visibility,
+stacking, interruptions, persistence and controller/UI integration. See
+[Titan gameplay rules](TITANS.md) for the complete feature contract.

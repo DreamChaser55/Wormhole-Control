@@ -225,6 +225,17 @@ def handle_mouse_click(game, gui, button: int, position: Position) -> None:
     # --- Pending Ability Targeting Mode ---
     # If an ability awaiting a target is pending, intercept clicks in sector view
     pending = getattr(game, 'pending_ability', None)
+    if pending and pending[0] == 'deep_scan' and game.view_mode == 'system' and is_right_click:
+        coord = game.system_view_mouse_hover_hex
+        actors = [u for u in game.selected_objects if isinstance(u, Unit)]
+        if coord is not None and actors:
+            game.event_bus.publish(UseAbilityEvent(units=actors, ability_type_str='deep_scan',
+                target_system_name=game.current_system_name, target_hex_coord=coord, shift_pressed=shift_pressed))
+            game.pending_ability = None
+            game.sidebar_needs_update = True
+        return
+    if pending and pending[0] in ('deep_scan', 'fleet_jump') and game.view_mode == 'system' and is_left_click:
+        return  # Keep the Titan selected while navigating to its target hex.
     if pending and isinstance(pending, (tuple, list)) and len(pending) > 0 and isinstance(pending[0], str) and game.view_mode == 'sector':
         ability_type_str = pending[0]
         requires_unit = pending[1] if len(pending) > 1 else False

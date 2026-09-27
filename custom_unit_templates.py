@@ -92,7 +92,12 @@ HULL_RESTRICTIONS: Dict[HullSize, set] = {
     },
     HullSize.LARGE: set(),
     HullSize.HUGE: set(),
+    HullSize.TITAN: set(),
 }
+
+for _hull in HullSize:
+    if _hull != HullSize.TITAN:
+        HULL_RESTRICTIONS[_hull].add("has_titan_component")
 
 # Advanced hyperdrive is unavailable on TINY hulls (existing game rule).
 ADVANCED_HYPERDRIVE_MIN_HULL = HullSize.SMALL
@@ -123,6 +128,7 @@ HULL_BASE_COST: Dict[HullSize, int] = {
     HullSize.MEDIUM: 500,
     HullSize.LARGE: 1000,
     HullSize.HUGE: 2000,
+    HullSize.TITAN: 20000,
 }
 
 HULL_BASE_BUILD_TIME: Dict[HullSize, int] = {
@@ -132,6 +138,7 @@ HULL_BASE_BUILD_TIME: Dict[HullSize, int] = {
     HullSize.MEDIUM: 10,
     HullSize.LARGE: 15,
     HullSize.HUGE: 20,
+    HullSize.TITAN: 60,
 }
 
 COMPONENT_COST_PER_HULL_POINT = 30  # credits per hull capacity point used
@@ -424,6 +431,7 @@ class ComponentConfig:
 
     has_troop_transport_component: bool = False
     troop_capacity: int = TROOP_DEFAULT_CAPACITY
+    has_titan_component: bool = False
     has_wormhole_stabilizer_component: bool = False
     has_siege_battery_component: bool = False
 
@@ -549,6 +557,11 @@ class ComponentConfig:
         return TroopTransportComponent.calc_hull_cost(self.troop_capacity) if self.has_troop_transport_component else 0.0
 
     @property
+    def titan_hull_cost(self) -> float:
+        from titan_balance import CORE_HULL_COST
+        return CORE_HULL_COST if self.has_titan_component else 0.0
+
+    @property
     def wormhole_stabilizer_hull_cost(self) -> float:
         from wormhole_stabilization import STABILIZER_HULL_COST
         return STABILIZER_HULL_COST if self.has_wormhole_stabilizer_component else 0.0
@@ -638,7 +651,7 @@ class CustomUnitTemplate:
         if c.has_ability_component:             total += c.ability_hull_cost
         if c.has_sensors:                       total += c.sensors_hull_cost
         if c.has_minelayer_component:           total += c.minelayer_hull_cost
-        total += c.troop_transport_hull_cost + c.siege_battery_hull_cost + c.wormhole_stabilizer_hull_cost
+        total += c.troop_transport_hull_cost + c.siege_battery_hull_cost + c.wormhole_stabilizer_hull_cost + c.titan_hull_cost
         if c.has_marines_component:             total += c.marines_hull_cost
         if c.has_cloaking_device:              total += c.cloaking_device_hull_cost
         if c.has_intelligence_component:       total += c.intelligence_hull_cost
@@ -967,6 +980,7 @@ def template_from_dict(key: str, d: Dict[str, Any]) -> CustomUnitTemplate:
 
         has_troop_transport_component=d.get("has_troop_transport_component", False),
         troop_capacity=int(d.get("troop_capacity", TROOP_DEFAULT_CAPACITY)),
+        has_titan_component=d.get("has_titan_component", False),
         has_wormhole_stabilizer_component=d.get("has_wormhole_stabilizer_component", False),
         has_siege_battery_component=d.get("has_siege_battery_component", False),
         has_marines_component=d.get("has_marines_component", False),
@@ -1109,6 +1123,8 @@ def template_to_dict(template: CustomUnitTemplate, *, is_custom: bool = True) ->
         "has_troop_transport_component": c.has_troop_transport_component,
         "troop_capacity": c.troop_capacity,
         "troop_transport_hull_cost": c.troop_transport_hull_cost,
+        "has_titan_component": c.has_titan_component,
+        "titan_hull_cost": c.titan_hull_cost,
         "has_wormhole_stabilizer_component": c.has_wormhole_stabilizer_component,
         "wormhole_stabilizer_hull_cost": c.wormhole_stabilizer_hull_cost,
         "has_siege_battery_component": c.has_siege_battery_component,

@@ -37,7 +37,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.18"
+CURRENT_SAVE_VERSION = "4.19"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -256,7 +256,7 @@ def serialize_components(unit: Unit) -> dict:
 
 def serialize_unit(unit: Unit) -> dict:
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "id": unit.id,
         "name": unit.name,
         "owner_id": unit.owner.id if unit.owner else None,
@@ -271,6 +271,8 @@ def serialize_unit(unit: Unit) -> dict:
         "is_disabled": unit.is_disabled,
         "disabled_by_unit_ids": list(unit.disabled_by_unit_ids),
         "last_planetary_action_round": unit.last_planetary_action_round,
+        "last_titan_action_round": unit.last_titan_action_round,
+        "titan_cooldowns": dict(unit.titan_cooldowns),
         "multiply_cast_ready_round": unit.multiply_cast_ready_round,
         "multiply_receive_ready_round": unit.multiply_receive_ready_round,
         "damage_reduction": unit.damage_reduction,
@@ -503,6 +505,8 @@ def deserialize_order(data: dict, unit: Unit, game: Any) -> Order:
     from location_validation import order_locations
     params = order_locations(order_type_str, params, getattr(game, "galaxy", None))
     if order_type_str == "CONSTRUCT":
+        if params.get("construction_hull_size") not in HullSize.__members__:
+            raise ValueError("Missing or invalid frozen construction hull")
         from construction_customization import validate_override_values, OVERRIDE_FIELDS
         if any(field not in params for field in OVERRIDE_FIELDS):
             raise ValueError("Missing construction overrides")
@@ -554,7 +558,7 @@ def _restore_saved_commander(unit: Unit, game: Any) -> None:
 
 def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) -> Unit:
     from unit_components.persistence import restore_component
-    if type(data["schema_version"]) is not int or data["schema_version"] != 3:
+    if type(data["schema_version"]) is not int or data["schema_version"] != 4:
         raise ValueError("Unsupported unit schema")
     owner = players_by_id.get(data["owner_id"])
     if data["owner_id"] is not None and owner is None:
@@ -564,7 +568,7 @@ def deserialize_unit(data: dict, players_by_id: Dict[int, Player], game: Any) ->
     unit.id = data["id"]
     for name in ("current_hit_points", "max_hit_points", "experience_points", "is_disabled",
                  "damage_reduction", "damage_amplification", "lifetime", "is_temporary",
-                 "multiply_cast_ready_round", "multiply_receive_ready_round", "last_planetary_action_round"):
+                 "multiply_cast_ready_round", "multiply_receive_ready_round", "last_planetary_action_round", "last_titan_action_round", "titan_cooldowns"):
         setattr(unit, name, data[name])
     unit.disabled_by_unit_ids = set(data["disabled_by_unit_ids"])
     # A new shell has no installed equipment to decommission.

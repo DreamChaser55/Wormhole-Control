@@ -57,7 +57,7 @@ There must be at least as many generated systems as players. Specified homes mus
 be unique, with enough unclaimed systems left for random assignments.
 
 **Testing** supplies ships and stations across Tiny through Huge hulls, including
-a carrier. Unassigned players share Sol, or the first available system; specified
+a carrier plus one Titan Flagship (12 units per player). Unassigned players share Sol, or the first available system; specified
 homes may also be shared. Testing designs become buildable only after a Testing
 campaign starts. Starting Normal, loading a save, or returning to the main menu
 removes them from the construction catalogue while preserving custom designs.
@@ -352,53 +352,55 @@ Antimatter Storage is equipped; it does not require every design to carry a tank
 | `MEDIUM` | 50 | 100 | 100 | 500 | 10 |
 | `LARGE` | 100 | 200 | 150 | 1000 | 15 |
 | `HUGE` | 200 | 400 | 200 | 2000 | 20 |
+| `TITAN` | 800 | 1600 | 1000 | 20000 | 60 |
 
 - Build credits = base credits + `round(used hull × 30)`.
 - Build metal = `ceil(capacity / 2 + used hull)`; crystal = `ceil(used hull / 2)`.
 - Build turns = base turns + `round(used hull / capacity × base turns)`.
-- Upkeep = `0.01 × used hull` credits/turn; strikecraft wings are exempt.
+- Upkeep = `0.01 × used hull` credits/turn; strikecraft wings are exempt. Titan upkeep = `50 + 0.1 x used hull`.
 
 ### Component catalogue
 
 <!-- BEGIN GENERATED: components -->
-The Unit Designer provides **27 selectable component rows**. Commander is always present.
+The Unit Designer provides **28 selectable component rows**. Commander is always present.
 
 | # | Component Key | Label | Cost Type | Default Cost |
 | --- | --- | --- | --- | --- |
-| 1 | `has_engine` | Engines | Dynamic | 5.0 |
-| 2 | `has_antimatter_storage` | Antimatter Storage | Dynamic | 5.0 |
-| 3 | `has_antimatter_harvester` | Antimatter Harvester | Fixed | 15.0 |
-| 4 | `has_hyperdrive` | Hyperdrive | Dynamic | 5.0 |
-| 5 | `has_weapon_bays` | Weapons | Dynamic | 10.0 |
-| 6 | `has_defenses` | Defenses | Dynamic | 10.0 |
-| 7 | `has_constructor_component` | Constructor | Fixed | 15.0 |
-| 8 | `has_repair_component` | Repair | Dynamic | 15.0 |
-| 9 | `has_colony_component` | Colony | Fixed | 10.0 |
-| 10 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 |
-| 11 | `has_orbital_defense_component` | Orbital Defense | Fixed | 20.0 |
-| 12 | `has_trade_component` | Trade Module | Fixed | 10.0 |
-| 13 | `has_mining_component` | Mining | Dynamic | 10.0 |
-| 14 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 |
-| 15 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 |
-| 16 | `has_hangar` | Hangar | Dynamic | 20.0 |
-| 17 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 |
-| 18 | `has_inhibitor` | Inhibitor Field | Dynamic | 6.67 |
-| 19 | `has_wormhole_stabilizer_component` | Wormhole Stabilizer | Fixed | 15.0 |
-| 20 | `has_ability_component` | Abilities | Dynamic | 10.0 |
-| 21 | `has_sensors` | Sensors | Dynamic | 2.0 |
-| 22 | `has_minelayer_component` | Minelayer | Fixed | 15.0 |
-| 23 | `has_troop_transport_component` | Troop Transport | Dynamic | 20.0 |
-| 24 | `has_siege_battery_component` | Siege Battery | Fixed | 20.0 |
-| 25 | `has_marines_component` | Marines | Dynamic | 10.0 |
-| 26 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 |
-| 27 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 |
+| 1 | `has_titan_component` | Titan Core | Dynamic | 100.0 |
+| 2 | `has_engine` | Engines | Dynamic | 5.0 |
+| 3 | `has_antimatter_storage` | Antimatter Storage | Dynamic | 5.0 |
+| 4 | `has_antimatter_harvester` | Antimatter Harvester | Fixed | 15.0 |
+| 5 | `has_hyperdrive` | Hyperdrive | Dynamic | 5.0 |
+| 6 | `has_weapon_bays` | Weapons | Dynamic | 10.0 |
+| 7 | `has_defenses` | Defenses | Dynamic | 10.0 |
+| 8 | `has_constructor_component` | Constructor | Fixed | 15.0 |
+| 9 | `has_repair_component` | Repair | Dynamic | 15.0 |
+| 10 | `has_colony_component` | Colony | Fixed | 10.0 |
+| 11 | `has_civilian_habitat_component` | Civilian Habitat | Fixed | 15.0 |
+| 12 | `has_orbital_defense_component` | Orbital Defense | Fixed | 20.0 |
+| 13 | `has_trade_component` | Trade Module | Fixed | 10.0 |
+| 14 | `has_mining_component` | Mining | Dynamic | 10.0 |
+| 15 | `has_metal_refinery_component` | Metal Refinery | Fixed | 20.0 |
+| 16 | `has_crystal_refinery_component` | Crystal Refinery | Fixed | 20.0 |
+| 17 | `has_hangar` | Hangar | Dynamic | 20.0 |
+| 18 | `has_strikecraft_bay` | Strikecraft Bay | Dynamic | 15.0 |
+| 19 | `has_inhibitor` | Inhibitor Field | Dynamic | 6.67 |
+| 20 | `has_wormhole_stabilizer_component` | Wormhole Stabilizer | Fixed | 15.0 |
+| 21 | `has_ability_component` | Abilities | Dynamic | 10.0 |
+| 22 | `has_sensors` | Sensors | Dynamic | 2.0 |
+| 23 | `has_minelayer_component` | Minelayer | Fixed | 15.0 |
+| 24 | `has_troop_transport_component` | Troop Transport | Dynamic | 20.0 |
+| 25 | `has_siege_battery_component` | Siege Battery | Fixed | 20.0 |
+| 26 | `has_marines_component` | Marines | Dynamic | 10.0 |
+| 27 | `has_cloaking_device` | Cloaking Device | Dynamic | 10.0 |
+| 28 | `has_intelligence_component` | Intelligence | Dynamic | 10.0 |
 <!-- END GENERATED: components -->
 
 Unless an exception is listed below, utility components require **Small or larger**
 hulls. Dynamic costs follow configured performance; fixed costs appear in the table.
 
 - **Engines:** All hulls. Cost is `speed / 20 × hull multiplier`: Wing 0.2,
-  Tiny 0.6, Small 0.8, Medium 1, Large 1.5, Huge 2. Wing engines therefore provide
+  Tiny 0.6, Small 0.8, Medium 1, Large 1.5, Huge 2, Titan 4. Wing engines therefore provide
   100 base speed per hull point. XP, sabotage and abilities modify that base speed.
 - **Antimatter Storage:** All hulls. Capacity determines cost and must meet the
   hull-specific minimum above. **Antimatter Harvester** collects fuel from stars
@@ -408,7 +410,7 @@ hulls. Dynamic costs follow configured performance; fixed costs appear in the ta
   Wings cannot equip either type.
 - **Weapons / Defenses:** All hulls. Weapon cost depends on turret count, damage,
   range and cooldown; defense cost depends on Armor, Shields and Point Defense.
-- **Constructor:** Builds Tiny through Huge ships and stations and refits
+- **Constructor:** Builds Tiny through Titan ships and stations and refits
   friendly/allied units. Wings are produced only by Strikecraft Bays.
 - **Repair:** Cost scales with repair rate; restores friendly/allied ships.
 - **Colony:** Colonizes habitable bodies and loads population from allied colonies.
@@ -419,7 +421,7 @@ hulls. Dynamic costs follow configured performance; fixed costs appear in the ta
   different sectors.
 - **Mining:** Tiny or larger; cost scales with mining rate and cargo capacity.
   **Metal Refinery / Crystal Refinery** process the corresponding mined cargo.
-- **Hangar:** Large or Huge only; cost scales with slots. Carries Tiny vessels,
+- **Hangar:** Large or larger only; cost scales with slots. Carries Tiny vessels,
   not strikecraft wings.
 - **Strikecraft Bay:** Medium or larger; cost scales with wing slots. Builds,
   carries and replenishes built-in Fighter-role and Bomber-role wing designs.
@@ -571,6 +573,8 @@ report mandatory returns and endurance losses.
 | Siege Dreadnought | Combat | HUGE ship | 185.49/200 | 7565 | 286 | 93 | 39 | 1.85 | Dedicated planetary bombardment with a Siege Battery and long-range fleet weapons. Inter-system travel. |
 | Artillery Dreadnought | Combat | HUGE ship | 194.93/200 | 7848 | 295 | 98 | 39 | 1.95 | Dedicated long-range fleet bombardment dreadnought featuring tri-weapon artillery batteries. Inter-system travel. |
 | Interdiction Fortress | Combat | HUGE station | 200.00/200 | 8000 | 300 | 100 | 40 | 2.00 | Designed for fortified jump denial. Stationary installation. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
+| Titan Citadel | Combat | TITAN station | 643.87/800 | 39316 | 1044 | 322 | 108 | 114.39 | Unique strategic station with a Titan Core and powerful strategic abilities. |
+| Titan Flagship | Combat | TITAN ship | 720.87/800 | 41626 | 1121 | 361 | 114 | 122.09 | Unique strategic flagship with a Titan Core and powerful strategic abilities. |
 | Mining Drone | Economy | TINY ship | 9.00/10 | 370 | 14 | 5 | 6 | 0.09 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Small Mining Ship | Economy | SMALL ship | 23.20/25 | 946 | 36 | 12 | 12 | 0.23 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
 | Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 37 | 12 | 12 | 0.24 | Designed for income and trade destination. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
@@ -601,7 +605,7 @@ report mandatory returns and endurance losses.
 | Scout | Reconnaissance | SMALL ship | 24.40/25 | 982 | 37 | 13 | 12 | 0.24 | Designed for exploration. Inter-system travel. |
 | Radiation Surveyor | Reconnaissance | MEDIUM ship | 42.25/50 | 1768 | 68 | 22 | 18 | 0.42 | Reduces radiation hazards by 75% for this unit while enabled. Costs 1 AM each owner turn, including safe space. Requires functional Abilities and Antimatter Storage. Protection does not change terrain access, sensors or movement. Inter-system travel. Protection starts disabled. |
 | Sensor Station | Reconnaissance | MEDIUM station | 46.00/50 | 1880 | 71 | 23 | 19 | 0.46 | Designed for long-range reconnaissance. Stationary installation. |
-| Covert Intelligence Ship | Special Operations | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Externally identical to the Patrol Escort, with two hidden intelligence agents. Constructed under the cover name ‘Patrol Escort’. After construction, you may rename it to another generic warship name; avoid names that reveal its intelligence role. Inter-system travel. |
+| Covert Intelligence Ship | Special Operations | MEDIUM ship | 48.00/50 | 1940 | 73 | 24 | 20 | 0.48 | Externally identical to the Patrol Escort, with two hidden intelligence agents. Constructed under the cover name â€˜Patrol Escortâ€™. After construction, you may rename it to another generic warship name; avoid names that reveal its intelligence role. Inter-system travel. |
 | Minelayer | Special Operations | MEDIUM ship | 49.50/50 | 1985 | 75 | 25 | 20 | 0.49 | Designed for mine deployment. Inter-system travel. |
 | Intelligence Ship | Special Operations | LARGE ship | 75.00/100 | 3250 | 125 | 38 | 26 | 0.75 | Designed for espionage and counter-intelligence. Inter-system travel. |
 | Boarding Cruiser | Special Operations | LARGE ship | 82.00/100 | 3460 | 132 | 41 | 27 | 0.82 | Designed for boarding and capture. Inter-system travel. |
@@ -1028,7 +1032,7 @@ refund their activation payment and do not start cooldown. Zero-cost abilities
 retain their own equipment requirements.
 
 <!-- BEGIN GENERATED: abilities -->
-There are **24 special abilities** registered in the game.
+There are **29 special abilities** registered in the game.
 
 | Ability | Mode | Cooldown (Turns) | Duration (Turns) | Range (logical units) | AM Cost | Ongoing AM / owner turn | Required Component | Target Type |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1053,6 +1057,11 @@ There are **24 special abilities** registered in the game.
 | **Guardian Link** | Cast | 7 | 3 | 450 | 25 | 0 | Defenses | Unit |
 | **Multiply Antimatter** | Cast | 30 | 0 | 500 | 20 | 0 | Antimatter Storage | Self |
 | **Nebula Catalyst** | Cast | 7 | 3 | 750 | 30 | 0 | Sensors, Antimatter Storage | Nebula + Position |
+| **Fleet Jump** | Cast | 30 | 0 | Current system (unlimited) | 200 | 0 | Titan Core, Antimatter Storage, Engines, Hyperdrive | Position |
+| **Aegis Field** | Cast | 20 | 10 | 1000 | 150 | 0 | Titan Core, Antimatter Storage, Defenses | Self |
+| **Siege Lance** | Cast | 25 | 1 | 3000 | 200 | 0 | Titan Core, Antimatter Storage, Weapons, Sensors | Unit |
+| **Deep Scan** | Cast | 20 | 5 | Current system (unlimited) | 150 | 0 | Titan Core, Antimatter Storage, Sensors | Hex |
+| **Carrier Supremacy** | Cast | 25 | 10 | 0 | 200 | 0 | Titan Core, Antimatter Storage, Strikecraft Bay, Sensors | Self |
 | **Hazard Shielding** | Toggle | 0 | Until disabled | 0 | 0 | 2 | Antimatter Storage | Self |
 | **Radiation Hardening** | Toggle | 0 | Until disabled | 0 | 0 | 1 | Antimatter Storage | Self |
 | **Antimatter Containment** | Toggle | 0 | Until disabled | 0 | 0 | 1 | Antimatter Storage | Self |
@@ -1383,7 +1392,7 @@ units receive no external environmental modifiers.
 
 ### Gas-giant atmospheric hiding
 
-Ships with operational Engines, Tiny through Huge, can enter gas giants. Wings
+Ships with operational Engines, Tiny through Titan, can enter gas giants. Wings
 and stationary stations cannot. Hidden ships disappear from enemy sensors and
 maps, cannot interact with outside space or project fields, and cannot be attacked
 from outside. Opposing hidden ships cannot detect or attack each other. Upkeep
@@ -1550,3 +1559,18 @@ AI telemetry and developer-feedback files are documented under
 [AI failure behavior](AGENTIC_AI.md#failure-behavior). For rejected commands,
 uncertain transport outcomes or partial execution, follow
 [Codex recovery distinctions](CODEX_CONTROL.md#recovery-distinctions).
+
+## Titan hull and strategic abilities
+
+[Titan rules](TITANS.md) define the complete acquisition, equipment, economics,
+movement, combat, recon, strikecraft and persistence contracts. The public
+Flagship and Citadel occupy one surviving/reserved slot per player. Their Core
+costs 100 hull; each Titan power costs 25 hull inside Abilities. Core removal
+requires removing its dependent powers first.
+
+Use the sidebar to choose a power. For Deep Scan, right-click a hex in system
+view or a location in sector view; for Fleet Jump, navigate to an explored hex
+and right-click an explicit arrival position. The sidebar previews gathered
+ships, replaced orders, scan coverage, charge progress and enduring cooldowns.
+Titan effects execute before movement at owner End Turn. Active Aegis is drawn
+as a radius; boosted strikecraft receive a ring and bonus details.

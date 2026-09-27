@@ -39,7 +39,11 @@ SPECS = {
     'nebula_catalyst': TacticalSpec('Nebula Catalyst', ('has_sensors', 'has_antimatter_storage'), 'celestial_position', 30, 750, 7, 3, cap=1,
         description='Catalyze a 600-radius nebula patch: hydrogen/nitrogen benefit allies; oxygen/dust hinder enemies. Baseline effects remain.'),
 }
-EQUIPMENT = {'has_sensors': 'sensors_component', 'has_engine': 'engines_component',
+from titan_balance import specifications
+SPECS.update(specifications(TacticalSpec))
+
+EQUIPMENT = {'has_titan_component': 'titan_component', 'has_hyperdrive': 'hyperdrive_component',
+             'has_sensors': 'sensors_component', 'has_engine': 'engines_component',
              'has_strikecraft_bay': 'strikecraft_bay_component', 'has_weapon_bays': 'weapons_component',
              'has_defenses': 'defenses_component', 'has_antimatter_storage': 'antimatter_component',
              'has_antimatter_harvester': 'harvester_component', 'has_minelayer_component': 'minelayer_component'}

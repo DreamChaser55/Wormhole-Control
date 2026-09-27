@@ -36,7 +36,7 @@ class AbilityDefinition:
 
     @property
     def allowed_relations(self):
-        if self.ability_type.value in ('attack_run', 'tracking_lock'):
+        if self.ability_type.value in ('attack_run', 'tracking_lock', 'siege_lance'):
             return ['enemy']
         if self.ability_type.value in ('evasive_formation', 'emergency_recovery'):
             return ['self']
@@ -49,14 +49,15 @@ class AbilityDefinition:
     @property
     def automatic_approach(self):
         from tactical_balance import STRIKECRAFT_ABILITIES
-        if self.ability_type.value in STRIKECRAFT_ABILITIES:
+        from titan_balance import TITAN_ABILITIES
+        if self.ability_type.value in STRIKECRAFT_ABILITIES | TITAN_ABILITIES:
             return False
         return self.requires_target_unit or (self.ability_type.value == 'cluster_warhead')
 
     @property
     def local_sector(self):
         from tactical_balance import SPECS
-        return self.ability_type.value in SPECS
+        return self.ability_type.value in SPECS and self.ability_type.value not in ("fleet_jump", "deep_scan")
 
 
 

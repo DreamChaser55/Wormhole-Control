@@ -52,7 +52,12 @@ def order_locations(kind, parameters, galaxy=None):
 
     if kind in {"CONSTRUCT", "USE_ABILITY"}:
         positional = kind == "CONSTRUCT" or ability_target_kind(result.get("ability_type")) in {"position", "celestial_position"}
-        if positional:
+        if kind == "USE_ABILITY" and ability_target_kind(result.get("ability_type")) == "sector":
+            system, coord, _ = location(result.get("target_system_name"), result.get("target_hex_coord"), Position(0, 0), galaxy)
+            if result.get("target_position") is not None or result.get("target_unit_id") is not None:
+                raise ValueError("Sector abilities do not use position or target ID")
+            result.update(target_system_name=system, target_hex_coord=coord)
+        elif positional:
             fixed("target_")
     elif kind in {"MOVE", "REACH_WAYPOINT"}:
         fixed("destination_")

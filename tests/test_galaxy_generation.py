@@ -306,13 +306,13 @@ def test_wormhole_stability_probability_branches(monkeypatch):
 def test_wormhole_diameter_generation():
     from constants import HullSize
     
-    diameters = {HullSize.HUGE: 0, HullSize.LARGE: 0, HullSize.MEDIUM: 0}
+    diameters = {HullSize.TITAN: 0, HullSize.LARGE: 0, HullSize.MEDIUM: 0}
     total_wormholes = 0
 
     for _ in range(20):
         galaxy = Galaxy(num_systems=15)
         for wh in galaxy.wormholes.values():
-            assert wh.diameter in [HullSize.HUGE, HullSize.LARGE, HullSize.MEDIUM]
+            assert wh.diameter in [HullSize.TITAN, HullSize.LARGE, HullSize.MEDIUM]
             
             # Check symmetry
             exit_wh = galaxy.wormholes.get(wh.exit_wormhole_id)
@@ -324,7 +324,7 @@ def test_wormhole_diameter_generation():
 
     assert total_wormholes > 0
     # Verify we get at least one of each to make sure they all can generate
-    assert diameters[HullSize.HUGE] > 0
+    assert diameters[HullSize.TITAN] > 0
     assert diameters[HullSize.LARGE] > 0
     assert diameters[HullSize.MEDIUM] > 0
 

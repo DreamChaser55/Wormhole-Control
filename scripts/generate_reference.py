@@ -106,9 +106,10 @@ def generated_blocks():
         'abilities': f'There are **{len(abilities)} special abilities** registered in the game.\n\n' + table(
             ['Ability', 'Mode', 'Cooldown (Turns)', 'Duration (Turns)', 'Range (logical units)', 'AM Cost', 'Ongoing AM / owner turn', 'Required Component', 'Target Type'],
             [(f'**{a.name}**', a.activation_mode.title(), a.cooldown,
-              'Until disabled' if a.activation_mode == 'toggle' else a.duration, a.range, a.antimatter_cost, a.ongoing_antimatter,
+              'Until disabled' if a.activation_mode == 'toggle' else a.duration,
+              'Current system (unlimited)' if a.ability_type.value in ('fleet_jump', 'deep_scan') else a.range, a.antimatter_cost, a.ongoing_antimatter,
               ', '.join(labels[k] for k in a.required_components),
-              'Nebula + Position' if a.ability_type.value == 'nebula_catalyst' else 'Unit' if a.requires_target_unit else 'Position' if a.requires_target_position else 'Self') for a in abilities]),
+              'Hex' if a.target_kind == 'sector' else 'Nebula + Position' if a.ability_type.value == 'nebula_catalyst' else 'Unit' if a.requires_target_unit else 'Position' if a.requires_target_position else 'Self') for a in abilities]),
         'order-count': f'The `OrderType` enum defines **{len(OrderType)} order types**, including the persistent `STANCE` root.',
         'planets': table(['Planet Type', 'Colonizable', 'Max Population', 'Growth Rate', 'Passive Metal', 'Passive Crystal', 'Antimatter Multiplier'],
             [(f"**{kind.name.replace('_', ' ').title()}**", 'Yes' if t['is_colonizable'] else 'No',

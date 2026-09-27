@@ -81,6 +81,9 @@ def calculate_unit_upkeep(hull_size: typing.Optional[HullSize], current_hull_usa
     """
     if hull_size == HullSize.STRIKECRAFT_WING:
         return 0.0
+    if hull_size == HullSize.TITAN:
+        from titan_balance import UPKEEP_BASE, UPKEEP_PER_HULL
+        return UPKEEP_BASE + UPKEEP_PER_HULL * max(0.0, float(current_hull_usage))
     return max(0.0, float(current_hull_usage) * UPKEEP_COST_PER_HULL_POINT)
 
 

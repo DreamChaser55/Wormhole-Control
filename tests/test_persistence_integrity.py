@@ -113,6 +113,12 @@ def mutate(component, target):
         component.abilities = {t: cls(is_active=True) if cls.DEFINITION.activation_mode == 'toggle' else cls(cooldown_remaining=5, is_active=cls.DEFINITION.duration > 0,
             duration_remaining=2 if cls.DEFINITION.duration else 0, target_unit_id=target.id,
             target_position=Position(13.5, -10), spawned_unit_ids=[]) for t, cls in ABILITY_CLASSES.items()}
+    if isinstance(component, AbilityComponent):
+        for instance in component.abilities.values():
+            if hasattr(instance, "system_name"):
+                instance.system_name, instance.hex_coord, instance.source_owner_id = "Sol", (0, 0), component.unit.owner.id
+                instance.ready_round, instance.expires_round = 30, 10
+                instance.charge_round, instance.origin_position, instance.order_id = 7, Position(0, 0), 'test-charge'
     if isinstance(component, (MiningComponent, RepairComponent)):
         # Type is validated in graph tests; component codec preserves the ID independently.
         setattr(component, "mining_target" if isinstance(component, MiningComponent) else "target", target)
@@ -125,7 +131,7 @@ def mutate(component, target):
         component.construction_progress = 1
     if isinstance(component, Constructor):
         component.build_range = 777.5
-        component.current_construction_target = dict(turret_type_override=None, defense_type_override=None, template_name="FIGHTER_WING", system_name=component.unit.in_system, hex_coord=component.unit.in_hex, position=Position(5, 6))
+        component.current_construction_target = dict(construction_hull_size="STRIKECRAFT_WING", turret_type_override=None, defense_type_override=None, template_name="FIGHTER_WING", system_name=component.unit.in_system, hex_coord=component.unit.in_hex, position=Position(5, 6))
         component.current_refit_target = {"target_unit_id": target.id, "action": "ADD", "component_type": "Engines",
             "component_config": {"speed": 73.5}, "cost_credits": 100, "time_to_build": 3, "payer_id": target.owner.id, "salvage_due": 0,
             "resource_cost": {"credits": 100, "metal": 4, "crystal": 2},
@@ -145,10 +151,12 @@ def test_registry_covers_every_concrete_component_and_ability():
 @pytest.mark.parametrize("name", sorted(component_registry()))
 def test_every_component_round_trip_with_nondefault_state(name):
     game = campaign()
-    unit, target = ship(game), ship(game, "target")
+    unit, target = ship(game, hull=HullSize.TITAN if name == "TitanComponent" else HullSize.HUGE), ship(game, "target")
     component = component_registry()[name](unit)
     unit.add_component(component)
     mutate(component, target)
+    if name == "TitanComponent":
+        component.hull_cost = 100
     state = json.loads(json.dumps(component.to_state()))
     restored = restore_component(state, unit, {p.id: p for p in game.players}, game)
     restored.resolve_state({target.id: target})
@@ -165,6 +173,10 @@ def test_every_ability_definition_and_runtime_round_trip(atype):
     instance = ability_cls(is_active=True) if toggle else ability_cls(
         cooldown_remaining=7, is_active=True, duration_remaining=2,
         target_unit_id=932, target_position=Position(13.5, -4.2), spawned_unit_ids=[77, 78])
+    if hasattr(instance, "system_name"):
+        instance.system_name, instance.hex_coord, instance.source_owner_id = "Sol", (0, 0), 0
+        instance.ready_round, instance.expires_round = 30, 10
+        instance.charge_round, instance.origin_position, instance.order_id = 7, Position(0, 0), 'test-charge'
     instance.definition = deepcopy(instance.definition)
     instance.definition.description += ' Saved definition.'
     if not toggle:

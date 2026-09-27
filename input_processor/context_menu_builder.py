@@ -122,7 +122,7 @@ def get_ability_context_options(game, actors: typing.List[Unit], target_is_unit:
             continue
         for atype, instance in actor.ability_component.abilities.items():
             defn = instance.definition
-            is_relevant = defn.requires_target_unit if target_is_unit else defn.requires_target_position
+            is_relevant = defn.requires_target_unit if target_is_unit else defn.requires_target_position or defn.target_kind == "sector"
 
             if is_relevant:
                 ability_map.setdefault(atype, []).append((actor, instance))

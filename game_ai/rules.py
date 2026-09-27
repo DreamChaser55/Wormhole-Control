@@ -512,7 +512,10 @@ def command_guidance(
         replacement_budget = construction_budget(game, player, [unit], queue=False)
         queued_budget = construction_budget(game, player, [unit], queue=True)
         buildables = getattr(constructor, "buildable_units", [])
-        templates = [b.unit_template_name for b in buildables if b.resource_cost.affordable(replacement_budget)]
+        from titan_acquisition import hull_name, construction_blocker
+        from unit_templates import get_template
+        titan_block = construction_blocker(game, player, [unit], queue=False)
+        templates = [b.unit_template_name for b in buildables if b.resource_cost.affordable(replacement_budget) and not (titan_block and hull_name(get_template(b.unit_template_name, player)) == "TITAN")]
         options["construct"] = {"template_names": templates, "prices": [dict(
             template_name=b.unit_template_name, resource_cost=b.resource_cost.to_dict(),
             replacement_shortfall=b.resource_cost.shortfall(replacement_budget).to_dict(),

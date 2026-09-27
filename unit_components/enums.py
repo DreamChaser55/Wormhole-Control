@@ -58,6 +58,11 @@ class WingType(Enum):
     BOMBER = "bomber"
 
 class AbilityType(Enum):
+    FLEET_JUMP = "fleet_jump"
+    AEGIS_FIELD = "aegis_field"
+    SIEGE_LANCE = "siege_lance"
+    DEEP_SCAN = "deep_scan"
+    CARRIER_SUPREMACY = "carrier_supremacy"
     HAZARD_SHIELDING = "hazard_shielding"
     RADIATION_HARDENING = "radiation_hardening"
     ANTIMATTER_CONTAINMENT = "antimatter_containment"

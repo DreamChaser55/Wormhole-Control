@@ -65,6 +65,12 @@ class SystemViewRenderer:
         if not self.game.current_system_name: return
         system = self.game.galaxy.systems[self.game.current_system_name]
 
+        from titan_abilities import coverage
+        players = getattr(self.game, 'players', ())
+        viewer = players[self.game.current_player_index] if players else None
+        scanned_hexes = {coord for name, coord in coverage(self.game.galaxy, viewer)
+                        if name == system.name} if viewer else set()
+
         selection_bounds = []
 
         # 1. Draw Hex Grid Lines (and Enemy Presence Fill)
@@ -79,6 +85,8 @@ class SystemViewRenderer:
                  pygame.draw.polygon(self.screen, DARK_RED, hex_points_tuples)
 
              pygame.draw.polygon(self.screen, DARK_GRAY, hex_points_tuples, 1)
+             if hex_coord in scanned_hexes:
+                 pygame.draw.polygon(self.screen, CYAN, hex_points_tuples, 2)
 
         # 1b. Draw Wormhole Lines
         for hex_coord, hex_obj in system.hexes.items():

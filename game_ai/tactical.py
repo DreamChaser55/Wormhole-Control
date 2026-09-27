@@ -59,7 +59,7 @@ def enrich_states(unit, states):
         spec = SPECS[kind]
         blocker = availability(unit, kind, galaxy)
         state.update(ready=blocker is None, unavailable_reason=blocker, target_kind=spec.target_kind,
-            required_location_fields=["system_name", "hex_coord", "position"] if spec.target_kind in ("position", "celestial_position") else [],
+            required_location_fields=["system_name", "hex_coord"] if spec.target_kind == "sector" else ["system_name", "hex_coord", "position"] if spec.target_kind in ("position", "celestial_position") else [],
             cooldown_remaining=inst.cooldown_remaining, duration_remaining=inst.duration_remaining,
             active=inst.is_active, activation_antimatter=spec.cost,
             ongoing_antimatter=5 if kind == 'tractor_tether' else 0,
@@ -70,6 +70,24 @@ def enrich_states(unit, states):
             target = galaxy.get_unit_by_id(inst.target_unit_id)
             snapshot = VisibilityService.compute(galaxy, unit.owner, record_intel=False)
             state['target_id'] = target.id if target and is_unit_visible(snapshot, target) else None
+        from titan_balance import TITAN_ABILITIES
+        if kind in TITAN_ABILITIES:
+            state.update(cooldown_remaining=max(0, unit.titan_cooldowns.get(kind, 0)-unit.game.turn_number),
+                automatic_approach=False, expires_on_owner_round=inst.expires_round,
+                activation_phase='owner_end_turn_before_movement')
+            if kind == 'deep_scan':
+                state.update(scan_system=inst.system_name, scan_hex=list(inst.hex_coord) if inst.hex_coord is not None else None,
+                             destination_reach='any_hex_in_current_system')
+            if kind == 'siege_lance':
+                state.update(charge_round=inst.charge_round, fires_on_owner_end_turn=inst.charge_round+1 if inst.is_active else None)
+            if kind == 'fleet_jump':
+                from titan_abilities import jump_participants
+                from tactical_abilities import deployed
+                fleet = jump_participants(unit, galaxy) if deployed(unit, galaxy) else []
+                state.update(destination_reach='any_explored_hex_in_current_system', gather_radius=750,
+                    escort_hull_usage=sum(u.hull_capacity for u in fleet if u is not unit), escort_hull_limit=800,
+                    participants=[{'unit_id': u.id, 'replaces_order_ids': [o.public_id for o in
+                        [u.commander_component.current_order, *u.commander_component.orders_queue] if o is not None] if u is not unit else []} for u in fleet])
         if kind == 'multiply_antimatter':
             from antimatter_multiplication import preview
             gains = preview(unit, galaxy)
@@ -101,6 +119,11 @@ def guidance(game, player, unit, legal, options, visible_units, exact_bodies):
             targets[kind] = [t.id for t in visible_units if validate(unit, kind, game.galaxy, t.id, approach=True) is None]
     if 'use_ability' in options:
         options['use_ability']['targets_by_ability'] = targets
+        if get_instance(unit, 'deep_scan'):
+            options['use_ability']['deep_scan_sectors'] = [list(coord) for coord in game.galaxy.systems[unit.in_system].hexes]
+        if get_instance(unit, 'fleet_jump'):
+            options['use_ability']['fleet_jump_sectors'] = [list(coord) for system, coord in player.sector_intel
+                if system == unit.in_system and coord in game.galaxy.systems[system].hexes]
         from strikecraft_abilities import eligible_bombers
         if get_instance(unit, 'attack_run'):
             wings = eligible_bombers(unit, game.galaxy)
@@ -121,7 +144,7 @@ def guidance(game, player, unit, legal, options, visible_units, exact_bodies):
                 values.remove(kind)
         if not values:
             legal.discard('use_ability')
-    cancellable = [k for k in ('tractor_tether', 'guardian_link') if get_instance(unit, k) and get_instance(unit, k).is_active]
+    cancellable = [k for k in ('tractor_tether', 'guardian_link', 'aegis_field', 'siege_lance', 'deep_scan', 'carrier_supremacy') if get_instance(unit, k) and get_instance(unit, k).is_active]
     options['cancel_ability'] = {'values': cancellable}
     if cancellable:
         legal.add('cancel_ability')

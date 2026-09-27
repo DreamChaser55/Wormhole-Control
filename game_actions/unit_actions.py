@@ -281,7 +281,7 @@ def handle_use_ability(game, action: dict) -> None:
     if ability_type_str == 'nebula_catalyst':
         game.pending_catalyst_body_id = None
     requires_unit = action.get('requires_target_unit', False)
-    requires_pos = action.get('requires_target_position', False)
+    requires_pos = action.get('requires_target_position', False) or ability_type_str == 'deep_scan'
     selected_units = [u for u in game.selected_objects if isinstance(u, Unit)]
     if selected_units and ability_type_str:
         keys = pygame.key.get_pressed()

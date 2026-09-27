@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 class ConstructOrder(Order):
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.CONSTRUCT, parameters, parent_order)
+        from titan_acquisition import intended_hull
+        self.parameters.setdefault("construction_hull_size", intended_hull(self.parameters, unit.owner))
         from construction_customization import OVERRIDE_FIELDS
         for field in OVERRIDE_FIELDS:
             self.parameters.setdefault(field, None)
@@ -51,6 +53,14 @@ class ConstructOrder(Order):
                                         self.parameters["turret_type_override"], self.parameters["defense_type_override"])
         except ValueError:
             self.fail("invalid_parameters")
+            return
+        from titan_acquisition import hull_name, blocker
+        template = get_template(unit_template_name, self.unit.owner)
+        if hull_name(template) != self.parameters["construction_hull_size"]:
+            self.fail("construction_template_changed")
+            return
+        if self.parameters["construction_hull_size"] == "TITAN" and blocker(galaxy_ref, self.unit.owner, exclude_order=self):
+            self.fail("titan_limit_reached")
             return
         buildable = constructor.can_build(unit_template_name)
 

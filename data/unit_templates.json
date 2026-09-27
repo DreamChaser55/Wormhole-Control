@@ -96,7 +96,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "COLONIZER_MK1": {
     "name": "Colonizer",
@@ -195,7 +197,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SHIPYARD_MK1": {
     "name": "Shipyard",
@@ -294,7 +298,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "REPAIR_SHIP_SMALL": {
     "name": "Small Repair Ship",
@@ -393,7 +399,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "REPAIR_STATION_SMALL": {
     "name": "Small Repair Station",
@@ -494,7 +502,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "MINING_SHIP_SMALL": {
     "name": "Small Mining Ship",
@@ -593,7 +603,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ANTIMATTER_HARVESTER": {
     "name": "Antimatter Harvester",
@@ -692,7 +704,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "TRADE_FREIGHTER_MK1": {
     "name": "Trade Freighter",
@@ -791,7 +805,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "METAL_REFINERY_STATION": {
     "name": "Metal Refinery Station",
@@ -890,7 +906,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "CRYSTAL_REFINERY_STATION": {
     "name": "Crystal Refinery Station",
@@ -989,7 +1007,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "HANGAR_SHIP_LARGE": {
     "name": "Utility Transport",
@@ -1088,7 +1108,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "MISSILE_PLATFORM": {
     "name": "Missile Platform",
@@ -1195,7 +1217,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "FIGHTER_WING": {
     "name": "Fighter Wing",
@@ -1302,7 +1326,9 @@
     "roles": [
       "fighter screen"
     ],
-    "description": "Balanced fighter wing for intercepting enemy strikecraft. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors."
+    "description": "Balanced fighter wing for intercepting enemy strikecraft. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "BOMBER_WING": {
     "name": "Bomber Wing",
@@ -1409,7 +1435,9 @@
     "roles": [
       "bomber strike"
     ],
-    "description": "Close-range bomber wing for sustained attacks on ships and stations; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors."
+    "description": "Close-range bomber wing for sustained attacks on ships and stations; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "PATROL_CUTTER": {
     "name": "Patrol Cutter",
@@ -1516,7 +1544,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "INTERCEPTOR": {
     "name": "Interceptor",
@@ -1623,7 +1653,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "KINETIC_FRIGATE": {
     "name": "Kinetic Frigate",
@@ -1737,7 +1769,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "BEAM_FRIGATE": {
     "name": "Beam Frigate",
@@ -1851,7 +1885,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "MISSILE_FRIGATE": {
     "name": "Missile Frigate",
@@ -1965,7 +2001,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "FLAK_ESCORT": {
     "name": "Flak Escort",
@@ -2075,7 +2113,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ARTILLERY_CRUISER": {
     "name": "Artillery Cruiser",
@@ -2196,7 +2236,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ASSAULT_CRUISER": {
     "name": "Assault Cruiser",
@@ -2324,7 +2366,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "BATTLESHIP": {
     "name": "Battleship",
@@ -2496,7 +2540,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SIEGE_DREADNOUGHT": {
     "name": "Siege Dreadnought",
@@ -2641,7 +2687,9 @@
     "troop_transport_hull_cost": 0.0,
     "siege_battery_hull_cost": 20.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ESCORT_CARRIER": {
     "name": "Escort Carrier",
@@ -2748,7 +2796,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "FLEET_CARRIER": {
     "name": "Fleet Carrier",
@@ -2866,7 +2916,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SCOUT": {
     "name": "Scout",
@@ -2965,7 +3017,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SENSOR_STATION": {
     "name": "Sensor Station",
@@ -3064,7 +3118,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "BOARDING_CRUISER": {
     "name": "Boarding Cruiser",
@@ -3175,7 +3231,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "INTERDICTOR": {
     "name": "Interdictor",
@@ -3282,7 +3340,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "MINELAYER": {
     "name": "Minelayer",
@@ -3389,7 +3449,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "MINESWEEPER": {
     "name": "Minesweeper",
@@ -3499,7 +3561,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "INTELLIGENCE_SHIP": {
     "name": "Intelligence Ship",
@@ -3598,7 +3662,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "STEALTH_TENDER": {
     "name": "Stealth Tender",
@@ -3699,7 +3765,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "COMMAND_CRUISER": {
     "name": "Command Cruiser",
@@ -3816,7 +3884,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "NEBULA_TENDER": {
     "name": "Nebula Tender",
@@ -3917,7 +3987,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "RAIDER": {
     "name": "Raider",
@@ -4034,7 +4106,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "EXPEDITION_MINER": {
     "name": "Expedition Miner",
@@ -4133,7 +4207,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "FLEET_TANKER": {
     "name": "Fleet Tanker",
@@ -4234,7 +4310,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "BLOCKADE_RUNNER": {
     "name": "Blockade Runner",
@@ -4333,7 +4411,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "FLEET_REPAIR_SHIP": {
     "name": "Fleet Repair Ship",
@@ -4434,7 +4514,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "HEAVY_SHIPYARD": {
     "name": "Heavy Shipyard",
@@ -4541,7 +4623,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "INDUSTRIAL_HUB": {
     "name": "Industrial Hub",
@@ -4640,7 +4724,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "CIVILIAN_HABITAT": {
     "name": "Civilian Habitat",
@@ -4739,7 +4825,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "FUEL_DEPOT": {
     "name": "Fuel Depot",
@@ -4838,7 +4926,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "FLAK_BATTERY": {
     "name": "Flak Battery",
@@ -4955,7 +5045,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ORBITAL_BASTION": {
     "name": "Orbital Bastion",
@@ -5079,7 +5171,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "INTERDICTION_FORTRESS": {
     "name": "Interdiction Fortress",
@@ -5207,7 +5301,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "MINING_DRONE": {
     "name": "Mining Drone",
@@ -5306,7 +5402,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "PATROL_ESCORT": {
     "name": "Patrol Escort",
@@ -5413,7 +5511,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "COVERT_INTELLIGENCE_SHIP": {
     "name": "Covert Intelligence Ship",
@@ -5514,7 +5614,7 @@
       "covert espionage",
       "patrol and convoy escort"
     ],
-    "description": "Externally identical to the Patrol Escort, with two hidden intelligence agents. Constructed under the cover name ‘Patrol Escort’. After construction, you may rename it to another generic warship name; avoid names that reveal its intelligence role. Inter-system travel.",
+    "description": "Externally identical to the Patrol Escort, with two hidden intelligence agents. Constructed under the cover name \u00e2\u20ac\u02dcPatrol Escort\u00e2\u20ac\u2122. After construction, you may rename it to another generic warship name; avoid names that reveal its intelligence role. Inter-system travel.",
     "default_unit_name": "Patrol Escort",
     "has_troop_transport_component": false,
     "troop_capacity": 40,
@@ -5522,7 +5622,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ANTIMATTER_TRANSPORTER": {
     "name": "Antimatter Transporter",
@@ -5623,7 +5725,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ANTIMATTER_STORAGE_STATION": {
     "name": "Antimatter Storage Station",
@@ -5724,7 +5828,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ANTIMATTER_CACHE_STATION": {
     "name": "Antimatter Cache Station",
@@ -5825,7 +5931,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "HAZARD_ESCORT": {
     "name": "Hazard Escort",
@@ -5936,7 +6044,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "RADIATION_SURVEYOR": {
     "name": "Radiation Surveyor",
@@ -6039,7 +6149,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "PULSAR_HARVESTER": {
     "name": "Pulsar Harvester",
@@ -6142,7 +6254,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "TROOP_TRANSPORT": {
     "name": "Troop Transport",
@@ -6241,7 +6355,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SIEGE_FRIGATE": {
     "name": "Siege Frigate",
@@ -6340,7 +6456,9 @@
     "troop_transport_hull_cost": 0.0,
     "siege_battery_hull_cost": 20.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "WORMHOLE_STABILIZER_TENDER": {
     "name": "Wormhole Stabilizer Tender",
@@ -6439,7 +6557,9 @@
     "roles": [
       "wormhole stabilization"
     ],
-    "description": "Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled."
+    "description": "Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "WORMHOLE_STABILIZER_STATION": {
     "name": "Wormhole Stabilizer Station",
@@ -6538,7 +6658,9 @@
     "roles": [
       "wormhole stabilization"
     ],
-    "description": "Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled."
+    "description": "Maintain one wormhole within 500 units for 5 AM per owner turn. Both directions become safe for all ships, including enemies. Fuel shortages wait for resupply; support ends when cancelled.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ARTILLERY_FRIGATE": {
     "name": "Artillery Frigate",
@@ -6653,7 +6775,9 @@
     "roles": [
       "ranged fire support"
     ],
-    "description": "Dedicated missile artillery frigate for mobile fire support. Inter-system travel."
+    "description": "Dedicated missile artillery frigate for mobile fire support. Inter-system travel.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "RAILGUN_CRUISER": {
     "name": "Railgun Cruiser",
@@ -6775,7 +6899,9 @@
     "roles": [
       "ranged kinetic fire support"
     ],
-    "description": "Dedicated kinetic sniper cruiser with long-range railguns. Inter-system travel."
+    "description": "Dedicated kinetic sniper cruiser with long-range railguns. Inter-system travel.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "LANCE_CRUISER": {
     "name": "Lance Cruiser",
@@ -6897,7 +7023,9 @@
     "roles": [
       "ranged energy fire support"
     ],
-    "description": "Dedicated beam sniper cruiser with long-range energy lances. Inter-system travel."
+    "description": "Dedicated beam sniper cruiser with long-range energy lances. Inter-system travel.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ARTILLERY_BATTERY": {
     "name": "Artillery Battery",
@@ -7012,7 +7140,9 @@
     "roles": [
       "stationary fire support"
     ],
-    "description": "Fortified stationary long-range artillery platform for perimeter and chokepoint defense. Stationary installation."
+    "description": "Fortified stationary long-range artillery platform for perimeter and chokepoint defense. Stationary installation.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "ARTILLERY_DREADNOUGHT": {
     "name": "Artillery Dreadnought",
@@ -7169,7 +7299,9 @@
     "roles": [
       "fleet fire support"
     ],
-    "description": "Dedicated long-range fleet bombardment dreadnought featuring tri-weapon artillery batteries. Inter-system travel."
+    "description": "Dedicated long-range fleet bombardment dreadnought featuring tri-weapon artillery batteries. Inter-system travel.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "INTERCEPTOR_WING": {
     "name": "Interceptor Wing",
@@ -7276,7 +7408,9 @@
     "roles": [
       "fast interception"
     ],
-    "description": "Fast fighter wing trading firepower and protection for interception speed. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors."
+    "description": "Fast fighter wing trading firepower and protection for interception speed. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "LONG_RANGE_BOMBER_WING": {
     "name": "Long Range Bomber Wing",
@@ -7383,7 +7517,9 @@
     "roles": [
       "long-range bomber strike"
     ],
-    "description": "Lightly protected bomber wing with 292.5 effective weapon range and a nine-turn cooldown; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors."
+    "description": "Lightly protected bomber wing with 292.5 effective weapon range and a nine-turn cooldown; eligible for carrier Attack Run. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "RECON_WING": {
     "name": "Recon Wing",
@@ -7491,7 +7627,9 @@
       "tactical reconnaissance",
       "fighter screen"
     ],
-    "description": "High-speed reconnaissance fighter wing with extended tactical sensors for scouting sectors and screening friendly carriers. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors."
+    "description": "High-speed reconnaissance fighter wing with extended tactical sensors for scouting sectors and screening friendly carriers. Built and replenished in a strikecraft bay; requires a carrier for transport between sectors.",
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SYSTEM_PATROL_CRAFT": {
     "name": "System Patrol Craft",
@@ -7599,7 +7737,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "STRIKECRAFT_STATION_MEDIUM": {
     "name": "Medium Strikecraft Station",
@@ -7707,7 +7847,9 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "STRIKECRAFT_STATION_LARGE": {
     "name": "Large Strikecraft Station",
@@ -7815,6 +7957,509 @@
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
+  },
+  "TITAN_FLAGSHIP": {
+    "name": "Titan Flagship",
+    "hull_size": "TITAN",
+    "hull_points": 1600,
+    "build_time": 114,
+    "build_cost": 41626,
+    "has_engine": true,
+    "engine_speed": 100,
+    "engine_hull_cost": 20.0,
+    "has_antimatter_storage": true,
+    "antimatter_capacity": 2000.0,
+    "antimatter_hull_cost": 100.0,
+    "has_antimatter_harvester": false,
+    "antimatter_harvester_hull_cost": 15.0,
+    "has_hyperdrive": true,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_jump_range": 5,
+    "hyperdrive_hull_cost": 32.0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 181.86666666666665,
+    "turrets": [
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 4,
+        "range": 300,
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 4,
+        "range": 300,
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 4,
+        "range": 300,
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 4,
+        "range": 300,
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
+      }
+    ],
+    "has_defenses": true,
+    "defenses_hull_cost": 90.0,
+    "armor": 90.0,
+    "shields": 90.0,
+    "point_defense": 90.0,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 15,
+    "has_repair_component": false,
+    "repair_rate": 10.0,
+    "repair_range": 200.0,
+    "credit_cost_per_hp": 1.0,
+    "repair_hull_cost": 0.0,
+    "has_colony_component": false,
+    "colony_hull_cost": 10,
+    "has_civilian_habitat_component": false,
+    "civilian_habitat_bonus": 50.0,
+    "civilian_habitat_hull_cost": 15.0,
+    "has_orbital_defense_component": false,
+    "orbital_defense_radius": 500.0,
+    "orbital_defense_attack_bonus": 0.2,
+    "orbital_defense_defense_bonus": 0.2,
+    "orbital_defense_hull_cost": 20.0,
+    "has_trade_component": false,
+    "trade_hull_cost": 10.0,
+    "trade_revenue_multiplier": 1.0,
+    "has_mining_component": false,
+    "mining_rate": 10.0,
+    "mining_range": 200.0,
+    "max_mining_cargo": 100.0,
+    "mining_hull_cost": 0.0,
+    "has_metal_refinery_component": false,
+    "metal_refinery_hull_cost": 20,
+    "unload_range": 300.0,
+    "has_crystal_refinery_component": false,
+    "crystal_refinery_hull_cost": 20,
+    "has_hangar": false,
+    "hangar_slots": 2,
+    "hangar_hull_cost": 0.0,
+    "has_strikecraft_bay": true,
+    "strikecraft_bay_slots": 8,
+    "strikecraft_bay_hull_cost": 60.0,
+    "wing_type": "FIGHTER",
+    "has_inhibitor": false,
+    "inhibitor_radius": 100.0,
+    "inhibitor_hull_cost": 0.0,
+    "has_ability_component": true,
+    "ability_hull_cost": 135.0,
+    "abilities": [
+      "fleet_jump",
+      "aegis_field",
+      "siege_lance",
+      "deep_scan",
+      "carrier_supremacy"
+    ],
+    "has_sensors": true,
+    "sensor_short_range": 2000.0,
+    "sensor_long_range_hexes": 0,
+    "sensors_hull_cost": 2.0,
+    "has_minelayer_component": false,
+    "minelayer_hull_cost": 15.0,
+    "has_troop_transport_component": false,
+    "troop_capacity": 40,
+    "troop_transport_hull_cost": 0.0,
+    "has_titan_component": true,
+    "titan_hull_cost": 100.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_siege_battery_component": false,
+    "siege_battery_hull_cost": 0.0,
+    "has_marines_component": false,
+    "marines_count": 10,
+    "marines_hull_cost": 0.0,
+    "has_cloaking_device": false,
+    "cloaking_type": "BASIC",
+    "cloaking_radius": 500.0,
+    "cloaking_hull_cost": 0.0,
+    "has_intelligence_component": false,
+    "intelligence_agents_count": 1,
+    "has_counter_intelligence": false,
+    "intelligence_hull_cost": 0.0,
+    "is_custom": true,
+    "roles": [
+      "combat",
+      "carrier",
+      "support"
+    ],
+    "description": "Unique strategic flagship with a Titan Core and powerful strategic abilities.",
+    "category": "Combat"
+  },
+  "TITAN_CITADEL": {
+    "name": "Titan Citadel",
+    "hull_size": "TITAN",
+    "hull_points": 1600,
+    "build_time": 108,
+    "build_cost": 39316,
+    "has_engine": false,
+    "engine_speed": 100,
+    "engine_hull_cost": 0.0,
+    "has_antimatter_storage": true,
+    "antimatter_capacity": 2000.0,
+    "antimatter_hull_cost": 100.0,
+    "has_antimatter_harvester": false,
+    "antimatter_harvester_hull_cost": 15.0,
+    "has_hyperdrive": false,
+    "hyperdrive_type": "ADVANCED",
+    "hyperdrive_jump_range": 5,
+    "hyperdrive_hull_cost": 0.0,
+    "has_weapon_bays": true,
+    "weapon_bays_hull_cost": 181.86666666666665,
+    "turrets": [
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 4,
+        "range": 300,
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 4,
+        "range": 300,
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 20,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "STANDARD"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 4,
+        "range": 300,
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 4,
+        "range": 300,
+        "cooldown": 1,
+        "variant": "ANTI_STRIKECRAFT"
+      }
+    ],
+    "has_defenses": true,
+    "defenses_hull_cost": 90.0,
+    "armor": 90.0,
+    "shields": 90.0,
+    "point_defense": 90.0,
+    "has_constructor_component": false,
+    "constructor_hull_cost": 15,
+    "has_repair_component": false,
+    "repair_rate": 10.0,
+    "repair_range": 200.0,
+    "credit_cost_per_hp": 1.0,
+    "repair_hull_cost": 0.0,
+    "has_colony_component": false,
+    "colony_hull_cost": 10,
+    "has_civilian_habitat_component": false,
+    "civilian_habitat_bonus": 50.0,
+    "civilian_habitat_hull_cost": 15.0,
+    "has_orbital_defense_component": false,
+    "orbital_defense_radius": 500.0,
+    "orbital_defense_attack_bonus": 0.2,
+    "orbital_defense_defense_bonus": 0.2,
+    "orbital_defense_hull_cost": 20.0,
+    "has_trade_component": false,
+    "trade_hull_cost": 10.0,
+    "trade_revenue_multiplier": 1.0,
+    "has_mining_component": false,
+    "mining_rate": 10.0,
+    "mining_range": 200.0,
+    "max_mining_cargo": 100.0,
+    "mining_hull_cost": 0.0,
+    "has_metal_refinery_component": false,
+    "metal_refinery_hull_cost": 20,
+    "unload_range": 300.0,
+    "has_crystal_refinery_component": false,
+    "crystal_refinery_hull_cost": 20,
+    "has_hangar": false,
+    "hangar_slots": 2,
+    "hangar_hull_cost": 0.0,
+    "has_strikecraft_bay": true,
+    "strikecraft_bay_slots": 8,
+    "strikecraft_bay_hull_cost": 60.0,
+    "wing_type": "FIGHTER",
+    "has_inhibitor": false,
+    "inhibitor_radius": 100.0,
+    "inhibitor_hull_cost": 0.0,
+    "has_ability_component": true,
+    "ability_hull_cost": 110.0,
+    "abilities": [
+      "aegis_field",
+      "siege_lance",
+      "deep_scan",
+      "carrier_supremacy"
+    ],
+    "has_sensors": true,
+    "sensor_short_range": 2000.0,
+    "sensor_long_range_hexes": 0,
+    "sensors_hull_cost": 2.0,
+    "has_minelayer_component": false,
+    "minelayer_hull_cost": 15.0,
+    "has_troop_transport_component": false,
+    "troop_capacity": 40,
+    "troop_transport_hull_cost": 0.0,
+    "has_titan_component": true,
+    "titan_hull_cost": 100.0,
+    "has_wormhole_stabilizer_component": false,
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_siege_battery_component": false,
+    "siege_battery_hull_cost": 0.0,
+    "has_marines_component": false,
+    "marines_count": 10,
+    "marines_hull_cost": 0.0,
+    "has_cloaking_device": false,
+    "cloaking_type": "BASIC",
+    "cloaking_radius": 500.0,
+    "cloaking_hull_cost": 0.0,
+    "has_intelligence_component": false,
+    "intelligence_agents_count": 1,
+    "has_counter_intelligence": false,
+    "intelligence_hull_cost": 0.0,
+    "is_custom": true,
+    "roles": [
+      "combat",
+      "carrier",
+      "support"
+    ],
+    "description": "Unique strategic station with a Titan Core and powerful strategic abilities.",
+    "category": "Combat"
   }
 }

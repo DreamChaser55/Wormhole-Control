@@ -364,6 +364,10 @@ class Weapons(UnitComponent):
         for turret in self.turrets:
             turret.update()
 
+        from titan_abilities import charging
+        if charging(self.unit):
+            self.clear_target()
+            return
         commander = self.unit.commander_component
         active_attack = commander.get_active_attack_order() if commander else None
         visibility_snapshot = None

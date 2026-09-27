@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 19
+CONTRACT_VERSION = 20
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -82,7 +82,7 @@ COMMAND_SPECS = {
     "eliminate_agent": _spec("Approach and eliminate a discovered enemy agent on a friendly asset.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
     "sabotage": _spec("Immediately set an owned embedded agent's sabotage operation.", ("agent_id", "sabotage_type"), queued=False, player_level=True),
     "relocate_agent": _spec("Immediately relocate an owned embedded agent to a visible in-range enemy host.", ("agent_id", "target_id"), queued=False, player_level=True),
-    "cancel_ability": _spec("Release an active Tractor Tether or Guardian Link without refunding its cost.", ("ability",), queued=False, single_unit=True),
+    "cancel_ability": _spec("Cancel an active link, Aegis Field, Siege Lance charge, Deep Scan or Carrier Supremacy without refund or cooldown reset.", ("ability",), queued=False, single_unit=True),
     "use_ability": _spec("Use an ability; target requirements are provided in ability options.", ("ability", "target_id", *DESTINATION), ("ability",), capability=("ability_component",)),
     "enter_gas_giant": _spec("Hide eligible ships in a gas giant atmosphere.", ("target_id",), capability=("engines_component",)),
     "leave_gas_giant": _spec("Emerge safely from a gas giant; queue behind entry using strict FIFO."),
@@ -188,11 +188,15 @@ def validate_command(raw):
     if kind == "use_ability":
         from location_validation import ability_target_kind
         try:
-            positional = ability_target_kind(raw.get("ability")) in {"position", "celestial_position"}
+            target_kind = ability_target_kind(raw.get("ability"))
+            positional = target_kind in {"position", "celestial_position"}
         except ValueError as exc:
             raise ContractError(str(exc)) from exc
-        require(all(raw.get(f) is not None for f in DESTINATION) if positional else all(raw.get(f) is None for f in DESTINATION),
-                "Position abilities require system_name, hex_coord and position; other abilities do not use coordinates.")
+        if target_kind == "sector":
+            require(raw.get("system_name") is not None and raw.get("hex_coord") is not None and raw.get("position") is None and raw.get("target_id") is None, "Sector abilities require system_name and hex_coord only.")
+        else:
+            require(all(raw.get(f) is not None for f in DESTINATION) if positional else all(raw.get(f) is None for f in DESTINATION),
+                    "Position abilities require system_name, hex_coord and position; other abilities do not use coordinates.")
     if kind in {"patrol", "defend"}:
         destination = [raw.get(f) is not None for f in DESTINATION]
         alternative = raw.get("waypoints" if kind == "patrol" else "target_id") is not None

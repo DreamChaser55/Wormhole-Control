@@ -34,15 +34,15 @@ def test_station_raster_dimensions_match_ship(hull, zoom):
     radius = SECTOR_VIEW_BASE_ICON_SIZE * HULL_BASE_ICON_SCALES[hull] * zoom
     bounds = []
     for shape in ('square', 'triangle'):
-        surface = pygame.Surface((400, 400), pygame.SRCALPHA)
-        draw_shape(surface, shape, BLUE, Position(200, 200), radius)
+        surface = pygame.Surface((600, 600), pygame.SRCALPHA)
+        draw_shape(surface, shape, BLUE, Position(300, 300), radius)
         bounds.append(surface.get_bounding_rect())
     square, triangle = bounds
     assert square.width == square.height >= 1
     assert abs(square.width - triangle.width) <= 2
     assert abs(square.height - triangle.height) <= 2
-    assert abs(square.centerx - 200) <= 1
-    assert abs(square.centery - 200) <= 1
+    assert abs(square.centerx - 300) <= 1
+    assert abs(square.centery - 300) <= 1
 
 
 @pytest.mark.parametrize('hull', HULLS)

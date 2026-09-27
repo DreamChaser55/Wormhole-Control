@@ -264,7 +264,7 @@ def test_template_validation_and_refit_requirements():
     from unit_catalog import describe_template
     from unit_templates import UNIT_TEMPLATES
     for hull in HullSize:
-        config = ComponentConfig(has_wormhole_stabilizer_component=True, has_antimatter_storage=True, antimatter_capacity=400)
+        config = ComponentConfig(has_wormhole_stabilizer_component=True, has_antimatter_storage=True, antimatter_capacity=1000 if hull == HullSize.TITAN else 400)
         design = CustomUnitTemplate('Stabilizer test', hull, config)
         assert bool(design.validate()) == (hull in (HullSize.STRIKECRAFT_WING, HullSize.TINY, HullSize.SMALL))
     game, _, _, unit = setup()

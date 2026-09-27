@@ -270,7 +270,7 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
     carrier.owner.controller = PlayerController.CODEX
     service = ControlService(game, port=0)
     observed = service._dispatch_or_wait(dict(protocol_version=3, action='observe'), Future())
-    assert observed['data']['observation']['schema_version'] == 24
+    assert observed['data']['observation']['schema_version'] == 25
     reply = service._dispatch_or_wait(dict(protocol_version=3, action='command', request_id='slots',
         turn_token=observed['data']['turn_token'], commands=[
             dict(type='set_wing_production', unit_ids=[carrier.id], slot_index=0, template_name='FIGHTER_WING'),
@@ -283,9 +283,9 @@ def test_socket_and_strict_provider_share_per_slot_configuration():
 
     async def fake_response(**kwargs):
         schema = kwargs['text']['format']
-        assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v14'
+        assert schema['strict'] and schema['name'] == 'wormhole_control_turn_v15'
         assert 'slot_index' in schema['schema']['properties']['commands']['items']['required']
-        assert kwargs['prompt_cache_key'] == 'wormhole-control-turn-v24'
+        assert kwargs['prompt_cache_key'] == 'wormhole-control-turn-v25'
         return SimpleNamespace(id='fake', output_text=json.dumps(output), usage=None)
 
     provider = OpenAIResponsesProvider(client=SimpleNamespace(responses=SimpleNamespace(create=fake_response)))

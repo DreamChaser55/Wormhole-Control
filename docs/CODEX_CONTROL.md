@@ -162,7 +162,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":24}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":25}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.
@@ -576,3 +576,25 @@ The [dismantling command contract](AGENTIC_AI.md#unit-dismantling) describes pro
 constraints and disclosure; [gameplay rules](REFERENCE.md#unit-dismantling) own
 eligibility, work timing, salvage and interruptions. Results follow the
 [commit guarantees](AGENTIC_AI.md#commit-guarantees-and-lifecycle-feedback).
+
+## Titan commands
+
+Read `titan_capacity`, construction blockers, Titan ability state and jump
+participants before issuing commands. Rules and initial balance are in
+[Titans](TITANS.md). The socket transport remains unchanged.
+
+```json
+{"type":"use_ability","unit_ids":[101],"ability":"fleet_jump","system_name":"Sol","hex_coord":[4,-2],"position":[500,300],"queue":true}
+{"type":"use_ability","unit_ids":[101],"ability":"deep_scan","system_name":"Sol","hex_coord":[5,-3],"queue":true}
+{"type":"use_ability","unit_ids":[101],"ability":"aegis_field"}
+{"type":"use_ability","unit_ids":[101],"ability":"siege_lance","target_id":202}
+{"type":"use_ability","unit_ids":[101],"ability":"carrier_supremacy"}
+{"type":"cancel_ability","unit_ids":[101],"ability":"deep_scan","queue":false}
+```
+
+These are independent examples. Deep Scan is a hex target: position and target ID
+are unused/null. Fleet Jump requires an explored hex and explicit arrival but no
+range limit within the current system. It accepts Basic and Advanced Hyperdrive.
+Issuing these powers does not pay or execute them immediately: the next owner End
+Turn rechecks and executes before movement. Siege Lance then waits until the
+following owner End Turn. Invalid issuance preserves current orders/resources.

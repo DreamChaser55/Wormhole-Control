@@ -155,7 +155,17 @@ Guardian redirects 30% of weapon damage, capped at 20 raw damage/hit, then reduc
 by 25% before the guardian's defenses. Mines and environmental hazards bypass the link.
 Nebula Catalyst requires target_id of a known local nebula AND position inside it. Its patch selectively
 improves hydrogen/nitrogen for allies and strengthens oxygen/dust penalties for enemies; ordinary nebula
-effects still apply. Position-targeted tactical casts must be in the current sector and in range.
+effects still apply. Ordinary position-targeted tactical casts must be in the current sector and in range.
+Titans occupy one surviving or reserved acquisition slot per player, including queued builds and pending captures.
+Titan Core powers execute before movement at owner End Turn; issuance reserves AM without casting.
+Fleet Jump takes an explored system_name, hex_coord and explicit position anywhere in the current system, with no distance limit.
+It gathers owned enabled engine ships within 750, up to 800 escort hull, preserves offsets and replaces escort explicit orders atomically.
+A ready Basic or Advanced Hyperdrive qualifies. Check participant previews and clearance.
+Aegis Field halves allied weapon damage within 1,000 for 10 rounds. Siege Lance pays 200 AM and charges a 500-damage beam within 3,000 until next owner End Turn.
+Deep Scan uses system_name and hex_coord only (position and target_id null), including unexplored same-system hexes; grants ordinary short-range detail for 5 rounds without private or mine disclosure.
+Carrier Supremacy doubles friendly wing damage, gives +50% speed and halves weapon damage throughout this sector for 10 rounds, preserving orders and service restrictions.
+Identical auras do not stack; Aegis and Supremacy multiply. Mines and environmental damage bypass both.
+Titan cooldowns survive refits and capture. cancel_ability also ends Aegis, Lance charging, Deep Scan or Supremacy without refund or cooldown reset.
 Always set end_turn=true.
 
 You can communicate with any player regardless of team or alliance using send_message (setting target_id to the

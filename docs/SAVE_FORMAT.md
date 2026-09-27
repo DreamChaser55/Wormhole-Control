@@ -386,3 +386,20 @@ relationships reject the candidate campaign. Production pause persists across
 cancellation and loading until explicitly resumed. Older saves are not migrated.
 
 See the [current formats and protocols](DEVELOPMENT.md#current-formats-and-protocols) for the separate AI and socket identifiers.
+
+## Titan persistence
+
+Unit schema 4 persists `titan_cooldowns` (ability ID to absolute ready round) and
+`last_titan_action_round`, independently of the Abilities component. Titan ability
+instances persist active deadlines, source ownership, scan system/hex, and Lance
+charge round, origin position and stable public order ID. Loading never pays or
+replays a cast. Effects with invalid sources terminate rather than restarting.
+
+Constructor schema 5 and every accepted Construct order persist
+`construction_hull_size`. A template edit that changes hull class fails construction
+instead of changing the reservation. Completion converts the reservation to
+ownership. No mutable Titan slot counter is saved: the complete ownership graph,
+accepted roots and paid jobs reconstruct capacity, deduplicating approach children.
+Invalid Titan Core cost/hull, missing prerequisites, over-capacity loadouts and
+multiple surviving/reserved acquisitions reject the isolated load candidate before
+commit. Save format 4.19 remains current-format-only; there is no migration.

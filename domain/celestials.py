@@ -251,6 +251,8 @@ class Planet(CelestialBody):
         unit.in_hex = self.in_hex
         unit.position = Position(self.position.x, self.position.y)
         unit.is_hidden_in_gas_giant = True
+        from titan_abilities import decommission
+        decommission(unit, unit.ability_component)
         from environmental_resistance import deactivate
         deactivate(unit)
         from wormhole_stabilization import interrupt

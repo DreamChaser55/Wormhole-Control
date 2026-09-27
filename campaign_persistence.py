@@ -197,9 +197,16 @@ def validate_document(data):
         require(raw, ("schema_version", "name", "owner_id", "hull_size", "template_name", "components", "current_hit_points",
                       "max_hit_points", "experience_points", "is_disabled", "disabled_by_unit_ids", "damage_reduction",
                       "damage_amplification", "lifetime", "is_temporary", "infiltrating_agents",
-                      "multiply_cast_ready_round", "multiply_receive_ready_round", "last_planetary_action_round"), path)
+                      "multiply_cast_ready_round", "multiply_receive_ready_round", "last_planetary_action_round", "last_titan_action_round", "titan_cooldowns"), path)
         if number(raw["last_planetary_action_round"], "last_planetary_action_round", 0, integer=True) > state["turn_number"]:
             raise ValueError("Planetary action round is in the future")
+        from titan_balance import TITAN_ABILITIES
+        if number(raw["last_titan_action_round"], "last_titan_action_round", 0, integer=True) > state["turn_number"]:
+            raise ValueError("Titan action round is in the future")
+        if not isinstance(raw["titan_cooldowns"], dict) or raw["titan_cooldowns"].keys() - TITAN_ABILITIES:
+            raise ValueError("Invalid Titan cooldowns")
+        for deadline in raw["titan_cooldowns"].values():
+            number(deadline, "Titan cooldown deadline", 0, integer=True)
         if not isinstance(raw["components"], dict):
             raise ValueError(f"{path}.components: expected object")
         if raw["owner_id"] is None:
@@ -476,6 +483,7 @@ def reconcile(candidate):
                     or params.get("target_system_name") != job["system_name"]
                     or params.get("target_hex_coord") != job["hex_coord"]
                     or params.get("target_position") != job["position"]
+                    or params.get("construction_hull_size") != job["construction_hull_size"]
                     or params.get("turret_type_override") != job["turret_type_override"]
                     or params.get("defense_type_override") != job["defense_type_override"]
                     or order._charged_player_id is None):
@@ -514,6 +522,8 @@ def reconcile(candidate):
     candidate.visibility = VisibilityService.compute(galaxy, candidate.players[candidate.current_player_index],
                                                     turn_number=candidate.turn_number, record_intel=False)
     candidate.visibility_dirty = False
+    from titan_acquisition import validate_campaign
+    validate_campaign(galaxy)
     return objects, agents
 
 

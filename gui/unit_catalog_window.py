@@ -133,7 +133,9 @@ class UnitCatalogWindow:
             self.kill()
             return
         templates = get_all_templates_for_player(self.player)
-        stamp = (resource_balances(self.player), self.budget(queue=False), self.budget(queue=True),
+        from titan_acquisition import capacity
+        titan_slots = capacity(self.galaxy, self.player)
+        stamp = (titan_slots, resource_balances(self.player), self.budget(queue=False), self.budget(queue=True),
                  tuple((key, id(raw)) for key, raw in templates.items()))
         if stamp != self._stamp:
             self._stamp = stamp
@@ -188,6 +190,9 @@ class UnitCatalogWindow:
             if button is not None:
                 button.select() if selected else button.unselect()
         if entry:
+            from titan_acquisition import construction_blocker
+            titan_build_block = construction_blocker(self.game, self.player, self.units, queue=False) if entry["hull_size"] == "TITAN" and self.valid_context() else None
+            titan_queue_block = construction_blocker(self.game, self.player, self.units, queue=True) if entry["hull_size"] == "TITAN" and self.valid_context() else None
             buildable = self.valid_context() and all(u.constructor_component.can_build(self.selected_key) for u in self.units)
             cost = ResourceCost.from_dict(entry['resource_cost']).scaled(len(self.units))
             build_budget, queue_budget = self.budget(queue=False), self.budget(queue=True)
@@ -196,12 +201,12 @@ class UnitCatalogWindow:
                 f"Total: {cost.credits:g}c / {cost.metal:g}m / {cost.crystal:g}x "
                 f"({len(self.units)} {'builder' if len(self.units) == 1 else 'builders'})")
             if buildable:
-                if cost.affordable(queue_budget):
+                if cost.affordable(queue_budget) and not titan_queue_block:
                     self.queue_button.enable()
-                if affordable:
+                if affordable and not titan_build_block:
                     self.build_button.enable()
-            self.build_button.set_tooltip(f'Requires {cost.describe()}. Missing: {cost.shortfall(build_budget).describe()}.')
-            self.queue_button.set_tooltip(f'Requires {cost.describe()}. Missing after reservations: {cost.shortfall(queue_budget).describe()}.')
+            self.build_button.set_tooltip('Titan limit: one surviving Titan or reserved acquisition.' if titan_build_block else f'Requires {cost.describe()}. Missing: {cost.shortfall(build_budget).describe()}.')
+            self.queue_button.set_tooltip('Titan limit: one surviving Titan or reserved acquisition.' if titan_queue_block else f'Requires {cost.describe()}. Missing after reservations: {cost.shortfall(queue_budget).describe()}.')
 
     def process_event(self, event):
         self.update()

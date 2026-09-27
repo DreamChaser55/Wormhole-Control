@@ -28,6 +28,7 @@ ENGINE_HULL_SIZE_MULTIPLIERS: typing.Dict[HullSize, float] = {
     HullSize.MEDIUM: 1.0,
     HullSize.LARGE: 1.5,
     HullSize.HUGE: 2.0,
+    HullSize.TITAN: 4.0,
 }
 
 HYPERDRIVE_BASE_COST: typing.Dict[str, int] = {
@@ -42,6 +43,7 @@ HYPERDRIVE_HULL_SIZE_MULTIPLIERS: typing.Dict[HullSize, float] = {
     HullSize.MEDIUM: 1.0,
     HullSize.LARGE: 1.5,
     HullSize.HUGE: 2.0,
+    HullSize.TITAN: 4.0,
 }
 
 

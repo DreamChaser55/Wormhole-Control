@@ -224,8 +224,9 @@ def test_advanced_modules_rejected_on_tiny(world, name, config):
 
 @pytest.mark.parametrize('ability', list(AbilityType))
 def test_all_ability_dependencies_and_removals(world, ability):
+    from titan_balance import TITAN_ABILITIES
     target = world[-1]
-    empty_equipment(target)
+    empty_equipment(target, HullSize.TITAN if ability.value in TITAN_ABILITIES else HullSize.HUGE)
     requirements = get_ability_required_components(ability.value)
     config = {'ability_types': [ability.value]}
     for flag in requirements:
@@ -505,7 +506,7 @@ def test_saved_removal_settles_exactly_once(outcome):
     actor.commander_component.add_order(order)
     salvage = actor.constructor_component.current_refit_target['salvage_due']
     state = serialize_game_state(game)
-    assert state['version'] == '4.18'
+    assert state['version'] == '4.19'
     assert deserialize_game_state(game, state)
     actor, target = find_unit(game.galaxy, actor.id), find_unit(game.galaxy, target.id)
     order = actor.commander_component.current_order

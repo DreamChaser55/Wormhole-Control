@@ -50,8 +50,8 @@ def test_prepare_and_commit_profile_transitions_preserve_custom_designs():
     assert 'Persistent Custom' not in UNIT_TEMPLATES
     custom = PRIVATE_TEMPLATES['Persistent Custom']
     registry = UNIT_TEMPLATES
-    for profile, count in [(SpawnProfile.NORMAL, 4), (SpawnProfile.TESTING, 11),
-                           (SpawnProfile.TESTING, 11), (SpawnProfile.NORMAL, 4)]:
+    for profile, count in [(SpawnProfile.NORMAL, 4), (SpawnProfile.TESTING, 12),
+                           (SpawnProfile.TESTING, 12), (SpawnProfile.NORMAL, 4)]:
         before = dict(registry)
         settings = settings_for(campaign().galaxy, profile)
         prepared = prepare_new_campaign(settings)

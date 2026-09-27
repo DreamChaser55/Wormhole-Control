@@ -149,22 +149,28 @@ def evasion(wing):
 
 
 def incoming_multiplier(wing):
-    return EVASIVE_INCOMING if evasion(wing) else 1.0
+    from titan_abilities import incoming_multiplier as titan_incoming
+    return (EVASIVE_INCOMING if evasion(wing) else 1.0) * titan_incoming(wing)
 
 
 def speed_multiplier(wing):
+    from titan_abilities import protected
+    bonus = 1.5 if protected(wing, "carrier_supremacy") else 1.0
     root = wing_order(wing)
     if root and root.blocker(getattr(wing, 'in_galaxy', None)) is None:
-        return ATTACK_RUN_SPEED if root.order_type.name == 'ATTACK_RUN' else RECOVERY_SPEED
-    return 1.0
+        return bonus * (ATTACK_RUN_SPEED if root.order_type.name == 'ATTACK_RUN' else RECOVERY_SPEED)
+    return bonus
 
 
 def outgoing_multiplier(source, target, turret):
+    from titan_abilities import protected, charging
+    if charging(source):
+        return 0.0
     from strikecraft_service import required
     if required(source):
         return 0.0
     from unit_components.enums import TurretVariant
-    result = EVASIVE_OUTGOING if evasion(source) else 1.0
+    result = (EVASIVE_OUTGOING if evasion(source) else 1.0) * (2.0 if protected(source, "carrier_supremacy") else 1.0)
     root = wing_order(source)
     if root:
         if root.order_type.name == 'EMERGENCY_RECOVERY':

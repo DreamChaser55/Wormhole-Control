@@ -69,6 +69,11 @@ class UseAbilityOrder(Order):
             self.status = OrderStatus.FAILED
             return
 
+        from titan_balance import TITAN_ABILITIES
+        if ability_type_str in TITAN_ABILITIES:
+            # Remain in progress; only the dedicated owner phase may pay/cast.
+            return
+
         from tactical_balance import STRIKECRAFT_ABILITIES
         if ability_type_str in STRIKECRAFT_ABILITIES:
             from tactical_abilities import validate, activate
@@ -125,6 +130,11 @@ class UseAbilityOrder(Order):
         if ability_type == AbilityType.CAPTURE_UNIT and target_unit_id is not None:
             target_unit = self.unit.game.galaxy.get_unit_by_id(target_unit_id)
             if target_unit:
+                from constants import HullSize
+                from titan_acquisition import blocker
+                if target_unit.hull_size == HullSize.TITAN and blocker(galaxy_ref, self.unit.owner, exclude_order=self):
+                    self.fail("titan_limit_reached")
+                    return
                 if target_unit.owner == self.unit.owner:
                     logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: target unit {format_unit_for_log(target_unit)} is already friendly.")
                     self.status = OrderStatus.FAILED
@@ -294,7 +304,18 @@ class UseAbilityOrder(Order):
             logger.debug(f"[{format_unit_for_log(self.unit)}] USE_ABILITY: {ability_type.name} activation failed.")
             self.status = OrderStatus.FAILED
 
+    def cancel(self) -> None:
+        super().cancel()
+        from titan_abilities import cancel, instance
+        if self.parameters.get("ability_type") == "siege_lance":
+            inst = instance(self.unit, "siege_lance")
+            if inst and inst.order_id == self.public_id:
+                cancel(self.unit, "siege_lance")
+
     def check_completion_conditions(self) -> None:
+        from titan_balance import TITAN_ABILITIES
+        if self.parameters.get("ability_type") in TITAN_ABILITIES:
+            return
         if self.status != OrderStatus.IN_PROGRESS:
             return
         if not self.sub_orders:

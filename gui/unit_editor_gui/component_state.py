@@ -33,6 +33,11 @@ def toggle_component(editor, key: str) -> None:
         if key in restricted:
             editor._set_status(f"⚠ {key} not allowed on {editor._hull_size.name} hull.", error=True)
             return
+    if key == "has_titan_component" and current:
+        from titan_balance import TITAN_ABILITIES
+        if set(editor._comp.abilities) & TITAN_ABILITIES:
+            editor._set_status("Remove Titan abilities before removing the Titan Core.", error=True)
+            return
     setattr(editor._comp, key, not current)
     read_all(editor)
     refresh_hull_controls(editor)

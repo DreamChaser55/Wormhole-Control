@@ -85,6 +85,11 @@ class CaptureUnitAbility(AbilityInstance):
             )
             return False
 
+        from constants import HullSize
+        from titan_acquisition import blocker
+        if target_unit.hull_size == HullSize.TITAN and blocker(galaxy, component.unit.owner, exclude_order=component.unit.commander_component.current_order):
+            return False
+
         # Transfer ownership
         from turn_briefing import unit_event
         unit_event(target_unit, "capture", "Captured", once=True, new_owner=component.unit.owner)
@@ -96,6 +101,8 @@ class CaptureUnitAbility(AbilityInstance):
         from environmental_resistance import deactivate
         deactivate(target_unit)
         target_unit.owner = component.unit.owner
+        from titan_abilities import reconcile
+        reconcile(galaxy)
 
         # Reset targets and stance of the captured unit to prevent unwanted behaviors
         if target_unit.commander_component:

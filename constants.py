@@ -196,6 +196,7 @@ class HullSize(Enum):
     MEDIUM = auto()
     LARGE = auto()
     HUGE = auto()
+    TITAN = auto()
 
 ADVANCED_CLOAKING_MIN_HULL: HullSize = HullSize.SMALL # Minimum hull size capable of mounting Advanced Cloak
 
@@ -493,6 +494,7 @@ HULL_CAPACITIES: Dict[HullSize, float] = {
     HullSize.MEDIUM: 50.0,
     HullSize.LARGE: 100.0,
     HullSize.HUGE: 200.0,
+    HullSize.TITAN: 800.0,
 }
 
 HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
@@ -502,6 +504,7 @@ HYPERDRIVE_ANTIMATTER_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
     HullSize.MEDIUM: 1.0,
     HullSize.LARGE: 1.5,
     HullSize.HUGE: 2.0,
+    HullSize.TITAN: 4.0,
 }
 
 ENGINE_ANTIMATTER_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
@@ -511,6 +514,7 @@ ENGINE_ANTIMATTER_HULL_SIZE_MULTIPLIERS: Dict[HullSize, float] = {
     HullSize.MEDIUM: 1.0,
     HullSize.LARGE: 1.5,
     HullSize.HUGE: 2.0,
+    HullSize.TITAN: 4.0,
 }
 
 HIT_POINTS = {
@@ -520,6 +524,7 @@ HIT_POINTS = {
     HullSize.MEDIUM: 100,
     HullSize.LARGE: 200,
     HullSize.HUGE: 400,
+    HullSize.TITAN: 1600,
 }
 
 HULL_BASE_ICON_SCALES = {
@@ -529,6 +534,7 @@ HULL_BASE_ICON_SCALES = {
     HullSize.MEDIUM: 1.0, # Medium is the baseline
     HullSize.LARGE: 1.3,
     HullSize.HUGE: 1.7,
+    HullSize.TITAN: 2.3,
 }
 
 HULL_DOT_COUNTS = {
@@ -538,6 +544,7 @@ HULL_DOT_COUNTS = {
     HullSize.MEDIUM: 3,
     HullSize.LARGE: 4,
     HullSize.HUGE: 5,
+    HullSize.TITAN: 6,
 }
 
 SECTOR_VIEW_BASE_ICON_SIZE = 22.22
@@ -551,6 +558,7 @@ MIN_ANTIMATTER_CAPACITY_BY_HULL: Dict[HullSize, float] = {
     HullSize.MEDIUM: 100.0,
     HullSize.LARGE: 150.0,
     HullSize.HUGE: 200.0,
+    HullSize.TITAN: 1000.0,
 }
 
 def get_min_antimatter_capacity(hull_size: Optional[HullSize] = None) -> float:

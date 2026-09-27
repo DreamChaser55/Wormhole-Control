@@ -199,8 +199,8 @@ def test_start_new_game_testing_spawn_profile():
                 if unit.owner == player:
                     owned_units.append((sys_name, hex_coord, unit))
 
-        # Testing profile spawns 5 ships + 5 stations + 1 carrier = 11 units
-        assert len(owned_units) == 11, f"Expected 11 testing units for {player.name}, found {len(owned_units)}"
+        # Testing profile spawns 5 ships + 5 stations + 1 carrier + 1 Titan = 12 units
+        assert len(owned_units) == 12, f"Expected 12 testing units for {player.name}, found {len(owned_units)}"
 
 
 def test_new_game_wizard_spawn_profile_ui():

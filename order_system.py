@@ -587,7 +587,9 @@ class OrderSystem:
                     command['target_id'] = event.target_unit.id
                 if spec.target_kind == 'celestial_position':
                     command['target_id'] = getattr(self.game, 'pending_catalyst_body_id', None)
-                if event.target_position is not None:
+                if spec.target_kind == 'sector':
+                    command.update(system_name=event.target_system_name, hex_coord=list(event.target_hex_coord))
+                elif event.target_position is not None:
                     command.update(position=[event.target_position.x, event.target_position.y], system_name=event.target_system_name, hex_coord=list(event.target_hex_coord))
                 issue(self.game, command)
             return

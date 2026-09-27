@@ -19,6 +19,7 @@ from unit_components.enums import (
 # ---------------------------------------------------------------------------
 
 COMPONENT_ROWS: typing.List[typing.Dict] = [
+    {"key": "has_titan_component", "label": "Titan Core", "cost_key": "titan_hull_cost", "default_cost": 100.0, "is_dynamic": True},
     {"key": "has_engine",                "label": "Engines",            "cost_key": "engine_hull_cost",           "default_cost": 5.0,  "is_dynamic": True},
     {"key": "has_antimatter_storage",    "label": "Antimatter Storage", "cost_key": "antimatter_hull_cost",       "default_cost": 5.0,  "is_dynamic": True},
     {"key": "has_antimatter_harvester",  "label": "Antimatter Harvester", "cost_key": "antimatter_harvester_hull_cost", "default_cost": 15.0, "is_dynamic": False},
@@ -77,6 +78,7 @@ def ability_button_text(
 
 
 COMPONENT_DESCRIPTIONS = {
+    "has_titan_component": "Titan-only core. Canonical cost: 100 hull. Required for all five strategic Titan powers; ordinary component damage and repair apply.",
     "has_wormhole_stabilizer_component": "Maintain one wormhole from within 500 units for 5 AM per owner turn, making both directions 100% stable for everyone, including enemies. Requires Medium or larger and Antimatter Storage. Ships approach automatically; stations must be in range. Begins at End Turn, waits on fuel shortage, and stops when cancelled. Queued work waits behind this continuous order.",
     "has_engine": "Sublight propulsion for movement within a sector. Destroyed Engines or non-positive effective speed prevent sublight movement; an operational Hyperdrive can still jump.",
     "has_antimatter_storage": "Stores antimatter (AM) fuel for movement, jumps and equipment. Storage alone does not generate fuel; replenish it by harvesting or transfer.",

@@ -5,6 +5,7 @@ from typing import Optional, TYPE_CHECKING
 import dataclasses
 
 from .base import UnitComponent
+from .titan import TitanComponent
 from .wormhole_stabilizer import WormholeStabilizerComponent
 from .antimatter import AntimatterStorage, AntimatterHarvester
 from .movement import Engines, Hyperdrive
@@ -65,6 +66,7 @@ def instantiate_unit_from_template(
     game: 'Game',
     *,
     templates: Optional[dict] = None,
+    acquisition_source=None,
     turret_type_override: Optional[str] = None,
     defense_type_override: Optional[str] = None,
 ) -> Optional['Unit']:
@@ -89,6 +91,9 @@ def instantiate_unit_from_template(
         logger.debug(f"Error: System '{system_name}' not found for unit creation.")
         return
 
+    from titan_acquisition import hull_name, blocker
+    if hull_name(template) == "TITAN" and blocker(galaxy, owner, exclude_order=acquisition_source._owning_construction_order() if acquisition_source else None, exclude_constructor=acquisition_source):
+        return None
     template = customize_template(template, turret_type_override, defense_type_override)
     new_unit = assemble_unit_from_template(template_name, template, owner, system_name, hex_coord, position, game)
     system.add_unit(new_unit)
@@ -366,6 +371,8 @@ def assemble_unit_from_template(template_name, template, owner, system_name, hex
         new_unit.add_component(TroopTransportComponent(new_unit, template.get("troop_capacity", TROOP_DEFAULT_CAPACITY)))
     if template.get("has_wormhole_stabilizer_component"):
         new_unit.add_component(WormholeStabilizerComponent(new_unit))
+    if template.get("has_titan_component", False):
+        new_unit.add_component(TitanComponent(new_unit))
     if template.get("has_siege_battery_component"):
         new_unit.add_component(SiegeBatteryComponent(new_unit))
 
@@ -436,7 +443,7 @@ class BuildableUnit:
 
 class Constructor(UnitComponent):
     """A component that allows a unit to construct other units (stations) and refit friendly units."""
-    SCHEMA_VERSION = 4
+    SCHEMA_VERSION = 5
     STATE_CONFIG = ('build_range',)
     STATE_RUNTIME = ('current_construction_target', 'construction_progress', 'time_to_build', 'construction_order_id', 'current_refit_target', 'refit_progress', 'refit_time', 'refit_order_id')
     STATE_REFS = ()
@@ -448,7 +455,9 @@ class Constructor(UnitComponent):
         if target is not None:
             from location_validation import location
             from state_codec import fields
-            fields(target, ("template_name", "system_name", "hex_coord", "position", *OVERRIDE_FIELDS), "construction")
+            fields(target, ("template_name", "system_name", "hex_coord", "position", "construction_hull_size", *OVERRIDE_FIELDS), "construction")
+            if target["construction_hull_size"] not in HullSize.__members__:
+                raise ValueError("Invalid construction hull classification")
             validate_override_values(*(target[field] for field in OVERRIDE_FIELDS))
             if not isinstance(target["template_name"], str) or not target["template_name"]:
                 raise ValueError("Invalid construction template")
@@ -639,12 +648,18 @@ class Constructor(UnitComponent):
         except ValueError:
             return False
 
+        from titan_acquisition import hull_name, blocker
+        classification = hull_name(template)
+        if order is not None and order.parameters.get("construction_hull_size") != classification:
+            return False
         owner = self.unit.owner
+        if classification == "TITAN" and blocker(galaxy, owner, exclude_order=order):
+            return False
         if not buildable.resource_cost.pay(owner):
             logger.debug(f"Error: Not enough resources to build {unit_template_name}.")
             return False
 
-        self.current_construction_target = dict(template_name=unit_template_name, system_name=system_name, hex_coord=hex_coord, position=position,
+        self.current_construction_target = dict(template_name=unit_template_name, system_name=system_name, hex_coord=hex_coord, position=position, construction_hull_size=classification,
                                                 turret_type_override=turret_type_override, defense_type_override=defense_type_override)
         self.construction_order_id = order.public_id if order else None
         self._construction_order_ref = order
@@ -813,6 +828,7 @@ class Constructor(UnitComponent):
             position=position,
             galaxy=galaxy,
             game=self.unit.game,
+            acquisition_source=self,
             turret_type_override=turret_type_override,
             defense_type_override=defense_type_override,
         )
@@ -835,7 +851,10 @@ class Constructor(UnitComponent):
                      format_location(job["system_name"], job["hex_coord"], position))
         
         template = get_all_templates_for_player(self.unit.owner, base_templates=UNIT_TEMPLATES).get(unit_template_name)
-        valid = template is not None
+        from titan_acquisition import hull_name, blocker
+        valid = template is not None and hull_name(template) == job["construction_hull_size"]
+        if valid and job["construction_hull_size"] == "TITAN":
+            valid = blocker(galaxy, self.unit.owner, exclude_order=self._owning_construction_order(), exclude_constructor=self) is None
         try:
             validate_template_overrides(template, job["turret_type_override"], job["defense_type_override"])
         except ValueError:
@@ -864,6 +883,10 @@ class Constructor(UnitComponent):
         order = self._owning_construction_order()
         if order is not None:
             order.clear_charge()
+            from titan_acquisition import root_of
+            from unit_orders.base import OrderStatus
+            order.status = OrderStatus.COMPLETED
+            root_of(order).status = OrderStatus.COMPLETED
         self.construction_order_id = None
         self._construction_order_ref = None
         self.current_construction_target = None
@@ -903,6 +926,7 @@ class Constructor(UnitComponent):
 
 
 COMPONENT_NAME_MAP = {
+    "TitanComponent": TitanComponent,
     "WormholeStabilizerComponent": WormholeStabilizerComponent,
     "Engines": Engines,
     "Hyperdrive": Hyperdrive,
@@ -1050,6 +1074,8 @@ def get_component_hull_cost(component_name: str, unit: 'Unit', config: Optional[
 
     elif comp_cls == TroopTransportComponent:
         return TroopTransportComponent.calc_hull_cost(config.get("capacity", TROOP_DEFAULT_CAPACITY))
+    elif comp_cls == TitanComponent:
+        return TitanComponent.calc_hull_cost()
     elif comp_cls == WormholeStabilizerComponent:
         return WormholeStabilizerComponent.calc_hull_cost()
     elif comp_cls == SiegeBatteryComponent:
@@ -1210,6 +1236,8 @@ def instantiate_component_for_unit(component_name: str, unit: 'Unit', config: Op
 
     elif comp_cls == TroopTransportComponent:
         return TroopTransportComponent(unit, config.get("capacity", TROOP_DEFAULT_CAPACITY))
+    elif comp_cls == TitanComponent:
+        return TitanComponent(unit)
     elif comp_cls == WormholeStabilizerComponent:
         return WormholeStabilizerComponent(unit)
     elif comp_cls == SiegeBatteryComponent:

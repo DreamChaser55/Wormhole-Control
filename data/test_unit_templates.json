@@ -27,7 +27,9 @@
     "build_time": 4,
     "build_cost": 250,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_SHIP_SMALL": {
     "name": "Small Ship",
@@ -57,7 +59,9 @@
     "build_time": 6,
     "build_cost": 450,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_SHIP_MEDIUM": {
     "name": "Medium Ship",
@@ -87,7 +91,9 @@
     "build_time": 8,
     "build_cost": 700,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_SHIP_LARGE": {
     "name": "Large Ship",
@@ -117,7 +123,9 @@
     "build_time": 10,
     "build_cost": 1000,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_SHIP_HUGE": {
     "name": "Huge Ship",
@@ -165,7 +173,9 @@
       "flak_barrage"
     ],
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_STATION_TINY": {
     "name": "Tiny Station",
@@ -193,7 +203,9 @@
     "build_time": 4,
     "build_cost": 200,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_STATION_SMALL": {
     "name": "Small Station",
@@ -221,7 +233,9 @@
     "build_time": 5,
     "build_cost": 300,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_STATION_MEDIUM": {
     "name": "Medium Station",
@@ -252,7 +266,9 @@
     "build_time": 7,
     "build_cost": 500,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_STATION_LARGE": {
     "name": "Large Station",
@@ -280,7 +296,9 @@
     "build_time": 9,
     "build_cost": 750,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_STATION_HUGE": {
     "name": "Huge Station",
@@ -313,7 +331,9 @@
     "build_time": 18,
     "build_cost": 2000,
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   },
   "SPAWN_CARRIER": {
     "name": "Strikecraft Carrier",
@@ -355,6 +375,8 @@
       "emergency_recovery"
     ],
     "has_wormhole_stabilizer_component": false,
-    "wormhole_stabilizer_hull_cost": 0.0
+    "wormhole_stabilizer_hull_cost": 0.0,
+    "has_titan_component": false,
+    "titan_hull_cost": 0.0
   }
 }
