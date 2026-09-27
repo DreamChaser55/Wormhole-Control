@@ -555,3 +555,51 @@ def test_sidebar_scroll_resets_on_tall_to_tall_unit_switch(game_factory, scroll_
     assert scroll.vert_scroll_bar.start_percentage == 0.0
     assert scroll.get_container().get_relative_rect().y == 0
     assert scroll.vert_scroll_bar_active
+
+
+def test_abilities_only_shown_in_abilities_component_tab():
+    """Verify that ability descriptions and tactical controls appear only when Abilities is selected."""
+    from domain.players import Player
+    from unit_components.enums import AbilityType
+    from unit_components.abilities import AbilityComponent
+    from gui.sidebar.builder import build_sidebar_data
+
+    mock_game = MagicMock()
+    mock_game.display_config = DisplayConfig()
+    mock_game.galaxy = MagicMock()
+    mock_game.galaxy.systems = {}
+    player = Player(name="Player 1", color=(0, 200, 255))
+    mock_game.players = [player]
+    mock_game.current_player_index = 0
+
+    unit = Unit(owner=player, position=Position(0, 0), in_hex=(0, 0), in_system="Sol",
+                name="Test Ability Ship", hull_size=HullSize.MEDIUM, game=mock_game)
+    unit.id = 901
+    comp = AbilityComponent(unit, [AbilityType.GHOST_FLEET, AbilityType.REPAIR_CLOUD])
+    unit.add_component(comp)
+    mock_game.selected_objects = [unit]
+
+    # 1. Basic Info tab: No ability descriptions or tactical ability panels
+    mock_game.selected_unit_tab = 'basic_info'
+    mock_game.selected_component_name = None
+    data_basic = build_sidebar_data(mock_game)
+    texts_basic = [d.get('text', '') for d in data_basic]
+    assert not any('Ghost Fleet' in t for t in texts_basic)
+    assert not any('Repair Cloud' in t for t in texts_basic)
+
+    # 2. Components tab with Commander selected: No ability descriptions or tactical ability panels
+    mock_game.selected_unit_tab = 'components'
+    mock_game.selected_component_name = 'Commander'
+    data_commander = build_sidebar_data(mock_game)
+    texts_commander = [d.get('text', '') for d in data_commander]
+    assert not any('Ghost Fleet' in t for t in texts_commander)
+    assert not any('Repair Cloud' in t for t in texts_commander)
+
+    # 3. Components tab with Abilities selected: Ability descriptions and tactical ability panels are shown
+    mock_game.selected_unit_tab = 'components'
+    mock_game.selected_component_name = 'Abilities'
+    data_abilities = build_sidebar_data(mock_game)
+    texts_abilities = [d.get('text', '') for d in data_abilities]
+    assert any('Ghost Fleet' in t for t in texts_abilities)
+    assert any('Repair Cloud' in t for t in texts_abilities)
+    assert any('emitters' in t for t in texts_abilities)

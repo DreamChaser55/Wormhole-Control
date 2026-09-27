@@ -132,8 +132,7 @@ def build_sidebar_data(game) -> list[dict]:
     elif isinstance(selected_obj, Minefield):
         return build_minefield_panel(game, selected_obj)
     elif isinstance(selected_obj, Unit):
-        from tactical_ui import ability_panel
-        return build_unit_panel(game, selected_obj) + ability_panel(selected_obj, game)
+        return build_unit_panel(game, selected_obj)
     else:
         # Default / Unknown fallback
         return [

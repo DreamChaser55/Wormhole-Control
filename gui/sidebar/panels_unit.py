@@ -219,5 +219,8 @@ def build_unit_panel(game, unit: Unit) -> list[dict]:
         selected_comp = components_map.get(game.selected_component_name)
         if selected_comp:
             data.extend(selected_comp.get_sidebar_data(game))
+            if getattr(selected_comp, 'DISPLAY_NAME', None) == 'Abilities':
+                from tactical_ui import ability_panel
+                data.extend(ability_panel(unit, game))
 
     return data
