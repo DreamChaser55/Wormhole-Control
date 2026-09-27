@@ -21,7 +21,6 @@ if _t.TYPE_CHECKING:
     from game_settings import GameSettings
 
 CLASS_MAPPING = {
-    "Planet": Planet,
     "Moon": Moon,
     "ColonizableAsteroid": ColonizableAsteroid,
     "MetalAsteroid": MetalAsteroid,
@@ -63,6 +62,25 @@ MIN_SYSTEM_DISTANCE = 50.0
 MAX_SYSTEM_DISTANCE = 350.0
 SECOND_NEAREST_WORMHOLE_PROB = 1/3 # Probability of connecting a system to the second nearest system
 COMET_OUTSKIRTS_BIAS = 0.85 # Preference probability to spawn comets on system outskirts
+
+# System populations scale with radius, not the number of sectors.
+PLANET_COUNT_VARIATION_NUMERATOR = 3
+PLANET_COUNT_VARIATION_DENOMINATOR = 10
+SECONDARY_BODIES_PER_RADIUS_MIN = 2
+SECONDARY_BODIES_PER_RADIUS_MAX = 3
+# Inner, middle and outer thirds of the system. Each column totals 100;
+# nonzero weights allow rare exceptions without guaranteeing any planet type.
+PLANET_ZONE_WEIGHTS = {
+    PlanetType.VOLCANIC: (25, 5, 1),
+    PlanetType.GREENHOUSE: (20, 5, 1),
+    PlanetType.FERROUS: (20, 10, 5),
+    PlanetType.BARREN: (15, 10, 10),
+    PlanetType.DESERT: (10, 15, 3),
+    PlanetType.TERRAN: (3, 25, 2),
+    PlanetType.OCEANIC: (2, 20, 3),
+    PlanetType.ICE: (1, 5, 35),
+    PlanetType.GAS_GIANT: (4, 5, 40),
+}
 
 # --- Hex Class ---
 @dataclass
@@ -165,71 +183,101 @@ class StarSystem:
                 self.hexes[(q, r)] = Hex(q, r, in_system=self.name)
 
     def spawn_celestial_bodies(self):
-        """Adds the central star and randomly spawns other celestial bodies in the system."""
-        # Add central star of a random type
+        """Populate the system with independent, radius-based body budgets."""
         star_type = random.choice(list(StarType))
         star = Star(in_system=self.name, star_type=star_type)
         self.add_celestial_body(star)
 
-        # Get a list of all hexes except the center one (where the star is)
         available_hexes = [h for h in self.hexes.values() if h.coordinates() != (0, 0)]
         random.shuffle(available_hexes)
 
-        # Decide how many bodies to spawn in this system
-        num_bodies_to_spawn = random.randint(4, len(available_hexes) // 2)
+        delta = self.radius * PLANET_COUNT_VARIATION_NUMERATOR // PLANET_COUNT_VARIATION_DENOMINATOR
+        num_planets = random.randint(self.radius - delta, self.radius + delta)
+        num_secondary = random.randint(
+            self.radius * SECONDARY_BODIES_PER_RADIUS_MIN,
+            self.radius * SECONDARY_BODIES_PER_RADIUS_MAX,
+        )
+        self._spawn_planets(available_hexes, num_planets)
+        self._spawn_secondary_bodies(available_hexes, num_secondary)
 
-        # Calculate outskirts threshold based on system radius
-        outskirts_threshold = max(2, math.ceil(self.radius * 0.65))
+        for hex_obj in self.hexes.values():
+            hex_obj.update_static_inhibition_zones()
 
+    def _spawn_planets(self, available_hexes: list[Hex], count: int):
+        """Use distinct radial rings before adding at most one extra per ring."""
+        rings = range(1, self.radius + 1)
+        selected_rings = random.sample(rings, min(count, self.radius))
+        if count > self.radius:
+            selected_rings.extend(random.sample(rings, count - self.radius))
+
+        planet_hexes: list[HexCoord] = []
+        for ring in selected_rings:
+            candidates = [h for h in available_hexes if hex_distance(h.coordinates(), (0, 0)) == ring]
+            if planet_hexes:
+                separations = [
+                    min(hex_distance(h.coordinates(), coord) for coord in planet_hexes)
+                    for h in candidates
+                ]
+                # Prefer nonadjacent planets; if none fit, keep the full budget
+                # and choose the most separated remaining location on this ring.
+                best_separation = max(separations)
+                candidates = [
+                    h for h, separation in zip(candidates, separations)
+                    if separation >= min(2, best_separation)
+                ]
+            hex_obj = random.choice(candidates)
+            available_hexes.remove(hex_obj)
+            coord = hex_obj.coordinates()
+            planet_hexes.append(coord)
+            # Integer comparisons include exact third-boundaries without
+            # floating-point rounding and use no stellar-type modifiers.
+            zone = 0 if 3 * ring <= self.radius else (1 if 3 * ring <= 2 * self.radius else 2)
+            planet_type = random.choices(
+                list(PLANET_ZONE_WEIGHTS),
+                weights=[weights[zone] for weights in PLANET_ZONE_WEIGHTS.values()],
+                k=1,
+            )[0]
+            self.add_celestial_body(Planet(in_hex=coord, in_system=self.name, planet_type=planet_type))
+
+    def _spawn_secondary_body(self, body_class, available_hexes: list[Hex]):
+        """Place one nonmoon secondary body, retaining the comet outskirts bias."""
+        hex_to_spawn_in = None
+        if body_class == Comet:
+            outskirts_threshold = max(2, math.ceil(self.radius * 0.65))
+            outskirt_candidates = [
+                h for h in available_hexes if hex_distance(h.coordinates(), (0, 0)) >= outskirts_threshold
+            ]
+            if outskirt_candidates and random.random() < COMET_OUTSKIRTS_BIAS:
+                hex_to_spawn_in = random.choice(outskirt_candidates)
+
+        if hex_to_spawn_in is None:
+            hex_to_spawn_in = available_hexes[0]
+        available_hexes.remove(hex_to_spawn_in)
+        coord = hex_to_spawn_in.coordinates()
+
+        if body_class == Nebula:
+            body = Nebula(in_hex=coord, in_system=self.name, nebula_type=random.choice(list(NebulaType)))
+        elif body_class == Storm:
+            body = Storm(in_hex=coord, in_system=self.name, storm_type=random.choice(list(StormType)))
+        elif body_class in (AsteroidField, DebrisField, IceField):
+            density = random.choices(
+                [FieldDensity.LOW, FieldDensity.MEDIUM, FieldDensity.HIGH],
+                weights=[0.45, 0.40, 0.15], k=1,
+            )[0]
+            body = body_class(in_hex=coord, in_system=self.name, density=density)
+        else:
+            body = body_class(in_hex=coord, in_system=self.name)
+        self.add_celestial_body(body)
+
+    def _spawn_secondary_bodies(self, available_hexes: list[Hex], count: int):
+        """Defer moons until other bodies are placed, replacing those that cannot fit."""
         pending_moons = 0
-        for _ in range(min(num_bodies_to_spawn, len(available_hexes))):
-            if not available_hexes:
-                break
-
-            # Choose a body type based on weights loaded from configuration
+        for _ in range(min(count, len(available_hexes))):
             chosen_body_class = random.choices(BODY_TYPES_TO_SPAWN, weights=SPAWN_WEIGHTS, k=1)[0]
-
-            # Defer moons so planets selected later can also provide neighbors.
             if chosen_body_class == Moon:
                 pending_moons += 1
-                continue
-
-            # Select hex for spawning (Comets prefer outer hexes)
-            hex_to_spawn_in = None
-            if chosen_body_class == Comet:
-                outskirt_candidates = [
-                    h for h in available_hexes if hex_distance(h.coordinates(), (0, 0)) >= outskirts_threshold
-                ]
-                if outskirt_candidates and random.random() < COMET_OUTSKIRTS_BIAS:
-                    hex_to_spawn_in = random.choice(outskirt_candidates)
-
-            if hex_to_spawn_in is None:
-                hex_to_spawn_in = available_hexes[0]
-
-            available_hexes.remove(hex_to_spawn_in)
-
-            body = None
-            if chosen_body_class == Planet:
-                planet_type = random.choice(list(PlanetType))
-                body = Planet(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name, planet_type=planet_type)
-            elif chosen_body_class == Nebula:
-                nebula_type = random.choice(list(NebulaType))
-                body = Nebula(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name, nebula_type=nebula_type)
-            elif chosen_body_class == Storm:
-                storm_type = random.choice(list(StormType))
-                body = Storm(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name, storm_type=storm_type)
-            elif chosen_body_class in (AsteroidField, DebrisField, IceField):
-                density = random.choices(
-                    [FieldDensity.LOW, FieldDensity.MEDIUM, FieldDensity.HIGH],
-                    weights=[0.45, 0.40, 0.15],
-                    k=1
-                )[0]
-                body = chosen_body_class(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name, density=density)
-            else:  # For Asteroids, Comet
-                body = chosen_body_class(in_hex=hex_to_spawn_in.coordinates(), in_system=self.name)
-
-            if body:
-                self.add_celestial_body(body)
+            else:
+                self._spawn_secondary_body(chosen_body_class, available_hexes)
 
         planet_hexes = [
             body.in_hex for body in self.celestial_bodies_by_id.values()
@@ -239,12 +287,19 @@ class StarSystem:
             h for h in available_hexes
             if any(hex_distance(h.coordinates(), coord) == 1 for coord in planet_hexes)
         ]
-        for hex_obj in random.sample(moon_candidates, min(pending_moons, len(moon_candidates))):
+        placed_moons = min(pending_moons, len(moon_candidates))
+        for hex_obj in random.sample(moon_candidates, placed_moons):
+            available_hexes.remove(hex_obj)
             self.add_celestial_body(Moon(in_hex=hex_obj.coordinates(), in_system=self.name))
 
-        # After all bodies are placed, calculate the inhibition zones
-        for hex_obj in self.hexes.values():
-            hex_obj.update_static_inhibition_zones()
+        if pending_moons > placed_moons:
+            nonmoon_types, nonmoon_weights = zip(*[
+                (body_type, weight) for body_type, weight in zip(BODY_TYPES_TO_SPAWN, SPAWN_WEIGHTS)
+                if body_type != Moon
+            ])
+            for _ in range(pending_moons - placed_moons):
+                body_class = random.choices(nonmoon_types, weights=nonmoon_weights, k=1)[0]
+                self._spawn_secondary_body(body_class, available_hexes)
 
     def add_celestial_body(self, body_to_add: CelestialBody):
         """Adds a celestial body to the specified system's hex and the system's dictionary."""

@@ -347,6 +347,22 @@ python -m pytest tests/test_reference_generation.py
 
 ### Shared celestial rules
 
+`StarSystem.spawn_celestial_bodies` in `galaxy.py` places the central star, draws
+independent radius-based planet and secondary-body budgets, places planets by
+radial ring, then secondary bodies and deferred moons, and finally refreshes
+static inhibition zones. Unplaceable moons become weighted nonmoon bodies to
+preserve the secondary budget. Galaxy generation adds wormhole pairs afterward.
+
+The generation constants in `galaxy.py` own the count ranges and the planet-type
+weights for the inner, middle and outer thirds. Integer distance comparisons
+include exact third-boundaries in the nearer zone. `data/spawn_rates.json` owns
+only relative secondary-body weights; its values need not sum to one. Stellar
+types, field density and nebula/storm subtype draws retain their own distributions.
+All draws use the existing seeded Python random stream. New generation can change
+seeded layouts; loading restores saved bodies without running generation or
+enforcing the new population budgets. Player-facing rules live in
+[system generation](REFERENCE.md#system-generation).
+
 `celestial_descriptions.describe_body` produces immutable public body profiles
 from balance constants and body attributes. Environmental execution, sidebar
 rules, AI body descriptions and generated reference tables consume these profiles.

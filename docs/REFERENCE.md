@@ -1221,7 +1221,33 @@ Non-solid bodies are permeable except where a field or storm excludes the hull.
 | Storm | 0 | 0 | 3600 | Subtype hazards |
 
 Moons generate in empty hexes exactly one hex from a planet in the same system,
-including gas giants. No eligible hex or planet means no moon spawn.
+including gas giants. If no eligible hex or planet remains, another nonplanet
+body fills the moon's generation slot.
+
+### System generation
+
+A system of hex radius `R` generates between `R - floor(0.3R)` and
+`R + floor(0.3R)` planets, inclusive. Gas giants count as planets; moons do not.
+Radius 3 has exactly 3 planets, radius 5 has 4–6, radius 8 has 6–10, and radius 12
+has 9–15. Planets occupy distinct distance rings before adding a second planet
+to a ring, with at most two per ring. Placement favors separation between planets.
+
+Planet types depend on distance as a fraction of the system radius. The inner
+third favors volcanic, greenhouse and ferrous worlds; the middle third favors
+Terran and oceanic worlds; the outer third favors ice worlds and gas giants.
+Every type can occur in every zone, and star type does not change these chances.
+
+Each system also generates `2R`–`3R` secondary bodies: moons, colonizable and metal
+asteroids, comets, asteroid/ice/debris fields, nebulae and storms. The central star
+and wormholes are outside both budgets. Each generated body occupies its own hex.
+Counts do not guarantee a colonizable planet or either mining resource. Campaign
+setup can add Terran homeworlds beyond the planet budget when needed; see
+[spawn profiles](#spawn-profiles).
+
+Comets have an 85% preference for available outskirts hexes at least
+`max(2, ceil(0.65R))` hexes from the center; otherwise they use an available hex
+without that preference. Wormholes occupy the outermost available layers and
+face their destination systems on the galaxy map.
 
 ### Stars
 

@@ -30,6 +30,42 @@ def test_homeworld_selection_and_caps(kind):
     assert all(body.owner is None for system in game.galaxy.systems.values() for _, body in system.get_all_celestial_bodies())
 
 
+@pytest.mark.parametrize('profile', [SpawnProfile.NORMAL, SpawnProfile.TESTING])
+def test_generated_all_gas_giant_homes_can_exceed_planet_budget_without_changing_preview(monkeypatch, profile):
+    from galaxy import StarSystem
+    from geometry import Position
+
+    original_choices = random.choices
+
+    def all_gas_giants(population, weights=None, *, cum_weights=None, k=1):
+        if isinstance(population[0], PlanetType):
+            return [PlanetType.GAS_GIANT] * k
+        return original_choices(population, weights, cum_weights=cum_weights, k=k)
+
+    monkeypatch.setattr('galaxy.random.choices', all_gas_giants)
+    game = campaign()
+    for index, name in enumerate(game.galaxy.systems):
+        game.galaxy.systems[name] = StarSystem(name, Position(index * 300, 0), radius=3)
+    settings = settings_for(game.galaxy, profile)
+    if profile == SpawnProfile.TESTING:
+        settings.player_configs[1].home_system_name = 'Sol'
+    prepared = prepare_new_campaign(settings)
+    for name in ('Sol', 'Beta'):
+        planets = [body for _, body in prepared.state.galaxy.systems[name].get_all_celestial_bodies()
+                   if isinstance(body, Planet)]
+        assigned_players = [player for player in prepared.state.players
+                            if prepared.state.player_homeworlds[player][0] == name]
+        assert len(planets) == 3 + len(assigned_players)
+        assert sum(body.planet_type == PlanetType.GAS_GIANT for body in planets) == 3
+        for player in assigned_players:
+            homeworld = prepared.state.galaxy.get_celestial_body_by_id(player.homeworld_id)
+            assert homeworld.planet_type == PlanetType.TERRAN and homeworld.owner is player
+        preview_planets = [body for _, body in game.galaxy.systems[name].get_all_celestial_bodies()
+                           if isinstance(body, Planet)]
+        assert len(preview_planets) == 3
+        assert all(body.planet_type == PlanetType.GAS_GIANT and body.owner is None for body in preview_planets)
+
+
 def test_population_clamp_precedes_sabotage(atmosphere, monkeypatch):
     game, _, _ = atmosphere
     world = Planet((1, 0), 'Sol', PlanetType.GREENHOUSE)
