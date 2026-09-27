@@ -127,8 +127,8 @@ CLOAKING_ADVANCED_ANTIMATTER_COST_PER_RADIUS: float = CLOAKING_ADVANCED_ANTIMATT
 # Fog visuals
 FOG_PRESENCE_COLOR = (200, 60, 60)             # generic enemy-presence marker color
 FOG_TINT_COLOR = (0, 0, 0, 60)                 # optional faint shading for non-detailed hexes (system view)
-FOG_OF_WAR_COLOR = (40, 40, 50, 55)            # semi-transparent grey fog for out-of-sensor-range areas (sector view)
-SYSTEM_FOG_OF_WAR_COLOR = (40, 40, 50)         # opaque dark grey fog for out-of-sensor-range hexes (system view)
+SECTOR_FOG_OF_WAR_COLOR = (40, 40, 50, 55)            # semi-transparent grey fog for out-of-sensor-range areas (sector view)
+SYSTEM_FOG_OF_WAR_COLOR = (20, 20, 25)         # opaque dark grey fog for out-of-sensor-range hexes (system view)
 
 # Experience point (XP) constants
 MAX_UNIT_XP: int = 1000               # Maximum XP a unit can accumulate

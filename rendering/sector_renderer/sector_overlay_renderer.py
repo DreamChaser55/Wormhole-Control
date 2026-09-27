@@ -2,7 +2,7 @@ from rendering.drawing_utils import draw_dotted_line
 import pygame
 from display_config import display_config_for
 import math
-from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, FOG_OF_WAR_COLOR, XP_SPEED_BONUS
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, HOVER_HIGHLIGHT_COLOR, MOVE_ORDER_LINE_COLOR, WORMHOLE_JUMP_ORDER_COLOR, RED, SECTOR_FOG_OF_WAR_COLOR, XP_SPEED_BONUS
 from rendering.drawing_utils import draw_selection_brackets, selection_color_for, station_icon_rect
 from geometry import distance, Position
 from domain.units import Unit
@@ -192,7 +192,7 @@ class SectorOverlayRenderer:
 
         fog_surf = self.parent._fog_of_war_surface
 
-        self.parent.grid_renderer.fill_circle_on_surface(fog_surf, (cx, cy), r, FOG_OF_WAR_COLOR, fog_rect)
+        self.parent.grid_renderer.fill_circle_on_surface(fog_surf, (cx, cy), r, SECTOR_FOG_OF_WAR_COLOR, fog_rect)
 
         for ucx, ucy, sr_px in culled_cutouts:
             self.parent.grid_renderer.fill_circle_on_surface(fog_surf, (ucx, ucy), sr_px, (0, 0, 0, 0), fog_rect)

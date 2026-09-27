@@ -4,7 +4,7 @@ import pygame
 from unittest.mock import MagicMock, patch
 from geometry import Position
 from display_config import DEFAULT_DISPLAY_CONFIG
-from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, FOG_OF_WAR_COLOR, DEFAULT_SENSOR_SHORT_RANGE
+from constants import SECTOR_CIRCLE_RADIUS_LOGICAL, SECTOR_FOG_OF_WAR_COLOR, DEFAULT_SENSOR_SHORT_RANGE
 SECTOR_CIRCLE_CENTER_IN_PX = DEFAULT_DISPLAY_CONFIG.center
 
 # Use a small test surface.  The sector centre (SECTOR_CIRCLE_CENTER_IN_PX) is
@@ -114,8 +114,8 @@ class TestDrawFogOfWar:
         r.overlay_renderer.draw_fog_of_war(h, TEST_DYNAMIC_RADIUS)
         cx, cy = SCREEN_W // 2, SCREEN_H // 2
         _, _, _, a = r._fog_of_war_surface.get_at((cx, cy))
-        assert a == FOG_OF_WAR_COLOR[3], (
-            f"Destroyed sensor: expected fog alpha={FOG_OF_WAR_COLOR[3]}, got a={a}"
+        assert a == SECTOR_FOG_OF_WAR_COLOR[3], (
+            f"Destroyed sensor: expected fog alpha={SECTOR_FOG_OF_WAR_COLOR[3]}, got a={a}"
         )
 
     def test_enemy_no_cutout(self):
@@ -128,7 +128,7 @@ class TestDrawFogOfWar:
         r.overlay_renderer.draw_fog_of_war(h, TEST_DYNAMIC_RADIUS)
         cx, cy = SCREEN_W // 2, SCREEN_H // 2
         _, _, _, a = r._fog_of_war_surface.get_at((cx, cy))
-        assert a == FOG_OF_WAR_COLOR[3], (
+        assert a == SECTOR_FOG_OF_WAR_COLOR[3], (
             f"Enemy unit should not create cutout, got a={a}"
         )
 
