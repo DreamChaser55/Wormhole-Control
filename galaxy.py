@@ -62,6 +62,9 @@ MIN_SYSTEM_DISTANCE = 50.0
 MAX_SYSTEM_DISTANCE = 350.0
 SECOND_NEAREST_WORMHOLE_PROB = 1/3 # Probability of connecting a system to the second nearest system
 COMET_OUTSKIRTS_BIAS = 0.85 # Preference probability to spawn comets on system outskirts
+WORMHOLE_UNSTABLE_PROB = 0.30 # Probability of generating an unstable wormhole (40-95% stability)
+WORMHOLE_UNSTABLE_MIN = 40
+WORMHOLE_UNSTABLE_MAX = 95
 
 # System populations scale with radius, not the number of sectors.
 PLANET_COUNT_VARIATION_NUMERATOR = 3
@@ -703,9 +706,9 @@ class Galaxy:
             logger.debug(f"Error creating wormhole: Could not find empty hex in {sys_name_a} or {sys_name_b}")
             return
 
-        # Determine stability for the pair: 80% chance of 100%, 20% chance of 50-95%
-        if random.random() < 0.20:
-            stability = random.randint(50, 95)
+        # Determine stability for the pair: 70% chance of 100%, 30% chance of 40-95%
+        if random.random() < WORMHOLE_UNSTABLE_PROB:
+            stability = random.randint(WORMHOLE_UNSTABLE_MIN, WORMHOLE_UNSTABLE_MAX)
         else:
             stability = 100
 

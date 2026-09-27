@@ -1247,7 +1247,8 @@ setup can add Terran homeworlds beyond the planet budget when needed; see
 Comets have an 85% preference for available outskirts hexes at least
 `max(2, ceil(0.65R))` hexes from the center; otherwise they use an available hex
 without that preference. Wormholes occupy the outermost available layers and
-face their destination systems on the galaxy map.
+face their destination systems on the galaxy map. Wormhole pairs generate with
+a 70% chance of 100% stability and a 30% chance of 40–95% stability.
 
 ### Stars
 

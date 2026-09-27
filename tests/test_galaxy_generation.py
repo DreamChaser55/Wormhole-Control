@@ -249,8 +249,8 @@ def test_wormhole_stability_generation():
         assert len(galaxy.wormholes) > 0
 
         for wh_id, wh in galaxy.wormholes.items():
-            # Check stability is in valid range [50, 100]
-            assert 50 <= wh.stability <= 100
+            # Check stability is in valid range [40, 100]
+            assert 40 <= wh.stability <= 100
 
             # Check that stability is symmetric for the linked wormhole pair
             exit_wh = galaxy.wormholes.get(wh.exit_wormhole_id)
@@ -265,6 +265,43 @@ def test_wormhole_stability_generation():
     # Check that we generated at least one stable and one unstable wormhole across the runs
     assert has_stable, "Expected to generate at least one stable wormhole (100% stability) across runs"
     assert has_unstable, "Expected to generate at least one unstable wormhole (<100% stability) across runs"
+
+def test_wormhole_stability_probability_branches(monkeypatch):
+    from constants import HullSize
+    import galaxy as galaxy_module
+    from domain.celestials import Wormhole
+
+    galaxy = Galaxy(num_systems=2)
+    # Clear existing wormholes to test add_wormhole_pair directly
+    galaxy.wormholes.clear()
+    for sys in galaxy.systems.values():
+        for hex_obj in sys.hexes.values():
+            hex_obj.celestial_bodies = [b for b in hex_obj.celestial_bodies if not isinstance(b, Wormhole)]
+
+    sys_a, sys_b = list(galaxy.systems.keys())[:2]
+
+    # Test unstable branch: random.random() returns 0.10 (< 0.30), randint returns 42
+    monkeypatch.setattr(galaxy_module.random, "random", lambda: 0.10)
+    monkeypatch.setattr(galaxy_module.random, "randint", lambda a, b: 42)
+    galaxy.add_wormhole_pair(sys_a, sys_b, diameter=HullSize.HUGE)
+    whs = list(galaxy.wormholes.values())
+    assert len(whs) == 2
+    assert whs[0].stability == 42
+    assert whs[1].stability == 42
+
+    # Clear again for stable branch
+    galaxy.wormholes.clear()
+    for sys in galaxy.systems.values():
+        for hex_obj in sys.hexes.values():
+            hex_obj.celestial_bodies = [b for b in hex_obj.celestial_bodies if not isinstance(b, Wormhole)]
+
+    # Test stable branch: random.random() returns 0.50 (>= 0.30)
+    monkeypatch.setattr(galaxy_module.random, "random", lambda: 0.50)
+    galaxy.add_wormhole_pair(sys_a, sys_b, diameter=HullSize.HUGE)
+    whs = list(galaxy.wormholes.values())
+    assert len(whs) == 2
+    assert whs[0].stability == 100
+    assert whs[1].stability == 100
 
 def test_wormhole_diameter_generation():
     from constants import HullSize
