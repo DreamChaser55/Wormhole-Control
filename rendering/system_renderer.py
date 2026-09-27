@@ -2,7 +2,7 @@ from display_config import display_config_for
 import pygame
 import random
 import math
-from constants import DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE, SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY, HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR, XP_JUMP_RANGE_BONUS, PlanetType, STORM_LIGHTNING_COLOR, SQRT3, WORMHOLE_LINE_COLOR, STAR_COLORS, DARK_RED
+from constants import DARK_GRAY, NEBULA_COLORS, STORM_COLORS, YELLOW, CYAN, PURPLE, RED, WHITE, SELECTION_HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR, GRAY, HEX_JUMP_ORDER_LINE_COLOR, HYPERDRIVE_RANGE_HEX_FILL_COLOR, SENSOR_RANGE_HEX_FILL_COLOR, XP_JUMP_RANGE_BONUS, PlanetType, STORM_LIGHTNING_COLOR, SQRT3, WORMHOLE_LINE_COLOR, STAR_COLORS, DARK_RED, SYSTEM_FOG_OF_WAR_COLOR, HEX_GRID_COLOR
 
 from hexgrid_utils import get_hex_vertices, hex_to_pixel, hex_distance
 from domain.celestials import Star, Planet, Wormhole, CelestialBody, Moon, ColonizableAsteroid, MetalAsteroid, AsteroidField, IceField, Nebula, Storm, Comet, DebrisField
@@ -73,18 +73,36 @@ class SystemViewRenderer:
 
         selection_bounds = []
 
-        # 1. Draw Hex Grid Lines (and Enemy Presence Fill)
+        # Determine long-range sensor coverage for the viewer in this system
+        in_range_hexes = None
+        if hasattr(self.game, 'get_long_range_sensor_hexes'):
+            res = self.game.get_long_range_sensor_hexes(system.name)
+            if isinstance(res, (set, list, tuple, frozenset)):
+                in_range_hexes = set(res)
+        if in_range_hexes is None and getattr(self.game, 'visibility', None) is not None:
+            lr_hexes = getattr(self.game.visibility, 'long_range_hexes', None)
+            if isinstance(lr_hexes, (set, list, tuple, frozenset)):
+                in_range_hexes = {coord for s_name, coord in lr_hexes if s_name == system.name}
+
+        # 1. Draw Hex Backgrounds (Fog of War and Enemy Presence) and Grid Lines
         for hex_coord, hex_obj in system.hexes.items():
              q, r = hex_coord
              hex_points_objects = self._hex_vertices(q, r)
              hex_points_tuples = [p.to_tuple() for p in hex_points_objects]
+
+             in_sensor_range = (hex_coord in in_range_hexes) if in_range_hexes is not None else (
+                 self.game.is_hex_in_long_range_sensor(self.game.current_system_name, hex_coord)
+                 if hasattr(self.game, 'is_hex_in_long_range_sensor') else True
+             )
+             if not in_sensor_range:
+                 pygame.draw.polygon(self.screen, SYSTEM_FOG_OF_WAR_COLOR, hex_points_tuples)
 
              has_hidden_enemy = any(not self.game.is_unit_visible(u) for u in hex_obj.units)
              has_presence = self.game.hex_has_presence(self.game.current_system_name, hex_coord)
              if has_hidden_enemy and has_presence:
                  pygame.draw.polygon(self.screen, DARK_RED, hex_points_tuples)
 
-             pygame.draw.polygon(self.screen, DARK_GRAY, hex_points_tuples, 1)
+             pygame.draw.polygon(self.screen, HEX_GRID_COLOR, hex_points_tuples, 1)
              if hex_coord in scanned_hexes:
                  pygame.draw.polygon(self.screen, CYAN, hex_points_tuples, 2)
 

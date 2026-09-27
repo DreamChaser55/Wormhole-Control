@@ -21,6 +21,7 @@ class VisibilitySnapshot:
     presence_hexes: Set[Tuple[str, HexCoord]] = dataclasses.field(default_factory=set)
     visible_deployable_ids: Set[int] = dataclasses.field(default_factory=set)
     visible_patch_ids: Set[int] = dataclasses.field(default_factory=set)
+    long_range_hexes: Set[Tuple[str, HexCoord]] = dataclasses.field(default_factory=set)
 
 
 class VisibilityService:
@@ -209,6 +210,7 @@ class VisibilityService:
                         for owner, p, r in active_area_cloaks.get(key, ()))
                     if obj.kind == 'ghost_fleet' and not identified and not concealed and key in long_range_covered:
                         snapshot.presence_hexes.add(key)
+        snapshot.long_range_hexes = set(long_range_covered)
         return snapshot
 
     @staticmethod
@@ -239,6 +241,13 @@ def hex_has_presence(snapshot: Optional[VisibilitySnapshot], system_name: str, h
     if snapshot is None:
         return False
     return (system_name, hex_coord) in snapshot.presence_hexes
+
+
+def is_hex_in_long_range_sensor(snapshot: Optional[VisibilitySnapshot], system_name: str, hex_coord: HexCoord) -> bool:
+    """Return True if hex is within long-range sensor coverage of the viewer."""
+    if snapshot is None or snapshot.viewer is None:
+        return True
+    return (system_name, hex_coord) in snapshot.long_range_hexes
 
 
 def is_minefield_visible(snapshot: Optional[VisibilitySnapshot], minefield: typing.Any) -> bool:

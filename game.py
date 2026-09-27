@@ -31,7 +31,8 @@ from visibility import (
     VisibilityService, VisibilitySnapshot,
     is_unit_visible as vis_is_unit_visible,
     hex_has_presence as vis_hex_has_presence,
-    is_minefield_visible as vis_is_minefield_visible
+    is_minefield_visible as vis_is_minefield_visible,
+    is_hex_in_long_range_sensor as vis_is_hex_in_long_range_sensor
 )
 from game_ai.coordinator import AgentTurnCoordinator
 from game_control_protocol import ControlService
@@ -305,6 +306,34 @@ class Game:
             bool: True if minefield belongs to current player or if spectator mode is active.
         """
         return vis_is_minefield_visible(self.visibility, minefield)
+
+    def is_hex_in_long_range_sensor(self, system_name: str, hex_coord: HexCoord) -> bool:
+        """Determines if a hex is within long-range sensor range of the active player.
+
+        Args:
+            system_name (str): System containing the target hex.
+            hex_coord (HexCoord): Hex coordinate to evaluate.
+
+        Returns:
+            bool: True if the hex is within long-range sensor coverage.
+        """
+        return vis_is_hex_in_long_range_sensor(self.visibility, system_name, hex_coord)
+
+    def get_long_range_sensor_hexes(self, system_name: str) -> set[HexCoord]:
+        """Returns all hex coordinates in system_name covered by active player's long-range sensors.
+
+        Args:
+            system_name (str): System name to query.
+
+        Returns:
+            set[HexCoord]: Set of hex coordinates in the system covered by long-range sensors.
+        """
+        if self.visibility is None or self.visibility.viewer is None:
+            if not self.players or self.current_player_index is None:
+                system = self.galaxy.systems.get(system_name) if self.galaxy else None
+                return set(system.hexes.keys()) if system else set()
+            return set()
+        return {coord for sys, coord in self.visibility.long_range_hexes if sys == system_name}
 
     def update(self, time_delta: float):
         """Called every frame. Updates the UI. Game logic updates are done in TurnProcessor.process_turn(), which is called at the end of each turn."""

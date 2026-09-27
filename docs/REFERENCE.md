@@ -106,7 +106,7 @@ These limits apply to new campaigns. Loading uses the separate
 **Galaxy View** shows known systems, wormhole links, home-system faction markers,
 and a faint tactical grid framed by a subtle coordinate boundary.
 Shared homes have concentric markers. **System View** shows sector hexes, bodies,
-routes and fog of war; newly opened systems fit the available map area.
+routes and fog of war; hexes outside the current player's long-range sensor range have a grey background, while in-range hexes retain a black background. Newly opened systems fit the available map area.
 **Sector View** shows individual units, weapon ranges, minefields, hyperspace inhibition fields, tactical movement, and a circular-clipped tactical grid.
 All three views have independent zoom and pan controls. In Galaxy View, middle-click
 a system to enter it; dragging the middle button pans without entering a system.

@@ -128,6 +128,7 @@ CLOAKING_ADVANCED_ANTIMATTER_COST_PER_RADIUS: float = CLOAKING_ADVANCED_ANTIMATT
 FOG_PRESENCE_COLOR = (200, 60, 60)             # generic enemy-presence marker color
 FOG_TINT_COLOR = (0, 0, 0, 60)                 # optional faint shading for non-detailed hexes (system view)
 FOG_OF_WAR_COLOR = (40, 40, 50, 55)            # semi-transparent grey fog for out-of-sensor-range areas (sector view)
+SYSTEM_FOG_OF_WAR_COLOR = (40, 40, 50)         # opaque dark grey fog for out-of-sensor-range hexes (system view)
 
 # Experience point (XP) constants
 MAX_UNIT_XP: int = 1000               # Maximum XP a unit can accumulate
@@ -161,7 +162,8 @@ GALAXY_GRID_SPACING = 160.0 # Logical distance between tactical grid lines in ga
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (128, 128, 128) # Used to highlight the hex containing the selected object
-DARK_GRAY = (50, 50, 50) # Hex grid color
+DARK_GRAY = (50, 50, 50)
+HEX_GRID_COLOR = (90, 95, 105) # Hex grid line color in system view (brighter for fog contrast)
 RED = (255, 0, 0)
 DARK_RED = (100, 20, 20) # Hex fill color for enemy presence detected in system view
 GREEN = (0, 255, 0)
