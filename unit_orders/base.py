@@ -203,6 +203,9 @@ class Order:
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
         """Update the order status based on sub-orders status and own completion."""
+        from planetary_intel import validate_order_contact
+        if self.status == OrderStatus.IN_PROGRESS and not validate_order_contact(self, galaxy_ref):
+            return
         # Process the front sub-order in the queue sequentially. We block and wait
         # until the current sub-order is fully resolved (completed, failed, or cancelled).
         while self.sub_orders:

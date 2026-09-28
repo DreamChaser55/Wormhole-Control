@@ -90,6 +90,7 @@ def test_star_summaries_keep_harvesting_neutral_and_hazard_geometry_separate(kin
 def test_planet_panels_keep_traits_and_full_rules_below_actions(kind):
     game = campaign()
     body = Planet((0, 0), 'Sol', kind)
+    body.owner = game.players[0]
     collapsed = build_celestial_body_panel(game, body)
     assert collapsed[-1]['action_id'] == 'toggle_celestial_rules'
     if kind == PlanetType.GAS_GIANT:

@@ -555,6 +555,10 @@ class Commander(UnitComponent):
             or getattr(getattr(self.unit, "game", None), "galaxy", None)
         )
         self.cancel_hidden_attack(galaxy_ref)
+        if galaxy_ref and self.current_order and self.current_order.status == OrderStatus.IN_PROGRESS:
+            from planetary_intel import validate_order_contact
+            if not validate_order_contact(self.current_order, galaxy_ref):
+                self._release_current_order()
         from dismantling import offline
         if not self.unit.is_disabled and not offline(self.unit):
             # A turn-end cancellation deliberately did not activate this owner's

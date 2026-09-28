@@ -86,7 +86,7 @@ def validate_document(data):
     for index, p in enumerate(data["players"]):
         path = f"players[{index}]"
         require(p, ("id", "name", "color", "controller", "team_id", "credits", "metal", "crystal",
-                    "sector_intel", "order_history", "order_event_sequence", "briefing", "persistent_id", "agent_id",
+                    "sector_intel", "planetary_intel", "order_history", "order_event_sequence", "briefing", "persistent_id", "agent_id",
                     "ai_memory", "ai_reasoning_effort", "ai_repair_retries", "homeworld_id"), path)
         validate_saved_player_values(p, path)
         if p["id"] in player_ids:
@@ -118,6 +118,9 @@ def validate_document(data):
                 raise ValueError("player.sector_intel: invalid location")
             int(parts[1]), int(parts[2])
             number(turn, "player.sector_intel.turn", 0, integer=True)
+    from planetary_intel import decode_records
+    for p in data['players']:
+        decode_records(p['planetary_intel'], turn=state['turn_number'], player_ids=player_ids)
     require(data["galaxy"], ("systems", "generation_bounds"), "galaxy")
     if not isinstance(data["galaxy"]["systems"], list) or not data["galaxy"]["systems"]:
         raise ValueError("galaxy.systems: expected nonempty array")
@@ -507,7 +510,10 @@ def reconcile(candidate):
     for index, player in enumerate(candidate.players):
         start_owner_turn(galaxy, player, candidate.turn_number - int(index > candidate.current_player_index))
     candidate.player_homeworlds = {}
+    from planetary_intel import decode_records, encode_records
     for player in candidate.players:
+        decode_records(encode_records(player), turn=candidate.turn_number,
+                       player_ids={p.id for p in candidate.players}, bodies=objects)
         if player.homeworld_id is not None:
             body = galaxy.get_celestial_body_by_id(player.homeworld_id)
             if body is None:

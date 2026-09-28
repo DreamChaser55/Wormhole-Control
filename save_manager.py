@@ -37,7 +37,7 @@ from unit_orders.registry import ORDER_CLASS_REGISTRY
 logger = logging.getLogger(__name__)
 
 
-CURRENT_SAVE_VERSION = "4.19"
+CURRENT_SAVE_VERSION = "4.20"
 
 SAVES_DIR = os.path.join(os.path.dirname(__file__), "saves")
 
@@ -68,6 +68,7 @@ def _ensure_saves_dir():
 # --- Serialization Functions ---
 
 def serialize_player(player: Player) -> dict:
+    from planetary_intel import encode_records
     validate_saved_player_values(vars(player))
     sector_intel_data = {
         f"{sys}:{q}:{r}": turn
@@ -91,6 +92,7 @@ def serialize_player(player: Player) -> dict:
         "metal": player.metal,
         "crystal": player.crystal,
         "sector_intel": sector_intel_data,
+        "planetary_intel": encode_records(player),
         "homeworld_id": getattr(player, "homeworld_id", None),
     }
 
@@ -400,6 +402,8 @@ def deserialize_player(data: dict) -> Player:
     player.crystal = data['crystal']
 
     raw_intel = data['sector_intel']
+    from planetary_intel import decode_records
+    player.planetary_intel = decode_records(data['planetary_intel'])
     if isinstance(raw_intel, dict):
         for key_str, turn in raw_intel.items():
             parts = key_str.split(":")

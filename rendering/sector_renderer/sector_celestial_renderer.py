@@ -1,3 +1,4 @@
+from rendering.planetary_intel import draw_ownership_ring
 import pygame
 from display_config import display_config_for
 import math
@@ -323,21 +324,18 @@ class SectorCelestialRenderer:
             }
             obj_color = planet_color_map.get(obj.planet_type, CYAN)
             obj_radius_logical = getattr(obj, 'collision_radius', PLANET_RADIUS)
-            if obj.owner:
-                pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
+            pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            draw_ownership_ring(self.screen, self.game, obj, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3)
         elif isinstance(obj, Moon):
             obj_color = (200, 200, 200)
             obj_radius_logical = getattr(obj, 'collision_radius', MOON_RADIUS)
-            if obj.owner:
-                pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
+            pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            draw_ownership_ring(self.screen, self.game, obj, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3)
         elif isinstance(obj, ColonizableAsteroid):
             obj_color = (90, 60, 50)
             obj_radius_logical = getattr(obj, 'collision_radius', ASTEROID_RADIUS)
-            if obj.owner:
-                pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
-                pygame.draw.circle(self.screen, obj.owner.color, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3, 1)
+            pixel_radius = int(obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL)
+            draw_ownership_ring(self.screen, self.game, obj, (obj_pixel_pos.x, obj_pixel_pos.y), pixel_radius + 3)
         elif isinstance(obj, MetalAsteroid):
             obj_color = (140, 140, 160)
             obj_radius_logical = getattr(obj, 'collision_radius', ASTEROID_RADIUS)

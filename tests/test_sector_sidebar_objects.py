@@ -223,13 +223,13 @@ def test_build_celestial_body_panel_owner_style():
     mock_game.current_player_index = 0
     mock_game.galaxy = None
 
-    # 1. Uninhabited planet
+    # 1. Unknown planet: neutrality is not disclosed without sensors.
     planet_uninhabited = Planet(in_hex=(0, 0), in_system="Sol", planet_type=PlanetType.TERRAN)
     planet_uninhabited.owner = None
     data = build_celestial_body_panel(mock_game, planet_uninhabited)
     owner_labels = [d for d in data if d.get('type') == 'label' and d.get('text', '').startswith("Owner:")]
     assert len(owner_labels) == 1
-    assert owner_labels[0]['text'] == "Owner: Uninhabited"
+    assert owner_labels[0]['text'] == "Owner: Unknown"
     assert owner_labels[0]['object_id'] == "#sidebar_info_label"
 
     # 2. Inhabited planet owned by Player 1
@@ -244,6 +244,9 @@ def test_build_celestial_body_panel_owner_style():
     # 3. Inhabited moon owned by custom-named player
     moon = Moon(in_hex=(0, 0), in_system="Sol")
     moon.owner = custom_player
+    from visibility import VisibilitySnapshot
+    mock_game.visibility_dirty = False
+    mock_game.visibility = VisibilitySnapshot(p1, sensed_colony_ids={moon.id})
     data = build_celestial_body_panel(mock_game, moon)
     owner_labels = [d for d in data if d.get('type') == 'label' and d.get('text', '').startswith("Owner:")]
     assert len(owner_labels) == 1
@@ -256,7 +259,7 @@ def test_build_celestial_body_panel_owner_style():
     data = build_celestial_body_panel(mock_game, asteroid_uninhibited)
     owner_labels = [d for d in data if d.get('type') == 'label' and d.get('text', '').startswith("Owner:")]
     assert len(owner_labels) == 1
-    assert owner_labels[0]['text'] == "Owner: Uninhabited"
+    assert owner_labels[0]['text'] == "Owner: Unknown"
     assert owner_labels[0]['object_id'] == "#sidebar_info_label"
 
 

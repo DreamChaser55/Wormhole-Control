@@ -194,6 +194,19 @@ new-game setup restrictions. These validation rules apply to the current save fo
 
 ## References, indexes, and timers
 
+Each player stores `planetary_intel`, an array of records containing `body_id`,
+nullable `owner_id`, and `observed_turn`. Records are unique by colonizable-body ID;
+IDs must resolve to existing colonizable planets, moons or asteroids and existing
+players. Turns are positive integers no later than the saved round. Booleans,
+duplicates and malformed records are rejected transactionally. An observed owner
+may differ from the live owner: that is valid historical intelligence.
+
+These records retain only ownership, including observed uninhabited status.
+Freshness is derived from current sensor coverage and friendly ownership, never
+from timestamp equality. Reconciliation preserves the saved records without
+backfilling unseen ownership. Only the current save format is supported; older
+saves are rejected rather than reconstructing observations from live state.
+
 `campaign_graph.iter_objects()` follows ownership edges across celestial bodies,
 minefields, deployed units, gas-giant storage, and recursively nested hangars and
 strikecraft bays. Duplicate ownership, cycles, duplicate IDs, and inconsistent
@@ -402,4 +415,4 @@ ownership. No mutable Titan slot counter is saved: the complete ownership graph,
 accepted roots and paid jobs reconstruct capacity, deduplicating approach children.
 Invalid Titan Core cost/hull, missing prerequisites, over-capacity loadouts and
 multiple surviving/reserved acquisitions reject the isolated load candidate before
-commit. Save format 4.19 remains current-format-only; there is no migration.
+commit. The save format remains current-format-only; there is no migration.

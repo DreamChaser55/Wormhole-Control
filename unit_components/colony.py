@@ -74,6 +74,9 @@ class ColonyComponent(UnitComponent):
         return True
 
     def unload_population(self, planet: 'Planet', amount: int) -> bool:
+        from planetary_intel import current_ownership
+        if not current_ownership(self.unit.game.galaxy, self.unit.owner, planet):
+            return False
         if self.is_destroyed:
             logger.debug(f"Error: Cannot unload population, {format_unit_for_log(self.unit)}'s ColonyComponent is destroyed.")
             return False
@@ -96,5 +99,7 @@ class ColonyComponent(UnitComponent):
 
         planet.population += amount
         self.population_cargo -= amount
+        from planetary_intel import refresh
+        refresh(self.unit.game)
         logger.debug(f"Unloaded {amount} population onto {planet.name}. Current cargo: {self.population_cargo}")
         return True

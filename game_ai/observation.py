@@ -11,6 +11,7 @@ from titan_acquisition import capacity as titan_capacity
 from .rules import (
     ability_states,
     detailed_system_names,
+    body_is_notable,
     command_guidance,
     is_colonizable_body,
     is_mining_target,
@@ -29,7 +30,7 @@ from component_visibility import public_components
 from order_history import history_view
 from turn_briefing import summary_view
 
-OBSERVATION_SCHEMA_VERSION = 25
+OBSERVATION_SCHEMA_VERSION = 26
 COMMAND_HELP = {name: spec.description for name, spec in COMMAND_SPECS.items()}
 
 
@@ -87,7 +88,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
             else [
                 body
                 for body in system_bodies
-                if is_star(body) or getattr(body, "owner", None) is not None
+                if body_is_notable(player, body, visibility)
             ]
         )
         exact_bodies.extend(exact_for_system)
@@ -109,12 +110,12 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         }
         if detailed:
             system_data["celestial_bodies"] = [
-                _body_view(body, player, include_system=False, galaxy=galaxy)
+                _body_view(body, player, include_system=False, galaxy=galaxy, game=game, snapshot=visibility)
                 for body in exact_for_system
             ]
         else:
             system_data["notable_bodies"] = [
-                _body_view(body, player, include_system=False, galaxy=galaxy)
+                _body_view(body, player, include_system=False, galaxy=galaxy, game=game, snapshot=visibility)
                 for body in exact_for_system
             ]
             system_data["body_summary"] = _body_summary(system_bodies, player)
@@ -135,11 +136,14 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
     resource_budget = resource_budget_view(game, player)
     construction_templates = _construction_catalog(visible_unit_objects, player, resource_budget['available'])
     from .intelligence import intelligence_observation
+    from planetary_intel import current_ownership
+    current_bodies = [body for body in exact_bodies
+                      if current_ownership(galaxy, player, body, visibility)]
     intelligence, player_intelligence_options = intelligence_observation(
         galaxy,
         player,
         visible_units=visible_unit_objects,
-        exact_bodies=exact_bodies,
+        exact_bodies=current_bodies,
     )
     recipient_ids = [
         int(other.id)
@@ -245,7 +249,7 @@ def build_observation(game: Any, player: Any) -> dict[str, Any]:
         "action_catalogs": {
             "colonization_target_ids": [
                 int(body.id)
-                for body in exact_bodies
+                for body in current_bodies
                 if is_colonizable_body(body) and getattr(body, "owner", None) is None
             ],
             "colonist_sources": [
@@ -364,7 +368,8 @@ def _unit_view(
 
 
 def _body_view(
-    body: Any, viewer: Any, *, include_system: bool = True, galaxy: Any = None
+    body: Any, viewer: Any, *, include_system: bool = True, galaxy: Any = None,
+    game: Any = None, snapshot: Any = None
 ) -> dict[str, Any]:
     owner = getattr(body, "owner", None)
     data = {
@@ -377,8 +382,18 @@ def _body_view(
         "owner_relation": _relation(viewer, owner) if owner is not None else "neutral",
     }
     from planetary_warfare import colonizable, defense_view
+    from planetary_intel import ownership_view
+    current = False
     if colonizable(body):
-        data["planetary_defenses"] = defense_view(body)
+        from types import SimpleNamespace
+        context = game if game is not None else SimpleNamespace(
+            galaxy=galaxy, players=[viewer], turn_number=1)
+        ownership = ownership_view(context, viewer, body, snapshot)
+        current = ownership.status == 'current'
+        data.update(owner_id=ownership.owner_id, owner_relation=ownership.relation,
+                    ownership_status=ownership.status, ownership_observed_turn=ownership.observed_turn)
+        if current:
+            data["planetary_defenses"] = defense_view(body)
     if include_system:
         data["system_name"] = str(body.in_system)
     for name in (
@@ -390,6 +405,8 @@ def _body_view(
         "is_colonizable",
         "harvest_multiplier",
     ):
+        if name == 'population' and colonizable(body) and not current:
+            continue
         if hasattr(body, name):
             val = getattr(body, name)
             if isinstance(val, bool):
@@ -661,13 +678,10 @@ def _navigation_anchor(system: Any, bodies: list[Any]) -> dict[str, Any]:
 
 def _body_summary(bodies: list[Any], viewer: Any) -> dict[str, Any]:
     type_counts = Counter(body.__class__.__name__ for body in bodies)
-    relation_counts = Counter(
-        _relation(viewer, getattr(body, "owner", None)) for body in bodies
-    )
-    neutral_colonizable = [
+    colonizable_bodies = [
         body
         for body in bodies
-        if is_colonizable_body(body) and getattr(body, "owner", None) is None
+        if is_colonizable_body(body)
     ]
     mining_counts = Counter()
     for body in bodies:
@@ -678,10 +692,9 @@ def _body_summary(bodies: list[Any], viewer: Any) -> dict[str, Any]:
     hazard_names = {"Nebula", "Storm", "DebrisField", "IceField"}
     return {
         "counts_by_type": dict(sorted(type_counts.items())),
-        "counts_by_owner_relation": dict(sorted(relation_counts.items())),
-        "neutral_colonizable_count": len(neutral_colonizable),
-        "neutral_colonizable_capacity": _rounded(
-            sum(float(getattr(body, "max_population", 0)) for body in neutral_colonizable)
+        "colonizable_count": len(colonizable_bodies),
+        "colonizable_capacity": _rounded(
+            sum(float(getattr(body, "max_population", 0)) for body in colonizable_bodies)
         ),
         "mining_targets": dict(sorted(mining_counts.items())),
         "hazards": {

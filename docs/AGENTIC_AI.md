@@ -34,14 +34,14 @@ providers by default, so they do not consume API credits.
 ## Information boundary
 
 `game_ai.observation.build_observation` recomputes visibility for the active
-player, recording covered-sector intel and shared ghost identification.
+player, recording covered-sector and planetary ownership intel and shared ghost identification.
 `VisibilityService.compute(record_intel=False)` calculates coverage without those
 persistent writes; load reconciliation and selected tactical/deployable checks use
 that mode. Other target checks retain the recording default, as described in the
 [preflight guarantees](#commit-guarantees-and-lifecycle-feedback). The observation includes:
 
 - the active player's economy;
-- public system topology, navigation anchors, detailed nearby bodies (including planetary traits, colonizability, passive mineral yields, and antimatter harvesting sources/multipliers), and summaries of remote neutral bodies;
+- public system topology, navigation anchors, detailed nearby bodies (including planetary traits, colonizability, passive mineral yields, and antimatter harvesting sources/multipliers), and physical summaries of remote bodies;
 - owned and allied units;
 - enemy units only when detailed visibility permits them (concealed from long-range radar presence when cloaked or inside nebulae or asteroid fields);
 - celestial fields (asteroid, debris, ice) with density parameters (`density`, `max_hull_size`), solidity status (`is_solid: false`), and exact `effect_radius` values that restrict hulls exceeding the field's maximum allowable hull, rejecting forbidden commands with `hazard_blocked`;
@@ -58,10 +58,33 @@ that mode. Other target checks retain the recording default, as described in the
 
 Observations give full body detail in systems containing friendly
 units, adjacent systems, and systems with visible enemy activity. Remote systems
-retain exact stars and colonized bodies while neutral objects are summarized.
+retain exact stars, friendly colonies, currently sensed worlds and previously
+observed worlds; other objects are summarized without ownership-dependent counts.
 The model can move toward a system navigation anchor to receive exact target IDs
 on a later turn. Inhibitor blocker values are intentionally bounded and expose
 no identity or geometry for the conflicting inhibition zone.
+
+Colonizable bodies expose `ownership_status` (`current`, `last_known`, `unknown`)
+and nullable `ownership_observed_turn`. `owner_id` and `owner_relation` describe
+only that disclosed intelligence: unknown uses null and `unknown`, while confirmed
+uninhabited uses null and `neutral`. Last-known ownership is dated history, not
+current control, even if last observed earlier in the same round. Population and
+`planetary_defenses` are omitted without current knowledge. Physical traits and
+capacity remain available. Remote `body_summary.colonizable_count` and
+`colonizable_capacity` describe geography, not unclaimed worlds.
+
+The shared ownership policy uses effective short-range contact with the body's
+surface or long-range coverage of its sector, including allied and intelligence
+sources and Deep Scan. Own/allied colonies stay current. Enemy home markers
+require current sensor coverage. Colony command options include only currently
+known targets; guessed, stale and nonexistent colony targets all return
+`target_unavailable` before ownership-dependent validation. Active colony actions
+fail and cancel their approach on lost coverage; movement to known coordinates
+remains legal. Human controls use the same policy.
+
+Per-player ownership observations are saved independently of AI memory. Recording
+visibility refreshes only authorized observations; `record_intel=False` and load
+reconciliation never rewrite them. Historical briefings and memory remain history.
 
 The observation intentionally excludes enemy resources and hidden entity IDs.
 The command gateway independently recomputes visibility for enemy targets, so a
@@ -264,7 +287,7 @@ does not execute gameplay effects or draw their random outcomes.
 
 This guarantees no command effects on rejection, not complete read-only access:
 enemy-unit lookup and the remote-body disclosure fallback currently recompute
-visibility with intel recording enabled. They can refresh sector-intel timestamps
+visibility with intel recording enabled. They can refresh sector and planetary ownership intel
 and shared ghost identification even if the batch rejects. Pure visibility callers
 must explicitly pass `record_intel=False`.
 
@@ -722,7 +745,7 @@ later command. Reservation release and failure handling follow the
 [commit guarantees](#commit-guarantees-and-lifecycle-feedback); preflight never
 consumes invasion randomness.
 
-Exact colony observations include `planetary_defenses` with `next_upgrade_resources`; own/allied ships include
+Currently known colony observations include `planetary_defenses` with `next_upgrade_resources`; own/allied ships include
 `troop_cargo`. Enemy cargo remains private. Command options expose costs, ranges,
 amount limits, blockers, probabilities and casualty outcomes. Recheck these before
 issuing an order; arrival can change odds. Recruitment is private to the owner;

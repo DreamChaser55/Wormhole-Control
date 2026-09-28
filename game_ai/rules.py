@@ -109,16 +109,23 @@ def detailed_system_names(galaxy, player, visible_units, presence_hexes):
     return detailed
 
 
+def body_is_notable(player, body, snapshot):
+    from domain.players import are_allies
+    return (is_star(body) or are_allies(player, getattr(body, 'owner', None))
+            or body.id in getattr(snapshot, 'sensed_colony_ids', ())
+            or body.id in getattr(player, 'planetary_intel', {}))
+
+
 def body_is_public(game, player, body, selected_units=()):
-    if is_star(body) or getattr(body, "owner", None) is not None:
+    from visibility import VisibilityService
+    snapshot = VisibilityService.compute(game.galaxy, player, turn_number=getattr(game, 'turn_number', 1))
+    if body_is_notable(player, body, snapshot):
         return True
     units = [u for system in getattr(game.galaxy, "systems", {}).values()
              for sector in system.hexes.values() for u in getattr(sector, "units", [])]
     friendly = [u for u in [*units, *selected_units] if relation(player, u.owner) in {"self", "ally"}]
     if body.in_system in detailed_system_names(game.galaxy, player, friendly, ()):
         return True
-    from visibility import VisibilityService
-    snapshot = VisibilityService.compute(game.galaxy, player, turn_number=getattr(game, "turn_number", 1))
     visible = [u for u in units if relation(player, u.owner) != "enemy" or u.id in snapshot.visible_enemy_unit_ids]
     return body.in_system in detailed_system_names(game.galaxy, player, visible, snapshot.presence_hexes)
 
@@ -240,6 +247,11 @@ def command_guidance(
     if required(unit):
         return ['rename_unit'], {'service_blocker': 'wing_service_required'}, []
     exact_bodies = list(exact_bodies)
+    from planetary_intel import current_ownership, is_colony_body
+    from visibility import VisibilityService
+    snapshot = VisibilityService.compute(game.galaxy, player, record_intel=False)
+    current_bodies = [body for body in exact_bodies if is_colony_body(body)
+                      and current_ownership(game.galaxy, player, body, snapshot)]
     visible_units = list(visible_units)
     legal: set[str] = {"rename_unit"}
     options: dict[str, Any] = {}
@@ -300,7 +312,7 @@ def command_guidance(
         operational = not bool(getattr(intelligence, "is_destroyed", False))
         enemy_colonies = [
             body.id
-            for body in exact_bodies
+            for body in current_bodies
             if is_colonizable_body(body)
             and relation(player, getattr(body, "owner", None)) == "enemy"
         ]
@@ -431,7 +443,7 @@ def command_guidance(
         remaining = max(0.0, maximum - cargo)
         colony_targets = [
             body.id
-            for body in exact_bodies
+            for body in current_bodies
             if is_colonizable_body(body) and getattr(body, "owner", None) is None
         ]
         sources = [

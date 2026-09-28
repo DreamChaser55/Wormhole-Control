@@ -57,6 +57,7 @@ class Player:
         self.metal = 1000
         self.crystal = 500
         self.sector_intel: Dict[Tuple[str, HexCoord], int] = {}
+        self.planetary_intel: Dict[int, Dict[str, Any]] = {}
 
     def is_allied_with(self, other: Optional['Player']) -> bool:
         """Returns True if other is not None and is allied with this player (same team or same instance)."""

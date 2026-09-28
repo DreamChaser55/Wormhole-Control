@@ -5,9 +5,14 @@ from geometry import Position
 from constants import SELECTION_HIGHLIGHT_COLOR
 
 
-def selection_color_for(obj):
+def selection_color_for(obj, game=None):
     """Blend the current owner's color 20% toward white; keep unowned objects white."""
     owner = getattr(obj, 'owner', None)
+    from planetary_intel import is_colony_body, displayed_owner, presentation_view
+    if is_colony_body(obj):
+        owner = displayed_owner(game, obj) if game is not None else None
+        if owner is not None and presentation_view(game, obj).status == 'last_known':
+            return tuple(round(c * 0.55) for c in owner.color)
     if owner is None:
         return SELECTION_HIGHLIGHT_COLOR
     return tuple(round(c + (255 - c) * 0.20) for c in owner.color)

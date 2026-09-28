@@ -273,7 +273,8 @@ class _BatchProjection:
                     self._troop_cargo[unit_id] += amount
                     self._reserve_credits(unit, entry, amount * TROOP_CREDIT_COST)
                     source = self.game.galaxy.get_celestial_body_by_id(params.get("target_id"))
-                    if source is not None:
+                    from planetary_intel import current_ownership
+                    if source is not None and current_ownership(self.game.galaxy, self.player, source):
                         self._source_population.setdefault(source.id, float(source.population) - self._settled_population.get(source.id, 0))
                         self._source_population[source.id] -= amount * TROOP_POPULATION_COST
                 elif kind in {"invade_planet", "bombard_planet"} and unit.owner == self.player:
@@ -287,7 +288,8 @@ class _BatchProjection:
                     amount = float(params.get("amount", 0))
                     cargo += amount
                     source = self.game.galaxy.get_celestial_body_by_id(params.get("target_id"))
-                    if source is not None:
+                    from planetary_intel import current_ownership
+                    if source is not None and current_ownership(self.game.galaxy, self.player, source):
                         self._source_population.setdefault(source.id, float(source.population) - self._settled_population.get(source.id, 0))
                         self._source_population[source.id] -= amount
                 elif kind == "colonize":
@@ -924,6 +926,7 @@ class CommandGateway:
                     units = []
                     projection._rebuild()
                     body = self._body(command.target_id)
+                    self._require_current_colony(player, body)
                     from planetary_warfare import blocker, upgrade
                     error = blocker(self.game, player, command.type, body, budget=projection._available)
                     if body.id in projection._planetary_upgrades:
@@ -932,7 +935,10 @@ class CommandGateway:
                         raise _Rejected(error, "Planetary defense upgrade unavailable.")
                     projection._planetary_upgrades.add(body.id)
                     projection._planetary_upgrade_spend += fortification_cost(body.fortification_level + 1)
-                    operations = [_Prepared(lambda body=body: upgrade(self.game, player, body), "Planetary defenses upgraded.")]
+                    def apply_upgrade(body=body):
+                        self._require_current_colony(player, body)
+                        upgrade(self.game, player, body)
+                    operations = [_Prepared(apply_upgrade, "Planetary defenses upgraded.")]
                 elif COMMAND_SPECS[command.type].player_level:
                     operations = self._prepare_player_intelligence(player, command, projection)
                     units = []
@@ -978,13 +984,16 @@ class CommandGateway:
                 operation.apply()
             except Exception as exc:
                 _log_command_failure("commit", operation.command_index, operation.command_type, exc)
-                results.append(self._operation_result(operation, "failed", uncertain=True))
+                unavailable = isinstance(exc, _Rejected) and exc.code == 'target_unavailable'
+                results.append(self._operation_result(operation, "failed", uncertain=not unavailable))
                 results.extend(self._operation_result(op, "unattempted") for op in prepared[offset + 1:])
                 self._mark_dirty()
                 return CommandResult(False, applied_count=len(receipts), receipts=tuple(receipts),
-                    errors=(CommandError(operation.command_index, "commit_failed", "Execution failed; earlier operations remain applied and the failing operation may have partial effects. Observe before continuing."),),
+                    errors=(CommandError(operation.command_index,
+                        'target_unavailable' if unavailable else 'commit_failed',
+                        'The target is unavailable.' if unavailable else "Execution failed; earlier operations remain applied and the failing operation may have partial effects. Observe before continuing."),),
                     failure_stage="commit", retryable=False, operation_results=tuple(results),
-                    may_have_partial_effects=True, requires_observation=True)
+                    may_have_partial_effects=bool(receipts) or not unavailable, requires_observation=True)
             receipts.append(operation.receipt)
             results.append(self._operation_result(operation, "applied"))
             from turn_briefing import refresh_discoveries
@@ -1164,6 +1173,9 @@ class CommandGateway:
 
             def apply(unit=unit, factory=order_factory, public_order_id=public_order_id, queue=command.queue):
                 self._require_capability(unit, command.type)
+                if command.type in {'colonize', 'load_colonists', 'infiltrate_planet',
+                                    'recruit_troops', 'bombard_planet', 'invade_planet'}:
+                    self._require_current_colony(player, self._body(command.target_id))
                 if command.type == 'dismantle_unit':
                     from campaign_graph import find_unit
                     from dismantling import evaluate
@@ -1212,7 +1224,7 @@ class CommandGateway:
             return lambda unit: StabilizeWormholeOrder(unit, {"target_id": command.target_id}), command.type
         if command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
             from unit_orders.planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
-            self._body(command.target_id)
+            self._require_current_colony(player, self._body(command.target_id))
             cls = {"recruit_troops": RecruitTroopsOrder, "bombard_planet": BombardPlanetOrder, "invade_planet": InvadePlanetOrder}[command.type]
             return lambda unit: cls(unit, {"target_id": command.target_id, **({"amount": command.amount} if command.amount is not None else {})}), command.type
         from unit_orders.combat import AttackOrder, AttackLongRangeOrder, ProtectOrder
@@ -1282,6 +1294,8 @@ class CommandGateway:
             "enter_gas_giant",
         }:
             target_body = self._body(command.target_id)
+            if command.type in {'colonize', 'load_colonists'} and is_colonizable_body(target_body):
+                self._require_current_colony(player, target_body)
 
         if command.type == "infiltrate_unit":
             target_unit = self._visible_unit(player, command.target_id)
@@ -1292,6 +1306,7 @@ class CommandGateway:
             )
         if command.type == "infiltrate_planet":
             target_body = self._body(command.target_id)
+            self._require_current_colony(player, target_body)
             if not is_colonizable_body(target_body) or intelligence_relation(player, getattr(target_body, "owner", None)) != "enemy":
                 raise _Rejected("target_unavailable", "The target is unavailable.")
             return (
@@ -1875,6 +1890,8 @@ class CommandGateway:
             raise _Rejected("target_unavailable", "The target is unavailable.")
         unit = self.game.galaxy.get_unit_by_id(target_id)
         target = self._visible_unit(player, target_id) if unit is not None else self._body(target_id)
+        if host_kind(target) == 'colony':
+            self._require_current_colony(player, target)
         if host_kind(target) not in {"unit", "colony"}:
             raise _Rejected("target_unavailable", "The target is unavailable.")
         return target
@@ -1917,6 +1934,11 @@ class CommandGateway:
         if body is None or not body_is_public(self.game, self._viewer, body, self._selected_units):
             raise _Rejected("target_unavailable", "The target is unavailable.")
         return body
+
+    def _require_current_colony(self, player, body):
+        from planetary_intel import current_ownership
+        if not current_ownership(self.game.galaxy, player, body):
+            raise _Rejected('target_unavailable', 'The target is unavailable.')
 
     def _waypoints(self, raw):
         from geometry import Position

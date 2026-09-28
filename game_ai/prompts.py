@@ -13,6 +13,13 @@ inter-sector hyperspace jumps, and system_name for inter-system wormhole travers
 Combat attacks engage hostile units, optionally focusing fire on specific subsystems via target_component.
 Defend orders move to and hold strategic coordinates or bodies, engaging intruders that enter the area.
 
+Colonizable bodies expose ownership_status: current, last_known, or unknown.
+Last-known owner fields describe ownership_observed_turn, not current control; unknown is not uninhabited.
+Enemy ownership requires shared short-range surface contact or long-range sector coverage.
+Only current intelligence authorizes colony actions. Move scouts toward remembered or unknown worlds
+to refresh contact before colonizing, bombarding, invading or infiltrating. Stale population and defenses
+are omitted. Remote colonizable counts describe physical capacity, not available colony targets.
+
 The construction_templates catalog explains roles, equipment, prices and support dependencies.
 Choose suitable designs from this catalog; no unit design command is available.
 Before adding builds, read active_player.resources.resource_budget. available is the

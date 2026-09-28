@@ -22,6 +22,7 @@ class VisibilitySnapshot:
     visible_deployable_ids: Set[int] = dataclasses.field(default_factory=set)
     visible_patch_ids: Set[int] = dataclasses.field(default_factory=set)
     long_range_hexes: Set[Tuple[str, HexCoord]] = dataclasses.field(default_factory=set)
+    sensed_colony_ids: Set[int] = dataclasses.field(default_factory=set)
 
 
 class VisibilityService:
@@ -78,7 +79,9 @@ class VisibilityService:
                     if is_friendly or is_infiltrated:
                         sensors = getattr(unit, 'sensors_component', None)
                         from dismantling import offline
-                        if sensors and not sensors.is_destroyed and not offline(unit):
+                        if (sensors and not sensors.is_destroyed and not offline(unit)
+                                and unit.current_hit_points > 0
+                                and not getattr(unit, 'is_hidden_in_gas_giant', False)):
                             from environmental_effects import sensor_radius
                             sr_radius = sensor_radius(unit)
                             from environmental_effects import long_range_sensor_hexes
@@ -145,6 +148,25 @@ class VisibilityService:
         if record_intel and hasattr(viewer, 'record_sector_intel'):
             for sys_name, h_coord in long_range_covered:
                 viewer.record_sector_intel(sys_name, h_coord, current_turn)
+
+        from planetary_intel import is_colony_body
+        for system_name, system in galaxy.systems.items():
+            for coord, sector in system.hexes.items():
+                key = (system_name, coord)
+                for body in sector.celestial_bodies:
+                    if not is_colony_body(body):
+                        continue
+                    sensed = key in long_range_covered or any(
+                        distance(body.position, pos) <= radius + body.collision_radius
+                        for pos, radius in short_range_by_hex.get(key, ()))
+                    if sensed:
+                        snapshot.sensed_colony_ids.add(body.id)
+                    if (record_intel and isinstance(getattr(viewer, 'planetary_intel', None), dict)
+                            and (sensed or are_allies(viewer, body.owner))):
+                        viewer.planetary_intel[body.id] = {
+                            'owner_id': body.owner.id if body.owner is not None else None,
+                            'observed_turn': current_turn,
+                        }
 
         # Evaluate enemy units
         for unit in all_units:

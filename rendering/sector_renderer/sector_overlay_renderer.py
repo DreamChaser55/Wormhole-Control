@@ -59,7 +59,7 @@ class SectorOverlayRenderer:
     def draw_selection_brackets(self, obj, obj_pixel_pos, dynamic_radius, obj_radius_logical):
         """Draws corner brackets with each arm spanning one quarter of the box side."""
         if obj in self.game.selected_objects:
-            selection_color = selection_color_for(obj)
+            selection_color = selection_color_for(obj, self.game)
             if isinstance(obj, Unit) and obj.hull_size.name != 'STRIKECRAFT_WING' and not obj.engines_component:
                 radius = obj_radius_logical * dynamic_radius / SECTOR_CIRCLE_RADIUS_LOGICAL
                 rect = station_icon_rect(obj_pixel_pos, radius).inflate(10, 10)

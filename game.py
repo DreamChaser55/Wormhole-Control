@@ -272,6 +272,16 @@ class Game:
         else:
             self.visibility = None
         self.visibility_dirty = False
+        self.sidebar_needs_update = True
+        gui = getattr(self, 'gui', None)
+        if gui:
+            gui.close_context_menu()
+            dialog = getattr(gui, 'planetary_window', None)
+            if dialog:
+                if dialog.unit.owner != self.current_player:
+                    dialog.close()
+                else:
+                    dialog.refresh()
 
     def is_unit_visible(self, unit: Unit) -> bool:
         """Determines whether a given unit is visible to the active player.
@@ -552,6 +562,9 @@ class Game:
                 logger.exception("Campaign loaded, but AI reset failed")
             try:
                 self.gui.show_game_ui()
+                self.gui.close_context_menu()
+                if self.gui.planetary_window:
+                    self.gui.planetary_window.close()
                 self.system_camera_system_name = None
                 if self.view_mode == 'system':
                     self.reset_system_camera()

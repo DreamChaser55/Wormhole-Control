@@ -39,3 +39,18 @@ class ComponentUnit(Unit):
         # Order tests opt into a commander explicitly, as they do for engines.
         self.remove_component(Commander)
         self.add_component(Sensors(self, short_range_radius=2500.0, long_range_hexes=5))
+
+
+def colony_galaxy(unit, *bodies):
+    """Register isolated colony tests in a real, sensor-covered system."""
+    from galaxy import Galaxy, StarSystem
+    galaxy = Galaxy()
+    system = StarSystem('Sol', Position(0, 0), radius=3)
+    galaxy.systems['Sol'] = system
+    system.add_unit(unit)
+    for body in bodies:
+        system.add_celestial_body(body)
+    unit.game.galaxy = galaxy
+    unit.game.players = [unit.owner]
+    unit.game.turn_number = 1
+    return galaxy

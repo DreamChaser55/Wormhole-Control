@@ -103,7 +103,7 @@ These limits apply to new campaigns. Loading uses the separate
 | E | End Turn |
 | Esc | Open the in-game menu, cancel targeting, or deselect |
 
-**Galaxy View** shows known systems, wormhole links, home-system faction markers,
+**Galaxy View** shows known systems, wormhole links, disclosed home-system faction markers,
 and a faint tactical grid framed by a subtle coordinate boundary.
 Shared homes have concentric markers. **System View** shows sector hexes, bodies,
 routes and fog of war; hexes outside the current player's long-range sensor range have a grey background, while in-range hexes retain a black background. Newly opened systems fit the available map area.
@@ -116,8 +116,9 @@ fitted overview when starting or loading a campaign. Camera positions are not sa
 In Galaxy View, click **Reset View** in the top bar or press `R` to restore the
 fitted overview at any time.
 These controls apply during play; the New Game map preview remains fitted and static.
-Selected objects
-have corner brackets using their owner's faction color.
+Selected objects have corner brackets using their disclosed owner's faction color.
+Enemy home-system markers appear only while the associated homeworld is currently
+inside shared sensor coverage; the setup preview retains its assignment markers.
 
 Inspect non-solid bodies—fields, nebulae and storms—through their hex sidebar.
 Clicking inside these regions remains available for movement and targeting.
@@ -1201,6 +1202,26 @@ Ships and stations provide short-range visual coverage and long-range sector
 detection, shared across allies. Unexplored space is hidden; explored sectors keep
 last-seen turn intel until sensors refresh it. Embedded agents also share their
 host's sensor coverage with their owner and allies.
+
+Colony ownership on planets, moons and colonizable asteroids requires current
+shared sensor coverage. Long-range sensors reveal ownership throughout covered
+sectors. Short-range sensors reveal it when their effective radius touches the
+body's solid surface in the same sector, including the boundary. Allied sensors,
+infiltrated hosts and Titan Deep Scan contribute normally. Ship cloaking and
+concealment do not hide colony ownership. Own and allied colonies remain known
+without sensors.
+
+Unobserved worlds show **Owner: Unknown**, regardless of whether they are actually
+uninhabited or occupied. After contact is lost, the last observed owner (or
+uninhabited status) remains with **Last observed: turn N** and a muted dashed
+faction ring. This saved intelligence does not update when an unseen colony
+changes hands. Population, defenses and colony activity require current knowledge;
+physical traits and population capacity remain available.
+
+Colonization, colony warfare and infiltration require current ownership knowledge.
+Move scouts toward remembered worlds to refresh it. Loss of required coverage
+fails an active colony action and stops its approach without consuming action
+resources; other queued work remains. Historical reports do not authorize actions.
 
 Basic cloaking hides one ship from long-range detection; Advanced cloaking also
 covers allies in its area. Nebulae and asteroid fields conceal ships inside them

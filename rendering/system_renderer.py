@@ -10,6 +10,8 @@ from domain.units import Unit
 from unit_orders.base import OrderType
 from galaxy import Hex
 from geometry import Position
+from rendering.planetary_intel import draw_ownership_ring
+from planetary_intel import displayed_owner
 from rendering.drawing_utils import draw_selection_brackets, selection_color_for, station_icon_rect
 
 
@@ -175,18 +177,18 @@ class SystemViewRenderer:
                     }
                     body_color = planet_color_map.get(body.planet_type, CYAN)
                     body_radius = int(4 * scale_val)
-                    if body.owner:
-                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val), 1)
+                    draw_ownership_ring(self.screen, self.game, body,
+                                        (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val))
                 elif isinstance(body, Moon):
                     body_color = (200, 200, 200)
                     body_radius = int(2 * scale_val)
-                    if body.owner:
-                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val), 1)
+                    draw_ownership_ring(self.screen, self.game, body,
+                                        (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val))
                 elif isinstance(body, ColonizableAsteroid):
                     body_color = (90, 60, 50)
                     body_radius = int(2 * scale_val)
-                    if body.owner:
-                        pygame.draw.circle(self.screen, body.owner.color, (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val), 1)
+                    draw_ownership_ring(self.screen, self.game, body,
+                                        (hex_center_pixel.x, hex_center_pixel.y), body_radius + int(3 * scale_val))
                 elif isinstance(body, MetalAsteroid):
                     body_color = (140, 140, 160)
                     body_radius = int(2 * scale_val)
@@ -222,7 +224,7 @@ class SystemViewRenderer:
                 if body in self.game.selected_objects:
                     # Stable visual envelopes include ownership rings and animated effects.
                     selection_radius = body_radius
-                    if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and body.owner:
+                    if isinstance(body, (Planet, Moon, ColonizableAsteroid)) and displayed_owner(self.game, body):
                         selection_radius += int(3 * scale_val)
                     elif isinstance(body, Wormhole) and (body.stability < 100 or is_stabilized(self.game.galaxy, body)):
                         selection_radius += int(2 * scale_val)
@@ -409,7 +411,7 @@ class SystemViewRenderer:
         # Keep selection visible above environmental effects, range fills and orders.
         for obj, (left, top, width, height) in selection_bounds:
             draw_selection_brackets(
-                self.overlay_surface, selection_color_for(obj),
+                self.overlay_surface, selection_color_for(obj, self.game),
                 (left - 2, top - 2, width + 4, height + 4),
             )
 

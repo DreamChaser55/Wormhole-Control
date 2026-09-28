@@ -63,6 +63,10 @@ def test_sector_context_menu_planet_no_view_planet_placeholder(sector_setup):
     col_comp = ColonyComponent(colonizer)
     col_comp.population_cargo = 50
     colonizer.add_component(col_comp)
+    from unit_components.sensors import Sensors
+    colonizer.add_component(Sensors(colonizer, long_range_hexes=1))
+    system.add_unit(colonizer)
+    system.add_celestial_body(planet)
     game.selected_objects = [colonizer]
 
     options, _ = build_sector_context_menu_options(game, planet, Position(0, 0))

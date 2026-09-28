@@ -40,6 +40,16 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
             def __init__(self):
                 self.bodies = bodies
+                from galaxy import Hex
+                from unit_components.sensors import Sensors
+                origin, destination = Hex(0, 0, 'Sol'), Hex(1, 0, 'Sol')
+                origin.celestial_bodies = [source]
+                destination.celestial_bodies = [target]
+                origin.units = units
+                self.systems = {'Sol': SimpleNamespace(hexes={(0, 0): origin, (1, 0): destination})}
+                self.system_graph = {'Sol': {}}
+                for unit in units:
+                    unit.sensors_component = Sensors(unit, short_range_radius=200, long_range_hexes=1)
 
             def get_unit_by_id(self, unit_id):
                 return next((unit for unit in units if unit.id == unit_id), None)
@@ -52,6 +62,9 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
             sidebar_needs_update=False,
             visibility_dirty=False,
         )
+        game.players, game.turn_number = [player], 1
+        for unit in units:
+            unit.game = game
         game.display_config = DisplayConfig()
         return player, units, source, target, game
 
@@ -185,7 +198,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
 
         unit_view = observation["units"][0]
         inhibitor = unit_view["capability_details"]["inhibitor"]
-        self.assertEqual(observation["schema_version"], 25)
+        self.assertEqual(observation["schema_version"], 26)
         self.assertIn("toggle_inhibitor", unit_view["supported_commands"])
         self.assertNotIn("toggle_inhibitor", unit_view["legal_commands"])
         self.assertFalse(inhibitor["can_activate"])
@@ -517,11 +530,12 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         snapshot = SimpleNamespace(
             visible_enemy_unit_ids=set(),
             presence_hexes=set(),
+            viewer=player, sensed_colony_ids={source.id, target.id},
         )
         with patch("visibility.VisibilityService.compute", return_value=snapshot):
             observation = build_observation(game, player)
         unit_view = observation["units"][0]
-        self.assertEqual(observation["schema_version"], 25)
+        self.assertEqual(observation["schema_version"], 26)
         self.assertNotIn("celestial_bodies", observation)
         self.assertIn("colonize", unit_view["supported_commands"])
         self.assertNotIn("colonize", unit_view["legal_commands"])
@@ -595,7 +609,7 @@ class TestInformationBoundaryAndGateway(unittest.TestCase):
         self.assertIn(remote_colony.id, notable_ids)
         self.assertNotIn(remote_neutral.id, notable_ids)
         self.assertEqual(
-            systems["Sirius"]["body_summary"]["neutral_colonizable_count"], 1
+            systems["Sirius"]["body_summary"]["colonizable_count"], 2
         )
         self.assertNotIn(
             remote_neutral.id,

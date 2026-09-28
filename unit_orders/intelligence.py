@@ -114,8 +114,11 @@ class InfiltratePlanetOrder(Order):
 
         The target must be an enemy colony. Approach work precedes deployment;
         success consumes agent capacity and attaches the agent before completion.
-        Expected rule failures set FAILED; callers own visibility checks."""
+        Expected rule failures set FAILED; execution rechecks colony disclosure."""
         super().execute(galaxy_ref)
+        from planetary_intel import validate_order_contact
+        if not validate_order_contact(self, galaxy_ref):
+            return
 
         target_body_id = self.parameters.get("target_body_id")
         target_body = galaxy_ref.get_celestial_body_by_id(target_body_id) if target_body_id is not None else None
@@ -148,10 +151,12 @@ class InfiltratePlanetOrder(Order):
                 dest_pos = position_at_distance_from_target(target_body.position, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
                 move_sub_order = MoveOrder(
                     self.unit,
-                    parameters={"system": target_system, "hex": target_hex, "position": dest_pos},
+                    parameters={"destination_system_name": target_system,
+                                "destination_hex_coord": target_hex, "destination_position": dest_pos},
                     parent_order=self
                 )
                 self.add_sub_order(move_sub_order)
+                self.add_sub_order(InfiltratePlanetOrder(self.unit, self.parameters, parent_order=self))
             return
 
         dist = distance(self.unit.position, target_body.position)
@@ -160,10 +165,12 @@ class InfiltratePlanetOrder(Order):
                 dest_pos = position_at_distance_from_target(target_body.position, self.unit.position, INTELLIGENCE_OPERATIONAL_RANGE - 50.0)
                 move_sub_order = MoveOrder(
                     self.unit,
-                    parameters={"system": target_system, "hex": target_hex, "position": dest_pos},
+                    parameters={"destination_system_name": target_system,
+                                "destination_hex_coord": target_hex, "destination_position": dest_pos},
                     parent_order=self
                 )
                 self.add_sub_order(move_sub_order)
+                self.add_sub_order(InfiltratePlanetOrder(self.unit, self.parameters, parent_order=self))
             return
 
         agent = intel_comp.deploy_agent(target_body)
@@ -255,6 +262,11 @@ class RelocateAgentOrder(Order):
         if not dest_target:
             self.status = OrderStatus.FAILED
             logger.debug(f"[{format_unit_for_log(self.unit)}] RELOCATE_AGENT failed: destination target {dest_id} not found.")
+            return
+
+        from planetary_intel import is_colony_body, current_ownership
+        if is_colony_body(dest_target) and not current_ownership(galaxy_ref, agent.owner, dest_target):
+            self.fail('target_unavailable')
             return
 
         dest_owner = getattr(dest_target, 'owner', None)

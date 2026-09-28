@@ -75,11 +75,13 @@ def build_hex_panel(game, hex_obj: Hex) -> list[dict]:
         if hex_obj.celestial_bodies:
             data.append({'type': 'label', 'text': "Bodies:", 'object_id': '#sidebar_info_label', 'height': 20})
             for b in hex_obj.celestial_bodies:
-                owner = getattr(b, 'owner', None)
+                from planetary_intel import is_colony_body, displayed_owner, presentation_view
+                owner = displayed_owner(game, b) if is_colony_body(b) else getattr(b, 'owner', None)
+                stale = is_colony_body(b) and presentation_view(game, b).status == 'last_known'
                 data.append({
                     'type': 'button',
-                    'text': b.name,
-                    'object_id': object_button_style(owner),
+                    'text': b.name + (' (last known)' if stale else ''),
+                    'object_id': object_button_style(None if stale else owner),
                     'class_id': '#sidebar_expand_button',
                     'action_id': 'select_celestial_body',
                     'target_data': b.id,
@@ -225,9 +227,20 @@ def build_celestial_body_panel(game, body: CelestialBody, *, show_rules: bool = 
             if p_crystal > 0:
                 data.append({'type': 'label', 'text': f"Passive crystal: +{p_crystal:g}/turn", 'object_id': '#sidebar_effect_benefit_label', 'height': 20})
 
-        owner_name = body.owner.name if body.owner else "Uninhabited"
-        owner_style_id = f'#player_{owner_name.lower().replace(" ", "_")}_label' if body.owner else '#sidebar_info_label'
+        from planetary_intel import presentation_view, displayed_owner
+        ownership = presentation_view(game, body)
+        owner = displayed_owner(game, body)
+        owner_name = 'Unknown' if ownership.status == 'unknown' else owner.name if owner else 'Uninhabited'
+        owner_style_id = (f'#player_{owner_name.lower().replace(" ", "_")}_label'
+                          if owner and ownership.status == 'current' else '#sidebar_info_label')
         data.append({'type': 'label', 'text': f"Owner: {owner_name}", 'object_id': owner_style_id, 'height': 25})
+        if ownership.status != 'current':
+            if ownership.status == 'last_known':
+                data.append({'type': 'label', 'text': f'Last observed: turn {ownership.observed_turn}',
+                             'object_id': '#sidebar_info_label', 'height': 25})
+            data.append({'type': 'label', 'text': f'Population capacity: {body.max_population:g}',
+                         'object_id': '#sidebar_info_label', 'height': 25})
+            return data + rules_footer
 
         current_player = game.players[game.current_player_index] if game.players else None
         if current_player and hasattr(body, 'has_infiltrating_agent_from') and body.has_infiltrating_agent_from(current_player):

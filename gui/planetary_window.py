@@ -41,6 +41,9 @@ class PlanetaryWindow:
         self.refresh()
 
     def refresh(self):
+        if self.game.players[self.game.current_player_index] != self.unit.owner:
+            self.close()
+            return
         body = exact_body(self.game, self.unit.owner, self.body_id)
         try:
             amount = int(self.amount.get_text())

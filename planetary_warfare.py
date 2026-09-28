@@ -59,9 +59,14 @@ def command_options(game, player, unit, bodies):
     if getattr(unit, 'siege_battery_component', None):
         kinds.append('bombard_planet')
     from domain.players import are_enemies
+    from planetary_intel import current_ownership
+    from visibility import VisibilityService
+    snapshot = VisibilityService.compute(game.galaxy, player, record_intel=False)
     for kind in kinds:
         targets = []
         for body in bodies:
+            if not current_ownership(game.galaxy, player, body, snapshot):
+                continue
             if not colonizable(body) or body.owner is None:
                 continue
             if not (body.owner == player if kind == 'recruit_troops' else are_enemies(player, body.owner)):
@@ -80,17 +85,19 @@ def command_options(game, player, unit, bodies):
             else:
                 item.update(antimatter_cost=SIEGE_AM_COST, defense_damage=SIEGE_DAMAGE,
                             minimum_readiness=MIN_READINESS, collateral_per_damage=COLLATERAL_PER_DAMAGE)
-            item['blocker'] = blocker(game, player, kind, body, unit, amount)
+            item['blocker'] = blocker(game, player, kind, body, unit, amount, snapshot=snapshot)
             targets.append(item)
         options[kind] = {'targets': targets[:32], 'omitted_count': max(0, len(targets) - 32)}
     return options
 
 
 def exact_body(game, player, target_id):
-    """Use the existing exact celestial disclosure boundary, including remote colonies."""
+    """Resolve a known body only when its colony information is current."""
     from game_ai.rules import body_is_public
+    from planetary_intel import current_ownership
     body = game.galaxy.get_celestial_body_by_id(target_id)
-    return body if body is not None and body_is_public(game, player, body) else None
+    return body if (body is not None and current_ownership(game.galaxy, player, body)
+                    and body_is_public(game, player, body)) else None
 
 
 def in_range(unit, body, kind):
@@ -100,9 +107,12 @@ def in_range(unit, body, kind):
             and distance(unit.position, body.position) <= body.collision_radius + limit + 0.01)
 
 
-def blocker(game, player, kind, body, unit=None, amount=None, *, resources=True, troops=None, population=None, credits=None, fuel=None, execution=False, budget=None):
+def blocker(game, player, kind, body, unit=None, amount=None, *, resources=True, troops=None, population=None, credits=None, fuel=None, execution=False, budget=None, snapshot=None):
     from domain.players import are_enemies
     from campaign_graph import is_deployed
+    from planetary_intel import current_ownership
+    if not current_ownership(game.galaxy, player, body, snapshot):
+        return 'target_unavailable'
     if not colonizable(body) or body.owner is None:
         return 'target_unavailable'
     if kind in ('recruit_troops', 'upgrade_planetary_defenses'):
@@ -190,6 +200,8 @@ def capture(game, body, new_owner):
         if are_allies(agent.owner, new_owner):
             agent.active_sabotage = None
     _record(game, body, 'capture', 'Colony captured', player=new_owner)
+    from planetary_intel import refresh
+    refresh(game)
     dirty(game)
 
 

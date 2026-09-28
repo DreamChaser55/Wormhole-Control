@@ -455,10 +455,12 @@ def test_weapons_and_turrets():
     assert turret.target is None
 
 def test_colony_component():
+    from domain.celestials import Planet
+    from tests.support.units import colony_galaxy
     unit = ComponentUnit()
     colony = ColonyComponent(unit)
     
-    planet = MagicMock()
+    planet = Planet((0, 0), "Sol")
     planet.name = "Terra"
     planet.owner = unit.owner
     planet.population = 80
@@ -475,7 +477,8 @@ def test_colony_component():
     assert not success_fail
     
     # Unload population to unowned planet
-    unowned_planet = MagicMock()
+    unowned_planet = Planet((0, 0), "Sol")
+    colony_galaxy(unit, planet, unowned_planet)
     unowned_planet.name = "Mars"
     unowned_planet.owner = None
     unowned_planet.population = 0
@@ -664,6 +667,8 @@ def test_colonizable_vs_metal_asteroid():
     assert not hasattr(col_asteroid, 'metal_yield')
 
     # Colonization
+    from tests.support.units import colony_galaxy
+    colony_galaxy(unit, col_asteroid)
     colony = ColonyComponent(unit)
     colony.population_cargo = 10
     assert colony.unload_population(col_asteroid, 10) is True

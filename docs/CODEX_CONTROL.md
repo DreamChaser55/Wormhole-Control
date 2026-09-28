@@ -5,6 +5,13 @@ Wormhole Control exposes a loopback-only JSON service so Codex can play one visi
 See the [current formats and protocols](DEVELOPMENT.md#current-formats-and-protocols) for the independent
 save, observation, command and transport identifiers.
 
+For colonizable bodies, inspect `ownership_status` before acting. `current`
+authorizes colony actions; `last_known` describes `ownership_observed_turn` and
+requires renewed sensor contact. `unknown` does not mean uninhabited. Remote
+colonizable counts describe physical capacity, not available colony sites. Move
+scouts toward known locations to update intelligence; historical reports do not
+grant current command access.
+
 ## Strikecraft servicing
 
 Inspect owned/allied `wing_service` for endurance, return availability and launch
@@ -162,7 +169,7 @@ Requires the active player to be controlled by Codex. It returns a new opaque tu
 ```
 
 ```json
-{"data":{"turn_token":"opaque-value","observation":{"schema_version":25}}}
+{"data":{"turn_token":"opaque-value","observation":{"schema_version":26}}}
 ```
 
 Treat the observation as the only permitted source of game facts. Never infer hidden targets from saves, source files, logs, rendered pixels, or previous campaigns. IDs and available options in an old observation may be stale.

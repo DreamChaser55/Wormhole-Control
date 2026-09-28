@@ -124,6 +124,9 @@ def test_selection_visibility_owner_changes_and_overlay_order():
     game.is_unit_visible = lambda unit: unit is not hidden
     planet = Planet((0, 0), 'Sol', PlanetType.TERRAN)
     planet.owner = red
+    game.players.append(red)
+    from visibility import VisibilitySnapshot
+    game.visibility = VisibilitySnapshot(game.current_player, sensed_colony_ids={planet.id})
     sector.celestial_bodies = [planet]
     game.selected_objects.append(planet)
     # A late range/order overlay must not paint over the brackets.

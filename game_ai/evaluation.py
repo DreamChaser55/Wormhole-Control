@@ -184,7 +184,7 @@ def colony_opening_case() -> EvaluationCase:
     """Minimal regression fixture for the observed zero-cargo colony opening."""
 
     observation = {
-        "schema_version": 24,
+        "schema_version": 26,
         "command_catalog": command_catalog(),
         "turn_number": 1,
         "active_player": {
@@ -215,6 +215,8 @@ def colony_opening_case() -> EvaluationCase:
                         "position": [0, 0],
                         "owner_id": 1,
                         "owner_relation": "self",
+                        "ownership_status": "current",
+                        "ownership_observed_turn": 1,
                         "population": 50,
                         "max_population": 100,
                     },
@@ -226,6 +228,8 @@ def colony_opening_case() -> EvaluationCase:
                         "position": [0, 0],
                         "owner_id": None,
                         "owner_relation": "neutral",
+                        "ownership_status": "current",
+                        "ownership_observed_turn": 1,
                         "population": 0,
                         "max_population": 50,
                     },
@@ -283,6 +287,8 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
     def build():
         from domain.celestials import Moon, Planet
         from constants import PlanetType
+        from galaxy import StarSystem
+        from unit_components.sensors import Sensors
 
         class Player:
             id = 1
@@ -329,7 +335,11 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
             cloaking_component=None,
             ability_component=None,
             hull_size=SimpleNamespace(name="SMALL"),
+            current_hit_points=100,
+            is_hidden_in_gas_giant=False,
+            intelligence_component=None,
         )
+        unit.sensors_component = Sensors(unit, long_range_hexes=1)
         source = Planet((0, 0), "Sol", next(iter(PlanetType)))
         source.id = 201
         source.owner = player
@@ -338,6 +348,8 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
         target.id = 202
 
         class Galaxy:
+            systems = {'Sol': StarSystem('Sol', Position(0, 0), radius=3)}
+
             def get_unit_by_id(self, unit_id):
                 return unit if unit_id == unit.id else None
 
@@ -345,8 +357,13 @@ def colony_opening_gateway_case() -> GatewayEvaluationCase:
                 return {source.id: source, target.id: target}.get(body_id)
 
         game = SimpleNamespace(
-            galaxy=Galaxy(), sidebar_needs_update=False, visibility_dirty=False
+            galaxy=Galaxy(), sidebar_needs_update=False, visibility_dirty=False,
+            players=[player], turn_number=4,
         )
+        unit.game = game
+        game.galaxy.systems['Sol'].add_unit(unit)
+        game.galaxy.systems['Sol'].add_celestial_body(source)
+        game.galaxy.systems['Sol'].add_celestial_body(target)
         request = colony_opening_case().request
         gateway = CommandGateway(game)
         return request, lambda plan: gateway.apply_batch(player, plan.batch)
@@ -358,7 +375,7 @@ def inhibitor_overlap_case() -> EvaluationCase:
     """Regression fixture for an inhibitor blocked by an existing field."""
 
     observation = {
-        "schema_version": 24,
+        "schema_version": 26,
         "command_catalog": command_catalog(),
         "turn_number": 3,
         "active_player": {
@@ -416,7 +433,7 @@ def order_control_cases() -> tuple[EvaluationCase, ...]:
     from copy import deepcopy
 
     base = {
-        "schema_version": 24, "command_catalog": command_catalog(), "turn_number": 1,
+        "schema_version": 26, "command_catalog": command_catalog(), "turn_number": 1,
         "active_player": {"id": 1, "name": "AI", "team_id": 1},
         "systems": [{"name": "Sol", "navigation_anchor": {"hex_coord": [0, 0], "position": [0, 0]}}],
         "units": [{"id": 101, "relation": "self", "system_name": "Sol", "hex_coord": [0, 0],

@@ -137,6 +137,10 @@ class TestInGameErrorDialogs(unittest.TestCase):
 
         target_planet = Planet(HexCoord(0, 0), "Sol", Position(10, 10))
         target_planet.name = "Terra Nova"
+        from unit_components.sensors import Sensors
+        colony_ship.add_component(Sensors(colony_ship, long_range_hexes=1))
+        self.game.galaxy.systems['Sol'].add_unit(colony_ship)
+        self.game.galaxy.systems['Sol'].add_celestial_body(target_planet)
 
         self.game.order_system.handle_colonize(
             ColonizeEvent([colony_ship], target_planet, False)

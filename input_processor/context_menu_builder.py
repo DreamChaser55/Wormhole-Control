@@ -1,3 +1,4 @@
+from planetary_intel import current_ownership
 """Dynamic right-click context menu options and submenus construction."""
 import typing
 import logging
@@ -285,7 +286,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                                         if dest_u.id != target_object.id and dest_u.owner and are_enemies(current_player, dest_u.owner):
                                             relocate_options.append((f"To {dest_u.name}", f"relocate_{agent.id}_unit_{dest_u.id}"))
                                     for dest_b in hex_obj.celestial_bodies:
-                                        if getattr(dest_b, 'owner', None) and are_enemies(current_player, dest_b.owner):
+                                        if current_ownership(game.galaxy, current_player, dest_b) and getattr(dest_b, 'owner', None) and are_enemies(current_player, dest_b.owner):
                                             relocate_options.append((f"To {dest_b.name}", f"relocate_{agent.id}_planet_{dest_b.id}"))
                             if relocate_options:
                                 options.append(("Relocate Agent", relocate_options))
@@ -388,7 +389,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
             if len(game.selected_objects) == 1 and isinstance(game.selected_objects[0], Unit):
                 unit = game.selected_objects[0]
                 if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
-                    if getattr(target_object, 'is_colonizable', True):
+                    if current_ownership(game.galaxy, current_player, target_object):
                         if unit.owner == current_player:
                             from planetary_warfare import command_options
                             for kind, info in command_options(game, current_player, unit, [target_object]).items():
@@ -398,7 +399,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                             options.append(("Colonize", "colonize"))
                         if unit.colony_component and target_object.owner and are_allies(unit.owner, target_object.owner) and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
                             options.append(("Load Colonists", "load_colonists"))
-            if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
+            if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)) and current_ownership(game.galaxy, current_player, target_object):
                 if target_object.owner and are_enemies(current_player, target_object.owner):
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
                     if has_intel_actors:
@@ -423,7 +424,7 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
                                         if dest_u.owner and are_enemies(current_player, dest_u.owner):
                                             relocate_options.append((f"To {dest_u.name}", f"relocate_{agent.id}_unit_{dest_u.id}"))
                                     for dest_b in hex_obj.celestial_bodies:
-                                        if dest_b.id != target_object.id and getattr(dest_b, 'owner', None) and are_enemies(current_player, dest_b.owner):
+                                        if dest_b.id != target_object.id and current_ownership(game.galaxy, current_player, dest_b) and getattr(dest_b, 'owner', None) and are_enemies(current_player, dest_b.owner):
                                             relocate_options.append((f"To {dest_b.name}", f"relocate_{agent.id}_planet_{dest_b.id}"))
                             if relocate_options:
                                 options.append(("Relocate Agent", relocate_options))

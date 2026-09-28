@@ -339,6 +339,11 @@ class OrderSystem:
 
     def handle_colonize(self, event: ColonizeEvent):
         for unit in self._controllable_units(event.units):
+            from planetary_intel import current_ownership
+            if not current_ownership(self.game.galaxy, unit.owner, event.target_body):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog('The target is unavailable.', title='Target Unavailable')
+                continue
             col_comp = getattr(unit, 'colony_component', None)
             if not col_comp:
                 if getattr(self.game, 'gui', None):
@@ -367,6 +372,11 @@ class OrderSystem:
 
     def handle_load_colonists(self, event: LoadColonistsEvent):
         for unit in self._controllable_units(event.units):
+            from planetary_intel import current_ownership
+            if not current_ownership(self.game.galaxy, unit.owner, event.target_body):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog('The target is unavailable.', title='Target Unavailable')
+                continue
             if not getattr(unit, 'colony_component', None):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog(
@@ -726,6 +736,11 @@ class OrderSystem:
     def handle_infiltrate_planet(self, event: InfiltratePlanetEvent):
         """Creates InfiltratePlanetOrders for selected units with IntelligenceComponent."""
         for unit in self._controllable_units(event.units):
+            from planetary_intel import current_ownership
+            if not current_ownership(self.game.galaxy, unit.owner, event.target_body):
+                if getattr(self.game, 'gui', None):
+                    self.game.gui.show_warning_dialog('The target is unavailable.', title='Target Unavailable')
+                continue
             intel_comp = getattr(unit, 'intelligence_component', None)
             if not intel_comp:
                 if getattr(self.game, 'gui', None):

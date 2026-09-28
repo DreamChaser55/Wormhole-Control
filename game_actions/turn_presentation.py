@@ -9,6 +9,7 @@ class ApplicationTurnPresentation:
         self.game = game
 
     def refresh_player_turn(self, player: Any) -> None:
+        self.game.recompute_visibility()
         self.game.update_player_turn_display()
         self.game.update_side_bar_content()
         gui = getattr(self.game, "gui", None)

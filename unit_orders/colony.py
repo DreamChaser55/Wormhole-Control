@@ -30,6 +30,9 @@ class ColonizeOrder(Order):
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
+        from planetary_intel import validate_order_contact
+        if not validate_order_contact(self, galaxy_ref):
+            return
 
         target_id = self.parameters.get("target_id")
         if target_id is None:
@@ -104,6 +107,9 @@ class LoadColonistsOrder(Order):
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
         super().execute(galaxy_ref)
+        from planetary_intel import validate_order_contact
+        if not validate_order_contact(self, galaxy_ref):
+            return
 
         target_id = self.parameters.get("target_id")
         amount = self.parameters.get("amount", 50)

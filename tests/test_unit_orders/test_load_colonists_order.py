@@ -1,10 +1,11 @@
 from unittest.mock import MagicMock
 from geometry import Position
-from constants import PLANET_RADIUS, DEFAULT_STANDOFF_DISTANCE
+from constants import DEFAULT_STANDOFF_DISTANCE
 from unit_orders.base import OrderStatus, OrderType
 from unit_orders.colony import LoadColonistsOrder
 from unit_components.colony import ColonyComponent
-from tests.support.units import ComponentUnit
+from tests.support.units import ComponentUnit, colony_galaxy
+from domain.celestials import Planet
 
 
 def test_load_colonists_order_in_range():
@@ -12,16 +13,15 @@ def test_load_colonists_order_in_range():
     colony = MagicMock()
     unit.components[ColonyComponent] = colony
 
-    planet = MagicMock()
+    planet = Planet((0, 0), "Sol")
+    planet.owner = unit.owner
     planet.id = 999
     planet.name = "Terra"
     planet.in_system = "Sol"
     planet.in_hex = (0, 0)
     planet.position = Position(0, 0)
-    planet.collision_radius = PLANET_RADIUS
 
-    galaxy = MagicMock()
-    galaxy.get_celestial_body_by_id.return_value = planet
+    galaxy = colony_galaxy(unit, planet)
 
     # Case 1: Unit is at location within standoff range and successfully loads colonists
     unit.in_system = "Sol"
@@ -44,16 +44,15 @@ def test_load_colonists_order_same_hex_out_of_range():
     colony = MagicMock()
     unit.components[ColonyComponent] = colony
 
-    planet = MagicMock()
+    planet = Planet((0, 0), "Sol")
+    planet.owner = unit.owner
     planet.id = 999
     planet.name = "Terra"
     planet.in_system = "Sol"
     planet.in_hex = (0, 0)
     planet.position = Position(0, 0)
-    planet.collision_radius = PLANET_RADIUS
 
-    galaxy = MagicMock()
-    galaxy.get_celestial_body_by_id.return_value = planet
+    galaxy = colony_galaxy(unit, planet)
 
     unit.in_system = "Sol"
     unit.in_hex = (0, 0)
@@ -77,16 +76,15 @@ def test_load_colonists_order_different_sector():
     colony = MagicMock()
     unit.components[ColonyComponent] = colony
 
-    planet = MagicMock()
+    planet = Planet((0, 0), "Sol")
+    planet.owner = unit.owner
     planet.id = 999
     planet.name = "Terra"
     planet.in_system = "Sol"
     planet.in_hex = (0, 0)
     planet.position = Position(0, 0)
-    planet.collision_radius = PLANET_RADIUS
 
-    galaxy = MagicMock()
-    galaxy.get_celestial_body_by_id.return_value = planet
+    galaxy = colony_galaxy(unit, planet)
 
     unit.in_system = "Vega"
     unit.in_hex = (1, 1)

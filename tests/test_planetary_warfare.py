@@ -181,6 +181,7 @@ def test_preflight_recruitment_reservations_and_replacement():
     home = world(game, population=9)
     enemy = world(game, owner=1, sector=(1, 0))
     first, second = vessel(game, home), vessel(game, home)
+    first.sensors_component.long_range_hexes = 1
     game.players[0].credits = 1000
     before = serialize_game_state(game)
     result = issue(game, action(first, home, 'recruit_troops', 40), action(second, home, 'recruit_troops', 1))
@@ -437,6 +438,7 @@ def test_save_during_approach_and_active_bombardment():
     body = world(game, owner=1, population=200)
     siege = vessel(game, body, siege=True)
     siege.position = Position(body.collision_radius + 1100, 0)
+    siege.sensors_component.long_range_hexes = 1
     assert issue(game, action(siege, body, 'bombard_planet')).accepted
     assert siege.commander_component.current_order.has_active_sub_orders()
     saved = json.loads(json.dumps(serialize_game_state(game)))
@@ -561,7 +563,7 @@ def test_unavailable_planet_ids_and_blocked_approach_preserve_cargo():
     game.invasion_rng = random.Random(1)
     before = game.invasion_rng.getstate()
     result = issue(game, action(unit, target))
-    # Remote colonies are exact, but the disconnected system cannot be approached.
+    # A remote colony without current coverage must not authorize an invasion.
     if result.accepted:
         TurnProcessor(game).end_turn()
     assert unit.troop_transport_component.troops == 40

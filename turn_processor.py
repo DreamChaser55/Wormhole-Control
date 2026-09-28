@@ -114,8 +114,13 @@ class TurnProcessor:
             process_wing_service(self.game, current_player, advance=True)
             from titan_abilities import process as process_titans
             process_titans(self.game, current_player)
+            from planetary_intel import refresh, settle_lost_contacts
+            refresh(self.game)
+            settle_lost_contacts(self.game)
             with ProfileTimer("Movement processing"):
                 sublight_movements = self._process_movement(current_player)
+            # Remember arrivals before hazards can destroy the observing ship.
+            refresh(self.game)
 
             process_wing_service(self.game, current_player)
 
@@ -153,6 +158,8 @@ class TurnProcessor:
             process_wing_service(self.game, current_player)
             reconcile_links(self.game.galaxy)
             self._cancel_hidden_attacks()
+            refresh(self.game)
+            settle_lost_contacts(self.game)
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 
     def _cancel_hidden_attacks(self):
@@ -265,7 +272,7 @@ class TurnProcessor:
                 # Units disabled by Ion Bolt cannot move
                 if unit.is_disabled:
                     unit_event(unit, "problem", "Operations blocked: unit disabled", private=True, once=True)
-                    logger.debug(f"   {format_unit_for_log(unit)} is disabled (Ion Bolt) — movement skipped.")
+                    logger.debug(f"   {format_unit_for_log(unit)} is disabled (Ion Bolt) â€” movement skipped.")
                     continue
 
                 if (

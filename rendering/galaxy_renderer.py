@@ -83,7 +83,7 @@ class GalaxyViewRenderer:
         self.draw_galaxy_view_order_lines()
 
         # 3. Draw Systems
-        home_systems_map = get_home_systems_mapping(self.game)
+        home_systems_map = get_home_systems_mapping(self.game, player_scoped=bool(self.game.game_started))
 
         for sys_name, system in self.game.galaxy.systems.items():
             screen_pos = self._system_screen_position(system)
