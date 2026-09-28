@@ -1218,10 +1218,22 @@ faction ring. This saved intelligence does not update when an unseen colony
 changes hands. Population, defenses and colony activity require current knowledge;
 physical traits and population capacity remain available.
 
-Colonization, colony warfare and infiltration require current ownership knowledge.
-Move scouts toward remembered worlds to refresh it. Loss of required coverage
-fails an active colony action and stops its approach without consuming action
-resources; other queued work remains. Historical reports do not authorize actions.
+Colonization, colonist loading, troop recruitment, bombardment, invasion and colony
+infiltration can be ordered using current or last-known ownership. The disclosed
+owner must suit the action. Colonization also accepts unvisited colonizable bodies
+with unknown ownership; known occupied bodies are ineligible. Other colony actions
+require disclosed ownership. Losing contact preserves the order and its approach.
+At normal action range, ships wait for shared
+sensor contact before acting, blocking following queued work until contact returns
+or the order is cancelled. Waiting consumes no action resources; ordinary travel
+fuel and upkeep still apply.
+
+Reacquiring contact refreshes ownership and revalidates the mission. A newly revealed
+incompatible owner fails the order and stops its approach; following orders remain
+queued. Population and defenses are checked with current knowledge before effects
+execute. Historical invasion targets show unknown odds; historical loading and
+recruitment limits reflect cargo/credits only until population is confirmed.
+Immediate fortification upgrades and agent relocation still require current knowledge.
 
 Basic cloaking hides one ship from long-range detection; Advanced cloaking also
 covers allies in its area. Nebulae and asteroid fields conceal ships inside them

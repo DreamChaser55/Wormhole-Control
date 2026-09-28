@@ -1,4 +1,4 @@
-from planetary_intel import current_ownership
+from planetary_intel import current_ownership, ownership_view, colony_target_blocker
 """Dynamic right-click context menu options and submenus construction."""
 import typing
 import logging
@@ -389,22 +389,28 @@ def build_sector_context_menu_options(game, clicked_object, clicked_sector_coord
             if len(game.selected_objects) == 1 and isinstance(game.selected_objects[0], Unit):
                 unit = game.selected_objects[0]
                 if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
-                    if current_ownership(game.galaxy, current_player, target_object):
+                    ownership = ownership_view(game, current_player, target_object)
+                    if (unit.colony_component and unit.colony_component.population_cargo > 0
+                            and colony_target_blocker(game, current_player, target_object, 'colonize') is None):
+                        options.append(("Colonize", "colonize"))
+                    if ownership.status != 'unknown':
                         if unit.owner == current_player:
                             from planetary_warfare import command_options
                             for kind, info in command_options(game, current_player, unit, [target_object]).items():
                                 if info["targets"]:
                                     options.append(({"recruit_troops": "Recruit Troops...", "invade_planet": "Invade Colony...", "bombard_planet": "Bombard Defenses"}[kind], kind))
-                        if unit.colony_component and unit.colony_component.population_cargo > 0 and not target_object.owner:
-                            options.append(("Colonize", "colonize"))
-                        if unit.colony_component and target_object.owner and are_allies(unit.owner, target_object.owner) and hasattr(target_object, 'population') and target_object.population > 0 and unit.colony_component.population_cargo < unit.colony_component.max_cargo:
+                        if (unit.colony_component and ownership.relation == 'self'
+                                and (ownership.status == 'last_known' or target_object.population > 0)
+                                and unit.colony_component.population_cargo < unit.colony_component.max_cargo):
                             options.append(("Load Colonists", "load_colonists"))
-            if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)) and current_ownership(game.galaxy, current_player, target_object):
-                if target_object.owner and are_enemies(current_player, target_object.owner):
+            if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)):
+                ownership = ownership_view(game, current_player, target_object)
+                if ownership.relation == 'enemy':
                     has_intel_actors = any(getattr(a, 'intelligence_component', None) and a.intelligence_component.available_agents > 0 for a in actors)
                     if has_intel_actors:
                         options.append(("Infiltrate Colony", "infiltrate_planet"))
-
+            if isinstance(target_object, (Planet, Moon, ColonizableAsteroid)) and current_ownership(game.galaxy, current_player, target_object):
+                if target_object.owner and are_enemies(current_player, target_object.owner):
                     if hasattr(target_object, 'has_infiltrating_agent_from') and target_object.has_infiltrating_agent_from(current_player):
                         agent = next((ag for ag in getattr(target_object, 'infiltrating_agents', []) if ag.owner == current_player), None)
                         if agent:

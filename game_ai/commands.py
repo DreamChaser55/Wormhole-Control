@@ -19,7 +19,6 @@ from .rules import (
     has_operational_engines,
     is_colonizable_body,
     is_mining_target,
-    is_self_owned,
     is_antimatter_source,
 )
 from .intelligence import (
@@ -354,16 +353,18 @@ class _BatchProjection:
             raise _Rejected("invalid_value", "load_colonists requires a positive amount.")
         for unit in units:
             self.cargo_for(unit)
-        available = self._source_population.setdefault(
-            body.id, float(getattr(body, "population", 0)) - self._settled_population.get(body.id, 0)
-        )
-        required = amount * len(units)
-        if required > available:
-            raise _Rejected(
-                "insufficient_population",
-                f"Body {body.id} has only {available:g} colonists available; "
-                f"this command requires {required:g}.",
+        from planetary_intel import current_ownership
+        if current_ownership(self.game.galaxy, self.player, body):
+            available = self._source_population.setdefault(
+                body.id, float(body.population) - self._settled_population.get(body.id, 0)
             )
+            required = amount * len(units)
+            if required > available:
+                raise _Rejected(
+                    "insufficient_population",
+                    f"Body {body.id} has only {available:g} colonists available; "
+                    f"this command requires {required:g}.",
+                )
         for unit in units:
             colony = unit.colony_component
             capacity = float(getattr(colony, "max_cargo", 0))
@@ -804,8 +805,9 @@ class _BatchProjection:
                 entry['settled'] = True
         elif kind in {"load_colonists", "colonize"}:
             from unit_orders.colony import within_colony_range
+            from planetary_intel import current_ownership
             body = self.game.galaxy.get_celestial_body_by_id(params.get("target_id"))
-            if body is not None and within_colony_range(unit, body):
+            if body is not None and within_colony_range(unit, body) and current_ownership(self.game.galaxy, unit.owner, body):
                 if kind == "load_colonists":
                     amount = float(params.get("amount", 0))
                     self._settled_cargo[unit.id] = self._settled_cargo.get(unit.id, 0) + amount
@@ -1175,7 +1177,7 @@ class CommandGateway:
                 self._require_capability(unit, command.type)
                 if command.type in {'colonize', 'load_colonists', 'infiltrate_planet',
                                     'recruit_troops', 'bombard_planet', 'invade_planet'}:
-                    self._require_current_colony(player, self._body(command.target_id))
+                    self._require_colony_target(player, self._body(command.target_id), command.type)
                 if command.type == 'dismantle_unit':
                     from campaign_graph import find_unit
                     from dismantling import evaluate
@@ -1224,7 +1226,7 @@ class CommandGateway:
             return lambda unit: StabilizeWormholeOrder(unit, {"target_id": command.target_id}), command.type
         if command.type in {"recruit_troops", "bombard_planet", "invade_planet"}:
             from unit_orders.planetary import RecruitTroopsOrder, BombardPlanetOrder, InvadePlanetOrder
-            self._require_current_colony(player, self._body(command.target_id))
+            self._require_colony_target(player, self._body(command.target_id), command.type)
             cls = {"recruit_troops": RecruitTroopsOrder, "bombard_planet": BombardPlanetOrder, "invade_planet": InvadePlanetOrder}[command.type]
             return lambda unit: cls(unit, {"target_id": command.target_id, **({"amount": command.amount} if command.amount is not None else {})}), command.type
         from unit_orders.combat import AttackOrder, AttackLongRangeOrder, ProtectOrder
@@ -1295,7 +1297,7 @@ class CommandGateway:
         }:
             target_body = self._body(command.target_id)
             if command.type in {'colonize', 'load_colonists'} and is_colonizable_body(target_body):
-                self._require_current_colony(player, target_body)
+                self._require_colony_target(player, target_body, command.type)
 
         if command.type == "infiltrate_unit":
             target_unit = self._visible_unit(player, command.target_id)
@@ -1306,9 +1308,7 @@ class CommandGateway:
             )
         if command.type == "infiltrate_planet":
             target_body = self._body(command.target_id)
-            self._require_current_colony(player, target_body)
-            if not is_colonizable_body(target_body) or intelligence_relation(player, getattr(target_body, "owner", None)) != "enemy":
-                raise _Rejected("target_unavailable", "The target is unavailable.")
+            self._require_colony_target(player, target_body, command.type)
             return (
                 lambda unit: InfiltratePlanetOrder(
                     unit,
@@ -1427,8 +1427,6 @@ class CommandGateway:
                 raise _Rejected(
                     "invalid_target", "The colonization target is not a habitable body."
                 )
-            if getattr(target_body, "owner", None) is not None:
-                raise _Rejected("invalid_target", "The colonization target is already owned.")
             return (
                 lambda unit: ColonizeOrder(
                     unit,
@@ -1440,10 +1438,6 @@ class CommandGateway:
             if not is_colonizable_body(target_body):
                 raise _Rejected(
                     "invalid_target", "Colonists can only be loaded from a colony body."
-                )
-            if not is_self_owned(player, getattr(target_body, "owner", None)):
-                raise _Rejected(
-                    "invalid_relation", "Colonists must be loaded from a self-owned body."
                 )
             if command.amount is None or command.amount <= 0:
                 raise _Rejected("invalid_value", "load_colonists requires a positive amount.")
@@ -1939,6 +1933,13 @@ class CommandGateway:
         from planetary_intel import current_ownership
         if not current_ownership(self.game.galaxy, player, body):
             raise _Rejected('target_unavailable', 'The target is unavailable.')
+
+    def _require_colony_target(self, player, body, kind):
+        from planetary_intel import colony_target_blocker
+        error = colony_target_blocker(self.game, player, body, kind)
+        if error:
+            raise _Rejected(error, 'The target is unavailable.' if error == 'target_unavailable'
+                            else 'The target is unavailable for this colony action.')
 
     def _waypoints(self, raw):
         from geometry import Position

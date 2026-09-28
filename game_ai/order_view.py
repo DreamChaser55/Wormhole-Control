@@ -127,6 +127,11 @@ def order_layers(unit, relation, visible_ids, body_ids):
         if kind in {"recruit_troops", "invade_planet", "bombard_planet"} and not hidden:
             progress = {"phase": "approach" if order.has_active_sub_orders() else "awaiting_owner_turn_resolution",
                         "last_action_round": unit.last_planetary_action_round}
+        if kind in {'colonize', 'load_colonists', 'infiltrate_planet', 'recruit_troops', 'invade_planet', 'bombard_planet'} and not hidden:
+            from planetary_intel import order_phase
+            phase = order_phase(order, unit.game.galaxy)
+            if phase:
+                progress['phase'] = phase
         data["progress"] = progress
         children = list(getattr(order, "sub_orders", []))
         shown = []

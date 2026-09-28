@@ -87,10 +87,10 @@ changing the others. The table is generated from their runtime constants.
 | Contract | Current version / identifier | Source |
 | --- | --- | --- |
 | Campaign save | 4.20 | [CURRENT_SAVE_VERSION](../save_manager.py) |
-| Observation | 26 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
-| Command contract | 21 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
+| Observation | 27 | [OBSERVATION_SCHEMA_VERSION](../game_ai/observation.py) |
+| Command contract | 22 | [CONTRACT_VERSION](../game_ai/command_spec.py) |
 | Response schema | wormhole_control_turn_v15 | [TURN_PLAN_SCHEMA_NAME](../game_ai/schema.py) |
-| Prompt cache | wormhole-control-turn-v26 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
+| Prompt cache | wormhole-control-turn-v27 | [PROMPT_CACHE_KEY](../game_ai/adapters/openai_responses.py) |
 | Local socket protocol | 3 | [PROTOCOL_VERSION](../game_control_protocol.py) |
 | Constructor component | 5 | [Constructor.SCHEMA_VERSION](../unit_components/constructor.py) |
 | Commander component | 2 | [Commander.SCHEMA_VERSION](../unit_components/commander.py) |
@@ -373,10 +373,19 @@ observations use those queries rather than applying terrain independently.
 `planetary_intel.py` owns colony ownership disclosure, separate from physical
 body disclosure. `VisibilitySnapshot.sensed_colony_ids` derives short-range
 surface contacts and long-range sector coverage from the shared sensor pipeline.
-Human presentation, AI options, command preflight/commit and executing orders use
-the same current-knowledge check. Player `planetary_intel` records only observed
-owner IDs and round numbers. Normal visibility/discovery and committed ownership
-changes refresh authorized records; pure queries and loading preserve history.
+Human presentation, AI options and command preflight/commit use shared disclosed
+ownership eligibility: current or last-known ownership authorizes colony approaches.
+Colonization also permits unknown ownership on a physically colonizable body, but
+rejects disclosed occupied targets. `current_ownership` remains the strict gate for
+effects and current statistics; colonization must confirm an unowned body on contact.
+Active and queued orders retain their targets after contact loss, wait at action
+range, and revalidate when coverage returns. Progress derives `waiting_for_contact`
+without adding saved fields. Empty child queues cannot complete a waiting action.
+Batch projection treats an in-range action without contact as pending, never settled;
+population checks and reservations read live population only with current knowledge.
+Player `planetary_intel` records only observed owner IDs and round numbers. Normal
+visibility/discovery, executing order checks and committed ownership changes refresh
+authorized records; pure queries and loading preserve history.
 
 Movement returns a transient map of unit IDs to the post-drag speed used for
 positive sublight displacement. The same owner-turn hazard phase consumes this

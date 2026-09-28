@@ -64,13 +64,21 @@ class PlanetaryWindow:
             from planetary_balance import TROOP_CREDIT_COST, TROOP_POPULATION_COST
             text = f'Recruit {amount} troops for {amount*TROOP_CREDIT_COST:g} credits and {amount*TROOP_POPULATION_COST:g} population.<br>At least one population must remain.'
         else:
-            preview = assault_preview(body, amount)
-            text = (f'Success chance: <b>{preview["success_probability"]:.1%}</b><br>'
+            from planetary_intel import current_ownership
+            current = current_ownership(self.game.galaxy, self.unit.owner, body)
+            preview = assault_preview(body if current else None, amount)
+            odds = f'<b>{preview["success_probability"]:.1%}</b>' if current else 'Unknown until sensor contact returns'
+            text = (f'Success chance: {odds}<br>'
                     f'Losses on success: {preview["success_casualties"]} troops; on defeat: {preview["defeat_casualties"]}.<br>'
                     f'Antimatter: {preview["antimatter_cost"]:g}. Survivors return aboard.<br>'
                     'Odds are recomputed at arrival; defenses may change. Hostile ships do not block landing.')
         from planetary_balance import INVASION_RANGE
         text += f'<br><br>Approaches within {INVASION_RANGE:g} of the surface; resolves at End Turn. One planetary action per ship per round.'
+        from planetary_intel import ownership_view
+        view = ownership_view(self.game, self.unit.owner, body)
+        if view.status == 'last_known':
+            text += (f'<br>Last observed: turn {view.observed_turn}. Orders wait at action range for sensor contact.'
+                     ' Population and defenses require current contact.')
         if error:
             text += '<br><br>Currently unavailable: ' + escape(error.replace('_', ' ')) + '. Queued recruitment may supply missing troops.'
         self.preview.set_text(text)

@@ -247,11 +247,13 @@ def command_guidance(
     if required(unit):
         return ['rename_unit'], {'service_blocker': 'wing_service_required'}, []
     exact_bodies = list(exact_bodies)
-    from planetary_intel import current_ownership, is_colony_body
+    from planetary_intel import ownership_view, is_colony_body, colony_target_blocker
     from visibility import VisibilityService
     snapshot = VisibilityService.compute(game.galaxy, player, record_intel=False)
-    current_bodies = [body for body in exact_bodies if is_colony_body(body)
-                      and current_ownership(game.galaxy, player, body, snapshot)]
+    colony_views = {body.id: ownership_view(game, player, body, snapshot)
+                    for body in exact_bodies if is_colony_body(body)}
+    known_bodies = [body for body in exact_bodies if body.id in colony_views
+                    and colony_views[body.id].status != 'unknown']
     visible_units = list(visible_units)
     legal: set[str] = {"rename_unit"}
     options: dict[str, Any] = {}
@@ -312,9 +314,9 @@ def command_guidance(
         operational = not bool(getattr(intelligence, "is_destroyed", False))
         enemy_colonies = [
             body.id
-            for body in current_bodies
+            for body in known_bodies
             if is_colonizable_body(body)
-            and relation(player, getattr(body, "owner", None)) == "enemy"
+            and colony_views[body.id].relation == "enemy"
         ]
         options["infiltrate_unit"] = {"target_ids": [candidate.id for candidate in enemy_units]}
         options["infiltrate_planet"] = {"target_ids": enemy_colonies}
@@ -443,20 +445,21 @@ def command_guidance(
         remaining = max(0.0, maximum - cargo)
         colony_targets = [
             body.id
-            for body in current_bodies
-            if is_colonizable_body(body) and getattr(body, "owner", None) is None
+            for body in exact_bodies
+            if colony_target_blocker(game, player, body, 'colonize', snapshot) is None
         ]
         sources = [
             {
                 "target_id": body.id,
                 "maximum_amount": min(
-                    float(getattr(body, "population", 0)), remaining
+                    float(body.population) if colony_views[body.id].status == 'current' else remaining, remaining
                 ),
+                **({'preview_note': 'Cargo limit only; colony population is checked when contact returns.'}
+                   if colony_views[body.id].status == 'last_known' else {}),
             }
-            for body in exact_bodies
-            if is_colonizable_body(body)
-            and is_self_owned(player, getattr(body, "owner", None))
-            and float(getattr(body, "population", 0)) > 0
+            for body in known_bodies
+            if colony_views[body.id].relation == 'self'
+            and (colony_views[body.id].status == 'last_known' or body.population > 0)
             and remaining > 0
         ]
         options["colonize"] = {"target_ids": colony_targets}

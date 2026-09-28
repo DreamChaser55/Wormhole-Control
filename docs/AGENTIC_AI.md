@@ -76,11 +76,28 @@ capacity remain available. Remote `body_summary.colonizable_count` and
 The shared ownership policy uses effective short-range contact with the body's
 surface or long-range coverage of its sector, including allied and intelligence
 sources and Deep Scan. Own/allied colonies stay current. Enemy home markers
-require current sensor coverage. Colony command options include only currently
-known targets; guessed, stale and nonexistent colony targets all return
-`target_unavailable` before ownership-dependent validation. Active colony actions
-fail and cancel their approach on lost coverage; movement to known coordinates
-remains legal. Human controls use the same policy.
+require current sensor coverage. Colony command options include current and historical
+targets whose disclosed ownership suits the requested action. Colonization also
+accepts physically colonizable targets with unknown ownership, without treating them
+as confirmed uninhabited. Known occupied bodies are ineligible. For other colony
+actions, unknown and nonexistent targets return the same `target_unavailable` error.
+Preflight and commit use disclosed ownership, never an unseen live owner. Human
+controls use the same policy.
+
+Colonize, Load Colonists, Recruit Troops, Bombard Planet, Invade Planet and Infiltrate
+Planet retain their approaches on contact loss. At action range they expose
+`progress.phase: waiting_for_contact`, block following orders and consume no action
+resources or invasion randomness until contact returns. Reacquisition refreshes intel
+and revalidates ownership before effects; incompatible targets fail once and preserve
+following queued work. Immediate upgrades and agent relocation retain current-contact
+requirements. Unit attacks retain their separate visibility rules.
+
+Historical invasion previews expose `success_probability: null`, retaining known costs
+and casualty formulas. Historical load/recruitment amount limits use cargo space and
+credits only, with `preview_note` explaining that population must be confirmed.
+Population-dependent validation is deferred until current knowledge returns. Pending
+loads/recruitment can support queued prerequisites, but an in-range stale action is
+never projected as an immediate effect that finances replacement work.
 
 Per-player ownership observations are saved independently of AI memory. Recording
 visibility refreshes only authorized observations; `record_intel=False` and load

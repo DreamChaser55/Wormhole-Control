@@ -6,7 +6,7 @@ from copy import deepcopy
 import math
 from construction_customization import TURRET_TYPES, DEFENSE_TYPES, validate_override_values
 
-CONTRACT_VERSION = 21
+CONTRACT_VERSION = 22
 MAX_COMMANDS = 40
 MAX_UNITS = 12
 MAX_WAYPOINTS = 16
@@ -37,9 +37,9 @@ COMMAND_SPECS = {
     "dismantle_unit": _spec("Dismantle an owned unit with a separate Constructor, or an already docked wing using its owning carrier. Includes docked craft, takes their summed half-build times, takes targets offline, discards cargo and pays half current-design value scaled by hull HP at completion. Bays finish prepaid work, then pause new production until resumed.", ("target_id",), single_unit=True),
     "set_wing_production_enabled": _spec("Enable or pause automatic new-wing construction. A wing design must also be explicitly selected; enabling alone does not select one. Paid work finishes; replenishment and selected equipment are preserved. Dismantling reserves its bay until finished or cancelled.", ("enabled",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
     "stabilize_wormhole": _spec("Approach and continuously maintain a wormhole within 500 units for 5 AM per owner turn. Both directions become 100% stable for all ships, including enemies. Starts at End Turn; fuel shortages wait for resupply. Queued work is blocked until cancelled.", ("target_id",), single_unit=True, capability=("wormhole_stabilizer_component", "antimatter_component")),
-    "recruit_troops": _spec("Approach an owned colony and recruit integer amount troops on End Turn, paying 2 credits and 0.2 population per troop; leave at least one population.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
-    "bombard_planet": _spec("Approach an enemy colony and bombard military defenses once per owner turn until readiness reaches 25%; each volley costs 10 AM.", ("target_id",), single_unit=True, capability=("siege_battery_component",)),
-    "invade_planet": _spec("Approach an enemy colony and make one assault with integer amount troops for 20 AM; survivors return aboard. Queue behind recruitment when needed.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
+    "recruit_troops": _spec("Approach an owned colony and recruit integer amount troops on End Turn, paying 2 credits and 0.2 population per troop; leave at least one population. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
+    "bombard_planet": _spec("Approach an enemy colony and bombard military defenses once per owner turn until readiness reaches 25%; each volley costs 10 AM. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id",), single_unit=True, capability=("siege_battery_component",)),
+    "invade_planet": _spec("Approach an enemy colony and make one assault with integer amount troops for 20 AM; survivors return aboard. Queue behind recruitment when needed. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id", "amount"), single_unit=True, capability=("troop_transport_component",)),
     "upgrade_planetary_defenses": _spec("Buy one fortification level on an owned populated colony, at most once per round, up to level 3.", ("target_id",), queued=False, player_level=True),
     "rename_unit": _spec("Rename one owned unit with a generic name (1–30 characters after trimming; no control characters). Preserves all orders.", ("new_name",), queued=False, single_unit=True),
     "cancel_orders": _spec("Stop all work, clear navigation/fire targets, and select Do Nothing.", queued=False),
@@ -52,8 +52,8 @@ COMMAND_SPECS = {
     "attack_long_range": _spec("Requires a Long Range turret eligible for the target. Approach until all eligible Long Range turrets are in range; all eligible turrets may fire if in range. Does not retreat. Optionally select a publicly visible subsystem. Subsystem targeting halves each turret's hull range for approach and firing; each turret holds fire until strictly inside its subsystem range, without firing at the hull instead.", ("target_id", "target_component"), ("target_id",), capability=("weapons_component",)),
     "defend": _spec("Hold a destination or target location, engaging intruders within the guard radius.", (*DESTINATION, "target_id"), (), capability=("engines_component", "weapons_component")),
     "protect": _spec("Escort a friendly unit and engage nearby enemies.", ("target_id",), capability=("engines_component",)),
-    "colonize": _spec("Colonize an unowned body; queue behind a required colonist load.", ("target_id",), capability=("colony_component",)),
-    "load_colonists": _spec("Load a positive amount of colonists from a self-owned colony.", ("target_id", "amount"), capability=("colony_component",)),
+    "colonize": _spec("Colonize a colonizable body with unknown or disclosed unowned status; queue behind a required colonist load. Known occupied bodies are ineligible. Effects wait for current contact and confirmed unowned status.", ("target_id",), capability=("colony_component",)),
+    "load_colonists": _spec("Load a positive amount of colonists from a self-owned colony. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id", "amount"), capability=("colony_component",)),
     "construct": _spec("Construct one template per selected builder at an explicit system, sector and position. Reserve the full credits, metal and crystal cost per builder against active_player.resources.resource_budget.available, including queued builds; earlier batch commands change that budget. Payment occurs when work starts. Optional turret_type_override changes all installed turrets; defense_type_override consolidates total defense strength into one type. Null preserves presets. Requires matching equipment; costs and other stats are unchanged.", ("template_name", *DESTINATION, "turret_type_override", "defense_type_override"), ("template_name", *DESTINATION), capability=("constructor_component",)),
     "set_wing_production": _spec("Configure one stable zero-based bay slot's future wing template and nullable turret/defense overrides. Explicit template_name=null clears production and requires null overrides. New slots start unselected. Existing wings are unchanged; only the slot under construction is locked. Selection is free, preserves orders and the bay-wide pause state. Each selection replaces this slot's complete configuration.", ("slot_index", "template_name", "turret_type_override", "defense_type_override"), ("slot_index",), queued=False, capability=("strikecraft_bay_component",), single_unit=True),
     "repair": _spec("Repair a friendly unit.", ("target_id",), capability=("repair_component",)),
@@ -76,7 +76,7 @@ COMMAND_SPECS = {
     "toggle_cloaking": _spec("Immediately flip a functioning cloak.", queued=False, capability=("cloaking_component",)),
     "toggle_ability": _spec("Immediately enable or disable an equipped environmental resistance without changing orders. Enabling checks combined upkeep; payment occurs before owner-turn hazards.", ("ability",), queued=False, single_unit=True),
     "infiltrate_unit": _spec("Deploy an agent onto a visible enemy unit.", ("target_id",), capability=("intelligence_component",)),
-    "infiltrate_planet": _spec("Deploy an agent onto an exact enemy colony.", ("target_id",), capability=("intelligence_component",)),
+    "infiltrate_planet": _spec("Deploy an agent onto an exact enemy colony. Current or last-known ownership permits approach; effects wait for current contact.", ("target_id",), capability=("intelligence_component",)),
     "extract_agent": _spec("Recover an owned embedded agent into this Intelligence ship.", ("agent_id",), capability=("intelligence_component",), single_unit=True),
     "ci_sweep": _spec("Immediately spend credits and antimatter to discover enemy agents on nearby friendly assets.", queued=False, capability=("intelligence_component",)),
     "eliminate_agent": _spec("Approach and eliminate a discovered enemy agent on a friendly asset.", ("agent_id",), capability=("intelligence_component",), single_unit=True),

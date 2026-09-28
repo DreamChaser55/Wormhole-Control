@@ -45,8 +45,10 @@ def defense_view(body):
 
 
 def assault_preview(body, amount):
-    defense = maximum_defense(body) * body.defense_readiness
-    return dict(committed_troops=amount, success_probability=amount / (amount + defense) if amount > 0 else 0.0,
+    # None represents undisclosed defenses; costs/casualties depend only on intent.
+    defense = maximum_defense(body) * body.defense_readiness if body is not None else None
+    probability = None if defense is None else amount / (amount + defense) if amount > 0 else 0.0
+    return dict(committed_troops=amount, success_probability=probability,
                 success_casualties=math.ceil(amount * SUCCESS_LOSSES),
                 defeat_casualties=math.ceil(amount * DEFEAT_LOSSES), antimatter_cost=INVASION_AM_COST)
 
@@ -58,30 +60,30 @@ def command_options(game, player, unit, bodies):
     kinds = (['recruit_troops', 'invade_planet'] if transport else [])
     if getattr(unit, 'siege_battery_component', None):
         kinds.append('bombard_planet')
-    from domain.players import are_enemies
-    from planetary_intel import current_ownership
+    from planetary_intel import ownership_view, colony_target_blocker
     from visibility import VisibilityService
     snapshot = VisibilityService.compute(game.galaxy, player, record_intel=False)
     for kind in kinds:
         targets = []
         for body in bodies:
-            if not current_ownership(game.galaxy, player, body, snapshot):
+            if colony_target_blocker(game, player, body, kind, snapshot):
                 continue
-            if not colonizable(body) or body.owner is None:
-                continue
-            if not (body.owner == player if kind == 'recruit_troops' else are_enemies(player, body.owner)):
-                continue
+            current = ownership_view(game, player, body, snapshot).status == 'current'
             amount = None
             item = {'target_id': body.id, 'distance_from_surface': SIEGE_RANGE if kind == 'bombard_planet' else INVASION_RANGE}
             if kind == 'recruit_troops':
-                limit = max(0, min(transport.capacity - transport.troops, int(player.credits // TROOP_CREDIT_COST),
-                                  math.floor((body.population - MIN_REMAINING_POPULATION + 1e-9) / TROOP_POPULATION_COST)))
+                limit = max(0, min(transport.capacity - transport.troops, int(player.credits // TROOP_CREDIT_COST)))
+                if current:
+                    limit = max(0, min(limit, math.floor((body.population - MIN_REMAINING_POPULATION + 1e-9) / TROOP_POPULATION_COST)))
                 item.update(max_amount=limit, credits_per_troop=TROOP_CREDIT_COST, population_per_troop=TROOP_POPULATION_COST)
+                if not current:
+                    item['preview_note'] = 'Cargo/credit limit only; colony population is checked when contact returns.'
                 amount = max(1, limit)
             elif kind == 'invade_planet':
                 amount = max(1, transport.troops)
-                item.update(max_amount=transport.troops, **assault_preview(body, amount),
-                            preview_note='Recomputed at arrival; defense strength can change.')
+                item.update(max_amount=transport.troops, **assault_preview(body if current else None, amount),
+                            preview_note='Recomputed at arrival; defense strength can change.' if current else
+                            'Historical ownership only; odds are unknown until contact returns.')
             else:
                 item.update(antimatter_cost=SIEGE_AM_COST, defense_damage=SIEGE_DAMAGE,
                             minimum_readiness=MIN_READINESS, collateral_per_damage=COLLATERAL_PER_DAMAGE)
@@ -92,11 +94,11 @@ def command_options(game, player, unit, bodies):
 
 
 def exact_body(game, player, target_id):
-    """Resolve a known body only when its colony information is current."""
+    """Resolve disclosed geography with current or remembered colony ownership."""
     from game_ai.rules import body_is_public
-    from planetary_intel import current_ownership
+    from planetary_intel import ownership_view
     body = game.galaxy.get_celestial_body_by_id(target_id)
-    return body if (body is not None and current_ownership(game.galaxy, player, body)
+    return body if (body is not None and ownership_view(game, player, body).status != 'unknown'
                     and body_is_public(game, player, body)) else None
 
 
@@ -108,18 +110,18 @@ def in_range(unit, body, kind):
 
 
 def blocker(game, player, kind, body, unit=None, amount=None, *, resources=True, troops=None, population=None, credits=None, fuel=None, execution=False, budget=None, snapshot=None):
-    from domain.players import are_enemies
     from campaign_graph import is_deployed
-    from planetary_intel import current_ownership
-    if not current_ownership(game.galaxy, player, body, snapshot):
-        return 'target_unavailable'
-    if not colonizable(body) or body.owner is None:
-        return 'target_unavailable'
-    if kind in ('recruit_troops', 'upgrade_planetary_defenses'):
-        if body.owner != player:
+    from planetary_intel import current_ownership, colony_target_blocker
+    current = current_ownership(game.galaxy, player, body, snapshot)
+    if kind == 'upgrade_planetary_defenses':
+        if not current or body.owner != player:
             return 'target_unavailable'
-    elif not are_enemies(player, body.owner):
-        return 'target_unavailable'
+    else:
+        error = colony_target_blocker(game, player, body, kind, snapshot)
+        if error:
+            return error
+        if execution and not current:
+            return 'waiting_for_contact'
     if kind == 'upgrade_planetary_defenses':
         if body.population <= 0 or body.fortification_level >= len(FORTIFICATION_COSTS):
             return 'capability_unavailable'
@@ -145,10 +147,14 @@ def blocker(game, player, kind, body, unit=None, amount=None, *, resources=True,
         if kind == 'recruit_troops':
             if cargo + amount > component.capacity:
                 return 'insufficient_capacity'
-            pop = body.population if population is None else population
             money = player.credits if credits is None else credits
-            if resources and (pop - amount * TROOP_POPULATION_COST < MIN_REMAINING_POPULATION - 1e-9 or money < amount * TROOP_CREDIT_COST):
-                return 'insufficient_resources'
+            if resources:
+                if money < amount * TROOP_CREDIT_COST:
+                    return 'insufficient_resources'
+                if current:
+                    pop = body.population if population is None else population
+                    if pop - amount * TROOP_POPULATION_COST < MIN_REMAINING_POPULATION - 1e-9:
+                        return 'insufficient_resources'
         elif cargo < amount:
             return 'insufficient_troops'
     if kind != 'recruit_troops':
@@ -239,7 +245,7 @@ def resolve(game, order, body):
     amount = order.parameters.get('amount')
     error = blocker(game, unit.owner, kind, body, unit, amount, execution=True)
     if error:
-        if error != 'cooldown_active':
+        if error not in {'cooldown_active', 'waiting_for_contact'}:
             order.fail(error)
         return
     if not in_range(unit, body, kind):

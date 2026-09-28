@@ -159,11 +159,17 @@ class Order:
 
     def get_state_data(self) -> Dict[str, Any]:
         """Returns raw structured state data for this order."""
-        return {
+        data = {
             "order_type": self.order_type.name,
             "status": self.status.name,
             "parameters": self.parameters,
         }
+        from planetary_intel import COLONY_ORDER_FIELDS, order_phase
+        if self.order_type.name in COLONY_ORDER_FIELDS:
+            galaxy = getattr(getattr(self.unit, 'game', None), 'galaxy', None)
+            if galaxy:
+                data['phase'] = order_phase(self, galaxy)
+        return data
 
     def add_sub_order(self, sub_order: 'Order') -> None:
         """Add a sub-order to this order's queue."""
@@ -203,8 +209,8 @@ class Order:
 
     def update(self, galaxy_ref: 'Galaxy') -> None:
         """Update the order status based on sub-orders status and own completion."""
-        from planetary_intel import validate_order_contact
-        if self.status == OrderStatus.IN_PROGRESS and not validate_order_contact(self, galaxy_ref):
+        from planetary_intel import validate_order_target
+        if self.status == OrderStatus.IN_PROGRESS and not validate_order_target(self, galaxy_ref):
             return
         # Process the front sub-order in the queue sequentially. We block and wait
         # until the current sub-order is fully resolved (completed, failed, or cancelled).

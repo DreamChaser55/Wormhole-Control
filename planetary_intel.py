@@ -31,6 +31,8 @@ class OwnershipView:
 
 def ownership_view(game, viewer, body, snapshot=None):
     """Return current, remembered or unknown ownership; never write intelligence."""
+    if viewer is None or not is_colony_body(body):
+        return OwnershipView('unknown', None, 'unknown', None)
     if current_ownership(game.galaxy, viewer, body, snapshot):
         owner = body.owner
         return OwnershipView('current', owner.id if owner is not None else None,
@@ -50,6 +52,21 @@ def relation_to(viewer, owner):
     if viewer is owner or viewer.id == owner.id:
         return 'self'
     return 'ally' if are_allies(viewer, owner) else 'enemy'
+
+
+def colony_target_blocker(game, viewer, body, kind, snapshot=None):
+    """Authorize intent using only disclosed ownership, including dated history."""
+    if viewer is None or not is_colony_body(body):
+        return 'target_unavailable'
+    view = ownership_view(game, viewer, body, snapshot)
+    if kind == 'colonize':
+        return None if view.status == 'unknown' or view.relation == 'neutral' else 'invalid_target'
+    if view.status == 'unknown':
+        return 'target_unavailable'
+    if kind == 'load_colonists':
+        return None if view.relation == 'self' else 'invalid_relation'
+    required = 'self' if kind == 'recruit_troops' else 'enemy'
+    return None if view.relation == required else 'target_unavailable'
 
 
 def presentation_view(game, body):
@@ -109,26 +126,34 @@ COLONY_ORDER_FIELDS = {
 }
 
 
-def validate_order_contact(order, galaxy, snapshot=None):
-    """Revalidate active colony work before children move or effects execute."""
+def validate_order_target(order, galaxy, snapshot=None):
+    """Revalidate intent before movement, without treating lost contact as failure."""
     field = COLONY_ORDER_FIELDS.get(order.order_type.name)
     if field is None:
         return True
+    if snapshot is None:
+        # Executing/advancing an order is gameplay: retain a contact acquired here
+        # even if it disappears before the next turn-wide visibility refresh.
+        from visibility import VisibilityService
+        snapshot = VisibilityService.compute(galaxy, order.unit.owner,
+                                             turn_number=order.unit.game.turn_number)
     body = galaxy.get_celestial_body_by_id(order.parameters.get(field))
     # Physical unsuitability is public; let each order report its normal error.
     if body is not None and getattr(body, 'is_colonizable', True) is False:
         return True
-    if current_ownership(galaxy, order.unit.owner, body, snapshot):
+    error = colony_target_blocker(order.unit.game, order.unit.owner, body,
+                                 order.order_type.name.lower(), snapshot)
+    if error is None:
         return True
     for child in order.sub_orders:
         child.cancel()
     order.sub_orders.clear()
-    order.fail('target_unavailable')
+    order.fail(error)
     return False
 
 
-def settle_lost_contacts(game):
-    """Fail active actions without starting queued work or inspecting hidden owners."""
+def revalidate_colony_orders(game):
+    """Settle newly disclosed invalid targets without starting another owner's queue."""
     from campaign_graph import iter_units
     from visibility import VisibilityService
     snapshots = {}
@@ -139,4 +164,32 @@ def settle_lost_contacts(game):
             continue
         if unit.owner.id not in snapshots:
             snapshots[unit.owner.id] = VisibilityService.compute(game.galaxy, unit.owner, record_intel=False)
-        validate_order_contact(order, game.galaxy, snapshots[unit.owner.id])
+        validate_order_target(order, game.galaxy, snapshots[unit.owner.id])
+
+
+def order_phase(order, galaxy):
+    """Derive colony progress without changing orders, intel or saved state."""
+    kind = order.order_type.name
+    field = COLONY_ORDER_FIELDS.get(kind)
+    if field is None or order.status.name != 'IN_PROGRESS':
+        return None
+    body = galaxy.get_celestial_body_by_id(order.parameters.get(field))
+    if body is None:
+        return None
+    unit = order.unit
+    if kind in {'COLONIZE', 'LOAD_COLONISTS'}:
+        from unit_orders.colony import within_colony_range
+        arrived = within_colony_range(unit, body)
+    elif kind == 'INFILTRATE_PLANET':
+        from geometry import distance
+        from unit_orders.intelligence import INTELLIGENCE_OPERATIONAL_RANGE
+        arrived = (unit.in_system == body.in_system and unit.in_hex == body.in_hex
+                   and distance(unit.position, body.position) <= INTELLIGENCE_OPERATIONAL_RANGE)
+    else:
+        from planetary_warfare import in_range
+        arrived = in_range(unit, body, kind.lower())
+    if not arrived:
+        return 'approach'
+    if not current_ownership(galaxy, unit.owner, body):
+        return 'waiting_for_contact'
+    return 'awaiting_owner_turn_resolution' if kind in {'RECRUIT_TROOPS', 'BOMBARD_PLANET', 'INVADE_PLANET'} else 'ready'

@@ -232,7 +232,9 @@ def test_allied_pending_load_still_reserves_colony_population():
     first.position = Position(2000, 0)
     first.add_component(ColonyComponent(first))
     first.add_component(Engines(first, speed=100))
-    first.commander_component.add_order(LoadColonistsOrder(first, {'target_id': source.id, 'amount': 40}))
+    # Population reservations include allied pending work. Activation separately
+    # revalidates ownership; it must not run while arranging this ledger fixture.
+    first.commander_component.orders_queue.append(LoadColonistsOrder(first, {'target_id': source.id, 'amount': 40}))
     second = ship(game)
     second.add_component(ColonyComponent(second))
     result = issue(game, player, Command('load_colonists', (second.id,), target_id=source.id, amount=20))

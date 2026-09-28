@@ -22,16 +22,40 @@ def within_colony_range(unit, target):
             and distance(unit.position, target.position) <= radius + DEFAULT_STANDOFF_DISTANCE + 0.01)
 
 
-class ColonizeOrder(Order):
+class ColonyContactOrder(Order):
+    """Retry an arrived action while contact is missing; preserve saved child chains."""
+
+    def update(self, galaxy_ref):
+        if self.status != OrderStatus.IN_PROGRESS:
+            return
+        if self.sub_orders:
+            action_children = [child for child in self.sub_orders if child.order_type == self.order_type]
+            super().update(galaxy_ref)
+            if self.status == OrderStatus.IN_PROGRESS and not self.sub_orders:
+                if any(child.status == OrderStatus.COMPLETED for child in action_children):
+                    self.status = OrderStatus.COMPLETED
+                else:
+                    self.execute(galaxy_ref)
+        else:
+            self.execute(galaxy_ref)
+
+    def check_completion_conditions(self):
+        # An arrived action without children may still be waiting for contact.
+        pass
+
+
+class ColonizeOrder(ColonyContactOrder):
     target_fields = (OrderTargetField('target_id', 'celestial', public=True),)
 
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.COLONIZE, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        if self.status not in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}:
+            return
         super().execute(galaxy_ref)
-        from planetary_intel import validate_order_contact
-        if not validate_order_contact(self, galaxy_ref):
+        from planetary_intel import validate_order_target
+        if not validate_order_target(self, galaxy_ref):
             return
 
         target_id = self.parameters.get("target_id")
@@ -73,6 +97,9 @@ class ColonizeOrder(Order):
                 self.add_sub_order(colonize_sub_order)
             return
 
+        from planetary_intel import current_ownership
+        if not current_ownership(galaxy_ref, self.unit.owner, target):
+            return
         cargo = self.unit.colony_component.population_cargo
         if cargo <= 0:
             self.fail("insufficient_population")
@@ -88,27 +115,19 @@ class ColonizeOrder(Order):
             self.fail("target_unavailable")
             logger.debug(f"COLONIZE order failed: Unload population failed for unit {format_unit_for_log(self.unit)} on {target.name}.")
 
-    def check_completion_conditions(self) -> None:
-        if self.status != OrderStatus.IN_PROGRESS:
-            return
-        if not self.sub_orders:
-            target_id = self.parameters.get("target_id")
-            if target_id is not None and getattr(self.unit, 'game', None) and getattr(self.unit.game, 'galaxy', None):
-                target = self.unit.game.galaxy.get_celestial_body_by_id(target_id)
-                if target and target.owner == self.unit.owner:
-                    self.status = OrderStatus.COMPLETED
 
-
-class LoadColonistsOrder(Order):
+class LoadColonistsOrder(ColonyContactOrder):
     target_fields = (OrderTargetField('target_id', 'celestial', public=True),)
 
     def __init__(self, unit: 'Unit', parameters: Dict[str, Any] = None, parent_order: Optional[Order] = None):
         super().__init__(unit, OrderType.LOAD_COLONISTS, parameters, parent_order)
 
     def execute(self, galaxy_ref: 'Galaxy') -> None:
+        if self.status not in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}:
+            return
         super().execute(galaxy_ref)
-        from planetary_intel import validate_order_contact
-        if not validate_order_contact(self, galaxy_ref):
+        from planetary_intel import validate_order_target
+        if not validate_order_target(self, galaxy_ref):
             return
 
         target_id = self.parameters.get("target_id")
@@ -157,6 +176,9 @@ class LoadColonistsOrder(Order):
                 self.add_sub_order(load_order)
             return
 
+        from planetary_intel import current_ownership
+        if not current_ownership(galaxy_ref, self.unit.owner, target):
+            return
         success = self.unit.colony_component.load_population(target, amount)
 
         if success:
@@ -164,9 +186,3 @@ class LoadColonistsOrder(Order):
         else:
             self.fail("execution_failed")
             logger.debug(f"LOAD_COLONISTS order failed for unit {format_unit_for_log(self.unit)}.")
-
-    def check_completion_conditions(self) -> None:
-        if self.status != OrderStatus.IN_PROGRESS:
-            return
-        if not self.sub_orders:
-            self.status = OrderStatus.COMPLETED

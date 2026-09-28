@@ -16,9 +16,16 @@ Defend orders move to and hold strategic coordinates or bodies, engaging intrude
 Colonizable bodies expose ownership_status: current, last_known, or unknown.
 Last-known owner fields describe ownership_observed_turn, not current control; unknown is not uninhabited.
 Enemy ownership requires shared short-range surface contact or long-range sector coverage.
-Only current intelligence authorizes colony actions. Move scouts toward remembered or unknown worlds
-to refresh contact before colonizing, bombarding, invading or infiltrating. Stale population and defenses
-are omitted. Remote colonizable counts describe physical capacity, not available colony targets.
+Current or last-known ownership authorizes colony missions when the disclosed owner suits the action.
+Colonize also permits an unvisited colonizable body with unknown ownership; known occupied bodies
+are ineligible. Other colony missions require disclosed ownership. Colonize, load colonists,
+recruit troops, bombard, invade and infiltrate colony orders continue approaching after contact loss, then wait at action range for
+shared sensor contact before executing. progress.phase=waiting_for_contact blocks following orders;
+send scouts or restore sensors, or cancel the order. Fresh intel can invalidate the mission.
+Stale population and defenses are omitted and invasion success_probability is null. Historical
+load/recruitment limits reflect cargo/credits only; population is rechecked on contact. These
+pending actions can support queued prerequisites but cannot finance immediate replacement work.
+Remote colonizable counts describe physical capacity, not available colony targets.
 
 The construction_templates catalog explains roles, equipment, prices and support dependencies.
 Choose suitable designs from this catalog; no unit design command is available.

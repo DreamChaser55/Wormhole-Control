@@ -6,6 +6,7 @@ from typing import Dict, Optional, Any, TYPE_CHECKING
 from geometry import distance, position_at_distance_from_target
 from .base import Order, OrderStatus, OrderType
 from .movement import MoveOrder
+from .colony import ColonyContactOrder
 from unit_components.enums import SabotageType
 
 if TYPE_CHECKING:
@@ -102,7 +103,7 @@ class InfiltrateUnitOrder(Order):
             self.status = OrderStatus.COMPLETED
 
 
-class InfiltratePlanetOrder(Order):
+class InfiltratePlanetOrder(ColonyContactOrder):
     """Order instructing an Intelligence unit to deploy a covert agent onto an enemy colonized celestial body."""
     target_fields = (OrderTargetField('target_body_id', 'celestial', public=False),)
 
@@ -115,9 +116,11 @@ class InfiltratePlanetOrder(Order):
         The target must be an enemy colony. Approach work precedes deployment;
         success consumes agent capacity and attaches the agent before completion.
         Expected rule failures set FAILED; execution rechecks colony disclosure."""
+        if self.status not in {OrderStatus.PENDING, OrderStatus.IN_PROGRESS}:
+            return
         super().execute(galaxy_ref)
-        from planetary_intel import validate_order_contact
-        if not validate_order_contact(self, galaxy_ref):
+        from planetary_intel import validate_order_target
+        if not validate_order_target(self, galaxy_ref):
             return
 
         target_body_id = self.parameters.get("target_body_id")
@@ -128,13 +131,6 @@ class InfiltratePlanetOrder(Order):
             return
 
         target_system, target_hex = target_body.in_system, target_body.in_hex
-        body_owner = getattr(target_body, 'owner', None)
-        from domain.players import are_allies
-        if not body_owner or are_allies(self.unit.owner, body_owner):
-            self.status = OrderStatus.FAILED
-            logger.debug(f"[{format_unit_for_log(self.unit)}] INFILTRATE_PLANET failed: celestial body is unowned or friendly/allied.")
-            return
-
         intel_comp = getattr(self.unit, 'intelligence_component', None)
         if not intel_comp or intel_comp.is_destroyed:
             self.status = OrderStatus.FAILED
@@ -173,6 +169,9 @@ class InfiltratePlanetOrder(Order):
                 self.add_sub_order(InfiltratePlanetOrder(self.unit, self.parameters, parent_order=self))
             return
 
+        from planetary_intel import current_ownership
+        if not current_ownership(galaxy_ref, self.unit.owner, target_body):
+            return
         agent = intel_comp.deploy_agent(target_body)
         if agent:
             self.status = OrderStatus.COMPLETED

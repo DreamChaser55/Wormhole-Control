@@ -223,10 +223,10 @@ def test_invalid_intelligence_records_reject(invalid):
         decode_records(invalid, turn=7, player_ids={0, 1})
 
 
-@pytest.mark.parametrize('kind', ['colonize', 'load_colonists', 'infiltrate_planet',
+@pytest.mark.parametrize('kind', ['load_colonists', 'infiltrate_planet',
                                  'invade_planet', 'bombard_planet', 'recruit_troops',
                                  'upgrade_planetary_defenses'])
-def test_guessed_stale_and_missing_colony_targets_reject_identically(kind):
+def test_guessed_and_missing_colony_targets_reject_identically(kind):
     from unit_components.colony import ColonyComponent
     from unit_components.intelligence import IntelligenceComponent
     from unit_components.planetary import TroopTransportComponent, SiegeBatteryComponent
@@ -239,7 +239,6 @@ def test_guessed_stale_and_missing_colony_targets_reject_identically(kind):
     unit.add_component(TroopTransportComponent(unit))
     unit.add_component(SiegeBatteryComponent(unit))
     unit.troop_transport_component.troops = 20
-    view(game, body)
     unit.position.x += 1
     def result(target_id):
         command = Command(type=kind, unit_ids=() if kind == 'upgrade_planetary_defenses' else (unit.id,),
@@ -270,8 +269,8 @@ def test_enemy_home_markers_require_current_coverage():
 
 
 @pytest.mark.parametrize('kind', ['COLONIZE', 'INFILTRATE_PLANET', 'INVADE_PLANET', 'BOMBARD_PLANET'])
-def test_lost_contact_cancels_approach_and_preserves_queue(kind):
-    from planetary_intel import settle_lost_contacts
+def test_lost_contact_preserves_approach_and_queue(kind):
+    from planetary_intel import revalidate_colony_orders
     from unit_orders.base import Order, OrderType, OrderStatus
     from unit_orders.colony import ColonizeOrder
     from unit_orders.intelligence import InfiltratePlanetOrder
@@ -304,17 +303,17 @@ def test_lost_contact_cancels_approach_and_preserves_queue(kind):
     assert order.status == OrderStatus.IN_PROGRESS and order.sub_orders
     fuel = unit.antimatter_component.current_amount
     unit.sensors_component.long_range_hexes = 0
-    settle_lost_contacts(game)
-    assert order.status == OrderStatus.FAILED and order.failure_reason == 'target_unavailable'
-    assert not order.sub_orders
+    revalidate_colony_orders(game)
+    assert order.status == OrderStatus.IN_PROGRESS
+    assert order.sub_orders
     assert list(unit.commander_component.orders_queue) == [followup]
     assert unit.antimatter_component.current_amount == fuel
     assert unit.colony_component.population_cargo == 10
     assert unit.troop_transport_component.troops == 20
-    assert len(game.players[0].order_history) == 1
+    assert not game.players[0].order_history
     unit.sensors_component.long_range_hexes = 1
-    settle_lost_contacts(game)
-    assert order.status == OrderStatus.FAILED
+    revalidate_colony_orders(game)
+    assert order.status == OrderStatus.IN_PROGRESS
 
 
 def test_last_known_sidebar_and_ring_use_observed_owner():
@@ -396,12 +395,14 @@ def test_queued_invasion_checks_contact_before_resources_and_rng():
     before = (unit.owner.credits, unit.antimatter_component.current_amount, game.invasion_rng.getstate())
     unit.commander_component.start_next_order()
     process_actions(game, unit.owner)
-    assert order.status == OrderStatus.FAILED and order.failure_reason == 'target_unavailable'
+    assert order.status == OrderStatus.IN_PROGRESS
+    from planetary_intel import order_phase
+    assert order_phase(order, game.galaxy) == 'waiting_for_contact'
     assert unit.troop_transport_component.troops == 40
     assert before == (unit.owner.credits, unit.antimatter_component.current_amount, game.invasion_rng.getstate())
 
 
-def test_commit_rechecks_contact_before_replacing_orders(monkeypatch):
+def test_commit_accepts_contact_loss_with_recorded_intel(monkeypatch):
     from tests.test_planetary_warfare import vessel
     from unit_orders.base import Order, OrderType, OrderStatus
     game = campaign()
@@ -412,20 +413,19 @@ def test_commit_rechecks_contact_before_replacing_orders(monkeypatch):
     existing.status = OrderStatus.IN_PROGRESS
     unit.commander_component.current_order = existing
     gateway = CommandGateway(game)
-    original = gateway._require_current_colony
+    view(game, body)
+    original = gateway._require_colony_target
     calls = 0
-    def lose_contact(player, target):
+    def lose_contact(player, target, kind):
         nonlocal calls
         calls += 1
         if calls == 2:
             unit.sensors_component.short_range_radius = unit.sensors_component.long_range_hexes = 0
-        return original(player, target)
-    monkeypatch.setattr(gateway, '_require_current_colony', lose_contact)
+        return original(player, target, kind)
+    monkeypatch.setattr(gateway, '_require_colony_target', lose_contact)
     result = gateway.apply_batch(unit.owner, CommandBatch((
         Command(type='invade_planet', unit_ids=(unit.id,), target_id=body.id, amount=40),)))
-    assert not result.accepted and result.failure_stage == 'commit'
-    assert result.errors[0].code == 'target_unavailable'
-    assert result.errors[0].message == 'The target is unavailable.'
-    assert not result.may_have_partial_effects
-    assert unit.commander_component.current_order is existing
+    assert result.accepted
+    assert unit.commander_component.current_order is not existing
+    assert unit.commander_component.current_order.status == OrderStatus.IN_PROGRESS
     assert unit.troop_transport_component.troops == 40

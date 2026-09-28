@@ -58,8 +58,9 @@ def test_open_dialog_refreshes_on_sensor_loss_and_closes_on_hotseat_and_load(gam
     assert 'Success chance:' in dialog.preview.html_text
     unit.sensors_component.long_range_hexes = unit.sensors_component.short_range_radius = 0
     game.recompute_visibility()
-    assert dialog.preview.html_text == 'Colony unavailable.'
-    assert not dialog.submit.is_enabled and not dialog.append.is_enabled
+    assert 'Unknown until sensor contact returns' in dialog.preview.html_text
+    assert 'Last observed: turn 7' in dialog.preview.html_text
+    assert dialog.submit.is_enabled and dialog.append.is_enabled
     game.current_player_index = 1
     game.recompute_visibility()
     assert game.gui.planetary_window is None

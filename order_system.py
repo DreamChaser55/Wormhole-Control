@@ -339,8 +339,8 @@ class OrderSystem:
 
     def handle_colonize(self, event: ColonizeEvent):
         for unit in self._controllable_units(event.units):
-            from planetary_intel import current_ownership
-            if not current_ownership(self.game.galaxy, unit.owner, event.target_body):
+            from planetary_intel import colony_target_blocker
+            if colony_target_blocker(self.game, unit.owner, event.target_body, 'colonize'):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog('The target is unavailable.', title='Target Unavailable')
                 continue
@@ -372,8 +372,8 @@ class OrderSystem:
 
     def handle_load_colonists(self, event: LoadColonistsEvent):
         for unit in self._controllable_units(event.units):
-            from planetary_intel import current_ownership
-            if not current_ownership(self.game.galaxy, unit.owner, event.target_body):
+            from planetary_intel import colony_target_blocker
+            if colony_target_blocker(self.game, unit.owner, event.target_body, 'load_colonists'):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog('The target is unavailable.', title='Target Unavailable')
                 continue
@@ -736,8 +736,8 @@ class OrderSystem:
     def handle_infiltrate_planet(self, event: InfiltratePlanetEvent):
         """Creates InfiltratePlanetOrders for selected units with IntelligenceComponent."""
         for unit in self._controllable_units(event.units):
-            from planetary_intel import current_ownership
-            if not current_ownership(self.game.galaxy, unit.owner, event.target_body):
+            from planetary_intel import colony_target_blocker
+            if colony_target_blocker(self.game, unit.owner, event.target_body, 'infiltrate_planet'):
                 if getattr(self.game, 'gui', None):
                     self.game.gui.show_warning_dialog('The target is unavailable.', title='Target Unavailable')
                 continue

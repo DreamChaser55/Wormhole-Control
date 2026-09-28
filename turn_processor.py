@@ -114,9 +114,9 @@ class TurnProcessor:
             process_wing_service(self.game, current_player, advance=True)
             from titan_abilities import process as process_titans
             process_titans(self.game, current_player)
-            from planetary_intel import refresh, settle_lost_contacts
+            from planetary_intel import refresh, revalidate_colony_orders
             refresh(self.game)
-            settle_lost_contacts(self.game)
+            revalidate_colony_orders(self.game)
             with ProfileTimer("Movement processing"):
                 sublight_movements = self._process_movement(current_player)
             # Remember arrivals before hazards can destroy the observing ship.
@@ -159,7 +159,7 @@ class TurnProcessor:
             reconcile_links(self.game.galaxy)
             self._cancel_hidden_attacks()
             refresh(self.game)
-            settle_lost_contacts(self.game)
+            revalidate_colony_orders(self.game)
             logger.debug(f"Finished Turn {turn_num} processing for {current_player.name}.")
 
     def _cancel_hidden_attacks(self):
