@@ -7965,8 +7965,8 @@
     "name": "Titan Flagship",
     "hull_size": "TITAN",
     "hull_points": 1600,
-    "build_time": 114,
-    "build_cost": 41626,
+    "build_time": 116,
+    "build_cost": 42344,
     "has_engine": true,
     "engine_speed": 100,
     "engine_hull_cost": 20.0,
@@ -7980,145 +7980,61 @@
     "hyperdrive_jump_range": 5,
     "hyperdrive_hull_cost": 32.0,
     "has_weapon_bays": true,
-    "weapon_bays_hull_cost": 181.86666666666665,
+    "weapon_bays_hull_cost": 107.3111111111111,
     "turrets": [
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
+        "damage": 30,
         "range": 400,
+        "cooldown": 3,
+        "variant": "LONG_RANGE"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 30,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "LONG_RANGE"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 35,
+        "range": 450,
         "cooldown": 3,
         "variant": "STANDARD"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
+        "damage": 35,
+        "range": 450,
         "cooldown": 3,
         "variant": "STANDARD"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
+        "damage": 35,
+        "range": 450,
         "cooldown": 3,
         "variant": "STANDARD"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
+        "damage": 35,
+        "range": 450,
         "cooldown": 3,
         "variant": "STANDARD"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 4,
-        "range": 300,
+        "damage": 8,
+        "range": 350,
         "cooldown": 1,
         "variant": "ANTI_STRIKECRAFT"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 4,
-        "range": 300,
-        "cooldown": 1,
-        "variant": "ANTI_STRIKECRAFT"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 4,
-        "range": 300,
-        "cooldown": 1,
-        "variant": "ANTI_STRIKECRAFT"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 4,
-        "range": 300,
+        "damage": 8,
+        "range": 350,
         "cooldown": 1,
         "variant": "ANTI_STRIKECRAFT"
       }
@@ -8130,11 +8046,11 @@
     "point_defense": 90.0,
     "has_constructor_component": false,
     "constructor_hull_cost": 15,
-    "has_repair_component": false,
-    "repair_rate": 10.0,
-    "repair_range": 200.0,
+    "has_repair_component": true,
+    "repair_rate": 12.0,
+    "repair_range": 300.0,
     "credit_cost_per_hp": 1.0,
-    "repair_hull_cost": 0.0,
+    "repair_hull_cost": 17.991004497751124,
     "has_colony_component": false,
     "colony_hull_cost": 10,
     "has_civilian_habitat_component": false,
@@ -8169,18 +8085,23 @@
     "inhibitor_radius": 100.0,
     "inhibitor_hull_cost": 0.0,
     "has_ability_component": true,
-    "ability_hull_cost": 135.0,
+    "ability_hull_cost": 160.0,
     "abilities": [
       "fleet_jump",
       "aegis_field",
       "siege_lance",
       "deep_scan",
-      "carrier_supremacy"
+      "carrier_supremacy",
+      "attack_run",
+      "designate_target",
+      "repair_cloud",
+      "flak_barrage",
+      "multiply_antimatter"
     ],
     "has_sensors": true,
-    "sensor_short_range": 2000.0,
-    "sensor_long_range_hexes": 0,
-    "sensors_hull_cost": 2.0,
+    "sensor_short_range": 2500.0,
+    "sensor_long_range_hexes": 3,
+    "sensors_hull_cost": 17.5,
     "has_minelayer_component": false,
     "minelayer_hull_cost": 15.0,
     "has_troop_transport_component": false,
@@ -8192,32 +8113,32 @@
     "wormhole_stabilizer_hull_cost": 0.0,
     "has_siege_battery_component": false,
     "siege_battery_hull_cost": 0.0,
-    "has_marines_component": false,
-    "marines_count": 10,
-    "marines_hull_cost": 0.0,
+    "has_marines_component": true,
+    "marines_count": 20,
+    "marines_hull_cost": 20.0,
     "has_cloaking_device": false,
     "cloaking_type": "BASIC",
     "cloaking_radius": 500.0,
     "cloaking_hull_cost": 0.0,
-    "has_intelligence_component": false,
+    "has_intelligence_component": true,
     "intelligence_agents_count": 1,
-    "has_counter_intelligence": false,
-    "intelligence_hull_cost": 0.0,
-    "is_custom": true,
+    "has_counter_intelligence": true,
+    "intelligence_hull_cost": 20.0,
+    "is_custom": false,
     "roles": [
       "combat",
       "carrier",
       "support"
     ],
-    "description": "Unique strategic flagship with a Titan Core and powerful strategic abilities.",
+    "description": "Unique strategic flagship with a Titan Core, heavy battery, extended sensors, and fleet support.",
     "category": "Combat"
   },
   "TITAN_CITADEL": {
     "name": "Titan Citadel",
     "hull_size": "TITAN",
     "hull_points": 1600,
-    "build_time": 108,
-    "build_cost": 39316,
+    "build_time": 111,
+    "build_cost": 40274,
     "has_engine": false,
     "engine_speed": 100,
     "engine_hull_cost": 0.0,
@@ -8231,145 +8152,61 @@
     "hyperdrive_jump_range": 5,
     "hyperdrive_hull_cost": 0.0,
     "has_weapon_bays": true,
-    "weapon_bays_hull_cost": 181.86666666666665,
+    "weapon_bays_hull_cost": 107.3111111111111,
     "turrets": [
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
+        "damage": 30,
         "range": 400,
+        "cooldown": 3,
+        "variant": "LONG_RANGE"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 30,
+        "range": 400,
+        "cooldown": 3,
+        "variant": "LONG_RANGE"
+      },
+      {
+        "type": "MASS_DRIVER",
+        "damage": 35,
+        "range": 450,
         "cooldown": 3,
         "variant": "STANDARD"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
+        "damage": 35,
+        "range": 450,
         "cooldown": 3,
         "variant": "STANDARD"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
+        "damage": 35,
+        "range": 450,
         "cooldown": 3,
         "variant": "STANDARD"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
+        "damage": 35,
+        "range": 450,
         "cooldown": 3,
         "variant": "STANDARD"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 4,
-        "range": 300,
+        "damage": 8,
+        "range": 350,
         "cooldown": 1,
         "variant": "ANTI_STRIKECRAFT"
       },
       {
         "type": "MASS_DRIVER",
-        "damage": 4,
-        "range": 300,
-        "cooldown": 1,
-        "variant": "ANTI_STRIKECRAFT"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 20,
-        "range": 400,
-        "cooldown": 3,
-        "variant": "STANDARD"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 4,
-        "range": 300,
-        "cooldown": 1,
-        "variant": "ANTI_STRIKECRAFT"
-      },
-      {
-        "type": "MASS_DRIVER",
-        "damage": 4,
-        "range": 300,
+        "damage": 8,
+        "range": 350,
         "cooldown": 1,
         "variant": "ANTI_STRIKECRAFT"
       }
@@ -8381,11 +8218,11 @@
     "point_defense": 90.0,
     "has_constructor_component": false,
     "constructor_hull_cost": 15,
-    "has_repair_component": false,
-    "repair_rate": 10.0,
-    "repair_range": 200.0,
+    "has_repair_component": true,
+    "repair_rate": 14.0,
+    "repair_range": 350.0,
     "credit_cost_per_hp": 1.0,
-    "repair_hull_cost": 0.0,
+    "repair_hull_cost": 20.98950524737631,
     "has_colony_component": false,
     "colony_hull_cost": 10,
     "has_civilian_habitat_component": false,
@@ -8416,21 +8253,26 @@
     "strikecraft_bay_slots": 8,
     "strikecraft_bay_hull_cost": 60.0,
     "wing_type": "FIGHTER",
-    "has_inhibitor": false,
-    "inhibitor_radius": 100.0,
-    "inhibitor_hull_cost": 0.0,
+    "has_inhibitor": true,
+    "inhibitor_radius": 300.0,
+    "inhibitor_hull_cost": 20.0,
     "has_ability_component": true,
-    "ability_hull_cost": 110.0,
+    "ability_hull_cost": 135.0,
     "abilities": [
       "aegis_field",
       "siege_lance",
       "deep_scan",
-      "carrier_supremacy"
+      "carrier_supremacy",
+      "attack_run",
+      "designate_target",
+      "repair_cloud",
+      "flak_barrage",
+      "adaptive_forcefield"
     ],
     "has_sensors": true,
-    "sensor_short_range": 2000.0,
-    "sensor_long_range_hexes": 0,
-    "sensors_hull_cost": 2.0,
+    "sensor_short_range": 2500.0,
+    "sensor_long_range_hexes": 4,
+    "sensors_hull_cost": 22.5,
     "has_minelayer_component": false,
     "minelayer_hull_cost": 15.0,
     "has_troop_transport_component": false,
@@ -8449,17 +8291,17 @@
     "cloaking_type": "BASIC",
     "cloaking_radius": 500.0,
     "cloaking_hull_cost": 0.0,
-    "has_intelligence_component": false,
+    "has_intelligence_component": true,
     "intelligence_agents_count": 1,
-    "has_counter_intelligence": false,
-    "intelligence_hull_cost": 0.0,
-    "is_custom": true,
+    "has_counter_intelligence": true,
+    "intelligence_hull_cost": 20.0,
+    "is_custom": false,
     "roles": [
       "combat",
       "carrier",
       "support"
     ],
-    "description": "Unique strategic station with a Titan Core and powerful strategic abilities.",
+    "description": "Unique strategic station with a Titan Core, heavy battery, jump inhibition, and repair base.",
     "category": "Combat"
   }
 }

@@ -574,8 +574,8 @@ report mandatory returns and endurance losses.
 | Siege Dreadnought | Combat | HUGE ship | 185.49/200 | 7565 | 286 | 93 | 39 | 1.85 | Dedicated planetary bombardment with a Siege Battery and long-range fleet weapons. Inter-system travel. |
 | Artillery Dreadnought | Combat | HUGE ship | 194.93/200 | 7848 | 295 | 98 | 39 | 1.95 | Dedicated long-range fleet bombardment dreadnought featuring tri-weapon artillery batteries. Inter-system travel. |
 | Interdiction Fortress | Combat | HUGE station | 200.00/200 | 8000 | 300 | 100 | 40 | 2.00 | Designed for fortified jump denial. Stationary installation. Activate clear of existing natural or artificial inhibition fields; maintain fuel supply. |
-| Titan Citadel | Combat | TITAN station | 643.87/800 | 39316 | 1044 | 322 | 108 | 114.39 | Unique strategic station with a Titan Core and powerful strategic abilities. |
-| Titan Flagship | Combat | TITAN ship | 720.87/800 | 41626 | 1121 | 361 | 114 | 122.09 | Unique strategic flagship with a Titan Core and powerful strategic abilities. |
+| Titan Citadel | Combat | TITAN station | 675.80/800 | 40274 | 1076 | 338 | 111 | 117.58 | Unique strategic station with a Titan Core, heavy battery, jump inhibition, and repair base. |
+| Titan Flagship | Combat | TITAN ship | 744.80/800 | 42344 | 1145 | 373 | 116 | 124.48 | Unique strategic flagship with a Titan Core, heavy battery, extended sensors, and fleet support. |
 | Mining Drone | Economy | TINY ship | 9.00/10 | 370 | 14 | 5 | 6 | 0.09 | Designed for transportable mining. Local-sector operations; Tiny craft can travel aboard a hangar transport. Mine metal asteroids or comets and unload at the matching refinery. |
 | Small Mining Ship | Economy | SMALL ship | 23.20/25 | 946 | 36 | 12 | 12 | 0.23 | Designed for local mining. Intra-system travel only. Mine metal asteroids or comets and unload at the matching refinery. |
 | Civilian Habitat | Economy | SMALL station | 24.00/25 | 970 | 37 | 12 | 12 | 0.24 | Designed for income and trade destination. Stationary installation. Requires a friendly or allied colony and an available colony support slot. |
